@@ -9,7 +9,7 @@
 | **신지용** | PM + Intent 분류 + Agent 오케스트레이션 | `팀원A:PM` |
 | **윤경은** | AI 리드 (파인튜닝 v1 + 판단 Agent + RAG) | `팀원B:AI리드` |
 | **진승언** | AI 서브 (파인튜닝 v2 + 문서 Agent) | `팀원C:AI서브` |
-| **안혜빈** | Backend + DB + 인증 + 일정 Agent + Google Calendar | `팀원D:Backend` |
+| **안혜빈** | Backend + DB + 인증 + 일정 Agent + Google Services 통합 | `팀원D:Backend` |
 | **문지영** | Frontend 전담 (React) | `팀원E:Frontend` |
 
 ---
@@ -31,7 +31,7 @@
      ├── doc_*         → [승언] Docling/PaddleOCR + sLLM (LoRA v2)
      │                        → 요약 / 생성 / 리스크 감지
      │
-     └── schedule_*    → [혜빈] 일정 CRUD + Google Calendar 동기화
+     └── schedule_*    → [혜빈] 일정 CRUD + Google 서비스 통합 (Calendar+Tasks+Gmail+Meet+Sheets)
      │
      ▼
 [지용] SSE 스트리밍 응답
@@ -121,15 +121,15 @@
 
 | # | 이슈 | 할 일 | 우선순위 |
 |---|------|-------|---------|
-| #19 | **DB 스키마 확정 + Alembic 마이그레이션** | 9개 테이블 ERD, 첫 마이그레이션 | BLOCKER |
+| #19 | **DB 스키마 확정 + Alembic 마이그레이션** | 11개 테이블 ERD, 첫 마이그레이션 | BLOCKER |
 
 **체크리스트:**
 - [ ] `docker-compose up -d db redis`로 PostgreSQL 실행
-- [ ] `backend/app/models/*.py` 9개 모델 필드 검토/수정
+- [ ] `backend/app/models/*.py` 11개 모델 필드 검토/수정 (google_sheet_trackers 포함)
 - [ ] ERD 다이어그램 작성
 - [ ] `alembic revision --autogenerate -m "Initial tables"`
 - [ ] `alembic upgrade head`
-- [ ] Google Cloud Console OAuth 설정 시작
+- [ ] Google Cloud Console OAuth 설정 시작 (Calendar + Tasks + Gmail + Sheets scope)
 
 ---
 
@@ -265,6 +265,7 @@
 | # | 이슈 | 할 일 |
 |---|------|-------|
 | #21 | **Google Calendar 연동** | OAuth 플로우, Push/Pull, 토큰 자동 갱신 |
+| #33 | **Google Services 확장 (Tasks+Gmail+Meet+Sheets)** | GoogleBaseService, 4개 서비스 백엔드, 통합 OAuth, 17개 API |
 
 ---
 
@@ -308,7 +309,7 @@
 
 | # | 이슈 | 할 일 |
 |---|------|-------|
-| #22 | **일정 Agent API** | CRUD + 우선순위 자동설정 + 담당자 + GCal 동기화 |
+| #22 | **일정 Agent API** | CRUD + 우선순위 자동설정 + 담당자 + GCal 동기화 + **4개 Google 서비스 오케스트레이션** |
 | #23 | **관리자 API + 로그** | 사용자 CRUD, 통계, **질의 로그 탭**, **Top 질의 통계**, **권한별 접근 설정**, AES-256 암호화 |
 
 ---
@@ -318,6 +319,7 @@
 | # | 이슈 | 할 일 |
 |---|------|-------|
 | #28 | **문서/회의/일정 관리 UI** | 3개 페이지 전체 구현, **KeywordHighlight, ParsingStatus, JsonViewer** 포함 |
+| #34 | **Google Services UI** | GoogleServicesConnect, TasksPanel, MeetLinkBadge, EmailReminderButton, SheetsDashboard, SchedulesPage 리빌드 |
 
 ---
 
@@ -384,11 +386,13 @@ main (배포용 - 지용만 머지)
       ├── feature/finetuning-document      (승언)
       ├── feature/schedule-agent           (혜빈)
       ├── feature/google-calendar          (혜빈)
+      ├── feature/google-services          (혜빈) ← NEW
       ├── feature/auth-system              (혜빈)
       ├── feature/database                 (혜빈)
       ├── feature/dashboard-ui             (지영)
       ├── feature/chatbot-ui               (지영)
       ├── feature/calendar-ui              (지영)
+      ├── feature/google-services-ui       (지영) ← NEW
       └── feature/streaming-ui             (지영)
 ```
 
@@ -449,7 +453,8 @@ chore:    설정/환경
 
 | 파일 | 기능 |
 |------|------|
-| `ai/templates/base.py` | 템플릿 베이스 클래스 (render, to_docx, to_pdf) |
+| `ai/templates/base.py` | 템플릿 베이스 클래스 (render, to_docx, to_pdf, from_parsed_structure, render_from_structure) |
+| `ai/templates/__init__.py` | SYSTEM_TEMPLATES 레지스트리 |
 | `ai/templates/meeting_minutes.py` | 회의록 템플릿 |
 | `ai/templates/report.py` | 보고서 템플릿 |
 | `ai/templates/jd.py` | 채용 공고 템플릿 |
@@ -459,9 +464,154 @@ chore:    설정/환경
 
 | 파일 | 기능 |
 |------|------|
-| `services/template_service.py` | 문서 생성 + 다운로드 + 템플릿 감지 |
+| `models/document_template.py` | 커스텀/시스템 템플릿 저장 DB 모델 |
+| `services/template_service.py` | 문서 생성 + 다운로드 + 템플릿 업로드 + 감지 |
 | `services/statistics_service.py` | Top 질의 통계 + 질의 로그 |
 | `services/parsing_service.py` | 파싱 상태 관리 |
-| `api/v1/documents.py` | 추가: `/generate`, `/{id}/download`, `/{id}/parsing-status`, `/search/highlight` |
+| `api/v1/documents.py` | 추가: `/generate`, `/{id}/download`, `/{id}/parsing-status`, `/search/highlight`, `/templates/*` (업로드/목록/상세/삭제) |
+| `api/v1/meetings.py` | 추가: `/generate`, `/{id}/download` |
 | `api/v1/admin.py` | 추가: `/query-logs`, `/top-queries`, `/users/{id}/permissions` |
 | `api/v1/auth.py` | 추가: `/password-reset/request`, `/password-reset/confirm` |
+
+---
+
+## Google Services 확장 설계 (2026-02-09 추가)
+
+> PM 요청: Google Calendar 외 4개 Google 서비스 추가 연동
+> Intent 7개 유지, `schedule_add`/`schedule_view` 내부에서 자동 연동
+
+### 추가 Google 서비스 (4개)
+
+| 서비스 | 기능 | scope |
+|--------|------|-------|
+| **Google Tasks** | Action Item → 할 일 등록 (완료 체크, 미완료 추적) | `tasks` |
+| **Gmail** | 담당자 기한 알림 메일 + 회의 초대 메일 자동 발송 | `gmail_send` |
+| **Google Meet** | 캘린더 일정 등록 시 자동 Meet 링크 생성 | `calendar` (확장) |
+| **Google Sheets** | Action Item 현황 스프레드시트 자동 생성 → 팀 추적 대시보드 | `sheets` |
+
+### DB 변경 사항
+
+| 변경 대상 | 추가 필드 |
+|-----------|----------|
+| `oauth_tokens` | `scopes: Text` (연결된 서비스 범위, 콤마 구분) |
+| `action_items` | `google_task_id`, `sheet_row_id`, `email_sent_at` |
+| `schedules` | `google_meet_link` |
+| **신규** `google_sheet_trackers` | `spreadsheet_id`, `spreadsheet_url`, `sheet_name`, `meeting_id` |
+
+### 신규 백엔드 파일 (혜빈 담당)
+
+| 파일 | 설명 |
+|------|------|
+| `services/google_base_service.py` | Google API 공통 (인증, 토큰 갱신, scope 확인) — 5개 서비스 베이스 |
+| `services/tasks_service.py` | Google Tasks CRUD + 상태 동기화 |
+| `services/gmail_service.py` | 알림 메일 + 회의 초대 메일 발송 |
+| `services/sheets_service.py` | 스프레드시트 생성 + Action Item 추적 |
+| `models/google_sheet_tracker.py` | 스프레드시트 추적 DB 모델 |
+| `api/v1/google_connect.py` | 통합 OAuth (status/connect/callback/disconnect) |
+| `api/v1/tasks.py` | Tasks 동기화 엔드포인트 (5개) |
+| `api/v1/gmail.py` | 메일 발송 엔드포인트 (3개) |
+| `api/v1/sheets.py` | Sheets 생성/동기화 엔드포인트 (4개) |
+| `schemas/google_services.py` | 모든 Google 서비스 요청/응답 스키마 |
+
+### 수정된 백엔드 파일 (혜빈 담당)
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `services/calendar_service.py` | `GoogleBaseService` 상속, `create_event_with_meet()` 추가 |
+| `services/schedule_service.py` | 4개 Google 서비스 오케스트레이션 통합 |
+| `api/v1/calendar.py` | `/event-with-meet` 엔드포인트 추가 |
+| `api/v1/router.py` | 4개 신규 라우터 등록 (google, tasks, gmail, sheets) |
+| `schemas/schedule.py` | `google_meet_link`, `include_meet`, `attendee_emails` 추가 |
+| `schemas/meeting.py` | ActionItemResponse에 `google_task_id`, `email_sent_at` 추가 |
+
+### 수정된 AI 파일 (지용 담당)
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `ai/agents/state.py` | `google_services_result: Optional[dict]` 추가 |
+| `ai/agents/schedule_agent.py` | Google 서비스 통합 응답 구조 (`google_services` 필드) |
+
+### 신규 프론트엔드 파일 (지영 담당)
+
+| 파일 | 기능 |
+|------|------|
+| `api/google.js` | Google 서비스 통합 API 클라이언트 (17개 함수) |
+| `store/googleStore.js` | Zustand 상태 관리 (연결/Tasks/Sheets) |
+| `hooks/useGoogleServices.js` | Google 서비스 커스텀 훅 |
+| `components/schedules/GoogleServicesConnect.jsx` | 통합 연결 UI (4개 서비스 토글) |
+| `components/schedules/TasksPanel.jsx` | 할 일 관리 패널 (체크박스, Push/Pull) |
+| `components/schedules/MeetLinkBadge.jsx` | Meet 링크 뱃지 |
+| `components/schedules/EmailReminderButton.jsx` | 알림 메일 발송 버튼 |
+| `components/schedules/SheetsDashboard.jsx` | 스프레드시트 추적 대시보드 |
+
+### 수정된 프론트엔드 파일 (지영 담당)
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `utils/constants.js` | `GOOGLE_SCOPES`, `GOOGLE_SCOPE_LABELS`, `TASK_STATUS` 추가 |
+| `pages/SchedulesPage.jsx` | 전체 리빌드 (Google 서비스 컴포넌트 통합) |
+| `components/schedules/CalendarView.jsx` | Meet 링크 뱃지 표시 |
+| `components/schedules/ScheduleForm.jsx` | Meet 토글 + 참석자 이메일 입력 |
+| `api/schedules.js` | `createScheduleWithMeet` 추가 |
+
+### API 엔드포인트 (17개 신규)
+
+| Prefix | 엔드포인트 수 | 설명 |
+|--------|-------------|------|
+| `/api/v1/google` | 4 | 통합 OAuth (status/connect/callback/disconnect) |
+| `/api/v1/tasks` | 5 | sync, sync-all, list, status update, pull |
+| `/api/v1/gmail` | 3 | send-reminder, send-meeting-invite, send-bulk-reminders |
+| `/api/v1/sheets` | 4 | create, sync, list, get-url |
+| `/api/v1/calendar` | 1 (추가) | event-with-meet |
+
+### 브랜치 추가
+
+```
+feature/google-services     (혜빈) — Tasks, Gmail, Meet, Sheets 백엔드
+feature/google-services-ui  (지영) — Google 서비스 프론트엔드
+```
+
+---
+
+## 문서 생성 시스템 구조 변경 (2026-02-09 추가)
+
+> PM 요청: 문서 Agent 담당 전용 페이지 2개 신설
+
+### Intent 변경 사항
+
+| 기존 | 변경 후 | 비고 |
+|------|---------|------|
+| `doc_summary` | 삭제 | `doc_generate`에 통합 (요약 및 생성 = 한 흐름) |
+| `meeting_analysis` | `meeting_generate` | 분석→생성으로 목적 변경 |
+| (없음) | `general` | 일반 질문 처리 추가 |
+
+### 신규 페이지 (지영 담당)
+
+| 페이지 | 경로 | 설명 |
+|--------|------|------|
+| 회의록 생성 | `/meeting-minutes` | 회의 내용 입력 → AI 요약 → 회의록 양식 생성 |
+| 문서 생성 | `/document-generate` | 템플릿 선택/업로드 → AI 내용 채움 → 문서 생성 |
+
+### 신규 프론트엔드 컴포넌트 (지영 담당)
+
+| 파일 | 기능 |
+|------|------|
+| `pages/MeetingMinutesPage.jsx` | 회의록 요약 및 생성 페이지 |
+| `pages/DocumentGeneratePage.jsx` | 문서 요약 및 생성 페이지 |
+| `components/meetings/MeetingInput.jsx` | 회의 내용 텍스트 입력 폼 |
+| `components/meetings/MeetingPreview.jsx` | 회의록 미리보기 + 다운로드 |
+| `components/documents/TemplateSelector.jsx` | 템플릿 선택 그리드 |
+| `components/documents/TemplateUploadDialog.jsx` | 템플릿 파일 업로드 다이얼로그 |
+| `components/documents/DocumentPreview.jsx` | 생성 문서 미리보기 + 다운로드 |
+
+### 사이드바 메뉴 변경
+
+```
+대시보드
+AI 챗봇
+회의록 생성     ← NEW
+문서 생성       ← NEW
+문서 관리       ← 기존
+일정 관리
+관리자
+```

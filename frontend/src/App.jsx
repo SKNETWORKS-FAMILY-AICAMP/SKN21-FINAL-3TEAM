@@ -5,6 +5,8 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/common/Layout'
 import DashboardPage from './pages/DashboardPage'
 import ChatPage from './pages/ChatPage'
+import MeetingMinutesPage from './pages/MeetingMinutesPage'
+import DocumentGeneratePage from './pages/DocumentGeneratePage'
 import DocumentsPage from './pages/DocumentsPage'
 import MeetingsPage from './pages/MeetingsPage'
 import SchedulesPage from './pages/SchedulesPage'
@@ -24,6 +26,8 @@ function App() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="chat" element={<ChatPage />} />
+        <Route path="meeting-minutes" element={<MeetingMinutesPage />} />
+        <Route path="document-generate" element={<DocumentGeneratePage />} />
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="meetings" element={<MeetingsPage />} />
         <Route path="schedules" element={<SchedulesPage />} />

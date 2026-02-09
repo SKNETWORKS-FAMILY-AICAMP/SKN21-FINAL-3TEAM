@@ -4,6 +4,7 @@ SQLAlchemy ORM 모델 (팀원 D 담당)
 """
 from app.models.user import User
 from app.models.document import Document
+from app.models.document_template import DocumentTemplate
 from app.models.regulation import Regulation
 from app.models.meeting import Meeting
 from app.models.action_item import ActionItem
@@ -11,10 +12,12 @@ from app.models.schedule import Schedule
 from app.models.judgment import Judgment
 from app.models.chat_log import ChatLog
 from app.models.oauth_token import OAuthToken
+from app.models.google_sheet_tracker import GoogleSheetTracker
 
 __all__ = [
     "User",
     "Document",
+    "DocumentTemplate",
     "Regulation",
     "Meeting",
     "ActionItem",
@@ -22,4 +25,5 @@ __all__ = [
     "Judgment",
     "ChatLog",
     "OAuthToken",
+    "GoogleSheetTracker",
 ]

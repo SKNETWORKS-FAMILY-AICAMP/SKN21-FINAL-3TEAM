@@ -6,8 +6,9 @@ import { NavLink } from 'react-router-dom'
 const navItems = [
   { path: '/dashboard', label: '대시보드' },
   { path: '/chat', label: 'AI 챗봇' },
+  { path: '/meeting-minutes', label: '회의록 생성' },
+  { path: '/document-generate', label: '문서 생성' },
   { path: '/documents', label: '문서 관리' },
-  { path: '/meetings', label: '회의 관리' },
   { path: '/schedules', label: '일정 관리' },
   { path: '/admin', label: '관리자' },
 ]

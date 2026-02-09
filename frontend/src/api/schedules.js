@@ -9,6 +9,9 @@ export const listSchedules = () =>
 export const createSchedule = (data) =>
   client.post('/schedules/', data)
 
+export const createScheduleWithMeet = (data) =>
+  client.post('/schedules/', data)
+
 export const updateSchedule = (id, data) =>
   client.put(`/schedules/${id}`, data)
 

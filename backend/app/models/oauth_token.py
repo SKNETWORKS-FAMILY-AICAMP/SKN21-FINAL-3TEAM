@@ -1,6 +1,7 @@
 """
 OAuth 토큰 모델 (팀원 D 담당)
 - Google Calendar 등 외부 서비스 토큰 저장
+- scopes: 연결된 Google 서비스 범위 (calendar,tasks,gmail_send,sheets)
 """
 from sqlalchemy import String, Text, Integer, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
@@ -19,3 +20,4 @@ class OAuthToken(Base, TimestampMixin):
     access_token: Mapped[str] = mapped_column(Text)  # 암호화 저장
     refresh_token: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     expires_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    scopes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # "calendar,tasks,gmail_send,sheets"

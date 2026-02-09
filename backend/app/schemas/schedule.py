@@ -13,6 +13,8 @@ class ScheduleCreate(BaseModel):
     end_time: Optional[datetime] = None
     schedule_type: str = "task"
     priority: str = "medium"
+    include_meet: bool = False
+    attendee_emails: list[str] = []
 
 
 class ScheduleResponse(BaseModel):
@@ -24,4 +26,5 @@ class ScheduleResponse(BaseModel):
     schedule_type: str
     priority: str
     google_event_id: Optional[str] = None
+    google_meet_link: Optional[str] = None
     created_at: datetime

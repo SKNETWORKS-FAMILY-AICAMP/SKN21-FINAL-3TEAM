@@ -3,6 +3,8 @@
  */
 import client from './client'
 
+// ── 문서 CRUD ──
+
 export const listDocuments = (params) =>
   client.get('/documents/', { params })
 
@@ -19,3 +21,38 @@ export const uploadDocument = (file, scope) => {
 
 export const deleteDocument = (id) =>
   client.delete(`/documents/${id}`)
+
+// ── 문서 생성 ──
+
+export const generateDocument = (data) =>
+  client.post('/documents/generate', data)
+
+export const downloadDocument = (id, format = 'docx') =>
+  client.get(`/documents/${id}/download`, {
+    params: { format },
+    responseType: 'blob',
+  })
+
+// ── 템플릿 관리 ──
+
+export const listTemplates = (params) =>
+  client.get('/documents/templates/', { params })
+
+export const getTemplate = (id) =>
+  client.get(`/documents/templates/${id}`)
+
+export const uploadTemplate = (file, metadata) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  const params = new URLSearchParams()
+  params.append('name', metadata.name)
+  if (metadata.description) params.append('description', metadata.description)
+  if (metadata.category) params.append('category', metadata.category)
+  if (metadata.scope) params.append('scope', metadata.scope)
+  return client.post(`/documents/templates/upload?${params.toString()}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
+export const deleteTemplate = (id) =>
+  client.delete(`/documents/templates/${id}`)
