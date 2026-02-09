@@ -1,41 +1,71 @@
-/**
- * 사이드바 (팀원 E 담당)
- */
-import { NavLink } from 'react-router-dom'
+import { NavLink } from 'react-router-dom';
+import useAuthStore from '../../store/authStore';
 
 const navItems = [
-  { path: '/dashboard', label: '대시보드' },
-  { path: '/chat', label: 'AI 챗봇' },
-  { path: '/meeting-minutes', label: '회의록 생성' },
-  { path: '/document-generate', label: '문서 생성' },
-  { path: '/documents', label: '문서 관리' },
-  { path: '/schedules', label: '일정 관리' },
-  { path: '/admin', label: '관리자' },
-]
+  { section: '메인', items: [
+    { to: '/dashboard', icon: '📊', label: '대시보드' },
+    { to: '/chat', icon: '💬', label: 'AI 챗봇' },
+  ]},
+  { section: '관리', items: [
+    { to: '/documents', icon: '📄', label: '문서 관리', badge: 3 },
+    { to: '/meetings', icon: '📅', label: '회의 관리' },
+    { to: '/schedules', icon: '🗓️', label: '일정 관리' },
+  ]},
+  { section: '시스템', items: [
+    { to: '/admin', icon: '⚙️', label: '관리자 설정' },
+  ]},
+];
 
 export default function Sidebar() {
+  const user = useAuthStore((s) => s.user);
+
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 p-4">
-      <div className="text-xl font-bold text-primary mb-8 px-2">
-        WorkFlow Agent
-      </div>
-      <nav className="space-y-1">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              `block px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`
-            }
-          >
-            {item.label}
-          </NavLink>
+    <aside className="w-60 bg-primary-700 flex flex-col flex-shrink-0 overflow-y-auto">
+      <a href="/dashboard" className="flex items-center gap-3 px-5 pt-6 pb-7">
+        <div className="w-9 h-9 bg-accent-300 rounded-sm flex items-center justify-center text-lg">📋</div>
+        <span className="font-display text-lg font-bold text-white tracking-tight">WorkFlow</span>
+      </a>
+
+      <nav className="flex-1">
+        {navItems.map((section) => (
+          <div key={section.section} className="mb-2">
+            <div className="px-5 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-primary-300 opacity-70">
+              {section.section}
+            </div>
+            {section.items.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 px-5 py-2.5 text-sm border-l-[3px] transition-all ${
+                    isActive
+                      ? 'bg-primary-500 text-white font-semibold border-l-accent-300'
+                      : 'text-primary-100 border-l-transparent hover:bg-white/[0.06] hover:text-white'
+                  }`
+                }
+              >
+                <span>{item.icon}</span>
+                <span>{item.label}</span>
+                {item.badge && (
+                  <span className="ml-auto bg-accent-300 text-primary-900 text-[11px] font-bold px-2 py-px rounded-full">
+                    {item.badge}
+                  </span>
+                )}
+              </NavLink>
+            ))}
+          </div>
         ))}
       </nav>
+
+      <div className="flex items-center gap-2.5 px-5 py-4 border-t border-primary-500">
+        <div className="w-[34px] h-[34px] rounded-full bg-accent-300 flex items-center justify-center text-[13px] font-bold text-primary-900 flex-shrink-0">
+          {user?.name?.[0] || '김'}
+        </div>
+        <div>
+          <div className="text-[13px] font-semibold text-white">{user?.name || '김정보'}</div>
+          <div className="text-[11px] text-primary-300">{user?.role || '정보보안팀 팀장'}</div>
+        </div>
+      </div>
     </aside>
-  )
+  );
 }

@@ -5,14 +5,15 @@ import useChatStore from '../store/chatStore'
 import useSSE from './useSSE'
 
 export default function useChat() {
-  const { messages, isStreaming, currentIntent, addMessage } = useChatStore()
+  const { messages, isStreaming, currentIntent, currentStatus, addMessage } = useChatStore()
   const { startStream, stopStream } = useSSE()
 
   const sendMessage = (text) => {
+    if (!text.trim() || isStreaming) return
     addMessage({ role: 'user', content: text })
     addMessage({ role: 'assistant', content: '' })
     startStream(text)
   }
 
-  return { messages, isStreaming, currentIntent, sendMessage, stopStream }
+  return { messages, isStreaming, currentIntent, currentStatus, sendMessage, stopStream }
 }

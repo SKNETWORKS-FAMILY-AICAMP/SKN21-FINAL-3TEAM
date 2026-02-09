@@ -1,14 +1,7 @@
-/**
- * 로딩 스피너 (팀원 E 담당)
- */
-export default function LoadingSpinner({ size = 'md' }) {
-  const sizeClass = {
-    sm: 'w-4 h-4',
-    md: 'w-8 h-8',
-    lg: 'w-12 h-12',
-  }[size]
+const sizes = { sm: 'w-4 h-4', md: 'w-6 h-6', lg: 'w-10 h-10' };
 
+export default function LoadingSpinner({ size = 'md' }) {
   return (
-    <div className={`${sizeClass} animate-spin rounded-full border-2 border-gray-200 border-t-primary`} />
-  )
+    <div className={`${sizes[size]} border-2 border-primary-100 border-t-primary-500 rounded-full animate-spin`} />
+  );
 }
