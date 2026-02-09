@@ -16,9 +16,9 @@
 | 기능 | 설명 |
 |------|------|
 | **규정 판단** | "인턴에게 AWS 접근 줘도 돼?" → 다중 규정 교차 판단 + 근거 + 대안 제시 |
-| **문서 분석** | 회의록 업로드 → 결정사항/Action Item/리스크 자동 추출 |
-| **문서 생성** | "회의록 만들어줘" → 템플릿 기반 생성 → 미리보기 + 다운로드 |
-| **일정 관리** | Action Item → 일정 자동 등록 + Google Calendar 양방향 동기화 |
+| **회의록 생성** | 회의 내용 입력 → AI 요약 + 결정사항/Action Item 추출 → 회의록 양식 생성 |
+| **문서 생성** | 템플릿 선택/업로드 → AI가 양식에 맞게 내용 채워서 생성 → 미리보기 + 다운로드 |
+| **일정 관리** | Action Item → 일정 자동 등록 + Google Services 통합 (Calendar·Tasks·Gmail·Meet·Sheets) |
 
 ---
 
@@ -33,18 +33,27 @@
 ║  React (Vite) + Zustand + TanStack Query + Tailwind + shadcn/ui       ║
 ║                                                                        ║
 ║  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐          ║
-║  │ 대시보드    │ │  AI 챗봇   │ │  문서관리   │ │  일정관리   │          ║
+║  │ 대시보드    │ │  AI 챗봇   │ │ 회의록생성  │ │  문서생성   │          ║
 ║  │            │ │            │ │            │ │            │          ║
-║  │ StatCard   │ │ ChatWindow │ │ DocList    │ │ FullCal    │          ║
-║  │ TopQueries │ │ Streaming  │ │ Upload     │ │ GoogleSync │          ║
-║  │ RiskAlert  │ │ JudgmentCd │ │ Highlight  │ │ EventForm  │          ║
-║  │ QuickSearch│ │ GenerateCd │ │ Parsing    │ │            │          ║
-║  │ AutoScan   │ │ MeetingSumm│ │ JsonViewer │ │            │          ║
-║  │ Timeline   │ │ ErrorMsg   │ │ ScopeSelect│ │            │          ║
+║  │ StatCard   │ │ ChatWindow │ │ MeetInput  │ │ TemplSel   │          ║
+║  │ TopQueries │ │ Streaming  │ │ MeetPreview│ │ TemplUpload│          ║
+║  │ RiskAlert  │ │ JudgmentCd │ │            │ │ DocPreview │          ║
+║  │ QuickSearch│ │ GenerateCd │ │            │ │            │          ║
+║  │ AutoScan   │ │ MeetingSumm│ │            │ │            │          ║
+║  │ Timeline   │ │ ErrorMsg   │ │            │ │            │          ║
 ║  │            │ │ SuggestQ   │ │            │ │            │          ║
 ║  │            │ │ RegPanel   │ │            │ │            │          ║
 ║  │            │ │ AgentIndic │ │            │ │            │          ║
 ║  └────────────┘ └────────────┘ └────────────┘ └────────────┘          ║
+║                                                                        ║
+║  ┌────────────┐ ┌────────────┐                                        ║
+║  │  문서관리   │ │  일정관리   │                                        ║
+║  │ DocList    │ │ FullCal    │                                        ║
+║  │ Upload     │ │ GoogleSync │                                        ║
+║  │ Highlight  │ │ EventForm  │                                        ║
+║  │ Parsing    │ │            │                                        ║
+║  │ ScopeSelect│ │            │                                        ║
+║  └────────────┘ └────────────┘                                        ║
 ║                                                                        ║
 ║  ┌────────────┐ ┌────────────┐ ┌────────────┐                         ║
 ║  │  로그인     │ │  관리자     │ │  SSE 수신   │                         ║
@@ -64,13 +73,17 @@
 ║  │  /api/v1/documents/* ─── CRUD + 생성/다운로드 ── [혜빈]  │          ║
 ║  │  /api/v1/meetings/*  ─── 회의 관리 ───────────── [혜빈]  │          ║
 ║  │  /api/v1/schedules/* ─── 일정 CRUD ──────────── [혜빈]  │          ║
-║  │  /api/v1/calendar/*  ─── Google Calendar ────── [혜빈]  │          ║
+║  │  /api/v1/calendar/*  ─── Google Calendar+Meet ─ [혜빈]  │          ║
+║  │  /api/v1/google/*    ─── 통합 OAuth ────────── [혜빈]  │          ║
+║  │  /api/v1/tasks/*     ─── Google Tasks ──────── [혜빈]  │          ║
+║  │  /api/v1/gmail/*     ─── Gmail 발송 ────────── [혜빈]  │          ║
+║  │  /api/v1/sheets/*    ─── Google Sheets ─────── [혜빈]  │          ║
 ║  │  /api/v1/admin/*     ─── 통계 + 로그 + 권한 ─── [혜빈]  │          ║
 ║  └──────────────────────────────────────────────────────────┘          ║
 ║                                                                        ║
 ║  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐        ║
 ║  │ JWT 인증/권한    │  │ PostgreSQL      │  │ Redis           │        ║
-║  │ [혜빈]          │  │ 9 tables [혜빈] │  │ Cache + Queue   │        ║
+║  │ [혜빈]          │  │ 11 tables[혜빈] │  │ Cache + Queue   │        ║
 ║  └─────────────────┘  └─────────────────┘  └─────────────────┘        ║
 ║                                                                        ║
 ║  Services [혜빈]                                                       ║
@@ -78,6 +91,16 @@
 ║  │ template_service│  │ statistics_svc  │  │ parsing_service │        ║
 ║  │ 문서 생성/다운   │  │ Top 질의/로그    │  │ 파싱 상태 관리  │        ║
 ║  └─────────────────┘  └─────────────────┘  └─────────────────┘        ║
+║                                                                        ║
+║  Google Services [혜빈] — GoogleBaseService 상속 구조                   ║
+║  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐  ║
+║  │ calendar_svc │ │ tasks_svc    │ │ gmail_svc    │ │ sheets_svc   │  ║
+║  │ +Meet 링크   │ │ Action Item  │ │ 알림/초대    │ │ 추적 시트    │  ║
+║  │              │ │ ↔ Task 동기화│ │ 메일 발송    │ │ 생성/동기화  │  ║
+║  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘  ║
+║  ┌──────────────────────────────────────────────────────────────┐      ║
+║  │ schedule_service — 4개 Google 서비스 오케스트레이션 통합      │      ║
+║  └──────────────────────────────────────────────────────────────┘      ║
 ╚═══════════════════════════╤════════════════════════════════════════════╝
                             │
 ╔═══════════════════════════╧════════════════════════════════════════════╗
@@ -85,7 +108,8 @@
 ║                                                                        ║
 ║  ┌──────────────────────────────────────────────────────┐              ║
 ║  │  Intent Classifier (klue/bert-base)        [지용]    │              ║
-║  │  7개 카테고리 분류 (F1 목표 90%+)                     │              ║
+║  │  7개: judgment, doc_search, doc_generate,            │              ║
+║  │       meeting_generate, schedule_*, general           │              ║
 ║  └──────────┬───────────────────────────────────────────┘              ║
 ║             │                                                          ║
 ║  ┌──────────▼───────────────────────────────────────────┐              ║
@@ -98,10 +122,10 @@
 ║  │ 판단 Agent   ││ 문서 Agent   ││ 일정 Agent   │                     ║
 ║  │    [경은]    ││    [승언]    ││    [혜빈]    │                     ║
 ║  │              ││              ││              │                     ║
-║  │ · 다중규정   ││ · 회의록분석 ││ · CRUD       │                     ║
-║  │   교차판단   ││ · 문서요약   ││ · 우선순위   │                     ║
-║  │ · confidence ││ · 문서생성   ││ · 담당자배정 │                     ║
-║  │ · 조건부판단 ││ · 리스크감지 ││ · GCal 동기화│                     ║
+║  │ · 다중규정   ││ · 회의록생성 ││ · CRUD       │                     ║
+║  │   교차판단   ││ · 문서생성   ││ · 우선순위   │                     ║
+║  │ · confidence ││ · 템플릿관리 ││ · 담당자배정 │                     ║
+║  │ · 조건부판단 ││ · 리스크감지 ││ · Google 통합│                     ║
 ║  │ · 이력참조   ││ · 자동스캔   ││              │                     ║
 ║  └──────┬───────┘└──────┬───────┘└──────┬───────┘                     ║
 ║         │              │              │                                ║
@@ -155,8 +179,10 @@
 ║  ☁️ External Services                                                   ║
 ║                                                                        ║
 ║  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐        ║
-║  │ Google OAuth 2.0│  │ Google Calendar │  │ RunPod (A100)   │        ║
-║  │ [혜빈]          │  │ API [혜빈]      │  │ GPU 학습 [경은] │        ║
+║  │ Google OAuth 2.0│  │ Google APIs     │  │ RunPod (A100)   │        ║
+║  │ (통합 scope)    │  │ Calendar+Tasks  │  │ GPU 학습 [경은] │        ║
+║  │ [혜빈]          │  │ Gmail+Sheets    │  │                 │        ║
+║  │                 │  │ +Meet [혜빈]    │  │                 │        ║
 ║  └─────────────────┘  └─────────────────┘  └─────────────────┘        ║
 ╚════════════════════════════════════════════════════════════════════════╝
 ```
@@ -167,7 +193,7 @@
 [지용] Intent 분류 + LangGraph 오케스트레이터 + SSE 스트리밍 + 배포
 [경은] 판단 Agent + RAG Pipeline + Reranker + vLLM 서빙 + LoRA v1
 [승언] 문서 Agent + Document Parser + Template Engine + LoRA v2
-[혜빈] Backend API 전체 + DB + 인증 + 일정 Agent + Google Calendar
+[혜빈] Backend API 전체 + DB + 인증 + 일정 Agent + Google Services 통합
 [지영] Frontend 전체 (7개 화면 + 30+ 컴포넌트 + SSE 수신)
 ```
 
@@ -233,33 +259,49 @@
 └─────────────────────────────────────┘
 ```
 
+### 회의록 생성 흐름
+
+```
+[회의록 생성 페이지 — 지영]
+  사용자: 회의 내용 텍스트 입력 + (선택) 제목/날짜/참석자
+     │
+     ▼
+  POST /api/v1/meetings/generate  [혜빈]
+     │
+     ▼
+  [문서 Agent — meeting_generate — 승언]
+     ├── sLLM으로 요약 (결정사항, Action Item 추출)
+     ├── MeetingMinutesTemplate 양식에 데이터 채움
+     ├── 규정 리스크 자동 스캔 (RAG)
+     ├── meetings + documents + action_items 테이블 저장
+     │
+     ▼
+  [MeetingPreview — 지영]
+  응답: 요약 + 결정사항 + Action Items + 미리보기(MD) + 다운로드 URL + 리스크
+```
+
 ### 문서 생성 흐름
 
 ```
-사용자: "회의록 만들어줘"
-         │
-         ▼
-┌───────────────────┐   ┌───────────────────┐   ┌───────────────────┐
-│ Intent 분류 [지용] │   │ 문서 Agent [승언]  │   │ Template    [승언] │
-│ → doc_generate    │──▶│ 요약 입력 요청     │──▶│ 회의록 템플릿     │
-└───────────────────┘   └───────────────────┘   │ render() → MD    │
-                                                 └────────┬──────────┘
-         ┌────────────────────────────────────────────────┘
-         ▼                                        ▼
-┌───────────────────┐                    ┌───────────────────┐
-│ API 응답    [혜빈] │                    │ 다운로드    [혜빈] │
-│ preview (마크다운) │                    │ to_docx() / pdf() │
-└────────┬──────────┘                    └───────────────────┘
-         │
-         ▼
-┌───────────────────┐
-│ GenerateCard[지영] │
-│ 미리보기 + 다운로드 │
-│ 버튼 렌더링        │
-└───────────────────┘
+[문서 생성 페이지 — 지영]
+  사용자: 템플릿 업로드 OR 기존 템플릿 선택 → 내용/지시사항 입력
+     │
+     ▼
+  POST /api/v1/documents/generate { template_id, user_input }  [혜빈]
+     │
+     ▼
+  [문서 Agent — doc_generate — 승언]
+     ├── document_templates에서 parsed_structure 로딩
+     ├── sLLM으로 양식에 맞는 내용 생성
+     ├── BaseTemplate.render_from_structure()로 렌더링
+     ├── documents 테이블 저장
+     │
+     ▼
+  [DocumentPreview — 지영]
+  응답: 미리보기(MD) + 다운로드 URL (DOCX/PDF)
 ```
 
-### DB ERD (9 테이블) — [혜빈]
+### DB ERD (11 테이블) — [혜빈]
 
 ```
 ┌──────────┐     ┌──────────────┐     ┌──────────────┐
@@ -268,6 +310,11 @@
 │          │     │  company/    │     │              │
 │          │     │  personal)   │     │              │
 └────┬─────┘     └──────────────┘     └──────────────┘
+     │
+     ├──────────▶┌──────────────────┐
+     │           │ document_templates│  (커스텀/시스템 템플릿)
+     │           │ parsed_structure  │
+     │           └──────────────────┘
      │
      ├──────────▶┌──────────────┐     ┌──────────────┐
      │           │  meetings    │────▶│ action_items │
@@ -285,9 +332,14 @@
      │           │  chat_logs   │
      │           └──────────────┘
      │
-     └──────────▶┌──────────────┐
-                 │ oauth_tokens │  (Google Calendar)
-                 └──────────────┘
+     ├──────────▶┌──────────────┐
+     │           │ oauth_tokens │  (Google OAuth + scopes)
+     │           └──────────────┘
+     │
+     └──────────▶┌────────────────────┐
+                 │ google_sheet_      │
+                 │ trackers           │  (스프레드시트 추적)
+                 └────────────────────┘
 ```
 
 ---
@@ -306,7 +358,7 @@
 | Embedding | **jhgan/ko-sbert-nli** | 한국어 문장 임베딩 |
 | Reranker | **BAAI/bge-reranker-v2-m3** | 검색 결과 재정렬 (Top 5) |
 | 키워드 검색 | **BM25 (rank_bm25)** | Hybrid Search의 키워드 매칭 |
-| Intent 분류 | **klue/bert-base** | 7개 카테고리 분류 |
+| Intent 분류 | **klue/bert-base** | 7개 카테고리: judgment, doc_search, doc_generate, meeting_generate, schedule_add, schedule_view, general |
 | 문서 파싱 | **Docling + PaddleOCR** | PDF 구조화 + 스캔 OCR |
 
 ### Backend
@@ -314,7 +366,7 @@
 | 구분 | 기술 |
 |------|------|
 | Framework | FastAPI + SSE (StreamingResponse) |
-| Database | PostgreSQL (9 tables) |
+| Database | PostgreSQL (11 tables) |
 | ORM | SQLAlchemy + Alembic |
 | 인증 | JWT (PyJWT) + Google OAuth 2.0 |
 | Task Queue | Celery + Redis |
@@ -368,14 +420,24 @@ SKN21-FINAL-3TEAM/
 │       │   ├── documents.py     # 문서 CRUD + 생성/다운로드
 │       │   ├── meetings.py      # 회의 관리
 │       │   ├── schedules.py     # 일정 CRUD
-│       │   ├── calendar.py      # Google Calendar
+│       │   ├── calendar.py      # Google Calendar + Meet
+│       │   ├── google_connect.py # 통합 OAuth
+│       │   ├── tasks.py         # Google Tasks API
+│       │   ├── gmail.py         # Gmail 발송 API
+│       │   ├── sheets.py        # Google Sheets API
 │       │   └── admin.py         # 관리자 + 통계 + 로그
-│       ├── models/              # ORM 모델 (9개 테이블)
+│       ├── models/              # ORM 모델 (11개 테이블, google_sheet_trackers 포함)
 │       ├── schemas/             # Pydantic 스키마
 │       └── services/            # 비즈니스 로직
 │           ├── template_service.py   # 문서 생성/다운로드
 │           ├── statistics_service.py # 통계/로그
-│           └── parsing_service.py    # 파싱 상태 관리
+│           ├── parsing_service.py    # 파싱 상태 관리
+│           ├── google_base_service.py # Google API 공통 베이스
+│           ├── calendar_service.py   # Calendar + Meet 연동
+│           ├── tasks_service.py      # Google Tasks 동기화
+│           ├── gmail_service.py      # 알림/초대 메일 발송
+│           ├── sheets_service.py     # Sheets 추적 시트
+│           └── schedule_service.py   # 4개 서비스 오케스트레이션
 │
 ├── ai/                          # AI/ML 모듈
 │   ├── agents/                  # LangGraph Agent (지용/경은/승언)
@@ -410,8 +472,8 @@ SKN21-FINAL-3TEAM/
 │       │   ├── auth/            # 로그인/회원가입
 │       │   └── admin/           # 관리자
 │       ├── hooks/               # useAuth, useSSE, useChat
-│       ├── store/               # Zustand (auth, chat, ui)
-│       └── pages/               # 페이지 라우팅 (8개)
+│       ├── store/               # Zustand (auth, chat, ui, google)
+│       └── pages/               # 페이지 라우팅 (10개, MeetingMinutesPage/DocumentGeneratePage 추가)
 │
 ├── data/                        # 학습/평가 데이터
 │   ├── training/
@@ -438,9 +500,9 @@ SKN21-FINAL-3TEAM/
 |------|------|----------|
 | **신지용** (PM) | Intent + 오케스트레이션 | `ai/agents/orchestrator.py`, SSE 스트리밍, API 스키마, 배포 |
 | **윤경은** (AI리드) | 파인튜닝 v1 + 판단 + RAG | `judgment_agent.py`, `ai/rag/*`, LoRA v1, vLLM 서빙 |
-| **진승언** (AI서브) | 파인튜닝 v2 + 문서 Agent | `document_agent.py`, `ai/templates/*`, `document_parser/*`, LoRA v2 |
-| **안혜빈** (Backend) | DB + 인증 + 일정 Agent | `models/*`, `services/*`, JWT, Google Calendar, 관리자 API |
-| **문지영** (Frontend) | React UI 전담 | `frontend/src/` 전체, SSE 수신, 카드 UI, 반응형 |
+| **진승언** (AI서브) | 파인튜닝 v2 + 문서 Agent | `document_agent.py`, `ai/templates/*`, `document_parser/*`, LoRA v2, 회의록 생성 + 문서 생성 |
+| **안혜빈** (Backend) | DB + 인증 + 일정 Agent | `models/*`, `services/*`, JWT, Google Services 통합 (Calendar·Tasks·Gmail·Meet·Sheets), 관리자 API |
+| **문지영** (Frontend) | React UI 전담 | `frontend/src/` 전체, SSE 수신, 카드 UI, 회의록 생성 페이지, 문서 생성 페이지, 반응형 |
 
 ---
 
@@ -460,8 +522,10 @@ main (배포용 - PM만 머지)
       ├── feature/auth-system              (혜빈)
       ├── feature/database                 (혜빈)
       ├── feature/google-calendar          (혜빈)
+      ├── feature/google-services          (혜빈)
       ├── feature/dashboard-ui             (지영)
       ├── feature/chatbot-ui               (지영)
+      ├── feature/google-services-ui       (지영)
       └── feature/streaming-ui             (지영)
 ```
 

@@ -20,5 +20,6 @@ class Schedule(Base, TimestampMixin):
     schedule_type: Mapped[str] = mapped_column(String(50))  # meeting/task/deadline
     priority: Mapped[str] = mapped_column(String(20), default="medium")
     google_event_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    google_meet_link: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     action_item_id: Mapped[Optional[int]] = mapped_column(ForeignKey("action_items.id"), nullable=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))

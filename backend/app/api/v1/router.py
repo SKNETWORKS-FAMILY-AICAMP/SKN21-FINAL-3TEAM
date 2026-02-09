@@ -4,7 +4,10 @@ API v1 라우터 (팀원 A 관리)
 """
 from fastapi import APIRouter
 
-from app.api.v1 import chat, auth, documents, meetings, schedules, calendar, admin
+from app.api.v1 import (
+    chat, auth, documents, meetings, schedules, calendar, admin,
+    google_connect, tasks, gmail, sheets,
+)
 
 api_router = APIRouter()
 
@@ -25,6 +28,18 @@ api_router.include_router(schedules.router, prefix="/schedules", tags=["Schedule
 
 # 팀원 D: Google Calendar
 api_router.include_router(calendar.router, prefix="/calendar", tags=["Google Calendar"])
+
+# 팀원 D: Google 통합 OAuth
+api_router.include_router(google_connect.router, prefix="/google", tags=["Google OAuth"])
+
+# 팀원 D: Google Tasks
+api_router.include_router(tasks.router, prefix="/tasks", tags=["Google Tasks"])
+
+# 팀원 D: Gmail
+api_router.include_router(gmail.router, prefix="/gmail", tags=["Gmail"])
+
+# 팀원 D: Google Sheets
+api_router.include_router(sheets.router, prefix="/sheets", tags=["Google Sheets"])
 
 # 팀원 D: 관리자
 api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])

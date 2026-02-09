@@ -1,6 +1,6 @@
 # WorkFlow Agent (듀듀) - 역할 분배 & 기술 스택 (v5 Final)
 
-> 멘토 피드백 전체 반영 / 기간 무제한 / Claude Max 전원 / 데이터 3,800개 / Google Calendar Phase 1
+> 멘토 피드백 전체 반영 / 기간 무제한 / Claude Max 전원 / 데이터 3,800개 / Google Services 통합
 
 ---
 
@@ -471,11 +471,13 @@ main (배포용)
       ├── feature/finetuning-document      (팀원 C)
       ├── feature/schedule-agent           (팀원 D)
       ├── feature/google-calendar          (팀원 D)
+      ├── feature/google-services          (팀원 D) ← NEW
       ├── feature/auth-system              (팀원 D)
       ├── feature/database                 (팀원 D)
       ├── feature/dashboard-ui             (팀원 E)
       ├── feature/chatbot-ui               (팀원 E)
       ├── feature/calendar-ui              (팀원 E)
+      ├── feature/google-services-ui       (팀원 E) ← NEW
       └── feature/streaming-ui             (팀원 E)
 ```
 
@@ -604,11 +606,11 @@ docs: API 스키마 문서 업데이트
 
 ---
 
-### 팀원 D — Backend + DB + 인증 + 일정 Agent + Google Calendar
+### 팀원 D — Backend + DB + 인증 + 일정 Agent + Google Services 통합
 
 **DB & 인증**
 - PostgreSQL DB 스키마 설계
-  - users, documents (scope 포함), regulations, meetings, action_items, schedules, judgments (판단 이력), chat_logs, oauth_tokens
+  - users, documents (scope 포함), document_templates, regulations, meetings, action_items, schedules, judgments (판단 이력), chat_logs, oauth_tokens (scopes 필드), **google_sheet_trackers**
 - SQLAlchemy ORM 모델 + Alembic 마이그레이션
 - JWT 인증 시스템 (로그인/회원가입/토큰 관리/**비밀번호 찾기·변경**)
 - 사용자 권한 관리 (일반/관리자) + **권한별 페이지 접근 제한**
@@ -618,12 +620,15 @@ docs: API 스키마 문서 업데이트
 - Action Item → 일정 자동 등록/조회/수정/삭제 API
 - 마감일 기반 우선순위 자동 설정 (D-day 계산)
 - 담당자 자동 지정 로직
+- **4개 Google 서비스 오케스트레이션** (ScheduleService.create_with_google_services)
 
-**Google Calendar 양방향 연동**
-- Google OAuth 2.0 전체 플로우 (연결/해제/토큰 자동 갱신)
-- 일정 Push (앱 → Google Calendar 이벤트 생성/수정/삭제)
-- 일정 Pull (Google Calendar → 앱 일정 목록 조회)
-- 담당자에게 캘린더 초대 발송
+**Google Services 통합 연동 (Calendar + Tasks + Gmail + Meet + Sheets)**
+- **GoogleBaseService** 베이스 클래스: OAuth 토큰 관리, scope 검증, 토큰 자동 갱신
+- **통합 OAuth**: 단일 플로우로 여러 scope 관리 (connect/callback/disconnect/status)
+- **Google Calendar**: 이벤트 Push/Pull + **Meet 링크 자동 생성** (conferenceData)
+- **Google Tasks**: Action Item → Task 동기화 + 완료/미완료 양방향 동기화
+- **Gmail**: 담당자 기한 알림 메일 + 회의 초대 메일 (Meet 링크 포함) 자동 발송
+- **Google Sheets**: Action Item 추적 스프레드시트 생성 + 행 동기화
 - Google API 장애 시 자체 캘린더 폴백
 
 **시스템**
@@ -635,7 +640,7 @@ docs: API 스키마 문서 업데이트
 
 **담당 요구사항**: FR-SCH-001~004, NF-SEC-001~003, NF-PRF-003, NF-ST-002, NF-EXT-002
 
-**산출물**: DB 스키마 문서, 일정 Agent API, Google Calendar 연동 모듈, JWT 인증 시스템, 관리자 API, 로그 시스템
+**산출물**: DB 스키마 문서, 일정 Agent API, **Google Services 통합 모듈 (5개 서비스)**, JWT 인증 시스템, 관리자 API, 로그 시스템
 
 ---
 
@@ -646,7 +651,7 @@ docs: API 스키마 문서 업데이트
 - **AI 챗봇**: 의도 분류 뱃지, **SSE 스트리밍 실시간 렌더링**, 판단 응답 카드 (confidence 뱃지, 다중 규정 표시, 조건부 판단), 문서 분석 카드, **문서 생성 카드 (GenerateCard: 미리보기 + 다운로드)**, **회의 요약 카드 (MeetingSummaryCard)**, 일정 확인 카드, **Agent 호출 인디케이터 (AgentIndicator)**, **에러/폴백 메시지 (ErrorMessage + 재시도)**, **추천 질문 칩 (SuggestedQuestions)**, **관련 규정 패널 (RegulationPanel)**
 - **문서 관리**: 검색창 + **키워드 하이라이트 (KeywordHighlight)**, 필터(분류/상태), **업로드 시 회사/개인 구분 선택**, 카드 리스트, 규정 상세 패널, **파싱 상태 표시 (ParsingStatus)**
 - **회의 관리**: 회의 목록, 상세 패널 (정보/원문/AI분석/Action Item), 리스크 레벨 뱃지, **원본 JSON 보기 (JsonViewer)**
-- **일정 관리**: FullCalendar 주간/월간, 일정 타입 색상 구분, **Google Calendar 일정 통합 표시**, Google 계정 연결/해제 UI
+- **일정 관리**: FullCalendar 주간/월간, 일정 타입 색상 구분, **Google 서비스 통합 UI** (GoogleServicesConnect: 4개 서비스 토글 연결, TasksPanel: 할 일 체크/Push/Pull, MeetLinkBadge: Meet 링크 뱃지, EmailReminderButton: 알림 메일 발송, SheetsDashboard: 추적 시트 대시보드, ScheduleForm: Meet 토글 + 참석자 이메일)
 - **로그인/회원가입**: 이메일 인증, Google 계정 연결, **비밀번호 찾기/변경 (PasswordReset)**
 - **관리자**: 사용자 관리, **권한별 접근 제한 설정**, 규정 관리, 시스템 통계, **질의 로그 탭**
 
@@ -680,7 +685,7 @@ docs: API 스키마 문서 업데이트
      │    → 요약/생성/리스크 감지
      │
      └── schedule_*
-          → [팀원 D] 일정 CRUD + Google Calendar 동기화
+          → [팀원 D] 일정 CRUD + Google 서비스 통합 (Calendar+Tasks+Gmail+Meet+Sheets)
      ↓
 [팀원 A] SSE 스트리밍 응답
      ↓
@@ -749,7 +754,7 @@ docs: API 스키마 문서 업데이트
 |------|--------------|-------------------|-------------------|-----------------|-------------|
 | **1단계: 설계** | API 스키마 정의 (문서 생성/다운로드 API 포함), LangGraph 구조 설계, Docker, GitHub 세팅 | 모델 3개 베이스라인 비교, RAG 설계, Reranker 테스트 | 학습 데이터 구축 시작 (1,500개), Docling/PaddleOCR 테스트, **문서 템플릿 구조 설계** | DB ERD 확정, JWT 인증, Google Cloud 설정 | Figma 디자인, 컴포넌트 설계, Mock API |
 | **2단계: 데이터+기반** | Intent 학습 데이터 구축 | 판단 데이터 500개 구축 + 모델 확정 | 문서 데이터 구축 + 증강 | Google OAuth + Calendar API | 공통 컴포넌트 + 대시보드 |
-| **3단계: 핵심 AI** | Intent 분류 모델 학습 + 평가 | LoRA v1 학습 + RAG+Reranker 구축 | LoRA v2 학습 + Docling 파싱 파이프라인 | 일정 Agent API + Google Calendar 연동 | 챗봇 UI + SSE 스트리밍 |
+| **3단계: 핵심 AI** | Intent 분류 모델 학습 + 평가 | LoRA v1 학습 + RAG+Reranker 구축 | LoRA v2 학습 + Docling 파싱 파이프라인 | 일정 Agent API + Google Services 연동 | 챗봇 UI + SSE 스트리밍 |
 | **4단계: Agent** | LangGraph 오케스트레이터 + SSE 스트리밍 | 판단 Agent 확장 (다중규정, confidence) | 문서 Agent (요약/생성/리스크) | 관리자 API + 로그 | 문서관리 + 회의관리 + 일정관리 |
 | **5단계: 통합** | 전체 파이프라인 연결 + E2E | 판단 정확도 튜닝 + 성능 평가 | 요약/추출 품질 튜닝 + 성능 평가 | API 최적화 + 에러 핸들링 | API 연동 + 통합 UI |
 | **6단계: 마무리** | AWS 배포 + 최종 테스트 | vLLM 최적화 + 최종 평가 리포트 | 리스크 감지 검증 + 최종 평가 리포트 | 성능 테스트 + 캘린더 동기화 검증 | 반응형 + 최종 QA |

@@ -1,5 +1,6 @@
 """
 Action Item 모델 (팀원 D 담당)
+- Google Tasks, Sheets, Gmail 연동 필드 포함
 """
 from sqlalchemy import String, Integer, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
@@ -19,3 +20,8 @@ class ActionItem(Base, TimestampMixin):
     due_date: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     priority: Mapped[str] = mapped_column(String(20), default="medium")  # high/medium/low
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending/in_progress/done
+
+    # Google Services 연동
+    google_task_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    sheet_row_id: Mapped[Optional[int]] = mapped_column(nullable=True)
+    email_sent_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)

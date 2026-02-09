@@ -15,7 +15,7 @@ class AgentState(TypedDict):
     user_id: int
 
     # Intent 분류 결과 (팀원 A)
-    intent: str  # judgment, doc_search, doc_summary, doc_generate, meeting_analysis, schedule_add, schedule_view
+    intent: str  # judgment, doc_search, doc_generate, meeting_generate, schedule_add, schedule_view, general
     confidence: float
 
     # RAG 검색 결과 (팀원 B)
@@ -29,3 +29,12 @@ class AgentState(TypedDict):
 
     # 에러 (팀원 A)
     error: Optional[str]
+
+    # 템플릿 ID (문서/회의록 생성 시 사용)
+    template_id: Optional[int]
+
+    # 요청이 어느 페이지에서 왔는지 (chatbot | meeting_page | document_page)
+    source_page: Optional[str]
+
+    # Google 서비스 연동 결과 (schedule_add 시 자동 포함)
+    google_services_result: Optional[dict]
