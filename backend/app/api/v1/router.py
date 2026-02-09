@@ -1,0 +1,30 @@
+"""
+API v1 라우터 (팀원 A 관리)
+각 팀원이 만든 엔드포인트를 여기서 통합합니다.
+"""
+from fastapi import APIRouter
+
+from app.api.v1 import chat, auth, documents, meetings, schedules, calendar, admin
+
+api_router = APIRouter()
+
+# 팀원 A: 챗봇 + SSE 스트리밍
+api_router.include_router(chat.router, prefix="/chat", tags=["Chat"])
+
+# 팀원 D: 인증
+api_router.include_router(auth.router, prefix="/auth", tags=["Auth"])
+
+# 팀원 C/D: 문서 관리
+api_router.include_router(documents.router, prefix="/documents", tags=["Documents"])
+
+# 팀원 C/D: 회의 관리
+api_router.include_router(meetings.router, prefix="/meetings", tags=["Meetings"])
+
+# 팀원 D: 일정 관리
+api_router.include_router(schedules.router, prefix="/schedules", tags=["Schedules"])
+
+# 팀원 D: Google Calendar
+api_router.include_router(calendar.router, prefix="/calendar", tags=["Google Calendar"])
+
+# 팀원 D: 관리자
+api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])
