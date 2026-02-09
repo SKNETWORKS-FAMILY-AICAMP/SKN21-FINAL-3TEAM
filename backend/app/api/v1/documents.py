@@ -56,3 +56,77 @@ async def delete_document(
     """문서 삭제"""
     # TODO: 팀원 D 구현
     raise NotImplementedError
+
+
+# ── UI_UX.pdf 추가 엔드포인트 ──
+
+
+@router.post("/generate")
+async def generate_document(
+    template_type: str = Query(..., regex="^(meeting_minutes|report|jd|proposal)$"),
+    user_input: str = Query(..., description="사용자 입력 (회의 요약 등)"),
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """
+    템플릿 기반 문서 생성 (FR-DOC-008)
+
+    챗봇에서 "회의록 만들어줘" → 요약 입력 → 템플릿 생성 → 미리보기 반환
+    """
+    # TODO: 팀원 D (API) + 팀원 C (생성 로직)
+    # 1. template_service.generate_document() 호출
+    # 2. 미리보기(마크다운) + document_id 반환
+    raise NotImplementedError
+
+
+@router.get("/{document_id}/download")
+async def download_document(
+    document_id: int,
+    format: str = Query("docx", regex="^(docx|pdf)$"),
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """
+    생성된 문서 다운로드 - DOCX/PDF (FR-DOC-008)
+
+    GenerateCard에서 "다운로드" 버튼 클릭 시 호출
+    """
+    # TODO: 팀원 D 구현
+    # 1. template_service.download_document() 호출
+    # 2. StreamingResponse로 파일 반환
+    raise NotImplementedError
+
+
+@router.get("/{document_id}/parsing-status")
+async def get_parsing_status(
+    document_id: int,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """
+    문서 파싱 상태 조회 (NF-PRF-002)
+
+    프론트에서 폴링: "파싱 중..." → "파싱 완료 ✓"
+    """
+    # TODO: 팀원 D 구현
+    # parsing_service.get_parsing_status() 호출
+    raise NotImplementedError
+
+
+@router.get("/search/highlight")
+async def search_with_highlight(
+    keyword: str = Query(...),
+    scope: Optional[str] = Query(None, regex="^(company|personal)$"),
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """
+    키워드 검색 + 하이라이트 (FR-DOC-006)
+
+    검색 결과에 매칭 키워드 위치 정보 포함
+    """
+    # TODO: 팀원 D (API) + 팀원 B (RAG 검색)
+    # 1. RAG 검색 수행
+    # 2. 검색 결과에 keyword 위치(offset) 정보 추가
+    # 3. 관련도 순 정렬
+    raise NotImplementedError

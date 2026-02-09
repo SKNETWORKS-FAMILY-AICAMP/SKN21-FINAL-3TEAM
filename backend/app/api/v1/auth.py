@@ -50,3 +50,33 @@ async def google_callback(code: str, db=Depends(get_db)):
     """Google OAuth 콜백"""
     # TODO: 팀원 D 구현
     raise NotImplementedError
+
+
+# ── UI_UX.pdf 추가 엔드포인트 ──
+
+
+@router.post("/password-reset/request")
+async def request_password_reset(email: str, db=Depends(get_db)):
+    """
+    비밀번호 재설정 요청 (이메일 발송)
+
+    UI_UX.pdf: "비밀번호 찾기"
+    """
+    # TODO: 팀원 D 구현
+    # 1. 이메일로 사용자 확인
+    # 2. 재설정 토큰 생성 + DB 저장
+    # 3. 이메일 발송 (재설정 링크)
+    raise NotImplementedError
+
+
+@router.post("/password-reset/confirm")
+async def confirm_password_reset(token: str, new_password: str, db=Depends(get_db)):
+    """
+    비밀번호 재설정 확인
+
+    UI_UX.pdf: "비밀번호 변경"
+    """
+    # TODO: 팀원 D 구현
+    # 1. 토큰 유효성 확인
+    # 2. 새 비밀번호 해싱 + DB 업데이트
+    raise NotImplementedError
