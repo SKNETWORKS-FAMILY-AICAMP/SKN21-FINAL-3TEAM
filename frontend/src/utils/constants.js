@@ -51,3 +51,97 @@ export const RISK_COLORS = {
   medium: '#F59E0B',
   low: '#10B981',
 }
+
+// ── UI_UX.pdf 추가 상수 ──
+
+// 문서 템플릿 종류
+export const TEMPLATE_TYPES = {
+  MEETING_MINUTES: 'meeting_minutes',
+  REPORT: 'report',
+  JD: 'jd',
+  PROPOSAL: 'proposal',
+}
+
+// 템플릿 한글 라벨
+export const TEMPLATE_LABELS = {
+  meeting_minutes: '회의록',
+  report: '보고서',
+  jd: '채용 공고',
+  proposal: '제안서',
+}
+
+// Intent별 아이콘 (UI_UX.pdf: "의도 분류 표시")
+export const INTENT_ICONS = {
+  judgment: '⚖️',
+  doc_search: '📄',
+  doc_summary: '📄',
+  doc_generate: '📄',
+  meeting_analysis: '📄',
+  schedule_add: '📅',
+  schedule_view: '📅',
+}
+
+// 파싱 상태 (UI_UX.pdf: "파싱 상태 표시")
+export const PARSING_STATUS = {
+  UPLOADING: 'uploading',
+  PARSING: 'parsing',
+  COMPLETED: 'completed',
+  FAILED: 'failed',
+}
+
+// 파싱 상태 한글 라벨
+export const PARSING_STATUS_LABELS = {
+  uploading: '업로드 중...',
+  parsing: '파싱 중...',
+  completed: '파싱 완료 ✓',
+  failed: '파싱 실패',
+}
+
+// 회의 상태 뱃지 (UI_UX.pdf)
+export const MEETING_STATUS = {
+  SCHEDULED: 'scheduled',
+  IN_PROGRESS: 'in_progress',
+  COMPLETED: 'completed',
+  ANALYZING: 'analyzing',
+  ANALYZED: 'analyzed',
+}
+
+// 회의 상태 한글 라벨
+export const MEETING_STATUS_LABELS = {
+  scheduled: '예정',
+  in_progress: '진행중',
+  completed: '완료',
+  analyzing: '분석중',
+  analyzed: '분석완료',
+}
+
+// 규정 상태 뱃지 (UI_UX.pdf)
+export const REGULATION_STATUS = {
+  ACTIVE: 'active',
+  REVISING: 'revising',
+  DEPRECATED: 'deprecated',
+}
+
+// 규정 상태 색상
+export const REGULATION_STATUS_COLORS = {
+  active: '#10B981',
+  revising: '#F59E0B',
+  deprecated: '#6B7280',
+}
+
+// 추천 질문 (UI_UX.pdf: "추천 질문 칩")
+export const SUGGESTED_QUESTIONS = [
+  { text: '재택근무 규정 알려줘', intent: 'judgment' },
+  { text: '이번 주 회의록 요약해줘', intent: 'doc_summary' },
+  { text: '보고서 만들어줘', intent: 'doc_generate' },
+  { text: '오늘 일정 알려줘', intent: 'schedule_view' },
+  { text: '신입 온보딩 가이드 있어?', intent: 'doc_search' },
+]
+
+// 알림 설정 (UI_UX.pdf: "[추가] 알림 설정 드롭다운" - Phase 2)
+export const REMINDER_OPTIONS = [
+  { value: 'none', label: '없음' },
+  { value: '1d', label: '1일 전' },
+  { value: '3d', label: '3일 전' },
+  { value: '7d', label: '7일 전' },
+]

@@ -78,8 +78,10 @@
 **체크리스트:**
 - [ ] Chat API 스키마 (SSE 스트리밍 포함) 확정
 - [ ] Documents / Meetings / Schedules CRUD 스키마 확정
-- [ ] Auth API 스키마 (혜빈과 협의)
-- [ ] AgentState 필드 + 각 Agent 응답 형식 확정
+- [ ] **문서 생성/다운로드 API 스키마 확정** (FR-DOC-008)
+- [ ] **파싱 상태 조회 API 스키마 확정** (NF-PRF-002)
+- [ ] Auth API 스키마 (혜빈과 협의) + **비밀번호 재설정 API**
+- [ ] AgentState 필드 + 각 Agent 응답 형식 확정 (doc_generate 응답 포함)
 - [ ] Docker + GitHub 세팅 완료 확인
 
 ---
@@ -109,6 +111,8 @@
 - [ ] Docling 설치 + 디지털 PDF 파싱 테스트
 - [ ] PaddleOCR 설치 + 스캔 문서 OCR 테스트
 - [ ] 실제 규정 문서로 품질 확인 (테이블, 조항 구조)
+- [ ] **문서 템플릿 구조 설계** (`ai/templates/` — 회의록/보고서/JD/제안서)
+- [ ] **회의록 자동 감지 로직 설계** (FR-DOC-002)
 - [ ] 학습 데이터 구축 계획 수립 (1,500개)
 
 ---
@@ -201,6 +205,7 @@
 - [ ] JWT 토큰 생성/검증
 - [ ] 회원가입 API (`/api/v1/auth/register`)
 - [ ] 로그인 API (`/api/v1/auth/login`)
+- [ ] **비밀번호 찾기/변경 API** (`/api/v1/auth/password-reset/*`)
 - [ ] `get_current_user` 의존성 완성
 - [ ] Google OAuth 연결 시작
 
@@ -216,7 +221,8 @@
 **체크리스트:**
 - [ ] Layout / Sidebar / Header 완성
 - [ ] 대시보드: StatCard, RecentQueries, ActionItemList, ActivityTimeline, RiskAlert
-- [ ] LoginForm / RegisterForm
+- [ ] **대시보드 추가: TopQueries (월/주/일), QuickSearch, AutoScanBadge**
+- [ ] LoginForm / RegisterForm / **PasswordReset**
 - [ ] Zustand authStore + useAuth 훅 연동
 - [ ] Mock 데이터로 UI 확인
 
@@ -264,7 +270,7 @@
 
 | # | 이슈 | 할 일 |
 |---|------|-------|
-| #27 | **챗봇 UI + SSE 스트리밍** | ChatWindow, 토큰 렌더링, 판단/문서/일정 카드 |
+| #27 | **챗봇 UI + SSE 스트리밍** | ChatWindow, 토큰 렌더링, 판단/문서/일정 카드, **GenerateCard, MeetingSummaryCard, AgentIndicator, ErrorMessage, SuggestedQuestions, RegulationPanel** |
 
 ---
 
@@ -292,7 +298,7 @@
 
 | # | 이슈 | 할 일 |
 |---|------|-------|
-| #17 | **문서 Agent 구현** | 요약, 생성, 회의록 분석, 리스크 감지, scope 반영 |
+| #17 | **문서 Agent 구현** | 요약, **템플릿 기반 생성 (회의록/보고서/JD/제안서)**, 회의록 분석, 리스크 감지, scope 반영, **규정 위반 자동 스캔** |
 
 ---
 
@@ -301,7 +307,7 @@
 | # | 이슈 | 할 일 |
 |---|------|-------|
 | #22 | **일정 Agent API** | CRUD + 우선순위 자동설정 + 담당자 + GCal 동기화 |
-| #23 | **관리자 API + 로그** | 사용자 CRUD, 통계, 로그, AES-256 암호화 |
+| #23 | **관리자 API + 로그** | 사용자 CRUD, 통계, **질의 로그 탭**, **Top 질의 통계**, **권한별 접근 설정**, AES-256 암호화 |
 
 ---
 
@@ -309,7 +315,7 @@
 
 | # | 이슈 | 할 일 |
 |---|------|-------|
-| #28 | **문서/회의/일정 관리 UI** | 3개 페이지 전체 구현 |
+| #28 | **문서/회의/일정 관리 UI** | 3개 페이지 전체 구현, **KeywordHighlight, ParsingStatus, JsonViewer** 포함 |
 
 ---
 
@@ -400,3 +406,48 @@ chore:    설정/환경
 3. PR 본문에 "Closes #이슈번호" 작성
 4. 리뷰 후 머지 → 이슈 자동 닫힘
 ```
+
+---
+
+## UI_UX.pdf 기반 추가 파일 (2026-02-09 추가)
+
+> `docs/UI_UX.pdf` 요구사항 대조 후 누락분을 추가했습니다.
+
+### 추가된 프론트엔드 컴포넌트 (지영 담당)
+
+| 파일 | 기능 | 요구사항 |
+|------|------|---------|
+| `components/chat/GenerateCard.jsx` | 문서 생성 응답 (미리보기 + 다운로드) | FR-DOC-008 |
+| `components/chat/MeetingSummaryCard.jsx` | 회의 요약 응답 (결정사항 + Action Items) | - |
+| `components/chat/ErrorMessage.jsx` | 에러/폴백 메시지 + 재시도 | NF-ST-001 |
+| `components/chat/SuggestedQuestions.jsx` | 추천 질문 칩 | - |
+| `components/chat/RegulationPanel.jsx` | 관련 규정 패널 (우측) | - |
+| `components/chat/AgentIndicator.jsx` | Agent 호출 인디케이터 | - |
+| `components/common/KeywordHighlight.jsx` | 검색 키워드 하이라이트 | FR-DOC-006 |
+| `components/common/ParsingStatus.jsx` | 파싱 상태 표시 | NF-PRF-002 |
+| `components/common/JsonViewer.jsx` | 원본 JSON 보기 | FR-DOC-004 |
+| `components/dashboard/TopQueries.jsx` | Top 질의 응답 (월/주/일) | - |
+| `components/dashboard/QuickSearch.jsx` | 빠른 규정 검색 바 | - |
+| `components/dashboard/AutoScanBadge.jsx` | 자동 스캔 뱃지 | FR-DOC-010 |
+| `components/auth/PasswordReset.jsx` | 비밀번호 찾기/변경 | - |
+
+### 추가된 AI 템플릿 시스템 (승언 담당)
+
+| 파일 | 기능 |
+|------|------|
+| `ai/templates/base.py` | 템플릿 베이스 클래스 (render, to_docx, to_pdf) |
+| `ai/templates/meeting_minutes.py` | 회의록 템플릿 |
+| `ai/templates/report.py` | 보고서 템플릿 |
+| `ai/templates/jd.py` | 채용 공고 템플릿 |
+| `ai/templates/proposal.py` | 제안서 템플릿 |
+
+### 추가된 백엔드 서비스/API (혜빈 담당)
+
+| 파일 | 기능 |
+|------|------|
+| `services/template_service.py` | 문서 생성 + 다운로드 + 템플릿 감지 |
+| `services/statistics_service.py` | Top 질의 통계 + 질의 로그 |
+| `services/parsing_service.py` | 파싱 상태 관리 |
+| `api/v1/documents.py` | 추가: `/generate`, `/{id}/download`, `/{id}/parsing-status`, `/search/highlight` |
+| `api/v1/admin.py` | 추가: `/query-logs`, `/top-queries`, `/users/{id}/permissions` |
+| `api/v1/auth.py` | 추가: `/password-reset/request`, `/password-reset/confirm` |

@@ -39,4 +39,29 @@ def document_agent(state: AgentState) -> AgentState:
     }
     """
     # TODO: 팀원 C 구현
+    #
+    # doc_generate 응답 형식 (UI_UX.pdf: "문서 생성 응답 UI 미리보기 + 다운로드"):
+    # {
+    #     "type": "doc_generate",
+    #     "template_type": "meeting_minutes",
+    #     "template_name": "회의록",
+    #     "preview": "# 2026 Q1 스프린트 회의\n## 회의 정보\n...",
+    #     "document_id": 123,
+    #     "download_url": "/api/v1/documents/123/download"
+    # }
+    #
+    # meeting_analysis 응답 형식 (UI_UX.pdf: "회의 요약 응답 UI"):
+    # {
+    #     "type": "meeting_analysis",
+    #     "summary": "회의 요약...",
+    #     "decisions": ["결정사항1", "결정사항2"],
+    #     "action_items": [
+    #         {"content": "...", "assignee": "홍길동", "due_date": "2025-02-15"}
+    #     ],
+    #     "risk_level": "중간",
+    #     "risks": [
+    #         {"description": "...", "regulation": "정보보안 규정 3.2조", "level": "높음"}
+    #     ],
+    #     "auto_scan": true  (FR-DOC-010: 문서 처리 완료 후 규정 이슈 자동 스캔)
+    # }
     raise NotImplementedError("팀원 C: 문서 Agent 구현 필요")

@@ -569,8 +569,11 @@ docs: API 스키마 문서 업데이트
 **문서 Agent**
 - 회의록 파싱 → 결정사항, Action Item, 참석자, 기한 자동 추출 (JSON)
 - 문서 요약 모듈 (sLLM 활용)
-- 템플릿 기반 문서 생성 (JD, 보고서, 제안서)
+- **템플릿 기반 문서 생성** (회의록, JD, 보고서, 제안서) → `ai/templates/` 참조
+  - 사용자가 챗봇에서 "회의록 만들어줘" → 요약 입력 → 템플릿 기반 생성 → 미리보기 + 다운로드
+- **회의록 자동 인식 + 템플릿 감지** (FR-DOC-002): 업로드 시 회의록 여부 자동 감지
 - **규정 리스크 자동 감지** (RAG 기반 규정 대조 → 리스크 레벨: 높음/중간/낮음)
+- **문서 처리 완료 후 규정 이슈 자동 스캔** (FR-DOC-010)
 
 **문서 전처리 파이프라인 (변경됨)**
 - **Docling**: 디지털 PDF 구조화 파싱 (테이블, 헤더, 조항 인식)
@@ -588,7 +591,7 @@ docs: API 스키마 문서 업데이트
 
 **담당 요구사항**: FR-DOC-001~004, FR-DOC-007~011
 
-**산출물**: 파인튜닝 모델(v2), 학습 데이터셋, 문서 Agent 코드, Docling+PaddleOCR 파싱 모듈, 성능 평가 리포트
+**산출물**: 파인튜닝 모델(v2), 학습 데이터셋, 문서 Agent 코드, Docling+PaddleOCR 파싱 모듈, **문서 템플릿 시스템** (`ai/templates/`), 성능 평가 리포트
 
 ---
 
@@ -598,8 +601,8 @@ docs: API 스키마 문서 업데이트
 - PostgreSQL DB 스키마 설계
   - users, documents (scope 포함), regulations, meetings, action_items, schedules, judgments (판단 이력), chat_logs, oauth_tokens
 - SQLAlchemy ORM 모델 + Alembic 마이그레이션
-- JWT 인증 시스템 (로그인/회원가입/토큰 관리)
-- 사용자 권한 관리 (일반/관리자)
+- JWT 인증 시스템 (로그인/회원가입/토큰 관리/**비밀번호 찾기·변경**)
+- 사용자 권한 관리 (일반/관리자) + **권한별 페이지 접근 제한**
 - 데이터 암호화 (AES-256)
 
 **일정 Agent**
@@ -615,9 +618,11 @@ docs: API 스키마 문서 업데이트
 - Google API 장애 시 자체 캘린더 폴백
 
 **시스템**
-- 사용자 질의/Agent 응답 로그 저장
+- 사용자 질의/Agent 응답 로그 저장 + **질의 로그 탭 API** (NF-ST-002)
 - 에러 로그 관리
-- 관리자 API (사용자 CRUD, 규정 관리, 시스템 통계)
+- 관리자 API (사용자 CRUD, 규정 관리, 시스템 통계, **Top 질의 통계**)
+- **문서 파싱 상태 관리** (uploading → parsing → completed)
+- **문서 생성/다운로드 API** (template_service 연동)
 
 **담당 요구사항**: FR-SCH-001~004, NF-SEC-001~003, NF-PRF-003, NF-ST-002, NF-EXT-002
 
@@ -628,13 +633,13 @@ docs: API 스키마 문서 업데이트
 ### 팀원 E — Frontend 전담
 
 **핵심 화면 (7개)**
-- **대시보드**: 통계 카드, 최근 질의, Top 질의, 진행 중 Action Items, 최근 활동 타임라인, 리스크 알림 레벨 뱃지
-- **AI 챗봇**: 의도 분류 뱃지, **SSE 스트리밍 실시간 렌더링**, 판단 응답 카드 (confidence 뱃지, 다중 규정 표시, 조건부 판단), 문서 분석 카드, 일정 확인 카드, Agent 호출 인디케이터, 에러/폴백 메시지
-- **문서 관리**: 검색창 + 키워드 하이라이트, 필터(분류/상태), **업로드 시 회사/개인 구분 선택**, 카드 리스트, 규정 상세 패널, 파싱 상태 표시
-- **회의 관리**: 회의 목록, 상세 패널 (정보/원문/AI분석/Action Item), 리스크 레벨 뱃지
+- **대시보드**: 통계 카드, 최근 질의, **Top 질의 (TopQueries: 월/주/일 탭)**, 진행 중 Action Items, 최근 활동 타임라인, 리스크 알림 레벨 뱃지, **빠른 규정 검색 바 (QuickSearch)**, **자동 스캔 뱃지 (AutoScanBadge)**
+- **AI 챗봇**: 의도 분류 뱃지, **SSE 스트리밍 실시간 렌더링**, 판단 응답 카드 (confidence 뱃지, 다중 규정 표시, 조건부 판단), 문서 분석 카드, **문서 생성 카드 (GenerateCard: 미리보기 + 다운로드)**, **회의 요약 카드 (MeetingSummaryCard)**, 일정 확인 카드, **Agent 호출 인디케이터 (AgentIndicator)**, **에러/폴백 메시지 (ErrorMessage + 재시도)**, **추천 질문 칩 (SuggestedQuestions)**, **관련 규정 패널 (RegulationPanel)**
+- **문서 관리**: 검색창 + **키워드 하이라이트 (KeywordHighlight)**, 필터(분류/상태), **업로드 시 회사/개인 구분 선택**, 카드 리스트, 규정 상세 패널, **파싱 상태 표시 (ParsingStatus)**
+- **회의 관리**: 회의 목록, 상세 패널 (정보/원문/AI분석/Action Item), 리스크 레벨 뱃지, **원본 JSON 보기 (JsonViewer)**
 - **일정 관리**: FullCalendar 주간/월간, 일정 타입 색상 구분, **Google Calendar 일정 통합 표시**, Google 계정 연결/해제 UI
-- **로그인/회원가입**: 이메일 인증, Google 계정 연결
-- **관리자**: 사용자 관리, 권한 설정, 규정 관리, 시스템 통계, 질의 로그
+- **로그인/회원가입**: 이메일 인증, Google 계정 연결, **비밀번호 찾기/변경 (PasswordReset)**
+- **관리자**: 사용자 관리, **권한별 접근 제한 설정**, 규정 관리, 시스템 통계, **질의 로그 탭**
 
 **공통**
 - 디자인 시스템 (배경: #FFFEF5/#FAF9F6, 메인: #3B82F6, 포인트: #8B5CF6)
@@ -733,7 +738,7 @@ docs: API 스키마 문서 업데이트
 
 | 단계 | A (PM+Intent) | B (파인튜닝v1+판단) | C (파인튜닝v2+문서) | D (Backend+일정) | E (Frontend) |
 |------|--------------|-------------------|-------------------|-----------------|-------------|
-| **1단계: 설계** | API 스키마 정의, LangGraph 구조 설계, Docker, GitHub 세팅 | 모델 3개 베이스라인 비교, RAG 설계, Reranker 테스트 | 학습 데이터 구축 시작 (1,500개), Docling/PaddleOCR 테스트 | DB ERD 확정, JWT 인증, Google Cloud 설정 | Figma 디자인, 컴포넌트 설계, Mock API |
+| **1단계: 설계** | API 스키마 정의 (문서 생성/다운로드 API 포함), LangGraph 구조 설계, Docker, GitHub 세팅 | 모델 3개 베이스라인 비교, RAG 설계, Reranker 테스트 | 학습 데이터 구축 시작 (1,500개), Docling/PaddleOCR 테스트, **문서 템플릿 구조 설계** | DB ERD 확정, JWT 인증, Google Cloud 설정 | Figma 디자인, 컴포넌트 설계, Mock API |
 | **2단계: 데이터+기반** | Intent 학습 데이터 구축 | 판단 데이터 500개 구축 + 모델 확정 | 문서 데이터 구축 + 증강 | Google OAuth + Calendar API | 공통 컴포넌트 + 대시보드 |
 | **3단계: 핵심 AI** | Intent 분류 모델 학습 + 평가 | LoRA v1 학습 + RAG+Reranker 구축 | LoRA v2 학습 + Docling 파싱 파이프라인 | 일정 Agent API + Google Calendar 연동 | 챗봇 UI + SSE 스트리밍 |
 | **4단계: Agent** | LangGraph 오케스트레이터 + SSE 스트리밍 | 판단 Agent 확장 (다중규정, confidence) | 문서 Agent (요약/생성/리스크) | 관리자 API + 로그 | 문서관리 + 회의관리 + 일정관리 |
