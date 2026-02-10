@@ -47,6 +47,7 @@ nul
 # Logs
 *.log
 logs/
+!docs/logs/
 
 # Secrets
 credentials.json
