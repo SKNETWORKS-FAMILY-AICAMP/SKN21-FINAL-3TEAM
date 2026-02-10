@@ -1,6 +1,119 @@
-# 데이터 수집 계획서 (v5 — 동적 템플릿 필드 방식 적용)
+# 데이터 수집 계획서 (v6 — 서비스 흐름 + 동적 템플릿 필드 방식)
 
 > 최종 수정: 2026-02-10
+
+---
+
+## 0. 기능별 실제 서비스 흐름
+
+각 기능이 실서비스에서 어떻게 작동하는지, 데이터가 어디에 쓰이는지 설명합니다.
+
+### 회의록 페이지 (meeting_generate)
+
+```
+사용자: 회의 내용을 텍스트로 입력
+  → Intent Classifier: "meeting_generate" 분류
+  → document_agent:
+      1) 사용자 입력 텍스트를 sLLM(LoRA v2)에 전달
+      2) sLLM이 구조화된 JSON 추출 (회의정보, 결정사항, action_items, 참석자)
+      3) [선택] RAG로 관련 규정 검색 → 리스크 감지
+      4) JSON 결과를 MeetingMinutesTemplate에 전달 → 마크다운 렌더링
+      5) 미리보기 표시 → DOCX/PDF 다운로드
+```
+
+**사용 데이터:** 회의록 분석 800건 (sLLM이 원문→구조화 JSON 추출하는 능력 학습)
+
+### 문서 요약 (doc_generate — 요약 모드)
+
+```
+사용자: 문서 파일 업로드 (PDF/DOCX) 또는 문서관리에서 선택 + "요약해줘"
+  → Intent Classifier: "doc_generate" 분류
+  → document_agent:
+      1) 시스템이 PDF/DOCX에서 텍스트 추출 (PyMuPDF, python-docx)
+      2) 문서가 길면 청크 분할 (sLLM 컨텍스트 제한 대응)
+      3) 코드가 요약 필드 목록을 input에 삽입 (예: title, summary, key_points, conclusion)
+      4) 추출된 텍스트 + 필드 목록을 sLLM(LoRA v2)에 전달
+      5) sLLM이 필드별 요약 JSON 생성
+      6) Template에 전달 → 마크다운 렌더링
+      7) 미리보기 표시 → DOCX/PDF 다운로드
+```
+
+**사용 데이터:** 문서 요약 300건 (sLLM이 긴 문서→필드별 요약하는 능력 학습)
+**추가 필요 코드:** 텍스트 추출기 (PDF/DOCX → 텍스트), 긴 문서 청크 분할 로직
+
+### 문서 생성 (doc_generate — 생성 모드)
+
+```
+사용자: 요구사항 입력 + 템플릿 선택 (예: "프론트엔드 채용공고 만들어줘")
+  → Intent Classifier: "doc_generate" 분류
+  → document_agent:
+      1) 선택된 템플릿의 필드 목록을 자동으로 가져옴
+      2) 요구사항 + 필드 목록을 sLLM(LoRA v2)에 전달
+      3) sLLM이 필드별 내용 JSON 생성
+      4) Template에 전달 → 마크다운 렌더링
+      5) 미리보기 표시 → DOCX/PDF 다운로드
+```
+
+**사용 데이터:** 문서 생성 200건 (sLLM이 요구사항→필드별 내용 생성하는 능력 학습)
+
+### 문서 검색 (doc_search)
+
+```
+사용자: "접근 권한 관련 규정 뭐 있어?"
+  → Intent Classifier: "doc_search" 분류
+  → document_agent:
+      1) ChromaDB에서 관련 문서/규정 검색 (BM25 + Vector)
+      2) Reranker로 상위 결과 정렬
+      3) 검색 결과 + 사용자 질문을 sLLM(LoRA v2)에 전달
+      4) sLLM이 검색 결과를 자연스럽게 정리하여 답변
+```
+
+**사용 데이터:** 문서 검색 답변 200건 (sLLM이 검색결과→정리된 답변 생성하는 능력 학습)
+
+### 규정 판단 (judgment)
+
+```
+사용자: "인턴에게 서버 접근 권한 줘도 돼?"
+  → Intent Classifier: "judgment" 분류
+  → judgment_agent:
+      1) ChromaDB에서 관련 규정 검색 (RAG)
+      2) 규정 원문 + 사용자 질문을 sLLM(LoRA v1)에 전달
+      3) sLLM이 Yes/No/조건부 판단 + 근거 + 대안 생성
+```
+
+**사용 데이터:** 규정 판단 1,000건 + 규정 해석 Q&A 500건
+
+### 리스크 감지 (회의록/문서 분석 시 자동 실행)
+
+```
+회의록 분석 또는 문서 요약 완료 후 자동 트리거:
+  → 분석된 내용에서 키워드 추출
+  → ChromaDB에서 관련 규정 검색 (RAG)
+  → 규정 원문 + 분석 내용을 sLLM(LoRA v2)에 전달
+  → sLLM이 위반 여부 판단 (risk_detected, risk_level, violation 등)
+  → 위반 감지 시 사용자에게 경고 표시
+```
+
+**사용 데이터:** 리스크 감지 200건
+
+### 문서관리 (CRUD)
+
+```
+사용자: 문서 목록 조회 / 검색 / 수정 / 삭제
+  → 백엔드 API (FastAPI) + DB (PostgreSQL)
+  → AI 개입 없음
+```
+
+**사용 데이터:** 없음 (순수 백엔드/프론트엔드 기능)
+
+### 추가 필요 시스템 구성요소
+
+| 구성요소 | 설명 | 용도 |
+|---------|------|------|
+| **텍스트 추출기** | PDF → PyMuPDF, DOCX → python-docx | 문서 요약 시 파일에서 텍스트 추출 |
+| **청크 분할기** | 긴 문서를 sLLM 컨텍스트에 맞게 분할 | 문서가 토큰 제한 초과 시 대응 |
+| **ChromaDB** | 규정/문서 벡터 저장소 | doc_search, judgment, 리스크 감지에 RAG 제공 |
+| **Reranker** | 검색 결과 재정렬 | doc_search 정확도 향상 |
 
 ---
 
