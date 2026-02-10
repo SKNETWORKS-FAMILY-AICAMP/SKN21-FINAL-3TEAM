@@ -1,8 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background-color: #FAF9F6;
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+@layer base {
+  body {
+    @apply bg-surface-main text-neutral-main font-sans antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-sm bg-primary-700 text-white text-sm font-semibold transition-all hover:bg-primary-900;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-sm bg-accent-50 text-accent-700 text-sm font-semibold border border-accent-300 transition-all hover:bg-accent-100;
+  }
+  .btn-outline {
+    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-sm bg-transparent text-primary-700 text-sm font-semibold border border-neutral-border transition-all hover:bg-primary-50 hover:border-primary-300;
+  }
+  .btn-danger {
+    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-sm bg-error-bg text-error text-sm font-semibold transition-all hover:bg-red-200;
+  }
+  .card {
+    @apply bg-surface-card rounded-md border border-neutral-border overflow-hidden;
+  }
+  .card-header {
+    @apply flex justify-between items-center px-5 py-4 border-b border-neutral-divider;
+  }
+  .card-title {
+    @apply text-[15px] font-bold text-neutral-main flex items-center gap-2;
+  }
+  .card-body {
+    @apply px-5 py-4;
+  }
+  .badge {
+    @apply text-[11px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { @apply bg-primary-100 rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-primary-300; }
+
+/* Typing animation */
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
 }

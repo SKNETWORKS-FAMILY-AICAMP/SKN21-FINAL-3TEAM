@@ -1,5 +1,5 @@
 /**
- * 관리자 API (팀원 E 담당)
+ * 관리자 API : 사용자 관리, 시스템 통계 데이터, 질의 로그 모니터링(팀원 E 담당)
  */
 import client from './client'
 
