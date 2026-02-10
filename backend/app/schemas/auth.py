@@ -5,7 +5,7 @@ from pydantic import BaseModel, EmailStr
 
 
 class LoginRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 
@@ -16,7 +16,7 @@ class LoginResponse(BaseModel):
 
 
 class RegisterRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
     name: str
 
@@ -29,3 +29,24 @@ class RegisterResponse(BaseModel):
 
 class TokenRefreshRequest(BaseModel):
     refresh_token: str
+
+
+# ── 비밀번호 재설정 ──
+
+
+class PasswordResetRequest(BaseModel):
+    """비밀번호 재설정 요청 — 이메일로 인증 코드 발송"""
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    """비밀번호 재설정 확인 — 인증 코드 + 새 비밀번호"""
+    email: EmailStr
+    reset_code: str
+    new_password: str
+
+
+class PasswordResetResponse(BaseModel):
+    """비밀번호 재설정 응답"""
+    success: bool
+    message: str

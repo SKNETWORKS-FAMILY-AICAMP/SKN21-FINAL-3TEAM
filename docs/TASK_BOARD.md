@@ -398,29 +398,45 @@
 
 ## Git 브랜치 전략
 
+> 1인 1브랜치 원칙 — 브랜치 5개로 충돌 최소화
+
 ```
-main (배포용 - 지용만 머지)
- └── develop (통합 개발)
-      ├── feature/intent-classification    (지용)
-      ├── feature/agent-orchestrator       (지용)
-      ├── feature/judgment-agent           (경은)
-      ├── feature/rag-pipeline             (경은)
-      ├── feature/reranker                 (경은)
-      ├── feature/llm-api                  (경은) ← NEW
-      ├── feature/finetuning-judgment      (경은)
-      ├── feature/document-agent           (승언)
-      ├── feature/document-parser          (승언)
-      ├── feature/finetuning-document      (승언)
-      ├── feature/schedule-agent           (혜빈)
-      ├── feature/google-calendar          (혜빈)
-      ├── feature/google-services          (혜빈)
-      ├── feature/auth-system              (혜빈)
-      ├── feature/database                 (혜빈)
-      ├── feature/dashboard-ui             (지영)
-      ├── feature/chatbot-ui               (지영)
-      ├── feature/calendar-ui              (지영)
-      ├── feature/google-services-ui       (지영)
-      └── feature/streaming-ui             (지영)
+main (배포용 - PM 지용만 머지)
+ └── develop (통합 개발 - PR 머지 대상)
+      ├── feat/pm-지용          스키마, Intent, 오케스트레이터, SSE
+      ├── feat/ai-경은          LLM API, RAG, 판단 Agent, 파인튜닝
+      ├── feat/ai-승언          문서 Agent, 파서, 템플릿, 파인튜닝
+      ├── feat/backend-혜빈     DB, 인증, API, Google Services
+      └── feat/frontend-지영    전체 UI
+```
+
+### 브랜치 규칙
+
+| 규칙 | 설명 |
+|------|------|
+| **develop 직접 커밋 금지** | 반드시 자기 브랜치에서 작업 후 PR로 머지 |
+| **main 직접 커밋 금지** | develop → main은 PM(지용)만 머지 |
+| **작업 전 최신화** | `git pull origin develop` → 자기 브랜치에 rebase 후 작업 시작 |
+| **충돌은 자기 브랜치에서** | develop에 머지할 때 충돌 나면 자기 브랜치에서 해결 후 다시 PR |
+| **공유 파일 수정 시 사전 공유** | `state.py`, `schemas/*.py`, `constants.js` 등은 슬랙에 먼저 알리기 |
+
+### 일상 작업 흐름
+
+```bash
+# 1. 작업 시작 전 — develop 최신 가져오기
+git checkout feat/ai-경은
+git pull origin develop --rebase
+
+# 2. 작업 + 커밋
+git add 파일명
+git commit -m "feat: 판단 Agent LLM API 연동 #12"
+
+# 3. push
+git push origin feat/ai-경은
+
+# 4. GitHub에서 PR 생성 (develop ← feat/ai-경은)
+
+# 5. 리뷰 후 머지
 ```
 
 ### 커밋 규칙
@@ -433,10 +449,12 @@ main (배포용 - 지용만 머지)
 feat: 판단 Agent LLM API 연동 #12
 fix: Intent 분류 confidence 임계값 조정 #5
 docs: API 스키마 문서 업데이트 #2
+hotfix: SSE 연결 끊김 수정 #30
 
 # type 종류
 feat:     새 기능
 fix:      버그 수정
+hotfix:   긴급 수정 (develop에 직접 커밋 허용)
 docs:     문서 수정
 refactor: 리팩토링
 test:     테스트
@@ -446,10 +464,39 @@ chore:    설정/환경
 ### PR 규칙
 
 ```
-1. feature 브랜치에서 작업
-2. push 후 GitHub에서 PR 생성 (develop ← feature/xxx)
-3. PR 본문에 "Closes #이슈번호" 작성
-4. 리뷰 후 머지 → 이슈 자동 닫힘
+1. 자기 브랜치에서 작업 완료 후 push
+2. GitHub에서 PR 생성 (develop ← feat/xxx-이름)
+3. PR 제목: 커밋 메시지와 동일 형식 (예: "feat: 판단 Agent LLM API 연동 #12")
+4. PR 본문 필수 항목:
+   - 무엇을 했는지 (변경사항 요약)
+   - 테스트 방법 (어떻게 확인하는지)
+   - 관련 이슈: "Closes #이슈번호"
+5. 리뷰어: 같은 영역 담당자 1명 이상 지정
+   - AI 코드 → 경은 ↔ 승언 상호 리뷰
+   - 백엔드 ↔ AI 연동 → 혜빈 + 경은/승언
+   - 프론트 ↔ 백엔드 연동 → 지영 + 혜빈
+   - 스키마/설계 변경 → PM 지용 필수 리뷰
+6. 리뷰 승인 후 머지 → Squash and merge 사용
+7. 머지 후 자기 브랜치 삭제하지 않음 (계속 사용)
+```
+
+### 긴급 수정 (hotfix)
+
+```
+- develop이 깨졌을 때만 사용
+- 커밋 타입: hotfix
+- develop에 직접 커밋 허용 (단, 슬랙에 먼저 공유)
+- 예: hotfix: DB 마이그레이션 오류 수정 #99
+```
+
+### 금지 사항
+
+```
+- git push --force (본인 브랜치 포함 금지)
+- git reset --hard (커밋 날아감)
+- develop/main에 직접 push
+- .env, credentials.json 등 시크릿 파일 커밋
+- node_modules/, __pycache__/, .venv/ 커밋
 ```
 
 ---
@@ -590,13 +637,6 @@ chore:    설정/환경
 | `/api/v1/gmail` | 3 | send-reminder, send-meeting-invite, send-bulk-reminders |
 | `/api/v1/sheets` | 4 | create, sync, list, get-url |
 | `/api/v1/calendar` | 1 (추가) | event-with-meet |
-
-### 브랜치 추가
-
-```
-feature/google-services     (혜빈) — Tasks, Gmail, Meet, Sheets 백엔드
-feature/google-services-ui  (지영) — Google 서비스 프론트엔드
-```
 
 ---
 
