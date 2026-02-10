@@ -23,11 +23,14 @@
 
 ## 세션 종료 시 규칙
 
-사용자가 작업을 마칠 때 해당 팀원의 `docs/logs/{이름}.md`에 오늘 한 일을 추가:
-- 날짜
-- 한 일 (구체적으로)
-- 다음 할 일
-- 커밋 후 push까지 완료
+**사용자가 "끝" 이라고 입력하면:**
+
+1. `git config user.name`으로 현재 사용자 확인
+2. 이번 세션에서 한 작업을 정리하여 `docs/logs/{이름}.md`에 추가:
+   - 날짜
+   - 한 일 (구체적으로)
+   - 다음 할 일
+3. 사용자에게 커밋/push 여부 확인 후 진행
 
 ## 개발 전략
 
@@ -155,6 +158,8 @@ frontend/src/         — React 프론트엔드 (지영)
 
 - `git push --force` 금지
 - `git reset --hard` 금지
-- develop/main에 직접 push 금지
+- main에 직접 push 금지 — develop → main은 PM만
+- develop 직접 push — **초기 단계 한정 허용**, 추후 PR 방식으로 전환 시 금지
+- **커밋/push는 반드시 사용자 확인 후 실행** (자동 커밋 금지)
 - `.env`, `credentials.json` 등 시크릿 파일 커밋 금지
 - `node_modules/`, `__pycache__/`, `.venv/` 커밋 금지
