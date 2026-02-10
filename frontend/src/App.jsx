@@ -8,6 +8,8 @@ import DocumentsPage from './pages/DocumentsPage';
 import MeetingsPage from './pages/MeetingsPage';
 import SchedulesPage from './pages/SchedulesPage';
 import AdminPage from './pages/AdminPage';
+import MeetingMinutesPage from './pages/MeetingMinutesPage';
+import DocumentGeneratePage from './pages/DocumentGeneratePage';
 
 // 비로그인 → /login 으로 리다이렉트
 function PrivateRoute() {
@@ -36,6 +38,8 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/chat" element={<ChatPage />} />
+            <Route path="/meeting-minutes" element={<MeetingMinutesPage />} />
+            <Route path="/document-generate" element={<DocumentGeneratePage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/meetings" element={<MeetingsPage />} />
             <Route path="/schedules" element={<SchedulesPage />} />
