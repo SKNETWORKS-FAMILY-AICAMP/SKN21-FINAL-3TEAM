@@ -9,7 +9,7 @@ export default function StreamingMessage({ text, status }) {
           </div>
         )}
         {text ? (
-          <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
+          <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">
             {text}<span className="inline-block w-0.5 h-4 bg-primary-500 ml-0.5 animate-pulse" />
           </div>
         ) : (

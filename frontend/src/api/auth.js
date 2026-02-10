@@ -1,5 +1,5 @@
 /**
- * 인증 API: 로그인, 회원가입, 토큰 갱신 (Refresh Token)(팀원 E 담당)
+ * 인증 API: 로그인, 회원가입, 토큰 갱신, 비밀번호 재설정 (팀원 E 담당)
  */
 import client from './client'
 
@@ -11,3 +11,9 @@ export const register = (email, password, name) =>
 
 export const refreshToken = (refreshToken) =>
   client.post('/auth/refresh', { refresh_token: refreshToken })
+
+export const requestPasswordReset = (email) =>
+  client.post('/auth/password-reset/request', { email })
+
+export const confirmPasswordReset = (token, newPassword) =>
+  client.post('/auth/password-reset/confirm', { token, new_password: newPassword })
