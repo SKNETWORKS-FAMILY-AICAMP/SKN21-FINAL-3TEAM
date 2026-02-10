@@ -15,22 +15,24 @@ import useChatStore from '../store/chatStore'
 import { MOCK_RESPONSES } from '../utils/mockData'
 
 export default function useSSE() {
+  // 1. 상태 및 도구 준비 
   const timerRef = useRef(null)
   const { setStreaming, setCurrentIntent, setCurrentStatus, appendToken } = useChatStore()
 
+  // 2. 스트리밍 시작 로직. 사용자가 메시지를 보내면 실행되는 핵심 함수.
   const startStream = useCallback((message) => {
     setStreaming(true)
 
-    // 메시지 키워드로 mock 응답 매칭
+    // ① 답변찾기 (Matching) : 메시지 키워드로 mock 응답 매칭
     const mock = findMockResponse(message)
 
-    // 1단계: 의도 분류 (300ms 후)
+    // ② 1단계: 생각하는 척하기 (의도 분석) (300ms 후)
     const intentTimer = setTimeout(() => {
       setCurrentIntent(mock.intent)
       setCurrentStatus(mock.status)
     }, 300)
 
-    // 2단계: 토큰 스트리밍 (800ms 후 시작, 글자당 30ms)
+    // ③ 2단계: 한 글자씩 타이핑 (토큰 스트리밍) (800ms 후 시작, 글자당 30ms)
     const tokens = mock.content.split('')
     let index = 0
 
@@ -53,6 +55,7 @@ export default function useSSE() {
     timerRef.current = { intentTimer, streamTimer }
   }, [setStreaming, setCurrentIntent, setCurrentStatus, appendToken])
 
+  // 3. 스트리밍 중단 로직 (stopStream)
   const stopStream = useCallback(() => {
     if (timerRef.current) {
       if (timerRef.current.intentTimer) {

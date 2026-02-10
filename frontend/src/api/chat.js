@@ -1,5 +1,5 @@
 /**
- * 챗봇 API (팀원 E 담당)
+ * 챗봇 API : 메시지 전송 및 SSE 스트리밍 연동을 위한 URL 관리(팀원 E 담당)
  */
 import client from './client'
 

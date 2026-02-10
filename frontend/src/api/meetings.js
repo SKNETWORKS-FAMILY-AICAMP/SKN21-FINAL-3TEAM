@@ -1,5 +1,5 @@
 /**
- * 회의 API (팀원 E 담당)
+ * 회의 API : 회의록 목록 조회, 상세 분석 결과 확인 및 생성(팀원 E 담당)
  */
 import client from './client'
 

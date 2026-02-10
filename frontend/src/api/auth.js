@@ -1,5 +1,5 @@
 /**
- * 인증 API (팀원 E 담당)
+ * 인증 API: 로그인, 회원가입, 토큰 갱신 (Refresh Token)(팀원 E 담당)
  */
 import client from './client'
 

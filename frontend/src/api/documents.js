@@ -1,5 +1,5 @@
 /**
- * 문서 API (팀원 E 담당)
+ * 문서 API : 목록 조회, 상세 보기, 파일 업로드 (Multipart), 삭제(팀원 E 담당)
  */
 import client from './client'
 

@@ -1,28 +1,31 @@
 /**
- * 인증 훅 (팀원 E 담당)
+ * 인증 훅(로그인, 회원가입, 로그아웃 절차 관리) (팀원 E 담당)
  */
-import { useNavigate } from 'react-router-dom'
-import useAuthStore from '../store/authStore'
-import * as authAPI from '../api/auth'
+import { useNavigate } from 'react-router-dom'   // 화면 이동을 시켜주는 내비게이터
+import useAuthStore from '../store/authStore'   // 로그인 정보를 저장하는 기억 장치 (Store)
+import * as authAPI from '../api/auth'          // 실제 서버에 로그인 요청을 보내는 통로 (API)
 
 export default function useAuth() {
   const navigate = useNavigate()
   const { setAuth, logout: storeLogout } = useAuthStore()
 
-  const login = async (email, password) => {
+  // 1: 로그인
+  const login = async (email, password) => {   // 1. 서버에 이메일과 비밀번호를 보내서 확인 받아 (비동기 통신)
     const { data } = await authAPI.login(email, password)
-    setAuth({ name: data.user_name, email }, data.access_token)
-    navigate('/dashboard')
+    setAuth({ name: data.user_name, email }, data.access_token)  // 2. 서버가 준 '이름'과 '통행증 (Token)'을 전역 저장소 (Zustand)에 저장해
+    navigate('/dashboard')  // 3. 로그인이 완료됐으니 '대시보드' 페이지로 유저를 이동시켜 
   }
 
-  const register = async (email, password, name) => {
+  // 2: 회원가입
+  const register = async (email, password, name) => {  // 1. 서버에 새 유저 정보를 등록해달라고 요청해
     await authAPI.register(email, password, name)
-    navigate('/login')
+    navigate('/login')  // 2. 가입이 끝났으니 다시 로그인하라고 로그인 화면으로 보내
   }
 
-  const logout = () => {
+  // 3: 로그아웃
+  const logout = () => {  // 1. 기억장치 (Store)에 들어있는 유저 정보와 토큰을 싹 지워
     storeLogout()
-    navigate('/login')
+    navigate('/login')  // 2. 아무것도 못 보게 로그인 화면으로 보내
   }
 
   return { login, register, logout }

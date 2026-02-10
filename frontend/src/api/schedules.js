@@ -1,5 +1,5 @@
 /**
- * 일정 API (팀원 E 담당)
+ * 일정 API : 일정 생성, 조회, 수정, 삭제(CRUD) 전체 기능(팀원 E 담당)
  */
 import client from './client'
 
