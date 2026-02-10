@@ -7,8 +7,8 @@
 | 이름 | 역할 | GitHub 라벨 |
 |------|------|-------------|
 | **신지용** | PM + Intent 분류 + Agent 오케스트레이션 | `지용:PM` |
-| **윤경은** | AI 리드 (파인튜닝 v1 + 판단 Agent + RAG) | `경은:AI리드` |
-| **진승언** | AI 서브 (파인튜닝 v2 + 문서 Agent) | `승언:AI서브` |
+| **윤경은** | AI 서브 (파인튜닝 v1 + 판단 Agent + RAG) | `경은:AI서브` |
+| **진승언** | AI 리드 (파인튜닝 v2 + 문서 Agent) | `승언:AI리드` |
 | **안혜빈** | Backend + DB + 인증 + 일정 Agent + Google Services 통합 | `혜빈:Backend` |
 | **문지영** | Frontend 전담 (React) | `지영:Frontend` |
 

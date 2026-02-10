@@ -11,7 +11,13 @@
 
 ## 세션 시작 시 규칙
 
-1. 현재 사용자가 누구인지 확인 (브랜치 또는 직접 질문)
+1. `git config user.name`으로 사용자 자동 인식:
+   - `sjy361872` → 신지용 (PM)
+   - `ykgstar37-lab` → 윤경은 (AI서브)
+   - `jse8406` → 진승언 (AI리드)
+   - `hyebinhy` → 안혜빈 (Backend)
+   - `moon-613` → 문지영 (Frontend)
+   - 매핑 안 되면 현재 브랜치로 판단, 그래도 안 되면 직접 질문
 2. 해당 팀원의 `docs/logs/{이름}.md`를 읽고 이전 작업 맥락 파악
 3. PM(지용)인 경우 다른 팀원 로그도 필요 시 확인
 
@@ -42,8 +48,8 @@
 | 이름 | 역할 | GitHub 라벨 | 브랜치 | GitHub ID |
 |------|------|-------------|--------|-----------|
 | 신지용 | PM + Intent + 오케스트레이션 | `지용:PM` | `feat/pm-지용` | sjy361872 |
-| 윤경은 | AI리드 (LLM API + 판단 Agent + RAG) | `경은:AI리드` | `feat/ai-경은` | ykgstar37-lab |
-| 진승언 | AI서브 (문서 Agent + 파서 + 템플릿) | `승언:AI서브` | `feat/ai-승언` | jse8406 |
+| 윤경은 | AI서브 (LLM API + 판단 Agent + RAG) | `경은:AI서브` | `feat/ai-경은` | ykgstar37-lab |
+| 진승언 | AI리드 (문서 Agent + 파서 + 템플릿) | `승언:AI리드` | `feat/ai-승언` | jse8406 |
 | 안혜빈 | Backend + DB + 인증 + Google Services | `혜빈:Backend` | `feat/backend-혜빈` | hyebinhy |
 | 문지영 | Frontend 전담 | `지영:Frontend` | `feat/frontend-지영` | moon-613 |
 
@@ -68,7 +74,7 @@
 - N = 해당 담당자의 순번
 
 ### 라벨 규칙
-- **담당자 라벨**: `지용:PM`, `경은:AI리드`, `승언:AI서브`, `혜빈:Backend`, `지영:Frontend`
+- **담당자 라벨**: `지용:PM`, `경은:AI서브`, `승언:AI리드`, `혜빈:Backend`, `지영:Frontend`
 - **단계 라벨**: `1단계:설계`, `2단계:기반+LLM`, `3단계:Agent`, `4단계:파인튜닝`, `5단계:통합`, `6단계:마무리`
 - **우선순위**: `priority:높음`, `priority:보통`, `blocker`
 

@@ -2,7 +2,7 @@
 
 > LangGraph 기반 멀티 Agent 업무 자동화 시스템
 
-**팀원**: 신지용(PM) | 윤경은(AI리드) | 진승언(AI서브) | 안혜빈(Backend) | 문지영(Frontend)
+**팀원**: 신지용(PM) | 윤경은(AI서브) | 진승언(AI리드) | 안혜빈(Backend) | 문지영(Frontend)
 
 ---
 
@@ -522,8 +522,8 @@ SKN21-FINAL-3TEAM/
 | 팀원 | 역할 | 핵심 담당 |
 |------|------|----------|
 | **신지용** (PM) | Intent + 오케스트레이션 | `ai/agents/orchestrator.py`, SSE 스트리밍, API 스키마, 배포 |
-| **윤경은** (AI리드) | 파인튜닝 v1 + 판단 + RAG | `judgment_agent.py`, `ai/rag/*`, LoRA v1, vLLM 서빙 |
-| **진승언** (AI서브) | 파인튜닝 v2 + 문서 Agent | `document_agent.py`, `ai/templates/*`, `document_parser/*`, LoRA v2, 회의록 생성 + 문서 생성 |
+| **윤경은** (AI서브) | 파인튜닝 v1 + 판단 + RAG | `judgment_agent.py`, `ai/rag/*`, LoRA v1, vLLM 서빙 |
+| **진승언** (AI리드) | 파인튜닝 v2 + 문서 Agent | `document_agent.py`, `ai/templates/*`, `document_parser/*`, LoRA v2, 회의록 생성 + 문서 생성 |
 | **안혜빈** (Backend) | DB + 인증 + 일정 Agent | `models/*`, `services/*`, JWT, Google Services 통합 (Calendar·Tasks·Gmail·Meet·Sheets), 관리자 API |
 | **문지영** (Frontend) | React UI 전담 | `frontend/src/` 전체, SSE 수신, 카드 UI, 회의록 생성 페이지, 문서 생성 페이지, 반응형 |
 
