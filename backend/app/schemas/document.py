@@ -1,8 +1,8 @@
 """
 문서 스키마 (팀원 A 정의, 팀원 C/D 확장)
 """
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, model_validator
+from typing import Optional
 from datetime import datetime
 
 
@@ -48,7 +48,7 @@ class DocumentSearchResult(BaseModel):
     id: int
     title: str
     snippet: str                    # 매칭된 부분 발췌
-    highlights: list                # [{"start": 10, "end": 15, "keyword": "보안"}]
+    highlights: list[dict] = []     # [{"start": 10, "end": 15, "keyword": "보안"}]
     relevance_score: float          # 관련도 점수
     scope: str
 
@@ -90,3 +90,36 @@ class TemplateUploadRequest(BaseModel):
     description: Optional[str] = None
     category: str = "custom"
     scope: str = "company"
+
+
+# ── 문서 요약 ──
+
+
+class DocumentSummarizeRequest(BaseModel):
+    """문서 요약 요청 — 파일 업로드 또는 기존 문서 선택
+
+    template_type과 custom_fields 중 하나만 지정 가능:
+      - template_type만 지정 → 해당 템플릿의 기본 필드로 요약
+      - custom_fields만 지정 → 커스텀 필드로 요약
+      - 둘 다 None → 기본 필드(title, summary, key_points, conclusion)로 요약
+    """
+    document_id: Optional[int] = None       # 문서관리에서 기존 문서 선택 시
+    # 파일 업로드는 multipart/form-data로 별도 처리 (file 파라미터)
+    template_type: Optional[str] = None     # 요약 형식 선택 (report | proposal | 등)
+    custom_fields: Optional[list[str]] = None  # 커스텀 필드 직접 지정
+
+    @model_validator(mode="after")
+    def check_fields_exclusive(self):
+        if self.template_type and self.custom_fields:
+            raise ValueError("template_type과 custom_fields는 동시에 지정할 수 없습니다")
+        return self
+
+
+class DocumentSummarizeResponse(BaseModel):
+    """문서 요약 응답 — 필드별 요약 결과"""
+    document_id: int
+    original_title: Optional[str] = None
+    fields_used: list[str]                  # 어떤 필드로 요약했는지
+    result: dict                            # 필드별 요약 결과 (예: {"title": "...", "summary": "...", ...})
+    preview: str                            # 마크다운 미리보기
+    download_url: Optional[str] = None
