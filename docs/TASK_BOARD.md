@@ -6,11 +6,11 @@
 
 | 이름 | 역할 | GitHub 라벨 |
 |------|------|-------------|
-| **신지용** | PM + Intent 분류 + Agent 오케스트레이션 | `팀원A:PM` |
-| **윤경은** | AI 리드 (파인튜닝 v1 + 판단 Agent + RAG) | `팀원B:AI리드` |
-| **진승언** | AI 서브 (파인튜닝 v2 + 문서 Agent) | `팀원C:AI서브` |
-| **안혜빈** | Backend + DB + 인증 + 일정 Agent + Google Services 통합 | `팀원D:Backend` |
-| **문지영** | Frontend 전담 (React) | `팀원E:Frontend` |
+| **신지용** | PM + Intent 분류 + Agent 오케스트레이션 | `지용:PM` |
+| **윤경은** | AI 리드 (파인튜닝 v1 + 판단 Agent + RAG) | `경은:AI리드` |
+| **진승언** | AI 서브 (파인튜닝 v2 + 문서 Agent) | `승언:AI서브` |
+| **안혜빈** | Backend + DB + 인증 + 일정 Agent + Google Services 통합 | `혜빈:Backend` |
+| **문지영** | Frontend 전담 (React) | `지영:Frontend` |
 
 ---
 
@@ -75,8 +75,8 @@
 [지용] AgentState 확정 (#3)
      └──→ [경은][승언][혜빈] 각자 Agent 노드 개발 가능
 
-[경은] LLM API 연동 (#NEW)
-     └──→ [승언] document_agent에서 LLM API 사용 가능
+[경은] LLM API 연동 (#39)
+     └──→ [승언] document_agent에서 LLM API 사용 가능 (#40)
 
 [혜빈] JWT 인증 (#20)
      └──→ [지영] 로그인 UI 연동
@@ -192,8 +192,8 @@
 
 | # | 이슈 | 할 일 |
 |---|------|-------|
-| NEW | **LLM API 연동 모듈** | GPT/Claude API 호출 공통 모듈 작성 |
-| #8 | **RAG 파이프라인 구축** | ChromaDB + BM25 + Vector + Reranker |
+| #39 | **[B-8] LLM API 연동 모듈** | GPT/Claude API 호출 공통 모듈 작성 |
+| #8 | **[B-2] RAG 파이프라인 구축** | ChromaDB + BM25 + Vector + Reranker |
 
 **체크리스트:**
 - [ ] LLM API 공통 모듈 작성 (나중에 sLLM으로 교체 가능한 구조)
@@ -208,7 +208,7 @@
 
 | # | 이슈 | 할 일 |
 |---|------|-------|
-| NEW | **document_agent LLM API 연동** | 문서 요약/생성/검색/리스크 감지 LLM 연동 |
+| #40 | **[C-7] document_agent LLM API 연동** | 문서 요약/생성/검색/리스크 감지 LLM 연동 |
 
 **체크리스트:**
 - [ ] document_agent LLM API 연동 (동적 템플릿 필드 방식)
@@ -324,7 +324,7 @@
 |---|------|-------|
 | #14 | **회의록 JSONL 변환** | proceedings/*.json → meeting_train.jsonl |
 | #16 | **LoRA v2 파인튜닝** | 회의록 800건, 경은과 동일 베이스 모델 |
-| NEW | **추가 데이터 수집** | 문서 요약 300건 + 문서 생성 200건 + 검색 답변 200건 + 리스크 200건 |
+| #41 | **[C-8] 추가 데이터 수집** | 문서 요약 300건 + 문서 생성 200건 + 검색 답변 200건 + 리스크 200건 |
 
 ---
 

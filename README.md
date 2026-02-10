@@ -22,6 +22,23 @@
 
 ---
 
+## 개발 전략: LLM API 먼저 → sLLM은 나중에
+
+```
+1단계  설계 · 환경 세팅
+2단계  LLM API(GPT/Claude)로 전체 기능 먼저 구현  ← 지금 여기
+3단계  Agent 개발 — LLM API 기반으로 실제 동작 확인
+4단계  확정된 input/output에 맞춰 데이터 수집 → LoRA 파인튜닝
+5단계  sLLM(vLLM) 교체 — 모델만 갈아끼우면 됨
+6단계  통합 테스트 → 배포
+```
+
+- **왜?** 파인튜닝 먼저 하면 input/output이 바뀔 때마다 데이터를 다시 만들어야 함
+- LLM API로 기능을 완성하면서 실제 형태를 확정한 뒤, 그에 맞는 데이터를 수집하는 게 효율적
+- Agent 코드는 LLM 호출 인터페이스만 바꾸면 되는 구조 (공통 모듈 #39)
+
+---
+
 ## 시스템 아키텍처
 
 ### 전체 구조 (담당자 표시)
@@ -145,13 +162,15 @@
 ║         │              │              │                                ║
 ║         ▼              ▼              │                                ║
 ║  ┌─────────────────────────────────┐  │                                ║
-║  │ vLLM 모델 서빙 [경은]           │  │                                ║
-║  │ OpenAI 호환 API + 스트리밍      │  │                                ║
+║  │ LLM 모듈 [경은] #39             │  │                                ║
 ║  │                                 │  │                                ║
+║  │  현재: GPT/Claude API           │  │                                ║
+║  │  ──────────────────────────     │  │                                ║
+║  │  추후(4단계): vLLM + LoRA      │  │                                ║
 ║  │  ┌───────────┐  ┌───────────┐  │  │                                ║
 ║  │  │ LoRA v1   │  │ LoRA v2   │  │  │                                ║
 ║  │  │ 판단 특화  │  │ 문서 특화  │  │  │                                ║
-║  │  │ 2,000개   │  │ 1,800개   │  │  │                                ║
+║  │  │ 1,500개   │  │ 1,700개   │  │  │                                ║
 ║  │  │ [경은]    │  │ [승언]    │  │  │                                ║
 ║  │  └───────────┘  └───────────┘  │  │                                ║
 ║  │                                 │  │                                ║
@@ -232,8 +251,9 @@
              │
              ▼
 ┌─────────────────────────────────────┐
-│ 4. 판단 Agent + sLLM       [경은]   │
-│    LoRA v1 (판단 특화)              │
+│ 4. 판단 Agent + LLM        [경은]   │
+│    현재: GPT/Claude API             │
+│    추후: LoRA v1 (판단 특화)        │
 │    다중 규정 교차 판단:              │
 │    → 종합: 조건부 가능               │
 │    → 근거: 3개 조항                  │
@@ -351,8 +371,9 @@
 | 구분 | 기술 | 용도 |
 |------|------|------|
 | Agent Framework | **LangGraph** | StateGraph 기반 Agent 오케스트레이션 |
-| Base LLM | **Qwen3 / Kanana / EXAONE 3.5** (7~8B) | 벤치마크 후 확정 |
-| Fine-tuning | **LoRA (PEFT)** + QLoRA 4-bit | 판단 v1 (2,000개) + 문서 v2 (1,800개) |
+| LLM API (현재) | **GPT-4 / Claude** | 기능 구현 단계에서 사용, 추후 sLLM 교체 |
+| Base sLLM (추후) | **Qwen3 / Kanana / EXAONE 3.5** (7~8B) | 벤치마크 후 확정 |
+| Fine-tuning (추후) | **LoRA (PEFT)** + QLoRA 4-bit | 판단 v1 (1,500개) + 문서 v2 (1,700개) |
 | 모델 서빙 | **vLLM** | OpenAI 호환 API + LoRA 핫스왑 + 스트리밍 |
 | Vector DB | **ChromaDB** | 문서 임베딩 저장 + 유사도 검색 |
 | Embedding | **jhgan/ko-sbert-nli** | 한국어 문장 임베딩 |
@@ -394,12 +415,14 @@
 
 ---
 
-## 파인튜닝 데이터 (총 3,800개)
+## 파인튜닝 데이터 (4단계에서 진행)
+
+> LLM API로 기능을 완성한 뒤, 확정된 input/output 형태에 맞춰 데이터 수집 → sLLM 교체
 
 | 어댑터 | 데이터 구성 | 합계 | 담당 |
 |--------|-----------|------|------|
-| **LoRA v1** (판단) | 판단 1,000 + Q&A 1,000 | **2,000개** | 경은 |
-| **LoRA v2** (문서) | 회의록 700 + 요약 500 + 생성 400 + 리스크 200 | **1,800개** | 승언 |
+| **LoRA v1** (판단) | 판단 1,000 + Q&A 500 | **1,500개** | 경은 |
+| **LoRA v2** (문서) | 회의록 800 + 검색 200 + 요약 300 + 생성 200 + 리스크 200 | **1,700개** | 승언 |
 
 > 검증용 15% 별도 분리 / Claude·GPT-4 초안 → 사람 검증
 
@@ -477,8 +500,8 @@ SKN21-FINAL-3TEAM/
 │
 ├── data/                        # 학습/평가 데이터
 │   ├── training/
-│   │   ├── v1_judgment/         # 판단 데이터 (2,000개)
-│   │   └── v2_document/         # 문서 데이터 (1,800개)
+│   │   ├── v1_judgment/         # 판단 데이터 (1,500개)
+│   │   └── v2_document/         # 문서 데이터 (1,700개)
 │   └── regulations/             # 규정 원본 문서
 │
 ├── docker/                      # Docker 설정
@@ -508,44 +531,36 @@ SKN21-FINAL-3TEAM/
 
 ## Git 브랜치 전략
 
+> 1인 1브랜치 원칙 — 브랜치 5개로 충돌 최소화
+
 ```
-main (배포용 - PM만 머지)
- └── develop (통합 개발)
-      ├── feature/intent-classification    (지용)
-      ├── feature/agent-orchestrator       (지용)
-      ├── feature/judgment-agent           (경은)
-      ├── feature/rag-pipeline             (경은)
-      ├── feature/finetuning-judgment      (경은)
-      ├── feature/document-agent           (승언)
-      ├── feature/document-parser          (승언)
-      ├── feature/finetuning-document      (승언)
-      ├── feature/auth-system              (혜빈)
-      ├── feature/database                 (혜빈)
-      ├── feature/google-calendar          (혜빈)
-      ├── feature/google-services          (혜빈)
-      ├── feature/dashboard-ui             (지영)
-      ├── feature/chatbot-ui               (지영)
-      ├── feature/google-services-ui       (지영)
-      └── feature/streaming-ui             (지영)
+main (배포용 - PM 지용만 머지)
+ └── develop (통합 개발 - PR 머지 대상)
+      ├── feat/pm-지용          Intent, 오케스트레이터, SSE, 스키마
+      ├── feat/ai-경은          LLM API, RAG, 판단 Agent, 파인튜닝
+      ├── feat/ai-승언          문서 Agent, 파서, 템플릿, 파인튜닝
+      ├── feat/backend-혜빈     DB, 인증, API, Google Services
+      └── feat/frontend-지영    전체 UI
 ```
 
 ### 커밋 컨벤션
 
 ```
-feat: 새 기능 추가        fix: 버그 수정
-docs: 문서 수정           refactor: 리팩토링
-test: 테스트 추가         chore: 설정/환경 변경
+<type>: <설명> #이슈번호
 
-예시: feat: 판단 Agent Yes/No 판단 로직 구현 #12
+feat: 판단 Agent LLM API 연동 #12
+fix: Intent 분류 confidence 임계값 조정 #5
+docs: API 스키마 문서 업데이트 #2
 ```
 
 ### PR 규칙
 
 ```
-1. feature 브랜치에서 작업
-2. push → GitHub PR 생성 (develop ← feature/xxx)
+1. 자기 브랜치에서 작업 후 push
+2. GitHub PR 생성 (develop ← feat/xxx-이름)
 3. PR 본문에 "Closes #이슈번호"
-4. 리뷰 후 머지 → 이슈 자동 닫힘
+4. 리뷰 승인 후 Squash and merge
+5. develop → main은 PM(지용)만 머지
 ```
 
 ---
