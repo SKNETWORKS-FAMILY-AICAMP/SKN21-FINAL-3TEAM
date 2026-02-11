@@ -1,0 +1,95 @@
+{
+  "version": "v1.3",
+  "train_count": 1632,
+  "eval_count": 286,
+  "eval_accuracy": 0.986,
+  "eval_f1_macro": 0.9858,
+  "eval_f1_weighted": 0.9861,
+  "adversarial": {
+    "version": "v1.3",
+    "adversarial_count": 120,
+    "accuracy": 0.8917,
+    "f1_macro": 0.8937,
+    "errors": 13,
+    "error_details": [
+      {
+        "text": "제안서 템플릿 있어?",
+        "expected": "doc_search",
+        "predicted": "general",
+        "confidence": 0.518
+      },
+      {
+        "text": "보고서 그거 아까 말한거 해줘",
+        "expected": "doc_generate",
+        "predicted": "doc_search",
+        "confidence": 0.702
+      },
+      {
+        "text": "일정추가",
+        "expected": "schedule_add",
+        "predicted": "schedule_view",
+        "confidence": 0.93
+      },
+      {
+        "text": "회의 잡고 회의록도 만들어줘",
+        "expected": "schedule_add",
+        "predicted": "meeting_generate",
+        "confidence": 0.993
+      },
+      {
+        "text": "규정 찾아서 위반 여부 판단해줘",
+        "expected": "judgment",
+        "predicted": "doc_search",
+        "confidence": 0.535
+      },
+      {
+        "text": "인사 규정 검색해서 내 상황에 맞는지 알려줘",
+        "expected": "judgment",
+        "predicted": "doc_search",
+        "confidence": 0.967
+      },
+      {
+        "text": "보고서 있으면 보여주고 없으면 만들어줘",
+        "expected": "doc_search",
+        "predicted": "doc_generate",
+        "confidence": 0.988
+      },
+      {
+        "text": "규정",
+        "expected": "judgment",
+        "predicted": "doc_search",
+        "confidence": 0.988
+      },
+      {
+        "text": "회의",
+        "expected": "schedule_view",
+        "predicted": "meeting_generate",
+        "confidence": 0.979
+      },
+      {
+        "text": "회의 준비해줘",
+        "expected": "schedule_add",
+        "predicted": "meeting_generate",
+        "confidence": 0.983
+      },
+      {
+        "text": "내일 쉬어도 돼?",
+        "expected": "judgment",
+        "predicted": "general",
+        "confidence": 0.514
+      },
+      {
+        "text": "그거 해줘",
+        "expected": "general",
+        "predicted": "doc_search",
+        "confidence": 0.888
+      },
+      {
+        "text": "아까 말한 거 정리해줘",
+        "expected": "general",
+        "predicted": "meeting_generate",
+        "confidence": 0.964
+      }
+    ]
+  }
+}
