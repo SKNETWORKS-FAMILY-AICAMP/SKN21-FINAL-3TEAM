@@ -118,7 +118,17 @@
 - 실험 4→5 논리 연결 수정 (v1.3=최종 → v1.3 데이터를 다른 모델에도 적용)
 - TRAINING_LOG.md vs EXPERIMENT_PLAN.md 내용 대조 → 숫자 불일치 0건 확인
 
+**팀원 작업 pull + 버그 확인:**
+- develop pull → merge 완료 (혜빈/경은/지영 작업 대량 반영)
+- frontend npm install: eslint 버전 충돌 확인 (@eslint/js@10 vs eslint@9) → --legacy-peer-deps로 설치
+- Google 소셜 로그인 500 에러 원인 분석:
+  - LoginPage.jsx에서 `/api/v1/auth/google`로 요청 → 프론트 dev 서버로 감 (백엔드 URL 아님)
+  - 수정 필요: `window.location.href`를 `http://localhost:8000/api/v1/auth/google`로 변경
+  - → 혜빈/지영에게 전달 필요
+
 **다음 할 일 (내일):**
+- Google 로그인 버그 혜빈/지영에게 공유
+- eslint 버전 충돌 지영에게 공유
 - adversarial 80문장 추가 제작 (200개 확장)
 - max_length 64 충분한지 데이터 길이 확인
 - 실험 5: 3모델 × 153번 그리드 서치 실행 (RunPod A100, ~3~5시간)
