@@ -1,10 +1,11 @@
 """
-모델 벤치마크용 테스트 데이터셋 생성 스크립트
+모델 벤치마크용 테스트 데이터셋 생성 스크립트 (v2 — 2026-02-11)
 - judgment_raw.xlsx에서 21개 샘플링 (Yes 7 / No 7 / 조건부 7)
-- regulation_qa_raw.xlsx에서 16개 샘플링 (질문유형별 2개씩)
+- regulation_qa_raw.xlsx에서 16개 샘플링 (질문유형별 2개씩) + 규정 원문 포함
 - proceedings/*.json에서 16개 샘플링 (파일별 2개씩)
-- 한국어 이해력 + 구조화 출력 테스트 17개 직접 작성
-=> 총 70개
+- 한국어 이해력 + 구조화 출력 테스트 34개 직접 작성
+  - doc_summary 12개 / risk_detection 12개 / korean_understanding 10개
+=> 총 87개
 """
 
 import json
@@ -13,10 +14,12 @@ import os
 import sys
 import openpyxl
 
+from regulation_texts import find_article_text
+
 sys.stdout.reconfigure(encoding="utf-8")
 random.seed(42)
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OUTPUT_PATH = os.path.join(BASE_DIR, "data", "evaluation", "benchmark_testset.jsonl")
 
 testset = []
@@ -70,9 +73,12 @@ for jtype, items in judgment_by_type.items():
         sampled.append(random.choice(by_article[article]))
 
     for item in sampled:
-        # 실서비스와 동일하게 규정 원문을 input에 포함 (RAG가 붙여주는 형태)
+        # 실서비스와 동일하게 규정 원문 전문을 input에 포함 (RAG가 붙여주는 형태)
+        article_full = find_article_text(item["article"])
         regulation_context = f"관련 규정:\n{item['article']}"
-        if item["basis"]:
+        if article_full:
+            regulation_context += f"\n{article_full}"
+        elif item["basis"]:
             regulation_context += f": {item['basis']}"
         bench_input = f"{regulation_context}\n\n질문: {item['question']}"
 
@@ -153,8 +159,12 @@ for qtype in target_types:
     items = qa_by_type[qtype]
     sampled = random.sample(items, min(2, len(items)))
     for item in sampled:
-        # 실서비스와 동일하게 규정 조항을 input에 포함 (RAG가 붙여주는 형태)
-        qa_input = f"관련 규정: {item['article']}\n\n질문: {item['input_q']}"
+        # 실서비스와 동일하게 규정 원문 전문을 input에 포함 (RAG가 붙여주는 형태)
+        article_full = find_article_text(item["article"])
+        if article_full:
+            qa_input = f"관련 규정: {item['article']}\n{article_full}\n\n질문: {item['input_q']}"
+        else:
+            qa_input = f"관련 규정: {item['article']}\n\n질문: {item['input_q']}"
 
         testset.append(
             {
@@ -235,7 +245,8 @@ print(
 
 
 # ============================================================
-# 4. 한국어 이해력 + 구조화 출력 테스트 - 17개
+# 4. 한국어 이해력 + 구조화 출력 테스트 - 34개
+#    doc_summary 12 / risk_detection 12 / korean_understanding 10
 # ============================================================
 print("[4/4] 한국어 이해력 + 구조화 출력 테스트 추가...")
 
@@ -301,6 +312,63 @@ extra_tests = [
             "일정/수치 포함 여부",
         ],
     },
+    # --- 문서 요약 추가분 (7개) ---
+    {
+        "category": "doc_summary",
+        "subcategory": "인사공지형",
+        "instruction": "주어진 필드에 맞게 문서를 요약하세요.",
+        "input": "필드: title, summary, key_points, effective_date\n\n원본 문서:\n제목: 2026년 상반기 조직 개편 안내\n\n1. 개편 내용\n- AI사업부 신설 (기존 R&D팀에서 분리)\n- 마케팅팀 → 그로스팀 명칭 변경\n- 보안팀을 CISO 직속으로 격상\n\n2. 인사 이동\n- AI사업부장: 김영수 상무 (신규 선임)\n- 그로스팀장: 이지현 팀장 (유임)\n- 보안팀장: 박민호 팀장 (유임, 보고 라인 변경)\n\n3. 시행일: 2026년 3월 1일\n4. 기존 업무 인수인계는 2월 28일까지 완료",
+        "reference_output": '{"title": "2026년 상반기 조직 개편 안내", "summary": "AI사업부 신설, 마케팅팀 명칭 변경(그로스팀), 보안팀 CISO 직속 격상 등 조직 개편 실시", "key_points": "- AI사업부 신설 (R&D팀에서 분리, 김영수 상무 선임)\\n- 마케팅팀 → 그로스팀 명칭 변경\\n- 보안팀 CISO 직속 격상\\n- 2월 28일까지 인수인계 완료 필요", "effective_date": "2026년 3월 1일"}',
+        "eval_criteria": ["JSON 출력 형식 준수", "조직 변경사항 정확 반영", "인사 정보 정확도"],
+    },
+    {
+        "category": "doc_summary",
+        "subcategory": "회의록요약형",
+        "instruction": "주어진 필드에 맞게 문서를 요약하세요.",
+        "input": "필드: title, summary, decisions, action_items\n\n원본 문서:\n제목: 제5차 정보보호위원회 회의록\n일시: 2026.02.07 14:00~15:30\n참석: CISO 이강호, CPO 정미영, 개발부서장, 인사부서장, 법무팀장\n\n1. 안건: ISMS-P 인증 준비 현황\n- 현재 82개 항목 중 68개 완료 (83%)\n- 미완료 14개 중 긴급 5개: 접근권한 검토, 백업 복구 테스트, 취약점 점검, 교육 이수율, 로그 보관\n\n2. 결정사항\n- 3월 15일까지 긴급 5개 항목 완료\n- 외부 컨설팅 업체 선정 (3월 중)\n- 모의 감사 4월 실시\n\n3. 차기 회의: 2026.03.07 14:00",
+        "reference_output": '{"title": "제5차 정보보호위원회 회의록", "summary": "ISMS-P 인증 준비 현황 점검. 82개 항목 중 68개 완료(83%), 긴급 미완료 5개 항목 3월 15일까지 완료 결정", "decisions": "- 긴급 5개 항목 3월 15일까지 완료\\n- 외부 컨설팅 업체 3월 중 선정\\n- 모의 감사 4월 실시", "action_items": "- 접근권한 검토, 백업 복구 테스트, 취약점 점검, 교육 이수율, 로그 보관 완료\\n- 외부 컨설팅 업체 선정 진행\\n- 차기 회의 2026.03.07 14:00"}',
+        "eval_criteria": ["JSON 출력 형식 준수", "결정사항/액션아이템 구분 정확도", "수치 정보 정확도"],
+    },
+    {
+        "category": "doc_summary",
+        "subcategory": "장애보고형",
+        "instruction": "주어진 필드에 맞게 문서를 요약하세요.",
+        "input": "필드: title, summary, timeline, root_cause, action_taken\n\n원본 문서:\n제목: 2026.02.05 API 서버 장애 보고서\n\n1. 장애 개요\n- 발생: 2026.02.05 09:23\n- 복구: 2026.02.05 10:47 (총 84분)\n- 영향: 전사 API 서비스 응답 불가, 챗봇 서비스 중단\n- 등급: Critical\n\n2. 타임라인\n- 09:23 모니터링 알림 발생 (API 응답시간 30초 초과)\n- 09:28 보안팀 1차 확인 (서버 CPU 100%)\n- 09:45 원인 파악 (배치 작업 동시 실행으로 리소스 고갈)\n- 10:15 배치 작업 중단 및 서버 재시작\n- 10:47 서비스 정상 복구 확인\n\n3. 근본 원인: 야간 배치 작업이 09:00 시작 배치와 겹쳐 실행됨 (cron 스케줄 오류)\n4. 재발 방지: 배치 스케줄 검증 자동화, 리소스 임계치 알림 강화",
+        "reference_output": '{"title": "2026.02.05 API 서버 장애 보고서", "summary": "배치 작업 충돌로 API 서버 CPU 100% → 전사 API/챗봇 84분간 중단. cron 스케줄 오류가 근본 원인", "timeline": "09:23 알림 → 09:28 1차 확인 → 09:45 원인 파악 → 10:15 배치 중단 및 재시작 → 10:47 복구 완료", "root_cause": "야간 배치 작업이 09:00 시작 배치와 겹쳐 실행 (cron 스케줄 오류)", "action_taken": "- 배치 작업 중단 및 서버 재시작으로 즉시 복구\\n- 배치 스케줄 검증 자동화 도입\\n- 리소스 임계치 알림 강화"}',
+        "eval_criteria": ["JSON 출력 형식 준수", "타임라인 정확도", "근본원인/조치사항 구분"],
+    },
+    {
+        "category": "doc_summary",
+        "subcategory": "정책문서형",
+        "instruction": "주어진 필드에 맞게 문서를 요약하세요.",
+        "input": "필드: title, summary, scope, key_rules\n\n원본 문서:\n제목: 원격근무 보안 가이드라인 v2.0\n\n1. 목적: 원격근무 환경에서의 정보보호 강화\n2. 적용범위: 재택, 카페, 출장지 등 사외 업무 전체\n3. 필수 준수사항\n- VPN 접속 필수 (회사 지급 클라이언트만 허용)\n- 공용 Wi-Fi 사용 금지\n- 회사 지급 노트북 또는 승인된 BYOD 단말만 사용\n- 화면 잠금 5분 타이머 설정\n- 업무 화면 캡처·촬영 금지\n- 보안사고 발생 시 즉시 보안팀 보고 (내선 9119)\n4. 위반 시: 경고 → 원격근무 제한 → 징계위원회 회부",
+        "reference_output": '{"title": "원격근무 보안 가이드라인 v2.0", "summary": "원격근무 시 VPN 필수, 공용 Wi-Fi 금지, 승인 단말만 사용 등 보안 수칙을 규정하는 가이드라인", "scope": "재택, 카페, 출장지 등 사외 업무 전체", "key_rules": "- VPN 접속 필수\\n- 공용 Wi-Fi 사용 금지\\n- 회사 지급 또는 승인된 BYOD 단말만 사용\\n- 화면 잠금 5분 설정\\n- 화면 캡처·촬영 금지\\n- 위반 시 경고 → 원격근무 제한 → 징계위원회 회부"}',
+        "eval_criteria": ["JSON 출력 형식 준수", "규칙 항목 누락 없음", "위반 제재 정보 포함"],
+    },
+    {
+        "category": "doc_summary",
+        "subcategory": "교육결과형",
+        "instruction": "주어진 필드에 맞게 문서를 요약하세요.",
+        "input": "필드: title, summary, statistics, improvements\n\n원본 문서:\n제목: 2025년 하반기 정보보호 교육 결과 보고\n\n1. 교육 개요\n- 기간: 2025.10.14~10.25\n- 대상: 전 직원 52명\n- 방식: 온라인(LMS) + 피싱 시뮬레이션\n\n2. 결과\n- 이수율: 100% (52/52명)\n- 평균 점수: 84점 (전년 78점 대비 +6점)\n- 피싱 시뮬레이션 클릭률: 12% (전년 23% 대비 -11%p)\n- 최저 점수 부서: 영업팀 (평균 72점)\n\n3. 개선 필요사항\n- 영업팀 추가 교육 실시 (11월 중)\n- 모바일 피싱 시나리오 추가 필요\n- 교육 콘텐츠 최신 사례 반영 (AI 딥페이크 피싱 등)",
+        "reference_output": '{"title": "2025년 하반기 정보보호 교육 결과 보고", "summary": "전 직원 52명 이수율 100%, 평균 84점(+6점), 피싱 클릭률 12%(-11%p)로 전반적 개선", "statistics": "- 이수율: 100% (52/52명)\\n- 평균 점수: 84점 (전년 78점 대비 +6점)\\n- 피싱 클릭률: 12% (전년 23% 대비 -11%p)\\n- 최저 점수 부서: 영업팀 (72점)", "improvements": "- 영업팀 추가 교육 실시\\n- 모바일 피싱 시나리오 추가\\n- AI 딥페이크 피싱 등 최신 사례 콘텐츠 반영"}',
+        "eval_criteria": ["JSON 출력 형식 준수", "수치 비교 정확도", "개선사항 구체성"],
+    },
+    {
+        "category": "doc_summary",
+        "subcategory": "비용분석형",
+        "instruction": "주어진 필드에 맞게 문서를 요약하세요.",
+        "input": "필드: title, summary, cost_breakdown, recommendation\n\n원본 문서:\n제목: 클라우드 인프라 비용 분석 (2026년 1월)\n\n1. 총 비용: 1,840만원 (전월 대비 +15%)\n2. 항목별\n- 컴퓨팅(EC2): 920만원 (50%)\n- GPU 인스턴스(A100): 480만원 (26%) — 모델 학습용\n- 스토리지(S3+EBS): 210만원 (11%)\n- 데이터 전송: 130만원 (7%)\n- 기타(RDS, ElastiCache 등): 100만원 (6%)\n3. 비용 증가 원인: GPU 인스턴스 사용량 급증 (파인튜닝 실험 5회)\n4. 절감 방안: Spot Instance 활용, 미사용 인스턴스 자동 종료, Reserved Instance 검토",
+        "reference_output": '{"title": "클라우드 인프라 비용 분석 (2026년 1월)", "summary": "총 1,840만원(전월 +15%). GPU 인스턴스(파인튜닝) 사용 급증이 주요 원인", "cost_breakdown": "- 컴퓨팅(EC2): 920만원 (50%)\\n- GPU(A100): 480만원 (26%)\\n- 스토리지: 210만원 (11%)\\n- 데이터 전송: 130만원 (7%)\\n- 기타: 100만원 (6%)", "recommendation": "- Spot Instance 활용으로 GPU 비용 절감\\n- 미사용 인스턴스 자동 종료 설정\\n- Reserved Instance 검토 (장기 사용 시)"}',
+        "eval_criteria": ["JSON 출력 형식 준수", "비용 수치 정확도", "절감 방안 구체성"],
+    },
+    {
+        "category": "doc_summary",
+        "subcategory": "채용공고형",
+        "instruction": "주어진 필드에 맞게 문서를 요약하세요.",
+        "input": "필드: title, summary, requirements, benefits\n\n원본 문서:\n제목: [채용] AI 엔지니어 (경력 3~7년)\n\n1. 주요 업무\n- LLM 파인튜닝 및 서빙 파이프라인 구축\n- RAG 시스템 설계 및 최적화\n- 사내 AI 챗봇 모델 성능 개선\n\n2. 자격 요건\n- Python, PyTorch 실무 경력 3년 이상\n- LLM 파인튜닝(LoRA, QLoRA) 경험\n- RAG, Vector DB 활용 경험\n- 우대: vLLM, LangChain/LangGraph 경험\n\n3. 근무 조건\n- 연봉: 6,000~9,000만원 (경력에 따라 협의)\n- 재택근무 주 2일\n- 스톡옵션 부여\n- GPU 서버(A100) 개인 할당",
+        "reference_output": '{"title": "AI 엔지니어 채용 (경력 3~7년)", "summary": "LLM 파인튜닝/RAG 전문 AI 엔지니어 채용. 사내 AI 챗봇 모델 성능 개선이 주요 업무", "requirements": "- Python, PyTorch 3년 이상\\n- LLM 파인튜닝(LoRA, QLoRA) 경험\\n- RAG, Vector DB 활용 경험\\n- 우대: vLLM, LangChain/LangGraph", "benefits": "- 연봉 6,000~9,000만원\\n- 재택근무 주 2일\\n- 스톡옵션 부여\\n- GPU 서버(A100) 개인 할당"}',
+        "eval_criteria": ["JSON 출력 형식 준수", "자격요건/우대사항 구분", "복리후생 정확도"],
+    },
     # --- 리스크 감지 (5개) ---
     {
         "category": "risk_detection",
@@ -361,6 +429,63 @@ extra_tests = [
             "보충 교육 규정 이해",
             "과잉 경고 없음",
         ],
+    },
+    # --- 리스크 감지 추가분 (7개) ---
+    {
+        "category": "risk_detection",
+        "subcategory": "위반_개인정보",
+        "instruction": "다음 내용에서 규정 위반 여부를 감지하세요.",
+        "input": "회의 내용: 마케팅팀에서 고객 DB의 이름, 전화번호, 이메일 데이터를 외부 마케팅 대행사에 엑셀 파일로 전달하기로 함. 고객 동의는 받지 않은 상태.\n\n관련 규정:\n제18조(데이터베이스 접근통제) - 개인정보 및 민감정보가 저장된 테이블에 대해서는 접근 로그를 기록하고, 비정상적인 대량 조회·다운로드를 탐지·차단한다.\n제11조(비밀유지의무) - 고객 데이터 및 개인정보는 비밀유지 대상이다.",
+        "reference_output": '{"risk_detected": true, "risk_level": "high", "violation": "제18조(데이터베이스 접근통제) 및 제11조(비밀유지의무) 위반, 개인정보 보호법 제17조(제3자 제공) 위반", "detail": "고객 동의 없이 개인정보(이름, 전화번호, 이메일)를 외부 대행사에 제공 시도", "recommendation": "고객 동의 절차 선행, 개인정보 제3자 제공 동의서 징구, 필요 최소한의 정보만 비식별화하여 제공 검토"}',
+        "eval_criteria": ["위반 감지 정확도", "관련 법령 인식", "개인정보 보호 관점 분석"],
+    },
+    {
+        "category": "risk_detection",
+        "subcategory": "위반_소스코드",
+        "instruction": "다음 내용에서 규정 위반 여부를 감지하세요.",
+        "input": "회의 내용: 개발팀 신입 최대한이 개인 GitHub 공개 저장소에 사내 프로젝트 코드 일부를 포트폴리오용으로 업로드한 사실이 발견됨.\n\n관련 규정:\n제26조(소스코드 관리) - 소스코드 저장소에는 비밀번호, API 키, 인증서 등 민감 정보를 포함하여서는 아니 된다.\n제11조(비밀유지의무) - 소스코드 및 기술 설계서는 비밀유지 대상이다.",
+        "reference_output": '{"risk_detected": true, "risk_level": "high", "violation": "제26조(소스코드 관리) 및 제11조(비밀유지의무) 위반", "detail": "사내 프로젝트 소스코드를 개인 공개 GitHub 저장소에 무단 업로드", "recommendation": "즉시 해당 저장소 삭제 요청, 유출 범위 파악(API 키 등 민감정보 포함 여부 확인), 보안팀 보고 후 징계 절차 검토, 전 직원 대상 소스코드 관리 교육 실시"}',
+        "eval_criteria": ["위반 감지 정확도", "유출 영향 범위 인식", "즉시 조치사항 포함"],
+    },
+    {
+        "category": "risk_detection",
+        "subcategory": "정상_변경관리",
+        "instruction": "다음 내용에서 규정 위반 여부를 감지하세요.",
+        "input": "회의 내용: 인프라팀에서 방화벽 정책 변경을 요청하였고, 변경 요청서 제출 → 영향도 분석 → CAB 검토 → CISO 승인을 거쳐 금요일 야간에 적용 예정. 롤백 계획도 수립 완료.\n\n관련 규정:\n제21조(변경관리) - 정보시스템의 모든 변경은 사전에 변경관리 절차에 따라 신청·검토·승인·시행하여야 한다.\n제16조(네트워크 접근통제) - 네트워크 접근통제 정책의 변경은 정보보호 담당자의 검토 및 CISO의 승인을 받아야 한다.",
+        "reference_output": '{"risk_detected": false, "risk_level": "none", "violation": "", "detail": "변경 요청서 → 영향도 분석 → CAB 검토 → CISO 승인의 정규 변경관리 절차를 모두 준수. 롤백 계획까지 수립하여 제21조 및 제16조 요건 충족", "recommendation": ""}',
+        "eval_criteria": ["정상 판단 정확도", "변경관리 절차 이해", "과잉 경고 없음"],
+    },
+    {
+        "category": "risk_detection",
+        "subcategory": "위반_겸업",
+        "instruction": "다음 내용에서 규정 위반 여부를 감지하세요.",
+        "input": "회의 내용: 개발팀 박과장이 회사 승인 없이 외부 스타트업의 CTO로 활동하고 있으며, 근무시간 중 해당 스타트업 업무를 처리한 정황이 확인됨.\n\n관련 규정:\n제12조(겸업 금지) - 직원은 회사의 사전 서면 승인 없이 타 기업에 취업하거나 독립적인 영리 활동을 할 수 없다.\n제10조(복무의무) - 직원은 관련 법령, 본 규정 및 회사의 제반 규정·지침을 성실히 준수하여야 한다.",
+        "reference_output": '{"risk_detected": true, "risk_level": "high", "violation": "제12조(겸업 금지) 위반", "detail": "회사 사전 서면 승인 없이 외부 스타트업 CTO로 활동, 근무시간 중 외부 업무 처리", "recommendation": "즉시 면담을 통한 사실 확인, 겸업 중단 요구, 인사위원회 회부 검토, 영업비밀 유출 여부 조사"}',
+        "eval_criteria": ["위반 감지 정확도", "겸업 금지 규정 정확 적용", "후속 조치 구체성"],
+    },
+    {
+        "category": "risk_detection",
+        "subcategory": "위반_백업",
+        "instruction": "다음 내용에서 규정 위반 여부를 감지하세요.",
+        "input": "회의 내용: 인프라팀 점검 결과, 고객 DB 백업이 3개월째 실패 상태로 방치되어 있었음. 백업 실패 알림이 스팸 필터에 걸려 담당자가 인지하지 못한 것으로 확인됨.\n\n관련 규정:\n제23조(백업 및 복구관리) - 주요 데이터 및 시스템에 대한 백업 정책을 수립·이행한다. 반기 1회 이상 복구 테스트(DR 훈련)를 실시하고 결과를 기록한다.",
+        "reference_output": '{"risk_detected": true, "risk_level": "high", "violation": "제23조(백업 및 복구관리) 위반", "detail": "고객 DB 백업이 3개월간 실패 상태로 방치. 백업 실패 알림이 스팸 필터에 걸려 미인지", "recommendation": "즉시 백업 복구 및 정상화, 알림 채널 점검(스팸 필터 예외 설정), 백업 상태 모니터링 대시보드 구축, DR 테스트 실시"}',
+        "eval_criteria": ["위반 감지 정확도", "장기 방치의 심각성 인식", "재발 방지 방안 구체성"],
+    },
+    {
+        "category": "risk_detection",
+        "subcategory": "정상_오픈소스",
+        "instruction": "다음 내용에서 규정 위반 여부를 감지하세요.",
+        "input": "회의 내용: 개발팀 이대리가 팀장 사전 승인을 받고 회사 명의로 오픈소스 프로젝트에 버그 수정 PR을 제출함. 회사 영업비밀 미포함 확인 완료, CLA 서명은 법무팀 검토 후 진행.\n\n관련 규정:\n제27조(오픈소스 사용 및 기여 정책) - 회사 명의로 외부 오픈소스 프로젝트에 기여하는 경우: ① 팀장 사전 승인, ② 회사 영업비밀 및 독점 코드 미포함 확인, ③ CLA 서명 필요 시 법무팀 검토.",
+        "reference_output": '{"risk_detected": false, "risk_level": "none", "violation": "", "detail": "팀장 사전 승인, 영업비밀 미포함 확인, CLA 법무팀 검토 진행 등 제27조의 기여 절차를 모두 준수", "recommendation": ""}',
+        "eval_criteria": ["정상 판단 정확도", "오픈소스 기여 절차 이해", "과잉 경고 없음"],
+    },
+    {
+        "category": "risk_detection",
+        "subcategory": "위반_개발환경",
+        "instruction": "다음 내용에서 규정 위반 여부를 감지하세요.",
+        "input": "회의 내용: QA팀에서 테스트 편의를 위해 프로덕션 DB의 고객 데이터를 마스킹 없이 테스트 환경으로 복사하여 사용 중인 사실이 확인됨.\n\n관련 규정:\n제18조(데이터베이스 접근통제) - 개발·테스트 환경에서는 실 운영 데이터의 사용을 금지하며, 불가피한 경우 비식별화(마스킹, 가명처리) 후 사용한다.\n제25조(소프트웨어 개발 보안) - 개발 환경(개발·테스트·스테이징·운영)은 각각 분리하여 운영한다.",
+        "reference_output": '{"risk_detected": true, "risk_level": "high", "violation": "제18조(데이터베이스 접근통제) 위반", "detail": "프로덕션 고객 데이터를 마스킹 없이 테스트 환경에 복사하여 사용", "recommendation": "즉시 테스트 환경의 실 데이터 삭제, 마스킹/가명처리된 테스트 데이터셋 생성 후 교체, 데이터 복사 절차에 비식별화 의무화"}',
+        "eval_criteria": ["위반 감지 정확도", "데이터 비식별화 원칙 이해", "즉시 조치 포함"],
     },
     # --- 한국어 이해력 (7개) ---
     {
@@ -438,6 +563,31 @@ extra_tests = [
             "논리적 추론 과정",
             "최종 판단 정확성",
         ],
+    },
+    # --- 한국어 이해력 추가분 (3개) ---
+    {
+        "category": "korean_understanding",
+        "subcategory": "규정해석추론",
+        "instruction": "다음 규정 조항을 읽고 질문에 답하세요.",
+        "input": "규정 조항:\n제6조 (수습기간) - 신규 채용자에 대하여 입사일로부터 3개월간을 수습기간으로 한다.\n제17조 (정보시스템 접근통제) - 접근 권한은 분기 1회 이상 정기적으로 검토하며, 인사 변동 발생 시 즉시 권한을 변경 또는 회수한다.\n제29조 (정보보호 교육) - 신규 입사자는 입사 후 1개월 이내에 정보보호 교육을 이수하여야 하며, 이수하지 않은 경우 정보시스템 접근 권한을 제한할 수 있다.\n\n질문: 2월 1일에 입사한 신입사원이 정보보호 교육을 아직 이수하지 않았고, 현재 2월 25일입니다. 이 신입사원의 시스템 접근 권한은 어떻게 되어야 하나요?",
+        "reference_output": "현재 2월 25일이므로 입사 후 약 25일이 경과한 상태입니다.\n\n1. 수습기간: 제6조에 따라 3개월(~5월 1일)까지 수습기간 중입니다.\n2. 정보보호 교육: 제29조에 따라 입사 후 1개월 이내(~3월 1일)까지 교육을 이수해야 합니다. 아직 기한이 남아 있으므로 위반은 아닙니다.\n3. 접근 권한: 현재는 교육 미이수가 규정 위반이 아니므로 즉시 권한 제한 대상은 아닙니다. 다만 3월 1일까지 미이수 시 접근 권한 제한이 가능합니다.\n\n결론: 현재는 정상이나, 3월 1일 전까지 교육 이수를 독려해야 합니다.",
+        "eval_criteria": ["다중 조항 종합 해석", "날짜 기반 추론 정확성", "현실적 판단"],
+    },
+    {
+        "category": "korean_understanding",
+        "subcategory": "비교분석",
+        "instruction": "두 상황을 비교하여 규정 준수 여부를 분석하세요.",
+        "input": "상황 A: 개발팀 김대리가 긴급 장애 대응을 위해 운영 서버의 코드를 직접 수정하고, 사후에 변경관리 절차를 24시간 내에 완료했다.\n\n상황 B: 개발팀 박과장이 새로운 기능 배포를 위해 변경관리 절차 없이 운영 서버에 직접 코드를 배포했다. 사후 절차도 진행하지 않았다.\n\n관련 규정: 제25조(소프트웨어 개발 보안) - 운영 환경에 대한 직접 코드 수정을 금지한다. 제21조(변경관리) - 긴급 변경의 경우 사후 승인을 허용하되, 변경 시행 후 24시간 이내에 변경관리 절차를 완료하여야 한다.",
+        "reference_output": "상황 A: 규정 일부 위반이나 참작 가능\n- 제25조의 운영 환경 직접 코드 수정 금지 원칙에는 위반됩니다.\n- 다만 긴급 장애 대응 상황이었고, 제21조에 따라 사후 24시간 내 변경관리 절차를 완료했으므로 긴급 변경 예외 조항을 적용할 수 있습니다.\n\n상황 B: 명백한 규정 위반\n- 제25조의 운영 환경 직접 코드 수정 금지 위반입니다.\n- 긴급 상황이 아닌 신규 기능 배포이므로 긴급 변경 예외를 적용할 수 없습니다.\n- 사후 변경관리 절차도 미진행으로 제21조도 위반입니다.\n\n결론: 상황 A는 긴급 예외 적용 가능, 상황 B는 이중 위반으로 징계 대상입니다.",
+        "eval_criteria": ["두 상황 비교 정확도", "예외 조항 적용 능력", "규정 근거 명시"],
+    },
+    {
+        "category": "korean_understanding",
+        "subcategory": "절차나열",
+        "instruction": "주어진 규정을 바탕으로 올바른 절차를 순서대로 나열하세요.",
+        "input": "다음 조항들을 참고하여, 신입사원이 입사 후 사내 시스템에 정상적으로 접근하기까지 거쳐야 하는 절차를 순서대로 정리하세요.\n\n제4조(채용) - 채용 시 비밀유지서약서를 제출하여야 한다.\n제5조(근로계약) - 정보보호 의무 및 비밀유지 조항이 포함된 근로계약을 체결한다.\n제6조(수습기간) - 입사일로부터 3개월간 수습기간이다.\n제17조(정보시스템 접근통제) - 업무상 필요한 최소한의 접근 권한을 부여하며, 부서장 승인이 필요하다.\n제29조(정보보호 교육) - 입사 후 1개월 이내에 정보보호 교육을 이수해야 한다.",
+        "reference_output": "신입사원 사내 시스템 접근까지의 절차:\n\n1. 비밀유지서약서 제출 (제4조) — 채용 확정 시\n2. 근로계약 체결 (제5조) — 정보보호 의무 조항 포함\n3. 수습기간 시작 (제6조) — 입사일부터 3개월\n4. 부서장 승인을 받아 최소 권한 접근 권한 부여 (제17조)\n5. 입사 후 1개월 이내 정보보호 교육 이수 (제29조)\n\n참고: 정보보호 교육 미이수 시 시스템 접근 권한이 제한될 수 있으며(제29조), 수습기간 중 정보보호 규정 준수 여부가 평가 기준에 포함됩니다(제6조).",
+        "eval_criteria": ["절차 순서 정확성", "근거 조항 매핑", "보충 설명 적절성"],
     },
 ]
 

@@ -1,10 +1,10 @@
 # 모델 벤치마크 설정 (이슈 #7)
 # 사용법:
-#   python scripts/run_benchmark.py --model qwen3
-#   python scripts/run_benchmark.py --model kanana
-#   python scripts/run_benchmark.py --model exaone
-#   python scripts/run_benchmark.py --model tri7b
-#   python scripts/run_benchmark.py --report    (전체 비교 리포트 생성)
+#   python scripts/benchmark/run.py --model qwen3
+#   python scripts/benchmark/run.py --model kanana
+#   python scripts/benchmark/run.py --model exaone
+#   python scripts/benchmark/run.py --model tri7b
+#   python scripts/benchmark/run.py --report    (전체 비교 리포트 생성)
 
 models:
   qwen3:
@@ -40,13 +40,13 @@ inference:
   do_sample: true
   repetition_penalty: 1.1
 
-# 평가 기준 (TASK_BOARD 4개 축)
+# 평가 기준 (TASK_BOARD 4개 축) — 규정해석 비중 강화 (v2, 2026-02-11)
 eval_axes:
   korean:           # 한국어 능력
-    weight: 0.25
+    weight: 0.20
     metrics: ["rouge_l", "korean_fluency"]
-  regulation:       # 규정 해석 정확도
-    weight: 0.30
+  regulation:       # 규정 해석 정확도 (핵심 축 — RAG + 규정 판단)
+    weight: 0.35
     metrics: ["judgment_accuracy", "qa_relevance"]
   format:           # 구조화 출력 (JSON 등)
     weight: 0.25

@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================
 # RunPod 벤치마크 환경 셋업 스크립트
-# Pod 터미널에서 실행: bash scripts/runpod_setup.sh
+# Pod 터미널에서 실행: bash scripts/benchmark/runpod_setup.sh
 # =============================================================
 
 set -e
@@ -74,7 +74,7 @@ if [ -f "$PROJECT_DIR/data/evaluation/benchmark_testset.jsonl" ]; then
     echo "  benchmark_testset.jsonl: ${COUNT}개 항목"
 else
     echo "  테스트셋 생성 중..."
-    python3 scripts/create_benchmark_testset.py
+    python3 scripts/benchmark/create_testset.py
 fi
 
 echo ""
@@ -85,14 +85,14 @@ echo ""
 echo "벤치마크 실행 명령어:"
 echo ""
 echo "  # 모델별 실행 (하나씩)"
-echo "  python scripts/run_benchmark.py --model qwen3"
-echo "  python scripts/run_benchmark.py --model kanana"
-echo "  python scripts/run_benchmark.py --model exaone"
-echo "  python scripts/run_benchmark.py --model tri7b"
+echo "  python scripts/benchmark/run.py --model qwen3"
+echo "  python scripts/benchmark/run.py --model kanana"
+echo "  python scripts/benchmark/run.py --model exaone"
+echo "  python scripts/benchmark/run.py --model tri7b"
 echo ""
 echo "  # 전체 한번에 실행"
-echo "  bash scripts/runpod_run_all.sh"
+echo "  bash scripts/benchmark/runpod_run_all.sh"
 echo ""
 echo "  # 비교 리포트"
-echo "  python scripts/run_benchmark.py --report"
+echo "  python scripts/benchmark/run.py --report"
 echo ""

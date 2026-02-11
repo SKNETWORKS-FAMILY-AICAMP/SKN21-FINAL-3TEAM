@@ -6,19 +6,19 @@ Qwen3 / Kanana / EXAONE / Tri-7B 베이스 모델 비교
 
 사용법:
   # 개별 모델 벤치마크
-  python scripts/run_benchmark.py --model qwen3
-  python scripts/run_benchmark.py --model kanana
-  python scripts/run_benchmark.py --model exaone
-  python scripts/run_benchmark.py --model tri7b
+  python scripts/benchmark/run.py --model qwen3
+  python scripts/benchmark/run.py --model kanana
+  python scripts/benchmark/run.py --model exaone
+  python scripts/benchmark/run.py --model tri7b
 
   # 전체 비교 리포트
-  python scripts/run_benchmark.py --report
+  python scripts/benchmark/run.py --report
 
   # 특정 카테고리만 테스트 (빠른 확인용)
-  python scripts/run_benchmark.py --model qwen3 --category judgment
+  python scripts/benchmark/run.py --model qwen3 --category judgment
 
   # GPU 지정
-  python scripts/run_benchmark.py --model qwen3 --device cuda:0
+  python scripts/benchmark/run.py --model qwen3 --device cuda:0
 """
 
 import argparse
@@ -38,8 +38,8 @@ from tqdm import tqdm
 # 경로 설정
 # ============================================================
 SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_DIR = SCRIPT_DIR.parent
-CONFIG_PATH = SCRIPT_DIR / "benchmark_config.yaml"
+PROJECT_DIR = SCRIPT_DIR.parent.parent
+CONFIG_PATH = SCRIPT_DIR / "config.yaml"
 
 sys.path.insert(0, str(PROJECT_DIR))
 
@@ -519,7 +519,7 @@ def generate_report(config: dict):
 
     if not model_results:
         print("결과 파일이 없습니다. 먼저 벤치마크를 실행하세요.")
-        print("  python scripts/run_benchmark.py --model qwen3")
+        print("  python scripts/benchmark/run.py --model qwen3")
         return
 
     print(
@@ -648,7 +648,7 @@ def generate_report(config: dict):
     L = []  # lines
     L.append("# 모델 벤치마크 비교 리포트")
     L.append(f"\n> 생성일: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    L.append("> 테스트셋: benchmark_testset.jsonl (70개)")
+    L.append("> 테스트셋: benchmark_testset.jsonl (87개)")
     L.append("")
 
     # 종합 순위
@@ -831,11 +831,11 @@ def main():
     else:
         parser.print_help()
         print("\n사용 예시:")
-        print("  python scripts/run_benchmark.py --model qwen3")
-        print("  python scripts/run_benchmark.py --model kanana")
-        print("  python scripts/run_benchmark.py --model exaone")
-        print("  python scripts/run_benchmark.py --model tri7b")
-        print("  python scripts/run_benchmark.py --report")
+        print("  python scripts/benchmark/run.py --model qwen3")
+        print("  python scripts/benchmark/run.py --model kanana")
+        print("  python scripts/benchmark/run.py --model exaone")
+        print("  python scripts/benchmark/run.py --model tri7b")
+        print("  python scripts/benchmark/run.py --report")
 
 
 if __name__ == "__main__":
