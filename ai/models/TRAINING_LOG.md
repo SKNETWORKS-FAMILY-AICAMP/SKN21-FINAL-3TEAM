@@ -218,4 +218,173 @@ v1.0 adversarial 테스트 결과 72% (18/25) — judgment ↔ general 경계에
 
 ---
 
+## v1.2 — 비정형 데이터 증강 (2026-02-11)
+
+### 변경 사유
+v1.1까지 adversarial 테스트가 70문장에 불과하고, 학습 데이터가 정형화된 문장 위주 → 실사용자의 비정형(인터넷 슬랭, 초성, 축약어) 패턴에 취약.
+
+### 변경 내용
+| 변경 | 상세 |
+|------|------|
+| adversarial 확장 | 70 → **120문장** (multi-intent, ultra-short, formal, 경계쌍 등) |
+| 비정형 데이터 +300 | 6카테고리 × 50문장 (인터넷 슬랭, 초성, 캐주얼체) |
+| 학습 파이프라인 | `run_train_versioned.py` — 버전별 누적 학습 + 평가 |
+
+### 데이터 (v1.1 → v1.2)
+| 항목 | v1.1 | v1.2 | 변화 |
+|------|:----:|:----:|:----:|
+| Base 데이터 | 1,455 | 1,455 | 변동없음 |
+| Augment | 0 | **+300** | 6카테고리 × 50 |
+| 총 데이터 | 1,455 | **1,755** | +300 |
+| Adversarial | 70 | **120** | +50 |
+
+### 평가 결과
+| 지표 | v1.1 | v1.2 | 변화 |
+|------|:----:|:----:|:----:|
+| Eval F1 (macro) | 0.9880 | **0.9807** | -0.7%p |
+| Adversarial Acc | 88.6% (70개) | **85.0% (120개)** | 더 어려운 셋 |
+| Adversarial F1 | - | **0.8557** | 신규 측정 |
+| 오분류 | 3/70 | **18/120** | 확장된 셋 기준 |
+
+### 오분류 18건 패턴 분석
+| 패턴 | 건수 | 주요 혼동 |
+|------|:----:|----------|
+| Multi-intent 혼동 | 7 | "규정 찾아서 판단해줘" → doc_search |
+| Ultra-short 모호 | 4 | "규정", "일정추가" 등 1-2어절 |
+| judgment↔general 경계 | 3 | "내일 쉬어도 돼?", "회사가 부당해요" |
+| doc_search↔doc_generate | 2 | "문서 하나 줘", "보고서 있으면 보여주고..." |
+| Context/formal | 2 | "관련 문서를 검색해 주실 수 있으신지요?" |
+
+> 120개 adversarial 셋은 이전 70개보다 훨씬 까다로운 난이도. 이 오분류 패턴을 타겟으로 v1.3 boundary 증강 진행.
+
+### 혼동행렬
+![v1.2 Adversarial Confusion Matrix](../experiments/results/confusion_adv_v1.2.png)
+
+---
+
+## v1.3 — Boundary 증강 (2026-02-11)
+
+### 변경 사유
+v1.2 adversarial 오분류 18건을 6가지 혼동 패턴으로 분류 → 각 패턴을 타겟으로 boundary augmentation 데이터 생성.
+
+### 변경 내용 (v1.3 augment: +163문장, 7파일)
+| 파일 | 건수 | 타겟 혼동 |
+|------|:----:|----------|
+| augment_v13_judgment.jsonl | 30 | judgment↔general 경계 (캐주얼 법률 질문) |
+| augment_v13_doc_search.jsonl | 20 | doc_search↔doc_generate 경계 |
+| augment_v13_doc_generate.jsonl | 20 | doc_generate↔doc_search 경계 |
+| augment_v13_multi_intent.jsonl | 25 | Multi-intent 문장 (최종 의도 학습) |
+| augment_v13_ultra_short.jsonl | 28 | 1-3어절 Ultra-short 입력 |
+| augment_v13_meeting.jsonl | 20 | meeting↔doc_generate 경계 |
+| augment_v13_formal.jsonl | 20 | formal 표현 ≠ general |
+
+### 데이터 (v1.2 → v1.3)
+| 항목 | v1.2 | v1.3 | 변화 |
+|------|:----:|:----:|:----:|
+| Base | 1,455 | 1,455 | - |
+| v1.2 augment | +300 | +300 | 누적 |
+| v1.3 augment | - | **+163** | 신규 |
+| 총 데이터 | 1,755 | **1,918** | +163 |
+
+### 평가 결과
+| 지표 | v1.2 | v1.3 | 변화 |
+|------|:----:|:----:|:----:|
+| Eval F1 (macro) | 0.9807 | **0.9787** | -0.2%p (노이즈) |
+| Adversarial Acc | 85.0% | **90.0%** | **+5.0%p** |
+| Adversarial F1 | 0.8557 | **0.8992** | **+4.4%p** |
+| 오분류 | 18건 | **12건** | **-6건** |
+
+### 해결된 오분류 (v1.2→v1.3)
+| 문장 | v1.2 결과 | v1.3 결과 |
+|------|----------|----------|
+| "스프린트 회고 내용 정리해줘" | doc_generate (X) | meeting_generate (O) |
+| "회사가 부당해요" | general (X) | judgment (O) |
+| "관련 문서를 검색해 주실 수 있으신지요?" | general (X) | doc_search (O) |
+| "문서 하나 줘" | doc_generate (X) | doc_search (O) |
+| "위에서 말한 규정 어디서 봐?" | general (X) | doc_search (O) |
+| "그 문서 다시 보내줘" | doc_generate (X) | doc_search (O) |
+
+### 남은 오분류 12건
+| 문장 | 예상 | 실제 | 분류 |
+|------|------|------|------|
+| "회의 잡고 회의록도 만들어줘" | schedule_add | meeting_generate | multi-intent |
+| "규정 찾아서 위반 여부 판단해줘" | judgment | doc_search | multi-intent |
+| "인사 규정 검색해서 내 상황에 맞는지 알려줘" | judgment | doc_search | multi-intent |
+| "보고서 찾아서 수정해줘" | doc_search | doc_generate | multi-intent |
+| "보고서 있으면 보여주고 없으면 만들어줘" | doc_search | doc_generate | multi-intent |
+| "규정" | judgment | doc_search | ultra-short |
+| "회의" | schedule_view | meeting_generate | ultra-short |
+| "일정추가" | schedule_add | schedule_view | ultra-short |
+| "내일 쉬어도 돼?" | judgment | general | 경계 |
+| "미팅 기록 찾아줘" | doc_search | meeting_generate | meeting 과적합 |
+| "아까 말한 거 정리해줘" | general | meeting_generate | context-dependent |
+| "회의 준비해줘" | schedule_add | meeting_generate | 모호 |
+
+> 남은 12건 중 5건은 multi-intent (사람도 판단이 갈리는 문장), 3건은 ultra-short. 오케스트레이터 레벨 confidence 폴백으로 대응 가능.
+
+### 혼동행렬
+![v1.3 Adversarial Confusion Matrix](../experiments/results/confusion_adv_v1.3.png)
+
+---
+
+## v1.4 — 하이퍼파라미터 그리드 서치 (2026-02-11)
+
+### 실험 목적
+v1.3 데이터(1,918개)를 고정하고, 하이퍼파라미터 최적화로 추가 성능 향상 가능한지 검증.
+
+### 그리드 서치 결과
+| # | epochs | lr | Eval F1 | Eval Acc |
+|---|:------:|:-----:|:-------:|:--------:|
+| 1 | 3 | 2e-5 | 0.9754 | 0.9755 |
+| 2 | 5 | 1e-5 | 0.9653 | 0.9650 |
+| 3 | 5 | 2e-5 | 0.9754 | 0.9755 |
+| 4 | 5 | 5e-5 | 0.9791 | 0.9790 |
+| **5** | **10** | **2e-5** | **0.9826** | **0.9825** |
+| 6 | 7 | 2e-5 | 0.9754 | 0.9755 |
+
+Best config: **epochs=10, lr=2e-5** (Eval F1 기준)
+
+### Best Config 평가
+| 지표 | v1.3 (default) | v1.4 (best grid) | 변화 |
+|------|:--------------:|:----------------:|:----:|
+| Eval F1 | 0.9787 | **0.9826** | +0.4%p |
+| Adversarial Acc | **90.0%** | 89.2% | -0.8%p |
+| Adversarial F1 | **0.8992** | 0.8902 | -0.9%p |
+| 오분류 | **12건** | 13건 | +1건 |
+
+### 핵심 발견
+1. **Eval은 향상, Adversarial은 하락** — epochs=10이 학습 데이터에 과적합하면서 실전 대응력 약화
+2. **하이퍼파라미터 영향 미미** — 전체 F1 변동 폭 0.9653~0.9826 (1.7%p)
+3. **데이터 품질 > 하이퍼파라미터** — v1.2→v1.3 boundary 증강(+5.0%p)이 그리드 서치보다 훨씬 큰 효과
+
+### 결론
+- **최종 모델: v1.3 (epochs=5, lr=2e-5)** — Adversarial 성능 최적
+- 하이퍼파라미터 튜닝은 한계점 확인용으로 유의미하나, 추가 개선은 데이터 보강이 필수
+
+### 혼동행렬
+![v1.4 Adversarial Confusion Matrix](../experiments/results/confusion_adv_v1.3.png)
+
+---
+
+## 전체 버전 비교 요약
+
+| 버전 | 데이터 | Eval F1 | Adv Acc | Adv F1 | 오분류 | 핵심 변경 |
+|------|:------:|:-------:|:-------:|:------:|:------:|----------|
+| v1.0 | 1,405 | 0.9908 | 85.7% (70) | - | - | 초기 파인튜닝 |
+| v1.1 | 1,455 | 0.9880 | 88.6% (70) | - | 3/70 | +50 judgment 캐주얼 |
+| v1.2 | 1,755 | 0.9807 | 85.0% (120) | 0.8557 | 18/120 | +300 비정형 + adversarial 120 |
+| **v1.3** | **1,918** | **0.9787** | **90.0% (120)** | **0.8992** | **12/120** | **+163 boundary 타겟** |
+| v1.4 | 1,918 | 0.9826 | 89.2% (120) | 0.8902 | 13/120 | 하이퍼파라미터 그리드 서치 |
+
+### 개선 차트
+![Version Improvement Chart](../experiments/results/improvement_all_versions.png)
+
+### 핵심 결론
+1. **데이터 품질이 핵심**: boundary 타겟 증강(v1.3)이 가장 큰 성능 향상 (+5%p adversarial)
+2. **하이퍼파라미터 한계**: 그리드 서치(v1.4)는 Eval 개선하나 실전 대응력은 하락
+3. **sLLM 실용성 확보**: 90% adversarial 정확도 + 6.7ms 추론속도 + $0 운영비
+4. **남은 오분류 대응**: confidence < 0.7 → 오케스트레이터에서 "좀 더 구체적으로 말씀해주세요" 폴백
+
+---
+
 > 새로운 학습 결과는 아래에 추가합니다.

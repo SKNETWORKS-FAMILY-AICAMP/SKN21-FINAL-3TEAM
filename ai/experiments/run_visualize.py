@@ -134,7 +134,7 @@ def generate_improvement_chart():
     errors = [5, 0]
     b3 = axes[2].bar(versions, errors, color=["#EF9A9A", "#4CAF50"], width=0.5)
     axes[2].set_ylabel("Error Count")
-    axes[2].set_title("judgment → general Errors")
+    axes[2].set_title("judgment -> general Errors")
     axes[2].set_ylim(0, 7)
     for bar, val in zip(b3, errors):
         axes[2].text(
@@ -143,7 +143,7 @@ def generate_improvement_chart():
         )
 
     fig.suptitle(
-        "Model Improvement: v1.0 → v1.1\n"
+        "Model Improvement: v1.0 -> v1.1\n"
         "(+50 casual judgment samples)",
         fontsize=14, fontweight="bold",
     )
@@ -151,6 +151,98 @@ def generate_improvement_chart():
     plt.savefig(RESULTS_DIR / "improvement_v1.png", dpi=150)
     plt.close()
     print("    -> improvement_v1.png")
+
+
+def generate_all_versions_chart():
+    """전체 버전 비교 차트 (v1.0 ~ v1.4)"""
+
+    versions = ["v1.0", "v1.1", "v1.2", "v1.3", "v1.4"]
+
+    # ── 데이터 ──
+    eval_f1 = [99.08, 98.80, 98.07, 97.87, 98.26]
+    # v1.0/v1.1: 25-sample adversarial (다른 셋이므로 비교 불가 → None)
+    # v1.2~v1.4: 120-sample adversarial
+    adv_acc_120 = [None, None, 85.0, 90.0, 89.2]
+    adv_f1_120 = [None, None, 85.57, 89.92, 89.02]
+    data_count = [1405, 1455, 1755, 1918, 1918]
+    errors_120 = [None, None, 18, 12, 13]
+
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+
+    # ── 1) Eval F1 (전 버전) ──
+    colors1 = ["#90CAF9", "#64B5F6", "#42A5F5", "#1976D2", "#0D47A1"]
+    b1 = axes[0, 0].bar(versions, eval_f1, color=colors1, width=0.6)
+    axes[0, 0].set_ylabel("F1 Score (%)")
+    axes[0, 0].set_title("Eval F1 (macro) — All Versions")
+    axes[0, 0].set_ylim(96.5, 100)
+    for bar, val in zip(b1, eval_f1):
+        axes[0, 0].text(
+            bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.05,
+            f"{val:.2f}%", ha="center", fontsize=10, fontweight="bold",
+        )
+
+    # ── 2) Adversarial F1 (v1.2~v1.4, 120 samples) ──
+    v_adv = ["v1.2", "v1.3", "v1.4"]
+    f1_adv = [85.57, 89.92, 89.02]
+    colors2 = ["#FFCC80", "#FF9800", "#E65100"]
+    b2 = axes[0, 1].bar(v_adv, f1_adv, color=colors2, width=0.5)
+    axes[0, 1].set_ylabel("F1 Score (%)")
+    axes[0, 1].set_title("Adversarial F1 (120 samples)")
+    axes[0, 1].set_ylim(80, 95)
+    for bar, val in zip(b2, f1_adv):
+        axes[0, 1].text(
+            bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.3,
+            f"{val:.2f}%", ha="center", fontsize=11, fontweight="bold",
+        )
+    # 최고점 표시
+    axes[0, 1].bar(["v1.3"], [89.92], color="#FF9800", width=0.5,
+                    edgecolor="#E65100", linewidth=2.5)
+    axes[0, 1].annotate(
+        "BEST", xy=(1, 89.92), xytext=(1, 93),
+        fontsize=12, color="#E65100", fontweight="bold", ha="center",
+        arrowprops=dict(arrowstyle="->", color="#E65100"),
+    )
+
+    # ── 3) 오분류 건수 (v1.2~v1.4) ──
+    err_vals = [18, 12, 13]
+    colors3 = ["#EF9A9A", "#4CAF50", "#FFA726"]
+    b3 = axes[1, 0].bar(v_adv, err_vals, color=colors3, width=0.5)
+    axes[1, 0].set_ylabel("Error Count")
+    axes[1, 0].set_title("Adversarial Misclassifications (of 120)")
+    axes[1, 0].set_ylim(0, 25)
+    for bar, val in zip(b3, err_vals):
+        axes[1, 0].text(
+            bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.4,
+            str(val), ha="center", fontsize=13, fontweight="bold",
+        )
+    # 개선 화살표
+    axes[1, 0].annotate(
+        "-6", xy=(1, 12), xytext=(0.5, 5),
+        fontsize=14, color="#2E7D32", fontweight="bold", ha="center",
+        arrowprops=dict(arrowstyle="->", color="#2E7D32"),
+    )
+
+    # ── 4) 데이터 규모 변화 ──
+    colors4 = ["#E0E0E0", "#BDBDBD", "#9E9E9E", "#757575", "#616161"]
+    b4 = axes[1, 1].bar(versions, data_count, color=colors4, width=0.6)
+    axes[1, 1].set_ylabel("Training Samples")
+    axes[1, 1].set_title("Training Data Size")
+    axes[1, 1].set_ylim(0, 2200)
+    for bar, val in zip(b4, data_count):
+        axes[1, 1].text(
+            bar.get_x() + bar.get_width() / 2, bar.get_height() + 20,
+            f"{val:,}", ha="center", fontsize=10, fontweight="bold",
+        )
+
+    fig.suptitle(
+        "Intent Classification — Version Progression (v1.0 -> v1.4)\n"
+        "Data Quality > Hyperparameters",
+        fontsize=14, fontweight="bold",
+    )
+    plt.tight_layout()
+    plt.savefig(RESULTS_DIR / "improvement_all_versions.png", dpi=150)
+    plt.close()
+    print("    -> improvement_all_versions.png")
 
 
 def main():
@@ -161,8 +253,11 @@ def main():
     print("\n[1/2] 방법론 비교 차트...")
     generate_method_comparison_chart()
 
-    print("\n[2/2] v1.0 → v1.1 개선 차트...")
+    print("\n[2/3] v1.0 → v1.1 개선 차트...")
     generate_improvement_chart()
+
+    print("\n[3/3] 전체 버전 비교 차트...")
+    generate_all_versions_chart()
 
     print(f"\n{'=' * 60}")
     print("  생성된 파일:")
