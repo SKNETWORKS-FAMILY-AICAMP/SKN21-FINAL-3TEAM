@@ -167,7 +167,7 @@ async def google_callback(
     await db.flush()
 
     # 프론트엔드로 리다이렉트 (연결 성공)
-    return RedirectResponse(url="http://localhost:5173/settings?google=connected")
+    return RedirectResponse(url=f"{settings.FRONTEND_URL}/schedules?google=connected")
 
 
 @router.post("/disconnect", response_model=GoogleDisconnectResponse)

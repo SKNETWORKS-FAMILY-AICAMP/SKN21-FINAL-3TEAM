@@ -41,8 +41,7 @@ class PasswordResetRequest(BaseModel):
 
 class PasswordResetConfirm(BaseModel):
     """비밀번호 재설정 확인 — 인증 코드 + 새 비밀번호"""
-    email: EmailStr
-    reset_code: str
+    token: str  # 프론트엔드에서 인증 코드를 token으로 전달
     new_password: str
 
 

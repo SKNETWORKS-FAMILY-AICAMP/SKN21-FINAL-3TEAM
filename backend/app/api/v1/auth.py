@@ -122,14 +122,20 @@ async def confirm_password_reset(
     request: PasswordResetConfirm, db: AsyncSession = Depends(get_db)
 ):
     """비밀번호 재설정 확인 — 인증 코드 검증 + 비밀번호 변경"""
-    stored_code = _reset_codes.get(request.email)
-    if stored_code is None or stored_code != request.reset_code:
+    # token(인증 코드)으로 이메일 역조회
+    target_email = None
+    for email, code in _reset_codes.items():
+        if code == request.token:
+            target_email = email
+            break
+
+    if target_email is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="인증 코드가 유효하지 않습니다",
         )
 
-    result = await db.execute(select(User).where(User.email == request.email))
+    result = await db.execute(select(User).where(User.email == target_email))
     user = result.scalar_one_or_none()
 
     if user is None:
@@ -139,6 +145,6 @@ async def confirm_password_reset(
         )
 
     user.hashed_password = hash_password(request.new_password)
-    del _reset_codes[request.email]
+    del _reset_codes[target_email]
 
     return PasswordResetResponse(success=True, message="비밀번호가 변경되었습니다")
