@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 
 export default function Header() {
-  const user = useAuthStore((s) => s.user);
+  const _user = useAuthStore((s) => s.user);
 
   return (
     <header className="flex justify-between items-center py-6 sticky top-0 bg-surface-main z-10">

@@ -1,4 +1,6 @@
-export default function RegulationPanel({ regulations = [], isOpen, onClose }) {
+import KeywordHighlight from '../common/KeywordHighlight';
+
+export default function RegulationPanel({ regulations = [], isOpen, onClose, searchQuery = '' }) {
   if (!isOpen) return null;
 
   return (
@@ -8,6 +10,7 @@ export default function RegulationPanel({ regulations = [], isOpen, onClose }) {
           <span>📖</span>관련 규정
         </div>
         <button
+          aria-label="규정 패널 닫기"
           onClick={onClose}
           className="w-7 h-7 rounded-md flex items-center justify-center text-neutral-muted hover:bg-surface-hover transition"
         >
@@ -20,12 +23,18 @@ export default function RegulationPanel({ regulations = [], isOpen, onClose }) {
         )}
         {regulations.map((reg, i) => (
           <div key={i} className="p-3 rounded-sm border border-neutral-divider hover:border-primary-300 transition">
-            <div className="text-[13px] font-semibold text-neutral-main mb-1">{reg.name}</div>
+            <div className="text-[13px] font-semibold text-neutral-main mb-1">
+              <KeywordHighlight text={reg.name} keyword={searchQuery} />
+            </div>
             {reg.article && (
-              <div className="text-xs text-primary-700 font-medium mb-1.5">{reg.article}</div>
+              <div className="text-xs text-primary-700 font-medium mb-1.5">
+                <KeywordHighlight text={reg.article} keyword={searchQuery} />
+              </div>
             )}
             {reg.content && (
-              <p className="text-xs text-neutral-sub leading-relaxed">{reg.content}</p>
+              <p className="text-xs text-neutral-sub leading-relaxed">
+                <KeywordHighlight text={reg.content} keyword={searchQuery} />
+              </p>
             )}
             {reg.relevance && (
               <div className="mt-2 flex items-center gap-1 text-[11px] text-neutral-muted">

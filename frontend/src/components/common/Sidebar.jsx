@@ -6,6 +6,10 @@ const navItems = [
     { to: '/dashboard', icon: '📊', label: '대시보드' },
     { to: '/chat', icon: '💬', label: 'AI 챗봇' },
   ]},
+  { section: 'AI 생성', items: [
+    { to: '/meeting-minutes', icon: '📋', label: '회의록 생성' },
+    { to: '/document-generate', icon: '📝', label: '문서 생성' },
+  ]},
   { section: '관리', items: [
     { to: '/documents', icon: '📄', label: '문서 관리', badge: 3 },
     { to: '/meetings', icon: '📅', label: '회의 관리' },

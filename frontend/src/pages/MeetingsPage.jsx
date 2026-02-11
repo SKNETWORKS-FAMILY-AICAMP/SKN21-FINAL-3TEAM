@@ -28,7 +28,7 @@ export default function MeetingsPage() {
         <button className="btn-primary">+ 회의록 업로드</button>
       </header>
       <FilterBar tabs={['전체', '분석완료', '분석중']} activeTab={activeTab} onTabChange={setActiveTab} />
-      <div className="grid grid-cols-[1.3fr_1fr] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-5">
         <MeetingList meetings={mockMeetings} selected={selected} onSelect={setSelected} />
         <MeetingDetail meeting={selected} />
       </div>
