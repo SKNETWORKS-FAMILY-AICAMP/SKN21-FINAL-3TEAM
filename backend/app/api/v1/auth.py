@@ -2,11 +2,14 @@
 인증 API (팀원 D 담당)
 - JWT 로그인/회원가입/토큰 갱신
 - 비밀번호 재설정
-- Google OAuth 2.0
+- Google OAuth 2.0 소셜 로그인
 """
 import secrets
+from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,11 +22,13 @@ from app.schemas.auth import (
     PasswordResetConfirm,
     PasswordResetResponse,
 )
+from app.config import get_settings
 from app.db.session import get_db
 from app.models.user import User
 from app.core.security import hash_password, verify_password, create_access_token, verify_token
 from app.api.deps import get_current_user
 
+settings = get_settings()
 router = APIRouter()
 
 # 임시 비밀번호 재설정 코드 저장 (추후 Redis로 교체)
@@ -148,3 +153,86 @@ async def confirm_password_reset(
     del _reset_codes[target_email]
 
     return PasswordResetResponse(success=True, message="비밀번호가 변경되었습니다")
+
+
+# ── Google 소셜 로그인 ──
+
+GOOGLE_LOGIN_REDIRECT_URI = "http://localhost:8000/api/v1/auth/google/callback"
+
+
+@router.get("/google")
+async def google_login():
+    """Google 소셜 로그인 — Google 동의 화면으로 리다이렉트"""
+    params = {
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "redirect_uri": GOOGLE_LOGIN_REDIRECT_URI,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "access_type": "online",
+        "prompt": "select_account",
+    }
+    return RedirectResponse(url=f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}")
+
+
+@router.get("/google/callback")
+async def google_login_callback(
+    code: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Google 소셜 로그인 콜백 — code → 유저 정보 → JWT 발급"""
+    # 1. authorization code → access_token 교환
+    async with httpx.AsyncClient() as client:
+        token_resp = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code": code,
+                "client_id": settings.GOOGLE_CLIENT_ID,
+                "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                "redirect_uri": GOOGLE_LOGIN_REDIRECT_URI,
+                "grant_type": "authorization_code",
+            },
+        )
+
+    if token_resp.status_code != 200:
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/login?error=google_token_failed")
+
+    token_data = token_resp.json()
+    access_token = token_data.get("access_token")
+
+    # 2. access_token → Google 유저 정보 조회
+    async with httpx.AsyncClient() as client:
+        userinfo_resp = await client.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+    if userinfo_resp.status_code != 200:
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/login?error=google_userinfo_failed")
+
+    google_user = userinfo_resp.json()
+    email = google_user.get("email")
+    name = google_user.get("name", email.split("@")[0])
+
+    # 3. DB에서 유저 찾기 (없으면 자동 생성)
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        # Google 로그인으로 자동 회원가입 (비밀번호는 랜덤 — 소셜 전용)
+        user = User(
+            email=email,
+            hashed_password=hash_password(secrets.token_hex(16)),
+            name=name,
+        )
+        db.add(user)
+        await db.flush()
+        await db.refresh(user)
+
+    if not user.is_active:
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/login?error=inactive_account")
+
+    # 4. JWT 발급 → 프론트엔드로 리다이렉트 (토큰을 URL에 포함)
+    jwt_token = create_access_token(data={"sub": str(user.id)})
+    return RedirectResponse(
+        url=f"{settings.FRONTEND_URL}/login?token={jwt_token}&user_name={name}"
+    )
