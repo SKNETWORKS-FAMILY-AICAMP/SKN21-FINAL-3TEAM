@@ -282,11 +282,11 @@
 
   {
     "text": "보고서 찾아서 수정해줘",
-    "label": "doc_search"
+    "label": "doc_generate"
   },
   {
     "text": "회의 잡고 회의록도 만들어줘",
-    "label": "schedule_add"
+    "label": "meeting_generate"
   },
   {
     "text": "규정 찾아서 위반 여부 판단해줘",
@@ -319,7 +319,7 @@
   },
   {
     "text": "규정",
-    "label": "judgment"
+    "label": "doc_search"
   },
   {
     "text": "회의",

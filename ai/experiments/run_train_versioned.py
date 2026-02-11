@@ -58,6 +58,16 @@ ID2LABEL = {i: label for i, label in enumerate(INTENT_LABELS)}
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+SEED = 42
+
+def set_seed(seed=SEED):
+    """재현성을 위한 시드 고정"""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
 
 # ── 데이터 로드 ──
 
@@ -184,6 +194,8 @@ def train_model(train_data, eval_data, output_dir, epochs=5, lr=2e-5, batch_size
         per_device_eval_batch_size=batch_size,
         learning_rate=lr,
         weight_decay=0.01,
+        seed=SEED,
+        data_seed=SEED,
         eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
@@ -357,9 +369,11 @@ def main():
     args = parser.parse_args()
 
     version = args.version
+    set_seed(SEED)
     print("=" * 60)
     print(f"  Intent Classification {version} 학습")
     print(f"  Device: {device}")
+    print(f"  Seed: {SEED}")
     print("=" * 60)
 
     # 1. 데이터 구성

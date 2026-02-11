@@ -173,7 +173,7 @@ def generate_all_versions_chart():
     colors1 = ["#90CAF9", "#64B5F6", "#42A5F5", "#1976D2", "#0D47A1"]
     b1 = axes[0, 0].bar(versions, eval_f1, color=colors1, width=0.6)
     axes[0, 0].set_ylabel("F1 Score (%)")
-    axes[0, 0].set_title("Eval F1 (macro) — All Versions")
+    axes[0, 0].set_title("Eval F1 (macro) — All Versions\n(Eval difficulty increases with data diversity)", fontsize=10)
     axes[0, 0].set_ylim(96.5, 100)
     for bar, val in zip(b1, eval_f1):
         axes[0, 0].text(
@@ -182,8 +182,9 @@ def generate_all_versions_chart():
         )
 
     # ── 2) Adversarial F1 (v1.2~v1.4, 120 samples) ──
+    # NOTE: v1.0/v1.1 used different adversarial set (70 samples), not comparable
     v_adv = ["v1.2", "v1.3", "v1.4"]
-    f1_adv = [85.57, 89.92, 89.02]
+    f1_adv = [85.57, 89.92, 89.02]  # placeholder — update after final retrain
     colors2 = ["#FFCC80", "#FF9800", "#E65100"]
     b2 = axes[0, 1].bar(v_adv, f1_adv, color=colors2, width=0.5)
     axes[0, 1].set_ylabel("F1 Score (%)")
