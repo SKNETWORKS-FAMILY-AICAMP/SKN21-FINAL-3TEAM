@@ -159,7 +159,7 @@ def generate_all_versions_chart():
     versions = ["v1.0", "v1.1", "v1.2", "v1.3", "v1.4"]
 
     # ── 데이터 ──
-    eval_f1 = [99.08, 98.80, 98.07, 97.87, 98.26]
+    eval_f1 = [99.08, 98.80, 98.07, 98.63, 98.26]
     # v1.0/v1.1: 25-sample adversarial (다른 셋이므로 비교 불가 → None)
     # v1.2~v1.4: 120-sample adversarial
     adv_acc_120 = [None, None, 85.0, 91.67, 89.2]
