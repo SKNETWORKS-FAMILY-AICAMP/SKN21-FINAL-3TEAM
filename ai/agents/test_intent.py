@@ -101,42 +101,91 @@ def adversarial_test(tokenizer, model, id2label):
     print()
 
     test_cases = [
-        # doc_search vs doc_generate 경계
+        # ===== doc_search vs doc_generate 경계 (10개) =====
         ("출장 보고서 양식 찾아줘", "doc_search"),
         ("출장 보고서 작성해줘", "doc_generate"),
         ("제안서 템플릿 있어?", "doc_search"),
         ("제안서 만들어줘", "doc_generate"),
+        ("이전에 작성한 보고서 찾아줘", "doc_search"),
+        ("이전 보고서 참고해서 새로 써줘", "doc_generate"),
+        ("NDA 양식 어디서 다운받아?", "doc_search"),
+        ("NDA 초안 작성해줘", "doc_generate"),
+        ("지난달 매출 보고서 보여줘", "doc_search"),
+        ("이번 달 매출 보고서 만들어줘", "doc_generate"),
 
-        # doc_generate vs meeting_generate 경계
+        # ===== doc_generate vs meeting_generate 경계 (8개) =====
         ("회의 내용 정리해줘", "meeting_generate"),
         ("보고서 정리해줘", "doc_generate"),
         ("오늘 미팅 요약해줘", "meeting_generate"),
         ("이 문서 요약해줘", "doc_generate"),
+        ("스프린트 회고 내용 정리해줘", "meeting_generate"),
+        ("프로젝트 현황 보고서 작성해줘", "doc_generate"),
+        ("킥오프 미팅 회의록 만들어줘", "meeting_generate"),
+        ("신입사원 온보딩 가이드 만들어줘", "doc_generate"),
 
-        # schedule_add vs schedule_view 경계
+        # ===== schedule_add vs schedule_view 경계 (10개) =====
         ("내일 회의 있어?", "schedule_view"),
         ("내일 회의 잡아줘", "schedule_add"),
         ("다음 주 일정 알려줘", "schedule_view"),
         ("다음 주에 일정 추가해줘", "schedule_add"),
+        ("금요일 비어있어?", "schedule_view"),
+        ("금요일 3시에 미팅 넣어줘", "schedule_add"),
+        ("이번 달 마감일 뭐 있지?", "schedule_view"),
+        ("프로젝트 마감일 등록해줘", "schedule_add"),
+        ("오후에 일정 있나?", "schedule_view"),
+        ("오후 4시에 팀 회의 예약해줘", "schedule_add"),
 
-        # judgment vs general 경계
+        # ===== judgment vs general 경계 (10개) =====
         ("연차 규정이 뭐야?", "judgment"),
         ("연차 몇 개 남았어?", "general"),
         ("야근 수당 기준이 어떻게 돼?", "judgment"),
         ("야근하기 싫다", "general"),
+        ("육아휴직 남자도 쓸 수 있어?", "judgment"),
+        ("육아 힘들다", "general"),
+        ("겸직 가능해?", "judgment"),
+        ("이직 생각 중이야", "general"),
+        ("회사가 이렇게 해도 되는 거야?", "judgment"),
+        ("회사 밥이 맛없어", "general"),
 
-        # judgment vs doc_search 경계
+        # ===== judgment vs doc_search 경계 (8개) =====
         ("퇴직금 규정 찾아줘", "doc_search"),
         ("퇴직금 받을 수 있어?", "judgment"),
         ("인사 규정 보여줘", "doc_search"),
         ("이 경우 징계 대상이야?", "judgment"),
+        ("보안 정책 문서 어디 있어?", "doc_search"),
+        ("USB 반입해도 돼?", "judgment"),
+        ("근로기준법 자료 찾아줘", "doc_search"),
+        ("주 52시간 넘기면 어떻게 돼?", "judgment"),
 
-        # 비정형 입력
+        # ===== 비정형/구어체 입력 (10개) =====
         ("ㅋㅋㅋ", "general"),
         ("뭐해", "general"),
         ("아 그거 뭐냐 연차 쓸 수 있냐 없냐", "judgment"),
         ("보고서 그거 아까 말한거 해줘", "doc_generate"),
         ("일정 좀", "schedule_view"),
+        ("아까 그 규정 다시 찾아봐", "doc_search"),
+        ("ㅇㅇ 그거 회의록 정리해줘", "meeting_generate"),
+        ("내일 뭐 있더라", "schedule_view"),
+        ("수고", "general"),
+        ("고마워", "general"),
+
+        # ===== 복합/긴 문장 (8개) =====
+        ("지난주 회의에서 나온 액션아이템 정리해서 회의록 만들어줘", "meeting_generate"),
+        ("마케팅팀이랑 수요일 오후에 미팅 잡아줘", "schedule_add"),
+        ("작년 4분기 실적 보고서 찾아서 보여줘", "doc_search"),
+        ("신규 프로젝트 제안서를 지난 제안서 참고해서 작성해줘", "doc_generate"),
+        ("계약직 2년 넘었는데 정규직 전환 안 해주면 불법이야?", "judgment"),
+        ("이번 주 남은 일정이랑 내주 일정 같이 보여줘", "schedule_view"),
+        ("팀장님이 주말 출근하라는데 이거 강제할 수 있는 거야?", "judgment"),
+        ("다음 분기 사업 계획서 초안 좀 잡아줘", "doc_generate"),
+
+        # ===== 오타/축약어 (6개) =====
+        ("연차 ㅆㄹ수있어?", "judgment"),
+        ("회의록 ㄱㄱ", "meeting_generate"),
+        ("내일 ㅇㅈ 뭐야", "schedule_view"),
+        ("ㅂㄱㅅ 써줘", "doc_generate"),
+        ("안녕하세여", "general"),
+        ("일정추가", "schedule_add"),
     ]
 
     correct = 0
