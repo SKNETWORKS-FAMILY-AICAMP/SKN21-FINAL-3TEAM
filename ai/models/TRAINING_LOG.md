@@ -372,6 +372,7 @@ Best config: **epochs=10, lr=2e-5** (Eval F1 기준)
 
 ### 혼동행렬
 ![v1.4 Adversarial Confusion Matrix](../experiments/results/confusion_adv_v1.3.png)
+> v1.4는 v1.3과 동일 데이터(1,918개) 기준이므로 v1.3 혼동행렬을 참조합니다.
 
 ---
 

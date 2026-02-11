@@ -98,3 +98,29 @@
 - #6 LangGraph 오케스트레이터 + SSE 구현
 - 전처리 파이프라인 추가 (초성복원, 맞춤법교정) → adversarial 추가 개선
 - 팀 진도 확인 (경은/승언/혜빈/지영)
+
+---
+
+## 2026-02-11 (화) — 저녁 세션
+
+**실험 5~6 기획서 작성:**
+- EXPERIMENT_PLAN.md에 실험 5 (다중 모델 × 하이퍼파라미터 전탐색) 기획 추가
+  - 비교 모델 3종: klue/bert-base, klue/roberta-base, monologg/koelectra-base-v3
+  - 하이퍼파라미터 4종: epochs[3,5,7,10] × lr[1e-5,2e-5,3e-5,5e-5] × batch[8,16,32] × warmup[0.0,0.06,0.1]
+  - 2단계 진행: Step1 144번(warmup 고정) + Step2 9번(warmup 미세조정) = 총 153번 학습
+- EXPERIMENT_PLAN.md에 실험 6 (전처리 파이프라인 + 최종 성능 검증) 기획 추가
+  - 전처리 4단계: 맞춤법 교정 / 초성 복원 / 슬랭 정규화 / 공백·특수문자 정리
+  - Ablation Study: 전처리 단계별 기여도 개별 측정 (5가지 조합)
+  - seed 3개(42, 123, 456) 반복 → 평균±표준편차로 신뢰성 검증
+- Adversarial 테스트셋 확장 계획: 120 → 200문장 (+80)
+  - 추가 유형: multi-intent 15 / ultra-short 15 / 오타·비정형 15 / formal 10 / context-dependent 10 / boundary 15
+- 발표 스토리라인 6→7단계로 확장 (adversarial 확장 + 검증 강화 포인트 추가)
+- 실험 4→5 논리 연결 수정 (v1.3=최종 → v1.3 데이터를 다른 모델에도 적용)
+- TRAINING_LOG.md vs EXPERIMENT_PLAN.md 내용 대조 → 숫자 불일치 0건 확인
+
+**다음 할 일 (내일):**
+- adversarial 80문장 추가 제작 (200개 확장)
+- max_length 64 충분한지 데이터 길이 확인
+- 실험 5: 3모델 × 153번 그리드 서치 실행 (RunPod A100, ~3~5시간)
+- 실험 6: 전처리 ablation + seed 반복 (~1~2시간)
+- 이후 #6 오케스트레이터 착수

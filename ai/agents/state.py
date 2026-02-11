@@ -17,7 +17,7 @@ class AgentState(TypedDict):
     user_input: str                         # 사용자 입력 텍스트
     user_id: int                            # 사용자 ID
 
-    # ── Intent 분류 (경은) ──
+    # ── Intent 분류 (지용) ──
     intent: str                             # judgment | doc_search | doc_generate | meeting_generate | schedule_add | schedule_view | general
     confidence: float                       # 분류 신뢰도 (0.0~1.0)
 
