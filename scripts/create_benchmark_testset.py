@@ -70,13 +70,19 @@ for jtype, items in judgment_by_type.items():
         sampled.append(random.choice(by_article[article]))
 
     for item in sampled:
+        # 실서비스와 동일하게 규정 원문을 input에 포함 (RAG가 붙여주는 형태)
+        regulation_context = f"관련 규정:\n{item['article']}"
+        if item["basis"]:
+            regulation_context += f": {item['basis']}"
+        bench_input = f"{regulation_context}\n\n질문: {item['question']}"
+
         testset.append(
             {
                 "test_id": f"BENCH-{test_id:03d}",
                 "category": "judgment",
                 "subcategory": item["type"],
-                "instruction": "당신은 듀듀테크놀로지 사내규정 전문가입니다. 다음 질문에 대해 규정에 근거하여 Yes/No/조건부로 판단하고, 근거와 대안을 제시하세요.",
-                "input": item["question"],
+                "instruction": "당신은 듀듀테크놀로지 사내규정 전문가입니다. 다음 규정과 질문을 읽고 Yes/No/조건부로 판단하고, 근거와 대안을 제시하세요.",
+                "input": bench_input,
                 "reference_output": item["full_output"],
                 "metadata": {
                     "source_id": item["id"],
@@ -147,13 +153,16 @@ for qtype in target_types:
     items = qa_by_type[qtype]
     sampled = random.sample(items, min(2, len(items)))
     for item in sampled:
+        # 실서비스와 동일하게 규정 조항을 input에 포함 (RAG가 붙여주는 형태)
+        qa_input = f"관련 규정: {item['article']}\n\n질문: {item['input_q']}"
+
         testset.append(
             {
                 "test_id": f"BENCH-{test_id:03d}",
                 "category": "regulation_qa",
                 "subcategory": item["qtype"],
                 "instruction": item["instruction"],
-                "input": item["input_q"],
+                "input": qa_input,
                 "reference_output": item["output_a"],
                 "metadata": {
                     "source_no": item["no"],
