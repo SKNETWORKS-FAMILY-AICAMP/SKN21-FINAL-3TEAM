@@ -23,6 +23,7 @@ class GoogleStatusResponse(BaseModel):
     """Google 연결 상태"""
     connected: bool
     provider: Optional[str] = None
+    email: Optional[str] = None
     scopes: list[str] = []
     expires_at: Optional[datetime] = None
 

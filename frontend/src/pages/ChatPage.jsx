@@ -48,7 +48,7 @@ export default function ChatPage() {
           >
             📖 규정 패널
           </button>
-          <div className="flex items-center gap-1.5 text-[13px] text-success font-medium">
+          <div className="flex items-center gap-1.5 text-[0.8125rem] text-success font-medium">
             <span className="w-[7px] h-[7px] rounded-full bg-success" />Mock 모드
           </div>
         </div>

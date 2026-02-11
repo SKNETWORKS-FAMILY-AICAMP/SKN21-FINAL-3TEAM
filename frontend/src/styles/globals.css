@@ -30,13 +30,13 @@
     @apply flex justify-between items-center px-5 py-4 border-b border-neutral-divider;
   }
   .card-title {
-    @apply text-[15px] font-bold text-neutral-main flex items-center gap-2;
+    @apply text-[0.9375rem] font-bold text-neutral-main flex items-center gap-2;
   }
   .card-body {
     @apply px-5 py-4;
   }
   .badge {
-    @apply text-[11px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap;
+    @apply text-[0.6875rem] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap;
   }
 }
 

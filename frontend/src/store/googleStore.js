@@ -1,5 +1,5 @@
 /**
- * Google 서비스 Zustand 상태 관리 (팀원 E 담당)
+ * Google 서비스 Zustand 상태 관리
  *
  * 상태:
  *   - connected: bool (Google 연결 여부)
@@ -14,27 +14,154 @@
  *   - disconnect(): 연결 해제
  *   - hasScope(scope): scope 보유 여부
  *   - fetchTasks(): Tasks 목록 조회
+ *   - updateTask(id, completed): Task 상태 변경
+ *   - syncTasks(): Tasks 동기화
  *   - fetchSheets(): Sheets 목록 조회
  */
 import { create } from 'zustand'
+import * as googleApi from '../api/google'
 
 const useGoogleStore = create((set, get) => ({
-  // TODO: 팀원 E 구현
   connected: false,
+  email: null,
   scopes: [],
   loading: false,
   error: null,
+
   tasks: [],
   tasksLoading: false,
+  tasksError: null,
+
   sheets: [],
   sheetsLoading: false,
+  sheetsError: null,
 
-  fetchStatus: async () => { /* TODO: 팀원 E 구현 */ },
-  connect: async (scopes) => { /* TODO: 팀원 E 구현 */ },
-  disconnect: async () => { /* TODO: 팀원 E 구현 */ },
+  // ── OAuth 상태 조회 ──
+  fetchStatus: async () => {
+    set({ loading: true, error: null })
+    try {
+      const { data } = await googleApi.getGoogleStatus()
+      set({
+        connected: data.connected,
+        email: data.email || null,
+        scopes: data.scopes || [],
+        loading: false,
+      })
+    } catch (err) {
+      set({ loading: false, error: err.response?.data?.detail || '상태 조회 실패' })
+    }
+  },
+
+  // ── OAuth 연결 (리다이렉트) ──
+  connect: async (scopes) => {
+    set({ loading: true, error: null })
+    try {
+      const { data } = await googleApi.connectGoogle(scopes)
+      if (data.auth_url) {
+        window.location.href = data.auth_url
+      }
+    } catch (err) {
+      set({ loading: false, error: err.response?.data?.detail || '연결 실패' })
+    }
+  },
+
+  // ── 연결 해제 ──
+  disconnect: async () => {
+    set({ loading: true, error: null })
+    try {
+      await googleApi.disconnectGoogle()
+      set({
+        connected: false,
+        email: null,
+        scopes: [],
+        tasks: [],
+        sheets: [],
+        loading: false,
+      })
+    } catch (err) {
+      set({ loading: false, error: err.response?.data?.detail || '연결 해제 실패' })
+    }
+  },
+
+  // ── Scope 보유 여부 ──
   hasScope: (scope) => get().scopes.includes(scope),
-  fetchTasks: async () => { /* TODO: 팀원 E 구현 */ },
-  fetchSheets: async () => { /* TODO: 팀원 E 구현 */ },
+
+  // ── Google Tasks ──
+  fetchTasks: async () => {
+    set({ tasksLoading: true, tasksError: null })
+    try {
+      const { data } = await googleApi.listTasks()
+      set({ tasks: data.tasks || data || [], tasksLoading: false })
+    } catch (err) {
+      set({ tasksLoading: false, tasksError: err.response?.data?.detail || 'Tasks 조회 실패' })
+    }
+  },
+
+  updateTask: async (actionItemId, completed) => {
+    try {
+      await googleApi.updateTaskStatus(actionItemId, completed)
+      set((state) => ({
+        tasks: state.tasks.map((t) =>
+          t.action_item_id === actionItemId
+            ? { ...t, completed, status: completed ? 'completed' : 'needsAction' }
+            : t
+        ),
+      }))
+    } catch (err) {
+      set({ tasksError: err.response?.data?.detail || 'Task 상태 변경 실패' })
+    }
+  },
+
+  syncTasks: async (meetingId = null) => {
+    set({ tasksLoading: true, tasksError: null })
+    try {
+      await googleApi.syncAllTasks(meetingId)
+      await get().fetchTasks()
+    } catch (err) {
+      set({ tasksLoading: false, tasksError: err.response?.data?.detail || 'Tasks 동기화 실패' })
+    }
+  },
+
+  pullTasks: async () => {
+    set({ tasksLoading: true, tasksError: null })
+    try {
+      await googleApi.pullTaskStatus()
+      await get().fetchTasks()
+    } catch (err) {
+      set({ tasksLoading: false, tasksError: err.response?.data?.detail || 'Tasks Pull 실패' })
+    }
+  },
+
+  // ── Google Sheets ──
+  fetchSheets: async () => {
+    set({ sheetsLoading: true, sheetsError: null })
+    try {
+      const { data } = await googleApi.listSheets()
+      set({ sheets: data.sheets || data || [], sheetsLoading: false })
+    } catch (err) {
+      set({ sheetsLoading: false, sheetsError: err.response?.data?.detail || 'Sheets 조회 실패' })
+    }
+  },
+
+  createSheet: async (title, meetingId = null) => {
+    set({ sheetsLoading: true, sheetsError: null })
+    try {
+      const { data } = await googleApi.createSheet(title, meetingId)
+      await get().fetchSheets()
+      return data
+    } catch (err) {
+      set({ sheetsLoading: false, sheetsError: err.response?.data?.detail || 'Sheets 생성 실패' })
+      throw err
+    }
+  },
+
+  syncSheet: async (spreadsheetId, meetingId = null) => {
+    try {
+      await googleApi.syncSheet(spreadsheetId, meetingId)
+    } catch (err) {
+      set({ sheetsError: err.response?.data?.detail || 'Sheets 동기화 실패' })
+    }
+  },
 }))
 
 export default useGoogleStore

@@ -3,6 +3,13 @@ import Badge from '../common/Badge';
 
 export default function ActionItemList({ items = [], tabs }) {
   const [activeTab, setActiveTab] = useState(tabs?.[0] || '마감 임박');
+  const [data, setData] = useState(items);
+
+  const toggleDone = (i) => {
+    const n = [...data];
+    n[i] = { ...n[i], done: !n[i].done };
+    setData(n);
+  };
 
   return (
     <div className="card">
@@ -17,14 +24,14 @@ export default function ActionItemList({ items = [], tabs }) {
         )}
       </div>
       <div className="card-body space-y-1">
-        {items.map((item, i) => (
+        {data.map((item, i) => (
           <div key={i} className={`flex items-center gap-3 p-3 rounded-sm border-l-[3px] transition hover:bg-surface-hover ${item.priority === 'high' ? 'border-l-error bg-error/[0.03]' : item.priority === 'medium' ? 'border-l-warning bg-warning/[0.03]' : 'border-l-transparent'}`}>
-            <button className={`w-5 h-5 rounded-[5px] border-2 border-primary-300 flex items-center justify-center text-xs font-bold text-white flex-shrink-0 transition ${item.done ? 'bg-success border-success' : ''}`} onClick={() => {}}>
+            <button aria-label={`${item.title} 완료 체크`} className={`w-5 h-5 rounded-[5px] border-2 border-primary-300 flex items-center justify-center text-xs font-bold text-white flex-shrink-0 transition ${item.done ? 'bg-success border-success' : ''}`} onClick={() => toggleDone(i)}>
               {item.done && '✓'}
             </button>
             <div className="flex-1">
-              <div className="text-[13px] font-semibold text-neutral-main">{item.title}</div>
-              <div className="flex gap-3 mt-1 text-xs text-neutral-sub">
+              <div className="text-[0.8125rem] font-semibold text-neutral-main">{item.title}</div>
+              <div className="flex gap-3 mt-1 text-[0.75rem] text-neutral-sub">
                 <span>👤 {item.assignee}</span>
                 <span className={item.priority === 'high' || item.priority === 'medium' ? 'text-error font-semibold' : ''}>{item.deadline}</span>
               </div>

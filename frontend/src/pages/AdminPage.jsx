@@ -34,12 +34,12 @@ export default function AdminPage() {
         <h1 className="text-2xl font-bold">관리자 설정</h1>
         <p className="text-sm text-neutral-sub mt-1">시스템 설정 및 사용자를 관리합니다</p>
       </header>
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {[{ l: '전체 사용자', v: '24' }, { l: '이번 달 질의 수', v: '847' }, { l: '등록된 규정', v: '6' }].map(({ l, v }) => (
-          <div key={l} className="card p-5"><div className="text-xs text-neutral-sub">{l}</div><div className="font-display text-[28px] font-bold text-primary-700 mt-1">{v}</div></div>
+          <div key={l} className="card p-5"><div className="text-xs text-neutral-sub">{l}</div><div className="font-display text-[1.75rem] font-bold text-primary-700 mt-1">{v}</div></div>
         ))}
       </div>
-      <div className="grid grid-cols-[1.3fr_1fr] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-5">
         <div className="space-y-5">
           <UserManagement users={mockUsers} />
           <RegulationManagement regulations={mockRegs} />

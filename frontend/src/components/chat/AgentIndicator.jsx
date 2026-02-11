@@ -12,7 +12,7 @@ export default function AgentIndicator({ intent, status }) {
   const config = agentConfig[intent] || agentConfig.general;
 
   return (
-    <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-sm text-[13px] font-medium mb-3 ${config.color}`}>
+    <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-sm text-[0.8125rem] font-medium mb-3 ${config.color}`}>
       <span>{config.icon}</span>
       <span>{config.label}</span>
       {status && (
