@@ -2,8 +2,12 @@
 앱 설정 (팀원 A 관리)
 환경변수 기반 설정 관리
 """
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+
+# .env 파일 경로: 프로젝트 루트 (backend/ 상위)
+_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
 
 class Settings(BaseSettings):
@@ -23,7 +27,7 @@ class Settings(BaseSettings):
     # Google OAuth (팀원 D)
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
-    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/google/callback"
 
     # vLLM (팀원 B)
     VLLM_BASE_URL: str = "http://localhost:8080/v1"
@@ -38,7 +42,7 @@ class Settings(BaseSettings):
     # Encryption (팀원 D)
     ENCRYPTION_KEY: str = "change-this-encryption-key"
 
-    model_config = {"env_file": ".env", "extra": "ignore"}
+    model_config = {"env_file": str(_ENV_FILE), "extra": "ignore"}
 
 
 @lru_cache()
