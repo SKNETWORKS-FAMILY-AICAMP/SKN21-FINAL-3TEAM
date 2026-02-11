@@ -3,6 +3,13 @@ import Badge from '../common/Badge';
 
 export default function ActionItemList({ items = [], tabs }) {
   const [activeTab, setActiveTab] = useState(tabs?.[0] || '마감 임박');
+  const [data, setData] = useState(items);
+
+  const toggleDone = (i) => {
+    const n = [...data];
+    n[i] = { ...n[i], done: !n[i].done };
+    setData(n);
+  };
 
   return (
     <div className="card">
@@ -17,9 +24,9 @@ export default function ActionItemList({ items = [], tabs }) {
         )}
       </div>
       <div className="card-body space-y-1">
-        {items.map((item, i) => (
+        {data.map((item, i) => (
           <div key={i} className={`flex items-center gap-3 p-3 rounded-sm border-l-[3px] transition hover:bg-surface-hover ${item.priority === 'high' ? 'border-l-error bg-error/[0.03]' : item.priority === 'medium' ? 'border-l-warning bg-warning/[0.03]' : 'border-l-transparent'}`}>
-            <button className={`w-5 h-5 rounded-[5px] border-2 border-primary-300 flex items-center justify-center text-xs font-bold text-white flex-shrink-0 transition ${item.done ? 'bg-success border-success' : ''}`} onClick={() => {}}>
+            <button aria-label={`${item.title} 완료 체크`} className={`w-5 h-5 rounded-[5px] border-2 border-primary-300 flex items-center justify-center text-xs font-bold text-white flex-shrink-0 transition ${item.done ? 'bg-success border-success' : ''}`} onClick={() => toggleDone(i)}>
               {item.done && '✓'}
             </button>
             <div className="flex-1">

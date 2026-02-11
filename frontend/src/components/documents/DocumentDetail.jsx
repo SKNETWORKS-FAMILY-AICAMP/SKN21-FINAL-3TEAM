@@ -1,12 +1,13 @@
 import Badge from '../common/Badge';
+import KeywordHighlight from '../common/KeywordHighlight';
 
-export default function DocumentDetail({ doc }) {
+export default function DocumentDetail({ doc, searchQuery = '' }) {
   if (!doc) return <div className="card p-10 text-center text-neutral-muted text-sm">문서를 선택하세요</div>;
 
   return (
     <div className="bg-surface-card rounded-md border border-neutral-border p-5">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-base font-bold">{doc.name}</h3>
+        <h3 className="text-base font-bold"><KeywordHighlight text={doc.name} keyword={searchQuery} /></h3>
         <Badge variant={doc.status === '적용중' ? 'status-active' : 'status-revising'}>{doc.status}</Badge>
       </div>
       <div className="mb-4">
@@ -17,7 +18,7 @@ export default function DocumentDetail({ doc }) {
         <div className="mb-4">
           <div className="text-[13px] font-bold text-neutral-main mb-2 flex items-center gap-1.5">🤖 AI 분석 결과</div>
           <Badge variant={`risk-${doc.riskLevel}`} className="mb-2">리스크: {doc.riskLevel === 'low' ? '낮음' : doc.riskLevel === 'medium' ? '중간' : '높음'}</Badge>
-          {doc.analysis && <div className="text-[13px] text-neutral-sub leading-[1.7]">{doc.analysis}</div>}
+          {doc.analysis && <div className="text-[13px] text-neutral-sub leading-[1.7]"><KeywordHighlight text={doc.analysis} keyword={searchQuery} /></div>}
         </div>
       )}
       <div className="flex gap-2 mt-4">
