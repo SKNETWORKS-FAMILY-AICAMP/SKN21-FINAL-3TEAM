@@ -13,7 +13,7 @@ import DocumentGeneratePage from './pages/DocumentGeneratePage';
 
 // 비로그인 → /login 으로 리다이렉트
 // DEV_BYPASS: 백엔드 연결 전 개발용 — 나중에 제거
-const DEV_BYPASS_AUTH = true;
+const DEV_BYPASS_AUTH = false;
 
 function PrivateRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
