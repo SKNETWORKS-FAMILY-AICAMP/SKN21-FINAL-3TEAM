@@ -1,0 +1,20 @@
+{
+  "id2label": {
+    "0": "judgment",
+    "1": "doc_search",
+    "2": "doc_generate",
+    "3": "meeting_generate",
+    "4": "schedule_add",
+    "5": "schedule_view",
+    "6": "general"
+  },
+  "label2id": {
+    "judgment": 0,
+    "doc_search": 1,
+    "doc_generate": 2,
+    "meeting_generate": 3,
+    "schedule_add": 4,
+    "schedule_view": 5,
+    "general": 6
+  }
+}
