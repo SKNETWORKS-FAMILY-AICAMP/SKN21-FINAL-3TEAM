@@ -166,4 +166,56 @@ v1.0 adversarial 테스트 결과 72% (18/25) — judgment ↔ general 경계에
 
 ---
 
+## EXP — 방법론 비교 실험 (2026-02-11)
+
+### 실험 목적
+파인튜닝된 sLLM(BERT)이 다른 방법론 대비 어떤 위치에 있는지 정량적으로 비교.
+
+### 실험 설계
+- 테스트셋: adversarial_test.json (70문장, 경계 모호한 난이도 높은 문장)
+- 비교 대상 6가지: Random, Rule-based, BERT Base(학습 전), BERT Fine-tuned(v1.1), GPT Zero-shot, GPT Few-shot
+- 환경: RunPod GPU (BERT 계열), OpenAI API (GPT 계열)
+
+### 결과
+
+| 방법 | F1 (macro) | Accuracy | 속도 (ms/문장) | 비용 |
+|------|:----------:|:--------:|:--------------:|:----:|
+| GPT Few-shot | **97.53%** | 97.14% | 456.6 | ~$0.03/70문장 |
+| GPT Zero-shot | 96.02% | 95.71% | 519.7 | ~$0.01/70문장 |
+| **BERT Fine-tuned (v1.1)** | **89.97%** | **88.57%** | **6.7** | **$0 (학습 1회 ~$0.50)** |
+| Rule-based | 86.81% | 84.29% | 0.0 | $0 |
+| Random | 13.48% | 12.86% | 0.0 | $0 |
+| BERT Base (학습 전) | 7.22% | 12.86% | 10.4 | $0 |
+
+### 혼동행렬 분석
+
+**Eval Set (219문장)**: F1 98.80%, 오분류 3건 (모두 general → 타 카테고리)
+
+**Adversarial Set (70문장)**: 오분류 8건, **전부 general로 분류됨**
+| 실제 | → general 오분류 |
+|------|:----------------:|
+| judgment | 2건 |
+| doc_search | 1건 |
+| doc_generate | 2건 |
+| schedule_add | 1건 |
+| schedule_view | 2건 |
+
+> 오분류 패턴: 입력이 불명확할 때 모델이 general로 폴백 → 안전한 실패 방향.
+> confidence threshold 기반 fallback으로 대응 가능.
+
+### 핵심 인사이트
+
+1. **정확도**: GPT가 adversarial에서 7.5%p 우위 (97.5% vs 90.0%)
+2. **일반 입력**: BERT가 Eval F1 98.8%로 실사용 수준 충분
+3. **속도**: BERT가 **68배 빠름** (6.7ms vs 457ms)
+4. **비용**: BERT는 학습 1회 후 추론 무료 vs GPT는 매 호출 과금
+5. **보안**: BERT는 로컬 추론 → 사내 데이터 외부 전송 없음
+
+### 결론
+- **sLLM 선택 정당성 확보**: 정확도 7.5%p를 속도 68배 + 비용 $0 + 데이터 보안으로 교환
+- adversarial 성능 갭은 전처리(초성복원, 맞춤법교정) + confidence fallback으로 축소 예정
+- 차트: `ai/experiments/results/` (method_comparison.png, confusion_eval.png, confusion_adv.png, improvement_v1.png)
+
+---
+
 > 새로운 학습 결과는 아래에 추가합니다.

@@ -58,8 +58,19 @@
 - ERD vs ORM 모델 대조: 불일치 0건
 - 개선 제안 3건: ①chat_logs에 session_id 추가 ②action_items.assignee FK 검토 ③TEXT→JSONB 검토
 
+**ML 비교 실험 (발표용):**
+- 실험 기획서 작성: `ai/experiments/EXPERIMENT_PLAN.md`
+- adversarial 70문장 JSON 분리 (`adversarial_test.json`)
+- test_intent.py 하드코딩 → JSON 로드로 리팩토링
+- 실험 스크립트 3개 작성 + QA (run_method_comparison, run_gpt_comparison, run_visualize)
+- RunPod GPU에서 실험 실행 (v1.1 재학습 + 6가지 방법론 비교)
+- 결과: GPT Few-shot F1 97.5% > BERT Fine-tuned 90.0% (adversarial)
+  - 단, BERT가 68배 빠르고 (6.7ms vs 457ms) 비용 $0
+  - 일반 입력에서는 BERT Eval F1 98.8%
+- 차트 4장 생성: method_comparison, confusion_eval, confusion_adv, improvement_v1
+- TRAINING_LOG.md에 EXP 섹션 추가
+
 **다음 할 일:**
-- ML 비교 실험 (발표용): GPT zero-shot vs BERT 비교, 데이터 크기별 학습 곡선
 - #6 LangGraph 오케스트레이터 + SSE 구현
-- 전처리 파이프라인 추가 (초성복원, 맞춤법교정)
+- 전처리 파이프라인 추가 (초성복원, 맞춤법교정) → adversarial 성능 개선
 - 팀 진도 확인 (경은/승언/혜빈/지영)

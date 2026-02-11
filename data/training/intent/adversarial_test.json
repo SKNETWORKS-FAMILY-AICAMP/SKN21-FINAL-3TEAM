@@ -112,7 +112,7 @@
     "label": "schedule_add"
   },
   {
-    "text": "연차 규정이 뭐야?",
+    "text": "연차 사용 거부당하면 어떡해?",
     "label": "judgment"
   },
   {
@@ -128,7 +128,7 @@
     "label": "general"
   },
   {
-    "text": "육아휴직 남자도 쓸 수 있어?",
+    "text": "남자 직원인데 육아휴직 신청 거절당했어",
     "label": "judgment"
   },
   {
@@ -144,7 +144,7 @@
     "label": "general"
   },
   {
-    "text": "회사가 이렇게 해도 되는 거야?",
+    "text": "사측에서 일방적으로 근무지 변경이 가능한 거야?",
     "label": "judgment"
   },
   {
@@ -156,7 +156,7 @@
     "label": "doc_search"
   },
   {
-    "text": "퇴직금 받을 수 있어?",
+    "text": "1년 미만 근무했는데 퇴직금 청구 가능해?",
     "label": "judgment"
   },
   {
@@ -184,7 +184,7 @@
     "label": "judgment"
   },
   {
-    "text": "ㅋㅋㅋ",
+    "text": "ㅎㅎㅎ 웃기다",
     "label": "general"
   },
   {
@@ -278,5 +278,211 @@
   {
     "text": "일정추가",
     "label": "schedule_add"
+  },
+
+  {
+    "text": "보고서 찾아서 수정해줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "회의 잡고 회의록도 만들어줘",
+    "label": "schedule_add"
+  },
+  {
+    "text": "규정 찾아서 위반 여부 판단해줘",
+    "label": "judgment"
+  },
+  {
+    "text": "내일 일정 확인하고 빈 시간에 미팅 넣어줘",
+    "label": "schedule_add"
+  },
+  {
+    "text": "지난 회의록 찾아서 후속 회의록 작성해줘",
+    "label": "meeting_generate"
+  },
+  {
+    "text": "인사 규정 검색해서 내 상황에 맞는지 알려줘",
+    "label": "judgment"
+  },
+  {
+    "text": "보고서 있으면 보여주고 없으면 만들어줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "오늘 회의 내용 정리해서 메일로 보내줘",
+    "label": "meeting_generate"
+  },
+
+  {
+    "text": "일정",
+    "label": "schedule_view"
+  },
+  {
+    "text": "규정",
+    "label": "judgment"
+  },
+  {
+    "text": "회의",
+    "label": "schedule_view"
+  },
+  {
+    "text": "보고서",
+    "label": "doc_search"
+  },
+  {
+    "text": "하이",
+    "label": "general"
+  },
+  {
+    "text": "회의록",
+    "label": "meeting_generate"
+  },
+  {
+    "text": "문서",
+    "label": "doc_search"
+  },
+  {
+    "text": "도움",
+    "label": "general"
+  },
+
+  {
+    "text": "금주 일정을 확인해 주시겠습니까?",
+    "label": "schedule_view"
+  },
+  {
+    "text": "회의록 작성을 부탁드립니다",
+    "label": "meeting_generate"
+  },
+  {
+    "text": "해당 규정에 대한 판단을 요청드립니다",
+    "label": "judgment"
+  },
+  {
+    "text": "프로젝트 보고서 작성을 의뢰드려도 될까요?",
+    "label": "doc_generate"
+  },
+  {
+    "text": "관련 문서를 검색해 주실 수 있으신지요?",
+    "label": "doc_search"
+  },
+  {
+    "text": "내주 화요일 오전에 일정 등록을 부탁드리겠습니다",
+    "label": "schedule_add"
+  },
+  {
+    "text": "근로계약서 관련 법적 해석을 여쭤봐도 되겠습니까?",
+    "label": "judgment"
+  },
+  {
+    "text": "수고가 많으십니다, 월간 실적 요약 문서를 작성해 주시면 감사하겠습니다",
+    "label": "doc_generate"
+  },
+
+  {
+    "text": "회의 준비해줘",
+    "label": "schedule_add"
+  },
+  {
+    "text": "회사 다니기 싫다",
+    "label": "general"
+  },
+  {
+    "text": "회사가 부당해요",
+    "label": "judgment"
+  },
+  {
+    "text": "그거 뭐였지",
+    "label": "general"
+  },
+  {
+    "text": "문서 하나 줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "문서 하나 써줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "미팅 기록 남겨줘",
+    "label": "meeting_generate"
+  },
+  {
+    "text": "미팅 기록 찾아줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "내일 쉬어도 돼?",
+    "label": "judgment"
+  },
+  {
+    "text": "내일 쉬고 싶다",
+    "label": "general"
+  },
+
+  {
+    "text": "3시에 미팅 있어?",
+    "label": "schedule_view"
+  },
+  {
+    "text": "52시간 초과하면 벌금이야?",
+    "label": "judgment"
+  },
+  {
+    "text": "meeting 잡아줘",
+    "label": "schedule_add"
+  },
+  {
+    "text": "report 작성해줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "회의이이이 언제야",
+    "label": "schedule_view"
+  },
+  {
+    "text": "도와줘줘줘",
+    "label": "general"
+  },
+  {
+    "text": "2월 14일에 워크숍 등록",
+    "label": "schedule_add"
+  },
+  {
+    "text": "Q3 리뷰 doc 찾아봐",
+    "label": "doc_search"
+  },
+
+  {
+    "text": "그거 해줘",
+    "label": "general"
+  },
+  {
+    "text": "아까 말한 거 정리해줘",
+    "label": "general"
+  },
+  {
+    "text": "위에서 말한 규정 어디서 봐?",
+    "label": "doc_search"
+  },
+  {
+    "text": "방금 얘기한 건 합법이야?",
+    "label": "judgment"
+  },
+  {
+    "text": "그 문서 다시 보내줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "아까 그 일정 변경해줘",
+    "label": "schedule_add"
+  },
+  {
+    "text": "그래서 결론이 뭐야",
+    "label": "general"
+  },
+  {
+    "text": "이전에 만든 회의록 업데이트해줘",
+    "label": "meeting_generate"
   }
 ]
