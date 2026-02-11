@@ -12,9 +12,12 @@ import MeetingMinutesPage from './pages/MeetingMinutesPage';
 import DocumentGeneratePage from './pages/DocumentGeneratePage';
 
 // 비로그인 → /login 으로 리다이렉트
+// DEV_BYPASS: 백엔드 연결 전 개발용 — 나중에 제거
+const DEV_BYPASS_AUTH = true;
+
 function PrivateRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+  return (DEV_BYPASS_AUTH || isAuthenticated) ? <Outlet /> : <Navigate to="/login" replace />;
 }
 
 // 이미 로그인 → /dashboard 로 리다이렉트
