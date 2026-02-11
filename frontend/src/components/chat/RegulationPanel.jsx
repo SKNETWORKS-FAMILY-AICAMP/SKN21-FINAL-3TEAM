@@ -10,6 +10,7 @@ export default function RegulationPanel({ regulations = [], isOpen, onClose, sea
           <span>📖</span>관련 규정
         </div>
         <button
+          aria-label="규정 패널 닫기"
           onClick={onClose}
           className="w-7 h-7 rounded-md flex items-center justify-center text-neutral-muted hover:bg-surface-hover transition"
         >

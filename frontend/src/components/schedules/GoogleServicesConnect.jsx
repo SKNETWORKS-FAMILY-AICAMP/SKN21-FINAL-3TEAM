@@ -10,7 +10,7 @@ const SERVICES = [
 ];
 
 export default function GoogleServicesConnect() {
-  const { connected, email, scopes, loading, error, connect, disconnect, hasScope } = useGoogleServices();
+  const { connected, email, scopes: _scopes, loading, error, connect, disconnect, hasScope } = useGoogleServices();
   const [selectedScopes, setSelectedScopes] = useState([GOOGLE_SCOPES.CALENDAR]);
 
   const toggleScope = (scope) => {

@@ -36,7 +36,7 @@ export default function DocumentsPage() {
         actions={<button className="btn-primary">+ 문서 업로드</button>}
       />
       <DocumentUpload />
-      <div className="grid grid-cols-[1.3fr_1fr] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-5">
         <DocumentList documents={filteredDocs} onSelect={setSelectedDoc} searchQuery={searchQuery} />
         <DocumentDetail doc={selectedDoc} searchQuery={searchQuery} />
       </div>

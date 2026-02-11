@@ -75,7 +75,7 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-3">
           <AutoScanBadge status="scanning" lastScan="2분 전" detectedCount={2} />
-          <button className="w-10 h-10 rounded-sm border border-neutral-border bg-surface-card flex items-center justify-center relative">
+          <button aria-label="알림" className="w-10 h-10 rounded-sm border border-neutral-border bg-surface-card flex items-center justify-center relative">
             <span>🔔</span>
             <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-surface-card" />
           </button>
@@ -84,7 +84,7 @@ export default function DashboardPage() {
 
       <FilterBar tabs={['전체', '정보보안', '인사', '개발']} activeTab={activeTab} onTabChange={setActiveTab} />
 
-      <div className="grid grid-cols-4 gap-4 mb-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
         <StatCard icon="💬" iconColor="blue" value="24" label="오늘의 질의응답" trend="↑ 12%" to="/chat" />
         <StatCard icon="📋" iconColor="purple" value="8" label="처리된 회의록" trend="↑ 3건" to="/meetings" />
         <StatCard icon="✓" iconColor="green" value="15" label="완료된 Action Item" trend="↑ 5건" to="/schedules" />
@@ -97,7 +97,7 @@ export default function DashboardPage() {
 
       <RiskAlert title="높음 리스크 감지 - 2건" description="정보보안 규정 위반 가능성이 감지되었습니다. 즉시 확인이 필요합니다." />
 
-      <div className="grid grid-cols-[1.3fr_1fr] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-5">
         <div className="space-y-6">
           <TopQueries data={mockTopQueries} />
           <ActivityTimeline activities={mockActivities} />

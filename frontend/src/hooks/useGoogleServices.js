@@ -15,6 +15,7 @@ export default function useGoogleServices() {
 
   useEffect(() => {
     store.fetchStatus()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // connected 상태 변경 시 Tasks + Sheets 자동 로드
@@ -23,6 +24,7 @@ export default function useGoogleServices() {
       if (store.hasScope('tasks')) store.fetchTasks()
       if (store.hasScope('sheets')) store.fetchSheets()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.connected])
 
   const refreshAll = useCallback(async () => {
@@ -34,6 +36,7 @@ export default function useGoogleServices() {
       if (state.hasScope('sheets')) promises.push(state.fetchSheets())
       await Promise.all(promises)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return {
