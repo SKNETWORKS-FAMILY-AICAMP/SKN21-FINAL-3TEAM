@@ -1,13 +1,63 @@
 import { useState, useRef, useEffect } from 'react';
 import MeetLinkBadge from './MeetLinkBadge';
 
-const TYPE_LABELS = { meeting: '회의', deadline: '마감일', google: '개인 일정' };
-const TYPE_DOT = { meeting: 'bg-primary-500', deadline: 'bg-error', google: 'bg-success' };
+const TYPE_LABELS = { meeting: '회의', deadline: '마감일', google: '개인 일정', holiday: '공휴일' };
+const TYPE_DOT = { meeting: 'bg-primary-500', deadline: 'bg-error', google: 'bg-success', holiday: 'bg-red-400' };
 const typeStyles = {
   meeting: 'bg-primary-50 text-primary-700',
   deadline: 'bg-error-bg text-error',
   google: 'bg-success-bg text-success',
+  holiday: 'bg-red-50 text-red-500',
 };
+
+// 한국 공휴일 (고정 공휴일 + 연도별 음력 공휴일)
+function getKoreanHolidays(year) {
+  // 고정 공휴일
+  const fixed = [
+    { month: 1, day: 1, label: '신정' },
+    { month: 3, day: 1, label: '삼일절' },
+    { month: 5, day: 5, label: '어린이날' },
+    { month: 6, day: 6, label: '현충일' },
+    { month: 8, day: 15, label: '광복절' },
+    { month: 10, day: 3, label: '개천절' },
+    { month: 10, day: 9, label: '한글날' },
+    { month: 12, day: 25, label: '크리스마스' },
+  ];
+
+  // 음력 기반 공휴일 (연도별 양력 변환 — 주요 연도)
+  const lunarByYear = {
+    2025: [
+      { month: 1, day: 28, label: '설날 연휴' },
+      { month: 1, day: 29, label: '설날' },
+      { month: 1, day: 30, label: '설날 연휴' },
+      { month: 5, day: 5, label: '부처님오신날' },
+      { month: 10, day: 5, label: '추석 연휴' },
+      { month: 10, day: 6, label: '추석' },
+      { month: 10, day: 7, label: '추석 연휴' },
+    ],
+    2026: [
+      { month: 2, day: 16, label: '설날 연휴' },
+      { month: 2, day: 17, label: '설날' },
+      { month: 2, day: 18, label: '설날 연휴' },
+      { month: 5, day: 24, label: '부처님오신날' },
+      { month: 9, day: 24, label: '추석 연휴' },
+      { month: 9, day: 25, label: '추석' },
+      { month: 9, day: 26, label: '추석 연휴' },
+    ],
+    2027: [
+      { month: 2, day: 6, label: '설날 연휴' },
+      { month: 2, day: 7, label: '설날' },
+      { month: 2, day: 8, label: '설날 연휴' },
+      { month: 5, day: 13, label: '부처님오신날' },
+      { month: 10, day: 14, label: '추석 연휴' },
+      { month: 10, day: 15, label: '추석' },
+      { month: 10, day: 16, label: '추석 연휴' },
+    ],
+  };
+
+  const lunar = lunarByYear[year] || [];
+  return [...fixed, ...lunar].map((h) => ({ ...h, type: 'holiday' }));
+}
 
 function DayDetailPopup({ day, month, year, events, onClose }) {
   const ref = useRef(null);
@@ -56,12 +106,69 @@ function DayDetailPopup({ day, month, year, events, onClose }) {
   );
 }
 
+// 연간 뷰 — 12개월 미니 캘린더
+function YearView({ year, events, todayYear, todayMonth, todayDate, onMonthClick }) {
+  const monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const dayNamesShort = ['일','월','화','수','목','금','토'];
+
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
+      {monthNames.map((name, mIdx) => {
+        const month = mIdx + 1;
+        const firstDay = new Date(year, mIdx, 1).getDay();
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const monthEvents = events.filter((e) => e.month === month);
+
+        const cells = [];
+        for (let i = 0; i < firstDay; i++) cells.push(null);
+        for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+        return (
+          <div
+            key={month}
+            onClick={() => onMonthClick(month)}
+            className="bg-surface-card border border-neutral-divider rounded-lg p-4 cursor-pointer hover:border-primary-300 transition"
+          >
+            <div className="text-sm font-bold text-neutral-main mb-2 text-center">{name}</div>
+            <div className="grid grid-cols-7 gap-px">
+              {dayNamesShort.map((d) => (
+                <div key={d} className="text-[10px] text-neutral-muted text-center pb-1">{d}</div>
+              ))}
+              {cells.map((d, i) => {
+                const isToday = d && year === todayYear && month === todayMonth && d === todayDate;
+                const isHoliday = d && monthEvents.some((e) => e.day === d && e.type === 'holiday');
+                const hasEvent = d && monthEvents.some((e) => e.day === d && e.type !== 'holiday');
+                return (
+                  <div key={i} className="flex items-center justify-center h-7">
+                    {d ? (
+                      <span className={`text-[11px] w-6 h-6 flex items-center justify-center rounded-full
+                        ${isToday ? 'bg-primary-700 text-white font-bold' : ''}
+                        ${isHoliday && !isToday ? 'bg-red-50 text-red-500 font-semibold' : ''}
+                        ${hasEvent && !isToday && !isHoliday ? 'bg-primary-50 text-primary-700 font-semibold' : ''}
+                        ${!isToday && !hasEvent && !isHoliday ? 'text-neutral-sub' : ''}
+                      `}>{d}</span>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function CalendarView({ events = [] }) {
   const now = new Date();
   const [currentYear, setCurrentYear] = useState(now.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(now.getMonth() + 1);
   const [view, setView] = useState('month');
   const [selectedDay, setSelectedDay] = useState(null);
+  const [showHolidays, setShowHolidays] = useState(true);
+
+  const holidays = showHolidays ? getKoreanHolidays(currentYear) : [];
+  const mergedEvents = [...events, ...holidays];
 
   const todayDate = now.getDate();
   const todayYear = now.getFullYear();
@@ -73,10 +180,12 @@ export default function CalendarView({ events = [] }) {
   const prevDays = new Date(currentYear, currentMonth - 1, 0).getDate();
 
   const goToPrev = () => {
+    if (view === 'year') { setCurrentYear(currentYear - 1); return; }
     if (currentMonth === 1) { setCurrentYear(currentYear - 1); setCurrentMonth(12); }
     else setCurrentMonth(currentMonth - 1);
   };
   const goToNext = () => {
+    if (view === 'year') { setCurrentYear(currentYear + 1); return; }
     if (currentMonth === 12) { setCurrentYear(currentYear + 1); setCurrentMonth(1); }
     else setCurrentMonth(currentMonth + 1);
   };
@@ -105,9 +214,20 @@ export default function CalendarView({ events = [] }) {
     setSelectedDay(d.day);
   };
 
+  const handleYearMonthClick = (month) => {
+    setCurrentMonth(month);
+    setView('month');
+  };
+
   const selectedEvents = selectedDay
-    ? events.filter((e) => e.day === selectedDay)
+    ? mergedEvents.filter((e) => e.day === selectedDay && e.month === currentMonth)
     : [];
+
+  const VIEW_BTNS = [
+    { key: 'month', label: '월간' },
+    { key: 'week', label: '주간' },
+    { key: 'year', label: '연간' },
+  ];
 
   return (
     <div className="card">
@@ -117,33 +237,58 @@ export default function CalendarView({ events = [] }) {
             <button onClick={goToPrev} className="w-7 h-7 rounded-md border border-neutral-border bg-surface-card text-xs text-neutral-sub flex items-center justify-center hover:bg-primary-50 transition">◀</button>
             <button onClick={goToNext} className="w-7 h-7 rounded-md border border-neutral-border bg-surface-card text-xs text-neutral-sub flex items-center justify-center hover:bg-primary-50 transition">▶</button>
           </div>
-          <span className="text-base font-bold">{currentYear}년 {currentMonth}월</span>
+          <span className="text-base font-bold">
+            {view === 'year' ? `${currentYear}년` : `${currentYear}년 ${currentMonth}월`}
+          </span>
           <button onClick={goToToday} className="text-[11px] px-2 py-1 rounded border border-neutral-divider text-neutral-muted hover:bg-primary-50 hover:text-primary-700 transition">오늘</button>
         </div>
-        <div className="flex gap-1">
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setView('month')}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition ${view === 'month' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-sub hover:bg-surface-hover'}`}
-          >월간</button>
-          <button
-            onClick={() => setView('week')}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition ${view === 'week' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-sub hover:bg-surface-hover'}`}
-          >주간</button>
+            onClick={() => setShowHolidays(!showHolidays)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition ${
+              showHolidays
+                ? 'border-red-300 bg-red-50 text-red-500'
+                : 'border-neutral-divider bg-surface-card text-neutral-muted hover:bg-surface-hover'
+            }`}
+          >
+            <span className={`w-2 h-2 rounded-full ${showHolidays ? 'bg-red-400' : 'bg-neutral-muted'}`} />
+            공휴일
+          </button>
+          <div className="w-px h-4 bg-neutral-divider" />
+          <div className="flex gap-1">
+            {VIEW_BTNS.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setView(key)}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition ${view === key ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-sub hover:bg-surface-hover'}`}
+              >{label}</button>
+            ))}
+          </div>
         </div>
       </div>
       <div className="card-body">
+        {view === 'year' ? (
+          <YearView
+            year={currentYear}
+            events={mergedEvents}
+            todayYear={todayYear}
+            todayMonth={todayMonth}
+            todayDate={todayDate}
+            onMonthClick={handleYearMonthClick}
+          />
+        ) : (
         <div className="grid grid-cols-7 gap-1">
           {dayNames.map((d) => (
             <div key={d} className="text-[11px] font-semibold text-neutral-muted py-2 text-center">{d}</div>
           ))}
           {displayDays.map((d, i) => {
-            const dayEvents = events.filter((e) => e.day === d.day && !d.other);
+            const dayEvents = mergedEvents.filter((e) => e.day === d.day && e.month === currentMonth && !d.other);
             const isToday = !d.other && d.day === todayDate && currentYear === todayYear && currentMonth === todayMonth;
             return (
               <div
                 key={i}
                 onClick={() => handleDayClick(d)}
-                className={`min-h-[150px] bg-surface-card border border-neutral-divider rounded-sm p-1.5 text-xs transition hover:border-primary-300 cursor-pointer ${
+                className={`${view === 'week' ? 'min-h-[320px]' : 'min-h-[150px]'} bg-surface-card border border-neutral-divider rounded-sm p-1.5 text-xs transition hover:border-primary-300 cursor-pointer ${
                   isToday ? 'border-primary-700 border-2' : ''
                 } ${selectedDay === d.day && !d.other ? 'ring-2 ring-primary-500' : ''}`}
               >
@@ -159,6 +304,7 @@ export default function CalendarView({ events = [] }) {
             );
           })}
         </div>
+        )}
       </div>
 
       {/* 날짜 클릭 시 상세 팝업 */}
