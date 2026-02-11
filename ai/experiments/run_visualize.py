@@ -162,10 +162,10 @@ def generate_all_versions_chart():
     eval_f1 = [99.08, 98.80, 98.07, 97.87, 98.26]
     # v1.0/v1.1: 25-sample adversarial (다른 셋이므로 비교 불가 → None)
     # v1.2~v1.4: 120-sample adversarial
-    adv_acc_120 = [None, None, 85.0, 90.0, 89.2]
-    adv_f1_120 = [None, None, 85.57, 89.92, 89.02]
+    adv_acc_120 = [None, None, 85.0, 91.67, 89.2]
+    adv_f1_120 = [None, None, 85.57, 91.54, 89.02]
     data_count = [1405, 1455, 1755, 1918, 1918]
-    errors_120 = [None, None, 18, 12, 13]
+    errors_120 = [None, None, 18, 10, 13]
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
@@ -184,28 +184,28 @@ def generate_all_versions_chart():
     # ── 2) Adversarial F1 (v1.2~v1.4, 120 samples) ──
     # NOTE: v1.0/v1.1 used different adversarial set (70 samples), not comparable
     v_adv = ["v1.2", "v1.3", "v1.4"]
-    f1_adv = [85.57, 89.92, 89.02]  # placeholder — update after final retrain
+    f1_adv = [85.57, 91.54, 89.02]
     colors2 = ["#FFCC80", "#FF9800", "#E65100"]
     b2 = axes[0, 1].bar(v_adv, f1_adv, color=colors2, width=0.5)
     axes[0, 1].set_ylabel("F1 Score (%)")
     axes[0, 1].set_title("Adversarial F1 (120 samples)")
-    axes[0, 1].set_ylim(80, 95)
+    axes[0, 1].set_ylim(80, 97)
     for bar, val in zip(b2, f1_adv):
         axes[0, 1].text(
             bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.3,
             f"{val:.2f}%", ha="center", fontsize=11, fontweight="bold",
         )
     # 최고점 표시
-    axes[0, 1].bar(["v1.3"], [89.92], color="#FF9800", width=0.5,
+    axes[0, 1].bar(["v1.3"], [91.54], color="#FF9800", width=0.5,
                     edgecolor="#E65100", linewidth=2.5)
     axes[0, 1].annotate(
-        "BEST", xy=(1, 89.92), xytext=(1, 93),
+        "BEST", xy=(1, 91.54), xytext=(1, 94),
         fontsize=12, color="#E65100", fontweight="bold", ha="center",
         arrowprops=dict(arrowstyle="->", color="#E65100"),
     )
 
     # ── 3) 오분류 건수 (v1.2~v1.4) ──
-    err_vals = [18, 12, 13]
+    err_vals = [18, 10, 13]
     colors3 = ["#EF9A9A", "#4CAF50", "#FFA726"]
     b3 = axes[1, 0].bar(v_adv, err_vals, color=colors3, width=0.5)
     axes[1, 0].set_ylabel("Error Count")

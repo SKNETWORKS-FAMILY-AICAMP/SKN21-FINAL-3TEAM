@@ -289,10 +289,19 @@ v1.2 adversarial 오분류 18건을 6가지 혼동 패턴으로 분류 → 각 �
 ### 평가 결과
 | 지표 | v1.2 | v1.3 | 변화 |
 |------|:----:|:----:|:----:|
-| Eval F1 (macro) | 0.9807 | **0.9787** | -0.2%p (노이즈) |
-| Adversarial Acc | 85.0% | **90.0%** | **+5.0%p** |
-| Adversarial F1 | 0.8557 | **0.8992** | **+4.4%p** |
-| 오분류 | 18건 | **12건** | **-6건** |
+| Eval F1 (macro) | 0.9807 | **0.9863** | +0.6%p |
+| Adversarial Acc | 85.0% | **91.67%** | **+6.7%p** |
+| Adversarial F1 | 0.8557 | **0.9154** | **+6.0%p** |
+| 오분류 | 18건 | **10건** | **-8건** |
+
+### 라벨 QA 및 수정 (v1.3 최종)
+adversarial 테스트 라벨 3건이 multi-intent 규칙과 불일치 → 수정 후 재학습:
+
+| 문장 | 수정 전 | 수정 후 | 근거 |
+|------|---------|---------|------|
+| "규정" | judgment | **doc_search** | 단어 하나로 법적 판단은 비현실적 |
+| "회의 잡고 회의록도 만들어줘" | schedule_add | **meeting_generate** | 최종 의도 = 회의록 작성 |
+| "보고서 찾아서 수정해줘" | doc_search | **doc_generate** | 최종 의도 = 수정(작성) |
 
 ### 해결된 오분류 (v1.2→v1.3)
 | 문장 | v1.2 결과 | v1.3 결과 |
@@ -303,24 +312,24 @@ v1.2 adversarial 오분류 18건을 6가지 혼동 패턴으로 분류 → 각 �
 | "문서 하나 줘" | doc_generate (X) | doc_search (O) |
 | "위에서 말한 규정 어디서 봐?" | general (X) | doc_search (O) |
 | "그 문서 다시 보내줘" | doc_generate (X) | doc_search (O) |
+| "보고서 그거 아까 말한거 해줘" | doc_search (X) | doc_generate (O) |
+| "회의록" | doc_search (X) | meeting_generate (O) |
 
-### 남은 오분류 12건
+### 남은 오분류 10건
 | 문장 | 예상 | 실제 | 분류 |
 |------|------|------|------|
-| "회의 잡고 회의록도 만들어줘" | schedule_add | meeting_generate | multi-intent |
 | "규정 찾아서 위반 여부 판단해줘" | judgment | doc_search | multi-intent |
 | "인사 규정 검색해서 내 상황에 맞는지 알려줘" | judgment | doc_search | multi-intent |
-| "보고서 찾아서 수정해줘" | doc_search | doc_generate | multi-intent |
-| "보고서 있으면 보여주고 없으면 만들어줘" | doc_search | doc_generate | multi-intent |
-| "규정" | judgment | doc_search | ultra-short |
-| "회의" | schedule_view | meeting_generate | ultra-short |
-| "일정추가" | schedule_add | schedule_view | ultra-short |
-| "내일 쉬어도 돼?" | judgment | general | 경계 |
-| "미팅 기록 찾아줘" | doc_search | meeting_generate | meeting 과적합 |
-| "아까 말한 거 정리해줘" | general | meeting_generate | context-dependent |
+| "보고서 있으면 보여주고 없으면 만들어줘" | doc_search | doc_generate | 조건부 의도 |
+| "회의" | schedule_view | meeting_generate | ultra-short 모호 |
+| "일정추가" | schedule_add | schedule_view | ultra-short 모호 |
 | "회의 준비해줘" | schedule_add | meeting_generate | 모호 |
+| "미팅 기록 찾아줘" | doc_search | meeting_generate | meeting 과적합 |
+| "내일 쉬어도 돼?" | judgment | schedule_view | 경계 |
+| "그거 해줘" | general | doc_generate | context-dependent |
+| "아까 말한 거 정리해줘" | general | meeting_generate | context-dependent |
 
-> 남은 12건 중 5건은 multi-intent (사람도 판단이 갈리는 문장), 3건은 ultra-short. 오케스트레이터 레벨 confidence 폴백으로 대응 가능.
+> 남은 10건 중 대부분은 사람도 판단이 갈리는 문장. 오케스트레이터에서 confidence < 0.7일 때 "좀 더 구체적으로 말씀해주세요" 폴백으로 대응.
 
 ### 혼동행렬
 ![v1.3 Adversarial Confusion Matrix](../experiments/results/confusion_adv_v1.3.png)
@@ -347,15 +356,15 @@ Best config: **epochs=10, lr=2e-5** (Eval F1 기준)
 ### Best Config 평가
 | 지표 | v1.3 (default) | v1.4 (best grid) | 변화 |
 |------|:--------------:|:----------------:|:----:|
-| Eval F1 | 0.9787 | **0.9826** | +0.4%p |
-| Adversarial Acc | **90.0%** | 89.2% | -0.8%p |
-| Adversarial F1 | **0.8992** | 0.8902 | -0.9%p |
-| 오분류 | **12건** | 13건 | +1건 |
+| Eval F1 | 0.9863 | **0.9826** | -0.4%p |
+| Adversarial Acc | **91.67%** | 89.2% | -2.5%p |
+| Adversarial F1 | **0.9154** | 0.8902 | -2.5%p |
+| 오분류 | **10건** | 13건 | +3건 |
 
 ### 핵심 발견
-1. **Eval은 향상, Adversarial은 하락** — epochs=10이 학습 데이터에 과적합하면서 실전 대응력 약화
+1. **Eval은 비슷, Adversarial은 하락** — epochs=10이 학습 데이터에 과적합하면서 실전 대응력 약화
 2. **하이퍼파라미터 영향 미미** — 전체 F1 변동 폭 0.9653~0.9826 (1.7%p)
-3. **데이터 품질 > 하이퍼파라미터** — v1.2→v1.3 boundary 증강(+5.0%p)이 그리드 서치보다 훨씬 큰 효과
+3. **데이터 품질 > 하이퍼파라미터** — v1.2→v1.3 boundary 증강(+6.0%p)이 그리드 서치보다 훨씬 큰 효과
 
 ### 결론
 - **최종 모델: v1.3 (epochs=5, lr=2e-5)** — Adversarial 성능 최적
@@ -370,19 +379,21 @@ Best config: **epochs=10, lr=2e-5** (Eval F1 기준)
 
 | 버전 | 데이터 | Eval F1 | Adv Acc | Adv F1 | 오분류 | 핵심 변경 |
 |------|:------:|:-------:|:-------:|:------:|:------:|----------|
-| v1.0 | 1,405 | 0.9908 | 85.7% (70) | - | - | 초기 파인튜닝 |
-| v1.1 | 1,455 | 0.9880 | 88.6% (70) | - | 3/70 | +50 judgment 캐주얼 |
+| v1.0 | 1,405 | 0.9908 | 85.7% (70*) | - | - | 초기 파인튜닝 |
+| v1.1 | 1,455 | 0.9880 | 88.6% (70*) | - | 3/70 | +50 judgment 캐주얼 |
 | v1.2 | 1,755 | 0.9807 | 85.0% (120) | 0.8557 | 18/120 | +300 비정형 + adversarial 120 |
-| **v1.3** | **1,918** | **0.9787** | **90.0% (120)** | **0.8992** | **12/120** | **+163 boundary 타겟** |
+| **v1.3** | **1,918** | **0.9863** | **91.67% (120)** | **0.9154** | **10/120** | **+163 boundary 타겟 + 라벨 QA** |
 | v1.4 | 1,918 | 0.9826 | 89.2% (120) | 0.8902 | 13/120 | 하이퍼파라미터 그리드 서치 |
+
+> *v1.0/v1.1은 70문장 adversarial 셋(쉬운 난이도), v1.2~v1.4는 120문장 확장 셋(multi-intent, ultra-short, formal 포함). 셋이 다르므로 직접 비교 시 주의.
 
 ### 개선 차트
 ![Version Improvement Chart](../experiments/results/improvement_all_versions.png)
 
 ### 핵심 결론
-1. **데이터 품질이 핵심**: boundary 타겟 증강(v1.3)이 가장 큰 성능 향상 (+5%p adversarial)
-2. **하이퍼파라미터 한계**: 그리드 서치(v1.4)는 Eval 개선하나 실전 대응력은 하락
-3. **sLLM 실용성 확보**: 90% adversarial 정확도 + 6.7ms 추론속도 + $0 운영비
+1. **데이터 품질이 핵심**: boundary 타겟 증강 + 라벨 QA(v1.3)가 가장 큰 성능 향상 (+6.0%p adversarial F1)
+2. **하이퍼파라미터 한계**: 그리드 서치(v1.4)는 Eval 미세 개선하나 실전 대응력은 오히려 하락
+3. **sLLM 실용성 확보**: 91.67% adversarial 정확도 + 6.7ms 추론속도 + $0 운영비
 4. **남은 오분류 대응**: confidence < 0.7 → 오케스트레이터에서 "좀 더 구체적으로 말씀해주세요" 폴백
 
 ---

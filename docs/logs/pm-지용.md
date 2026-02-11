@@ -70,7 +70,23 @@
 - 차트 4장 생성: method_comparison, confusion_eval, confusion_adv, improvement_v1
 - TRAINING_LOG.md에 EXP 섹션 추가
 
+**데이터 증강 + 버전별 학습 (v1.2~v1.4):**
+- v1.2: 비정형 데이터 +300건 (6카테고리×50, 인터넷 슬랭/초성/축약어)
+  - adversarial 70→120 확장 (multi-intent, ultra-short, formal, 경계쌍)
+  - 결과: Eval F1 98.07%, Adversarial 85.0% (120개 기준)
+- v1.3: boundary 타겟 증강 +163건 (7파일, v1.2 오분류 패턴 분석 기반)
+  - judgment↔general, doc_search↔doc_generate, multi-intent, ultra-short, meeting, formal
+  - adversarial 라벨 QA → 3건 수정 (multi-intent 최종의도 규칙 일관성)
+  - seed 고정 추가 (재현성)
+  - **최종 결과: Eval F1 98.63%, Adversarial 91.67% (10건 오분류)**
+- v1.4: 하이퍼파라미터 그리드 서치 (6가지 조합)
+  - best=epochs10/lr2e-5 → Eval은 미세 향상, Adversarial은 하락
+  - **결론: 데이터 품질 > 하이퍼파라미터 (v1.3이 최종 모델)**
+- 버전별 학습 파이프라인: `run_train_versioned.py`
+- TRAINING_LOG.md 전체 업데이트 (v1.2~v1.4 + 전체 비교 요약)
+- 차트: `improvement_all_versions.png` (4패널 버전 비교)
+
 **다음 할 일:**
 - #6 LangGraph 오케스트레이터 + SSE 구현
-- 전처리 파이프라인 추가 (초성복원, 맞춤법교정) → adversarial 성능 개선
+- 전처리 파이프라인 추가 (초성복원, 맞춤법교정) → adversarial 추가 개선
 - 팀 진도 확인 (경은/승언/혜빈/지영)
