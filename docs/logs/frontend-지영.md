@@ -120,6 +120,35 @@
 - **미사용 변수 정리** — `Header.jsx`, `GoogleServicesConnect.jsx`의 사용되지 않는 변수 처리
 - **Hook 경고 해소** — `useGoogleServices.js`의 의도적 의존성 생략에 eslint-disable 주석 추가
 
+#### 6) 로그아웃 버튼 + DEV_BYPASS_AUTH 복원
+- Sidebar 하단에 로그아웃 텍스트 버튼 추가
+  - 클릭 시 토큰 삭제 → 로그인 페이지로 이동
+  - 마우스 호버 시 "로그아웃 할래 말래" 툴팁 표시
+- develop pull 후 사라진 `DEV_BYPASS_AUTH = true` 복원 (백엔드 로그인 개발 완료 전까지 인증 우회)
+
+#### 7) 글씨 크기 조절 기능 구현 (`859a8c8`)
+> 글씨가 작다는 의견 반영 — 가-/가+ 버튼으로 전체 글씨 크기를 조절할 수 있는 기능
+
+- **FontSizeControl 컴포넌트 신규 생성** (`components/common/FontSizeControl.jsx`)
+  - 우측 하단 고정 위치에 가-/가+ 버튼 표시
+  - 14px(하한) ~ 22px(상한), 2px 단위 조절 (총 5단계)
+  - html root의 font-size를 변경하여 rem 기반 전체 UI 크기 조절
+  - localStorage에 저장되어 새로고침해도 유지
+- **App.jsx에 통합** — BrowserRouter 안에 배치하여 로그인 포함 모든 페이지에서 사용 가능
+- **로그인 카드 너비 rem 변환** — `w-[400px]` → `w-[28rem]`으로 변경하여 글씨 크기에 따라 카드도 유연하게 확대/축소
+
+#### 8) 전체 text-[px] → text-[rem] 일괄 변환 (`859a8c8`)
+> 가-/가+ 기능이 모든 글씨에 적용되도록 px 고정값을 rem으로 변환
+
+- **변환 대상 54개 파일**, 총 6종류 px 값 변환:
+  - `text-[10px]` → `text-[0.625rem]`
+  - `text-[11px]` → `text-[0.6875rem]`
+  - `text-[13px]` → `text-[0.8125rem]`
+  - `text-[15px]` → `text-[0.9375rem]`
+  - `text-[22px]` → `text-[1.375rem]`, `text-[28px]` → `text-[1.75rem]`, `text-[32px]` → `text-[2rem]`
+- **적용 영역**: pages, dashboard, chat, documents, meetings, schedules, admin, auth, common 컴포넌트 + globals.css
+- 변환 후 `text-[Npx]` 잔여 0건 확인 완료
+
 ### 다음 할 일
 - 백엔드 연동 준비 (Mock → 실제 API 교체)
 - JWT 인증 실제 연동 (#26) — 혜빈 JWT 구현 완료 후
@@ -142,11 +171,13 @@
 | KeywordHighlight (FR-DOC-006) | ✅ 완료 | 문서 검색 + 규정 패널 키워드 하이라이트 |
 | 관리자 페이지 고도화 | ✅ 완료 | 사용자/규정 CRUD 모달 + 통계 기간 탭 |
 | UI 품질 점검 | ✅ 완료 | 반응형, 접근성, ESLint 0 warning, 빈 핸들러 수정 |
+| 로그아웃 기능 | ✅ 완료 | Sidebar 하단 텍스트 버튼 + DEV_BYPASS_AUTH 복원 |
+| 글씨 크기 조절 | ✅ 완료 | FontSizeControl (가-/가+), 전체 54파일 px→rem 변환 |
 | **백엔드 실제 연동** | ⏳ 대기 | 전체 Mock 데이터 → 실제 API 교체 필요 |
 
 ### 파일 현황
 - **페이지**: 10개 전체 구현
-- **컴포넌트**: 60개 (chat 13, dashboard 11, documents 7, meetings 5, schedules 8, auth 3, admin 3, common 10)
+- **컴포넌트**: 61개 (chat 13, dashboard 11, documents 7, meetings 5, schedules 8, auth 3, admin 3, common 11)
 - **스토어**: 4개 (auth, chat, google, ui)
 - **훅**: 4개 (useAuth, useChat, useSSE, useGoogleServices)
 - **API**: 8개 (client, auth, chat, documents, meetings, schedules, google, admin)
