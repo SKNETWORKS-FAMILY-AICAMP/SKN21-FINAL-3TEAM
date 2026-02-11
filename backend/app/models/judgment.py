@@ -3,6 +3,7 @@
 - 과거 판단 기록 저장 (판단 Agent 이력 참조용)
 """
 from sqlalchemy import String, Float, Text, Integer, ForeignKey
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from typing import Optional
 
@@ -19,5 +20,5 @@ class Judgment(Base, TimestampMixin):
     reasoning: Mapped[str] = mapped_column(Text)  # 근거
     conditions: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 조건부일 때 조건
     alternatives: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 대안
-    regulations_cited: Mapped[str] = mapped_column(Text)  # 참조 규정 JSON
+    regulations_cited: Mapped[dict] = mapped_column(JSONB)  # 참조 규정 JSON 배열
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))

@@ -1,14 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import LoginForm from '../components/auth/LoginForm';
 import RegisterForm from '../components/auth/RegisterForm';
 import PasswordReset from '../components/auth/PasswordReset';
 import useAuth from '../hooks/useAuth';
+import useAuthStore from '../store/authStore';
 
 export default function LoginPage() {
   const [tab, setTab] = useState('login'); // 'login' | 'register' | 'reset'
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, register } = useAuth();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const setAuth = useAuthStore((s) => s.setAuth);
+
+  // Google 소셜 로그인 콜백 처리: URL에 token이 있으면 저장 후 대시보드 이동
+  useEffect(() => {
+    const token = searchParams.get('token');
+    const userName = searchParams.get('user_name');
+    const googleError = searchParams.get('error');
+
+    if (token) {
+      setAuth({ name: userName || '' }, token);
+      navigate('/dashboard', { replace: true });
+    } else if (googleError) {
+      setError('Google 로그인에 실패했습니다. 다시 시도해주세요.');
+    }
+  }, [searchParams, setAuth, navigate]);
 
   const handleLogin = async ({ email, password }) => {
     setError('');

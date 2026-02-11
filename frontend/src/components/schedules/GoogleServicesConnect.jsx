@@ -11,7 +11,8 @@ const SERVICES = [
 
 export default function GoogleServicesConnect() {
   const { connected, email, scopes: _scopes, loading, error, connect, disconnect, hasScope } = useGoogleServices();
-  const [selectedScopes, setSelectedScopes] = useState([GOOGLE_SCOPES.CALENDAR]);
+  const ALL_SCOPES = SERVICES.map((s) => s.scope);
+  const [selectedScopes, setSelectedScopes] = useState(ALL_SCOPES);
 
   const toggleScope = (scope) => {
     setSelectedScopes((prev) =>
@@ -21,6 +22,12 @@ export default function GoogleServicesConnect() {
 
   const handleConnect = () => {
     if (selectedScopes.length > 0) connect(selectedScopes);
+  };
+
+  const missingScopes = ALL_SCOPES.filter((s) => !hasScope(s));
+
+  const handleAddScopes = () => {
+    if (missingScopes.length > 0) connect(missingScopes);
   };
 
   if (connected) {
@@ -56,6 +63,15 @@ export default function GoogleServicesConnect() {
               );
             })}
           </div>
+          {missingScopes.length > 0 && (
+            <button
+              onClick={handleAddScopes}
+              disabled={loading}
+              className="btn-primary mt-3 text-sm"
+            >
+              {loading ? '연결 중...' : `나머지 서비스 추가 연결 (${missingScopes.map((s) => GOOGLE_SCOPE_LABELS[s]).join(', ')})`}
+            </button>
+          )}
           {error && <p className="text-xs text-error mt-3">{error}</p>}
         </div>
       </div>

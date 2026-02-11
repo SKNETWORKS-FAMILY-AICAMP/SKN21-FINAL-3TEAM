@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import useAuthStore from './store/authStore';
 import Layout from './components/common/Layout';
@@ -11,22 +12,27 @@ import AdminPage from './pages/AdminPage';
 import MeetingMinutesPage from './pages/MeetingMinutesPage';
 import DocumentGeneratePage from './pages/DocumentGeneratePage';
 
-// 비로그인 → /login 으로 리다이렉트
-// DEV_BYPASS: 백엔드 연결 전 개발용 — 나중에 제거
-const DEV_BYPASS_AUTH = false;
-
 function PrivateRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  return (DEV_BYPASS_AUTH || isAuthenticated) ? <Outlet /> : <Navigate to="/login" replace />;
+  const initialized = useAuthStore((s) => s.initialized);
+  if (!initialized) return null; // 초기화 완료 전 빈 화면
+  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
 }
 
-// 이미 로그인 → /dashboard 로 리다이렉트
 function PublicOnlyRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const initialized = useAuthStore((s) => s.initialized);
+  if (!initialized) return null;
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Outlet />;
 }
 
 export default function App() {
+  const initialize = useAuthStore((s) => s.initialize);
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
   return (
     <BrowserRouter>
       <Routes>
