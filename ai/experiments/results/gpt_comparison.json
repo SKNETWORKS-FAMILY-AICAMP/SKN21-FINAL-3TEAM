@@ -1,0 +1,16 @@
+[
+  {
+    "method": "GPT Zero-shot",
+    "accuracy": 0.9571,
+    "f1_macro": 0.9602,
+    "time_ms": 519.73,
+    "cost": "~$0.01"
+  },
+  {
+    "method": "GPT Few-shot",
+    "accuracy": 0.9714,
+    "f1_macro": 0.9753,
+    "time_ms": 456.58,
+    "cost": "~$0.03"
+  }
+]
