@@ -1,0 +1,62 @@
+# 모델 벤치마크 설정 (이슈 #7)
+# 사용법:
+#   python scripts/run_benchmark.py --model qwen3
+#   python scripts/run_benchmark.py --model kanana
+#   python scripts/run_benchmark.py --model exaone
+#   python scripts/run_benchmark.py --model tri7b
+#   python scripts/run_benchmark.py --report    (전체 비교 리포트 생성)
+
+models:
+  qwen3:
+    name: "Qwen3-8B"
+    model_id: "Qwen/Qwen3-8B"
+    params: "8B"
+    type: "causal_lm"
+
+  kanana:
+    name: "Kanana-1.5-8B"
+    model_id: "kakaocorp/kanana-1.5-8b-instruct-2505"
+    params: "8B"
+    type: "causal_lm"
+
+  exaone:
+    name: "EXAONE-3.5-7.8B"
+    model_id: "LGAI-EXAONE/EXAONE-3.5-7.8B-Instruct"
+    params: "7.8B"
+    type: "causal_lm"
+
+  tri7b:
+    name: "Tri-7B"
+    model_id: "trillionlabs/Tri-7B"
+    params: "7B"
+    type: "causal_lm"
+
+# 추론 설정
+inference:
+  quantization: "4bit"         # 4bit QLoRA 기준 평가
+  max_new_tokens: 1024
+  temperature: 0.1             # 재현성을 위해 낮게
+  top_p: 0.9
+  do_sample: true
+  repetition_penalty: 1.1
+
+# 평가 기준 (TASK_BOARD 4개 축)
+eval_axes:
+  korean:           # 한국어 능력
+    weight: 0.25
+    metrics: ["rouge_l", "korean_fluency"]
+  regulation:       # 규정 해석 정확도
+    weight: 0.30
+    metrics: ["judgment_accuracy", "qa_relevance"]
+  format:           # 구조화 출력 (JSON 등)
+    weight: 0.25
+    metrics: ["json_validity", "field_completeness", "format_compliance"]
+  speed:            # 추론 속도
+    weight: 0.20
+    metrics: ["tokens_per_sec", "avg_latency"]
+
+# 경로
+paths:
+  testset: "data/evaluation/benchmark_testset.jsonl"
+  results_dir: "data/evaluation/benchmark_results"
+  report: "data/evaluation/benchmark_report.md"
