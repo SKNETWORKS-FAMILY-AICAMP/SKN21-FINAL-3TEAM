@@ -91,8 +91,8 @@ function DayDetailPopup({ day, month, year, events, onClose }) {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-neutral-main">{e.label}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[11px] text-neutral-muted">{TYPE_LABELS[e.type] || e.type}</span>
-                      {e.time && <span className="text-[11px] text-neutral-sub font-medium">{e.time}</span>}
+                      <span className="text-[0.6875rem] text-neutral-muted">{TYPE_LABELS[e.type] || e.type}</span>
+                      {e.time && <span className="text-[0.6875rem] text-neutral-sub font-medium">{e.time}</span>}
                     </div>
                     {e.meetLink && <div className="mt-1"><MeetLinkBadge meetLink={e.meetLink} /></div>}
                   </div>
@@ -132,7 +132,7 @@ function YearView({ year, events, todayYear, todayMonth, todayDate, onMonthClick
             <div className="text-sm font-bold text-neutral-main mb-2 text-center">{name}</div>
             <div className="grid grid-cols-7 gap-px">
               {dayNamesShort.map((d) => (
-                <div key={d} className="text-[10px] text-neutral-muted text-center pb-1">{d}</div>
+                <div key={d} className="text-[0.625rem] text-neutral-muted text-center pb-1">{d}</div>
               ))}
               {cells.map((d, i) => {
                 const isToday = d && year === todayYear && month === todayMonth && d === todayDate;
@@ -141,7 +141,7 @@ function YearView({ year, events, todayYear, todayMonth, todayDate, onMonthClick
                 return (
                   <div key={i} className="flex items-center justify-center h-7">
                     {d ? (
-                      <span className={`text-[11px] w-6 h-6 flex items-center justify-center rounded-full
+                      <span className={`text-[0.6875rem] w-6 h-6 flex items-center justify-center rounded-full
                         ${isToday ? 'bg-primary-700 text-white font-bold' : ''}
                         ${isHoliday && !isToday ? 'bg-red-50 text-red-500 font-semibold' : ''}
                         ${hasEvent && !isToday && !isHoliday ? 'bg-primary-50 text-primary-700 font-semibold' : ''}
@@ -240,7 +240,7 @@ export default function CalendarView({ events = [] }) {
           <span className="text-base font-bold">
             {view === 'year' ? `${currentYear}년` : `${currentYear}년 ${currentMonth}월`}
           </span>
-          <button onClick={goToToday} className="text-[11px] px-2 py-1 rounded border border-neutral-divider text-neutral-muted hover:bg-primary-50 hover:text-primary-700 transition">오늘</button>
+          <button onClick={goToToday} className="text-[0.6875rem] px-2 py-1 rounded border border-neutral-divider text-neutral-muted hover:bg-primary-50 hover:text-primary-700 transition">오늘</button>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -279,7 +279,7 @@ export default function CalendarView({ events = [] }) {
         ) : (
         <div className="grid grid-cols-7 gap-1">
           {dayNames.map((d) => (
-            <div key={d} className="text-[11px] font-semibold text-neutral-muted py-2 text-center">{d}</div>
+            <div key={d} className="text-[0.6875rem] font-semibold text-neutral-muted py-2 text-center">{d}</div>
           ))}
           {displayDays.map((d, i) => {
             const dayEvents = mergedEvents.filter((e) => e.day === d.day && e.month === currentMonth && !d.other);
@@ -295,7 +295,7 @@ export default function CalendarView({ events = [] }) {
                 <div className={`font-semibold mb-1 ${d.other ? 'text-neutral-muted' : 'text-neutral-main'}`}>{d.day}</div>
                 {dayEvents.map((e, j) => (
                   <div key={j} className="mb-0.5">
-                    <div className={`text-[10px] px-1.5 py-0.5 rounded font-medium truncate ${typeStyles[e.type] || ''}`}>
+                    <div className={`text-[0.625rem] px-1.5 py-0.5 rounded font-medium truncate ${typeStyles[e.type] || ''}`}>
                       {e.label}
                     </div>
                   </div>

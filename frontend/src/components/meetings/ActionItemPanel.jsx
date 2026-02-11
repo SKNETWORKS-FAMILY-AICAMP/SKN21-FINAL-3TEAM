@@ -18,7 +18,7 @@ export default function ActionItemPanel({ items = [] }) {
             {item.done && '✓'}
           </button>
           <div className="flex-1">
-            <div className="text-[13px] font-semibold text-neutral-main">{item.title}</div>
+            <div className="text-[0.8125rem] font-semibold text-neutral-main">{item.title}</div>
             <div className="flex gap-3 mt-1 text-xs text-neutral-sub">
               <span>👤 {item.assignee}</span>
               <span className={item.priority === 'high' ? 'text-error font-semibold' : ''}>{item.deadline}</span>

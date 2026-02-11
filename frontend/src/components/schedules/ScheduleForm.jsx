@@ -46,7 +46,7 @@ export default function ScheduleForm({ onSubmit, onClose }) {
       <div className="space-y-3">
         {/* 제목 */}
         <div>
-          <label className="text-[13px] font-semibold block mb-1">제목</label>
+          <label className="text-[0.8125rem] font-semibold block mb-1">제목</label>
           <input
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -57,7 +57,7 @@ export default function ScheduleForm({ onSubmit, onClose }) {
 
         {/* 일정 유형 */}
         <div>
-          <label className="text-[13px] font-semibold block mb-1">일정 유형</label>
+          <label className="text-[0.8125rem] font-semibold block mb-1">일정 유형</label>
           <div className="flex gap-2">
             {[
               { value: 'meeting', label: '회의', dot: 'bg-primary-500' },
@@ -83,7 +83,7 @@ export default function ScheduleForm({ onSubmit, onClose }) {
 
         {/* 날짜 */}
         <div>
-          <label className="text-[13px] font-semibold block mb-1">날짜</label>
+          <label className="text-[0.8125rem] font-semibold block mb-1">날짜</label>
           <input
             type="date"
             value={form.date}
@@ -108,7 +108,7 @@ export default function ScheduleForm({ onSubmit, onClose }) {
         {!form.allDay && (
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[13px] font-semibold block mb-1">시작 시간</label>
+              <label className="text-[0.8125rem] font-semibold block mb-1">시작 시간</label>
               <select
                 value={form.startTime}
                 onChange={(e) => setForm({ ...form, startTime: e.target.value })}
@@ -118,7 +118,7 @@ export default function ScheduleForm({ onSubmit, onClose }) {
               </select>
             </div>
             <div>
-              <label className="text-[13px] font-semibold block mb-1">종료 시간</label>
+              <label className="text-[0.8125rem] font-semibold block mb-1">종료 시간</label>
               <select
                 value={form.endTime}
                 onChange={(e) => setForm({ ...form, endTime: e.target.value })}
@@ -153,14 +153,14 @@ export default function ScheduleForm({ onSubmit, onClose }) {
         {/* 참석자 이메일 */}
         {form.includeMeet && (
           <div>
-            <label className="text-[13px] font-semibold block mb-1">참석자 이메일</label>
+            <label className="text-[0.8125rem] font-semibold block mb-1">참석자 이메일</label>
             <input
               value={form.attendeeEmails}
               onChange={(e) => setForm({ ...form, attendeeEmails: e.target.value })}
               placeholder="콤마로 구분 (예: a@co.kr, b@co.kr)"
               className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(110,135,160,0.1)] outline-none"
             />
-            <p className="text-[11px] text-neutral-muted mt-1">Meet 링크가 포함된 초대 메일이 발송됩니다</p>
+            <p className="text-[0.6875rem] text-neutral-muted mt-1">Meet 링크가 포함된 초대 메일이 발송됩니다</p>
           </div>
         )}
 

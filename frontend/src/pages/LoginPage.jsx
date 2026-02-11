@@ -74,10 +74,10 @@ export default function LoginPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-surface-main">
-      <div className="bg-surface-card rounded-lg border border-neutral-border p-10 w-[400px] shadow-md">
+      <div className="bg-surface-card rounded-lg border border-neutral-border p-10 w-[28rem] max-w-[90vw] shadow-md">
         <div className="flex items-center gap-3 justify-center mb-8">
-          <div className="w-11 h-11 bg-accent-300 rounded-sm flex items-center justify-center text-[22px]">📋</div>
-          <span className="font-display text-[22px] font-bold text-primary-700">WorkFlow Agent</span>
+          <div className="w-11 h-11 bg-accent-300 rounded-sm flex items-center justify-center text-[1.375rem]">📋</div>
+          <span className="font-display text-[1.375rem] font-bold text-primary-700">WorkFlow Agent</span>
         </div>
 
         {/* 비밀번호 찾기 화면 */}
@@ -95,7 +95,7 @@ export default function LoginPage() {
               : <RegisterForm onSubmit={handleRegister} error={error} loading={loading} />
             }
 
-            <div className="text-center mt-5 text-[13px] text-neutral-sub">
+            <div className="text-center mt-5 text-[0.8125rem] text-neutral-sub">
               {tab === 'login'
                 ? (
                   <div className="space-y-2">

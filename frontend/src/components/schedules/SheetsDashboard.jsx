@@ -66,13 +66,13 @@ export default function SheetsDashboard() {
                     {sheet.sheet_name || sheet.title || 'Action Items 추적'}
                   </p>
                   {sheet.meeting_title && (
-                    <span className="text-[11px] text-neutral-muted">{sheet.meeting_title}</span>
+                    <span className="text-[0.6875rem] text-neutral-muted">{sheet.meeting_title}</span>
                   )}
                 </div>
                 <div className="flex gap-1.5">
                   <button
                     onClick={() => syncSheet(sheet.spreadsheet_id)}
-                    className="text-[11px] px-2 py-1 rounded border border-neutral-divider text-neutral-muted hover:bg-surface-hover transition"
+                    className="text-[0.6875rem] px-2 py-1 rounded border border-neutral-divider text-neutral-muted hover:bg-surface-hover transition"
                   >
                     동기화
                   </button>
@@ -81,7 +81,7 @@ export default function SheetsDashboard() {
                       href={sheet.spreadsheet_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[11px] px-2 py-1 rounded border border-primary-300 text-primary-700 bg-primary-50 hover:bg-primary-100 transition"
+                      className="text-[0.6875rem] px-2 py-1 rounded border border-primary-300 text-primary-700 bg-primary-50 hover:bg-primary-100 transition"
                     >
                       열기
                     </a>

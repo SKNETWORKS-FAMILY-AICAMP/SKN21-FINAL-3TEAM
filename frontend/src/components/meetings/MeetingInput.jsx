@@ -27,7 +27,7 @@ export default function MeetingInput({ onSubmit, loading }) {
       <div className="card-body space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-[13px] font-semibold mb-1.5">회의 제목</label>
+            <label className="block text-[0.8125rem] font-semibold mb-1.5">회의 제목</label>
             <input
               value={form.title}
               onChange={update('title')}
@@ -36,7 +36,7 @@ export default function MeetingInput({ onSubmit, loading }) {
             />
           </div>
           <div>
-            <label className="block text-[13px] font-semibold mb-1.5">회의 날짜</label>
+            <label className="block text-[0.8125rem] font-semibold mb-1.5">회의 날짜</label>
             <input
               type="date"
               value={form.date}
@@ -47,7 +47,7 @@ export default function MeetingInput({ onSubmit, loading }) {
         </div>
 
         <div>
-          <label className="block text-[13px] font-semibold mb-1.5">참석자 (쉼표로 구분)</label>
+          <label className="block text-[0.8125rem] font-semibold mb-1.5">참석자 (쉼표로 구분)</label>
           <input
             value={form.attendees}
             onChange={update('attendees')}
@@ -57,7 +57,7 @@ export default function MeetingInput({ onSubmit, loading }) {
         </div>
 
         <div>
-          <label className="block text-[13px] font-semibold mb-1.5">회의 내용</label>
+          <label className="block text-[0.8125rem] font-semibold mb-1.5">회의 내용</label>
           <textarea
             value={form.content}
             onChange={update('content')}

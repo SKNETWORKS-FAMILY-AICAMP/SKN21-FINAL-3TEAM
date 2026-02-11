@@ -32,19 +32,19 @@ export default function CalendarWidget({ events = {} }) {
     <div className="card">
       <div className="card-body">
         <div className="flex justify-between items-center mb-4">
-          <div className="text-[15px] font-bold text-neutral-main">{year}년 {month}월</div>
+          <div className="text-[0.9375rem] font-bold text-neutral-main">{year}년 {month}월</div>
           <div className="flex gap-1">
             <button onClick={goPrev} className="w-7 h-7 rounded-md border border-neutral-border bg-surface-card text-xs text-neutral-sub flex items-center justify-center hover:bg-primary-50 hover:border-primary-300 transition">◀</button>
             <button onClick={goNext} className="w-7 h-7 rounded-md border border-neutral-border bg-surface-card text-xs text-neutral-sub flex items-center justify-center hover:bg-primary-50 hover:border-primary-300 transition">▶</button>
           </div>
         </div>
         <div className="grid grid-cols-7 gap-0.5 text-center">
-          {dayNames.map((d) => <div key={d} className="text-[11px] font-semibold text-neutral-muted py-2">{d}</div>)}
+          {dayNames.map((d) => <div key={d} className="text-[0.6875rem] font-semibold text-neutral-muted py-2">{d}</div>)}
           {days.map((d, i) => {
             const ev = events[d.day];
             const isToday = !d.other && d.day === todayDate && year === todayYear && month === todayMonth;
             return (
-              <div key={i} className={`py-2 text-[13px] font-medium rounded-lg cursor-pointer relative transition hover:bg-surface-hover ${d.other ? 'text-neutral-muted' : 'text-neutral-main'} ${isToday ? 'bg-primary-700 text-white font-bold hover:bg-primary-900' : ''}`}>
+              <div key={i} className={`py-2 text-[0.8125rem] font-medium rounded-lg cursor-pointer relative transition hover:bg-surface-hover ${d.other ? 'text-neutral-muted' : 'text-neutral-main'} ${isToday ? 'bg-primary-700 text-white font-bold hover:bg-primary-900' : ''}`}>
                 {d.day}
                 {ev && !d.other && (
                   <span className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 w-[5px] h-[5px] rounded-full ${ev === 'meeting' ? 'bg-primary-500' : 'bg-error'}`} />

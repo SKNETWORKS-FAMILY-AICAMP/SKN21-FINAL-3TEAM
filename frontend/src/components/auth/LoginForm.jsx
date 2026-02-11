@@ -36,7 +36,7 @@ export default function LoginForm({ onSubmit, onGoogleLogin, error, loading }) {
       )}
 
       <div className="mb-4">
-        <label className="block text-[13px] font-semibold text-neutral-main mb-1.5">이메일</label>
+        <label className="block text-[0.8125rem] font-semibold text-neutral-main mb-1.5">이메일</label>
         <input
           type="email"
           value={email}
@@ -48,7 +48,7 @@ export default function LoginForm({ onSubmit, onGoogleLogin, error, loading }) {
       </div>
 
       <div className="mb-4">
-        <label className="block text-[13px] font-semibold text-neutral-main mb-1.5">비밀번호</label>
+        <label className="block text-[0.8125rem] font-semibold text-neutral-main mb-1.5">비밀번호</label>
         <input
           type="password"
           value={password}

@@ -11,29 +11,29 @@ export default function MeetingDetail({ meeting }) {
         <Badge variant={meeting.analyzed ? 'status-completed' : 'status-in-progress'}>{meeting.analyzed ? '분석완료' : '분석중'}</Badge>
       </div>
       <div>
-        <div className="text-[13px] font-bold mb-2 flex items-center gap-1.5">ℹ️ 회의 정보</div>
-        <div className="text-[13px] text-neutral-sub leading-[1.7]">{meeting.info}</div>
+        <div className="text-[0.8125rem] font-bold mb-2 flex items-center gap-1.5">ℹ️ 회의 정보</div>
+        <div className="text-[0.8125rem] text-neutral-sub leading-[1.7]">{meeting.info}</div>
       </div>
       {meeting.riskLevel && (
         <div>
-          <div className="text-[13px] font-bold mb-2 flex items-center gap-1.5">🤖 AI 분석 결과</div>
+          <div className="text-[0.8125rem] font-bold mb-2 flex items-center gap-1.5">🤖 AI 분석 결과</div>
           <Badge variant={`risk-${meeting.riskLevel}`}>리스크: {meeting.riskLevel === 'medium' ? '중간' : meeting.riskLevel === 'high' ? '높음' : '낮음'}</Badge>
         </div>
       )}
       {meeting.decisions?.length > 0 && (
         <div>
-          <div className="text-[13px] font-bold mb-2 flex items-center gap-1.5">📌 결정사항 ({meeting.decisions.length}건)</div>
+          <div className="text-[0.8125rem] font-bold mb-2 flex items-center gap-1.5">📌 결정사항 ({meeting.decisions.length}건)</div>
           {meeting.decisions.map((d, i) => (
             <div key={i} className="flex items-center gap-3 p-3 rounded-sm hover:bg-surface-hover">
               <span className="w-1.5 h-1.5 rounded-full bg-primary-500 flex-shrink-0" />
-              <div><div className="text-[13px] font-semibold">{d.title}</div><div className="text-xs text-neutral-sub mt-0.5">담당: {d.assignee}</div></div>
+              <div><div className="text-[0.8125rem] font-semibold">{d.title}</div><div className="text-xs text-neutral-sub mt-0.5">담당: {d.assignee}</div></div>
             </div>
           ))}
         </div>
       )}
       {meeting.actionItems?.length > 0 && (
         <div>
-          <div className="text-[13px] font-bold mb-2 flex items-center gap-1.5">✅ Action Items ({meeting.actionItems.length}건)</div>
+          <div className="text-[0.8125rem] font-bold mb-2 flex items-center gap-1.5">✅ Action Items ({meeting.actionItems.length}건)</div>
           <ActionItemPanel items={meeting.actionItems} />
         </div>
       )}

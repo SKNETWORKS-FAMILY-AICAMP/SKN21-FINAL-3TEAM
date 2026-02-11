@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 
 const navItems = [
@@ -22,6 +22,13 @@ const navItems = [
 
 export default function Sidebar() {
   const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <aside className="w-60 bg-primary-700 flex flex-col flex-shrink-0 overflow-y-auto">
@@ -33,7 +40,7 @@ export default function Sidebar() {
       <nav className="flex-1">
         {navItems.map((section) => (
           <div key={section.section} className="mb-2">
-            <div className="px-5 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-primary-300 opacity-70">
+            <div className="px-5 py-1.5 text-[0.625rem] font-semibold uppercase tracking-widest text-primary-300 opacity-70">
               {section.section}
             </div>
             {section.items.map((item) => (
@@ -51,7 +58,7 @@ export default function Sidebar() {
                 <span>{item.icon}</span>
                 <span>{item.label}</span>
                 {item.badge && (
-                  <span className="ml-auto bg-accent-300 text-primary-900 text-[11px] font-bold px-2 py-px rounded-full">
+                  <span className="ml-auto bg-accent-300 text-primary-900 text-[0.6875rem] font-bold px-2 py-px rounded-full">
                     {item.badge}
                   </span>
                 )}
@@ -61,14 +68,23 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="flex items-center gap-2.5 px-5 py-4 border-t border-primary-500">
-        <div className="w-[34px] h-[34px] rounded-full bg-accent-300 flex items-center justify-center text-[13px] font-bold text-primary-900 flex-shrink-0">
-          {user?.name?.[0] || '김'}
+      <div className="px-5 py-4 border-t border-primary-500">
+        <div className="flex items-center gap-2.5 mb-3">
+          <div className="w-[34px] h-[34px] rounded-full bg-accent-300 flex items-center justify-center text-[0.8125rem] font-bold text-primary-900 flex-shrink-0">
+            {user?.name?.[0] || '김'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[0.8125rem] font-semibold text-white truncate">{user?.name || '김정보'}</div>
+            <div className="text-[0.6875rem] text-primary-300 truncate">{user?.role || '정보보안팀 팀장'}</div>
+          </div>
         </div>
-        <div>
-          <div className="text-[13px] font-semibold text-white">{user?.name || '김정보'}</div>
-          <div className="text-[11px] text-primary-300">{user?.role || '정보보안팀 팀장'}</div>
-        </div>
+        <button
+          onClick={handleLogout}
+          title="로그아웃 할래 말래"
+          className="w-full py-2 rounded-md text-[0.8125rem] font-medium text-primary-200 border border-primary-500 hover:bg-white/10 hover:text-white transition"
+        >
+          로그아웃
+        </button>
       </div>
     </aside>
   );

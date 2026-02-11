@@ -29,7 +29,7 @@ export default function TasksPanel() {
       <div className="card-header">
         <div className="flex items-center gap-2">
           <span className="card-title">Google Tasks</span>
-          <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 font-medium">
+          <span className="text-[0.6875rem] px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 font-medium">
             {tasks.filter((t) => !t.completed).length}개 미완료
           </span>
         </div>
@@ -92,13 +92,13 @@ export default function TasksPanel() {
                     {task.title}
                   </p>
                   {task.assignee && (
-                    <span className="text-[11px] text-neutral-muted">{task.assignee}</span>
+                    <span className="text-[0.6875rem] text-neutral-muted">{task.assignee}</span>
                   )}
                 </div>
                 {task.deadline && (
-                  <span className="text-[11px] text-neutral-muted whitespace-nowrap">{task.deadline}</span>
+                  <span className="text-[0.6875rem] text-neutral-muted whitespace-nowrap">{task.deadline}</span>
                 )}
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                <span className={`text-[0.625rem] px-2 py-0.5 rounded-full font-medium ${
                   task.completed ? 'bg-success-bg text-success' : 'bg-warning-bg text-warning'
                 }`}>
                   {TASK_STATUS_LABELS[task.status] || (task.completed ? '완료' : '미완료')}
