@@ -86,6 +86,14 @@
 - TRAINING_LOG.md 전체 업데이트 (v1.2~v1.4 + 전체 비교 요약)
 - 차트: `improvement_all_versions.png` (4패널 버전 비교)
 
+**후반 세션: 문서 QA + 마무리:**
+- EXPERIMENT_PLAN.md 최종 정리: 실험 4개 완료 반영 + 차트 이미지 참조 6장 추가
+  - adversarial 기준 차이 주석 추가 (실험2 25문장 vs 실험4 120문장 직접 비교 불가 명시)
+- 차트 QA: v1.3 Eval F1 수치 오류 수정 + 요약 테이블 adversarial 셋 정확도 보정
+- TRAINING_LOG.md: v1.4 혼동행렬 설명 주석 추가 (v1.3과 동일 데이터 기준)
+- state.py: Intent 분류 담당자 주석 수정 (경은→지용)
+- `upload_to_runpod.sh` 스크립트 추가 (학습 데이터 업로드용)
+
 **다음 할 일:**
 - #6 LangGraph 오케스트레이터 + SSE 구현
 - 전처리 파이프라인 추가 (초성복원, 맞춤법교정) → adversarial 추가 개선
