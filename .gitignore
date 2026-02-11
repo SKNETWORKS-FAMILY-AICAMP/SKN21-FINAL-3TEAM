@@ -42,10 +42,12 @@ frontend/build/
 # OS
 .DS_Store
 Thumbs.db
+nul
 
 # Logs
 *.log
 logs/
+!docs/logs/
 
 # Secrets
 credentials.json
