@@ -72,6 +72,8 @@
 - GPT가 accuracy 7.5%p 우위, 하지만 BERT가 **68배 빠르고 비용 $0 + 데이터 보안**
 - **sLLM 선택 정당성**: 정확도 7.5%p를 속도 68배 + 비용 $0 + 로컬 추론으로 교환
 
+![방법론 비교 차트](results/method_comparison.png)
+
 ---
 
 ## 실험 2: 혼동행렬 ✅
@@ -88,6 +90,14 @@
 - **v1.1 Adversarial (70문장)**: 오분류 8건, **전부 general로 폴백** (안전한 실패 방향)
 - **v1.3 Adversarial (120문장)**: 오분류 10건, 주로 multi-intent와 ultra-short
 
+| v1.1 Eval 혼동행렬 | v1.1 Adversarial 혼동행렬 |
+|:---:|:---:|
+| ![Eval CM](results/confusion_eval.png) | ![Adv CM](results/confusion_adv.png) |
+
+| v1.2 Adversarial 혼동행렬 | v1.3 Adversarial 혼동행렬 (최종) |
+|:---:|:---:|
+| ![v1.2 CM](results/confusion_adv_v1.2.png) | ![v1.3 CM](results/confusion_adv_v1.3.png) |
+
 ---
 
 ## 실험 3: v1.0 → v1.1 개선 차트 ✅
@@ -102,6 +112,8 @@
 
 ### 핵심 인사이트
 - 원인 분석 → 타겟 증강 → 문제 해결의 체계적 프로세스 입증
+
+![v1.0→v1.1 개선 차트](results/improvement_v1.png)
 
 ---
 
@@ -139,6 +151,8 @@ v1.4  하이퍼파라미터 그리드 서치 (6가지 조합)
 | **10** | **2e-5** | **0.9826** |
 
 Best config(epochs=10)는 Eval 최고지만 Adversarial 하락 → **과적합 확인**
+
+![전체 버전 비교 차트](results/improvement_all_versions.png)
 
 ### 핵심 인사이트
 1. **데이터 품질 > 하이퍼파라미터**: boundary 증강(+6%p) >> 그리드 서치(효과 없음)
