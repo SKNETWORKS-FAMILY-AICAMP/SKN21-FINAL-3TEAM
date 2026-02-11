@@ -35,7 +35,7 @@ export default function DocumentPreview({ data, onDownload, loading }) {
           <div className="space-y-4">
             {data.fields.map((field, i) => (
               <div key={i}>
-                <h4 className="text-[13px] font-bold text-primary-700 mb-1.5">{field.label}</h4>
+                <h4 className="text-[0.8125rem] font-bold text-primary-700 mb-1.5">{field.label}</h4>
                 <div className="text-sm text-neutral-main leading-relaxed whitespace-pre-wrap bg-surface-hover rounded-sm p-3">
                   {field.value}
                 </div>

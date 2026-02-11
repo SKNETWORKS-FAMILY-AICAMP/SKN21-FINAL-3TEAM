@@ -6,7 +6,7 @@ export default function RegulationPanel({ regulations = [], isOpen, onClose, sea
   return (
     <div className="w-[320px] flex-shrink-0 border-l border-neutral-divider bg-surface-card h-full overflow-y-auto ml-5 -mr-8">
       <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-divider">
-        <div className="text-[15px] font-bold text-neutral-main flex items-center gap-2">
+        <div className="text-[0.9375rem] font-bold text-neutral-main flex items-center gap-2">
           <span>📖</span>관련 규정
         </div>
         <button
@@ -23,7 +23,7 @@ export default function RegulationPanel({ regulations = [], isOpen, onClose, sea
         )}
         {regulations.map((reg, i) => (
           <div key={i} className="p-3 rounded-sm border border-neutral-divider hover:border-primary-300 transition">
-            <div className="text-[13px] font-semibold text-neutral-main mb-1">
+            <div className="text-[0.8125rem] font-semibold text-neutral-main mb-1">
               <KeywordHighlight text={reg.name} keyword={searchQuery} />
             </div>
             {reg.article && (
@@ -37,7 +37,7 @@ export default function RegulationPanel({ regulations = [], isOpen, onClose, sea
               </p>
             )}
             {reg.relevance && (
-              <div className="mt-2 flex items-center gap-1 text-[11px] text-neutral-muted">
+              <div className="mt-2 flex items-center gap-1 text-[0.6875rem] text-neutral-muted">
                 <span>관련도</span>
                 <div className="flex-1 h-1.5 bg-neutral-divider rounded-full overflow-hidden">
                   <div

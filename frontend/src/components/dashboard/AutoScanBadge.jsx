@@ -49,7 +49,7 @@ export default function AutoScanBadge({ status = 'scanning', lastScan, detectedC
         </span>
       )}
       {lastScan && (
-        <span className="text-[11px] text-neutral-muted">
+        <span className="text-[0.6875rem] text-neutral-muted">
           마지막 스캔: {lastScan}
         </span>
       )}

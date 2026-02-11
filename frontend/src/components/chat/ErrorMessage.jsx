@@ -5,7 +5,7 @@ export default function ErrorMessage({ message, onRetry }) {
       <div className="flex-1">
         <div className="bg-error-bg border border-error/20 rounded-2xl rounded-bl-sm p-4">
           <p className="text-sm text-error font-medium mb-1">요청을 처리하지 못했습니다</p>
-          <p className="text-[13px] text-neutral-sub leading-relaxed">{message || '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'}</p>
+          <p className="text-[0.8125rem] text-neutral-sub leading-relaxed">{message || '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'}</p>
           {onRetry && (
             <button
               onClick={onRetry}

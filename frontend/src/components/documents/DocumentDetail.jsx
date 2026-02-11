@@ -11,14 +11,14 @@ export default function DocumentDetail({ doc, searchQuery = '' }) {
         <Badge variant={doc.status === '적용중' ? 'status-active' : 'status-revising'}>{doc.status}</Badge>
       </div>
       <div className="mb-4">
-        <div className="text-[13px] font-bold text-neutral-main mb-2 flex items-center gap-1.5">📋 기본 정보</div>
-        <div className="text-[13px] text-neutral-sub leading-[1.7]">분류: {doc.category} · 버전: {doc.version} · 수정일: {doc.date}<br/>범위: 🏢 회사 문서 · 파싱 상태: ✅ 완료</div>
+        <div className="text-[0.8125rem] font-bold text-neutral-main mb-2 flex items-center gap-1.5">📋 기본 정보</div>
+        <div className="text-[0.8125rem] text-neutral-sub leading-[1.7]">분류: {doc.category} · 버전: {doc.version} · 수정일: {doc.date}<br/>범위: 🏢 회사 문서 · 파싱 상태: ✅ 완료</div>
       </div>
       {doc.riskLevel && (
         <div className="mb-4">
-          <div className="text-[13px] font-bold text-neutral-main mb-2 flex items-center gap-1.5">🤖 AI 분석 결과</div>
+          <div className="text-[0.8125rem] font-bold text-neutral-main mb-2 flex items-center gap-1.5">🤖 AI 분석 결과</div>
           <Badge variant={`risk-${doc.riskLevel}`} className="mb-2">리스크: {doc.riskLevel === 'low' ? '낮음' : doc.riskLevel === 'medium' ? '중간' : '높음'}</Badge>
-          {doc.analysis && <div className="text-[13px] text-neutral-sub leading-[1.7]"><KeywordHighlight text={doc.analysis} keyword={searchQuery} /></div>}
+          {doc.analysis && <div className="text-[0.8125rem] text-neutral-sub leading-[1.7]"><KeywordHighlight text={doc.analysis} keyword={searchQuery} /></div>}
         </div>
       )}
       <div className="flex gap-2 mt-4">

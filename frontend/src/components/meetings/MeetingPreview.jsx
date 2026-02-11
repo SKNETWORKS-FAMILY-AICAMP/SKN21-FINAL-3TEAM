@@ -25,7 +25,7 @@ export default function MeetingPreview({ data, onDownload, loading }) {
         {/* 요약 */}
         {data.summary && (
           <div className="mb-4">
-            <h4 className="text-[13px] font-bold text-neutral-main mb-2">요약</h4>
+            <h4 className="text-[0.8125rem] font-bold text-neutral-main mb-2">요약</h4>
             <p className="text-sm text-neutral-main leading-relaxed whitespace-pre-wrap bg-surface-hover rounded-sm p-3">
               {data.summary}
             </p>
@@ -35,7 +35,7 @@ export default function MeetingPreview({ data, onDownload, loading }) {
         {/* 결정사항 */}
         {data.decisions?.length > 0 && (
           <div className="mb-4">
-            <h4 className="text-[13px] font-bold text-neutral-main mb-2">결정사항 ({data.decisions.length}건)</h4>
+            <h4 className="text-[0.8125rem] font-bold text-neutral-main mb-2">결정사항 ({data.decisions.length}건)</h4>
             <div className="space-y-1.5">
               {data.decisions.map((d, i) => (
                 <div key={i} className="flex items-start gap-2 text-sm text-neutral-main">
@@ -50,7 +50,7 @@ export default function MeetingPreview({ data, onDownload, loading }) {
         {/* Action Items */}
         {data.actionItems?.length > 0 && (
           <div>
-            <h4 className="text-[13px] font-bold text-neutral-main mb-2">Action Items ({data.actionItems.length}건)</h4>
+            <h4 className="text-[0.8125rem] font-bold text-neutral-main mb-2">Action Items ({data.actionItems.length}건)</h4>
             <div className="space-y-2">
               {data.actionItems.map((item, i) => (
                 <div key={i} className="flex items-start gap-2 px-3 py-2.5 bg-surface-hover rounded-sm text-sm">

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import useAuthStore from './store/authStore';
 import Layout from './components/common/Layout';
+import FontSizeControl from './components/common/FontSizeControl';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ChatPage from './pages/ChatPage';
@@ -12,11 +13,14 @@ import AdminPage from './pages/AdminPage';
 import MeetingMinutesPage from './pages/MeetingMinutesPage';
 import DocumentGeneratePage from './pages/DocumentGeneratePage';
 
+// DEV_BYPASS: 백엔드 로그인 개발 완료 전까지 인증 우회 — 나중에 false로 변경
+const DEV_BYPASS_AUTH = true;
+
 function PrivateRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const initialized = useAuthStore((s) => s.initialized);
   if (!initialized) return null; // 초기화 완료 전 빈 화면
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+  return (DEV_BYPASS_AUTH || isAuthenticated) ? <Outlet /> : <Navigate to="/login" replace />;
 }
 
 function PublicOnlyRoute() {
@@ -35,6 +39,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <FontSizeControl />
       <Routes>
         {/* 비로그인 전용 (로그인 상태면 대시보드로) */}
         <Route element={<PublicOnlyRoute />}>

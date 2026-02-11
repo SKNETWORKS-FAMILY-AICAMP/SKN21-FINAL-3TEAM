@@ -83,7 +83,7 @@ export default function PasswordReset({ onBack }) {
             가입한 이메일을 입력하시면 비밀번호 재설정 코드를 보내드립니다.
           </p>
           <div className="mb-4">
-            <label className="block text-[13px] font-semibold text-neutral-main mb-1.5">이메일</label>
+            <label className="block text-[0.8125rem] font-semibold text-neutral-main mb-1.5">이메일</label>
             <input
               type="email"
               value={email}
@@ -110,7 +110,7 @@ export default function PasswordReset({ onBack }) {
             {email}로 인증 코드를 발송했습니다.
           </div>
           <div className="mb-4">
-            <label className="block text-[13px] font-semibold text-neutral-main mb-1.5">인증 코드</label>
+            <label className="block text-[0.8125rem] font-semibold text-neutral-main mb-1.5">인증 코드</label>
             <input
               value={token}
               onChange={(e) => setToken(e.target.value)}
@@ -120,7 +120,7 @@ export default function PasswordReset({ onBack }) {
             />
           </div>
           <div className="mb-4">
-            <label className="block text-[13px] font-semibold text-neutral-main mb-1.5">새 비밀번호</label>
+            <label className="block text-[0.8125rem] font-semibold text-neutral-main mb-1.5">새 비밀번호</label>
             <input
               type="password"
               value={newPassword}
@@ -131,7 +131,7 @@ export default function PasswordReset({ onBack }) {
             />
           </div>
           <div className="mb-4">
-            <label className="block text-[13px] font-semibold text-neutral-main mb-1.5">새 비밀번호 확인</label>
+            <label className="block text-[0.8125rem] font-semibold text-neutral-main mb-1.5">새 비밀번호 확인</label>
             <input
               type="password"
               value={confirmPassword}

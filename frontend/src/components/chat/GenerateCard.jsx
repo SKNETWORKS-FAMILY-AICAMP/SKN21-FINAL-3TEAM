@@ -7,7 +7,7 @@ export default function GenerateCard({ title, templateType, fields = [], downloa
     <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
       <div className="px-4 py-3 border-b border-neutral-divider flex items-center justify-between">
         <div className="flex items-center gap-2 font-bold text-sm text-primary-700">
-          <span className="text-[15px]">📝</span>{title || '문서 생성 완료'}
+          <span className="text-[0.9375rem]">📝</span>{title || '문서 생성 완료'}
         </div>
         {templateType && <Badge variant="document">{typeLabels[templateType] || templateType}</Badge>}
       </div>
@@ -15,7 +15,7 @@ export default function GenerateCard({ title, templateType, fields = [], downloa
         {fields.length > 0 && (
           <div className="space-y-2 mb-4">
             {fields.map((f, i) => (
-              <div key={i} className="text-[13px]">
+              <div key={i} className="text-[0.8125rem]">
                 <span className="font-semibold text-neutral-sub">{f.label}: </span>
                 <span className="text-neutral-main">{f.value}</span>
               </div>

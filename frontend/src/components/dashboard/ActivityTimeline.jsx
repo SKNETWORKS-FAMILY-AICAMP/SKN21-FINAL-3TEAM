@@ -22,10 +22,10 @@ export default function ActivityTimeline({ activities = [] }) {
           <Link key={i} to={a.to || '#'} className={`flex items-center gap-3 px-2 py-3 rounded-sm transition hover:bg-surface-hover ${i < activities.length - 1 ? 'border-b border-neutral-divider' : ''}`}>
             <div className={`w-9 h-9 rounded-sm flex items-center justify-center text-base flex-shrink-0 ${iconStyles[a.type] || 'bg-primary-50'}`}>{a.icon}</div>
             <div className="flex-1">
-              <div className="text-[13px] font-semibold text-neutral-main">{a.title}</div>
-              <div className="text-xs text-neutral-sub mt-0.5">{a.description}</div>
+              <div className="text-[0.8125rem] font-semibold text-neutral-main">{a.title}</div>
+              <div className="text-[0.75rem] text-neutral-sub mt-0.5">{a.description}</div>
             </div>
-            <span className="text-[11px] text-neutral-muted whitespace-nowrap ml-auto">{a.time}</span>
+            <span className="text-[0.6875rem] text-neutral-muted whitespace-nowrap ml-auto">{a.time}</span>
           </Link>
         ))}
       </div>

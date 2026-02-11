@@ -53,13 +53,13 @@ export default function RegulationManagement({ regulations = [] }) {
           <tbody>
             {data.map((r, i) => (
               <tr key={i} className="hover:bg-surface-hover">
-                <td className="px-4 py-3 text-[13px] font-semibold border-b border-neutral-divider">{r.name}</td>
-                <td className="px-4 py-3 text-[13px] border-b border-neutral-divider">{r.count}개</td>
+                <td className="px-4 py-3 text-[0.8125rem] font-semibold border-b border-neutral-divider">{r.name}</td>
+                <td className="px-4 py-3 text-[0.8125rem] border-b border-neutral-divider">{r.count}개</td>
                 <td className="px-4 py-3 border-b border-neutral-divider"><Badge variant={r.status === '적용중' ? 'status-active' : r.status === '개정중' ? 'status-revising' : 'status-completed'}>{r.status}</Badge></td>
                 <td className="px-4 py-3 border-b border-neutral-divider">
                   <div className="flex gap-1.5">
-                    <button className="btn-outline py-1 px-2.5 text-[11px]" onClick={() => openEdit(i)}>수정</button>
-                    <button className="py-1 px-2.5 text-[11px] rounded-sm border border-error text-error bg-error-bg hover:bg-error hover:text-white transition" onClick={() => setDeleteIndex(i)}>삭제</button>
+                    <button className="btn-outline py-1 px-2.5 text-[0.6875rem]" onClick={() => openEdit(i)}>수정</button>
+                    <button className="py-1 px-2.5 text-[0.6875rem] rounded-sm border border-error text-error bg-error-bg hover:bg-error hover:text-white transition" onClick={() => setDeleteIndex(i)}>삭제</button>
                   </div>
                 </td>
               </tr>

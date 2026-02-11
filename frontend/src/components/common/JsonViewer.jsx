@@ -25,7 +25,7 @@ function JsonNode({ keyName, value, depth = 0 }) {
     }
 
     return (
-      <div style={{ paddingLeft: indent }} className="flex gap-1 py-0.5 text-[13px] font-mono">
+      <div style={{ paddingLeft: indent }} className="flex gap-1 py-0.5 text-[0.8125rem] font-mono">
         {keyName !== null && <span className="text-error">{`"${keyName}"`}: </span>}
         <span className={colorClass}>{display}</span>
       </div>
@@ -41,10 +41,10 @@ function JsonNode({ keyName, value, depth = 0 }) {
   return (
     <div style={{ paddingLeft: indent }}>
       <div
-        className="flex items-center gap-1 py-0.5 cursor-pointer hover:bg-surface-hover rounded text-[13px] font-mono"
+        className="flex items-center gap-1 py-0.5 cursor-pointer hover:bg-surface-hover rounded text-[0.8125rem] font-mono"
         onClick={() => setCollapsed(!collapsed)}
       >
-        <span className="text-neutral-muted text-[10px] w-3 text-center select-none">
+        <span className="text-neutral-muted text-[0.625rem] w-3 text-center select-none">
           {collapsed ? '▶' : '▼'}
         </span>
         {keyName !== null && <span className="text-error">{`"${keyName}"`}: </span>}
@@ -59,7 +59,7 @@ function JsonNode({ keyName, value, depth = 0 }) {
           {entries.map(([k, v]) => (
             <JsonNode key={k} keyName={isArray ? null : k} value={v} depth={depth + 1} />
           ))}
-          <div style={{ paddingLeft: 0 }} className="text-[13px] font-mono text-neutral-sub py-0.5">
+          <div style={{ paddingLeft: 0 }} className="text-[0.8125rem] font-mono text-neutral-sub py-0.5">
             {bracket[1]}
           </div>
         </>
@@ -79,7 +79,7 @@ export default function JsonViewer({ data, title = '원본 JSON' }) {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1.5 text-xs text-neutral-muted hover:text-primary-700 transition"
       >
-        <span className="text-[10px]">{open ? '▼' : '▶'}</span>
+        <span className="text-[0.625rem]">{open ? '▼' : '▶'}</span>
         {title}
       </button>
       {open && (

@@ -37,14 +37,14 @@ export default function TemplateUploadDialog({ isOpen, onClose, onUpload }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
       <div className="bg-surface-card rounded-lg border border-neutral-border w-[480px] shadow-md" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-divider">
-          <h3 className="text-[15px] font-bold text-neutral-main">템플릿 업로드</h3>
+          <h3 className="text-[0.9375rem] font-bold text-neutral-main">템플릿 업로드</h3>
           <button onClick={onClose} className="text-neutral-muted hover:text-neutral-main transition">✕</button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {/* 파일 선택 */}
           <div>
-            <label className="block text-[13px] font-semibold mb-1.5">파일</label>
+            <label className="block text-[0.8125rem] font-semibold mb-1.5">파일</label>
             <input ref={fileRef} type="file" accept=".docx,.pdf,.txt" onChange={handleFileChange} className="hidden" />
             <button
               type="button"
@@ -61,7 +61,7 @@ export default function TemplateUploadDialog({ isOpen, onClose, onUpload }) {
 
           {/* 템플릿 이름 */}
           <div>
-            <label className="block text-[13px] font-semibold mb-1.5">템플릿 이름</label>
+            <label className="block text-[0.8125rem] font-semibold mb-1.5">템플릿 이름</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -72,7 +72,7 @@ export default function TemplateUploadDialog({ isOpen, onClose, onUpload }) {
 
           {/* 카테고리 */}
           <div>
-            <label className="block text-[13px] font-semibold mb-1.5">카테고리</label>
+            <label className="block text-[0.8125rem] font-semibold mb-1.5">카테고리</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -86,7 +86,7 @@ export default function TemplateUploadDialog({ isOpen, onClose, onUpload }) {
 
           {/* 설명 */}
           <div>
-            <label className="block text-[13px] font-semibold mb-1.5">설명 (선택)</label>
+            <label className="block text-[0.8125rem] font-semibold mb-1.5">설명 (선택)</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}

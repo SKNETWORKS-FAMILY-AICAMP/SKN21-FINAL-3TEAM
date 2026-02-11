@@ -58,7 +58,7 @@ export default function GoogleServicesConnect() {
                 >
                   <span>{icon}</span>
                   <span className="font-medium">{GOOGLE_SCOPE_LABELS[scope]}</span>
-                  {active && <span className="ml-auto text-[10px] text-success font-semibold">ON</span>}
+                  {active && <span className="ml-auto text-[0.625rem] text-success font-semibold">ON</span>}
                 </div>
               );
             })}
@@ -105,7 +105,7 @@ export default function GoogleServicesConnect() {
                   <span>{icon}</span>
                   {GOOGLE_SCOPE_LABELS[scope]}
                 </div>
-                <span className="text-[11px] text-neutral-muted">{desc}</span>
+                <span className="text-[0.6875rem] text-neutral-muted">{desc}</span>
               </button>
             );
           })}
