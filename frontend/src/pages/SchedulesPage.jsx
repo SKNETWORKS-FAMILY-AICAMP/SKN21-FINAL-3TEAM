@@ -8,14 +8,18 @@ import SheetsDashboard from '../components/schedules/SheetsDashboard';
 import EmailReminderButton from '../components/schedules/EmailReminderButton';
 
 export default function SchedulesPage() {
-  const { connected, calendarEvents, calendarLoading, fetchCalendarEvents, hasScope } = useGoogleServices();
+  const { connected, calendarEvents, calendarLoading, calendarError, fetchCalendarEvents, hasScope } = useGoogleServices();
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState('calendar');
 
   // Google Calendar 연결 시 이벤트 자동 로드
   useEffect(() => {
+    console.log('[SchedulesPage] Google 연결 상태:', { connected, hasCalendarScope: hasScope('calendar') });
     if (connected && hasScope('calendar')) {
+      console.log('[SchedulesPage] Google Calendar 이벤트 로딩 시작...');
       fetchCalendarEvents();
+    } else if (connected && !hasScope('calendar')) {
+      console.warn('[SchedulesPage] Google 연결됨, 하지만 Calendar 권한 없음!');
     }
   }, [connected, hasScope, fetchCalendarEvents]);
 
@@ -32,9 +36,13 @@ export default function SchedulesPage() {
 
   // Google Calendar 이벤트를 CalendarView 형식으로 변환
   const events = useMemo(() => {
-    if (!calendarEvents || calendarEvents.length === 0) return [];
+    console.log('[SchedulesPage] Calendar 이벤트 변환:', calendarEvents);
+    if (!calendarEvents || calendarEvents.length === 0) {
+      console.log('[SchedulesPage] Calendar 이벤트 없음');
+      return [];
+    }
 
-    return calendarEvents.map(event => {
+    const converted = calendarEvents.map(event => {
       const start = new Date(event.start?.dateTime || event.start?.date);
       const end = new Date(event.end?.dateTime || event.end?.date);
 
@@ -51,6 +59,9 @@ export default function SchedulesPage() {
         meetLink: event.hangoutLink || event.conferenceData?.entryPoints?.[0]?.uri,
       };
     });
+
+    console.log('[SchedulesPage] 변환된 이벤트:', converted);
+    return converted;
   }, [calendarEvents]);
 
   const handleAddSchedule = async (data) => {
@@ -164,6 +175,23 @@ export default function SchedulesPage() {
               </div>
             ))}
           </div>
+
+          {/* 에러 메시지 */}
+          {calendarError && (
+            <div className="mb-5 p-4 bg-error-bg border border-error rounded-md">
+              <p className="text-sm text-error font-medium">❌ {calendarError}</p>
+            </div>
+          )}
+
+          {/* 디버깅 정보 */}
+          <div className="mb-5 p-3 bg-info-bg border border-neutral-border rounded-md text-xs">
+            <div className="font-semibold mb-2">🔍 디버깅 정보</div>
+            <div>Google 연결: {connected ? '✅ 연결됨' : '❌ 연결 안됨'}</div>
+            <div>Calendar 권한: {hasScope('calendar') ? '✅ 있음' : '❌ 없음'}</div>
+            <div>이벤트 개수: {calendarEvents?.length || 0}개</div>
+            <div>변환된 이벤트: {events?.length || 0}개</div>
+          </div>
+
           {calendarLoading ? (
             <div className="flex justify-center items-center h-64">
               <div className="text-neutral-sub">Google Calendar 이벤트 로딩 중...</div>
@@ -175,6 +203,13 @@ export default function SchedulesPage() {
                 <div className="mt-5 p-4 bg-warning-bg border border-warning rounded-md text-center">
                   <p className="text-sm text-warning font-medium">
                     ⚠️ Google Calendar에 연결하면 실제 일정이 표시됩니다.
+                  </p>
+                </div>
+              )}
+              {connected && !hasScope('calendar') && (
+                <div className="mt-5 p-4 bg-error-bg border border-error rounded-md text-center">
+                  <p className="text-sm text-error font-medium">
+                    ❌ Google Calendar 권한이 없습니다. 다시 연결해주세요.
                   </p>
                 </div>
               )}
