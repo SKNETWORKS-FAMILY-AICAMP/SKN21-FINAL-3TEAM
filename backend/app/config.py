@@ -25,7 +25,14 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
 
-    # vLLM (팀원 B)
+    # LLM API (공통 모듈)
+    LLM_PROVIDER: str = "openai"
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o"
+    ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_MODEL: str = "claude-sonnet-4-20250514"
+
+    # vLLM (팀원 B — 4단계)
     VLLM_BASE_URL: str = "http://localhost:8080/v1"
     VLLM_MODEL_NAME: str = "Qwen/Qwen3-8B"
 
