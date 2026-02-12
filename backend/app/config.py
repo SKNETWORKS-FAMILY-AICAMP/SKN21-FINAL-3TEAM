@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     VLLM_BASE_URL: str = "http://localhost:8080/v1"
     VLLM_MODEL_NAME: str = "Qwen/Qwen3-8B"
 
+    # Upload (팀원 D)
+    UPLOAD_DIR: str = "./uploads"
+
     # ChromaDB (팀원 B)
     CHROMA_PERSIST_DIR: str = "./chroma_db"
 

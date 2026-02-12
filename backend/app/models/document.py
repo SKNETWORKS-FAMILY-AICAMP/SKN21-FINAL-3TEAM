@@ -4,7 +4,6 @@
 """
 from sqlalchemy import String, Integer, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
-from typing import Optional
 
 from app.db.base import Base, TimestampMixin
 
@@ -16,7 +15,7 @@ class Document(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(500))
     file_path: Mapped[str] = mapped_column(String(1000))
     file_type: Mapped[str] = mapped_column(String(20))  # pdf, docx, txt
-    content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
     scope: Mapped[str] = mapped_column(String(10), default="company")  # company / personal
     uploaded_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     status: Mapped[str] = mapped_column(String(20), default="processing")  # processing / ready / error
