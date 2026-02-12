@@ -36,6 +36,10 @@ const useGoogleStore = create((set, get) => ({
   sheetsLoading: false,
   sheetsError: null,
 
+  calendarEvents: [],
+  calendarLoading: false,
+  calendarError: null,
+
   // ── OAuth 상태 조회 ──
   fetchStatus: async () => {
     set({ loading: true, error: null })
@@ -160,6 +164,38 @@ const useGoogleStore = create((set, get) => ({
       await googleApi.syncSheet(spreadsheetId, meetingId)
     } catch (err) {
       set({ sheetsError: err.response?.data?.detail || 'Sheets 동기화 실패' })
+    }
+  },
+
+  // ── Google Calendar ──
+  fetchCalendarEvents: async (timeMin = null, timeMax = null) => {
+    set({ calendarLoading: true, calendarError: null })
+    try {
+      const { data } = await googleApi.listCalendarEvents(timeMin, timeMax)
+      set({ calendarEvents: data.events || data || [], calendarLoading: false })
+    } catch (err) {
+      set({ calendarLoading: false, calendarError: err.response?.data?.detail || 'Calendar 조회 실패' })
+    }
+  },
+
+  createEventWithMeet: async (eventData) => {
+    set({ calendarLoading: true, calendarError: null })
+    try {
+      const { data } = await googleApi.createEventWithMeet(eventData)
+      await get().fetchCalendarEvents()
+      return data
+    } catch (err) {
+      set({ calendarLoading: false, calendarError: err.response?.data?.detail || '이벤트 생성 실패' })
+      throw err
+    }
+  },
+
+  syncEventToGoogle: async (eventData) => {
+    try {
+      await googleApi.syncEventToGoogle(eventData)
+      await get().fetchCalendarEvents()
+    } catch (err) {
+      set({ calendarError: err.response?.data?.detail || '이벤트 동기화 실패' })
     }
   },
 }))
