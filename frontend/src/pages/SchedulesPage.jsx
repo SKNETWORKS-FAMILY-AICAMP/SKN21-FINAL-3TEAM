@@ -27,6 +27,7 @@ export default function SchedulesPage() {
   useEffect(() => {
     if (connected && hasScope('calendar')) {
       const { timeMin, timeMax } = getTimeRange();
+      console.log('[SchedulesPage] 조회 범위:', timeMin, '~', timeMax);
       fetchCalendarEvents(timeMin, timeMax);
     }
   }, [connected, hasScope, fetchCalendarEvents]);

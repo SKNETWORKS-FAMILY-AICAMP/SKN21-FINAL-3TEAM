@@ -171,8 +171,9 @@ const useGoogleStore = create((set, get) => ({
   fetchCalendarEvents: async (timeMin = null, timeMax = null) => {
     set({ calendarLoading: true, calendarError: null })
     try {
-      console.log('[googleStore] Calendar API 호출 시작...')
+      console.log('[googleStore] Calendar API 호출 시작...', { timeMin, timeMax })
       const response = await googleApi.listCalendarEvents(timeMin, timeMax)
+      console.log('[googleStore] 요청 URL:', response.config?.url, '파라미터:', response.config?.params)
       console.log('[googleStore] Calendar API 전체 응답:', response)
       console.log('[googleStore] Calendar API data:', response.data)
 
