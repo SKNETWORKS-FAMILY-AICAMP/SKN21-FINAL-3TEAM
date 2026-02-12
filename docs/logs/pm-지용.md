@@ -163,7 +163,27 @@
 - Google 로그인 500 에러 → 혜빈/지영에게 전달
 - eslint 버전 충돌 → 지영에게 전달
 
+**작업 범위 규칙 (충돌 방지):**
+- `ai/agents/` 폴더 파일 수정 안 함
+- 예외: `orchestrator.py` (라우팅, intent 모델 로드), `intent_classifier.py`, `state.py` (사전 공유 후)
+- judgment_agent → 경은, document_agent → 승언, schedule_agent → 혜빈 담당
+
+**doc_search 응답 UI QA:**
+- 3개 에이전트로 전체 chat UI 분석
+- 발견: 모든 카드 컴포넌트(JudgmentCard, GenerateCard 등)가 ChatPage에서 미사용 — 전부 텍스트 버블로 출력 중
+- useSSE.js에 `result` 이벤트 핸들러 누락, chatStore 메시지 구조 확장 필요
+- doc_search 전용 DocSearchCard 제안: 답변 요약 + 출처 카드 + 관련도 바 + 후속 행동 버튼
+- → 지영에게 SSE result 이벤트 연결 + intent별 카드 분기 렌더링 요청 필요
+
+**오케스트레이터 ↔ Intent 분류기 구조 확인:**
+- intent_classifier.py → 모델 로드 + 추론 (싱글톤)
+- orchestrator.py → classify_intent 노드에서 get_classifier() 호출 → route_by_intent로 분기
+- 실험 5 최종 모델은 `ai/models/intent_classifier/`에 파일 교체만 하면 됨 (코드 수정 0줄)
+- 현재 weights 없으면 fallback 모드 (전부 general로 분류)
+
 **다음 할 일:**
-- koelectra 결과 수신 후 3모델 비교 분석 + 차트 생성
+- koelectra 실험 마저 완료 (RunPod — 집에서 처리)
+- koelectra 결과 저장: `cp grid_search_full.json grid_search_koelectra.json`
+- 3모델 비교 분석 + 차트 생성
 - 실험 6: 전처리 ablation + seed 반복
-- 최종 모델 확정 → TRAINING_LOG.md 업데이트
+- 최종 모델 확정 → `ai/models/intent_classifier/`에 배포 + TRAINING_LOG.md 업데이트
