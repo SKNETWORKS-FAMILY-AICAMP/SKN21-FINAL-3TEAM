@@ -7,7 +7,7 @@ import TasksPanel from '../components/schedules/TasksPanel';
 import SheetsDashboard from '../components/schedules/SheetsDashboard';
 
 export default function SchedulesPage() {
-  const { connected, calendarEvents, calendarLoading, calendarError, fetchCalendarEvents, hasScope } = useGoogleServices();
+  const { connected, calendarEvents, calendarLoading, calendarError, fetchCalendarEvents, hasScope, syncEventToGoogle, createEventWithMeet } = useGoogleServices();
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState('calendar');
 
@@ -48,26 +48,31 @@ export default function SchedulesPage() {
 
     if (connected && hasScope('calendar')) {
       try {
-        const startDateTime = new Date(`${data.date}T${data.start_time}:00`);
-        const endDateTime = new Date(`${data.date}T${data.end_time}:00`);
+        // 종일 이벤트: 날짜만 사용 (시간 없이)
+        const startDateTime = data.allDay
+          ? new Date(`${data.date}T00:00:00`)
+          : new Date(`${data.date}T${data.start_time}:00`);
+        const endDateTime = data.allDay
+          ? new Date(`${data.date}T23:59:59`)
+          : new Date(`${data.date}T${data.end_time}:00`);
 
         const eventData = {
           title: data.title,
           description: data.description || '',
           start_time: startDateTime,
           end_time: endDateTime,
-          attendee_emails: data.attendees || [],
+          attendee_emails: data.attendee_emails || [],
         };
 
-        if (data.create_meet) {
-          await useGoogleServices.getState().createEventWithMeet(eventData);
+        if (data.include_meet) {
+          await createEventWithMeet(eventData);
         } else {
-          await useGoogleServices.getState().syncEventToGoogle(eventData);
+          await syncEventToGoogle(eventData);
         }
 
         fetchCalendarEvents();
       } catch (error) {
-        console.error(error);
+        console.error('일정 추가 실패:', error);
       }
     }
 
