@@ -460,7 +460,7 @@ def main():
         final_best_model = None
         final_best_preds = None
         final_best_labels = None
-        final_best_config = {**best_config, "warmup_ratio": WARMUP_DEFAULT}
+        final_best_config = {**best_config, "warmup_ratio": WARMUP_DEFAULT} if best_config else None
 
         if not args.step1_only and best_config:
             print(f"\n  [Step 2] Warmup tuning on best config: {best_config}")
@@ -541,6 +541,9 @@ def main():
         short = model_name.split("/")[-1]
         r = data["best_result"]
         c = data["best_config"]
+        if not r or not c:
+            print(f"\n  {short}: ALL FAILED (no successful training)")
+            continue
         print(f"\n  {short}:")
         print(f"    Config: epochs={c['epochs']}, lr={c['lr']:.0e}, batch={c['batch_size']}, warmup={c['warmup_ratio']}")
         print(f"    Eval F1={r['eval_f1']}, Adv Acc={r['adv_acc']}, Adv F1={r['adv_f1']}, Speed={r['infer_ms']}ms")
