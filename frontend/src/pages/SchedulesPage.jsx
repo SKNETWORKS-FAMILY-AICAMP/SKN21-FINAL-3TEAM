@@ -5,7 +5,6 @@ import CalendarView from '../components/schedules/CalendarView';
 import ScheduleForm from '../components/schedules/ScheduleForm';
 import TasksPanel from '../components/schedules/TasksPanel';
 import SheetsDashboard from '../components/schedules/SheetsDashboard';
-import EmailReminderButton from '../components/schedules/EmailReminderButton';
 
 export default function SchedulesPage() {
   const { connected, calendarEvents, calendarLoading, calendarError, fetchCalendarEvents, hasScope } = useGoogleServices();
@@ -19,31 +18,15 @@ export default function SchedulesPage() {
     }
   }, [connected, hasScope, fetchCalendarEvents]);
 
-  // 30초마다 자동 갱신
-  useEffect(() => {
-    if (!connected || !hasScope('calendar')) return;
-
-    const interval = setInterval(() => {
-      fetchCalendarEvents();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [connected, hasScope, fetchCalendarEvents]);
 
   // Google Calendar 이벤트를 CalendarView 형식으로 변환
   const events = useMemo(() => {
-    console.log('[SchedulesPage] Calendar 이벤트 변환:', calendarEvents);
-    if (!calendarEvents || calendarEvents.length === 0) {
-      console.log('[SchedulesPage] Calendar 이벤트 없음');
-      return [];
-    }
+    if (!calendarEvents || calendarEvents.length === 0) return [];
 
-    const converted = calendarEvents.map(event => {
-      // 백엔드 응답 형식: { title, start: "ISO string", end: "ISO string", meet_link }
+    return calendarEvents.map(event => {
       const start = new Date(event.start);
       const end = new Date(event.end);
 
-      // 시간 포맷 (dateTime이 있으면 시간 표시, date만 있으면 종일)
       const hasTime = event.start.includes('T');
       const timeStr = hasTime
         ? `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
@@ -58,15 +41,11 @@ export default function SchedulesPage() {
         meetLink: event.meet_link,
       };
     });
-
-    console.log('[SchedulesPage] 변환된 이벤트:', converted);
-    return converted;
   }, [calendarEvents]);
 
   const handleAddSchedule = async (data) => {
     if (!data.date || !data.title) return;
 
-    // Google Calendar 연결 시 실제 API로 추가
     if (connected && hasScope('calendar')) {
       try {
         const startDateTime = new Date(`${data.date}T${data.start_time}:00`);
@@ -80,20 +59,16 @@ export default function SchedulesPage() {
           attendee_emails: data.attendees || [],
         };
 
-        // Google Meet 포함 여부에 따라 다른 API 호출
         if (data.create_meet) {
           await useGoogleServices.getState().createEventWithMeet(eventData);
         } else {
           await useGoogleServices.getState().syncEventToGoogle(eventData);
         }
 
-        alert('✅ Google Calendar에 일정이 추가되었습니다!');
+        fetchCalendarEvents();
       } catch (error) {
-        alert('❌ 일정 추가 실패: ' + (error.message || '알 수 없는 오류'));
         console.error(error);
       }
-    } else {
-      alert('⚠️ Google Calendar에 연결되지 않았습니다. 먼저 연결해주세요.');
     }
 
     setShowForm(false);
@@ -118,7 +93,6 @@ export default function SchedulesPage() {
               {calendarLoading ? '🔄 동기화 중...' : '🔄 새로고침'}
             </button>
           )}
-          <EmailReminderButton bulk daysBefore={3} />
           <button onClick={() => setShowForm(!showForm)} className="btn-primary">
             {showForm ? '취소' : '+ 일정 추가'}
           </button>
@@ -178,34 +152,9 @@ export default function SchedulesPage() {
           {/* 에러 메시지 */}
           {calendarError && (
             <div className="mb-5 p-4 bg-error-bg border border-error rounded-md">
-              <p className="text-sm text-error font-medium">❌ {calendarError}</p>
+              <p className="text-sm text-error font-medium">{calendarError}</p>
             </div>
           )}
-
-          {/* 디버깅 정보 */}
-          <div className="mb-5 p-3 bg-info-bg border border-neutral-border rounded-md text-xs space-y-1">
-            <div className="font-semibold mb-2">🔍 디버깅 정보</div>
-            <div>Google 연결: {connected ? '✅ 연결됨' : '❌ 연결 안됨'}</div>
-            <div>Calendar 권한: {hasScope('calendar') ? '✅ 있음' : '❌ 없음'}</div>
-            <div>이벤트 개수: {calendarEvents?.length || 0}개</div>
-            <div>변환된 이벤트: {events?.length || 0}개</div>
-            {calendarEvents && calendarEvents.length > 0 && (
-              <details className="mt-2">
-                <summary className="cursor-pointer font-semibold">첫 번째 이벤트 원본 데이터</summary>
-                <pre className="mt-2 p-2 bg-surface-card rounded text-[0.625rem] overflow-auto max-h-40">
-                  {JSON.stringify(calendarEvents[0], null, 2)}
-                </pre>
-              </details>
-            )}
-            {events && events.length > 0 && (
-              <details className="mt-2">
-                <summary className="cursor-pointer font-semibold">첫 번째 변환된 이벤트</summary>
-                <pre className="mt-2 p-2 bg-surface-card rounded text-[0.625rem] overflow-auto">
-                  {JSON.stringify(events[0], null, 2)}
-                </pre>
-              </details>
-            )}
-          </div>
 
           {calendarLoading ? (
             <div className="flex justify-center items-center h-64">
@@ -217,14 +166,7 @@ export default function SchedulesPage() {
               {!connected && (
                 <div className="mt-5 p-4 bg-warning-bg border border-warning rounded-md text-center">
                   <p className="text-sm text-warning font-medium">
-                    ⚠️ Google Calendar에 연결하면 실제 일정이 표시됩니다.
-                  </p>
-                </div>
-              )}
-              {connected && !hasScope('calendar') && (
-                <div className="mt-5 p-4 bg-error-bg border border-error rounded-md text-center">
-                  <p className="text-sm text-error font-medium">
-                    ❌ Google Calendar 권한이 없습니다. 다시 연결해주세요.
+                    Google Calendar에 연결하면 실제 일정이 표시됩니다.
                   </p>
                 </div>
               )}

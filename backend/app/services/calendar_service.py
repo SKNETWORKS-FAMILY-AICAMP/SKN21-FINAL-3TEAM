@@ -101,32 +101,38 @@ class GoogleCalendarService(GoogleBaseService):
         if not time_max:
             time_max = (now + timedelta(days=90)).isoformat()
 
-        logger.info(f"Calendar pull_events: timeMin={time_min}, timeMax={time_max}")
-
-        params = {
-            "calendarId": "primary",
-            "singleEvents": True,
-            "orderBy": "startTime",
-            "maxResults": 250,
-            "timeMin": time_min,
-            "timeMax": time_max,
-        }
-
-        try:
-            result = service.events().list(**params).execute()
-            logger.info(f"Calendar API 응답: {len(result.get('items', []))}개 이벤트")
-        except Exception as e:
-            logger.error(f"Calendar API 호출 실패: {e}")
-            raise
-
+        # 모든 캘린더에서 이벤트 수집 (공휴일 캘린더 제외 — 프론트엔드에서 관리)
         events = []
-        for item in result.get("items", []):
-            events.append({
-                "event_id": item["id"],
-                "title": item.get("summary", ""),
-                "start": item["start"].get("dateTime", item["start"].get("date")),
-                "end": item["end"].get("dateTime", item["end"].get("date")),
-                "html_link": item.get("htmlLink"),
-                "meet_link": item.get("hangoutLink"),
-            })
+        try:
+            calendar_list = service.calendarList().list().execute()
+            for cal in calendar_list.get("items", []):
+                cal_id = cal["id"]
+                # 공휴일 캘린더 제외 (Google 기본 holiday 캘린더)
+                if "#holiday@group.v.calendar.google.com" in cal_id:
+                    continue
+                params = {
+                    "calendarId": cal_id,
+                    "singleEvents": True,
+                    "orderBy": "startTime",
+                    "maxResults": 250,
+                    "timeMin": time_min,
+                    "timeMax": time_max,
+                }
+                try:
+                    result = service.events().list(**params).execute()
+                    items = result.get("items", [])
+                    for item in items:
+                        events.append({
+                            "event_id": item["id"],
+                            "title": item.get("summary", ""),
+                            "start": item["start"].get("dateTime", item["start"].get("date")),
+                            "end": item["end"].get("dateTime", item["end"].get("date")),
+                            "html_link": item.get("htmlLink"),
+                            "meet_link": item.get("hangoutLink"),
+                            "calendar": cal.get("summary", ""),
+                        })
+                except Exception:
+                    pass
+        except Exception as e:
+            raise
         return events
