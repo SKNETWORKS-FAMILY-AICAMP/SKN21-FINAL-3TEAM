@@ -19,6 +19,17 @@ export default function SchedulesPage() {
     }
   }, [connected, hasScope, fetchCalendarEvents]);
 
+  // 30초마다 자동 갱신 (Google에서 추가한 일정 반영)
+  useEffect(() => {
+    if (!connected || !hasScope('calendar')) return;
+
+    const interval = setInterval(() => {
+      fetchCalendarEvents();
+    }, 30000); // 30초
+
+    return () => clearInterval(interval);
+  }, [connected, hasScope, fetchCalendarEvents]);
+
   // Google Calendar 이벤트를 CalendarView 형식으로 변환
   const events = useMemo(() => {
     if (!calendarEvents || calendarEvents.length === 0) return [];
@@ -87,6 +98,16 @@ export default function SchedulesPage() {
           <p className="text-sm text-neutral-sub mt-1">Action Item과 회의 일정을 통합 관리합니다</p>
         </div>
         <div className="flex items-center gap-3">
+          {connected && hasScope('calendar') && (
+            <button
+              onClick={() => fetchCalendarEvents()}
+              disabled={calendarLoading}
+              className="btn-outline"
+              title="Google Calendar 동기화"
+            >
+              {calendarLoading ? '🔄 동기화 중...' : '🔄 새로고침'}
+            </button>
+          )}
           <EmailReminderButton bulk daysBefore={3} />
           <button onClick={() => setShowForm(!showForm)} className="btn-primary">
             {showForm ? '취소' : '+ 일정 추가'}
