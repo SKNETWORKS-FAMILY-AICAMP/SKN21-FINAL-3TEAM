@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import useAuthStore from './store/authStore';
+import useUIStore from './store/uiStore';
 import Layout from './components/common/Layout';
 import FontSizeControl from './components/common/FontSizeControl';
 import LoginPage from './pages/LoginPage';
@@ -32,10 +33,15 @@ function PublicOnlyRoute() {
 
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize);
+  const theme = useUIStore((s) => s.theme);
 
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
 
   return (
     <BrowserRouter>

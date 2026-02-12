@@ -141,13 +141,28 @@ export const REGULATION_STATUS_COLORS = {
   deprecated: '#6B7280',
 }
 
-// 추천 질문
+// 추천 질문 카테고리
+export const SUGGESTED_QUESTION_CATEGORIES = [
+  { key: 'all', label: '전체', icon: '✨' },
+  { key: 'regulation', label: '규정', icon: '⚖️' },
+  { key: 'document', label: '문서', icon: '📄' },
+  { key: 'schedule', label: '일정', icon: '📅' },
+  { key: 'general', label: '일반', icon: '💬' },
+]
+
+// 추천 질문 (카테고리 포함)
 export const SUGGESTED_QUESTIONS = [
-  { text: '재택근무 규정 알려줘', intent: 'judgment' },
-  { text: '회의록 만들어줘', intent: 'meeting_generate' },
-  { text: '보고서 만들어줘', intent: 'doc_generate' },
-  { text: '오늘 일정 알려줘', intent: 'schedule_view' },
-  { text: '신입 온보딩 가이드 있어?', intent: 'doc_search' },
+  { text: '재택근무 규정 알려줘', intent: 'judgment', category: 'regulation' },
+  { text: '연차 사용 기준이 어떻게 돼?', intent: 'judgment', category: 'regulation' },
+  { text: '인턴도 법인카드 쓸 수 있어?', intent: 'judgment', category: 'regulation' },
+  { text: '회의록 만들어줘', intent: 'meeting_generate', category: 'document' },
+  { text: '보고서 만들어줘', intent: 'doc_generate', category: 'document' },
+  { text: '신입 온보딩 가이드 있어?', intent: 'doc_search', category: 'document' },
+  { text: '오늘 일정 알려줘', intent: 'schedule_view', category: 'schedule' },
+  { text: '내일 오후 2시에 회의 잡아줘', intent: 'schedule_add', category: 'schedule' },
+  { text: '이번 주 미팅 일정 보여줘', intent: 'schedule_view', category: 'schedule' },
+  { text: '우리 회사 복지 제도 알려줘', intent: 'general', category: 'general' },
+  { text: '부서 연락처 알려줘', intent: 'general', category: 'general' },
 ]
 
 // 알림 설정 (Phase 2)

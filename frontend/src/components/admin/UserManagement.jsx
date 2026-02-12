@@ -59,7 +59,7 @@ export default function UserManagement({ users = [] }) {
                 <td className="px-4 py-3 border-b border-neutral-divider"><Badge variant={u.role === '관리자' ? 'role-admin' : 'role-user'}>{u.role}</Badge></td>
                 <td className="px-4 py-3 border-b border-neutral-divider">
                   <button onClick={() => toggleActive(i)} className={`w-10 h-[22px] rounded-full relative transition ${u.active ? 'bg-success' : 'bg-neutral-border'}`}>
-                    <span className={`absolute w-[18px] h-[18px] rounded-full bg-white top-0.5 transition-transform ${u.active ? 'translate-x-[20px]' : 'translate-x-0.5'}`} />
+                    <span className={`absolute left-[2px] top-[2px] w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-transform ${u.active ? 'translate-x-[18px]' : 'translate-x-0'}`} />
                   </button>
                 </td>
                 <td className="px-4 py-3 border-b border-neutral-divider">

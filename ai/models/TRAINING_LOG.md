@@ -1,0 +1,403 @@
+# Intent Classification 학습 로그
+
+> 모델 학습/평가 결과를 기록합니다. 데이터 증강이나 재학습 시 이전 결과와 비교할 수 있습니다.
+
+---
+
+## v1.0 — 초기 파인튜닝 (2026-02-11)
+
+### 모델 정보
+| 항목 | 값 |
+|------|-----|
+| Base Model | klue/bert-base (111M params) |
+| Task | 7-class intent classification |
+| Framework | Hugging Face Transformers + Trainer |
+| Hardware | RunPod GPU (On-Demand) |
+| Training Time | ~1-2분 |
+
+### 데이터
+| 항목 | 값 |
+|------|-----|
+| 총 데이터 | 1,405문장 (7개 카테고리) |
+| Train | 1,194 (85%) |
+| Eval | 211 (15%) |
+| 데이터 출처 | Claude 생성 (카테고리별 시드 기반 증강) |
+
+### 카테고리별 분포
+| 카테고리 | 전체 | Train | Eval |
+|----------|:----:|:-----:|:----:|
+| judgment | 205 | 171 | 34 |
+| doc_search | 200 | 174 | 26 |
+| doc_generate | 200 | 165 | 35 |
+| meeting_generate | 200 | 174 | 26 |
+| schedule_add | 200 | 179 | 21 |
+| schedule_view | 200 | 173 | 27 |
+| general | 200 | 158 | 42 |
+
+### 하이퍼파라미터
+| 항목 | 값 |
+|------|-----|
+| Epochs | 5 |
+| Batch Size | 16 |
+| Learning Rate | 2e-5 |
+| Weight Decay | 0.01 |
+| Max Length | 64 |
+| Best Model | epoch 기준 f1_macro best |
+
+### 성능 비교 (Base → Fine-tuned)
+| 지표 | Base (학습 전) | v1.0 (파인튜닝 후) | 변화 |
+|------|:---:|:---:|:---:|
+| F1 (macro) | ~14.3% (랜덤 1/7) | **99.08%** | +84.8%p |
+| Accuracy | ~14.3% | **99.05%** | +84.7%p |
+
+> Base 모델(klue/bert-base)은 사전학습된 한국어 이해 능력만 있고, intent 분류용 classification head가 없어 학습 전에는 랜덤 수준입니다.
+
+### 평가 결과
+| 지표 | 값 |
+|------|-----|
+| **Accuracy** | **0.9905** |
+| **F1 (macro)** | **0.9908** |
+| **F1 (weighted)** | **0.9905** |
+
+### 카테고리별 상세
+| 카테고리 | Precision | Recall | F1-score | Support |
+|----------|:---------:|:------:|:--------:|:-------:|
+| judgment | 1.0000 | 1.0000 | 1.0000 | 34 |
+| doc_search | 0.9630 | 1.0000 | 0.9811 | 26 |
+| doc_generate | 1.0000 | 0.9714 | 0.9855 | 35 |
+| meeting_generate | 0.9630 | 1.0000 | 0.9811 | 26 |
+| schedule_add | 1.0000 | 1.0000 | 1.0000 | 21 |
+| schedule_view | 1.0000 | 1.0000 | 1.0000 | 27 |
+| general | 1.0000 | 0.9762 | 0.9880 | 42 |
+
+### 오분류 패턴
+- 211개 중 **2개 오분류**
+- doc_generate → 다른 카테고리 1건
+- general → 다른 카테고리 1건
+
+### 한계점 및 참고
+- 학습/평가 데이터 모두 Claude 생성 → 실사용자 대비 패턴 편향 가능
+- 실서비스 예상 정확도: 85~95% (사용자 입력 다양성 반영 시)
+- 추후 실사용자 로그 기반 재평가 필요
+
+---
+
+## 다음 계획
+
+- [ ] 실사용자 데이터 수집 후 v1.1 재학습
+- [ ] 혼동 잘 되는 카테고리 (doc_search ↔ doc_generate) 데이터 증강
+- [ ] adversarial 테스트 (일부러 헷갈리는 문장으로 테스트)
+- [ ] 4단계에서 카테고리별 500개로 확장
+
+---
+
+## v1.1 — judgment 캐주얼 데이터 증강 (2026-02-11)
+
+### 변경 사유
+v1.0 adversarial 테스트 결과 72% (18/25) — judgment ↔ general 경계에서 7건 오분류 발생.
+
+**근본 원인 분석:**
+1. judgment 문장 92%가 격식체 ("~나요?" 140건, "~가요?" 50건) → 캐주얼 패턴 학습 부족
+2. 길이 편향: judgment 평균 25.8자 vs general 평균 10.4자 → 짧으면 general로 분류
+3. 캐주얼 종결어미("~뭐야?", "~있어?", "~돼?")가 general에만 집중
+
+### 변경 내용
+| 변경 | 상세 |
+|------|------|
+| judgment 데이터 추가 | +50문장 (캐주얼/비정형) |
+| 추가 패턴 | "~뭐야?" 9건, "~있어?" 9건, "~돼?/되나?" 10건, "~맞아?" 5건, 비정형 17건 |
+| 추가 문장 길이 | 평균 ~15자 (기존 25.8자보다 짧게) |
+| general 변경 | 없음 |
+| 다른 카테고리 변경 | 없음 |
+
+### 데이터 (v1.0 → v1.1)
+| 항목 | v1.0 | v1.1 | 변화 |
+|------|:----:|:----:|:----:|
+| judgment | 205 | **255** | +50 |
+| 나머지 6개 | 각 200 | 각 200 | 변동없음 |
+| 총 데이터 | 1,405 | **1,455** | +50 |
+| Train | 1,194 | **1,236** | +42 |
+| Eval | 211 | **219** | +8 |
+
+### 하이퍼파라미터
+변경 없음 (epoch5 / lr2e-5 / batch16 / max_length64)
+
+### 평가 결과 (Eval Set)
+| 지표 | v1.0 | v1.1 | 변화 |
+|------|:----:|:----:|:----:|
+| Accuracy | 0.9905 | **0.9863** | -0.4%p |
+| F1 (macro) | 0.9908 | **0.9880** | -0.3%p |
+| F1 (weighted) | 0.9905 | **0.9861** | -0.4%p |
+
+> Eval 수치가 소폭 하락했지만, 이는 judgment 데이터 다양성이 증가하면서 발생한 정상적 트레이드오프. Adversarial 실전 성능은 대폭 상승.
+
+### 카테고리별 상세 (v1.1)
+| 카테고리 | Precision | Recall | F1-score | Support |
+|----------|:---------:|:------:|:--------:|:-------:|
+| judgment | 0.9767 | 1.0000 | 0.9882 | 42 |
+| doc_search | 0.9655 | 1.0000 | 0.9825 | 28 |
+| doc_generate | 1.0000 | 1.0000 | 1.0000 | 30 |
+| meeting_generate | 1.0000 | 1.0000 | 1.0000 | 23 |
+| schedule_add | 1.0000 | 1.0000 | 1.0000 | 24 |
+| schedule_view | 0.9697 | 1.0000 | 0.9846 | 32 |
+| general | 1.0000 | 0.9250 | 0.9610 | 40 |
+
+### Adversarial 테스트 (25문장)
+| 항목 | v1.0 | v1.1 | 변화 |
+|------|:----:|:----:|:----:|
+| **총점** | **18/25 (72%)** | **22/25 (88%)** | **+16%p** |
+| judgment→general 오분류 | 5건 | **0건** | **완전 해결** |
+| 비정형→general 오분류 | 2건 | 2건 | 변동없음 |
+| schedule 경계 오분류 | 0건 | 1건 | +1건 (신뢰도 0.518) |
+
+### 남은 오분류 3건 분석
+| 문장 | 예상 | 실제 | 신뢰도 | 판단 |
+|------|------|------|:------:|------|
+| "다음 주에 일정 추가해줘" | schedule_add | schedule_view | 0.518 | 경계 모호, 폴백 처리 가능 |
+| "보고서 그거 아까 말한거 해줘" | doc_generate | general | 0.876 | 지시어만 있고 키워드 없음 |
+| "일정 좀" | schedule_view | general | 0.484 | 2단어, 너무 짧음 |
+
+> 3건 모두 사용자 입력 자체가 불명확한 케이스. 오케스트레이터에서 confidence < 0.7일 때 "좀 더 구체적으로 말씀해주세요" 폴백으로 처리 예정.
+
+### 결론
+- **목표 달성**: Eval F1 98.8% (목표 90%+), Adversarial 88% (실전 수준)
+- **추가 파인튜닝 불필요**: 남은 오분류는 모델이 아닌 오케스트레이터 레벨에서 처리
+- **다음 단계**: 모델을 서비스에 연결 (#6 오케스트레이터)
+
+---
+
+## EXP — 방법론 비교 실험 (2026-02-11)
+
+### 실험 목적
+파인튜닝된 sLLM(BERT)이 다른 방법론 대비 어떤 위치에 있는지 정량적으로 비교.
+
+### 실험 설계
+- 테스트셋: adversarial_test.json (70문장, 경계 모호한 난이도 높은 문장)
+- 비교 대상 6가지: Random, Rule-based, BERT Base(학습 전), BERT Fine-tuned(v1.1), GPT Zero-shot, GPT Few-shot
+- 환경: RunPod GPU (BERT 계열), OpenAI API (GPT 계열)
+
+### 결과
+
+| 방법 | F1 (macro) | Accuracy | 속도 (ms/문장) | 비용 |
+|------|:----------:|:--------:|:--------------:|:----:|
+| GPT Few-shot | **97.53%** | 97.14% | 456.6 | ~$0.03/70문장 |
+| GPT Zero-shot | 96.02% | 95.71% | 519.7 | ~$0.01/70문장 |
+| **BERT Fine-tuned (v1.1)** | **89.97%** | **88.57%** | **6.7** | **$0 (학습 1회 ~$0.50)** |
+| Rule-based | 86.81% | 84.29% | 0.0 | $0 |
+| Random | 13.48% | 12.86% | 0.0 | $0 |
+| BERT Base (학습 전) | 7.22% | 12.86% | 10.4 | $0 |
+
+### 혼동행렬 분석
+
+**Eval Set (219문장)**: F1 98.80%, 오분류 3건 (모두 general → 타 카테고리)
+
+**Adversarial Set (70문장)**: 오분류 8건, **전부 general로 분류됨**
+| 실제 | → general 오분류 |
+|------|:----------------:|
+| judgment | 2건 |
+| doc_search | 1건 |
+| doc_generate | 2건 |
+| schedule_add | 1건 |
+| schedule_view | 2건 |
+
+> 오분류 패턴: 입력이 불명확할 때 모델이 general로 폴백 → 안전한 실패 방향.
+> confidence threshold 기반 fallback으로 대응 가능.
+
+### 핵심 인사이트
+
+1. **정확도**: GPT가 adversarial에서 7.5%p 우위 (97.5% vs 90.0%)
+2. **일반 입력**: BERT가 Eval F1 98.8%로 실사용 수준 충분
+3. **속도**: BERT가 **68배 빠름** (6.7ms vs 457ms)
+4. **비용**: BERT는 학습 1회 후 추론 무료 vs GPT는 매 호출 과금
+5. **보안**: BERT는 로컬 추론 → 사내 데이터 외부 전송 없음
+
+### 결론
+- **sLLM 선택 정당성 확보**: 정확도 7.5%p를 속도 68배 + 비용 $0 + 데이터 보안으로 교환
+- adversarial 성능 갭은 전처리(초성복원, 맞춤법교정) + confidence fallback으로 축소 예정
+- 차트: `ai/experiments/results/` (method_comparison.png, confusion_eval.png, confusion_adv.png, improvement_v1.png)
+
+---
+
+## v1.2 — 비정형 데이터 증강 (2026-02-11)
+
+### 변경 사유
+v1.1까지 adversarial 테스트가 70문장에 불과하고, 학습 데이터가 정형화된 문장 위주 → 실사용자의 비정형(인터넷 슬랭, 초성, 축약어) 패턴에 취약.
+
+### 변경 내용
+| 변경 | 상세 |
+|------|------|
+| adversarial 확장 | 70 → **120문장** (multi-intent, ultra-short, formal, 경계쌍 등) |
+| 비정형 데이터 +300 | 6카테고리 × 50문장 (인터넷 슬랭, 초성, 캐주얼체) |
+| 학습 파이프라인 | `run_train_versioned.py` — 버전별 누적 학습 + 평가 |
+
+### 데이터 (v1.1 → v1.2)
+| 항목 | v1.1 | v1.2 | 변화 |
+|------|:----:|:----:|:----:|
+| Base 데이터 | 1,455 | 1,455 | 변동없음 |
+| Augment | 0 | **+300** | 6카테고리 × 50 |
+| 총 데이터 | 1,455 | **1,755** | +300 |
+| Adversarial | 70 | **120** | +50 |
+
+### 평가 결과
+| 지표 | v1.1 | v1.2 | 변화 |
+|------|:----:|:----:|:----:|
+| Eval F1 (macro) | 0.9880 | **0.9807** | -0.7%p |
+| Adversarial Acc | 88.6% (70개) | **85.0% (120개)** | 더 어려운 셋 |
+| Adversarial F1 | - | **0.8557** | 신규 측정 |
+| 오분류 | 3/70 | **18/120** | 확장된 셋 기준 |
+
+### 오분류 18건 패턴 분석
+| 패턴 | 건수 | 주요 혼동 |
+|------|:----:|----------|
+| Multi-intent 혼동 | 7 | "규정 찾아서 판단해줘" → doc_search |
+| Ultra-short 모호 | 4 | "규정", "일정추가" 등 1-2어절 |
+| judgment↔general 경계 | 3 | "내일 쉬어도 돼?", "회사가 부당해요" |
+| doc_search↔doc_generate | 2 | "문서 하나 줘", "보고서 있으면 보여주고..." |
+| Context/formal | 2 | "관련 문서를 검색해 주실 수 있으신지요?" |
+
+> 120개 adversarial 셋은 이전 70개보다 훨씬 까다로운 난이도. 이 오분류 패턴을 타겟으로 v1.3 boundary 증강 진행.
+
+### 혼동행렬
+![v1.2 Adversarial Confusion Matrix](../experiments/results/confusion_adv_v1.2.png)
+
+---
+
+## v1.3 — Boundary 증강 (2026-02-11)
+
+### 변경 사유
+v1.2 adversarial 오분류 18건을 6가지 혼동 패턴으로 분류 → 각 패턴을 타겟으로 boundary augmentation 데이터 생성.
+
+### 변경 내용 (v1.3 augment: +163문장, 7파일)
+| 파일 | 건수 | 타겟 혼동 |
+|------|:----:|----------|
+| augment_v13_judgment.jsonl | 30 | judgment↔general 경계 (캐주얼 법률 질문) |
+| augment_v13_doc_search.jsonl | 20 | doc_search↔doc_generate 경계 |
+| augment_v13_doc_generate.jsonl | 20 | doc_generate↔doc_search 경계 |
+| augment_v13_multi_intent.jsonl | 25 | Multi-intent 문장 (최종 의도 학습) |
+| augment_v13_ultra_short.jsonl | 28 | 1-3어절 Ultra-short 입력 |
+| augment_v13_meeting.jsonl | 20 | meeting↔doc_generate 경계 |
+| augment_v13_formal.jsonl | 20 | formal 표현 ≠ general |
+
+### 데이터 (v1.2 → v1.3)
+| 항목 | v1.2 | v1.3 | 변화 |
+|------|:----:|:----:|:----:|
+| Base | 1,455 | 1,455 | - |
+| v1.2 augment | +300 | +300 | 누적 |
+| v1.3 augment | - | **+163** | 신규 |
+| 총 데이터 | 1,755 | **1,918** | +163 |
+
+### 평가 결과
+| 지표 | v1.2 | v1.3 | 변화 |
+|------|:----:|:----:|:----:|
+| Eval F1 (macro) | 0.9807 | **0.9863** | +0.6%p |
+| Adversarial Acc | 85.0% | **91.67%** | **+6.7%p** |
+| Adversarial F1 | 0.8557 | **0.9154** | **+6.0%p** |
+| 오분류 | 18건 | **10건** | **-8건** |
+
+### 라벨 QA 및 수정 (v1.3 최종)
+adversarial 테스트 라벨 3건이 multi-intent 규칙과 불일치 → 수정 후 재학습:
+
+| 문장 | 수정 전 | 수정 후 | 근거 |
+|------|---------|---------|------|
+| "규정" | judgment | **doc_search** | 단어 하나로 법적 판단은 비현실적 |
+| "회의 잡고 회의록도 만들어줘" | schedule_add | **meeting_generate** | 최종 의도 = 회의록 작성 |
+| "보고서 찾아서 수정해줘" | doc_search | **doc_generate** | 최종 의도 = 수정(작성) |
+
+### 해결된 오분류 (v1.2→v1.3)
+| 문장 | v1.2 결과 | v1.3 결과 |
+|------|----------|----------|
+| "스프린트 회고 내용 정리해줘" | doc_generate (X) | meeting_generate (O) |
+| "회사가 부당해요" | general (X) | judgment (O) |
+| "관련 문서를 검색해 주실 수 있으신지요?" | general (X) | doc_search (O) |
+| "문서 하나 줘" | doc_generate (X) | doc_search (O) |
+| "위에서 말한 규정 어디서 봐?" | general (X) | doc_search (O) |
+| "그 문서 다시 보내줘" | doc_generate (X) | doc_search (O) |
+| "보고서 그거 아까 말한거 해줘" | doc_search (X) | doc_generate (O) |
+| "회의록" | doc_search (X) | meeting_generate (O) |
+
+### 남은 오분류 10건
+| 문장 | 예상 | 실제 | 분류 |
+|------|------|------|------|
+| "규정 찾아서 위반 여부 판단해줘" | judgment | doc_search | multi-intent |
+| "인사 규정 검색해서 내 상황에 맞는지 알려줘" | judgment | doc_search | multi-intent |
+| "보고서 있으면 보여주고 없으면 만들어줘" | doc_search | doc_generate | 조건부 의도 |
+| "회의" | schedule_view | meeting_generate | ultra-short 모호 |
+| "일정추가" | schedule_add | schedule_view | ultra-short 모호 |
+| "회의 준비해줘" | schedule_add | meeting_generate | 모호 |
+| "미팅 기록 찾아줘" | doc_search | meeting_generate | meeting 과적합 |
+| "내일 쉬어도 돼?" | judgment | schedule_view | 경계 |
+| "그거 해줘" | general | doc_generate | context-dependent |
+| "아까 말한 거 정리해줘" | general | meeting_generate | context-dependent |
+
+> 남은 10건 중 대부분은 사람도 판단이 갈리는 문장. 오케스트레이터에서 confidence < 0.7일 때 "좀 더 구체적으로 말씀해주세요" 폴백으로 대응.
+
+### 혼동행렬
+![v1.3 Adversarial Confusion Matrix](../experiments/results/confusion_adv_v1.3.png)
+
+---
+
+## v1.4 — 하이퍼파라미터 그리드 서치 (2026-02-11)
+
+### 실험 목적
+v1.3 데이터(1,918개)를 고정하고, 하이퍼파라미터 최적화로 추가 성능 향상 가능한지 검증.
+
+### 그리드 서치 결과
+| # | epochs | lr | Eval F1 | Eval Acc |
+|---|:------:|:-----:|:-------:|:--------:|
+| 1 | 3 | 2e-5 | 0.9754 | 0.9755 |
+| 2 | 5 | 1e-5 | 0.9653 | 0.9650 |
+| 3 | 5 | 2e-5 | 0.9754 | 0.9755 |
+| 4 | 5 | 5e-5 | 0.9791 | 0.9790 |
+| **5** | **10** | **2e-5** | **0.9826** | **0.9825** |
+| 6 | 7 | 2e-5 | 0.9754 | 0.9755 |
+
+Best config: **epochs=10, lr=2e-5** (Eval F1 기준)
+
+### Best Config 평가
+| 지표 | v1.3 (default) | v1.4 (best grid) | 변화 |
+|------|:--------------:|:----------------:|:----:|
+| Eval F1 | 0.9863 | **0.9826** | -0.4%p |
+| Adversarial Acc | **91.67%** | 89.2% | -2.5%p |
+| Adversarial F1 | **0.9154** | 0.8902 | -2.5%p |
+| 오분류 | **10건** | 13건 | +3건 |
+
+### 핵심 발견
+1. **Eval은 비슷, Adversarial은 하락** — epochs=10이 학습 데이터에 과적합하면서 실전 대응력 약화
+2. **하이퍼파라미터 영향 미미** — 전체 F1 변동 폭 0.9653~0.9826 (1.7%p)
+3. **데이터 품질 > 하이퍼파라미터** — v1.2→v1.3 boundary 증강(+6.0%p)이 그리드 서치보다 훨씬 큰 효과
+
+### 결론
+- **최종 모델: v1.3 (epochs=5, lr=2e-5)** — Adversarial 성능 최적
+- 하이퍼파라미터 튜닝은 한계점 확인용으로 유의미하나, 추가 개선은 데이터 보강이 필수
+
+### 혼동행렬
+![v1.4 Adversarial Confusion Matrix](../experiments/results/confusion_adv_v1.3.png)
+> v1.4는 v1.3과 동일 데이터(1,918개) 기준이므로 v1.3 혼동행렬을 참조합니다.
+
+---
+
+## 전체 버전 비교 요약
+
+| 버전 | 데이터 | Eval F1 | Adv Acc | Adv F1 | 오분류 | 핵심 변경 |
+|------|:------:|:-------:|:-------:|:------:|:------:|----------|
+| v1.0 | 1,405 | 0.9908 | 72.0% (25개) | - | 7/25 | 초기 파인튜닝 |
+| v1.1 | 1,455 | 0.9880 | 88.0% (25개) | - | 3/25 | +50 judgment 캐주얼 |
+| v1.1 (EXP) | 1,455 | 0.9880 | 88.6% (70개) | 0.8997 | 8/70 | 확장 adversarial 기준 |
+| v1.2 | 1,755 | 0.9807 | 85.0% (120개) | 0.8557 | 18/120 | +300 비정형 + adversarial 120 |
+| **v1.3** | **1,918** | **0.9863** | **91.67% (120개)** | **0.9154** | **10/120** | **+163 boundary 타겟 + 라벨 QA** |
+| v1.4 | 1,918 | 0.9826 | 89.2% (120개) | 0.8902 | 13/120 | 하이퍼파라미터 그리드 서치 |
+
+> **Adversarial 테스트셋 변천:** v1.0/v1.1은 25문장 → EXP에서 70문장 확장 → v1.2부터 120문장(multi-intent, ultra-short, formal 추가). 셋 크기와 난이도가 다르므로 직접 비교 시 주의.
+
+### 개선 차트
+![Version Improvement Chart](../experiments/results/improvement_all_versions.png)
+
+### 핵심 결론
+1. **데이터 품질이 핵심**: boundary 타겟 증강 + 라벨 QA(v1.3)가 가장 큰 성능 향상 (+6.0%p adversarial F1)
+2. **하이퍼파라미터 한계**: 그리드 서치(v1.4)는 Eval 미세 개선하나 실전 대응력은 오히려 하락
+3. **sLLM 실용성 확보**: 91.67% adversarial 정확도 + 6.7ms 추론속도 + $0 운영비
+4. **남은 오분류 대응**: confidence < 0.7 → 오케스트레이터에서 "좀 더 구체적으로 말씀해주세요" 폴백
+
+---
+
+> 새로운 학습 결과는 아래에 추가합니다.

@@ -17,7 +17,7 @@ import { MOCK_RESPONSES } from '../utils/mockData'
 export default function useSSE() {
   // 1. 상태 및 도구 준비 
   const timerRef = useRef(null)
-  const { setStreaming, setCurrentIntent, setCurrentStatus, appendToken } = useChatStore()
+  const { setStreaming, setCurrentIntent, setCurrentStatus, appendToken, saveCurrentSession } = useChatStore()
 
   // 2. 스트리밍 시작 로직. 사용자가 메시지를 보내면 실행되는 핵심 함수.
   const startStream = useCallback((message) => {
@@ -47,13 +47,14 @@ export default function useSSE() {
           timerRef.current = null
           setStreaming(false)
           setCurrentIntent(null)
+          saveCurrentSession()
         }
       }, 30)
     }, 800)
 
     // cleanup용으로 타이머 ID 저장
     timerRef.current = { intentTimer, streamTimer }
-  }, [setStreaming, setCurrentIntent, setCurrentStatus, appendToken])
+  }, [setStreaming, setCurrentIntent, setCurrentStatus, appendToken, saveCurrentSession])
 
   // 3. 스트리밍 중단 로직 (stopStream)
   const stopStream = useCallback(() => {

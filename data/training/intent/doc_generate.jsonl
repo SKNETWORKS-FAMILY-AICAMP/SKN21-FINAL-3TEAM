@@ -1,0 +1,200 @@
+{"text": "이번 분기 실적 보고서 작성해줘", "label": "doc_generate"}
+{"text": "신규 프로젝트 제안서 만들어줘", "label": "doc_generate"}
+{"text": "백엔드 개발자 채용공고 작성해줘", "label": "doc_generate"}
+{"text": "어제 회의 내용 요약해줘", "label": "meeting_generate"}
+{"text": "마케팅 기획서 초안 작성해줘", "label": "doc_generate"}
+{"text": "거래처 계약서 초안 만들어줄 수 있어?", "label": "doc_generate"}
+{"text": "본사 공문 작성 좀 해줘", "label": "doc_generate"}
+{"text": "내일 발표자료 정리해줘", "label": "doc_generate"}
+{"text": "거래처에 보낼 이메일 초안 작성해줘", "label": "doc_generate"}
+{"text": "리스크 분석 보고서 생성해줘", "label": "doc_generate"}
+{"text": "월간 매출 보고서 작성 부탁해", "label": "doc_generate"}
+{"text": "투자 유치용 사업 제안서 만들어줘", "label": "doc_generate"}
+{"text": "데이터 분석가 JD 작성해줘", "label": "doc_generate"}
+{"text": "이 문서 내용 3줄로 요약해줘", "label": "doc_generate"}
+{"text": "신사업 기획서 작성 좀 도와줘", "label": "doc_generate"}
+{"text": "용역 계약서 초안 좀 뽑아줘", "label": "doc_generate"}
+{"text": "부서 간 협조 공문 작성해줄래?", "label": "doc_generate"}
+{"text": "주간 업무 보고서 양식에 맞춰서 작성해줘", "label": "doc_generate"}
+{"text": "클라이언트에게 보낼 프로젝트 완료 보고서 만들어줘", "label": "doc_generate"}
+{"text": "AI 엔지니어 채용 공고 초안 생성해줘", "label": "doc_generate"}
+{"text": "지난 회의록 핵심만 요약 정리해줘", "label": "meeting_generate"}
+{"text": "연간 사업계획서 작성해줘", "label": "doc_generate"}
+{"text": "NDA 계약서 초안 작성해줄 수 있어?", "label": "doc_generate"}
+{"text": "입사지원서 양식 만들어줘", "label": "doc_generate"}
+{"text": "경쟁사 분석 보고서 작성해줘", "label": "doc_generate"}
+{"text": "프론트엔드 개발자 JD 좀 만들어줘", "label": "doc_generate"}
+{"text": "이번 주 업무 일지 정리해줘", "label": "doc_generate"}
+{"text": "프로젝트 진행 상황 보고서 작성 부탁드립니다", "label": "doc_generate"}
+{"text": "서비스 기획서 작성해주세요", "label": "doc_generate"}
+{"text": "사내 교육 제안서 만들어줘", "label": "doc_generate"}
+{"text": "출장 보고서 양식에 맞춰 작성해줘", "label": "doc_generate"}
+{"text": "이 보고서 내용을 한 페이지로 요약해줘", "label": "doc_generate"}
+{"text": "마케팅 전략 제안서 초안 뽑아줘", "label": "doc_generate"}
+{"text": "디자이너 채용공고 텍스트 생성해줘", "label": "doc_generate"}
+{"text": "고객사에 보낼 견적서 초안 작성해줘", "label": "doc_generate"}
+{"text": "팀 성과 보고서 작성 좀 해줄래?", "label": "doc_generate"}
+{"text": "연구 결과 요약 보고서 만들어줘", "label": "doc_generate"}
+{"text": "사업 타당성 분석 보고서 작성해줘", "label": "doc_generate"}
+{"text": "이번 달 KPI 보고서 작성해주세요", "label": "doc_generate"}
+{"text": "프로젝트 킥오프 문서 만들어줘", "label": "doc_generate"}
+{"text": "시스템 요구사항 명세서 작성해줘", "label": "doc_generate"}
+{"text": "신제품 출시 기획서 작성 부탁해", "label": "doc_generate"}
+{"text": "개발팀 주간보고 작성해줄 수 있어?", "label": "doc_generate"}
+{"text": "벤더 평가 보고서 생성해줘", "label": "doc_generate"}
+{"text": "인턴 채용 JD 작성해줘", "label": "doc_generate"}
+{"text": "이 논문 내용 요약 좀 해줘", "label": "doc_generate"}
+{"text": "IT 인프라 구축 제안서 만들어줘", "label": "doc_generate"}
+{"text": "업무 인수인계서 작성해줘", "label": "doc_generate"}
+{"text": "보안 점검 보고서 작성해주세요", "label": "doc_generate"}
+{"text": "회사 소개서 초안 만들어줘", "label": "doc_generate"}
+{"text": "프로젝트 완료 보고서 템플릿으로 작성해줘", "label": "doc_generate"}
+{"text": "분기별 재무 보고서 작성 도와줘", "label": "doc_generate"}
+{"text": "데이터 엔지니어 채용공고 작성 부탁해", "label": "doc_generate"}
+{"text": "이 기사 내용 요약해줄래?", "label": "doc_generate"}
+{"text": "고객 만족도 조사 결과 보고서 만들어줘", "label": "doc_generate"}
+{"text": "소프트웨어 설계 문서 작성해줘", "label": "doc_generate"}
+{"text": "협력사 제안서 검토 후 요약해줘", "label": "doc_generate"}
+{"text": "사내 규정 개정 공문 작성해줘", "label": "doc_generate"}
+{"text": "MVP 기획서 작성해줘", "label": "doc_generate"}
+{"text": "서버 장애 보고서 작성 부탁드립니다", "label": "doc_generate"}
+{"text": "PM 직무기술서 만들어줘", "label": "doc_generate"}
+{"text": "이 회의 녹취록 요약 정리해줘", "label": "doc_generate"}
+{"text": "클라우드 마이그레이션 제안서 작성해줘", "label": "doc_generate"}
+{"text": "직원 평가 보고서 양식 만들어줘", "label": "doc_generate"}
+{"text": "수출 계약서 초안 작성해줄래?", "label": "doc_generate"}
+{"text": "이벤트 기획서 작성 좀 해줘", "label": "doc_generate"}
+{"text": "기술 블로그 포스트 초안 작성해줘", "label": "doc_generate"}
+{"text": "시장 조사 보고서 작성해주세요", "label": "doc_generate"}
+{"text": "UX 리서처 JD 작성해줘", "label": "doc_generate"}
+{"text": "이 PDF 문서 핵심 내용 요약해줘", "label": "doc_generate"}
+{"text": "파트너십 제안서 만들어줄 수 있어?", "label": "doc_generate"}
+{"text": "업무 매뉴얼 작성해줘", "label": "doc_generate"}
+{"text": "감사 보고서 작성 도와주세요", "label": "doc_generate"}
+{"text": "연말 결산 보고서 초안 작성해줘", "label": "doc_generate"}
+{"text": "마케터 채용공고 좀 만들어줄래?", "label": "doc_generate"}
+{"text": "브레인스토밍 결과 정리해서 문서로 만들어줘", "label": "doc_generate"}
+{"text": "API 설계 문서 작성해줘", "label": "doc_generate"}
+{"text": "사업 확장 제안서 작성해줘", "label": "doc_generate"}
+{"text": "이 엑셀 데이터 분석 결과 보고서로 만들어줘", "label": "doc_generate"}
+{"text": "퇴직금 정산 관련 공문 작성해줘", "label": "doc_generate"}
+{"text": "스타트업 투자 IR 자료 만들어줘", "label": "doc_generate"}
+{"text": "보안 정책 문서 초안 작성 부탁해", "label": "doc_generate"}
+{"text": "DevOps 엔지니어 JD 생성해줘", "label": "doc_generate"}
+{"text": "고객 피드백 보고서 요약해줘", "label": "doc_generate"}
+{"text": "조직 개편 관련 공문 작성해주세요", "label": "doc_generate"}
+{"text": "프로젝트 일정 보고서 만들어줘", "label": "doc_generate"}
+{"text": "비용 절감 방안 보고서 작성해줘", "label": "doc_generate"}
+{"text": "신입사원 교육 자료 정리해줘", "label": "doc_generate"}
+{"text": "외주 개발 계약서 초안 뽑아줘", "label": "doc_generate"}
+{"text": "제품 기능 명세서 작성해줘", "label": "doc_generate"}
+{"text": "이번 분기 OKR 보고서 작성해줘", "label": "doc_generate"}
+{"text": "QA 엔지니어 채용공고 만들어줘", "label": "doc_generate"}
+{"text": "긴 보고서인데 A4 한 장으로 요약해줘", "label": "doc_generate"}
+{"text": "온라인 마케팅 캠페인 기획서 작성해줘", "label": "doc_generate"}
+{"text": "SaaS 도입 제안서 만들어줘", "label": "doc_generate"}
+{"text": "반기 실적 보고서 작성 부탁드립니다", "label": "doc_generate"}
+{"text": "사내 복지 개선 제안서 작성해줘", "label": "doc_generate"}
+{"text": "프로젝트 리스크 관리 문서 만들어줘", "label": "doc_generate"}
+{"text": "영업팀 주간 보고서 작성해줘", "label": "doc_generate"}
+{"text": "기술 도입 타당성 보고서 작성해줘", "label": "doc_generate"}
+{"text": "이메일 뉴스레터 초안 작성해줘", "label": "doc_generate"}
+{"text": "데이터 사이언티스트 JD 만들어줘", "label": "doc_generate"}
+{"text": "이 30페이지 보고서 5페이지로 줄여줘", "label": "doc_generate"}
+{"text": "정부 과제 지원서 작성 도와줘", "label": "doc_generate"}
+{"text": "SLA 계약서 초안 작성해줘", "label": "doc_generate"}
+{"text": "인사 발령 공문 만들어줘", "label": "doc_generate"}
+{"text": "랜딩 페이지 기획서 작성해줘", "label": "doc_generate"}
+{"text": "성과 분석 보고서 작성해주세요", "label": "doc_generate"}
+{"text": "프로젝트 회고 문서 정리해줘", "label": "doc_generate"}
+{"text": "재무제표 분석 보고서 만들어줘", "label": "doc_generate"}
+{"text": "콘텐츠 마케터 채용공고 작성해줄래?", "label": "doc_generate"}
+{"text": "이 자료들 종합해서 보고서 하나로 만들어줘", "label": "doc_generate"}
+{"text": "신규 서비스 런칭 기획서 작성 부탁해", "label": "doc_generate"}
+{"text": "공급업체 선정 보고서 작성해줘", "label": "doc_generate"}
+{"text": "기술 면접 가이드 문서 만들어줘", "label": "doc_generate"}
+{"text": "이 회의 안건 요약 문서 작성해줘", "label": "doc_generate"}
+{"text": "워크숍 결과 보고서 만들어줘", "label": "doc_generate"}
+{"text": "사업부별 예산 보고서 작성해줘", "label": "doc_generate"}
+{"text": "해외 진출 전략 제안서 만들어줘", "label": "doc_generate"}
+{"text": "소프트웨어 테스트 계획서 작성해줘", "label": "doc_generate"}
+{"text": "백엔드 시니어 개발자 JD 작성해줘", "label": "doc_generate"}
+{"text": "경영진 브리핑 자료 만들어줘", "label": "doc_generate"}
+{"text": "협력 업체 MOU 초안 작성해줘", "label": "doc_generate"}
+{"text": "고객사 제안 발표 자료 만들어줘", "label": "doc_generate"}
+{"text": "분기 실적 분석 리포트 생성해줘", "label": "doc_generate"}
+{"text": "사원 채용 계약서 초안 만들어줘", "label": "doc_generate"}
+{"text": "기술 동향 보고서 작성해줘", "label": "doc_generate"}
+{"text": "이 메일 내용 간단하게 요약해줘", "label": "doc_generate"}
+{"text": "앱 서비스 기획서 작성 좀 해줘", "label": "doc_generate"}
+{"text": "프로젝트 산출물 목록 문서 만들어줘", "label": "doc_generate"}
+{"text": "R&D 투자 보고서 작성해주세요", "label": "doc_generate"}
+{"text": "시스템 운영 매뉴얼 작성해줘", "label": "doc_generate"}
+{"text": "영업 제안서 초안 작성 부탁해", "label": "doc_generate"}
+{"text": "이 계약서 주요 조항 요약해줘", "label": "doc_generate"}
+{"text": "사내 공모전 기획서 만들어줘", "label": "doc_generate"}
+{"text": "품질 관리 보고서 작성해줘", "label": "doc_generate"}
+{"text": "ML 엔지니어 채용 JD 작성해줘", "label": "doc_generate"}
+{"text": "프로젝트 예산 계획서 작성해줘", "label": "doc_generate"}
+{"text": "이사회 보고 자료 만들어줘", "label": "doc_generate"}
+{"text": "개인정보 처리방침 문서 작성해줘", "label": "doc_generate"}
+{"text": "이 기술 문서 한글로 요약해줘", "label": "doc_generate"}
+{"text": "아웃소싱 제안서 작성해줘", "label": "doc_generate"}
+{"text": "CSR 보고서 작성 도와줘", "label": "doc_generate"}
+{"text": "프로젝트 종료 보고서 만들어줘", "label": "doc_generate"}
+{"text": "채용 면접 평가서 양식 만들어줘", "label": "doc_generate"}
+{"text": "비즈니스 모델 캔버스 문서 작성해줘", "label": "doc_generate"}
+{"text": "내부 감사 결과 보고서 작성해줘", "label": "doc_generate"}
+{"text": "서비스 장애 원인 분석 보고서 만들어줘", "label": "doc_generate"}
+{"text": "그로스 해커 JD 생성해줘", "label": "doc_generate"}
+{"text": "이 리서치 자료 요약 정리해줘", "label": "doc_generate"}
+{"text": "사업 제휴 제안서 초안 뽑아줘", "label": "doc_generate"}
+{"text": "임원 보고용 요약 자료 만들어줘", "label": "doc_generate"}
+{"text": "기술 지원 계약서 작성해줘", "label": "doc_generate"}
+{"text": "직무 교육 계획서 만들어줘", "label": "doc_generate"}
+{"text": "환경 영향 평가 보고서 작성해줘", "label": "doc_generate"}
+{"text": "이 전략 문서 핵심만 뽑아서 요약해줘", "label": "doc_generate"}
+{"text": "사용자 매뉴얼 작성해줄 수 있어?", "label": "doc_generate"}
+{"text": "ERP 도입 제안서 만들어줘", "label": "doc_generate"}
+{"text": "연구개발 계획서 작성 부탁드립니다", "label": "doc_generate"}
+{"text": "프로젝트 제안 요청서 RFP 작성해줘", "label": "doc_generate"}
+{"text": "제품 디자이너 채용공고 만들어줘", "label": "doc_generate"}
+{"text": "이 슬랙 대화 내용 요약 문서로 만들어줘", "label": "doc_generate"}
+{"text": "사업 성과 요약 보고서 작성해줘", "label": "doc_generate"}
+{"text": "기밀유지 서약서 초안 만들어줘", "label": "doc_generate"}
+{"text": "부서 업무 분장표 작성해줘", "label": "doc_generate"}
+{"text": "IT 보안 감사 보고서 작성해줘", "label": "doc_generate"}
+{"text": "마케팅 결과 분석 보고서 생성해줘", "label": "doc_generate"}
+{"text": "오늘 회의에서 나온 액션 아이템 문서로 정리해줘", "label": "doc_generate"}
+{"text": "서비스 이용약관 초안 작성해줘", "label": "doc_generate"}
+{"text": "고객 세그먼트 분석 보고서 만들어줘", "label": "doc_generate"}
+{"text": "사업 인수 제안서 작성해줄래?", "label": "doc_generate"}
+{"text": "시스템 아키텍처 설계 문서 작성해줘", "label": "doc_generate"}
+{"text": "CTO에게 보고할 기술 현황 보고서 만들어줘", "label": "doc_generate"}
+{"text": "정보보안 책임자 JD 작성해줘", "label": "doc_generate"}
+{"text": "이 영문 보고서 한국어로 요약해줘", "label": "doc_generate"}
+{"text": "업무 위임 공문 작성해주세요", "label": "doc_generate"}
+{"text": "스프린트 회고 문서 작성해줘", "label": "doc_generate"}
+{"text": "컨설팅 제안서 만들어줘", "label": "doc_generate"}
+{"text": "특허 출원 관련 보고서 작성해줘", "label": "doc_generate"}
+{"text": "재택근무 가이드라인 문서 만들어줘", "label": "doc_generate"}
+{"text": "사업부 월간 리뷰 보고서 작성해줘", "label": "doc_generate"}
+{"text": "직원 만족도 조사 결과 요약해줘", "label": "doc_generate"}
+{"text": "데이터베이스 설계 문서 작성해줘", "label": "doc_generate"}
+{"text": "크라우드펀딩 소개 페이지 문구 만들어줘", "label": "doc_generate"}
+{"text": "계약 해지 통보 공문 작성해줘", "label": "doc_generate"}
+{"text": "클라우드 엔지니어 채용 JD 만들어줘", "label": "doc_generate"}
+{"text": "이번 프로젝트 교훈 문서 작성해줘", "label": "doc_generate"}
+{"text": "경영 현황 보고서 작성 부탁해", "label": "doc_generate"}
+{"text": "이 긴 이메일 체인 요약해줘", "label": "doc_generate"}
+{"text": "신사업 ROI 분석 보고서 만들어줘", "label": "doc_generate"}
+{"text": "사무실 이전 안내 공문 작성해줘", "label": "doc_generate"}
+{"text": "연봉 협상 관련 제안서 작성해줘", "label": "doc_generate"}
+{"text": "오픈소스 도입 검토 보고서 만들어줘", "label": "doc_generate"}
+{"text": "고객 응대 매뉴얼 작성해줘", "label": "doc_generate"}
+{"text": "공장 안전 점검 보고서 작성해줘", "label": "doc_generate"}
+{"text": "A/B 테스트 결과 보고서 생성해줘", "label": "doc_generate"}
+{"text": "납품 계약서 초안 작성해줄래?", "label": "doc_generate"}
+{"text": "이 프레젠테이션 스크립트 작성해줘", "label": "doc_generate"}
+{"text": "ESG 경영 보고서 작성해줘", "label": "doc_generate"}
+{"text": "복리후생 안내 문서 만들어줘", "label": "doc_generate"}

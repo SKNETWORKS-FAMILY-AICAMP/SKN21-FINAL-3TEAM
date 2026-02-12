@@ -1,0 +1,30 @@
+[
+  {
+    "method": "Random",
+    "accuracy": 0.1286,
+    "f1_macro": 0.1348,
+    "time_ms": 0.0,
+    "cost": "$0"
+  },
+  {
+    "method": "Rule-based",
+    "accuracy": 0.8429,
+    "f1_macro": 0.8681,
+    "time_ms": 0.0,
+    "cost": "$0"
+  },
+  {
+    "method": "BERT Base",
+    "accuracy": 0.1286,
+    "f1_macro": 0.0722,
+    "time_ms": 10.4,
+    "cost": "$0"
+  },
+  {
+    "method": "BERT Fine-tuned",
+    "accuracy": 0.8857,
+    "f1_macro": 0.8997,
+    "time_ms": 6.69,
+    "cost": "~$0.50 (1회 학습)"
+  }
+]
