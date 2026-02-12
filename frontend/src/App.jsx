@@ -13,8 +13,8 @@ import AdminPage from './pages/AdminPage';
 import MeetingMinutesPage from './pages/MeetingMinutesPage';
 import DocumentGeneratePage from './pages/DocumentGeneratePage';
 
-// DEV_BYPASS: 백엔드 로그인 개발 완료 전까지 인증 우회 — 나중에 false로 변경
-const DEV_BYPASS_AUTH = true;
+// DEV_BYPASS: 백엔드 JWT 인증 연동 완료 — 실제 인증 플로우 사용
+const DEV_BYPASS_AUTH = false;
 
 function PrivateRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
