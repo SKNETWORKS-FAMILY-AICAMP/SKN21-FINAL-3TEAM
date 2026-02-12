@@ -1,0 +1,18 @@
+{
+  "klue/bert-base": {
+    "best_config": {
+      "epochs": 5,
+      "lr": 2e-05,
+      "batch_size": 16,
+      "warmup_ratio": 0.0
+    },
+    "best_result": {
+      "eval_f1": 0.9823,
+      "eval_acc": 0.9825,
+      "adv_acc": 0.9009,
+      "adv_f1": 0.9015,
+      "train_time": 60.9,
+      "infer_ms": 7.48
+    }
+  }
+}
