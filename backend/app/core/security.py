@@ -45,14 +45,19 @@ def verify_token(token: str) -> dict:
         return None
 
 
+def _truncate_password(password: str) -> str:
+    """bcrypt 72바이트 제한 처리"""
+    return password.encode("utf-8")[:72].decode("utf-8", errors="ignore")
+
+
 def hash_password(password: str) -> str:
     """비밀번호 해싱 (bcrypt)"""
-    return pwd_context.hash(password)
+    return pwd_context.hash(_truncate_password(password))
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """비밀번호 검증"""
-    return pwd_context.verify(plain_password, hashed_password)
+    return pwd_context.verify(_truncate_password(plain_password), hashed_password)
 
 
 def encrypt_data(data: str) -> str:
