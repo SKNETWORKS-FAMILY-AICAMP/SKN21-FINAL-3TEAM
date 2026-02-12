@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ChatWindow from '../components/chat/ChatWindow';
 import MessageBubble from '../components/chat/MessageBubble';
 import StreamingMessage from '../components/chat/StreamingMessage';
@@ -6,7 +6,9 @@ import AgentIndicator from '../components/chat/AgentIndicator';
 import ErrorMessage from '../components/chat/ErrorMessage';
 import SuggestedQuestions from '../components/chat/SuggestedQuestions';
 import RegulationPanel from '../components/chat/RegulationPanel';
+import ChatSessionSidebar from '../components/chat/ChatSessionSidebar';
 import useChat from '../hooks/useChat';
+import useChatStore from '../store/chatStore';
 
 // 규정 판단 응답 시 우측 패널에 보여줄 mock 규정
 const mockRegulations = [
@@ -17,9 +19,15 @@ const mockRegulations = [
 
 export default function ChatPage() {
   const { messages, isStreaming, currentIntent, currentStatus, sendMessage } = useChat();
+  const { initSession } = useChatStore();
   const [panelOpen, setPanelOpen] = useState(false);
+  const [sessionSidebarOpen, setSessionSidebarOpen] = useState(false);
   const [lastError, setLastError] = useState(null);
   const [lastInput, setLastInput] = useState('');
+
+  useEffect(() => {
+    initSession();
+  }, [initSession]);
 
   const handleSend = (text) => {
     setLastError(null);
@@ -35,13 +43,19 @@ export default function ChatPage() {
   };
 
   return (
-    <div>
-      <header className="flex justify-between items-center py-6 sticky top-0 bg-surface-main z-10">
+    <div className="-mx-8">
+      <header className="flex justify-between items-center py-6 px-8 sticky top-0 bg-surface-main z-10">
         <div>
           <h1 className="text-2xl font-bold">AI 챗봇</h1>
           <p className="text-sm text-neutral-sub mt-1">규정 판단, 문서 분석, 일정 관리를 도와드립니다</p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSessionSidebarOpen(!sessionSidebarOpen)}
+            className={`btn-outline text-xs ${sessionSidebarOpen ? 'bg-primary-50 border-primary-300' : ''}`}
+          >
+            💬 대화 목록
+          </button>
           <button
             onClick={() => setPanelOpen(!panelOpen)}
             className={`btn-outline text-xs ${panelOpen ? 'bg-primary-50 border-primary-300' : ''}`}
@@ -55,6 +69,9 @@ export default function ChatPage() {
       </header>
 
       <div className="flex h-[calc(100vh-108px)] -mb-8">
+        {/* 좌측 대화 세션 목록 */}
+        {sessionSidebarOpen && <ChatSessionSidebar />}
+
         {/* 챗 영역 */}
         <div className="flex-1 min-w-0">
           <ChatWindow onSend={handleSend} messages={messages}>

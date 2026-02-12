@@ -1,4 +1,19 @@
+import { useRef } from 'react';
+
 export default function MeetingPreview({ data, onDownload, loading }) {
+  const printRef = useRef(null);
+
+  const handlePrint = () => {
+    if (!printRef.current) return;
+    printRef.current.classList.add('print-area');
+    window.print();
+    const cleanup = () => {
+      printRef.current?.classList.remove('print-area');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+  };
+
   if (!data) return null;
 
   return (
@@ -6,6 +21,9 @@ export default function MeetingPreview({ data, onDownload, loading }) {
       <div className="card-header">
         <div className="card-title"><span>📋</span>생성된 회의록</div>
         <div className="flex gap-2">
+          <button onClick={handlePrint} className="btn-outline text-xs">
+            🖨️ 인쇄
+          </button>
           <button onClick={() => onDownload?.('docx')} disabled={loading} className="btn-primary text-xs disabled:opacity-50">
             DOCX 다운로드
           </button>
@@ -14,7 +32,7 @@ export default function MeetingPreview({ data, onDownload, loading }) {
           </button>
         </div>
       </div>
-      <div className="card-body">
+      <div ref={printRef} className="card-body">
         {/* 회의 정보 */}
         <div className="flex flex-wrap gap-4 text-xs text-neutral-sub mb-4 pb-4 border-b border-neutral-divider">
           {data.title && <span className="font-semibold text-neutral-main">{data.title}</span>}

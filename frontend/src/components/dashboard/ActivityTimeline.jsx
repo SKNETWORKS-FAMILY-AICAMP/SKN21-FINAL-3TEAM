@@ -17,9 +17,9 @@ export default function ActivityTimeline({ activities = [] }) {
           자동 스캔 중
         </div>
       </div>
-      <div className="card-body">
+      <div className="card-body space-y-2">
         {activities.map((a, i) => (
-          <Link key={i} to={a.to || '#'} className={`flex items-center gap-3 px-2 py-3 rounded-sm transition hover:bg-surface-hover ${i < activities.length - 1 ? 'border-b border-neutral-divider' : ''}`}>
+          <Link key={i} to={a.to || '#'} className="flex items-center gap-3 px-3 py-3 rounded-sm border border-neutral-border transition hover:bg-surface-hover">
             <div className={`w-9 h-9 rounded-sm flex items-center justify-center text-base flex-shrink-0 ${iconStyles[a.type] || 'bg-primary-50'}`}>{a.icon}</div>
             <div className="flex-1">
               <div className="text-[0.8125rem] font-semibold text-neutral-main">{a.title}</div>

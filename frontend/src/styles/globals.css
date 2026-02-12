@@ -4,6 +4,90 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Light mode (default) ── */
+:root {
+  --color-primary-900: #3D5164;
+  --color-primary-700: #56728A;
+  --color-primary-500: #6E87A0;
+  --color-primary-300: #8FA3B4;
+  --color-primary-100: #C8D5E2;
+  --color-primary-50: #E8EEF3;
+
+  --color-accent-700: #8B7D6E;
+  --color-accent-500: #A89580;
+  --color-accent-300: #C4B49A;
+  --color-accent-100: #EDE5D0;
+  --color-accent-50: #F7F3EB;
+
+  --color-surface-main: #F5F2EC;
+  --color-surface-sub: #EDE5D0;
+  --color-surface-card: #FFFFFF;
+  --color-surface-hover: #FAFAF6;
+
+  --color-neutral-main: #2C3340;
+  --color-neutral-sub: #6B7280;
+  --color-neutral-muted: #9CA3AF;
+  --color-neutral-border: #DDD8CE;
+  --color-neutral-divider: #EDE9E0;
+
+  --color-success: #5B9A6F;
+  --color-success-bg: #E8F4EC;
+  --color-warning: #C49A3C;
+  --color-warning-bg: #F5EDD0;
+  --color-error: #C06060;
+  --color-error-bg: #F5E0E0;
+  --color-info: #6E87A0;
+  --color-info-bg: #E8EEF3;
+
+  --color-sidebar-bg: #56728A;
+  --color-sidebar-active: #6E87A0;
+  --color-sidebar-border: #6E87A0;
+  --color-sidebar-text: #FFFFFF;
+  --color-sidebar-text-muted: #C8D5E2;
+}
+
+/* ── Dark mode (회색 조합) ── */
+.dark {
+  --color-primary-900: #B8D0E2;
+  --color-primary-700: #92B8D4;
+  --color-primary-500: #7AA0BC;
+  --color-primary-300: #5A7888;
+  --color-primary-100: #485868;
+  --color-primary-50: #404A55;
+
+  --color-accent-700: #DACED4;
+  --color-accent-500: #C4B498;
+  --color-accent-300: #AA9A78;
+  --color-accent-100: #524A40;
+  --color-accent-50: #484038;
+
+  --color-surface-main: #42474F;
+  --color-surface-sub: #4A5059;
+  --color-surface-card: #48515A;
+  --color-surface-hover: #525A64;
+
+  --color-neutral-main: #EEF0F2;
+  --color-neutral-sub: #B0B6C0;
+  --color-neutral-muted: #8A9098;
+  --color-neutral-border: #555C66;
+  --color-neutral-divider: #4C525C;
+
+  --color-success: #7ECC94;
+  --color-success-bg: #384840;
+  --color-warning: #E0C060;
+  --color-warning-bg: #484030;
+  --color-error: #E09090;
+  --color-error-bg: #483838;
+  --color-info: #92B8D4;
+  --color-info-bg: #38424C;
+
+  --color-sidebar-bg: #30353C;
+  --color-sidebar-active: #474E58;
+  --color-sidebar-border: #555C66;
+  --color-sidebar-text: #EEF0F2;
+  --color-sidebar-text-muted: #98A0B0;
+}
+
 @layer base {
   body {
     @apply bg-surface-main text-neutral-main font-sans antialiased;
@@ -46,8 +130,38 @@
 ::-webkit-scrollbar-thumb { @apply bg-primary-100 rounded-full; }
 ::-webkit-scrollbar-thumb:hover { @apply bg-primary-300; }
 
+.dark ::-webkit-scrollbar-thumb { background: #3A3E48; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #4A4E58; }
+
 /* Typing animation */
 @keyframes bounce {
   0%, 80%, 100% { transform: scale(0); }
   40% { transform: scale(1); }
+}
+
+/* ── Print styles ── */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible !important;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 20mm;
+    background: white !important;
+    color: #2C3340 !important;
+  }
+  .print-area .no-print {
+    display: none !important;
+  }
+  @page {
+    margin: 15mm;
+    size: A4;
+  }
 }

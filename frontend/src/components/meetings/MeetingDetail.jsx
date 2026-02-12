@@ -1,11 +1,25 @@
+import { useRef } from 'react';
 import Badge from '../common/Badge';
 import ActionItemPanel from './ActionItemPanel';
 
 export default function MeetingDetail({ meeting }) {
+  const printRef = useRef(null);
+
+  const handlePrint = () => {
+    if (!printRef.current) return;
+    printRef.current.classList.add('print-area');
+    window.print();
+    const cleanup = () => {
+      printRef.current?.classList.remove('print-area');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+  };
+
   if (!meeting) return <div className="card p-10 text-center text-neutral-muted text-sm">회의를 선택하세요</div>;
 
   return (
-    <div className="bg-surface-card rounded-md border border-neutral-border p-5 space-y-4">
+    <div ref={printRef} className="bg-surface-card rounded-md border border-neutral-border p-5 space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-base font-bold">{meeting.title}</h3>
         <Badge variant={meeting.analyzed ? 'status-completed' : 'status-in-progress'}>{meeting.analyzed ? '분석완료' : '분석중'}</Badge>
@@ -38,6 +52,7 @@ export default function MeetingDetail({ meeting }) {
         </div>
       )}
       <div className="flex gap-2 pt-2">
+        <button onClick={handlePrint} className="btn-outline">🖨️ 인쇄</button>
         <button className="btn-primary">📄 원문 보기</button>
         <button className="btn-outline">📥 보고서 생성</button>
       </div>

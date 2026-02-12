@@ -4,7 +4,7 @@ export default function MessageBubble({ type = 'user', children, intent, confide
   if (type === 'user') {
     return (
       <div className="flex justify-end mb-4">
-        <div className="max-w-[70%] bg-primary-700 text-white rounded-2xl rounded-br-sm px-4 py-3 text-sm leading-relaxed">
+        <div className="max-w-[70%] bg-primary-700 text-white rounded-2xl rounded-br-sm px-4 py-3 text-sm leading-relaxed border-2 border-primary-500">
           {children}
         </div>
       </div>

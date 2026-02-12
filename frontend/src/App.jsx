@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import useAuthStore from './store/authStore';
+import useUIStore from './store/uiStore';
 import Layout from './components/common/Layout';
 import FontSizeControl from './components/common/FontSizeControl';
 import LoginPage from './pages/LoginPage';
@@ -13,8 +14,8 @@ import AdminPage from './pages/AdminPage';
 import MeetingMinutesPage from './pages/MeetingMinutesPage';
 import DocumentGeneratePage from './pages/DocumentGeneratePage';
 
-// DEV_BYPASS: 백엔드 로그인 개발 완료 전까지 인증 우회 — 나중에 false로 변경
-const DEV_BYPASS_AUTH = true;
+// DEV_BYPASS: false = 실제 인증 필요, true = 인증 우회
+const DEV_BYPASS_AUTH = false;
 
 function PrivateRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -32,10 +33,15 @@ function PublicOnlyRoute() {
 
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize);
+  const theme = useUIStore((s) => s.theme);
 
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
 
   return (
     <BrowserRouter>

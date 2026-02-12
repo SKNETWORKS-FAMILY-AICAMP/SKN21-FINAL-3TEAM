@@ -10,6 +10,13 @@ const intentColor = {
   일반: '#9CA3AF',
 };
 
+const intentBorderColor = {
+  판단: 'border-primary-300',
+  문서: 'border-accent-300',
+  일정: 'border-success',
+  일반: 'border-neutral-border',
+};
+
 export default function TopQueries({ data = {} }) {
   const [period, setPeriod] = useState(PERIOD_TABS[0]);
 
@@ -39,7 +46,7 @@ export default function TopQueries({ data = {} }) {
           <Link
             key={i}
             to="/chat"
-            className="flex items-center gap-3 p-3 rounded-sm border border-neutral-divider transition hover:border-primary-300 hover:bg-surface-hover"
+            className="flex items-center gap-3 p-3 rounded-sm border border-neutral-border transition hover:bg-surface-hover"
           >
             <div className="w-7 h-7 rounded-full bg-primary-50 flex items-center justify-center text-[0.75rem] font-bold text-primary-700 flex-shrink-0">
               {i + 1}

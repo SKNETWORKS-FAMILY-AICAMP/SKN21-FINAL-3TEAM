@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
+import ThemeToggle from './ThemeToggle';
 
 const navItems = [
   { section: '메인', items: [
@@ -31,16 +32,16 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-60 bg-primary-700 flex flex-col flex-shrink-0 overflow-y-auto">
+    <aside className="w-60 bg-sidebar-bg flex flex-col flex-shrink-0 overflow-y-auto">
       <a href="/dashboard" className="flex items-center gap-3 px-5 pt-6 pb-7">
         <div className="w-9 h-9 bg-accent-300 rounded-sm flex items-center justify-center text-lg">📋</div>
-        <span className="font-display text-lg font-bold text-white tracking-tight">WorkFlow</span>
+        <span className="font-display text-lg font-bold text-sidebar-text tracking-tight">WorkFlow</span>
       </a>
 
       <nav className="flex-1">
         {navItems.map((section) => (
           <div key={section.section} className="mb-2">
-            <div className="px-5 py-1.5 text-[0.625rem] font-semibold uppercase tracking-widest text-primary-300 opacity-70">
+            <div className="px-5 py-1.5 text-[0.625rem] font-semibold uppercase tracking-widest text-sidebar-text-muted opacity-70">
               {section.section}
             </div>
             {section.items.map((item) => (
@@ -50,8 +51,8 @@ export default function Sidebar() {
                 className={({ isActive }) =>
                   `flex items-center gap-2.5 px-5 py-2.5 text-sm border-l-[3px] transition-all ${
                     isActive
-                      ? 'bg-primary-500 text-white font-semibold border-l-accent-300'
-                      : 'text-primary-100 border-l-transparent hover:bg-white/[0.06] hover:text-white'
+                      ? 'bg-sidebar-active text-sidebar-text font-semibold border-l-accent-300'
+                      : 'text-sidebar-text-muted border-l-transparent hover:bg-white/[0.06] hover:text-sidebar-text'
                   }`
                 }
               >
@@ -68,20 +69,21 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-5 py-4 border-t border-primary-500">
+      <div className="px-5 py-4 border-t border-sidebar-border">
         <div className="flex items-center gap-2.5 mb-3">
           <div className="w-[34px] h-[34px] rounded-full bg-accent-300 flex items-center justify-center text-[0.8125rem] font-bold text-primary-900 flex-shrink-0">
             {user?.name?.[0] || '김'}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[0.8125rem] font-semibold text-white truncate">{user?.name || '김정보'}</div>
-            <div className="text-[0.6875rem] text-primary-300 truncate">{user?.role || '정보보안팀 팀장'}</div>
+            <div className="text-[0.8125rem] font-semibold text-sidebar-text truncate">{user?.name || '김정보'}</div>
+            <div className="text-[0.6875rem] text-sidebar-text-muted truncate">{user?.role || '정보보안팀 팀장'}</div>
           </div>
+          <ThemeToggle />
         </div>
         <button
           onClick={handleLogout}
           title="로그아웃 할래 말래"
-          className="w-full py-2 rounded-md text-[0.8125rem] font-medium text-primary-200 border border-primary-500 hover:bg-white/10 hover:text-white transition"
+          className="w-full py-2 rounded-md text-[0.8125rem] font-medium text-sidebar-text-muted border border-sidebar-border hover:bg-white/10 hover:text-sidebar-text transition"
         >
           로그아웃
         </button>

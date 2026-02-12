@@ -1,7 +1,22 @@
+import { useRef } from 'react';
 import Badge from '../common/Badge';
 import { TEMPLATE_LABELS } from '../../utils/constants';
 
 export default function DocumentPreview({ data, onDownload, loading }) {
+  const printRef = useRef(null);
+
+  const handlePrint = () => {
+    if (!printRef.current) return;
+    printRef.current.classList.add('print-area');
+    window.print();
+    // afterprint 이벤트로 클래스 제거
+    const cleanup = () => {
+      printRef.current?.classList.remove('print-area');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+  };
+
   if (!data) return null;
 
   return (
@@ -14,6 +29,9 @@ export default function DocumentPreview({ data, onDownload, loading }) {
           )}
         </div>
         <div className="flex gap-2">
+          <button onClick={handlePrint} className="btn-outline text-xs">
+            🖨️ 인쇄
+          </button>
           <button onClick={() => onDownload?.('docx')} disabled={loading} className="btn-primary text-xs disabled:opacity-50">
             DOCX 다운로드
           </button>
@@ -22,7 +40,7 @@ export default function DocumentPreview({ data, onDownload, loading }) {
           </button>
         </div>
       </div>
-      <div className="card-body">
+      <div ref={printRef} className="card-body">
         {/* 문서 제목 */}
         {data.title && (
           <h3 className="text-lg font-bold text-neutral-main mb-4 pb-3 border-b border-neutral-divider">

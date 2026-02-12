@@ -1,11 +1,25 @@
+import { useRef } from 'react';
 import Badge from '../common/Badge';
 import KeywordHighlight from '../common/KeywordHighlight';
 
 export default function DocumentDetail({ doc, searchQuery = '' }) {
+  const printRef = useRef(null);
+
+  const handlePrint = () => {
+    if (!printRef.current) return;
+    printRef.current.classList.add('print-area');
+    window.print();
+    const cleanup = () => {
+      printRef.current?.classList.remove('print-area');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+  };
+
   if (!doc) return <div className="card p-10 text-center text-neutral-muted text-sm">문서를 선택하세요</div>;
 
   return (
-    <div className="bg-surface-card rounded-md border border-neutral-border p-5">
+    <div ref={printRef} className="bg-surface-card rounded-md border border-neutral-border p-5">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-base font-bold"><KeywordHighlight text={doc.name} keyword={searchQuery} /></h3>
         <Badge variant={doc.status === '적용중' ? 'status-active' : 'status-revising'}>{doc.status}</Badge>
@@ -22,6 +36,7 @@ export default function DocumentDetail({ doc, searchQuery = '' }) {
         </div>
       )}
       <div className="flex gap-2 mt-4">
+        <button onClick={handlePrint} className="btn-outline">🖨️ 인쇄</button>
         <button className="btn-primary">📄 원문 보기</button>
         <button className="btn-outline">📥 다운로드</button>
       </div>
