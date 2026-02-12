@@ -133,7 +133,7 @@ async def safe_judgment_agent(state: AgentState) -> AgentState:
     try:
         from ai.agents.judgment_agent import judgment_agent
 
-        result = judgment_agent(state)
+        result = await judgment_agent(state)
         return result
     except NotImplementedError:
         state["agent_response"] = {
@@ -156,7 +156,7 @@ async def safe_document_agent(state: AgentState) -> AgentState:
     try:
         from ai.agents.document_agent import document_agent
 
-        result = document_agent(state)
+        result = await document_agent(state)
         return result
     except NotImplementedError:
         state["agent_response"] = {
@@ -179,7 +179,7 @@ async def safe_schedule_agent(state: AgentState) -> AgentState:
     try:
         from ai.agents.schedule_agent import schedule_agent
 
-        result = schedule_agent(state)
+        result = await schedule_agent(state)
         return result
     except NotImplementedError:
         state["agent_response"] = {

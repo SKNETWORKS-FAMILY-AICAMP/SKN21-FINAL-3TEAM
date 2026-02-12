@@ -14,7 +14,7 @@
 from ai.agents.state import AgentState
 
 
-def document_agent(state: AgentState) -> AgentState:
+async def document_agent(state: AgentState) -> AgentState:
     """
     문서 Agent 노드 함수 (LangGraph 노드 인터페이스)
 

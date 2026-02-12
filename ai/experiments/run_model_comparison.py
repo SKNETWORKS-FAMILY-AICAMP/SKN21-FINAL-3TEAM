@@ -368,10 +368,60 @@ def plot_inference_speed(model_results):
 
 # ── 메인 ──
 
+def load_existing_results():
+    """기존 결과 로드 (resume 모드용)"""
+    grid_path = RESULTS_DIR / "grid_search_full.json"
+    comp_path = RESULTS_DIR / "model_comparison.json"
+
+    existing_grid = []
+    existing_models = {}
+
+    if grid_path.exists():
+        with open(grid_path, "r", encoding="utf-8") as f:
+            existing_grid = json.load(f)
+        print(f"  [Resume] 기존 grid 결과 로드: {len(existing_grid)}건")
+
+    if comp_path.exists():
+        with open(comp_path, "r", encoding="utf-8") as f:
+            existing_models = json.load(f)
+        print(f"  [Resume] 기존 model 결과 로드: {list(existing_models.keys())}")
+
+    return existing_grid, existing_models
+
+
+def get_completed_models(existing_grid):
+    """이미 Step1+Step2 완료된 모델 목록 반환"""
+    completed = set()
+    for model_name in MODELS:
+        step1 = [r for r in existing_grid if r.get("model") == model_name and r.get("step") == 1 and "error" not in r]
+        step2 = [r for r in existing_grid if r.get("model") == model_name and r.get("step") == 2 and "error" not in r]
+        if len(step1) >= len(EPOCHS_LIST) * len(LR_LIST) * len(BATCH_LIST) and len(step2) >= len(WARMUP_LIST):
+            completed.add(model_name)
+    return completed
+
+
+def is_run_completed(existing_grid, model_name, epochs, lr, batch_size, warmup_ratio, step):
+    """특정 (model, epochs, lr, batch, warmup, step) 조합이 이미 완료됐는지 확인"""
+    for r in existing_grid:
+        if (r.get("model") == model_name and r.get("epochs") == epochs
+                and r.get("lr") == lr and r.get("batch_size") == batch_size
+                and r.get("warmup_ratio") == warmup_ratio and r.get("step") == step
+                and "error" not in r):
+            return True, r
+    return False, None
+
+
+def save_grid_incremental(all_grid_results):
+    """매 실행 후 JSON 즉시 저장 (크래시 방지)"""
+    with open(RESULTS_DIR / "grid_search_full.json", "w", encoding="utf-8") as f:
+        json.dump(all_grid_results, f, ensure_ascii=False, indent=2)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--step1-only", action="store_true", help="Step 1만 실행")
     parser.add_argument("--model", type=str, default=None, help="특정 모델만 실행")
+    parser.add_argument("--resume", action="store_true", help="기존 결과 이어서 실행 (완료된 모델 건너뜀)")
     args = parser.parse_args()
 
     set_seed(SEED)
@@ -382,10 +432,27 @@ def main():
     print("  실험 5: 다중 모델 × 하이퍼파라미터 전탐색")
     print(f"  Device: {device}")
     print(f"  Models: {len(target_models)}")
+    print(f"  Resume: {args.resume}")
     print(f"  Step 1: {len(EPOCHS_LIST)}×{len(LR_LIST)}×{len(BATCH_LIST)} = {len(EPOCHS_LIST)*len(LR_LIST)*len(BATCH_LIST)} per model")
     if not args.step1_only:
         print(f"  Step 2: {len(WARMUP_LIST)} warmup variations per model")
     print("=" * 70)
+
+    # Resume: 기존 결과 로드
+    all_grid_results = []
+    model_results = {}
+    skip_models = set()
+
+    if args.resume:
+        existing_grid, existing_models = load_existing_results()
+        all_grid_results = existing_grid
+        skip_models = get_completed_models(existing_grid)
+
+        # 기존 완료 모델의 best 결과 복원
+        for m_name, m_data in existing_models.items():
+            if m_name in skip_models:
+                model_results[m_name] = m_data
+                print(f"  [Skip] {m_name} — 이미 완료 (Adv F1={m_data['best_result']['adv_f1']})")
 
     # 데이터 로드
     print("\n[Data] Loading v1.3 dataset...")
@@ -394,12 +461,24 @@ def main():
     adv_data = load_adversarial()
     print(f"  Train: {len(train_data)}, Eval: {len(eval_data)}, Adversarial: {len(adv_data)}")
 
-    all_grid_results = []
-    model_results = {}
     overall_best_f1 = 0
     overall_best_model = None
+    overall_best_tok = None
+    overall_best_model_obj = None
+
+    # 기존 결과에서 overall best 초기화
+    for m_name, m_data in model_results.items():
+        if m_data.get("best_result") and m_data["best_result"]["adv_f1"] > overall_best_f1:
+            overall_best_f1 = m_data["best_result"]["adv_f1"]
+            overall_best_model = m_name
 
     for model_idx, model_name in enumerate(target_models):
+        # Resume 모드에서 이미 완료된 모델 건너뛰기
+        if model_name in skip_models:
+            print(f"\n{'='*70}")
+            print(f"  [{model_idx+1}/{len(target_models)}] {model_name} — SKIPPED (resume)")
+            print(f"{'='*70}")
+            continue
         short_name = model_name.split("/")[-1]
         print(f"\n{'='*70}")
         print(f"  [{model_idx+1}/{len(target_models)}] {model_name}")
@@ -412,7 +491,19 @@ def main():
         best_f1 = 0
         best_config = None
 
+        skipped_count = 0
         for i, (epochs, lr, batch_size) in enumerate(grid):
+            # Resume: 이미 완료된 개별 실행 건너뛰기
+            if args.resume:
+                done, cached = is_run_completed(all_grid_results, model_name, epochs, lr, batch_size, WARMUP_DEFAULT, 1)
+                if done:
+                    step1_results.append(cached)
+                    if cached["adv_f1"] > best_f1:
+                        best_f1 = cached["adv_f1"]
+                        best_config = {"epochs": epochs, "lr": lr, "batch_size": batch_size}
+                    skipped_count += 1
+                    continue
+
             print(f"\n    [{i+1}/{len(grid)}] epochs={epochs}, lr={lr:.0e}, batch={batch_size}", end=" ")
             output_dir = MODEL_BASE / f"exp5_temp_{short_name}_{i}"
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -434,6 +525,7 @@ def main():
                 }
                 step1_results.append(entry)
                 all_grid_results.append(entry)
+                save_grid_incremental(all_grid_results)  # 매 실행 후 즉시 저장
 
                 if result["adv_f1"] > best_f1:
                     best_f1 = result["adv_f1"]
@@ -448,7 +540,10 @@ def main():
                     "step": 1, "error": str(e),
                 }
                 all_grid_results.append(entry)
+                save_grid_incremental(all_grid_results)
 
+        if skipped_count > 0:
+            print(f"\n  [Resume] Step 1에서 {skipped_count}건 건너뜀")
         print(f"\n  Step 1 Best: {best_config}, Adv F1={best_f1}")
 
         # 히트맵
@@ -467,6 +562,21 @@ def main():
             best_f1_step2 = best_f1
 
             for warmup in WARMUP_LIST:
+                # Resume: 이미 완료된 Step 2 건너뛰기
+                if args.resume:
+                    done, cached = is_run_completed(
+                        all_grid_results, model_name,
+                        best_config["epochs"], best_config["lr"], best_config["batch_size"],
+                        warmup, 2,
+                    )
+                    if done:
+                        if cached["adv_f1"] >= best_f1_step2:
+                            best_f1_step2 = cached["adv_f1"]
+                            final_best_config = {**best_config, "warmup_ratio": warmup}
+                            final_best_result = cached
+                        print(f"\n    warmup={warmup} → SKIPPED (resume, Adv F1={cached['adv_f1']})")
+                        continue
+
                 print(f"\n    warmup={warmup}", end=" ")
                 output_dir = MODEL_BASE / f"exp5_temp_{short_name}_warmup"
                 output_dir.mkdir(parents=True, exist_ok=True)
@@ -487,6 +597,7 @@ def main():
                         **result,
                     }
                     all_grid_results.append(entry)
+                    save_grid_incremental(all_grid_results)
 
                     if result["adv_f1"] >= best_f1_step2:
                         best_f1_step2 = result["adv_f1"]
@@ -539,20 +650,23 @@ def main():
 
     for model_name, data in model_results.items():
         short = model_name.split("/")[-1]
-        r = data["best_result"]
-        c = data["best_config"]
+        r = data.get("best_result")
+        c = data.get("best_config")
         if not r or not c:
             print(f"\n  {short}: ALL FAILED (no successful training)")
             continue
-        print(f"\n  {short}:")
+        resumed = " (resumed)" if model_name in skip_models else ""
+        print(f"\n  {short}{resumed}:")
         print(f"    Config: epochs={c['epochs']}, lr={c['lr']:.0e}, batch={c['batch_size']}, warmup={c['warmup_ratio']}")
         print(f"    Eval F1={r['eval_f1']}, Adv Acc={r['adv_acc']}, Adv F1={r['adv_f1']}, Speed={r['infer_ms']}ms")
 
     print(f"\n  OVERALL BEST: {overall_best_model} (Adv F1={overall_best_f1})")
 
-    # 최종 모델 저장
+    # 최종 모델 저장 (이번 세션에서 학습한 모델만)
     if overall_best_tok and overall_best_model_obj:
         save_best_model(overall_best_tok, overall_best_model_obj, overall_best_model)
+    elif overall_best_model and overall_best_model in skip_models:
+        print(f"  -> {overall_best_model}은 이전 세션에서 이미 저장됨 (skip)")
 
     # 차트 생성
     print("\n[Charts]")
