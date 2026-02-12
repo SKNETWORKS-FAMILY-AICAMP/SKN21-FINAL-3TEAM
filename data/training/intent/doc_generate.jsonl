@@ -1,7 +1,7 @@
 {"text": "이번 분기 실적 보고서 작성해줘", "label": "doc_generate"}
 {"text": "신규 프로젝트 제안서 만들어줘", "label": "doc_generate"}
 {"text": "백엔드 개발자 채용공고 작성해줘", "label": "doc_generate"}
-{"text": "어제 회의 내용 요약해줘", "label": "doc_generate"}
+{"text": "어제 회의 내용 요약해줘", "label": "meeting_generate"}
 {"text": "마케팅 기획서 초안 작성해줘", "label": "doc_generate"}
 {"text": "거래처 계약서 초안 만들어줄 수 있어?", "label": "doc_generate"}
 {"text": "본사 공문 작성 좀 해줘", "label": "doc_generate"}
@@ -18,7 +18,7 @@
 {"text": "주간 업무 보고서 양식에 맞춰서 작성해줘", "label": "doc_generate"}
 {"text": "클라이언트에게 보낼 프로젝트 완료 보고서 만들어줘", "label": "doc_generate"}
 {"text": "AI 엔지니어 채용 공고 초안 생성해줘", "label": "doc_generate"}
-{"text": "지난 회의록 핵심만 요약 정리해줘", "label": "doc_generate"}
+{"text": "지난 회의록 핵심만 요약 정리해줘", "label": "meeting_generate"}
 {"text": "연간 사업계획서 작성해줘", "label": "doc_generate"}
 {"text": "NDA 계약서 초안 작성해줄 수 있어?", "label": "doc_generate"}
 {"text": "입사지원서 양식 만들어줘", "label": "doc_generate"}
