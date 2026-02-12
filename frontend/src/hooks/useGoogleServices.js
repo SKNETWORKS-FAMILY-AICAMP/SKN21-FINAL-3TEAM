@@ -18,12 +18,12 @@ export default function useGoogleServices() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // connected 상태 변경 시 Tasks + Sheets + Calendar 자동 로드
+  // connected 상태 변경 시 Tasks + Sheets 자동 로드
+  // Calendar는 페이지에서 시간 범위 지정하여 직접 호출
   useEffect(() => {
     if (store.connected) {
       if (store.hasScope('tasks')) store.fetchTasks()
       if (store.hasScope('sheets')) store.fetchSheets()
-      if (store.hasScope('calendar')) store.fetchCalendarEvents()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.connected])
@@ -35,7 +35,7 @@ export default function useGoogleServices() {
       const promises = []
       if (state.hasScope('tasks')) promises.push(state.fetchTasks())
       if (state.hasScope('sheets')) promises.push(state.fetchSheets())
-      if (state.hasScope('calendar')) promises.push(state.fetchCalendarEvents())
+      // Calendar는 페이지에서 시간 범위 지정하여 직접 호출
       await Promise.all(promises)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
