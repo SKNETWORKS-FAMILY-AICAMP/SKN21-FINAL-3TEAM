@@ -2,12 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import MeetLinkBadge from './MeetLinkBadge';
 
 const TYPE_LABELS = { meeting: '회의', deadline: '마감일', google: '개인 일정', holiday: '공휴일' };
-const TYPE_DOT = { meeting: 'bg-primary-500', deadline: 'bg-error', google: 'bg-success', holiday: 'bg-red-400' };
+const TYPE_DOT = { meeting: 'bg-primary-500', deadline: 'bg-error', google: 'bg-success', holiday: 'bg-error' };
 const typeStyles = {
   meeting: 'bg-primary-50 text-primary-700',
   deadline: 'bg-error-bg text-error',
   google: 'bg-success-bg text-success',
-  holiday: 'bg-red-50 text-red-500',
+  holiday: 'bg-error-bg text-error',
 };
 
 // 한국 공휴일 (고정 공휴일 + 연도별 음력 공휴일)
@@ -143,7 +143,7 @@ function YearView({ year, events, todayYear, todayMonth, todayDate, onMonthClick
                     {d ? (
                       <span className={`text-[0.6875rem] w-6 h-6 flex items-center justify-center rounded-full
                         ${isToday ? 'bg-primary-700 text-white font-bold' : ''}
-                        ${isHoliday && !isToday ? 'bg-red-50 text-red-500 font-semibold' : ''}
+                        ${isHoliday && !isToday ? 'bg-error-bg text-error font-semibold' : ''}
                         ${hasEvent && !isToday && !isHoliday ? 'bg-primary-50 text-primary-700 font-semibold' : ''}
                         ${!isToday && !hasEvent && !isHoliday ? 'text-neutral-sub' : ''}
                       `}>{d}</span>
@@ -247,11 +247,11 @@ export default function CalendarView({ events = [] }) {
             onClick={() => setShowHolidays(!showHolidays)}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition ${
               showHolidays
-                ? 'border-red-300 bg-red-50 text-red-500'
+                ? 'border-error bg-error-bg text-error'
                 : 'border-neutral-divider bg-surface-card text-neutral-muted hover:bg-surface-hover'
             }`}
           >
-            <span className={`w-2 h-2 rounded-full ${showHolidays ? 'bg-red-400' : 'bg-neutral-muted'}`} />
+            <span className={`w-2 h-2 rounded-full ${showHolidays ? 'bg-error' : 'bg-neutral-muted'}`} />
             공휴일
           </button>
           <div className="w-px h-4 bg-neutral-divider" />

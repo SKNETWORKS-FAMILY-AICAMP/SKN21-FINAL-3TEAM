@@ -151,11 +151,11 @@ export default function ChatWindow({ messages, onSend, children }) {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto py-4">{children}<div ref={bottomRef} /></div>
+      <div className="flex-1 overflow-y-auto py-4 px-4">{children}<div ref={bottomRef} /></div>
 
       {/* 파일 칩 & 에러 */}
       {(files.length > 0 || fileError) && (
-        <div className="px-1 pb-2">
+        <div className="px-4 pb-2">
           {fileError && (
             <p className="text-xs text-error mb-1">{fileError}</p>
           )}
@@ -170,7 +170,7 @@ export default function ChatWindow({ messages, onSend, children }) {
       )}
 
       {/* 입력 영역 */}
-      <div className="flex gap-2.5 pt-4 pb-4 pr-28 border-t border-neutral-divider flex-shrink-0">
+      <div className="flex gap-2.5 pt-4 pb-4 px-4 pr-32 border-t border-neutral-divider flex-shrink-0">
         <div className="flex-1 flex items-center bg-surface-card rounded-md border border-neutral-border px-4 py-3 transition focus-within:border-primary-300">
           {/* 파일 첨부 버튼 */}
           <button

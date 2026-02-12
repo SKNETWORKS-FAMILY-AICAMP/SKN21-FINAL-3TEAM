@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 
 export default function RiskAlert({ title, description, to = '/documents' }) {
   return (
-    <div className="flex items-center gap-3.5 bg-error-bg border border-error/20 rounded-md px-5 py-3.5 mb-6">
+    <div className="flex items-center gap-3.5 bg-error-bg border border-neutral-border rounded-md px-5 py-3.5 mb-6">
       <span className="text-xl">🚨</span>
       <div className="flex-1">
         <div className="text-sm font-bold text-error">{title}</div>

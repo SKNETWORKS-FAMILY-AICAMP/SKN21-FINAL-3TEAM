@@ -37,7 +37,7 @@ export default function MeetingPreview({ data, onDownload, loading }) {
           </button>
         </div>
       </div>
-      <div className="card-body">
+      <div ref={printRef} className="card-body">
         {/* 회의 정보 */}
         <div className="flex flex-wrap gap-4 text-xs text-neutral-sub mb-4 pb-4 border-b border-neutral-divider">
           {data.title && <span className="font-semibold text-neutral-main">{data.title}</span>}

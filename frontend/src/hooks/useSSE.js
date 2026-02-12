@@ -6,33 +6,118 @@
  *   - status: Agent 호출 상태
  *   - token: LLM 응답 토큰
  *   - done: 완료
+ *   - error: 에러
  *
- * 현재: Mock 모드 (백엔드 없이 동작)
- * TODO: 백엔드 연결 시 EventSource 또는 fetch + ReadableStream으로 교체
+ * 동작 방식:
+ *   1) fetch + ReadableStream으로 POST /api/v1/chat/stream 호출
+ *   2) 네트워크 에러 시 기존 Mock 모드로 자동 폴백
  */
 import { useCallback, useRef } from 'react'
 import useChatStore from '../store/chatStore'
 import { MOCK_RESPONSES } from '../utils/mockData'
 
 export default function useSSE() {
-  // 1. 상태 및 도구 준비 
+  const abortRef = useRef(null)
   const timerRef = useRef(null)
   const { setStreaming, setCurrentIntent, setCurrentStatus, appendToken, saveCurrentSession } = useChatStore()
 
-  // 2. 스트리밍 시작 로직. 사용자가 메시지를 보내면 실행되는 핵심 함수.
-  const startStream = useCallback((message) => {
+  // 실제 SSE 스트리밍
+  const startStream = useCallback(async (message) => {
     setStreaming(true)
+    const token = localStorage.getItem('access_token')
+    const controller = new AbortController()
+    abortRef.current = controller
 
-    // ① 답변찾기 (Matching) : 메시지 키워드로 mock 응답 매칭
+    try {
+      const res = await fetch('/api/v1/chat/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ message }),
+        signal: controller.signal,
+      })
+
+      if (!res.ok) {
+        const err = new Error(`HTTP ${res.status}`)
+        err.status = res.status
+        throw err
+      }
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        // SSE 형식: "data: {...}\n\n" 패턴 파싱
+        const chunks = buffer.split('\n\n')
+        buffer = chunks.pop() // 마지막 불완전한 청크 보존
+
+        for (const chunk of chunks) {
+          const match = chunk.match(/^data:\s*(.+)/m)
+          if (!match) continue
+
+          try {
+            const event = JSON.parse(match[1])
+
+            switch (event.type) {
+              case 'intent':
+                setCurrentIntent(event.value)
+                break
+              case 'status':
+                setCurrentStatus(event.value)
+                break
+              case 'token':
+                setCurrentStatus(null)
+                appendToken(event.value)
+                break
+              case 'done':
+                break
+              case 'error':
+                console.error('[SSE] 서버 에러:', event.value)
+                break
+            }
+          } catch {
+            // JSON 파싱 실패 시 무시
+          }
+        }
+      }
+
+      setStreaming(false)
+      setCurrentIntent(null)
+      setCurrentStatus(null)
+      saveCurrentSession() // 스트리밍 완료 시 세션 저장
+    } catch (err) {
+      if (err.name === 'AbortError') return // 사용자가 중단
+
+      console.warn('[SSE] 백엔드 연결 실패, Mock 모드로 폴백:', err.message)
+
+      // 401이면 폴백 없이 에러 전파
+      if (err.status === 401) {
+        setStreaming(false)
+        throw err
+      }
+
+      // 네트워크 에러 → Mock 폴백
+      startMockStream(message)
+    }
+  }, [setStreaming, setCurrentIntent, setCurrentStatus, appendToken])
+
+  // Mock 스트리밍 (백엔드 미연결 시 폴백)
+  const startMockStream = useCallback((message) => {
     const mock = findMockResponse(message)
 
-    // ② 1단계: 생각하는 척하기 (의도 분석) (300ms 후)
     const intentTimer = setTimeout(() => {
       setCurrentIntent(mock.intent)
       setCurrentStatus(mock.status)
     }, 300)
 
-    // ③ 2단계: 한 글자씩 타이핑 (토큰 스트리밍) (800ms 후 시작, 글자당 30ms)
     const tokens = mock.content.split('')
     let index = 0
 
@@ -52,12 +137,18 @@ export default function useSSE() {
       }, 30)
     }, 800)
 
-    // cleanup용으로 타이머 ID 저장
     timerRef.current = { intentTimer, streamTimer }
   }, [setStreaming, setCurrentIntent, setCurrentStatus, appendToken, saveCurrentSession])
 
-  // 3. 스트리밍 중단 로직 (stopStream)
+  // 스트리밍 중단
   const stopStream = useCallback(() => {
+    // 실제 SSE 중단
+    if (abortRef.current) {
+      abortRef.current.abort()
+      abortRef.current = null
+    }
+
+    // Mock 타이머 정리
     if (timerRef.current) {
       if (timerRef.current.intentTimer) {
         clearTimeout(timerRef.current.intentTimer)
@@ -67,6 +158,7 @@ export default function useSSE() {
       }
       timerRef.current = null
     }
+
     setStreaming(false)
     setCurrentIntent(null)
     setCurrentStatus(null)
@@ -82,5 +174,5 @@ function findMockResponse(message) {
       return mock
     }
   }
-  return MOCK_RESPONSES[MOCK_RESPONSES.length - 1] // fallback: 일반 응답
+  return MOCK_RESPONSES[MOCK_RESPONSES.length - 1]
 }
