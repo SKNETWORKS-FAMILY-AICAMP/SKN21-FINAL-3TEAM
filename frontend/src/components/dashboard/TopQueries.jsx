@@ -24,7 +24,7 @@ export default function TopQueries({ data = {} }) {
             <button
               key={t}
               onClick={() => setPeriod(t)}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition ${period === t ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-sub hover:bg-surface-hover'}`}
+              className={`px-3 py-1 rounded-md text-[0.75rem] font-medium transition ${period === t ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-sub hover:bg-surface-hover'}`}
             >
               {t}
             </button>
@@ -33,7 +33,7 @@ export default function TopQueries({ data = {} }) {
       </div>
       <div className="card-body space-y-2">
         {queries.length === 0 && (
-          <p className="text-sm text-neutral-muted text-center py-4">데이터가 없습니다</p>
+          <p className="text-[0.875rem] text-neutral-muted text-center py-4">데이터가 없습니다</p>
         )}
         {queries.map((q, i) => (
           <Link
@@ -41,12 +41,12 @@ export default function TopQueries({ data = {} }) {
             to="/chat"
             className="flex items-center gap-3 p-3 rounded-sm border border-neutral-divider transition hover:border-primary-300 hover:bg-surface-hover"
           >
-            <div className="w-7 h-7 rounded-full bg-primary-50 flex items-center justify-center text-xs font-bold text-primary-700 flex-shrink-0">
+            <div className="w-7 h-7 rounded-full bg-primary-50 flex items-center justify-center text-[0.75rem] font-bold text-primary-700 flex-shrink-0">
               {i + 1}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold text-neutral-main truncate">{q.question}</div>
-              <div className="flex gap-2.5 text-[11px] text-neutral-muted mt-1">
+              <div className="text-[0.8125rem] font-semibold text-neutral-main truncate">{q.question}</div>
+              <div className="flex gap-2.5 text-[0.6875rem] text-neutral-muted mt-1">
                 <span style={{ color: intentColor[q.type] || '#9CA3AF' }}>● {q.type}</span>
                 <span>{q.count}회 질의</span>
               </div>

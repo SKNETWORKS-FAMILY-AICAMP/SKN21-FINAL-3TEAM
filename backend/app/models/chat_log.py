@@ -12,6 +12,7 @@ class ChatLog(Base, TimestampMixin):
     __tablename__ = "chat_logs"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(50), index=True)  # 대화 세션 UUID
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user_message: Mapped[str] = mapped_column(Text)
     intent: Mapped[str] = mapped_column(String(50))

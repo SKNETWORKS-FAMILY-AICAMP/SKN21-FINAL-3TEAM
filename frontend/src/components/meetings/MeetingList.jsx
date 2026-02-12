@@ -13,7 +13,7 @@ export default function MeetingList({ meetings = [], selected, onSelect }) {
             className={`flex items-center gap-3.5 p-3.5 rounded-sm border border-neutral-divider cursor-pointer transition hover:border-primary-300 hover:bg-surface-hover ${selected?.id === m.id ? 'border-l-[3px] border-l-primary-500' : ''}`}>
             <div className="text-center flex-shrink-0">
               <div className="font-display text-lg font-bold text-primary-700">{m.dateShort}</div>
-              <div className="text-[11px] text-neutral-muted font-medium">{m.dayOfWeek}</div>
+              <div className="text-[0.6875rem] text-neutral-muted font-medium">{m.dayOfWeek}</div>
             </div>
             <div className="flex-1">
               <div className="text-sm font-semibold text-neutral-main">{m.title}</div>

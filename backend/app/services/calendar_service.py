@@ -3,6 +3,9 @@ Google Calendar 서비스 (팀원 D 담당)
 - GoogleBaseService 상속
 - Meet 링크 자동 생성 지원
 """
+import uuid
+
+from googleapiclient.discovery import build
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.google_base_service import GoogleBaseService
@@ -13,10 +16,26 @@ class GoogleCalendarService(GoogleBaseService):
 
     required_scope = "calendar"
 
+    def _build_service(self, creds):
+        return build("calendar", "v3", credentials=creds)
+
     async def push_event(self, db: AsyncSession, user_id: int, event_data: dict) -> dict:
         """앱 → Google Calendar 이벤트 생성"""
-        # TODO: 팀원 D 구현
-        raise NotImplementedError
+        creds = await self.get_credentials(db, user_id)
+        service = self._build_service(creds)
+
+        event = {
+            "summary": event_data["title"],
+            "description": event_data.get("description", ""),
+            "start": {"dateTime": event_data["start_time"], "timeZone": "Asia/Seoul"},
+            "end": {"dateTime": event_data.get("end_time", event_data["start_time"]), "timeZone": "Asia/Seoul"},
+        }
+
+        result = service.events().insert(calendarId="primary", body=event).execute()
+        return {
+            "event_id": result["id"],
+            "html_link": result.get("htmlLink"),
+        }
 
     async def create_event_with_meet(
         self,
@@ -25,18 +44,72 @@ class GoogleCalendarService(GoogleBaseService):
         event_data: dict,
         attendee_emails: list[str] | None = None,
     ) -> dict:
-        """이벤트 생성 + Google Meet 링크 자동 생성 (conferenceData)"""
-        # TODO: 팀원 D 구현
-        # - Calendar API로 이벤트 생성 (conferenceDataVersion=1)
-        # - return {"event_id": ..., "html_link": ..., "meet_link": ...}
-        raise NotImplementedError
+        """이벤트 생성 + Google Meet 링크 자동 생성"""
+        creds = await self.get_credentials(db, user_id)
+        service = self._build_service(creds)
 
-    async def pull_events(self, db: AsyncSession, user_id: int, time_min: str = None, time_max: str = None) -> list:
+        event = {
+            "summary": event_data["title"],
+            "description": event_data.get("description", ""),
+            "start": {"dateTime": event_data["start_time"], "timeZone": "Asia/Seoul"},
+            "end": {"dateTime": event_data.get("end_time", event_data["start_time"]), "timeZone": "Asia/Seoul"},
+            "conferenceData": {
+                "createRequest": {
+                    "requestId": str(uuid.uuid4()),
+                    "conferenceSolutionKey": {"type": "hangoutsMeet"},
+                },
+            },
+        }
+
+        if attendee_emails:
+            event["attendees"] = [{"email": e} for e in attendee_emails]
+
+        result = (
+            service.events()
+            .insert(calendarId="primary", body=event, conferenceDataVersion=1)
+            .execute()
+        )
+
+        meet_link = None
+        if result.get("conferenceData") and result["conferenceData"].get("entryPoints"):
+            for ep in result["conferenceData"]["entryPoints"]:
+                if ep["entryPointType"] == "video":
+                    meet_link = ep["uri"]
+                    break
+
+        return {
+            "event_id": result["id"],
+            "html_link": result.get("htmlLink"),
+            "meet_link": meet_link,
+        }
+
+    async def pull_events(
+        self, db: AsyncSession, user_id: int, time_min: str = None, time_max: str = None
+    ) -> list:
         """Google Calendar → 앱 일정 조회"""
-        # TODO: 팀원 D 구현
-        raise NotImplementedError
+        creds = await self.get_credentials(db, user_id)
+        service = self._build_service(creds)
 
-    async def disconnect(self, db: AsyncSession, user_id: int):
-        """연결 해제 (토큰은 google_connect에서 통합 관리)"""
-        # TODO: 팀원 D 구현
-        raise NotImplementedError
+        params = {
+            "calendarId": "primary",
+            "singleEvents": True,
+            "orderBy": "startTime",
+            "maxResults": 50,
+        }
+        if time_min:
+            params["timeMin"] = time_min
+        if time_max:
+            params["timeMax"] = time_max
+
+        result = service.events().list(**params).execute()
+        events = []
+        for item in result.get("items", []):
+            events.append({
+                "event_id": item["id"],
+                "title": item.get("summary", ""),
+                "start": item["start"].get("dateTime", item["start"].get("date")),
+                "end": item["end"].get("dateTime", item["end"].get("date")),
+                "html_link": item.get("htmlLink"),
+                "meet_link": item.get("hangoutLink"),
+            })
+        return events

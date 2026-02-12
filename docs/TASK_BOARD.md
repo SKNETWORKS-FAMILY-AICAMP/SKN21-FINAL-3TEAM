@@ -158,13 +158,41 @@
 
 | # | 이슈 | 할 일 | 우선순위 |
 |---|------|-------|---------|
-| #24 | **Figma 디자인 + 디자인 시스템** | 7개 화면 디자인 | 높음 |
+| #24 | **디자인 시스템 정의** | Tailwind 컬러 토큰 + 컴포넌트 스타일 확정 | 높음 |
 
 **체크리스트:**
 - [ ] `cd frontend && npm install && npm run dev` 확인
-- [ ] 디자인 시스템 정의 (컬러: #FFFEF5, #3B82F6, #8B5CF6)
-- [ ] 7개 화면 Figma 디자인
-- [ ] 컴포넌트 디자인 (카드, 뱃지, 버튼, 인풋)
+- [ ] 디자인 시스템 컬러 토큰 확정 (아래 실제 적용 색상 참고)
+- [ ] 컴포넌트 스타일 확정 (카드, 뱃지, 버튼, 인풋)
+
+**적용된 컬러 팔레트:**
+
+| 토큰 | 색상 | 용도 |
+|------|------|------|
+| primary-900 | `#3D5164` | 버튼 hover, 강조 텍스트 |
+| primary-700 | `#56728A` | 버튼 기본, 링크 |
+| primary-500 | `#6E87A0` | 기본 primary |
+| primary-300 | `#8FA3B4` | 스크롤바 hover |
+| primary-100 | `#C8D5E2` | 스크롤바, 비활성 |
+| primary-50 | `#E8EEF3` | info 배경 |
+| accent-700 | `#8B7D6E` | 보조 버튼 텍스트 |
+| accent-500 | `#A89580` | 기본 accent |
+| accent-300 | `#C4B49A` | 보조 버튼 테두리 |
+| accent-100 | `#EDE5D0` | 보조 배경 |
+| accent-50 | `#F7F3EB` | 보조 버튼 배경 |
+| surface-main | `#F5F2EC` | 페이지 배경 |
+| surface-sub | `#EDE5D0` | 서브 배경 |
+| surface-card | `#FFFFFF` | 카드 배경 |
+| surface-hover | `#FAFAF6` | hover 배경 |
+| neutral-main | `#2C3340` | 본문 텍스트 |
+| neutral-sub | `#6B7280` | 보조 텍스트 |
+| neutral-muted | `#9CA3AF` | 비활성 텍스트 |
+| neutral-border | `#DDD8CE` | 테두리 |
+| neutral-divider | `#EDE9E0` | 구분선 |
+| success | `#5B9A6F` / bg `#E8F4EC` | 성공 |
+| warning | `#C49A3C` / bg `#F5EDD0` | 경고 |
+| error | `#C06060` / bg `#F5E0E0` | 에러 |
+| info | `#6E87A0` / bg `#E8EEF3` | 정보 |
 
 ---
 

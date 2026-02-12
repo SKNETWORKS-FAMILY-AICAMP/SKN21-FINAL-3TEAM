@@ -45,7 +45,7 @@ export default function RegisterForm({ onSubmit, error, loading }) {
       )}
 
       <div>
-        <label className="block text-[13px] font-semibold mb-1.5">이름</label>
+        <label className="block text-[0.8125rem] font-semibold mb-1.5">이름</label>
         <input
           value={form.name}
           onChange={update('name')}
@@ -56,7 +56,7 @@ export default function RegisterForm({ onSubmit, error, loading }) {
       </div>
 
       <div>
-        <label className="block text-[13px] font-semibold mb-1.5">이메일</label>
+        <label className="block text-[0.8125rem] font-semibold mb-1.5">이메일</label>
         <input
           type="email"
           value={form.email}
@@ -68,7 +68,7 @@ export default function RegisterForm({ onSubmit, error, loading }) {
       </div>
 
       <div>
-        <label className="block text-[13px] font-semibold mb-1.5">비밀번호</label>
+        <label className="block text-[0.8125rem] font-semibold mb-1.5">비밀번호</label>
         <input
           type="password"
           value={form.password}
@@ -83,7 +83,7 @@ export default function RegisterForm({ onSubmit, error, loading }) {
       </div>
 
       <div>
-        <label className="block text-[13px] font-semibold mb-1.5">비밀번호 확인</label>
+        <label className="block text-[0.8125rem] font-semibold mb-1.5">비밀번호 확인</label>
         <input
           type="password"
           value={form.confirmPassword}

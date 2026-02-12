@@ -13,7 +13,7 @@ export default function TodayMeetings({ meetings = [] }) {
           <Link key={i} to="/meetings" className="flex items-center gap-3.5 p-3.5 rounded-sm border border-neutral-divider transition hover:border-primary-300 hover:bg-surface-hover">
             <div className="text-center flex-shrink-0">
               <div className="font-display text-lg font-bold text-primary-700">{m.time}</div>
-              <div className="text-[11px] text-neutral-muted font-medium">{m.period}</div>
+              <div className="text-[0.6875rem] text-neutral-muted font-medium">{m.period}</div>
             </div>
             <div className="flex-1">
               <div className="text-sm font-semibold text-neutral-main">{m.title}</div>
