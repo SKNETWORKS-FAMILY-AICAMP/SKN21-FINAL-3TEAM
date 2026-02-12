@@ -58,10 +58,6 @@ export default function ChatPage() {
     initSession();
   }, [initSession]);
 
-  useEffect(() => {
-    initSession();
-  }, [initSession]);
-
   const handleSend = (text) => {
     setLastError(null);
     setLastInput(text);
@@ -88,24 +84,13 @@ export default function ChatPage() {
   };
 
   return (
-    <div>
-      <header className="flex justify-between items-center py-6 sticky top-0 bg-surface-main z-10">
+    <div className="-ml-8">
+      <header className="flex justify-between items-center py-6 pl-8 sticky top-0 bg-surface-main z-10">
         <div>
-          <h1 className="text-2xl font-bold">AI 챗봇</h1>
+          <h1 className="text-2xl font-bold">나에게 물어봐</h1>
           <p className="text-sm text-neutral-sub mt-1">규정 판단, 문서 분석, 일정 관리를 도와드립니다</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* 대화 목록 토글 */}
-          <button
-            onClick={() => setSessionSidebarOpen(!sessionSidebarOpen)}
-            className={`btn-outline text-xs ${sessionSidebarOpen ? 'bg-primary-50 border-primary-300' : ''}`}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1">
-              <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
-              <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
-            </svg>
-            대화 목록
-          </button>
           {/* 대화 내보내기 */}
           <button
             onClick={() => exportChat(messages)}
