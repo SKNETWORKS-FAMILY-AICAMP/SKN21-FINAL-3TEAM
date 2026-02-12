@@ -88,8 +88,8 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="-mx-8">
-      <header className="flex justify-between items-center py-6 px-8 sticky top-0 bg-surface-main z-10">
+    <div>
+      <header className="flex justify-between items-center py-6 sticky top-0 bg-surface-main z-10">
         <div>
           <h1 className="text-2xl font-bold">AI 챗봇</h1>
           <p className="text-sm text-neutral-sub mt-1">규정 판단, 문서 분석, 일정 관리를 도와드립니다</p>
