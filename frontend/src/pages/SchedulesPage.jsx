@@ -187,12 +187,28 @@ export default function SchedulesPage() {
           )}
 
           {/* 디버깅 정보 */}
-          <div className="mb-5 p-3 bg-info-bg border border-neutral-border rounded-md text-xs">
+          <div className="mb-5 p-3 bg-info-bg border border-neutral-border rounded-md text-xs space-y-1">
             <div className="font-semibold mb-2">🔍 디버깅 정보</div>
             <div>Google 연결: {connected ? '✅ 연결됨' : '❌ 연결 안됨'}</div>
             <div>Calendar 권한: {hasScope('calendar') ? '✅ 있음' : '❌ 없음'}</div>
             <div>이벤트 개수: {calendarEvents?.length || 0}개</div>
             <div>변환된 이벤트: {events?.length || 0}개</div>
+            {calendarEvents && calendarEvents.length > 0 && (
+              <details className="mt-2">
+                <summary className="cursor-pointer font-semibold">첫 번째 이벤트 원본 데이터</summary>
+                <pre className="mt-2 p-2 bg-surface-card rounded text-[0.625rem] overflow-auto max-h-40">
+                  {JSON.stringify(calendarEvents[0], null, 2)}
+                </pre>
+              </details>
+            )}
+            {events && events.length > 0 && (
+              <details className="mt-2">
+                <summary className="cursor-pointer font-semibold">첫 번째 변환된 이벤트</summary>
+                <pre className="mt-2 p-2 bg-surface-card rounded text-[0.625rem] overflow-auto">
+                  {JSON.stringify(events[0], null, 2)}
+                </pre>
+              </details>
+            )}
           </div>
 
           {calendarLoading ? (

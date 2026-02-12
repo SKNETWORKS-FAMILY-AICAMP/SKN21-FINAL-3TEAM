@@ -171,9 +171,18 @@ const useGoogleStore = create((set, get) => ({
   fetchCalendarEvents: async (timeMin = null, timeMax = null) => {
     set({ calendarLoading: true, calendarError: null })
     try {
-      const { data } = await googleApi.listCalendarEvents(timeMin, timeMax)
-      set({ calendarEvents: data.events || data || [], calendarLoading: false })
+      console.log('[googleStore] Calendar API 호출 시작...')
+      const response = await googleApi.listCalendarEvents(timeMin, timeMax)
+      console.log('[googleStore] Calendar API 전체 응답:', response)
+      console.log('[googleStore] Calendar API data:', response.data)
+
+      const events = response.data.events || response.data || []
+      console.log('[googleStore] 추출된 이벤트:', events)
+      console.log('[googleStore] 첫 번째 이벤트:', events[0])
+
+      set({ calendarEvents: events, calendarLoading: false })
     } catch (err) {
+      console.error('[googleStore] Calendar 조회 실패:', err)
       set({ calendarLoading: false, calendarError: err.response?.data?.detail || 'Calendar 조회 실패' })
     }
   },
