@@ -74,8 +74,9 @@ export default function Sidebar() {
             {user?.name?.[0] || '김'}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[0.8125rem] font-semibold text-white truncate">{user?.name || '김정보'}</div>
-            <div className="text-[0.6875rem] text-primary-300 truncate">{user?.role || '정보보안팀 팀장'}</div>
+            <div className="text-[0.8125rem] font-semibold text-white truncate">{user?.name || '사용자'}</div>
+            <div className="text-[0.6875rem] text-primary-300 truncate">{user?.is_admin ? '관리자' : '사용자'}</div>
+            <div className="text-[0.6875rem] text-primary-300 truncate">{user?.email || ''}</div>
           </div>
         </div>
         <button
