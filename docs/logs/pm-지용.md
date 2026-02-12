@@ -134,3 +134,36 @@
 - 실험 5: 3모델 × 153번 그리드 서치 실행 (RunPod A100, ~3~5시간)
 - 실험 6: 전처리 ablation + seed 반복 (~1~2시간)
 - 이후 #6 오케스트레이터 착수
+
+---
+
+## 2026-02-12 (수)
+
+**#6 오케스트레이터 + Agent async 전환:**
+- judgment_agent, document_agent, schedule_agent → `async def`로 전환
+- orchestrator.py 3개 wrapper 함수에 `await` 추가
+- develop pull → 경은 judgment_agent 구현 코드와 merge conflict 해결
+- feat/pm-지용 + develop 양쪽 push 완료
+
+**인프라:**
+- GitHub main 브랜치 보호 설정 (CLI): PR 필수 + 1 approval + force push 차단
+- `run_model_comparison.py`에 `--resume` 기능 추가 (개별 run 단위 크래시 복구)
+
+**실험 5 실행 (RunPod RTX 4090):**
+- roberta-base: 이전 세션에서 완료 (48 Step1 + 3 Step2, best Adv F1=0.899)
+- bert-base: 51 runs 완료, 결과 `grid_search_bert.json`으로 저장
+- koelectra: torch 버전 이슈 (CVE-2025-32434, torch<2.6 차단) → torch+torchvision+transformers 업그레이드 후 실행 중
+
+**실험 5 데이터/스크립트 QA:**
+- 3개 에이전트 병렬 투입 (데이터 품질 / 스크립트 로직 / 이력 일관성)
+- 발견 사항: doc_generate.jsonl 라벨 오염 2건, resume 모드 모델 저장 버그, Plan 숫자 2 차이
+- 판단: 실험 결과 신뢰성에 영향 없으므로 수정 보류
+
+**팀원 버그 공유 완료:**
+- Google 로그인 500 에러 → 혜빈/지영에게 전달
+- eslint 버전 충돌 → 지영에게 전달
+
+**다음 할 일:**
+- koelectra 결과 수신 후 3모델 비교 분석 + 차트 생성
+- 실험 6: 전처리 ablation + seed 반복
+- 최종 모델 확정 → TRAINING_LOG.md 업데이트
