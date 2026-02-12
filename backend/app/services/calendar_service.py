@@ -4,11 +4,15 @@ Google Calendar 서비스 (팀원 D 담당)
 - Meet 링크 자동 생성 지원
 """
 import uuid
+import logging
+from datetime import datetime, timedelta, timezone
 
 from googleapiclient.discovery import build
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.google_base_service import GoogleBaseService
+
+logger = logging.getLogger(__name__)
 
 
 class GoogleCalendarService(GoogleBaseService):
@@ -90,26 +94,45 @@ class GoogleCalendarService(GoogleBaseService):
         creds = await self.get_credentials(db, user_id)
         service = self._build_service(creds)
 
-        params = {
-            "calendarId": "primary",
-            "singleEvents": True,
-            "orderBy": "startTime",
-            "maxResults": 50,
-        }
-        if time_min:
-            params["timeMin"] = time_min
-        if time_max:
-            params["timeMax"] = time_max
+        # 기본값: 3개월 전 ~ 3개월 후
+        now = datetime.now(timezone.utc)
+        if not time_min:
+            time_min = (now - timedelta(days=90)).isoformat()
+        if not time_max:
+            time_max = (now + timedelta(days=90)).isoformat()
 
-        result = service.events().list(**params).execute()
+        # 모든 캘린더에서 이벤트 수집 (공휴일 캘린더 제외 — 프론트엔드에서 관리)
         events = []
-        for item in result.get("items", []):
-            events.append({
-                "event_id": item["id"],
-                "title": item.get("summary", ""),
-                "start": item["start"].get("dateTime", item["start"].get("date")),
-                "end": item["end"].get("dateTime", item["end"].get("date")),
-                "html_link": item.get("htmlLink"),
-                "meet_link": item.get("hangoutLink"),
-            })
+        try:
+            calendar_list = service.calendarList().list().execute()
+            for cal in calendar_list.get("items", []):
+                cal_id = cal["id"]
+                # 공휴일 캘린더 제외 (Google 기본 holiday 캘린더)
+                if "#holiday@group.v.calendar.google.com" in cal_id:
+                    continue
+                params = {
+                    "calendarId": cal_id,
+                    "singleEvents": True,
+                    "orderBy": "startTime",
+                    "maxResults": 250,
+                    "timeMin": time_min,
+                    "timeMax": time_max,
+                }
+                try:
+                    result = service.events().list(**params).execute()
+                    items = result.get("items", [])
+                    for item in items:
+                        events.append({
+                            "event_id": item["id"],
+                            "title": item.get("summary", ""),
+                            "start": item["start"].get("dateTime", item["start"].get("date")),
+                            "end": item["end"].get("dateTime", item["end"].get("date")),
+                            "html_link": item.get("htmlLink"),
+                            "meet_link": item.get("hangoutLink"),
+                            "calendar": cal.get("summary", ""),
+                        })
+                except Exception:
+                    pass
+        except Exception as e:
+            raise
         return events
