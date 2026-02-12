@@ -4,11 +4,15 @@ Google Calendar 서비스 (팀원 D 담당)
 - Meet 링크 자동 생성 지원
 """
 import uuid
+import logging
+from datetime import datetime, timedelta, timezone
 
 from googleapiclient.discovery import build
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.google_base_service import GoogleBaseService
+
+logger = logging.getLogger(__name__)
 
 
 class GoogleCalendarService(GoogleBaseService):
@@ -90,18 +94,31 @@ class GoogleCalendarService(GoogleBaseService):
         creds = await self.get_credentials(db, user_id)
         service = self._build_service(creds)
 
+        # 기본값: 3개월 전 ~ 3개월 후
+        now = datetime.now(timezone.utc)
+        if not time_min:
+            time_min = (now - timedelta(days=90)).isoformat()
+        if not time_max:
+            time_max = (now + timedelta(days=90)).isoformat()
+
+        logger.info(f"Calendar pull_events: timeMin={time_min}, timeMax={time_max}")
+
         params = {
             "calendarId": "primary",
             "singleEvents": True,
             "orderBy": "startTime",
-            "maxResults": 50,
+            "maxResults": 250,
+            "timeMin": time_min,
+            "timeMax": time_max,
         }
-        if time_min:
-            params["timeMin"] = time_min
-        if time_max:
-            params["timeMax"] = time_max
 
-        result = service.events().list(**params).execute()
+        try:
+            result = service.events().list(**params).execute()
+            logger.info(f"Calendar API 응답: {len(result.get('items', []))}개 이벤트")
+        except Exception as e:
+            logger.error(f"Calendar API 호출 실패: {e}")
+            raise
+
         events = []
         for item in result.get("items", []):
             events.append({

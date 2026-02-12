@@ -12,23 +12,10 @@ export default function SchedulesPage() {
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState('calendar');
 
-  // 현재 월 기준 ±1개월 범위로 이벤트 조회
-  const getTimeRange = () => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59);
-    return {
-      timeMin: start.toISOString(),
-      timeMax: end.toISOString(),
-    };
-  };
-
-  // Google Calendar 연결 시 이벤트 자동 로드
+  // Google Calendar 연결 시 이벤트 자동 로드 (백엔드 기본값: ±3개월)
   useEffect(() => {
     if (connected && hasScope('calendar')) {
-      const { timeMin, timeMax } = getTimeRange();
-      console.log('[SchedulesPage] 조회 범위:', timeMin, '~', timeMax);
-      fetchCalendarEvents(timeMin, timeMax);
+      fetchCalendarEvents();
     }
   }, [connected, hasScope, fetchCalendarEvents]);
 
@@ -37,8 +24,7 @@ export default function SchedulesPage() {
     if (!connected || !hasScope('calendar')) return;
 
     const interval = setInterval(() => {
-      const { timeMin, timeMax } = getTimeRange();
-      fetchCalendarEvents(timeMin, timeMax);
+      fetchCalendarEvents();
     }, 30000);
 
     return () => clearInterval(interval);
@@ -124,7 +110,7 @@ export default function SchedulesPage() {
         <div className="flex items-center gap-3">
           {connected && hasScope('calendar') && (
             <button
-              onClick={() => { const { timeMin, timeMax } = getTimeRange(); fetchCalendarEvents(timeMin, timeMax); }}
+              onClick={() => fetchCalendarEvents()}
               disabled={calendarLoading}
               className="btn-outline"
               title="Google Calendar 동기화"
