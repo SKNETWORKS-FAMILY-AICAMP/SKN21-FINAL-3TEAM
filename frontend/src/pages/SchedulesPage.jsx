@@ -43,10 +43,13 @@ export default function SchedulesPage() {
     }
 
     const converted = calendarEvents.map(event => {
-      const start = new Date(event.start?.dateTime || event.start?.date);
-      const end = new Date(event.end?.dateTime || event.end?.date);
+      // 백엔드 응답 형식: { title, start: "ISO string", end: "ISO string", meet_link }
+      const start = new Date(event.start);
+      const end = new Date(event.end);
 
-      const timeStr = event.start?.dateTime
+      // 시간 포맷 (dateTime이 있으면 시간 표시, date만 있으면 종일)
+      const hasTime = event.start.includes('T');
+      const timeStr = hasTime
         ? `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
         : null;
 
@@ -54,9 +57,9 @@ export default function SchedulesPage() {
         month: start.getMonth() + 1,
         day: start.getDate(),
         type: 'google',
-        label: event.summary || '제목 없음',
+        label: event.title || '제목 없음',
         time: timeStr,
-        meetLink: event.hangoutLink || event.conferenceData?.entryPoints?.[0]?.uri,
+        meetLink: event.meet_link,
       };
     });
 
