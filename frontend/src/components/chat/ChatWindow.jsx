@@ -13,9 +13,9 @@ export default function ChatWindow({ messages, onSend, children }) {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)]">
+    <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto py-4">{children}<div ref={bottomRef} /></div>
-      <div className="flex gap-2.5 pt-4 border-t border-neutral-divider">
+      <div className="flex gap-2.5 pt-4 pb-4 border-t border-neutral-divider flex-shrink-0">
         <div className="flex-1 flex items-center bg-surface-card rounded-md border border-neutral-border px-4 py-3 transition focus-within:border-primary-300">
           <input
             type="text" value={input} onChange={(e) => setInput(e.target.value)}

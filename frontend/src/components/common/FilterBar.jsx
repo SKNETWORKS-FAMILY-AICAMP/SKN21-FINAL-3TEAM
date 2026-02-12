@@ -7,7 +7,7 @@ export default function FilterBar({ tabs, activeTab, onTabChange, filters, actio
             <button
               key={tab}
               onClick={() => onTabChange?.(tab)}
-              className={`px-4 py-1.5 rounded-full border text-[13px] font-medium transition ${
+              className={`px-4 py-1.5 rounded-full border text-[0.8125rem] font-medium transition ${
                 activeTab === tab
                   ? 'bg-primary-700 text-white border-primary-700'
                   : 'bg-surface-card text-neutral-sub border-neutral-border hover:border-primary-300 hover:text-primary-700'

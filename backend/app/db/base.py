@@ -13,5 +13,5 @@ class Base(DeclarativeBase):
 
 class TimestampMixin:
     """생성일/수정일 자동 관리 믹스인"""
-    created_at: Mapped[datetime] = mapped_column(default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())

@@ -10,8 +10,8 @@ export default function StatCard({ icon, iconColor = 'blue', value, label, trend
         <div className={`w-10 h-10 rounded-sm flex items-center justify-center text-lg ${iconBg[iconColor]}`}>{icon}</div>
         {trend && <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-success bg-success-bg">{trend}</span>}
       </div>
-      <div className="font-display text-[32px] font-bold text-primary-700 leading-none">{value}</div>
-      <div className="text-[13px] text-neutral-sub mt-1">{label}</div>
+      <div className="font-display text-[2rem] font-bold text-primary-700 leading-none">{value}</div>
+      <div className="text-[0.8125rem] text-neutral-sub mt-1">{label}</div>
     </Wrapper>
   );
 }

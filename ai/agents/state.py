@@ -1,8 +1,11 @@
 """
-Agent 공유 상태 정의 (팀원 A 관리, 전원 참조)
+Agent 공유 상태 정의 (PM 지용 관리, 전원 참조)
 
 모든 Agent 노드는 이 State를 입력/출력으로 사용합니다.
-새 필드를 추가할 때는 팀원 A에게 먼저 확인하세요.
+필드 추가/수정이 필요하면 PM(지용)에게 요청하세요.
+
+- 이 파일을 직접 수정하지 마세요
+- 각 Agent는 자기 담당 필드만 읽고/쓰면 됩니다
 """
 from typing import TypedDict, Optional
 
@@ -10,31 +13,33 @@ from typing import TypedDict, Optional
 class AgentState(TypedDict):
     """LangGraph 공유 상태"""
 
-    # 사용자 입력
-    user_input: str
-    user_id: int
+    # ── 입력 (백엔드 → AI) ──
+    user_input: str                         # 사용자 입력 텍스트
+    user_id: int                            # 사용자 ID
 
-    # Intent 분류 결과 (팀원 A)
-    intent: str  # judgment, doc_search, doc_generate, meeting_generate, schedule_add, schedule_view, general
-    confidence: float
+    # ── Intent 분류 (경은) ──
+    intent: str                             # judgment | doc_search | doc_generate | meeting_generate | schedule_add | schedule_view | general
+    confidence: float                       # 분류 신뢰도 (0.0~1.0)
 
-    # RAG 검색 결과 (팀원 B)
-    context: list  # 검색된 문서 chunk 리스트
+    # ── RAG 검색 결과 (승언) ──
+    context: list[str]                      # 검색된 문서 chunk 리스트
 
-    # Agent 응답 (팀원 B/C/D 각각 작성)
-    agent_response: dict
+    # ── Agent 응답 (경은/승언 각각 작성) ──
+    agent_response: dict                    # Agent가 생성한 최종 응답
 
-    # 대화 이력 (팀원 A)
-    chat_history: list
+    # ── 대화 이력 (경은) ──
+    chat_history: list[dict]                # [{"role": "user"|"assistant", "content": "..."}]
 
-    # 에러 (팀원 A)
-    error: Optional[str]
+    # ── 에러 (경은) ──
+    error: Optional[str]                    # 에러 메시지 (없으면 None)
 
-    # 템플릿 ID (문서/회의록 생성 시 사용)
-    template_id: Optional[int]
+    # ── 템플릿 (PM 지용이 정의, 승언이 사용) ──
+    template_id: Optional[int]              # DB 템플릿 ID
+    source_page: Optional[str]              # 요청 출처: chatbot | meeting_page | document_page
+    template_fields: Optional[list[str]]    # 동적 필드 목록 (예: ["title", "summary", "key_points"])
 
-    # 요청이 어느 페이지에서 왔는지 (chatbot | meeting_page | document_page)
-    source_page: Optional[str]
+    # ── 문서 요약 (승언) ──
+    extracted_text: Optional[str]           # 업로드 파일에서 추출한 텍스트
 
-    # Google 서비스 연동 결과 (schedule_add 시 자동 포함)
-    google_services_result: Optional[dict]
+    # ── Google 연동 (혜빈) ──
+    google_services_result: Optional[dict]  # schedule_add 시 Google 서비스 결과

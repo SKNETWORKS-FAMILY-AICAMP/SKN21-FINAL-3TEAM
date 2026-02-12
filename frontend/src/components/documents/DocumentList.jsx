@@ -1,9 +1,10 @@
 import Badge from '../common/Badge';
 import DataTable from '../common/DataTable';
+import KeywordHighlight from '../common/KeywordHighlight';
 
-export default function DocumentList({ documents = [], onSelect }) {
+export default function DocumentList({ documents = [], onSelect, searchQuery = '' }) {
   const columns = [
-    { key: 'name', label: '문서명', render: (v) => <span className="font-semibold">{v}</span> },
+    { key: 'name', label: '문서명', render: (v) => <span className="font-semibold"><KeywordHighlight text={v} keyword={searchQuery} /></span> },
     { key: 'category', label: '분류', render: (v) => <Badge variant={v === '규정' ? 'intent' : v === '회의록' ? 'document' : 'status-revising'}>{v}</Badge> },
     { key: 'version', label: '버전' },
     { key: 'status', label: '상태', render: (v) => <Badge variant={v === '적용중' || v === '완료' ? 'status-active' : 'status-revising'}>{v}</Badge> },

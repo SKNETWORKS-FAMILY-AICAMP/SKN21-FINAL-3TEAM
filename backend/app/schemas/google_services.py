@@ -23,6 +23,7 @@ class GoogleStatusResponse(BaseModel):
     """Google 연결 상태"""
     connected: bool
     provider: Optional[str] = None
+    email: Optional[str] = None
     scopes: list[str] = []
     expires_at: Optional[datetime] = None
 
@@ -77,7 +78,7 @@ class SendMeetingInviteRequest(BaseModel):
     """회의 초대 메일 요청"""
     recipient_emails: list[str]
     meeting_title: str
-    meeting_time: str
+    meeting_time: datetime
     meet_link: Optional[str] = None
 
 
@@ -87,10 +88,18 @@ class SendBulkRemindersRequest(BaseModel):
     recipient_map: dict[str, str] = {}  # {"담당자명": "email@example.com"}
 
 
+class EmailSendResultItem(BaseModel):
+    """개별 메일 발송 결과"""
+    recipient: str
+    success: bool
+    message_id: Optional[str] = None
+    error: Optional[str] = None
+
+
 class EmailSendResponse(BaseModel):
     """메일 발송 결과"""
     sent_count: int
-    results: list[dict] = []
+    results: list[EmailSendResultItem] = []
 
 
 # ── Google Sheets ──
@@ -126,7 +135,7 @@ class SheetListItem(BaseModel):
     spreadsheet_url: str
     sheet_name: str
     meeting_id: Optional[int] = None
-    created_at: str
+    created_at: datetime
 
 
 # ── Calendar + Meet ──
@@ -135,8 +144,8 @@ class EventWithMeetRequest(BaseModel):
     """이벤트 + Meet 링크 생성 요청"""
     title: str
     description: Optional[str] = None
-    start_time: str
-    end_time: Optional[str] = None
+    start_time: datetime
+    end_time: Optional[datetime] = None
     attendee_emails: list[str] = []
 
 
