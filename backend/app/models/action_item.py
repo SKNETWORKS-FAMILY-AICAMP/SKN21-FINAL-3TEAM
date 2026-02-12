@@ -14,7 +14,7 @@ class ActionItem(Base, TimestampMixin):
     __tablename__ = "action_items"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    meeting_id: Mapped[int] = mapped_column(ForeignKey("meetings.id"))
+    meeting_id: Mapped[Optional[int]] = mapped_column(ForeignKey("meetings.id"), nullable=True)
     content: Mapped[str] = mapped_column(String(1000))
     assignee: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # 표시용 이름 (외부인 포함)
     assignee_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)  # 내부 사용자 FK

@@ -3,18 +3,146 @@
  */
 import { create } from 'zustand'
 
+const SESSIONS_KEY = 'chat_sessions'
+const ACTIVE_SESSION_KEY = 'chat_active_session'
+
+function loadSessions() {
+  try {
+    const raw = localStorage.getItem(SESSIONS_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+
+function saveSessions(sessions) {
+  localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions))
+}
+
+function saveActiveId(id) {
+  localStorage.setItem(ACTIVE_SESSION_KEY, id || '')
+}
+
 const useChatStore = create((set, get) => ({
   messages: [],
   isStreaming: false,
   currentIntent: null,
   currentStatus: null,
 
-  // 대화 세션 관리
+  // 세션 관리
   sessions: [],
   activeSessionId: null,
 
+  initSession: () => {
+    const sessions = loadSessions()
+    const savedId = localStorage.getItem(ACTIVE_SESSION_KEY)
+    const activeSession = sessions.find(s => s.id === savedId)
+
+    if (activeSession) {
+      set({ sessions, activeSessionId: activeSession.id, messages: activeSession.messages || [] })
+    } else {
+      set({ sessions, activeSessionId: null, messages: [] })
+    }
+  },
+
+  createSession: () => {
+    const state = get()
+    // 현재 대화 저장
+    if (state.activeSessionId && state.messages.length > 0) {
+      const sessions = state.sessions.map(s =>
+        s.id === state.activeSessionId ? { ...s, messages: state.messages, updatedAt: Date.now() } : s
+      )
+      saveSessions(sessions)
+    }
+
+    const id = `session-${Date.now()}`
+    const newSession = {
+      id,
+      name: '새 대화',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }
+    const sessions = [newSession, ...(get().sessions)]
+    saveSessions(sessions)
+    saveActiveId(id)
+    set({ sessions, activeSessionId: id, messages: [], currentIntent: null, currentStatus: null })
+  },
+
+  switchSession: (id) => {
+    const state = get()
+    // 현재 대화 저장
+    if (state.activeSessionId && state.messages.length > 0) {
+      const sessions = state.sessions.map(s =>
+        s.id === state.activeSessionId ? { ...s, messages: state.messages, updatedAt: Date.now() } : s
+      )
+      saveSessions(sessions)
+      set({ sessions })
+    }
+
+    const target = get().sessions.find(s => s.id === id)
+    if (target) {
+      saveActiveId(id)
+      set({ activeSessionId: id, messages: target.messages || [], currentIntent: null, currentStatus: null })
+    }
+  },
+
+  deleteSession: (id) => {
+    const state = get()
+    const sessions = state.sessions.filter(s => s.id !== id)
+    saveSessions(sessions)
+
+    if (state.activeSessionId === id) {
+      const next = sessions[0]
+      if (next) {
+        saveActiveId(next.id)
+        set({ sessions, activeSessionId: next.id, messages: next.messages || [] })
+      } else {
+        saveActiveId(null)
+        set({ sessions, activeSessionId: null, messages: [] })
+      }
+    } else {
+      set({ sessions })
+    }
+  },
+
+  saveCurrentSession: () => {
+    const state = get()
+    if (!state.activeSessionId || state.messages.length === 0) return
+
+    // 첫 사용자 메시지를 세션 이름으로
+    const firstUserMsg = state.messages.find(m => m.role === 'user')
+    const name = firstUserMsg ? firstUserMsg.content.slice(0, 30) : '새 대화'
+
+    const sessions = state.sessions.map(s =>
+      s.id === state.activeSessionId
+        ? { ...s, messages: state.messages, name, updatedAt: Date.now() }
+        : s
+    )
+    saveSessions(sessions)
+    set({ sessions })
+  },
+
   addMessage: (message) =>
-    set((state) => ({ messages: [...state.messages, message] })),
+    set((state) => {
+      const newMessages = [...state.messages, message]
+
+      // 첫 메시지 시 세션 자동 생성
+      if (!state.activeSessionId && message.role === 'user') {
+        const id = `session-${Date.now()}`
+        const newSession = {
+          id,
+          name: message.content.slice(0, 30),
+          messages: newMessages,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        }
+        const sessions = [newSession, ...state.sessions]
+        saveSessions(sessions)
+        saveActiveId(id)
+        return { messages: newMessages, sessions, activeSessionId: id }
+      }
+
+      return { messages: newMessages }
+    }),
 
   setStreaming: (isStreaming) =>
     set({ isStreaming }),
@@ -35,79 +163,16 @@ const useChatStore = create((set, get) => ({
       return { messages }
     }),
 
-  clearMessages: () =>
-    set({ messages: [], currentIntent: null, currentStatus: null }),
-
-  // 세션 생성 (첫 메시지 시 자동 호출)
-  createSession: () => {
-    const { messages } = get();
-    if (messages.length === 0) return;
-
-    const firstUserMsg = messages.find(m => m.role === 'user');
-    const sessionName = firstUserMsg?.content.slice(0, 30) || '새 대화';
-    const newSession = {
-      id: Date.now().toString(),
-      name: sessionName,
-      messages,
-      createdAt: new Date().toISOString(),
-    };
-
-    set((state) => ({
-      sessions: [newSession, ...state.sessions],
-      activeSessionId: newSession.id,
-    }));
-
-    // localStorage 저장
-    localStorage.setItem('chatSessions', JSON.stringify([newSession, ...get().sessions]));
-  },
-
-  // 세션 전환
-  switchSession: (sessionId) => {
-    const { sessions } = get();
-    const session = sessions.find(s => s.id === sessionId);
-    if (!session) return;
-
-    set({
-      messages: session.messages,
-      activeSessionId: sessionId,
-      currentIntent: null,
-      currentStatus: null,
-    });
-  },
-
-  // 세션 삭제
-  deleteSession: (sessionId) => {
-    const { sessions, activeSessionId } = get();
-    const newSessions = sessions.filter(s => s.id !== sessionId);
-
-    set({
-      sessions: newSessions,
-      activeSessionId: activeSessionId === sessionId ? null : activeSessionId,
-      messages: activeSessionId === sessionId ? [] : get().messages,
-    });
-
-    localStorage.setItem('chatSessions', JSON.stringify(newSessions));
-  },
-
-  // 현재 세션 저장 (메시지 변경 시 호출)
-  saveCurrentSession: () => {
-    const { sessions, activeSessionId, messages } = get();
-    if (!activeSessionId || messages.length === 0) return;
-
-    const newSessions = sessions.map(s =>
-      s.id === activeSessionId ? { ...s, messages } : s
-    );
-
-    set({ sessions: newSessions });
-    localStorage.setItem('chatSessions', JSON.stringify(newSessions));
-  },
-
-  // 초기화 (localStorage에서 불러오기)
-  initSession: () => {
-    const saved = localStorage.getItem('chatSessions');
-    if (saved) {
-      const sessions = JSON.parse(saved);
-      set({ sessions });
+  clearMessages: () => {
+    const state = get()
+    if (state.activeSessionId) {
+      const sessions = state.sessions.map(s =>
+        s.id === state.activeSessionId ? { ...s, messages: [], updatedAt: Date.now() } : s
+      )
+      saveSessions(sessions)
+      set({ messages: [], currentIntent: null, currentStatus: null, sessions })
+    } else {
+      set({ messages: [], currentIntent: null, currentStatus: null })
     }
   },
 }))

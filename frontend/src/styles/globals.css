@@ -46,46 +46,46 @@
   --color-sidebar-text-muted: #C8D5E2;
 }
 
-/* ── Dark mode (회색 조합) ── */
+/* ── Dark mode ── */
 .dark {
-  --color-primary-900: #B8D0E2;
-  --color-primary-700: #92B8D4;
-  --color-primary-500: #7AA0BC;
-  --color-primary-300: #5A7888;
-  --color-primary-100: #485868;
-  --color-primary-50: #404A55;
+  --color-primary-900: #A8C4DA;
+  --color-primary-700: #7FA3C0;
+  --color-primary-500: #5E86A5;
+  --color-primary-300: #4A6E8A;
+  --color-primary-100: #2A3E50;
+  --color-primary-50: #1E2D3A;
 
-  --color-accent-700: #DACED4;
-  --color-accent-500: #C4B498;
-  --color-accent-300: #AA9A78;
-  --color-accent-100: #524A40;
-  --color-accent-50: #484038;
+  --color-accent-700: #D4C4AA;
+  --color-accent-500: #B8A888;
+  --color-accent-300: #9A8A6E;
+  --color-accent-100: #3A3328;
+  --color-accent-50: #2A2520;
 
-  --color-surface-main: #42474F;
-  --color-surface-sub: #4A5059;
-  --color-surface-card: #48515A;
-  --color-surface-hover: #525A64;
+  --color-surface-main: #1A1D23;
+  --color-surface-sub: #252830;
+  --color-surface-card: #22252D;
+  --color-surface-hover: #2A2E38;
 
-  --color-neutral-main: #EEF0F2;
-  --color-neutral-sub: #B0B6C0;
-  --color-neutral-muted: #8A9098;
-  --color-neutral-border: #555C66;
-  --color-neutral-divider: #4C525C;
+  --color-neutral-main: #E4E6EA;
+  --color-neutral-sub: #9CA3AF;
+  --color-neutral-muted: #6B7280;
+  --color-neutral-border: #3A3E48;
+  --color-neutral-divider: #2E3240;
 
-  --color-success: #7ECC94;
-  --color-success-bg: #384840;
-  --color-warning: #E0C060;
-  --color-warning-bg: #484030;
-  --color-error: #E09090;
-  --color-error-bg: #483838;
-  --color-info: #92B8D4;
-  --color-info-bg: #38424C;
+  --color-success: #6DB87F;
+  --color-success-bg: #1A2E20;
+  --color-warning: #D4AA4C;
+  --color-warning-bg: #2E2810;
+  --color-error: #D07070;
+  --color-error-bg: #2E1A1A;
+  --color-info: #7FA3C0;
+  --color-info-bg: #1E2D3A;
 
-  --color-sidebar-bg: #30353C;
-  --color-sidebar-active: #474E58;
-  --color-sidebar-border: #555C66;
-  --color-sidebar-text: #EEF0F2;
-  --color-sidebar-text-muted: #98A0B0;
+  --color-sidebar-bg: #161920;
+  --color-sidebar-active: #2A2E38;
+  --color-sidebar-border: #3A3E48;
+  --color-sidebar-text: #E4E6EA;
+  --color-sidebar-text-muted: #6B7280;
 }
 
 @layer base {

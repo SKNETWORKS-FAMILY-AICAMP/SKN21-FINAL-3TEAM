@@ -1,0 +1,25 @@
+{"text": "휴가 규정 찾아서 내가 연차 쓸 수 있는지 판단해줘", "label": "judgment"}
+{"text": "근로기준법 검색해서 야근 강제가 합법인지 알려줘", "label": "judgment"}
+{"text": "취업규칙 찾아보고 이 경우 징계 가능한지 확인해줘", "label": "judgment"}
+{"text": "인사 규정 열어서 수습 기간 중 해고가 되는 건지 봐줘", "label": "judgment"}
+{"text": "관련 법령 검색하고 초과근무 수당 안 주는 게 위반인지 알려줘", "label": "judgment"}
+{"text": "복무 규정 찾아서 재택근무 거부할 수 있는지 판단해줘", "label": "judgment"}
+{"text": "사내 규정 확인하고 겸업 신고 안 하면 어떻게 되는지 알려줘", "label": "judgment"}
+{"text": "출산휴가 관련 조항 찾아서 남성도 신청 가능한지 확인해줘", "label": "judgment"}
+{"text": "지난 보고서 참고해서 이번 달 실적 보고서 새로 작성해줘", "label": "doc_generate"}
+{"text": "기존 제안서 찾아보고 그 양식으로 새 제안서 만들어줘", "label": "doc_generate"}
+{"text": "매출 데이터 확인하고 분기별 요약 보고서 정리해줘", "label": "doc_generate"}
+{"text": "경쟁사 분석 자료 참고해서 사업계획서 초안 잡아줘", "label": "doc_generate"}
+{"text": "이전 회의 내용 보고 후속 조치 보고서 써줘", "label": "doc_generate"}
+{"text": "오늘 스프린트 리뷰 내용 정리해서 회의록 작성해줘", "label": "meeting_generate"}
+{"text": "방금 끝난 팀 미팅 내용 요약해서 회의록 만들어줘", "label": "meeting_generate"}
+{"text": "녹음 파일 확인하고 오전 회의 회의록 정리해줘", "label": "meeting_generate"}
+{"text": "참석자 명단 확인해서 킥오프 회의 기록 남겨줘", "label": "meeting_generate"}
+{"text": "이번 주 일정 확인하고 목요일 오후에 미팅 잡아줘", "label": "schedule_add"}
+{"text": "팀원들 스케줄 보고 다 같이 되는 시간에 회의 넣어줘", "label": "schedule_add"}
+{"text": "내일 빈 시간 확인하고 거기에 면접 일정 추가해줘", "label": "schedule_add"}
+{"text": "캘린더 확인해서 다음 주 월요일에 워크숍 등록해줘", "label": "schedule_add"}
+{"text": "저번에 만든 보고서 찾아서 보여줘", "label": "doc_search"}
+{"text": "지난주 회의록 작성한 거 있으면 찾아줘", "label": "doc_search"}
+{"text": "경은이가 올린 분석 자료 검색해서 보여줘", "label": "doc_search"}
+{"text": "예전에 정리해둔 NDA 문서 있는지 찾아봐줘", "label": "doc_search"}

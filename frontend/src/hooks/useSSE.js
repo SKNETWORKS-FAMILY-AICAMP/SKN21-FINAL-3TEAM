@@ -132,7 +132,7 @@ export default function useSSE() {
           timerRef.current = null
           setStreaming(false)
           setCurrentIntent(null)
-          saveCurrentSession() // Mock 스트리밍 완료 시 세션 저장
+          saveCurrentSession()
         }
       }, 30)
     }, 800)

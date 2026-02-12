@@ -14,7 +14,7 @@ import AdminPage from './pages/AdminPage';
 import MeetingMinutesPage from './pages/MeetingMinutesPage';
 import DocumentGeneratePage from './pages/DocumentGeneratePage';
 
-// DEV_BYPASS: false = 실제 인증 필요, true = 인증 우회
+// DEV_BYPASS: 백엔드 JWT 인증 연동 완료 — 실제 인증 플로우 사용
 const DEV_BYPASS_AUTH = false;
 
 function PrivateRoute() {

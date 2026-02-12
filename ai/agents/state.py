@@ -17,12 +17,12 @@ class AgentState(TypedDict):
     user_input: str                         # 사용자 입력 텍스트
     user_id: int                            # 사용자 ID
 
-    # ── Intent 분류 (경은) ──
+    # ── Intent 분류 (지용) ──
     intent: str                             # judgment | doc_search | doc_generate | meeting_generate | schedule_add | schedule_view | general
     confidence: float                       # 분류 신뢰도 (0.0~1.0)
 
     # ── RAG 검색 결과 (승언) ──
-    context: list[str]                      # 검색된 문서 chunk 리스트
+    context: list[dict]                     # [{"content": str, "source": str, "score": float}]
 
     # ── Agent 응답 (경은/승언 각각 작성) ──
     agent_response: dict                    # Agent가 생성한 최종 응답

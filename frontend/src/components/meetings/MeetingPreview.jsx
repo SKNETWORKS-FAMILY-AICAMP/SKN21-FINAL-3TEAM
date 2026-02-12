@@ -1,9 +1,9 @@
-import { useRef } from 'react';
+import { useRef, useCallback } from 'react';
 
 export default function MeetingPreview({ data, onDownload, loading }) {
   const printRef = useRef(null);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     if (!printRef.current) return;
     printRef.current.classList.add('print-area');
     window.print();
@@ -12,17 +12,22 @@ export default function MeetingPreview({ data, onDownload, loading }) {
       window.removeEventListener('afterprint', cleanup);
     };
     window.addEventListener('afterprint', cleanup);
-  };
+  }, []);
 
   if (!data) return null;
 
   return (
-    <div className="card">
-      <div className="card-header">
+    <div className="card" ref={printRef}>
+      <div className="card-header no-print">
         <div className="card-title"><span>📋</span>생성된 회의록</div>
         <div className="flex gap-2">
           <button onClick={handlePrint} className="btn-outline text-xs">
-            🖨️ 인쇄
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1">
+              <polyline points="6 9 6 2 18 2 18 9" />
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+              <rect x="6" y="14" width="12" height="8" />
+            </svg>
+            인쇄
           </button>
           <button onClick={() => onDownload?.('docx')} disabled={loading} className="btn-primary text-xs disabled:opacity-50">
             DOCX 다운로드

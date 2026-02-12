@@ -1,14 +1,49 @@
 """
 챗봇 API + SSE 스트리밍 (팀원 A 담당)
 """
+
 import json
+import logging
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.api.deps import get_current_user
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
+
+
+def _build_initial_state(request: ChatRequest, user) -> dict:
+    """AgentState 14개 필드 초기화"""
+    return {
+        "user_input": request.message,
+        "user_id": user.id,
+        "intent": "",
+        "confidence": 0.0,
+        "context": [],
+        "agent_response": {},
+        "chat_history": [],
+        "error": None,
+        "template_id": request.template_id,
+        "source_page": request.source_page,
+        "template_fields": None,
+        "extracted_text": None,
+        "google_services_result": None,
+    }
+
+
+def _get_agent_type(intent: str) -> str:
+    """intent에 대응하는 agent_type 반환"""
+    if intent == "judgment":
+        return "judgment_agent"
+    elif intent in ("doc_search", "doc_generate", "meeting_generate"):
+        return "document_agent"
+    elif intent.startswith("schedule_"):
+        return "schedule_agent"
+    return "general"
 
 
 @router.post("/stream")
@@ -16,19 +51,45 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
     """SSE 스트리밍 챗봇 응답"""
 
     async def event_generator():
-        # 1. Intent 분류 결과 전송
-        # TODO: intent_classifier 연동
-        yield f"data: {json.dumps({'type': 'intent', 'value': 'judgment'})}\n\n"
+        try:
+            # lazy import (AI 의존성 없을 때 서버 기동 안 깨지게)
+            from ai.agents.orchestrator import get_graph
 
-        # 2. Agent 호출 상태 전송
-        yield f"data: {json.dumps({'type': 'status', 'value': 'Agent 호출 중...'})}\n\n"
+            graph = get_graph()
+            initial_state = _build_initial_state(request, user)
 
-        # 3. LLM 응답 토큰 스트리밍
-        # TODO: LangGraph 오케스트레이터 연동
-        yield f"data: {json.dumps({'type': 'token', 'value': '응답 준비 중...'})}\n\n"
+            # astream으로 노드별 실시간 이벤트 전송
+            final_state = {}
+            async for event in graph.astream(initial_state):
+                # event = {"node_name": {updated_state_fields}}
+                for node_name, node_output in event.items():
+                    final_state.update(node_output)
 
-        # 4. 완료
-        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                    if node_name == "classify_intent":
+                        # 1. Intent 분류 결과 즉시 전송
+                        intent = node_output.get("intent", "general")
+                        confidence = node_output.get("confidence", 0.0)
+                        yield f"data: {json.dumps({'type': 'intent', 'intent': intent, 'confidence': confidence, 'agent_type': _get_agent_type(intent)}, ensure_ascii=False)}\n\n"
+                        yield f"data: {json.dumps({'type': 'status', 'value': f'{_get_agent_type(intent)} 처리 중...'}, ensure_ascii=False)}\n\n"
+
+                    elif node_name == "format_response":
+                        # 3. 최종 응답 전송
+                        agent_response = node_output.get("agent_response", final_state.get("agent_response", {}))
+                        intent = final_state.get("intent", "general")
+                        message = agent_response.get("message", "")
+                        yield f"data: {json.dumps({'type': 'token', 'value': message}, ensure_ascii=False)}\n\n"
+                        yield f"data: {json.dumps({'type': 'result', 'intent': intent, 'data': agent_response}, ensure_ascii=False)}\n\n"
+
+                    else:
+                        # 2. Agent 노드 완료 시 상태 업데이트
+                        yield f"data: {json.dumps({'type': 'status', 'value': f'{node_name} 처리 완료'}, ensure_ascii=False)}\n\n"
+
+            # 4. 완료
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+        except Exception as e:
+            logger.error("Chat stream error: %s", e)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
@@ -36,9 +97,29 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
 @router.post("/", response_model=ChatResponse)
 async def chat(request: ChatRequest, user=Depends(get_current_user)):
     """일반 (비스트리밍) 챗봇 응답"""
-    # TODO: 팀원 A - LangGraph 오케스트레이터 연동
-    return ChatResponse(
-        intent="judgment",
-        confidence=0.0,
-        response="구현 예정",
-    )
+    try:
+        from ai.agents.orchestrator import get_graph
+
+        graph = get_graph()
+        initial_state = _build_initial_state(request, user)
+
+        result = await graph.ainvoke(initial_state)
+
+        intent = result.get("intent", "general")
+        confidence = result.get("confidence", 0.0)
+        agent_response = result.get("agent_response", {})
+
+        return ChatResponse(
+            intent=intent,
+            confidence=confidence,
+            response=agent_response.get("message", ""),
+            agent_type=_get_agent_type(intent),
+            data=agent_response,
+        )
+    except Exception as e:
+        logger.error("Chat error: %s", e)
+        return ChatResponse(
+            intent="general",
+            confidence=0.0,
+            response=f"오류가 발생했습니다: {e}",
+        )
