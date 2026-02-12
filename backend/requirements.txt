@@ -16,6 +16,7 @@ greenlet==3.3.1
 # Authentication
 PyJWT==2.10.1
 passlib[bcrypt]==1.7.4
+bcrypt==4.0.1  # passlib 1.7.4와 호환되는 버전 (5.0.0+는 호환 안됨)
 
 # Google Calendar
 google-api-python-client==2.158.0
