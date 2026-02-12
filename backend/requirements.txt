@@ -15,7 +15,6 @@ asyncpg==0.29.0
 # Authentication
 PyJWT==2.9.0
 passlib[bcrypt]==1.7.4
-python-jose[cryptography]==3.3.0
 
 # Google Calendar
 google-api-python-client==2.147.0

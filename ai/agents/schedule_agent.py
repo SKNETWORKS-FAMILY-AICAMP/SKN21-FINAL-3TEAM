@@ -42,7 +42,7 @@ schedule_view 응답 형식:
 from ai.agents.state import AgentState
 
 
-def schedule_agent(state: AgentState) -> AgentState:
+async def schedule_agent(state: AgentState) -> AgentState:
     """
     일정 Agent 노드 함수 (LangGraph 노드 인터페이스)
 
