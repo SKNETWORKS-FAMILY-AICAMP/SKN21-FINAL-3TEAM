@@ -1,0 +1,4 @@
+{
+  "base_model": "klue/roberta-base",
+  "experiment": "exp5"
+}

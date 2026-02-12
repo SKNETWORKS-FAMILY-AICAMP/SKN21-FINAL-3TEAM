@@ -1,13 +1,14 @@
 {
   "add_cross_attention": false,
   "architectures": [
-    "BertForSequenceClassification"
+    "RobertaForSequenceClassification"
   ],
   "attention_probs_dropout_prob": 0.1,
-  "bos_token_id": null,
+  "bos_token_id": 0,
   "classifier_dropout": null,
   "dtype": "float32",
-  "eos_token_id": null,
+  "eos_token_id": 2,
+  "gradient_checkpointing": false,
   "hidden_act": "gelu",
   "hidden_dropout_prob": 0.1,
   "hidden_size": 768,
@@ -32,16 +33,17 @@
     "schedule_add": 4,
     "schedule_view": 5
   },
-  "layer_norm_eps": 1e-12,
-  "max_position_embeddings": 512,
-  "model_type": "bert",
+  "layer_norm_eps": 1e-05,
+  "max_position_embeddings": 514,
+  "model_type": "roberta",
   "num_attention_heads": 12,
   "num_hidden_layers": 12,
-  "pad_token_id": 0,
+  "pad_token_id": 1,
   "problem_type": "single_label_classification",
   "tie_word_embeddings": true,
+  "tokenizer_class": "BertTokenizer",
   "transformers_version": "5.1.0",
-  "type_vocab_size": 2,
+  "type_vocab_size": 1,
   "use_cache": false,
   "vocab_size": 32000
 }
