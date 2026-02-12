@@ -44,8 +44,6 @@
   - MeetingInput, MeetingPreview 컴포넌트
   - TemplateSelector, TemplateUploadDialog, DocumentPreview 컴포넌트
   - 사이드바 메뉴에 "회의록 생성", "문서 생성" 추가
-- **주석 추가** (`fa5cf7f`)
-  - 프론트엔드 코드 전반에 주석 보강
 
 ### 다음 할 일
 - Google Services 확장 UI 구현
@@ -154,6 +152,30 @@
 - JWT 인증 실제 연동 (#26) — 혜빈 JWT 구현 완료 후
 - 챗봇 SSE 실제 연동 (#27) — 백엔드 SSE 엔드포인트 완성 후
 - 관리자 API 연동 (#29) — 5단계
+
+---
+
+## 2026-02-12 (수)
+
+### 한 일
+
+#### 1) GitHub 이슈 정리 — 완료된 Frontend 이슈 5개 Close
+> 작업 로그와 이슈 체크리스트를 대조하여 완전히 완료된 이슈를 정리
+
+- **#24 [E-1] Figma 디자인 + 디자인 시스템 정의** — 이미 Closed (이전)
+- **#25 [E-2] 공통 컴포넌트 + 대시보드 UI** → ✅ Closed
+- **#26 [E-3] 로그인/회원가입/비밀번호 재설정 UI + Auth 연동** → ✅ Closed (JWT 연동 커밋 `2739696` 포함)
+- **#27 [E-4] AI 챗봇 UI + SSE 스트리밍 + 전체 응답 카드** → ✅ Closed
+- **#28 [E-5] 문서/회의/일정 관리 UI + 하이라이트/파싱/JSON뷰어** → ✅ Closed
+- **#34 [E-7] Google Services 프론트엔드 UI** → ✅ Closed
+
+**남은 열린 이슈:**
+- **#29 [E-6] 관리자 페이지 UI + API 통합 연동 + 반응형** — UI/반응형 완료, API 연동 + 최종 QA 미완
+
+### 다음 할 일
+- 백엔드 실제 연동 (Mock → 실제 API 교체)
+- 관리자 API 연동 (#29) — 5단계
+- 전체 E2E 테스트 지원
 
 ---
 
