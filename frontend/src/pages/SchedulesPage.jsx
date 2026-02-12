@@ -12,24 +12,33 @@ export default function SchedulesPage() {
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState('calendar');
 
+  // 현재 월 기준 ±1개월 범위로 이벤트 조회
+  const getTimeRange = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59);
+    return {
+      timeMin: start.toISOString(),
+      timeMax: end.toISOString(),
+    };
+  };
+
   // Google Calendar 연결 시 이벤트 자동 로드
   useEffect(() => {
-    console.log('[SchedulesPage] Google 연결 상태:', { connected, hasCalendarScope: hasScope('calendar') });
     if (connected && hasScope('calendar')) {
-      console.log('[SchedulesPage] Google Calendar 이벤트 로딩 시작...');
-      fetchCalendarEvents();
-    } else if (connected && !hasScope('calendar')) {
-      console.warn('[SchedulesPage] Google 연결됨, 하지만 Calendar 권한 없음!');
+      const { timeMin, timeMax } = getTimeRange();
+      fetchCalendarEvents(timeMin, timeMax);
     }
   }, [connected, hasScope, fetchCalendarEvents]);
 
-  // 30초마다 자동 갱신 (Google에서 추가한 일정 반영)
+  // 30초마다 자동 갱신
   useEffect(() => {
     if (!connected || !hasScope('calendar')) return;
 
     const interval = setInterval(() => {
-      fetchCalendarEvents();
-    }, 30000); // 30초
+      const { timeMin, timeMax } = getTimeRange();
+      fetchCalendarEvents(timeMin, timeMax);
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [connected, hasScope, fetchCalendarEvents]);
@@ -114,7 +123,7 @@ export default function SchedulesPage() {
         <div className="flex items-center gap-3">
           {connected && hasScope('calendar') && (
             <button
-              onClick={() => fetchCalendarEvents()}
+              onClick={() => { const { timeMin, timeMax } = getTimeRange(); fetchCalendarEvents(timeMin, timeMax); }}
               disabled={calendarLoading}
               className="btn-outline"
               title="Google Calendar 동기화"
