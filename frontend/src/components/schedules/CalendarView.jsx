@@ -30,28 +30,44 @@ function getKoreanHolidays(year) {
       { month: 1, day: 28, label: '설날 연휴' },
       { month: 1, day: 29, label: '설날' },
       { month: 1, day: 30, label: '설날 연휴' },
+      { month: 3, day: 3, label: '삼일절 대체공휴일' },
       { month: 5, day: 5, label: '부처님오신날' },
+      { month: 5, day: 6, label: '어린이날 대체공휴일' },
       { month: 10, day: 5, label: '추석 연휴' },
       { month: 10, day: 6, label: '추석' },
       { month: 10, day: 7, label: '추석 연휴' },
+      { month: 10, day: 8, label: '추석 대체공휴일' },
     ],
     2026: [
       { month: 2, day: 16, label: '설날 연휴' },
       { month: 2, day: 17, label: '설날' },
       { month: 2, day: 18, label: '설날 연휴' },
+      { month: 3, day: 2, label: '삼일절 대체공휴일' },
       { month: 5, day: 24, label: '부처님오신날' },
+      { month: 5, day: 25, label: '부처님오신날 대체공휴일' },
+      { month: 6, day: 8, label: '현충일 대체공휴일' },
+      { month: 8, day: 17, label: '광복절 대체공휴일' },
       { month: 9, day: 24, label: '추석 연휴' },
       { month: 9, day: 25, label: '추석' },
       { month: 9, day: 26, label: '추석 연휴' },
+      { month: 9, day: 28, label: '추석 대체공휴일' },
+      { month: 10, day: 5, label: '개천절 대체공휴일' },
     ],
     2027: [
       { month: 2, day: 6, label: '설날 연휴' },
       { month: 2, day: 7, label: '설날' },
       { month: 2, day: 8, label: '설날 연휴' },
+      { month: 2, day: 9, label: '설날 대체공휴일' },
       { month: 5, day: 13, label: '부처님오신날' },
+      { month: 6, day: 7, label: '현충일 대체공휴일' },
+      { month: 8, day: 16, label: '광복절 대체공휴일' },
+      { month: 10, day: 4, label: '개천절 대체공휴일' },
+      { month: 10, day: 11, label: '한글날 대체공휴일' },
       { month: 10, day: 14, label: '추석 연휴' },
       { month: 10, day: 15, label: '추석' },
       { month: 10, day: 16, label: '추석 연휴' },
+      { month: 10, day: 18, label: '추석 대체공휴일' },
+      { month: 12, day: 27, label: '크리스마스 대체공휴일' },
     ],
   };
 
@@ -131,8 +147,10 @@ function YearView({ year, events, todayYear, todayMonth, todayDate, onMonthClick
           >
             <div className="text-sm font-bold text-neutral-main mb-2 text-center">{name}</div>
             <div className="grid grid-cols-7 gap-px">
-              {dayNamesShort.map((d) => (
-                <div key={d} className="text-[0.625rem] text-neutral-muted text-center pb-1">{d}</div>
+              {dayNamesShort.map((d, idx) => (
+                <div key={d} className={`text-[0.625rem] text-center pb-1 ${
+                  idx === 0 ? 'text-red-500' : idx === 6 ? 'text-blue-500' : 'text-neutral-muted'
+                }`}>{d}</div>
               ))}
               {cells.map((d, i) => {
                 const isToday = d && year === todayYear && month === todayMonth && d === todayDate;
@@ -145,7 +163,7 @@ function YearView({ year, events, todayYear, todayMonth, todayDate, onMonthClick
                         ${isToday ? 'bg-primary-700 text-white font-bold' : ''}
                         ${isHoliday && !isToday ? 'bg-error-bg text-error font-semibold' : ''}
                         ${hasEvent && !isToday && !isHoliday ? 'bg-primary-50 text-primary-700 font-semibold' : ''}
-                        ${!isToday && !hasEvent && !isHoliday ? 'text-neutral-sub' : ''}
+                        ${!isToday && !hasEvent && !isHoliday ? (i % 7 === 0 ? 'text-red-500' : i % 7 === 6 ? 'text-blue-500' : 'text-neutral-sub') : ''}
                       `}>{d}</span>
                     ) : null}
                   </div>
@@ -278,12 +296,15 @@ export default function CalendarView({ events = [] }) {
           />
         ) : (
         <div className="grid grid-cols-7 gap-1">
-          {dayNames.map((d) => (
-            <div key={d} className="text-[0.6875rem] font-semibold text-neutral-muted py-2 text-center">{d}</div>
+          {dayNames.map((d, idx) => (
+            <div key={d} className={`text-[0.6875rem] font-semibold py-2 text-center ${
+              idx === 0 ? 'text-red-500' : idx === 6 ? 'text-blue-500' : 'text-neutral-muted'
+            }`}>{d}</div>
           ))}
           {displayDays.map((d, i) => {
             const dayEvents = mergedEvents.filter((e) => e.day === d.day && e.month === currentMonth && !d.other);
             const isToday = !d.other && d.day === todayDate && currentYear === todayYear && currentMonth === todayMonth;
+            const isHoliday = dayEvents.some((e) => e.type === 'holiday');
             return (
               <div
                 key={i}
@@ -292,7 +313,12 @@ export default function CalendarView({ events = [] }) {
                   isToday ? 'border-primary-700 border-2' : ''
                 } ${selectedDay === d.day && !d.other ? 'ring-2 ring-primary-500' : ''}`}
               >
-                <div className={`font-semibold mb-1 ${d.other ? 'text-neutral-muted' : 'text-neutral-main'}`}>{d.day}</div>
+                <div className={`font-semibold mb-1 ${
+                  d.other ? 'text-neutral-muted'
+                  : (i % 7 === 0 || isHoliday) ? 'text-red-500'
+                  : i % 7 === 6 ? 'text-blue-500'
+                  : 'text-neutral-main'
+                }`}>{d.day}</div>
                 {dayEvents.map((e, j) => (
                   <div key={j} className="mb-0.5">
                     <div className={`text-[0.625rem] px-1.5 py-0.5 rounded font-medium truncate ${typeStyles[e.type] || ''}`}>
