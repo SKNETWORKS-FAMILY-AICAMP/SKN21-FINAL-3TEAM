@@ -1,9 +1,5 @@
 # 작업 로그 — 문지영 (Frontend)
 
-> 세션 종료 시 Claude가 자동으로 업데이트합니다.
-
----
-
 ## 2026-02-09 (일)
 
 ### 한 일
@@ -18,11 +14,6 @@
   - Google 서비스 관련 컴포넌트/API/스토어 스켈레톤 구조 생성
 - **Mock 데이터 작성** (`3ddf7b6`)
   - 각 페이지별 Mock 데이터 구성 (대시보드, 채팅, 문서, 회의, 일정 등)
-
-### 다음 할 일
-- 로그인/회원가입 UI 구현
-- 대시보드 컴포넌트 마무리
-- 챗봇 UI 컴포넌트 구현
 
 ---
 
@@ -44,10 +35,6 @@
   - MeetingInput, MeetingPreview 컴포넌트
   - TemplateSelector, TemplateUploadDialog, DocumentPreview 컴포넌트
   - 사이드바 메뉴에 "회의록 생성", "문서 생성" 추가
-
-### 다음 할 일
-- Google Services 확장 UI 구현
-- 일정 관리 페이지 개선
 
 ---
 
@@ -75,6 +62,7 @@
 - `components/common/KeywordHighlight.jsx` 신규 생성
   - 검색어를 넣으면 텍스트 중 일치하는 부분을 노란 배경으로 표시해주는 공통 컴포넌트
   - 한글/영어 대소문자 구분 없이 매칭
+  - 
 - **적용한 곳:**
   - `DocumentsPage` — 검색창에 입력하면 문서 목록이 필터링되고, 문서명에 검색어가 하이라이트됨
   - `DocumentDetail` — 문서 상세의 문서명 + AI 분석 결과 텍스트에도 하이라이트 적용
@@ -125,7 +113,7 @@
 - develop pull 후 사라진 `DEV_BYPASS_AUTH = true` 복원 (백엔드 로그인 개발 완료 전까지 인증 우회)
 
 #### 7) 글씨 크기 조절 기능 구현 (`859a8c8`)
-> 글씨가 작다는 의견 반영 — 가-/가+ 버튼으로 전체 글씨 크기를 조절할 수 있는 기능
+- 가-/가+ 버튼으로 전체 글씨 크기를 조절할 수 있는 기능
 
 - **FontSizeControl 컴포넌트 신규 생성** (`components/common/FontSizeControl.jsx`)
   - 우측 하단 고정 위치에 가-/가+ 버튼 표시
@@ -172,6 +160,74 @@
 **남은 열린 이슈:**
 - **#29 [E-6] 관리자 페이지 UI + API 통합 연동 + 반응형** — UI/반응형 완료, API 연동 + 최종 QA 미완
 
+#### 2) 프론트엔드 고도화 5개 기능 구현
+> 백엔드 없이 Mock 모드에서 동작하는 프론트엔드 단독 기능 5개 일괄 구현
+
+##### (a) 다크 모드
+- **CSS 변수 방식**: 57개+ 컴포넌트에 `dark:` 클래스를 일일이 추가하지 않고, 색상값을 CSS 변수로 참조하여 `.dark` 클래스 하나로 전체 전환
+- `tailwind.config.js` — `darkMode: 'class'` 추가, 모든 색상값을 CSS 변수 참조로 교체, `sidebar` 전용 토큰 추가
+- `globals.css` — `:root`(라이트)와 `.dark`(다크) CSS 변수 정의, 다크 스크롤바 스타일
+- `store/uiStore.js` — `theme` 상태 + `toggleTheme()` + localStorage 저장 + OS 기본 테마 감지
+- `App.jsx` — `useEffect`로 `<html>`에 dark 클래스 동기화
+- `Sidebar.jsx` — `bg-primary-700` → `bg-sidebar-bg`로 변경 (양쪽 모드에서 어두운 사이드바 유지), ThemeToggle 배치
+- **NEW** `components/common/ThemeToggle.jsx` — 해/달 아이콘 토글 버튼
+- `ChatPage.jsx` — 확인 다이얼로그 `bg-white` → `bg-surface-card`로 변경
+
+##### (b) 인쇄 기능
+- **`.print-area` 클래스 기반 선택적 인쇄**: 인쇄 버튼 클릭 시 해당 카드에 `.print-area` 추가 → `window.print()` → `afterprint`로 제거
+- `globals.css` — `@media print` 규칙 (`.print-area` 외 숨김, A4 마진, 인쇄용 레이아웃)
+- `DocumentPreview.jsx`, `MeetingPreview.jsx` — `useRef` + 인쇄 핸들러 + 프린터 아이콘 인쇄 버튼
+- `DocumentDetail.jsx`, `MeetingDetail.jsx` — 인쇄 버튼 추가
+
+##### (c) 페이지 전환 애니메이션
+- `framer-motion` 패키지 설치
+- `Layout.jsx` — `AnimatePresence` + `motion.div` 래핑, fade+slide 효과(200ms), 페이지 전환 시 스크롤 리셋
+
+##### (d) 파일 드래그&드롭
+- `ChatWindow.jsx` — 드래그 오버레이, 파일 검증(PDF/DOCX/TXT/이미지, 10MB 제한), `FileChip` 컴포넌트, 클립 아이콘 파일 첨부 버튼, 전송 시 `[첨부: 파일명]` 텍스트 포함
+
+##### (e) 대화 세션 관리
+- `chatStore.js` — `sessions[]`, `activeSessionId`, `createSession()`, `switchSession()`, `deleteSession()`, `saveCurrentSession()`, `initSession()` + localStorage 연동, 첫 메시지 시 세션 자동 생성
+- `useSSE.js` — 스트리밍 완료 시 `saveCurrentSession()` 호출
+- `ChatPage.jsx` — ChatSessionSidebar 통합, "대화 목록" 토글 버튼, 마운트 시 `initSession()`
+- **NEW** `components/chat/ChatSessionSidebar.jsx` — 세션 목록(이름, 메시지 수, 시간), 삭제 버튼, "새 대화" 버튼, 활성 세션 하이라이트
+
+**변경 요약**: 수정 14개 파일, 신규 2개 파일, npm 패키지 1개(framer-motion)
+**빌드 확인**: `npm run build` 성공
+
+#### 3) 다크모드 색상 튜닝
+- 초기 다크모드가 너무 어두움 → 진회색/연회색 조합으로 2차례 밝기 조정
+- 최종 배경: `#363B44`, 카드: `#3E444D`, 사이드바: `#30353C`
+
+#### 4) 인증 우회 해제
+- `App.jsx` — `DEV_BYPASS_AUTH = true` → `false` 변경
+- 로그인하지 않으면 대시보드 등 보호 페이지 접근 불가, `/login`으로 리다이렉트
+
+#### 5) Google 로그인 시 서비스 자동 연동 (백엔드 수정)
+> Google 로그인과 Google 서비스 연동이 별도 OAuth 플로우로 분리되어 사용자가 두 번 인증해야 하는 문제 해결
+> 로그인 한 번으로 Calendar/Tasks/Gmail/Sheets까지 자동 연동되도록 변경
+
+- **`backend/app/api/v1/auth.py` 수정**:
+  - `GET /auth/google` — scope에 서비스 스코프 4개 추가 (calendar, tasks, gmail.send, spreadsheets)
+    - `access_type`: `online` → `offline` (refresh_token 받기 위해)
+    - `prompt`: `select_account` → `consent` (모든 스코프 동의 + refresh_token 보장)
+  - `GET /auth/google/callback` — 로그인 후 OAuthToken 자동 저장
+    - code → access_token + refresh_token 교환
+    - OAuthToken 테이블에 저장 (access_token, refresh_token, expires_at, scopes 4개 전부)
+    - 기존 토큰 있으면 scope 병합
+  - imports 추가: `OAuthToken`, `encrypt_data`, `GOOGLE_SCOPES`, `datetime`, `timedelta`, `timezone`
+
+- **`backend/app/api/v1/google_connect.py` 수정**:
+  - `POST /google/connect` — OAuth URL에 `login_hint` 파라미터 추가 (`current_user.email`)
+  - 여러 Google 계정 있어도 로그인에 사용한 계정이 자동 선택되어 다른 계정으로 연결 방지
+
+- **동작 흐름 (변경 후)**:
+  1. 사용자가 "Google로 로그인" 클릭
+  2. Google 동의 화면 (로그인 + Calendar/Tasks/Gmail/Sheets 권한 한번에 요청)
+  3. 승인 → 백엔드에서 access_token + refresh_token 교환 + OAuthToken 저장
+  4. JWT 발급 → 프론트엔드 리다이렉트
+  5. 일정 관리 페이지 접속 시 `/google/status` 호출 → "Google 서비스 연결됨" 표시 (추가 연동 불필요)
+
 ### 다음 할 일
 - 백엔드 실제 연동 (Mock → 실제 API 교체)
 - 관리자 API 연동 (#29) — 5단계
@@ -195,12 +251,17 @@
 | UI 품질 점검 | ✅ 완료 | 반응형, 접근성, ESLint 0 warning, 빈 핸들러 수정 |
 | 로그아웃 기능 | ✅ 완료 | Sidebar 하단 텍스트 버튼 + DEV_BYPASS_AUTH 복원 |
 | 글씨 크기 조절 | ✅ 완료 | FontSizeControl (가-/가+), 전체 54파일 px→rem 변환 |
+| 다크 모드 | ✅ 완료 | CSS 변수 방식, OS 감지, localStorage 유지, ThemeToggle |
+| 인쇄 기능 | ✅ 완료 | `.print-area` 선택적 인쇄, 문서/회의 프리뷰+상세 |
+| 페이지 전환 애니메이션 | ✅ 완료 | framer-motion, fade+slide 200ms |
+| 파일 드래그&드롭 | ✅ 완료 | 채팅 파일 첨부, 검증(형식/크기), FileChip |
+| 대화 세션 관리 | ✅ 완료 | localStorage 세션 목록, 자동 생성/전환/삭제 |
 | **백엔드 실제 연동** | ⏳ 대기 | 전체 Mock 데이터 → 실제 API 교체 필요 |
 
 ### 파일 현황
 - **페이지**: 10개 전체 구현
-- **컴포넌트**: 61개 (chat 13, dashboard 11, documents 7, meetings 5, schedules 8, auth 3, admin 3, common 11)
+- **컴포넌트**: 63개 (chat 15, dashboard 11, documents 7, meetings 5, schedules 8, auth 3, admin 3, common 12)
 - **스토어**: 4개 (auth, chat, google, ui)
 - **훅**: 4개 (useAuth, useChat, useSSE, useGoogleServices)
 - **API**: 8개 (client, auth, chat, documents, meetings, schedules, google, admin)
-- **ESLint**: 0 errors, 0 warnings
+- **npm 패키지 추가**: framer-motion

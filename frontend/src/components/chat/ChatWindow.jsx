@@ -45,6 +45,16 @@ function FileChip({ file, onRemove }) {
   );
 }
 
+// FileChip 컴포넌트
+function FileChip({ file, onRemove }) {
+  return (
+    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary-50 border border-primary-200 rounded-md text-xs text-primary-700">
+      <span>📎 {file.name}</span>
+      <button onClick={onRemove} className="hover:text-primary-900">✕</button>
+    </div>
+  );
+}
+
 export default function ChatWindow({ messages, onSend, children }) {
   const [input, setInput] = useState('');
   const [files, setFiles] = useState([]);
@@ -201,9 +211,6 @@ export default function ChatWindow({ messages, onSend, children }) {
             placeholder="질문을 입력하세요..." className="border-none bg-transparent text-sm text-neutral-main w-full outline-none"
           />
         </div>
-        <button onClick={handleSend} className="w-11 h-11 rounded-md bg-primary-700 flex items-center justify-center transition hover:bg-primary-900">
-          <svg width="18" height="18" viewBox="0 0 18 18"><path d="M2 9L16 2L12 16L9 10L2 9Z" fill="white"/></svg>
-        </button>
       </div>
     </div>
   );

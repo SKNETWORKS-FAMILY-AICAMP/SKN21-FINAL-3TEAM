@@ -82,6 +82,7 @@ async def google_connect(
         "access_type": "offline",
         "prompt": "consent",
         "state": state,
+        "login_hint": current_user.email,
     }
     auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
 

@@ -34,8 +34,8 @@ export default function CalendarWidget({ events = {} }) {
         <div className="flex justify-between items-center mb-4">
           <div className="text-[0.9375rem] font-bold text-neutral-main">{year}년 {month}월</div>
           <div className="flex gap-1">
-            <button onClick={goPrev} className="w-7 h-7 rounded-md border border-neutral-border bg-surface-card text-xs text-neutral-sub flex items-center justify-center hover:bg-primary-50 hover:border-primary-300 transition">◀</button>
-            <button onClick={goNext} className="w-7 h-7 rounded-md border border-neutral-border bg-surface-card text-xs text-neutral-sub flex items-center justify-center hover:bg-primary-50 hover:border-primary-300 transition">▶</button>
+            <button onClick={goPrev} className="w-7 h-7 rounded-md border border-neutral-border bg-surface-card text-xs text-neutral-sub flex items-center justify-center hover:bg-primary-50 transition">◀</button>
+            <button onClick={goNext} className="w-7 h-7 rounded-md border border-neutral-border bg-surface-card text-xs text-neutral-sub flex items-center justify-center hover:bg-primary-50 transition">▶</button>
           </div>
         </div>
         <div className="grid grid-cols-7 gap-0.5 text-center">

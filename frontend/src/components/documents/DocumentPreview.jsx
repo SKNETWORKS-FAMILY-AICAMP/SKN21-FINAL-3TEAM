@@ -44,7 +44,7 @@ export default function DocumentPreview({ data, onDownload, loading }) {
           </button>
         </div>
       </div>
-      <div className="card-body">
+      <div ref={printRef} className="card-body">
         {/* 문서 제목 */}
         {data.title && (
           <h3 className="text-lg font-bold text-neutral-main mb-4 pb-3 border-b border-neutral-divider">
