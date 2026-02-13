@@ -60,3 +60,4 @@ token.json
 
 # claude setting
 .claude
+.ruff_cache/

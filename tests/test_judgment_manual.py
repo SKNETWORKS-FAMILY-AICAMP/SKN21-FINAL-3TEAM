@@ -23,8 +23,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Windows 콘솔 인코딩 문제 해결
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-from ai.agents.judgment_agent import judgment_agent
-from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+from ai.agents.judgment_agent import judgment_agent  # noqa: E402
+from ai.rag.qdrant_pipeline import get_qdrant_pipeline  # noqa: E402
 
 
 async def test_judgment_agent():

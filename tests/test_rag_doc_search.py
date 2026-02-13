@@ -2,8 +2,6 @@
 RAG 기반 문서 검색 테스트
 """
 import sys
-import os
-import json
 import asyncio
 from pathlib import Path
 from dotenv import load_dotenv
@@ -14,8 +12,8 @@ load_dotenv()
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from ai.agents.document_agent import document_agent
-from ai.agents.state import AgentState
+from ai.agents.document_agent import document_agent  # noqa: E402
+from ai.agents.state import AgentState  # noqa: E402
 
 async def test_rag_doc_search():
     """RAG 기반 문서 검색 테스트"""
@@ -56,7 +54,7 @@ async def test_rag_doc_search():
         response = result["agent_response"]
 
         # 결과 출력
-        print(f"\n[답변]")
+        print("\n[답변]")
         print(response.get("answer", ""))
 
         print(f"\n[출처] ({len(response.get('sources', []))}개 문서)")
