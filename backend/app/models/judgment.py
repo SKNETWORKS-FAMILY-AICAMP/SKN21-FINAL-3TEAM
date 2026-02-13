@@ -2,7 +2,7 @@
 판단 이력 모델 (팀원 D 담당)
 - 과거 판단 기록 저장 (판단 Agent 이력 참조용)
 """
-from sqlalchemy import String, Float, Text, Integer, ForeignKey
+from sqlalchemy import String, Float, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from typing import Optional

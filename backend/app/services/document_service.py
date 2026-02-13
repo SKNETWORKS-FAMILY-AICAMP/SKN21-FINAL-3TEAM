@@ -115,7 +115,7 @@ def _extract_txt(file_path: str) -> str:
             continue
 
     # 모든 인코딩 실패 시 에러
-    raise ValueError(f"Unable to decode text file. File may be corrupted or in an unsupported encoding.")
+    raise ValueError("Unable to decode text file. File may be corrupted or in an unsupported encoding.")
 
 
 async def upload_and_parse(
@@ -165,7 +165,7 @@ async def upload_and_parse(
         doc.status = "completed"
 
         with open('/tmp/upload_debug.log', 'a') as log:
-            log.write(f"[DEBUG] Status set to completed\n")
+            log.write("[DEBUG] Status set to completed\n")
             log.flush()
     except Exception as e:
         with open('/tmp/upload_debug.log', 'a') as log:

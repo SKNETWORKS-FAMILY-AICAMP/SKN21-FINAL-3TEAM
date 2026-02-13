@@ -14,7 +14,7 @@ import torch
 from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from sklearn.metrics import (
-    f1_score, accuracy_score, confusion_matrix, classification_report,
+    f1_score, accuracy_score, confusion_matrix,
 )
 
 import matplotlib
@@ -183,7 +183,7 @@ def main():
         "klue/bert-base", num_labels=len(INTENT_LABELS),
     ).to(device)
     base_model.eval()
-    id2label_base = {i: l for i, l in enumerate(INTENT_LABELS)}
+    id2label_base = {i: label for i, label in enumerate(INTENT_LABELS)}
 
     t0 = time.time()
     preds = bert_predict(adv_texts, base_tok, base_model, id2label_base)

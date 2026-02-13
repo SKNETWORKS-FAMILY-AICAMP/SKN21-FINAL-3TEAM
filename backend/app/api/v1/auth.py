@@ -27,7 +27,7 @@ from app.config import get_settings
 from app.db.session import get_db
 from app.models.oauth_token import OAuthToken
 from app.models.user import User
-from app.core.security import hash_password, verify_password, create_access_token, verify_token, encrypt_data
+from app.core.security import hash_password, verify_password, create_access_token, encrypt_data
 from app.api.deps import get_current_user
 from app.services.google_base_service import GOOGLE_SCOPES
 

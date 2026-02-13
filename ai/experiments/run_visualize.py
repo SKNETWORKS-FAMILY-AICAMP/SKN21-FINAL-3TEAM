@@ -162,10 +162,10 @@ def generate_all_versions_chart():
     eval_f1 = [99.08, 98.80, 98.07, 98.63, 98.26]
     # v1.0/v1.1: 25-sample adversarial (다른 셋이므로 비교 불가 → None)
     # v1.2~v1.4: 120-sample adversarial
-    adv_acc_120 = [None, None, 85.0, 91.67, 89.2]
-    adv_f1_120 = [None, None, 85.57, 91.54, 89.02]
+    _adv_acc_120 = [None, None, 85.0, 91.67, 89.2]  # Reserved for future use
+    _adv_f1_120 = [None, None, 85.57, 91.54, 89.02]  # Reserved for future use
     data_count = [1405, 1455, 1755, 1918, 1918]
-    errors_120 = [None, None, 18, 10, 13]
+    _errors_120 = [None, None, 18, 10, 13]  # Reserved for future use
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 

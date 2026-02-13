@@ -3,7 +3,7 @@ OAuth 토큰 모델 (팀원 D 담당)
 - Google Calendar 등 외부 서비스 토큰 저장
 - scopes: 연결된 Google 서비스 범위 (calendar,tasks,gmail_send,sheets)
 """
-from sqlalchemy import String, Text, Integer, ForeignKey
+from sqlalchemy import String, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 from typing import Optional
