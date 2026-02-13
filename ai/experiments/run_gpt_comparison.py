@@ -166,7 +166,7 @@ def main():
 
     with open(RESULTS_DIR / "gpt_comparison.json", "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
-    print(f"\n  -> gpt_comparison.json")
+    print("\n  -> gpt_comparison.json")
     print(f"\n{'=' * 60}")
 
 

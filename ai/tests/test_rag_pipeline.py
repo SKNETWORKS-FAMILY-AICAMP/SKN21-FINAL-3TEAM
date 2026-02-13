@@ -14,11 +14,8 @@ import tempfile
 
 import pytest
 
-from ai.rag.embeddings import EmbeddingModel
-from ai.rag.hybrid_search import HybridSearcher, tokenize
+from ai.rag.hybrid_search import tokenize
 from ai.rag.pipeline import RAGPipeline, reset_pipeline
-from ai.rag.reranker import Reranker
-from ai.rag.vectorstore import VectorStore
 
 # ── 테스트용 규정 문서 ──
 

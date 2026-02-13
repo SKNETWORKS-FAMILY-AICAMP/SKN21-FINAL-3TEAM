@@ -1,7 +1,7 @@
 """
 회의 관리 API (팀원 C/D 공동 담당)
 """
-from fastapi import APIRouter, Depends, UploadFile, File, Query, Body
+from fastapi import APIRouter, Depends, Query, Body
 from typing import Optional
 
 from app.api.deps import get_current_user

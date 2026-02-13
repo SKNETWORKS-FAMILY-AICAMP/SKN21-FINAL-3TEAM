@@ -13,10 +13,10 @@
 """
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from ai.agents.state import AgentState
-from ai.templates import get_system_template, SYSTEM_TEMPLATES
+from ai.templates import get_system_template
 
 # 로거 설정
 logger = logging.getLogger(__name__)
@@ -92,7 +92,7 @@ def _handle_doc_generate(user_input: str, template_type: str) -> Dict[str, Any]:
     except ValueError:
         try:
             template = get_system_template("report") # Fallback
-        except:
+        except Exception:
             template = None
 
     # 2. LLM이 템플릿 필드 채우기
@@ -145,7 +145,7 @@ def _handle_meeting_generate(user_input: str) -> Dict[str, Any]:
     generated_json_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
     try:
         data = json.loads(generated_json_str)
-    except:
+    except Exception:
         data = {"summary": "파싱 실패", "content": generated_json_str}
 
     # 2. 회의록 템플릿 렌더링

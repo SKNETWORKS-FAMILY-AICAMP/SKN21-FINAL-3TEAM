@@ -17,7 +17,6 @@ Intent Classification 테스트 스크립트 (PM 지용)
 import argparse
 import json
 import torch
-import numpy as np
 from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
@@ -68,7 +67,7 @@ def print_result(text: str, result: dict):
     """결과 출력"""
     print(f"  입력: {text}")
     print(f"  결과: {result['intent']} ({result['confidence']:.4f})")
-    print(f"  Top3: ", end="")
+    print("  Top3: ", end="")
     for label, prob in result["top3"]:
         print(f"{label}({prob:.3f}) ", end="")
     print("\n")

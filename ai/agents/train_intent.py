@@ -11,7 +11,6 @@ klue/bert-base를 7개 intent 카테고리로 파인튜닝합니다.
 """
 
 import json
-import os
 import numpy as np
 from pathlib import Path
 
@@ -126,7 +125,7 @@ def main():
 
     # 4. 학습
     print(f"\n[4/5] 학습 시작 (epochs={EPOCHS}, batch={BATCH_SIZE}, lr={LEARNING_RATE})")
-    print(f"  디바이스: CPU")
+    print("  디바이스: CPU")
     print(f"  저장 경로: {OUTPUT_DIR}")
 
     training_args = TrainingArguments(

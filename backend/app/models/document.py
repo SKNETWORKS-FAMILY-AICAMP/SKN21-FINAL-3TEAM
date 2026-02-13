@@ -2,7 +2,7 @@
 문서 모델 (팀원 D 담당)
 - scope: 'company' (회사 공용) / 'personal' (개인)
 """
-from sqlalchemy import String, Integer, Text, ForeignKey
+from sqlalchemy import String, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin
