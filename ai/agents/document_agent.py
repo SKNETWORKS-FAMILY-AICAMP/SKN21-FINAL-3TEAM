@@ -101,7 +101,14 @@ def _handle_doc_search(query: str, context: List[str], user_id: int = None) -> D
 
     # 2. Context가 있으면 LLM 답변 생성
     if context:
-        sys_prompt = "당신은 문서 검색 도우미입니다. 주어진 Context를 바탕으로 사용자의 질문에 답변하세요."
+        sys_prompt = """당신은 문서 검색 도우미입니다. 사용자의 의도에 맞춰 답변하세요:
+
+        1. "알려줘/설명해줘/어떻게" 질문 → 관련 내용을 상세히 설명하세요
+        2. "요약해줘/정리해줘" 질문 → 핵심만 간결하게 요약하세요 (3-5문장)
+        3. "찾아줘/검색/어디" 질문 → 관련 문서를 나열하고, 각 문서의 핵심 내용을 한 줄로 설명하세요
+
+        답변 시 반드시 Context에 포함된 정보만 사용하세요. Context에 없는 내용은 추측하지 마세요."""
+
         user_prompt = f"Context:\n{json.dumps(context, ensure_ascii=False)}\n\nQuestion: {query}"
 
         answer = _call_llm(sys_prompt, user_prompt)
