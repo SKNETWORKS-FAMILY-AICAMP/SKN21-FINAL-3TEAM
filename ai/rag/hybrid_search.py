@@ -135,15 +135,16 @@ class HybridSearcher:
             list of {"content", "source", "score", "doc_id"}
         """
         # scope 필터 구성: user_id=None → company만, user_id 있으면 company + 본인 personal
-        if user_id is not None:
-            scope_filter = {
-                "$or": [
-                    {"scope": "company"},
-                    {"$and": [{"scope": "personal"}, {"user_id": str(user_id)}]},
-                ]
-            }
-        else:
-            scope_filter = {"scope": "company"}
+        # TODO: Qdrant 필터 형식 수정 후 아래 scope_filter를 _vector_search에 전달
+        # if user_id is not None:
+        #     scope_filter = {
+        #         "$or": [
+        #             {"scope": "company"},
+        #             {"$and": [{"scope": "personal"}, {"user_id": str(user_id)}]},
+        #         ]
+        #     }
+        # else:
+        #     scope_filter = {"scope": "company"}
 
         # 1. BM25 검색 → Top 15 (scope 필터 포함)
         bm25_results = self._bm25_search(query, user_id=user_id, top_k=15)

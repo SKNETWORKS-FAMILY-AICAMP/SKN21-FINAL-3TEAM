@@ -12,8 +12,8 @@ load_dotenv()
 # 프로젝트 루트를 sys.path에 추가 (tests/ -> 프로젝트 루트)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ai.agents.document_agent import document_agent
-from ai.agents.state import AgentState
+from ai.agents.document_agent import document_agent  # noqa: E402
+from ai.agents.state import AgentState  # noqa: E402
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)

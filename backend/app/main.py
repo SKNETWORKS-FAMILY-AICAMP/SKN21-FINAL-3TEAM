@@ -15,11 +15,11 @@ project_root = Path(__file__).resolve().parents[2]
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
-from app.config import get_settings
-from app.api.v1.router import api_router
+from app.config import get_settings  # noqa: E402
+from app.api.v1.router import api_router  # noqa: E402
 
 settings = get_settings()
 

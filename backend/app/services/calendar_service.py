@@ -133,6 +133,6 @@ class GoogleCalendarService(GoogleBaseService):
                         })
                 except Exception:
                     pass
-        except Exception as e:
+        except Exception:
             raise
         return events
