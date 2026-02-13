@@ -51,20 +51,21 @@ def route_by_intent(state: AgentState) -> str:
     intent = state.get("intent", "")
     confidence = state.get("confidence", 0)
 
+    # confidence가 낮으면 general_response로 (LLM이 자연스럽게 답변)
     if confidence < 0.7:
-        logger.info(f"Routing: {intent} (confidence: {confidence:.4f}) → clarify")
-        return "clarify"
+        logger.info(f"Routing: {intent} (confidence: {confidence:.4f}) → general_response")
+        return "general_response"
 
-    if intent == "judgment":
+    if intent == "general":
+        return "general_response"
+    elif intent == "judgment":
         return "judgment_agent"
     elif intent in ("doc_search", "doc_generate", "meeting_generate"):
         return "document_agent"
     elif intent.startswith("schedule_"):
         return "schedule_agent"
-    elif intent == "general":
-        return "general_response"
     else:
-        return "clarify"
+        return "general_response"
 
 
 def clarify_node(state: AgentState) -> AgentState:
@@ -78,16 +79,25 @@ def clarify_node(state: AgentState) -> AgentState:
 
 def _get_settings():
     """config import — FastAPI 실행 시 / 단독 실행 시 모두 대응"""
-    try:
-        from app.config import get_settings
-        return get_settings()
-    except ImportError:
-        from backend.app.config import get_settings
-        return get_settings()
+    from backend.app.config import get_settings
+    return get_settings()
 
 
 async def general_response_node(state: AgentState) -> AgentState:
-    """일반 응답 노드 — LLM API 호출"""
+    """일반 응답 노드 — LLM API 호출
+
+    stream_mode=True이면 LLM 호출을 건너뛰고 chat.py에서 직접 스트리밍 처리.
+    """
+    # 스트리밍 모드면 chat.py에서 직접 LLM 스트리밍 처리
+    if state.get("stream_mode"):
+        state["agent_response"] = {
+            "type": "general",
+            "message": "",
+            "stream_pending": True,
+        }
+        return state
+
+    # 비스트리밍 모드 (POST /chat/) — 기존대로 전체 응답 생성
     try:
         from openai import AsyncOpenAI
 
@@ -106,7 +116,7 @@ async def general_response_node(state: AgentState) -> AgentState:
         )
 
         response = await client.chat.completions.create(
-            model=settings.LLM_MODEL_NAME,
+            model=settings.OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": "당신은 업무 도우미 '듀듀'입니다. 한국어로 친절하게 답변하세요."},
                 *state.get("chat_history", []),

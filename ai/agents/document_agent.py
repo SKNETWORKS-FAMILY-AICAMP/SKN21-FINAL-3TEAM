@@ -39,9 +39,11 @@ async def document_agent(state: AgentState) -> AgentState:
 
     response_data = {}
 
+    stream_mode = state.get("stream_mode", False)
+
     try:
         if intent == "doc_search":
-            response_data = _handle_doc_search(user_input, context, user_id)
+            response_data = _handle_doc_search(user_input, context, user_id, stream_mode=stream_mode)
         
         elif intent == "doc_generate":
             # 템플릿 ID나 종류를 state에서 가져옴 (없으면 기본값)
@@ -71,13 +73,82 @@ async def document_agent(state: AgentState) -> AgentState:
     return state
 
 
-def _handle_doc_search(query: str, context: List[str], user_id: int = None) -> Dict[str, Any]:
+def _detect_search_intent(query: str) -> str:
+    """사용자 질문에서 검색 의도 감지
+
+    Args:
+        query: 사용자 질문
+
+    Returns:
+        "summarize" | "find" | "explain"
+    """
+    import re
+
+    query_lower = query.lower()
+
+    # 요약 키워드 (최우선)
+    if re.search(r"요약|정리|간단히|핵심|짧게", query_lower):
+        return "summarize"
+
+    # 찾기 키워드
+    if re.search(r"찾아|검색|문서|어디|목록", query_lower):
+        return "find"
+
+    # 기본값: 설명
+    return "explain"
+
+
+def _build_search_prompt(query: str, context: list) -> tuple:
+    """검색 의도에 맞는 시스템/유저 프롬프트 생성
+
+    Returns:
+        (sys_prompt, user_prompt)
+    """
+    intent_type = _detect_search_intent(query)
+
+    if intent_type == "summarize":
+        sys_prompt = """당신은 문서 요약 전문가입니다.
+
+[중요 지시사항]
+- 반드시 핵심 내용만 2-3문장으로 간결하게 요약하세요
+- 불필요한 세부사항은 절대 포함하지 마세요
+- 가장 중요한 정보만 선택하세요
+
+답변 시 Context에 포함된 정보만 사용하고, 추측하지 마세요."""
+
+    elif intent_type == "find":
+        sys_prompt = """당신은 문서 검색 전문가입니다.
+
+[중요 지시사항]
+- 관련 문서들을 목록으로 나열하세요
+- 각 문서의 핵심 내용을 한 줄로 요약하세요
+- "다음 문서들을 찾았습니다:" 형식으로 시작하세요
+
+답변 시 Context에 포함된 정보만 사용하고, 추측하지 마세요."""
+
+    else:  # explain
+        sys_prompt = """당신은 문서 설명 전문가입니다.
+
+[중요 지시사항]
+- 관련 내용을 상세히 설명하세요 (5문장 이상)
+- 조건, 절차, 예외사항 등을 포함하세요
+- 이해하기 쉽게 구조화하여 설명하세요
+
+답변 시 Context에 포함된 정보만 사용하고, 추측하지 마세요."""
+
+    user_prompt = f"Context:\n{json.dumps(context, ensure_ascii=False)}\n\nQuestion: {query}"
+
+    return sys_prompt, user_prompt
+
+
+def _handle_doc_search(query: str, context: List[str], user_id: int = None, stream_mode: bool = False) -> Dict[str, Any]:
     """문서 검색 결과 처리
 
     Args:
         query: 사용자 질의
         context: 이미 검색된 컨텍스트 (있으면 사용, 없으면 RAG 검색)
         user_id: 사용자 ID (scope 필터용)
+        stream_mode: True이면 LLM 호출 건너뛰고 프롬프트만 반환
     """
     search_results = []
 
@@ -96,32 +167,14 @@ def _handle_doc_search(query: str, context: List[str], user_id: int = None) -> D
 
         except Exception as e:
             logger.error(f"RAG 검색 실패: {e}", exc_info=True)
-            # RAG 실패 시 빈 context로 처리
             context = []
 
-    # 2. Context가 있으면 LLM 답변 생성
-    if context:
-        sys_prompt = """당신은 문서 검색 도우미입니다. 사용자의 의도에 맞춰 답변하세요:
-
-        1. "알려줘/설명해줘/어떻게" 질문 → 관련 내용을 상세히 설명하세요
-        2. "요약해줘/정리해줘" 질문 → 핵심만 간결하게 요약하세요 (3-5문장)
-        3. "찾아줘/검색/어디" 질문 → 관련 문서를 나열하고, 각 문서의 핵심 내용을 한 줄로 설명하세요
-
-        답변 시 반드시 Context에 포함된 정보만 사용하세요. Context에 없는 내용은 추측하지 마세요."""
-
-        user_prompt = f"Context:\n{json.dumps(context, ensure_ascii=False)}\n\nQuestion: {query}"
-
-        answer = _call_llm(sys_prompt, user_prompt)
-    else:
-        answer = "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요."
-
-    # 3. 응답 포맷 (답변 + 출처 분리, 중복 제거)
+    # 2. 출처 정보 (답변 + 출처 분리, 중복 제거)
     sources = []
-    seen_sources = set()  # 중복 제거용
+    seen_sources = set()
     if search_results:
         for doc in search_results:
-            # content 기준 중복 체크 (같은 내용이면 제외)
-            content_key = doc.get("content", "")[:100]  # 앞 100자로 중복 판단
+            content_key = doc.get("content", "")[:100]
             if content_key in seen_sources:
                 continue
             seen_sources.add(content_key)
@@ -130,15 +183,44 @@ def _handle_doc_search(query: str, context: List[str], user_id: int = None) -> D
                 "title": doc.get("title", "제목 없음"),
                 "source": doc.get("source", ""),
                 "score": doc.get("score", 0.0),
-                "content": doc.get("content", "")[:200] + "...",  # 미리보기 200자
+                "content": doc.get("content", "")[:200] + "...",
             })
+
+    # 3. Context가 없으면 검색 실패
+    if not context:
+        return {
+            "type": "doc_search",
+            "answer": "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요.",
+            "message": "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요.",
+            "sources": sources,
+            "context": context,
+        }
+
+    # 4. 프롬프트 생성
+    sys_prompt, user_prompt = _build_search_prompt(query, context)
+
+    # 5. 스트리밍 모드면 LLM 호출 건너뛰기 (chat.py에서 직접 스트리밍)
+    if stream_mode:
+        return {
+            "type": "doc_search",
+            "stream_pending": True,
+            "sys_prompt": sys_prompt,
+            "user_prompt": user_prompt,
+            "answer": "",
+            "message": "",
+            "sources": sources,
+            "context": context,
+        }
+
+    # 6. 비스트리밍: LLM 호출
+    answer = _call_llm(sys_prompt, user_prompt)
 
     return {
         "type": "doc_search",
         "answer": answer,
-        "message": answer,  # 프론트엔드 호환 (chat.py에서 message 사용)
-        "sources": sources,  # 출처 정보
-        "context": context,  # 원본 context (하위 호환)
+        "message": answer,
+        "sources": sources,
+        "context": context,
     }
 
 def _handle_doc_generate(user_input: str, template_type: str) -> Dict[str, Any]:

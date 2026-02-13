@@ -40,6 +40,9 @@ _classifier_instance = None
 class IntentClassifier:
     """Intent 분류기 (Singleton)"""
 
+    # 예제 임베딩 캐시 (클래스 변수 - 모든 인스턴스가 공유)
+    _example_embeddings_cache = None
+
     def __init__(self, model_path: str = None):
         self.model_path = model_path or str(_MODEL_DIR)
         self.model = None
@@ -100,9 +103,9 @@ class IntentClassifier:
         """
         self.load_model()
 
-        # fallback: 모델 없으면 키워드 기반 분류
+        # fallback: 모델 없으면 임베딩 기반 분류
         if self.model is None or self.tokenizer is None:
-            return self._fallback_predict(text)
+            return self._embedding_based_predict(text)
 
         # 전처리
         try:
@@ -134,33 +137,109 @@ class IntentClassifier:
 
         return {"intent": intent, "confidence": round(confidence, 4)}
 
-    def _fallback_predict(self, text: str) -> dict:
-        """키워드 기반 fallback intent 분류 (모델 없을 때)"""
-        text_lower = text.lower()
+    def _get_example_embeddings(self):
+        """예제 임베딩 캐시 가져오기 (한 번만 계산)"""
+        if IntentClassifier._example_embeddings_cache is None:
+            from ai.rag.embeddings import EmbeddingModel
 
-        # 키워드 우선순위 순서대로 검사
-        keyword_rules = [
-            # meeting_generate
-            (["회의록"], "meeting_generate", 0.85),
-            # doc_generate
-            (["문서 작성", "보고서", "제안서", "jd", "생성"], "doc_generate", 0.8),
-            # doc_search
-            (["검색", "찾아", "알려줘", "문서", "규정", "연차", "휴가", "출장"], "doc_search", 0.7),
-            # schedule_add
-            (["일정 추가", "일정 등록", "스케줄 추가"], "schedule_add", 0.8),
-            # schedule_view
-            (["일정 조회", "일정 확인", "스케줄 확인"], "schedule_view", 0.8),
-            # judgment
-            (["규정", "판단", "위반", "허용", "가능한가", "해도 되나"], "judgment", 0.75),
-        ]
+            logger.info("Building intent example embeddings cache...")
 
-        for keywords, intent, confidence in keyword_rules:
-            if any(kw in text_lower for kw in keywords):
-                logger.info(f"Fallback intent: {intent} (keywords: {keywords})")
-                return {"intent": intent, "confidence": confidence}
+            # 각 intent별 예제 문장들
+            intent_examples = {
+                "judgment": [
+                    "이게 규정 위반인가요?",
+                    "이렇게 해도 되나요?",
+                    "규정상 허용되나요?",
+                    "이건 가능한가요?",
+                    "판단해줘",
+                ],
+                "doc_search": [
+                    "연차 휴가 규정 알려줘",
+                    "출장비 지급 기준이 뭐야?",
+                    "회의에서 어떤 내용이 논의되었나요?",
+                    "코드리뷰 회의 내용 찾아줘",
+                    "문서 검색해줘",
+                    "규정 찾아줘",
+                ],
+                "doc_generate": [
+                    "보고서 작성해줘",
+                    "제안서 만들어줘",
+                    "문서 생성해줘",
+                    "JD 작성해줘",
+                ],
+                "meeting_generate": [
+                    "회의록 작성해줘",
+                    "회의록 생성해줘",
+                    "회의록 요약해줘",
+                ],
+                "schedule_add": [
+                    "일정 추가해줘",
+                    "스케줄 등록해줘",
+                    "일정 넣어줘",
+                ],
+                "schedule_view": [
+                    "일정 보여줘",
+                    "스케줄 확인해줘",
+                    "일정 조회해줘",
+                ],
+            }
 
-        # 기본값: general
-        return {"intent": "general", "confidence": 0.5}
+            # 임베딩 모델 로드
+            embedding_model = EmbeddingModel()
+            embedding_model.load_model()
+
+            # 모든 예제를 한 번에 임베딩
+            embeddings_cache = {}
+            for intent, examples in intent_examples.items():
+                embeddings_cache[intent] = embedding_model.encode(examples)
+
+            IntentClassifier._example_embeddings_cache = {
+                "embeddings": embeddings_cache,
+                "model": embedding_model,
+            }
+
+            logger.info("Intent example embeddings cache built successfully")
+
+        return IntentClassifier._example_embeddings_cache
+
+    def _embedding_based_predict(self, text: str) -> dict:
+        """임베딩 기반 intent 분류 (jhgan/ko-sbert-nli 사용)"""
+        import numpy as np
+
+        # 캐시된 예제 임베딩 가져오기 (첫 요청 시에만 계산)
+        cache = self._get_example_embeddings()
+        embedding_model = cache["model"]
+        example_embeddings_cache = cache["embeddings"]
+
+        # 사용자 질문만 임베딩 (매 요청마다 1번만!)
+        query_embedding = embedding_model.encode([text])[0]
+
+        # 캐시된 예제 임베딩과 비교
+        intent_scores = {}
+        for intent, example_embeddings in example_embeddings_cache.items():
+            # 코사인 유사도 계산
+            similarities = []
+            for example_emb in example_embeddings:
+                similarity = np.dot(query_embedding, example_emb) / (
+                    np.linalg.norm(query_embedding) * np.linalg.norm(example_emb)
+                )
+                similarities.append(similarity)
+
+            # 최대 유사도를 해당 intent의 점수로 사용
+            intent_scores[intent] = max(similarities)
+
+        # 가장 높은 점수의 intent 선택
+        best_intent = max(intent_scores, key=intent_scores.get)
+        confidence = float(intent_scores[best_intent])
+
+        logger.info(f"Embedding-based intent: {best_intent} (confidence: {confidence:.4f})")
+        logger.debug(f"All intent scores: {intent_scores}")
+
+        # confidence가 너무 낮으면 general로
+        if confidence < 0.5:
+            return {"intent": "general", "confidence": 0.7}
+
+        return {"intent": best_intent, "confidence": round(confidence, 4)}
 
 
 def get_classifier() -> IntentClassifier:
