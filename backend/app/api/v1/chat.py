@@ -52,14 +52,19 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
 
     async def event_generator():
         try:
+            logger.info(f"[Chat] Starting stream for user {user.id}: '{request.message}'")
+
             # lazy import (AI 의존성 없을 때 서버 기동 안 깨지게)
             from ai.agents.orchestrator import get_graph
 
             graph = get_graph()
             initial_state = _build_initial_state(request, user)
 
+            logger.info(f"[Chat] Initial state: intent={initial_state.get('intent')}, user_input={initial_state.get('user_input')}")
+
             # astream으로 노드별 실시간 이벤트 전송
             final_state = {}
+
             async for event in graph.astream(initial_state):
                 # event = {"node_name": {updated_state_fields}}
                 for node_name, node_output in event.items():
@@ -88,7 +93,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
         except Exception as e:
-            logger.error("Chat stream error: %s", e)
+            logger.error(f"[Chat] Stream error: {e}", exc_info=True)
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")

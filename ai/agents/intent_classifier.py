@@ -100,9 +100,9 @@ class IntentClassifier:
         """
         self.load_model()
 
-        # fallback: 모델 없으면 general 반환
+        # fallback: 모델 없으면 키워드 기반 분류
         if self.model is None or self.tokenizer is None:
-            return {"intent": "general", "confidence": 0.0}
+            return self._fallback_predict(text)
 
         # 전처리
         try:
@@ -133,6 +133,34 @@ class IntentClassifier:
         intent = self.id2label.get(pred_id, "general")
 
         return {"intent": intent, "confidence": round(confidence, 4)}
+
+    def _fallback_predict(self, text: str) -> dict:
+        """키워드 기반 fallback intent 분류 (모델 없을 때)"""
+        text_lower = text.lower()
+
+        # 키워드 우선순위 순서대로 검사
+        keyword_rules = [
+            # meeting_generate (가장 구체적)
+            (["회의록"], "meeting_generate", 0.85),
+            # doc_generate
+            (["문서 작성", "보고서", "제안서", "jd", "생성"], "doc_generate", 0.8),
+            # schedule_add
+            (["일정 추가", "일정 등록", "스케줄 추가"], "schedule_add", 0.8),
+            # schedule_view
+            (["일정 조회", "일정 확인", "스케줄 확인"], "schedule_view", 0.8),
+            # judgment
+            (["규정", "판단", "위반", "허용", "가능한가", "해도 되나"], "judgment", 0.75),
+            # doc_search (더 일반적)
+            (["검색", "찾아", "알려줘", "문서", "규정", "연차", "휴가", "출장"], "doc_search", 0.7),
+        ]
+
+        for keywords, intent, confidence in keyword_rules:
+            if any(kw in text_lower for kw in keywords):
+                logger.info(f"Fallback intent: {intent} (keywords: {keywords})")
+                return {"intent": intent, "confidence": confidence}
+
+        # 기본값: general
+        return {"intent": "general", "confidence": 0.5}
 
 
 def get_classifier() -> IntentClassifier:
