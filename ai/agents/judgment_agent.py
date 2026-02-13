@@ -22,7 +22,7 @@ from typing import AsyncGenerator
 from ai.agents.state import AgentState
 from ai.llm import get_llm
 from ai.llm.prompts import JUDGMENT_SYSTEM_PROMPT
-from ai.rag.pipeline import get_pipeline
+from ai.rag.qdrant_pipeline import get_qdrant_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -246,7 +246,7 @@ async def judgment_agent(state: AgentState) -> AgentState:
 
     try:
         # 1. RAG 검색 (다중 규정 교차 분석을 위해 top_k 확대)
-        pipeline = get_pipeline()
+        pipeline = get_qdrant_pipeline()
         context = pipeline.retrieve(query=user_input, user_id=user_id, top_k=7)
 
         # 2. 판단 이력 추출
@@ -321,7 +321,7 @@ async def judgment_agent_stream(state: AgentState) -> AsyncGenerator[str, None]:
 
     try:
         # RAG 검색
-        pipeline = get_pipeline()
+        pipeline = get_qdrant_pipeline()
         context = pipeline.retrieve(query=user_input, user_id=user_id, top_k=7)
 
         # 판단 이력 추출

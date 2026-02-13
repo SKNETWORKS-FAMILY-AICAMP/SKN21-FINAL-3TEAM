@@ -33,14 +33,15 @@ async def document_agent(state: AgentState) -> AgentState:
     intent = state.get("intent", "").lower()
     user_input = state.get("user_input", "")
     context = state.get("context", [])
-    
+    user_id = state.get("user_id")
+
     logger.info(f"Document Agent executing. Intent: {intent}")
 
     response_data = {}
 
     try:
         if intent == "doc_search":
-            response_data = _handle_doc_search(user_input, context)
+            response_data = _handle_doc_search(user_input, context, user_id)
         
         elif intent == "doc_generate":
             # 템플릿 ID나 종류를 state에서 가져옴 (없으면 기본값)
@@ -70,18 +71,67 @@ async def document_agent(state: AgentState) -> AgentState:
     return state
 
 
-def _handle_doc_search(query: str, context: List[str]) -> Dict[str, Any]:
-    """문서 검색 결과 처리"""
-    # 1. RAG Context + Query로 LLM 답변 생성
-    sys_prompt = "당신은 문서 검색 도우미입니다. 주어진 Context를 바탕으로 사용자의 질문에 답변하세요."
-    user_prompt = f"Context:\n{json.dumps(context, ensure_ascii=False)}\n\nQuestion: {query}"
-    
-    answer = _call_llm(sys_prompt, user_prompt)
-    
+def _handle_doc_search(query: str, context: List[str], user_id: int = None) -> Dict[str, Any]:
+    """문서 검색 결과 처리
+
+    Args:
+        query: 사용자 질의
+        context: 이미 검색된 컨텍스트 (있으면 사용, 없으면 RAG 검색)
+        user_id: 사용자 ID (scope 필터용)
+    """
+    search_results = []
+
+    # 1. Context가 비어있으면 RAG 검색 수행
+    if not context:
+        try:
+            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+
+            logger.info(f"RAG 검색 수행: '{query}'")
+            rag_pipeline = get_qdrant_pipeline()
+            search_results = rag_pipeline.retrieve(query, user_id=user_id, top_k=5)
+
+            # 검색된 문서의 content를 context로 사용
+            context = [doc["content"] for doc in search_results]
+            logger.info(f"RAG 검색 완료: {len(context)}개 문서 검색됨")
+
+        except Exception as e:
+            logger.error(f"RAG 검색 실패: {e}", exc_info=True)
+            # RAG 실패 시 빈 context로 처리
+            context = []
+
+    # 2. Context가 있으면 LLM 답변 생성
+    if context:
+        sys_prompt = "당신은 문서 검색 도우미입니다. 주어진 Context를 바탕으로 사용자의 질문에 답변하세요."
+        user_prompt = f"Context:\n{json.dumps(context, ensure_ascii=False)}\n\nQuestion: {query}"
+
+        answer = _call_llm(sys_prompt, user_prompt)
+    else:
+        answer = "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요."
+
+    # 3. 응답 포맷 (답변 + 출처 분리, 중복 제거)
+    sources = []
+    seen_sources = set()  # 중복 제거용
+    if search_results:
+        for doc in search_results:
+            # content 기준 중복 체크 (같은 내용이면 제외)
+            content_key = doc.get("content", "")[:100]  # 앞 100자로 중복 판단
+            if content_key in seen_sources:
+                continue
+            seen_sources.add(content_key)
+
+            sources.append({
+                "title": doc.get("title", "제목 없음"),
+                "source": doc.get("source", ""),
+                "score": doc.get("score", 0.0),
+                "content": doc.get("content", "")[:200] + "...",  # 미리보기 200자
+            })
+
     return {
         "type": "doc_search",
         "answer": answer,
-        "context": context
+        "message": answer,  # 프론트엔드 호환 (chat.py에서 message 사용)
+        "sources": sources,  # 출처 정보
+        "context": context,  # 원본 context (하위 호환)
     }
 
 def _handle_doc_generate(user_input: str, template_type: str) -> Dict[str, Any]:

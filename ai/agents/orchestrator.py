@@ -35,20 +35,26 @@ _compiled_graph = None
 
 def classify_intent(state: AgentState) -> AgentState:
     """Intent 분류 노드"""
+    user_input = state["user_input"]
+
     classifier = get_classifier()
-    result = classifier.predict(state["user_input"])
+    result = classifier.predict(user_input)
     state["intent"] = result["intent"]
     state["confidence"] = result["confidence"]
-    logger.info("Intent: %s (%.4f)", result["intent"], result["confidence"])
+
+    logger.info(f"Intent: {result['intent']} (confidence: {result['confidence']:.4f})")
     return state
 
 
 def route_by_intent(state: AgentState) -> str:
     """조건부 라우팅"""
-    if state.get("confidence", 0) < 0.7:
+    intent = state.get("intent", "")
+    confidence = state.get("confidence", 0)
+
+    if confidence < 0.7:
+        logger.info(f"Routing: {intent} (confidence: {confidence:.4f}) → clarify")
         return "clarify"
 
-    intent = state.get("intent", "")
     if intent == "judgment":
         return "judgment_agent"
     elif intent in ("doc_search", "doc_generate", "meeting_generate"):
@@ -260,5 +266,10 @@ def get_graph():
     """컴파일된 그래프 인스턴스 반환 (캐시)"""
     global _compiled_graph
     if _compiled_graph is None:
-        _compiled_graph = build_graph()
+        try:
+            _compiled_graph = build_graph()
+            logger.info("Orchestrator graph compiled successfully")
+        except Exception as e:
+            logger.error(f"Graph build error: {e}", exc_info=True)
+            raise
     return _compiled_graph

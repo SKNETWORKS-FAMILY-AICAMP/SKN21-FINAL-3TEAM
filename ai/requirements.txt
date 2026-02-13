@@ -1,20 +1,28 @@
 # LangGraph (Agent Framework)
-langgraph>=0.2.20
-langchain-core==0.3.0
+langgraph>=1.0.0
+langgraph-checkpoint>=2.0.0
+langgraph-prebuilt>=1.0.0
+langchain>=1.0.0
+langchain-core>=1.2.0
+langchain-community>=0.4.0
+langchain-openai>=1.1.0
+langchain-text-splitters>=1.1.0
+langchain-qdrant>=1.1.0
 
 # LLM / Fine-tuning
-transformers==4.44.0
-peft==0.12.0
-trl==0.10.0
-bitsandbytes==0.43.3
-accelerate==0.33.0
-datasets==3.0.0
+transformers>=4.44.0
+peft>=0.12.0
+trl>=0.11.0
+bitsandbytes>=0.43.0
+accelerate>=0.33.0
+datasets>=3.0.0
 
 # Embedding & Reranker
-sentence-transformers==3.0.1
+sentence-transformers>=3.0.0
 
 # Vector DB
-chromadb==0.5.5
+chromadb>=0.5.0
+qdrant-client>=1.16.0
 
 # BM25
 rank-bm25==0.2.2
@@ -25,15 +33,16 @@ konlpy==0.6.0
 # Evaluation
 rouge-score==0.1.2
 bert-score==0.3.13
-scikit-learn==1.5.2
+scikit-learn>=1.5.0
 
 # LLM API Client
-openai==1.44.0
+openai>=1.44.0
 anthropic>=0.34.0
 
 # Utilities
 torch>=2.0.0
-numpy==1.26.4
-pandas==2.2.2
-pyyaml==6.0.2
-tqdm==4.66.5
+numpy>=1.26.0
+pandas>=2.2.0
+pyyaml>=6.0.0
+tqdm>=4.66.0
+python-dotenv>=1.0.0

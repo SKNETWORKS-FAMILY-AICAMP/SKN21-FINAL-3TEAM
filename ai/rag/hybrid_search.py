@@ -7,7 +7,14 @@ import logging
 from rank_bm25 import BM25Okapi
 
 from ai.rag.embeddings import EmbeddingModel
-from ai.rag.vectorstore import VectorStore
+try:
+    from ai.rag.vectorstore import VectorStore
+except ImportError:
+    VectorStore = None
+try:
+    from ai.rag.qdrant_store import QdrantVectorStore
+except ImportError:
+    QdrantVectorStore = None
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +40,12 @@ def tokenize(text: str) -> list[str]:
 class HybridSearcher:
     """BM25 키워드 검색 + 벡터 시멘틱 검색 결합"""
 
-    def __init__(self, vector_store: VectorStore, embedding_model: EmbeddingModel):
+    def __init__(self, vector_store, embedding_model: EmbeddingModel):
+        """
+        Args:
+            vector_store: VectorStore 또는 QdrantVectorStore 인스턴스
+            embedding_model: EmbeddingModel 인스턴스
+        """
         self.vector_store = vector_store
         self.embedding_model = embedding_model
         self.bm25 = None
@@ -42,7 +54,7 @@ class HybridSearcher:
         self._corpus_metadatas = []
 
     def build_bm25_index(self):
-        """ChromaDB에서 전체 문서를 가져와 BM25 인덱스를 구축한다."""
+        """VectorStore에서 전체 문서를 가져와 BM25 인덱스를 구축한다."""
         all_docs = self.vector_store.get_all_documents()
 
         self._corpus_docs = all_docs["documents"]
@@ -137,7 +149,8 @@ class HybridSearcher:
         bm25_results = self._bm25_search(query, user_id=user_id, top_k=15)
 
         # 2. Vector 검색 → Top 15
-        vector_results = self._vector_search(query, top_k=15, filter=scope_filter)
+        # TODO: Qdrant 필터 형식 수정 필요 (현재는 필터 없이 검색)
+        vector_results = self._vector_search(query, top_k=15, filter=None)
 
         # 3. RRF(Reciprocal Rank Fusion)로 합산
         rrf_scores: dict[str, dict] = {}
