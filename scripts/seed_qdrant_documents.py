@@ -25,6 +25,9 @@ qdrant_module = importlib.util.module_from_spec(qdrant_spec)
 qdrant_spec.loader.exec_module(qdrant_module)
 QdrantVectorStore = qdrant_module.QdrantVectorStore
 
+# QdrantClient도 import
+from qdrant_client import QdrantClient
+
 # embeddings 직접 로드
 embeddings_spec = importlib.util.spec_from_file_location(
     "embeddings",
@@ -117,6 +120,142 @@ EXAMPLE_DOCUMENTS = [
         "category": "급여",
         "scope": "company",
     },
+    {
+        "content": """급여 규정 제21조 (야근 수당)
+야근 수당은 통상임금의 1.5배로 지급됩니다.
+휴일 근무 시에는 통상임금의 2배를 지급합니다.
+야근은 사전 승인이 필요하며, 사후 정산은 불가합니다.
+월 40시간을 초과하는 야근은 건강 관리 차원에서 제한됩니다.""",
+        "title": "급여 규정 - 야근 수당",
+        "source": "급여규정.pdf",
+        "category": "급여",
+        "scope": "company",
+    },
+]
+
+
+# 회의록 데이터 (긴 텍스트 테스트용)
+MEETING_DOCUMENTS = [
+    {
+        "content": """# 2분기 코드리뷰 속도 개선 회의록
+
+일시: 2024년 4월 15일
+참석자: 정지훈(CTO), 이지아(시니어 개발자)
+
+[회의 배경]
+현재 PR 대기 시간이 평균 48시간으로 너무 길어서 개발 속도에 영향을 주고 있습니다.
+이로 인해 긴급한 버그 수정도 지연되고, 개발자들의 불만이 높아지고 있는 상황입니다.
+
+[논의 내용]
+정지훈: PR 대기 시간이 평균 48시간입니다. 너무 길어요. 특히 긴급 버그 수정이 지연되는 것이 문제입니다.
+이지아: 리뷰어 지정을 자동화하고 24시간 내 첫 피드백 룰을 정하면 어떨까요?
+        현재는 누가 리뷰할지 애매해서 서로 미루는 경향이 있습니다.
+정지훈: 좋은 아이디어네요. 슬랙 봇으로 알림을 보내면 더 효과적일 것 같습니다.
+이지아: 추가로 리뷰 가이드라인 문서도 업데이트해서 리뷰 포인트를 명확히 하면 좋겠습니다.
+
+[결정 사항]
+1. 24시간 이내 첫 피드백 완료 원칙 수립
+2. 리뷰 지연 발생 시 자동 알림 시스템 도입
+3. 리뷰어 자동 지정 로직 개발
+
+[Action Items]
+- 정지훈: 리뷰 지연 알림 봇 연동 및 설정 (기한: 금요일, 우선순위: 높음)
+- 이지아: 신규 리뷰 가이드라인 문서 업데이트 (기한: 다음 주 월요일, 우선순위: 중간)
+- 정지훈: 리뷰어 자동 지정 로직 설계 (기한: 다음 주 수요일, 우선순위: 중간)
+
+[예상 효과]
+- PR 대기 시간 48시간 → 24시간으로 단축
+- 긴급 버그 수정 지연 문제 해소
+- 개발자 만족도 향상""",
+        "title": "2분기 코드리뷰 속도 개선 회의록",
+        "source": "회의록_2024_04_15.md",
+        "category": "회의록",
+        "scope": "company",
+    },
+    {
+        "content": """# 레거시 정산 모듈 리팩토링 회의록
+
+일시: 2024년 4월 20일
+참석자: 박성호(백엔드 리드), 최유리(백엔드 개발자)
+
+[회의 배경]
+현재 정산 모듈이 너무 복잡하게 구현되어 있어 신규 매체 추가나 로직 변경이 매우 어려운 상황입니다.
+코드 가독성도 낮고, 테스트 코드도 부족하여 버그 발생 위험이 높습니다.
+
+[논의 내용]
+박성호: 정산 로직이 너무 복잡해서 신규 매체 추가가 힘듭니다.
+        하나의 거대한 함수에 모든 로직이 들어있어서 코드 이해가 어렵습니다.
+최유리: 인터페이스로 분리해서 전략 패턴을 도입하는 게 좋겠어요.
+        각 매체별로 클래스를 만들고, 공통 인터페이스를 구현하는 방식이면 확장성이 좋을 것 같습니다.
+박성호: 맞습니다. 그리고 각 전략마다 단위 테스트도 작성하면 안정성이 높아질 것 같습니다.
+최유리: 리팩토링 중에 기존 기능이 깨지지 않도록 기존 로직도 테스트 코드로 먼저 커버하는 게 좋겠습니다.
+
+[결정 사항]
+1. 정산 모듈 추상화 및 단계별 리팩토링 진행
+2. 전략 패턴을 활용한 매체별 클래스 분리
+3. 리팩토링 전 기존 로직 테스트 코드 작성 완료
+4. 주 1회 진행 상황 공유 미팅
+
+[Action Items]
+- 박성호: 정산 도메인 클래스 설계안 공유 (기한: 이번 주 금요일, 우선순위: 높음)
+- 최유리: 기존 로직 단위 테스트 코드 작성 (기한: 다음 주 월요일, 우선순위: 높음)
+- 박성호: 전략 패턴 POC 구현 (기한: 다음 주 목요일, 우선순위: 중간)
+
+[예상 효과]
+- 신규 매체 추가 시간 단축 (3일 → 1일)
+- 코드 가독성 향상
+- 테스트 커버리지 증가로 버그 감소
+- 유지보수 비용 감소""",
+        "title": "레거시 정산 모듈 리팩토링 회의록",
+        "source": "회의록_2024_04_20.md",
+        "category": "회의록",
+        "scope": "company",
+    },
+    {
+        "content": """# 풀스택 개발자 긴급 채용 회의록
+
+일시: 2024년 4월 25일
+참석자: 장우진(HR 팀장), 강유진(HR 담당), 이지현(개발팀 리드)
+
+[회의 배경]
+Q2 프로젝트 일정이 촉박한 상황에서 개발 인력이 부족하여 풀스택 개발자 긴급 채용이 필요합니다.
+현재 팀원들의 업무 강도가 높아 추가 인력 없이는 일정 준수가 어려운 상황입니다.
+
+[논의 내용]
+장우진: 연봉 책정이 너무 낮으면 좋은 인재 확보가 어렵습니다. 시장 평균보다 10% 높게 책정하는 게 좋겠습니다.
+강유진: 시장 상황을 봐서는 지금이 적기입니다. 경쟁사들도 채용을 많이 하고 있어서 빨리 진행해야 합니다.
+이지현: 업무 강도 고려하면 2명 채용이 맞을 것 같습니다. 1명으로는 부족할 것 같습니다.
+장우진: 원격 근무 가능 여부도 명시하면 좋겠어요. 요즘 원격 근무 가능한 회사를 선호하는 지원자가 많습니다.
+강유진: 채용 공고에 기술 스택과 프로젝트 내용을 구체적으로 명시하면 적합한 지원자를 받을 수 있을 것 같습니다.
+
+[결정 사항]
+1. 풀스택 개발자 2명 채용 진행
+2. 급여 협상 범위: 시장 평균 대비 110% 수준
+3. 주 2일 원격 근무 가능으로 공고
+4. 기술 스택 명시: React, Node.js, PostgreSQL, AWS
+
+[Action Items]
+- 장우진: 채용 공고 작성 및 게시 (기한: 3일 이내, 우선순위: 높음)
+- 강유진: 채용 플랫폼 등록 및 헤드헌터 컨택 (기한: 3일 이내, 우선순위: 높음)
+- 이지현: 기술 면접 질문지 준비 (기한: 1주일 이내, 우선순위: 중간)
+- 장우진: 온보딩 프로세스 점검 (기한: 2주 이내, 우선순위: 낮음)
+
+[예상 일정]
+- 채용 공고 게시: 4월 28일
+- 서류 마감: 5월 12일
+- 1차 면접: 5월 15-19일
+- 최종 합격: 5월 26일
+- 입사: 6월 3일
+
+[예산]
+- 연봉: 각 7,000만원 (총 1억 4천만원)
+- 채용 비용: 500만원
+- 온보딩 비용: 200만원""",
+        "title": "풀스택 개발자 긴급 채용 회의록",
+        "source": "회의록_2024_04_25.md",
+        "category": "회의록",
+        "scope": "company",
+    },
 ]
 
 
@@ -134,8 +273,13 @@ def main():
         print("ERROR: QDRANT_URL 또는 QDRANT_API_KEY가 .env에 설정되지 않았습니다.")
         return
 
+    # 전체 문서 합치기
+    all_documents = EXAMPLE_DOCUMENTS + MEETING_DOCUMENTS
+
     print(f"\nQdrant URL: {qdrant_url}")
-    print(f"문서 개수: {len(EXAMPLE_DOCUMENTS)}")
+    print(f"규정 문서 개수: {len(EXAMPLE_DOCUMENTS)}")
+    print(f"회의록 문서 개수: {len(MEETING_DOCUMENTS)}")
+    print(f"전체 문서 개수: {len(all_documents)}")
 
     # 1. Qdrant VectorStore 초기화
     print("\n[Step 1] Qdrant VectorStore 초기화...")
@@ -144,6 +288,18 @@ def main():
         api_key=qdrant_api_key,
         collection_name="documents",
     )
+
+    # 기존 컬렉션이 있으면 삭제 (초기화)
+    try:
+        vector_store.client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
+        collections = vector_store.client.get_collections().collections
+        if any(c.name == "documents" for c in collections):
+            print("  기존 컬렉션 삭제 중...")
+            vector_store.delete_collection()
+    except Exception as e:
+        print(f"  컬렉션 삭제 중 오류 (무시): {e}")
+
+    # 새로 초기화
     vector_store.initialize(vector_size=768)
 
     # 2. 임베딩 모델 로드
@@ -153,7 +309,7 @@ def main():
 
     # 3. 문서 임베딩 생성
     print("\n[Step 3] 문서 임베딩 생성...")
-    documents = [doc["content"] for doc in EXAMPLE_DOCUMENTS]
+    documents = [doc["content"] for doc in all_documents]
     embeddings = embedding_model.encode(documents)
     print(f"  임베딩 생성 완료: {len(embeddings)}개 벡터 (차원: {len(embeddings[0])})")
 
@@ -165,7 +321,7 @@ def main():
             "category": doc["category"],
             "scope": doc["scope"],
         }
-        for doc in EXAMPLE_DOCUMENTS
+        for doc in all_documents
     ]
 
     # 5. Qdrant에 저장
@@ -183,17 +339,29 @@ def main():
 
     # 7. 테스트 검색
     print("\n[Step 6] 테스트 검색...")
-    test_query = "연차 휴가는 몇 일 받을 수 있나요?"
-    print(f"  질의: '{test_query}'")
 
-    query_embedding = embedding_model.encode([test_query])[0]
+    # 테스트 1: 규정 검색
+    test_query_1 = "연차 휴가는 몇 일 받을 수 있나요?"
+    print(f"\n  [테스트 1] 질의: '{test_query_1}'")
+    query_embedding = embedding_model.encode([test_query_1])[0]
     results = vector_store.search(query_embedding, top_k=3)
-
-    print(f"\n  검색 결과 (Top 3):")
+    print(f"  검색 결과 (Top 3):")
     for i, result in enumerate(results, 1):
         print(f"    {i}. [{result['title']}] (유사도: {result['score']:.4f})")
         print(f"       출처: {result['source']}")
         print(f"       내용: {result['content'][:100]}...")
+        print()
+
+    # 테스트 2: 회의록 검색
+    test_query_2 = "코드리뷰 속도 개선 회의에서 어떤 내용이 논의되었나요?"
+    print(f"\n  [테스트 2] 질의: '{test_query_2}'")
+    query_embedding = embedding_model.encode([test_query_2])[0]
+    results = vector_store.search(query_embedding, top_k=3)
+    print(f"  검색 결과 (Top 3):")
+    for i, result in enumerate(results, 1):
+        print(f"    {i}. [{result['title']}] (유사도: {result['score']:.4f})")
+        print(f"       출처: {result['source']}")
+        print(f"       내용: {result['content'][:150]}...")
         print()
 
     print("="*60)
