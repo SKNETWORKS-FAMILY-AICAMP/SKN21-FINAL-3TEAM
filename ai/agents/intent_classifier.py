@@ -16,6 +16,7 @@ Intent Classification 모델 (팀원 A 담당)
 
 import json
 import logging
+import os
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -103,9 +104,9 @@ class IntentClassifier:
         """
         self.load_model()
 
-        # fallback: 모델 없으면 임베딩 기반 분류
+        # fallback: 모델 없으면 LLM 기반 분류
         if self.model is None or self.tokenizer is None:
-            return self._embedding_based_predict(text)
+            return self._llm_based_predict(text)
 
         # 전처리
         try:
@@ -136,6 +137,68 @@ class IntentClassifier:
         intent = self.id2label.get(pred_id, "general")
 
         return {"intent": intent, "confidence": round(confidence, 4)}
+
+    def _llm_based_predict(self, text: str) -> dict:
+        """LLM 기반 intent 분류 (Solar API)"""
+        import time as _time
+        _t = _time.time()
+        print(f"[IntentClassifier] _llm_based_predict 시작 | text='{text}'")
+        api_key = os.getenv("SOLAR_API_KEY")
+        print(f"[IntentClassifier] SOLAR_API_KEY 존재: {bool(api_key)}, 값 앞4자: {api_key[:4] if api_key else 'None'}")
+        if not api_key:
+            print("[IntentClassifier] SOLAR_API_KEY 없음 → 임베딩 fallback")
+            return self._embedding_based_predict(text)
+
+        try:
+            from openai import OpenAI
+
+            print("[IntentClassifier] Solar API 호출 중...")
+            client = OpenAI(
+                api_key=api_key,
+                base_url="https://api.upstage.ai/v1/solar",
+            )
+
+            response = client.chat.completions.create(
+                model="solar-1-mini-chat",
+                messages=[
+                    {"role": "system", "content": """사용자 입력의 의도를 분류하세요.
+
+                카테고리:
+                - judgment: 규정/규칙 기반 판단 요청 (예: "이거 규정 위반이야?", "이렇게 해도 돼?")
+                - doc_search: 문서 검색, 규정 조회 (예: "연차 규정 알려줘", "회의 내용 찾아줘")
+                - doc_generate: 보고서/제안서/JD 작성 (예: "보고서 작성해줘", "제안서 만들어줘")
+                - meeting_generate: 회의록 작성/요약 (예: "회의록 작성해줘", "회의록 요약해줘")
+                - schedule_add: 일정 추가/등록 (예: "내일 2시 회의 일정 추가해줘", "스케줄 등록해줘")
+                - schedule_view: 일정 조회/확인 (예: "오늘 일정 보여줘", "이번 주 스케줄 확인해줘")
+                - general: 위 카테고리에 해당하지 않는 일반 질문
+
+                반드시 아래 JSON 형식으로만 응답하세요:
+                {"intent": "카테고리명", "confidence": 0.0~1.0}"""},
+                                    {"role": "user", "content": text},
+                ],
+                temperature=0.1,
+                response_format={"type": "json_object"},
+            )
+
+            raw_content = response.choices[0].message.content
+            print(f"[IntentClassifier] Solar API 응답 원문: {raw_content}")
+            result = json.loads(raw_content)
+            intent = result.get("intent", "general")
+
+            # 유효하지 않은 intent가 오면 general로 처리
+            if intent not in INTENT_LABELS:
+                print(f"[IntentClassifier] 유효하지 않은 intent: {intent} → general로 변환")
+                intent = "general"
+
+            confidence = float(result.get("confidence", 0.8))
+            print(f"[IntentClassifier] 최종 결과: intent={intent}, confidence={confidence:.4f} ({_time.time()-_t:.2f}s)")
+            return {"intent": intent, "confidence": round(confidence, 4)}
+
+        except Exception as e:
+            print(f"[IntentClassifier] !!! LLM 호출 실패: {e}")
+            import traceback
+            traceback.print_exc()
+            return self._embedding_based_predict(text)
 
     def _get_example_embeddings(self):
         """예제 임베딩 캐시 가져오기 (한 번만 계산)"""

@@ -4,6 +4,7 @@
 
 import json
 import logging
+import time
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -53,15 +54,18 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
 
     async def event_generator():
         try:
-            logger.info(f"[Chat] Starting stream for user {user.id}: '{request.message}'")
+            _t_total = time.time()
+            print(f"\n{'='*60}")
+            print(f"[Chat] 요청 수신 | user_id={user.id} | message='{request.message}'")
+            print(f"{'='*60}")
 
             # lazy import (AI 의존성 없을 때 서버 기동 안 깨지게)
             from ai.agents.orchestrator import get_graph
 
+            print("[Chat] 그래프 로딩 중...")
             graph = get_graph()
             initial_state = _build_initial_state(request, user, stream_mode=True)
-
-            logger.info(f"[Chat] Initial state: intent={initial_state.get('intent')}, user_input={initial_state.get('user_input')}")
+            print(f"[Chat] 그래프 로딩 완료. astream 시작...")
 
             # astream으로 노드별 실시간 이벤트 전송
             final_state = {}
@@ -69,21 +73,28 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
             async for event in graph.astream(initial_state):
                 # event = {"node_name": {updated_state_fields}}
                 for node_name, node_output in event.items():
+                    _t_node = time.time() - _t_total
+                    print(f"\n[Chat] >>> 노드 이벤트 수신: {node_name} (+{_t_node:.2f}s)")
+                    print(f"[Chat]     output keys: {list(node_output.keys())}")
                     final_state.update(node_output)
 
                     if node_name == "classify_intent":
                         # 1. Intent 분류 결과 즉시 전송
                         intent = node_output.get("intent", "general")
                         confidence = node_output.get("confidence", 0.0)
-                        yield f"data: {json.dumps({'type': 'intent', 'intent': intent, 'confidence': confidence, 'agent_type': _get_agent_type(intent)}, ensure_ascii=False)}\n\n"
-                        yield f"data: {json.dumps({'type': 'status', 'value': f'{_get_agent_type(intent)} 처리 중...'}, ensure_ascii=False)}\n\n"
+                        agent_type = _get_agent_type(intent)
+                        print(f"[Chat] Intent 분류 결과: intent={intent}, confidence={confidence:.4f}, agent_type={agent_type}")
+                        yield f"data: {json.dumps({'type': 'intent', 'intent': intent, 'confidence': confidence, 'agent_type': agent_type}, ensure_ascii=False)}\n\n"
+                        yield f"data: {json.dumps({'type': 'status', 'value': f'{agent_type} 처리 중...'}, ensure_ascii=False)}\n\n"
 
                     elif node_name == "general_response":
                         # 2-1. 일반 응답 스트리밍 (Solar API)
+                        print("[Chat] general_response 노드 진입 → Solar API 스트리밍 시작")
                         import os as _os
                         from openai import AsyncOpenAI
 
                         solar_key = _os.getenv("SOLAR_API_KEY")
+                        print(f"[Chat] SOLAR_API_KEY 존재: {bool(solar_key)}")
 
                         if not solar_key:
                             yield f"data: {json.dumps({'type': 'error', 'message': 'SOLAR_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
@@ -117,6 +128,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
                                 yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
 
                         # 최종 응답 저장
+                        print(f"[Chat] general_response 스트리밍 완료. 응답 길이: {len(full_response)}자")
                         final_state["agent_response"] = {
                             "type": "general",
                             "message": full_response,
@@ -125,6 +137,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
                     elif node_name == "document_agent":
                         # 2-2. 문서 Agent 스트리밍
                         agent_response = node_output.get("agent_response", {})
+                        print(f"[Chat] document_agent 노드 진입. stream_pending={agent_response.get('stream_pending')}")
 
                         if agent_response.get("stream_pending"):
                             # RAG 검색은 완료, LLM 답변만 스트리밍
@@ -169,11 +182,25 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
                         else:
                             yield f"data: {json.dumps({'type': 'status', 'value': 'document_agent 처리 완료'}, ensure_ascii=False)}\n\n"
 
+                    elif node_name == "schedule_agent":
+                        # 2-3. 일정 Agent (스트리밍 불필요 — JSON 파싱 + API 호출 결과)
+                        agent_response = node_output.get("agent_response", {})
+                        print(f"[Chat] schedule_agent 노드 완료. response: {agent_response}")
+                        yield f"data: {json.dumps({'type': 'status', 'value': 'schedule_agent 처리 완료'}, ensure_ascii=False)}\n\n"
+
                     elif node_name == "format_response":
                         # 3. 최종 응답 전송
                         agent_response = node_output.get("agent_response", final_state.get("agent_response", {}))
                         intent = final_state.get("intent", "general")
                         message = agent_response.get("message", "")
+
+                        # message가 비어있으면 preview/summary에서 가져오기
+                        if not message:
+                            message = agent_response.get("preview", "") or agent_response.get("summary", "")
+                            if message:
+                                agent_response["message"] = message
+
+                        print(f"[Chat] format_response 노드. intent={intent}, message 길이={len(message)}자")
 
                         # 이미 스트리밍한 경우 token 전송 건너뛰기
                         if not agent_response.get("stream_pending") and intent not in ("general", "doc_search"):
@@ -186,10 +213,15 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
                         yield f"data: {json.dumps({'type': 'status', 'value': f'{node_name} 처리 완료'}, ensure_ascii=False)}\n\n"
 
             # 4. 완료
+            _t_done = time.time() - _t_total
+            print(f"[Chat] 스트림 완료 ✓ (총 {_t_done:.2f}s)")
+            print(f"{'='*60}\n")
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
         except Exception as e:
-            logger.error(f"[Chat] Stream error: {e}", exc_info=True)
+            print(f"[Chat] !!! 스트림 에러: {e}")
+            import traceback
+            traceback.print_exc()
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
