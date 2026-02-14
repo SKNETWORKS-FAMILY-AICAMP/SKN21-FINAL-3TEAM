@@ -5,8 +5,12 @@
   - 자연어 → 구조화 일정 데이터 파싱 (Solar API json_mode)
   - Google Calendar 일정 등록 (schedule_add)
   - Google Calendar 일정 조회 (schedule_view)
+  - 자연어 → 구조화 일정 데이터 파싱 (Solar API json_mode)
+  - Google Calendar 일정 등록 (schedule_add)
+  - Google Calendar 일정 조회 (schedule_view)
 
 입출력:
+  Input: AgentState (user_input, intent, user_id)
   Input: AgentState (user_input, intent, user_id)
   Output: AgentState (agent_response + google_services_result 채움)
 
@@ -18,9 +22,12 @@ schedule_add 응답 형식:
           "start_time": "2025-02-10T09:00:00",
           "end_time": "2025-02-10T10:00:00",
           "description": "..."
+          "description": "..."
       },
       "google_services": {
           "calendar_synced": true,
+          "event_id": "...",
+          "html_link": "..."
           "event_id": "...",
           "html_link": "..."
       },
@@ -44,12 +51,15 @@ from ai.agents.state import AgentState
 
 logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
+
 
 async def schedule_agent(state: AgentState) -> AgentState:
     """
     일정 Agent 노드 함수 (LangGraph 노드 인터페이스)
 
     intent에 따라 분기:
+      - schedule_add: 일정 추가 + Google Calendar 연동
       - schedule_add: 일정 추가 + Google Calendar 연동
       - schedule_view: 일정 조회
     """
