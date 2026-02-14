@@ -187,3 +187,22 @@
 - 3모델 비교 분석 + 차트 생성
 - 실험 6: 전처리 ablation + seed 반복
 - 최종 모델 확정 → `ai/models/intent_classifier/`에 배포 + TRAINING_LOG.md 업데이트
+
+---
+
+## 2026-02-13 (목)
+
+**실험 5 최종 모델 배포:**
+- 3모델 비교 결과 확정: BERT(Adv F1 0.9015) > RoBERTa(0.899) > KoELECTRA(0.8856)
+- `train_best_bert.py` 배포용 학습 스크립트 작성 → RunPod에서 BERT best config 1회 학습
+  - config: klue/bert-base, epochs=5, lr=2e-5, batch=16, warmup=0.0
+- `model.safetensors`(423MB) RunPod → 로컬 다운로드 후 `ai/models/intent_classifier/`에 배치
+- `config.json` RoBERTa → BertForSequenceClassification으로 변경
+- `model_info.json` klue/bert-base + best config/metrics 추가
+- 팀원 충돌 QA 통과 (다른 팀원 ai/models/ 미접근 확인)
+- intent_classifier.py 코드 수정 0줄 — fallback 모드에서 실제 모델 추론으로 전환 완료
+
+**다음 할 일:**
+- 실험 6: 전처리 ablation + seed 반복 (내일)
+- TRAINING_LOG.md 실험 5 최종 결과 업데이트
+- #6 오케스트레이터 마무리
