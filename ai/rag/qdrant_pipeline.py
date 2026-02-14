@@ -4,16 +4,23 @@ Qdrant 기반 RAG 파이프라인
 파이프라인:
   사용자 질문
   → BM25 검색 (Top 15) + Vector 검색 (Top 15)
-  → 합산 (Top 20)
-  → Reranker 관련도 재정렬 (Top 5)
+  → RRF 합산 (Top K)
   → AgentState.context에 저장 → Agent가 LLM에 전달
+
+NOTE: Reranker(Cross-Encoder)는 성능 병목(~15초)으로 비활성화됨.
+      BM25+Vector 하이브리드 검색의 RRF 머징으로 충분한 품질 확보.
 """
+import logging
 import os
+import time
+
 from dotenv import load_dotenv
+
 from ai.rag.embeddings import EmbeddingModel
 from ai.rag.hybrid_search import HybridSearcher
-from ai.rag.reranker import Reranker
 from ai.rag.qdrant_store import QdrantVectorStore
+
+logger = logging.getLogger(__name__)
 
 # 싱글턴 인스턴스
 _pipeline_instance: "QdrantRAGPipeline | None" = None
@@ -33,7 +40,6 @@ class QdrantRAGPipeline:
             api_key=qdrant_api_key,
             collection_name=collection_name,
         )
-        self.reranker = Reranker()
         self.searcher = HybridSearcher(
             vector_store=self.vector_store,
             embedding_model=self.embedding_model,
@@ -41,10 +47,22 @@ class QdrantRAGPipeline:
 
     def initialize(self):
         """모델 로드 + Qdrant 초기화 + BM25 인덱스 구축"""
+        _t = time.time()
+        print("[RAGPipeline] initialize 시작...")
+
+        _t_emb = time.time()
         self.embedding_model.load_model()
-        self.reranker.load_model()
+        print(f"[RAGPipeline]   임베딩 모델 로드: {time.time()-_t_emb:.2f}s")
+
+        _t_qdrant = time.time()
         self.vector_store.initialize(vector_size=768)
+        print(f"[RAGPipeline]   Qdrant 초기화: {time.time()-_t_qdrant:.2f}s")
+
+        _t_bm25 = time.time()
         self.searcher.build_bm25_index()
+        print(f"[RAGPipeline]   BM25 인덱스 구축: {time.time()-_t_bm25:.2f}s")
+
+        print(f"[RAGPipeline] initialize 완료: {time.time()-_t:.2f}s")
         return self
 
     def add_documents(
@@ -78,7 +96,7 @@ class QdrantRAGPipeline:
         self.searcher.build_bm25_index()
 
     def retrieve(self, query: str, user_id: int | None = None, top_k: int = 5) -> list[dict]:
-        """검색 + Reranking
+        """하이브리드 검색 (BM25 + Vector → RRF 합산)
 
         Args:
             query: 사용자 질문
@@ -86,18 +104,16 @@ class QdrantRAGPipeline:
             top_k: 최종 반환 문서 수
 
         Returns:
-            list of {"content": str, "source": str, "title": str, "score": float, ...}
+            list of {"content": str, "source": str, "score": float, ...}
         """
-        # 1. Hybrid Search (BM25 + Vector) → Top 20
-        search_results = self.searcher.search(query=query, user_id=user_id, top_k=20)
+        _t = time.time()
+        print(f"[RAGPipeline] retrieve 시작 | query='{query[:50]}', top_k={top_k}")
 
-        if not search_results:
-            return []
+        # Hybrid Search (BM25 + Vector) → RRF 합산 → Top K
+        search_results = self.searcher.search(query=query, user_id=user_id, top_k=top_k)
+        print(f"[RAGPipeline] retrieve 완료 ({time.time()-_t:.2f}s) | {len(search_results)}개 문서 검색됨")
 
-        # 2. Reranker → Top K
-        reranked = self.reranker.rerank(query=query, documents=search_results, top_k=top_k)
-
-        return reranked
+        return search_results
 
 
 def get_qdrant_pipeline() -> QdrantRAGPipeline:

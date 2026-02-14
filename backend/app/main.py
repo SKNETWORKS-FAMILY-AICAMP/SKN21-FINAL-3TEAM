@@ -47,6 +47,25 @@ app.add_middleware(
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 
+@app.on_event("startup")
+async def startup_preload():
+    """서버 시작 시 모델 pre-loading (첫 요청 지연 방지)"""
+    import time
+
+    print("[Startup] 모델 pre-loading 시작...")
+    _t = time.time()
+
+    try:
+        from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+
+        get_qdrant_pipeline()
+        print(f"[Startup] RAG 파이프라인 로드 완료 ({time.time()-_t:.2f}s)")
+    except Exception as e:
+        print(f"[Startup] RAG 파이프라인 로드 실패 (서비스는 계속 가능): {e}")
+
+    print(f"[Startup] 모델 pre-loading 완료 (총 {time.time()-_t:.2f}s)")
+
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}

@@ -18,22 +18,22 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# 한국어 형태소 분석기 (konlpy + Java 사용 가능 시 Okt, 아니면 공백 분리 fallback)
-_okt = None
+# 한국어 형태소 분석기 (kiwipiepy 사용, 없으면 공백 분리 fallback)
+_kiwi = None
 try:
-    from konlpy.tag import Okt
-    _okt = Okt()
-    logger.info("konlpy Okt 형태소 분석기 로드 완료")
+    from kiwipiepy import Kiwi
+    _kiwi = Kiwi()
+    logger.info("kiwipiepy 형태소 분석기 로드 완료")
 except Exception:
-    logger.warning("konlpy를 사용할 수 없습니다 (Java 미설치 등). 공백 기반 토크나이징으로 대체합니다.")
+    logger.warning("kiwipiepy를 사용할 수 없습니다. 공백 기반 토크나이징으로 대체합니다.")
 
 
 def tokenize(text: str) -> list[str]:
-    """한국어 토크나이저: Okt 형태소 분석 (fallback: 공백 분리)"""
+    """한국어 토크나이저: kiwipiepy 형태소 분석 (fallback: 공백 분리)"""
     if not text:
         return []
-    if _okt is not None:
-        return _okt.morphs(text, stem=True)
+    if _kiwi is not None:
+        return [token.form for token in _kiwi.tokenize(text)]
     return text.split()
 
 
