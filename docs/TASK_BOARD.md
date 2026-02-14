@@ -98,13 +98,13 @@
 | #3 | **AgentState 필드 확정** | `ai/agents/state.py` 필드를 경은/승언/혜빈과 합의 | BLOCKER |
 
 **체크리스트:**
-- [ ] Chat API 스키마 (SSE 스트리밍 포함) 확정
-- [ ] Documents / Meetings / Schedules CRUD 스키마 확정
-- [ ] **문서 생성/다운로드 API 스키마 확정** (FR-DOC-008)
-- [ ] **파싱 상태 조회 API 스키마 확정** (NF-PRF-002)
-- [ ] Auth API 스키마 (혜빈과 협의) + **비밀번호 재설정 API**
-- [ ] AgentState 필드 + 각 Agent 응답 형식 확정 (doc_generate 응답 포함)
-- [ ] Docker + GitHub 세팅 완료 확인
+- [x] Chat API 스키마 (SSE 스트리밍 포함) 확정
+- [x] Documents / Meetings / Schedules CRUD 스키마 확정
+- [x] **문서 생성/다운로드 API 스키마 확정** (FR-DOC-008)
+- [x] **파싱 상태 조회 API 스키마 확정** (NF-PRF-002)
+- [x] Auth API 스키마 (혜빈과 협의) + **비밀번호 재설정 API**
+- [x] AgentState 필드 + 각 Agent 응답 형식 확정 (doc_generate 응답 포함)
+- [x] Docker + GitHub 세팅 완료 확인
 
 ---
 
@@ -115,11 +115,11 @@
 | #7 | **모델 3개 베이스라인 비교** | Qwen3 / Kanana / EXAONE 동일 테스트셋 비교 | BLOCKER |
 
 **체크리스트:**
-- [ ] 테스트 데이터셋 50~100개 준비
-- [ ] Qwen3-8B 벤치마크 (한국어, 규정해석, 판단형식, 속도)
-- [ ] Kanana-8B 벤치마크
-- [ ] EXAONE 3.5-7.8B 벤치마크
-- [ ] 비교 리포트 작성 → **베이스 모델 확정** (승언에게 공유)
+- [x] 테스트 데이터셋 50~100개 준비
+- [x] Qwen3-8B 벤치마크 (한국어, 규정해석, 판단형식, 속도)
+- [x] Kanana-8B 벤치마크
+- [x] EXAONE 3.5-7.8B 벤치마크
+- [x] 비교 리포트 작성 → **베이스 모델 확정** (승언에게 공유)
 
 ---
 
@@ -133,8 +133,8 @@
 - [ ] Docling 설치 + 디지털 PDF 파싱 테스트
 - [ ] PaddleOCR 설치 + 스캔 문서 OCR 테스트
 - [ ] 실제 규정 문서로 품질 확인 (테이블, 조항 구조)
-- [ ] **문서 템플릿 구조 설계** (`ai/templates/` — 회의록/보고서/JD/제안서)
-- [ ] **텍스트 추출기 구현** (PDF/DOCX → 텍스트, PyMuPDF + python-docx)
+- [x] **문서 템플릿 구조 설계** (`ai/templates/` — 회의록/보고서/JD/제안서)
+- [x] **텍스트 추출기 구현** (PDF/DOCX → 텍스트, PyMuPDF + python-docx)
 
 ---
 
@@ -145,12 +145,12 @@
 | #19 | **DB 스키마 확정 + Alembic 마이그레이션** | 11개 테이블 ERD, 첫 마이그레이션 | BLOCKER |
 
 **체크리스트:**
-- [ ] `docker-compose up -d db redis`로 PostgreSQL 실행
-- [ ] `backend/app/models/*.py` 11개 모델 필드 검토/수정 (google_sheet_trackers 포함)
-- [ ] ERD 다이어그램 작성
-- [ ] `alembic revision --autogenerate -m "Initial tables"`
-- [ ] `alembic upgrade head`
-- [ ] Google Cloud Console OAuth 설정 시작 (Calendar + Tasks + Gmail + Sheets scope)
+- [x] `docker-compose up -d db redis`로 PostgreSQL 실행
+- [x] `backend/app/models/*.py` 11개 모델 필드 검토/수정 (google_sheet_trackers 포함)
+- [x] ERD 다이어그램 작성
+- [x] `alembic revision --autogenerate -m "Initial tables"`
+- [x] `alembic upgrade head`
+- [x] Google Cloud Console OAuth 설정 시작 (Calendar + Tasks + Gmail + Sheets scope)
 
 ---
 
@@ -161,9 +161,9 @@
 | #24 | **디자인 시스템 정의** | Tailwind 컬러 토큰 + 컴포넌트 스타일 확정 | 높음 |
 
 **체크리스트:**
-- [ ] `cd frontend && npm install && npm run dev` 확인
-- [ ] 디자인 시스템 컬러 토큰 확정 (아래 실제 적용 색상 참고)
-- [ ] 컴포넌트 스타일 확정 (카드, 뱃지, 버튼, 인풋)
+- [x] `cd frontend && npm install && npm run dev` 확인
+- [x] 디자인 시스템 컬러 토큰 확정 (아래 실제 적용 색상 참고)
+- [x] 컴포넌트 스타일 확정 (카드, 뱃지, 버튼, 인풋)
 
 **적용된 컬러 팔레트:**
 
@@ -209,10 +209,10 @@
 | #4 | **Intent 학습 데이터 구축** | 7개 카테고리 × 200문장, Claude/GPT-4 증강 |
 
 **체크리스트:**
-- [ ] 카테고리별 시드 문장 30개씩 직접 작성
-- [ ] Claude/GPT-4로 증강 → 카테고리별 200개
-- [ ] 품질 검증 (중복 제거, 라벨 정확성)
-- [ ] train/eval 분할 (85:15)
+- [x] 카테고리별 시드 문장 30개씩 직접 작성
+- [x] Claude/GPT-4로 증강 → 카테고리별 200개
+- [x] 품질 검증 (중복 제거, 라벨 정확성)
+- [x] train/eval 분할 (85:15)
 
 ---
 
@@ -224,11 +224,11 @@
 | #8 | **[B-2] RAG 파이프라인 구축** | ChromaDB + BM25 + Vector + Reranker |
 
 **체크리스트:**
-- [ ] LLM API 공통 모듈 작성 (나중에 sLLM으로 교체 가능한 구조)
-- [ ] judgment_agent LLM API 연동 (규정 판단 + Q&A)
-- [ ] ChromaDB 세팅 + 규정 문서 임베딩
-- [ ] BM25 + Vector 하이브리드 검색 구현
-- [ ] Reranker 연동
+- [x] LLM API 공통 모듈 작성 (나중에 sLLM으로 교체 가능한 구조)
+- [x] judgment_agent LLM API 연동 (규정 판단 + Q&A)
+- [x] ChromaDB 세팅 + 규정 문서 임베딩
+- [x] BM25 + Vector 하이브리드 검색 구현
+- [x] Reranker 연동
 
 ---
 
@@ -239,7 +239,7 @@
 | #40 | **[C-7] document_agent LLM API 연동** | 문서 요약/생성/검색/리스크 감지 LLM 연동 |
 
 **체크리스트:**
-- [ ] document_agent LLM API 연동 (동적 템플릿 필드 방식)
+- [x] document_agent LLM API 연동 (동적 템플릿 필드 방식)
 - [ ] 문서 요약: 텍스트 추출 → 필드 목록 삽입 → LLM → JSON 파싱
 - [ ] 문서 생성: 템플릿 필드 조회 → LLM → JSON 파싱 → Template 렌더링
 - [ ] 문서 검색: RAG 검색결과 + 질문 → LLM → 정리된 답변
@@ -256,14 +256,14 @@
 | #20 | **JWT 인증 시스템** | 로그인/회원가입/토큰 관리 |
 
 **체크리스트:**
-- [ ] 비밀번호 해싱 (bcrypt)
-- [ ] JWT 토큰 생성/검증
-- [ ] 회원가입 API (`/api/v1/auth/register`)
-- [ ] 로그인 API (`/api/v1/auth/login`)
-- [ ] **비밀번호 찾기/변경 API** (`/api/v1/auth/password-reset/*`)
-- [ ] `get_current_user` 의존성 완성
-- [ ] Google OAuth 연결 시작
-- [ ] **문서 업로드 API + 텍스트 추출 연동**
+- [x] 비밀번호 해싱 (bcrypt)
+- [x] JWT 토큰 생성/검증
+- [x] 회원가입 API (`/api/v1/auth/register`)
+- [x] 로그인 API (`/api/v1/auth/login`)
+- [x] **비밀번호 찾기/변경 API** (`/api/v1/auth/password-reset/*`)
+- [x] `get_current_user` 의존성 완성
+- [x] Google OAuth 연결 시작
+- [x] **문서 업로드 API + 텍스트 추출 연동**
 
 ---
 
@@ -275,12 +275,12 @@
 | #26 | **로그인/회원가입 UI** | LoginForm, RegisterForm + Auth 연동 |
 
 **체크리스트:**
-- [ ] Layout / Sidebar / Header 완성
-- [ ] 대시보드: StatCard, RecentQueries, ActionItemList, ActivityTimeline, RiskAlert
-- [ ] **대시보드 추가: TopQueries (월/주/일), QuickSearch, AutoScanBadge**
-- [ ] LoginForm / RegisterForm / **PasswordReset**
-- [ ] Zustand authStore + useAuth 훅 연동
-- [ ] Mock 데이터로 UI 확인
+- [x] Layout / Sidebar / Header 완성
+- [x] 대시보드: StatCard, RecentQueries, ActionItemList, ActivityTimeline, RiskAlert
+- [x] **대시보드 추가: TopQueries (월/주/일), QuickSearch, AutoScanBadge**
+- [x] LoginForm / RegisterForm / **PasswordReset**
+- [x] Zustand authStore + useAuth 훅 연동
+- [x] Mock 데이터로 UI 확인
 
 ---
 
