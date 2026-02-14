@@ -5,8 +5,12 @@
   - 자연어 → 구조화 일정 데이터 파싱 (Solar API json_mode)
   - Google Calendar 일정 등록 (schedule_add)
   - Google Calendar 일정 조회 (schedule_view)
+  - 자연어 → 구조화 일정 데이터 파싱 (Solar API json_mode)
+  - Google Calendar 일정 등록 (schedule_add)
+  - Google Calendar 일정 조회 (schedule_view)
 
 입출력:
+  Input: AgentState (user_input, intent, user_id)
   Input: AgentState (user_input, intent, user_id)
   Output: AgentState (agent_response + google_services_result 채움)
 
@@ -18,9 +22,12 @@ schedule_add 응답 형식:
           "start_time": "2025-02-10T09:00:00",
           "end_time": "2025-02-10T10:00:00",
           "description": "..."
+          "description": "..."
       },
       "google_services": {
           "calendar_synced": true,
+          "event_id": "...",
+          "html_link": "..."
           "event_id": "...",
           "html_link": "..."
       },
@@ -37,9 +44,12 @@ schedule_view 응답 형식:
 import json
 import logging
 import os
+import time
 from datetime import datetime, timedelta
 
 from ai.agents.state import AgentState
+
+logger = logging.getLogger(__name__)
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +60,13 @@ async def schedule_agent(state: AgentState) -> AgentState:
 
     intent에 따라 분기:
       - schedule_add: 일정 추가 + Google Calendar 연동
+      - schedule_add: 일정 추가 + Google Calendar 연동
       - schedule_view: 일정 조회
     """
     intent = state.get("intent", "").lower()
     user_input = state.get("user_input", "")
     user_id = state.get("user_id")
 
-    import time
     _t_agent = time.time()
     print(f"[ScheduleAgent] 진입 | intent={intent}, user_input='{user_input}', user_id={user_id}")
 
@@ -262,10 +272,11 @@ def _parse_view_request(user_input: str) -> dict:
 
 규칙:
 - "오늘 일정" → 오늘 00:00:00Z ~ 오늘 23:59:59Z
-- "이번 주 일정" → 이번 주 월요일 00:00:00Z ~ 일요일 23:59:59Z
 - "내일 일정" → 내일 00:00:00Z ~ 내일 23:59:59Z
-- "이번 달 일정" → 이번 달 1일 ~ 말일
-- 명확하지 않으면 오늘 기준 앞뒤 7일로 설정
+- "이번 주 일정" → 이번 주 월요일 00:00:00Z ~ 일요일 23:59:59Z
+- "다음 주 일정" → 다음 주 월요일 00:00:00Z ~ 일요일 23:59:59Z
+- "이번 달 일정" → 이번 달 1일 00:00:00Z ~ 말일 23:59:59Z
+- "최근 일정", "일정 조회" 등 명확하지 않으면 → 오늘 00:00:00Z ~ 오늘로부터 +30일 23:59:59Z (향후 한 달)
 - 시간대는 UTC(Z) 형식으로 출력 (한국시간 KST = UTC+9 이므로 -9시간 보정)
 - 반드시 유효한 JSON만 출력하세요"""
 
