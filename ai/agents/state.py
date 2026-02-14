@@ -43,3 +43,6 @@ class AgentState(TypedDict):
 
     # ── Google 연동 (혜빈) ──
     google_services_result: Optional[dict]  # schedule_add 시 Google 서비스 결과
+
+    # ── 스트리밍 제어 ──
+    stream_mode: Optional[bool]             # True이면 LLM 호출을 chat.py에서 직접 스트리밍 처리
