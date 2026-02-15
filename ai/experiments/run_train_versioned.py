@@ -17,9 +17,7 @@
 
 import argparse
 import json
-import os
 import random
-import time
 import shutil
 import torch
 import numpy as np
@@ -377,7 +375,7 @@ def main():
     print("=" * 60)
 
     # 1. 데이터 구성
-    print(f"\n[1/4] 데이터 구성...")
+    print("\n[1/4] 데이터 구성...")
     combined = build_dataset(version)
     train_data, eval_data = split_train_eval(combined)
     print(f"\n  Train: {len(train_data)}개, Eval: {len(eval_data)}개")
@@ -391,7 +389,7 @@ def main():
         results, report, tokenizer, model, grid_results = grid_search(
             train_data, eval_data, version,
         )
-        print(f"\n  Grid 결과:")
+        print("\n  Grid 결과:")
         for gr in grid_results:
             print(f"    epochs={gr['config']['epochs']}, lr={gr['config']['lr']}"
                   f" → F1={gr['eval_f1']}")
@@ -401,21 +399,21 @@ def main():
             train_data, eval_data, model_dir,
         )
 
-    print(f"\n[3/4] Eval 결과:")
+    print("\n[3/4] Eval 결과:")
     print(f"  Accuracy:    {results['eval_accuracy']:.4f}")
     print(f"  F1 (macro):  {results['eval_f1_macro']:.4f}")
     print(f"  F1 (weighted): {results['eval_f1_weighted']:.4f}")
     print(f"\n{report}")
 
     # 3. Adversarial 평가
-    print(f"\n[4/4] Adversarial 평가...")
+    print("\n[4/4] Adversarial 평가...")
     adv_result = evaluate_adversarial(tokenizer, model, version)
     print(f"  Adversarial F1: {adv_result['f1_macro']}")
     print(f"  Adversarial Acc: {adv_result['accuracy']}")
     print(f"  오분류: {adv_result['errors']}건")
 
     if adv_result["error_details"]:
-        print(f"\n  오분류 상세:")
+        print("\n  오분류 상세:")
         for e in adv_result["error_details"]:
             print(f"    \"{e['text']}\" → 예상:{e['expected']} 실제:{e['predicted']} ({e['confidence']})")
 

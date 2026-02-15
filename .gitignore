@@ -23,6 +23,9 @@ outputs/
 *.safetensors
 *.gguf
 
+# User uploads
+backend/uploads/
+
 # ChromaDB
 chroma_db/
 
@@ -57,3 +60,6 @@ token.json
 
 # claude setting
 .claude
+.ruff_cache/
+.ruff_cache/123
+.ruff_cache/4353454353

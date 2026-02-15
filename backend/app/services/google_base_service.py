@@ -3,7 +3,6 @@ Google API 공통 베이스 서비스 (팀원 D 담당)
 - OAuth 토큰 관리 (조회, 갱신, scope 검증)
 - 모든 Google 서비스(Calendar, Tasks, Gmail, Sheets)가 상속
 """
-import json
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status

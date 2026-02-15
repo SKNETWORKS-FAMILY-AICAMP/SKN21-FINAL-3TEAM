@@ -134,3 +134,75 @@
 - 실험 5: 3모델 × 153번 그리드 서치 실행 (RunPod A100, ~3~5시간)
 - 실험 6: 전처리 ablation + seed 반복 (~1~2시간)
 - 이후 #6 오케스트레이터 착수
+
+---
+
+## 2026-02-12 (수)
+
+**#6 오케스트레이터 + Agent async 전환:**
+- judgment_agent, document_agent, schedule_agent → `async def`로 전환
+- orchestrator.py 3개 wrapper 함수에 `await` 추가
+- develop pull → 경은 judgment_agent 구현 코드와 merge conflict 해결
+- feat/pm-지용 + develop 양쪽 push 완료
+
+**인프라:**
+- GitHub main 브랜치 보호 설정 (CLI): PR 필수 + 1 approval + force push 차단
+- `run_model_comparison.py`에 `--resume` 기능 추가 (개별 run 단위 크래시 복구)
+
+**실험 5 실행 (RunPod RTX 4090):**
+- roberta-base: 이전 세션에서 완료 (48 Step1 + 3 Step2, best Adv F1=0.899)
+- bert-base: 51 runs 완료, 결과 `grid_search_bert.json`으로 저장
+- koelectra: torch 버전 이슈 (CVE-2025-32434, torch<2.6 차단) → torch+torchvision+transformers 업그레이드 후 실행 중
+
+**실험 5 데이터/스크립트 QA:**
+- 3개 에이전트 병렬 투입 (데이터 품질 / 스크립트 로직 / 이력 일관성)
+- 발견 사항: doc_generate.jsonl 라벨 오염 2건, resume 모드 모델 저장 버그, Plan 숫자 2 차이
+- 판단: 실험 결과 신뢰성에 영향 없으므로 수정 보류
+
+**팀원 버그 공유 완료:**
+- Google 로그인 500 에러 → 혜빈/지영에게 전달
+- eslint 버전 충돌 → 지영에게 전달
+
+**작업 범위 규칙 (충돌 방지):**
+- `ai/agents/` 폴더 파일 수정 안 함
+- 예외: `orchestrator.py` (라우팅, intent 모델 로드), `intent_classifier.py`, `state.py` (사전 공유 후)
+- judgment_agent → 경은, document_agent → 승언, schedule_agent → 혜빈 담당
+
+**doc_search 응답 UI QA:**
+- 3개 에이전트로 전체 chat UI 분석
+- 발견: 모든 카드 컴포넌트(JudgmentCard, GenerateCard 등)가 ChatPage에서 미사용 — 전부 텍스트 버블로 출력 중
+- useSSE.js에 `result` 이벤트 핸들러 누락, chatStore 메시지 구조 확장 필요
+- doc_search 전용 DocSearchCard 제안: 답변 요약 + 출처 카드 + 관련도 바 + 후속 행동 버튼
+- → 지영에게 SSE result 이벤트 연결 + intent별 카드 분기 렌더링 요청 필요
+
+**오케스트레이터 ↔ Intent 분류기 구조 확인:**
+- intent_classifier.py → 모델 로드 + 추론 (싱글톤)
+- orchestrator.py → classify_intent 노드에서 get_classifier() 호출 → route_by_intent로 분기
+- 실험 5 최종 모델은 `ai/models/intent_classifier/`에 파일 교체만 하면 됨 (코드 수정 0줄)
+- 현재 weights 없으면 fallback 모드 (전부 general로 분류)
+
+**다음 할 일:**
+- koelectra 실험 마저 완료 (RunPod — 집에서 처리)
+- koelectra 결과 저장: `cp grid_search_full.json grid_search_koelectra.json`
+- 3모델 비교 분석 + 차트 생성
+- 실험 6: 전처리 ablation + seed 반복
+- 최종 모델 확정 → `ai/models/intent_classifier/`에 배포 + TRAINING_LOG.md 업데이트
+
+---
+
+## 2026-02-13 (목)
+
+**실험 5 최종 모델 배포:**
+- 3모델 비교 결과 확정: BERT(Adv F1 0.9015) > RoBERTa(0.899) > KoELECTRA(0.8856)
+- `train_best_bert.py` 배포용 학습 스크립트 작성 → RunPod에서 BERT best config 1회 학습
+  - config: klue/bert-base, epochs=5, lr=2e-5, batch=16, warmup=0.0
+- `model.safetensors`(423MB) RunPod → 로컬 다운로드 후 `ai/models/intent_classifier/`에 배치
+- `config.json` RoBERTa → BertForSequenceClassification으로 변경
+- `model_info.json` klue/bert-base + best config/metrics 추가
+- 팀원 충돌 QA 통과 (다른 팀원 ai/models/ 미접근 확인)
+- intent_classifier.py 코드 수정 0줄 — fallback 모드에서 실제 모델 추론으로 전환 완료
+
+**다음 할 일:**
+- 실험 6: 전처리 ablation + seed 반복 (내일)
+- TRAINING_LOG.md 실험 5 최종 결과 업데이트
+- #6 오케스트레이터 마무리
