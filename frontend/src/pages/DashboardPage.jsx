@@ -10,12 +10,13 @@ import QuickSearch from '../components/dashboard/QuickSearch';
 import AutoScanBadge from '../components/dashboard/AutoScanBadge';
 import FilterBar from '../components/common/FilterBar';
 import { useState } from 'react';
+import { MessageSquare, ClipboardList, CheckCircle2, AlertTriangle, FileText, HelpCircle, Calendar, CalendarClock, Bell } from 'lucide-react';
 
 const mockActivities = [
-  { type: 'doc', icon: '📄', title: '정보보안 지침 v2.3 업로드', description: '새 문서가 업로드되어 파싱 완료되었습니다.', time: '5분 전', to: '/documents' },
-  { type: 'query', icon: '❓', title: '질의응답: "외부 반출 승인 절차"', description: 'AI가 Yes/No 판단과 근거를 제공했습니다.', time: '12분 전', to: '/chat' },
-  { type: 'meeting', icon: '📅', title: '보안점검 회의록 분석 완료', description: '5개 결정사항, 8개 Action Item 추출됨', time: '1시간 전', to: '/meetings' },
-  { type: 'schedule', icon: '📆', title: '일정 변경: 인사규정 검토회의', description: '2월 7일 → 2월 10일로 변경되었습니다.', time: '2시간 전', to: '/schedules' },
+  { type: 'doc', icon: FileText, title: '정보보안 지침 v2.3 업로드', description: '새 문서가 업로드되어 파싱 완료되었습니다.', time: '5분 전', to: '/documents' },
+  { type: 'query', icon: HelpCircle, title: '질의응답: "외부 반출 승인 절차"', description: 'AI가 Yes/No 판단과 근거를 제공했습니다.', time: '12분 전', to: '/chat' },
+  { type: 'meeting', icon: Calendar, title: '보안점검 회의록 분석 완료', description: '5개 결정사항, 8개 Action Item 추출됨', time: '1시간 전', to: '/meetings' },
+  { type: 'schedule', icon: CalendarClock, title: '일정 변경: 인사규정 검토회의', description: '2월 7일 → 2월 10일로 변경되었습니다.', time: '2시간 전', to: '/schedules' },
 ];
 
 const mockActions = [
@@ -76,7 +77,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <AutoScanBadge status="scanning" lastScan="2분 전" detectedCount={2} />
           <button aria-label="알림" className="w-10 h-10 rounded-sm border border-neutral-border bg-surface-card flex items-center justify-center relative">
-            <span>🔔</span>
+            <Bell size={18} className="text-neutral-sub" />
             <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-surface-card" />
           </button>
         </div>
@@ -85,10 +86,10 @@ export default function DashboardPage() {
       <FilterBar tabs={['전체', '정보보안', '인사', '개발']} activeTab={activeTab} onTabChange={setActiveTab} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
-        <StatCard icon="💬" iconColor="blue" value="24" label="오늘의 질의응답" trend="↑ 12%" to="/chat" />
-        <StatCard icon="📋" iconColor="purple" value="8" label="처리된 회의록" trend="↑ 3건" to="/meetings" />
-        <StatCard icon="✓" iconColor="green" value="15" label="완료된 Action Item" trend="↑ 5건" to="/schedules" />
-        <StatCard icon="⚠️" iconColor="red" value="3" label="리스크 알림" />
+        <StatCard icon={<MessageSquare size={20} />} iconColor="blue" value="24" label="오늘의 질의응답" trend="↑ 12%" to="/chat" />
+        <StatCard icon={<ClipboardList size={20} />} iconColor="purple" value="8" label="처리된 회의록" trend="↑ 3건" to="/meetings" />
+        <StatCard icon={<CheckCircle2 size={20} />} iconColor="green" value="15" label="완료된 Action Item" trend="↑ 5건" to="/schedules" />
+        <StatCard icon={<AlertTriangle size={20} />} iconColor="red" value="3" label="리스크 알림" />
       </div>
 
       <div className="mb-5">

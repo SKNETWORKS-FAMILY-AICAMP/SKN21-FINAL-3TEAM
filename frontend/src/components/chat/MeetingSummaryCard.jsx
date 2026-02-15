@@ -1,14 +1,16 @@
+import { User, Calendar } from 'lucide-react';
+
 export default function MeetingSummaryCard({ title, date, attendees = [], decisions = [], actionItems = [] }) {
   return (
     <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
       <div className="px-4 py-3 border-b border-neutral-divider flex items-center gap-2 font-bold text-sm text-primary-700">
-        <span className="text-[0.9375rem]">📋</span>{title || '회의 요약'}
+        {title || '회의 요약'}
       </div>
       <div className="p-4 space-y-3.5">
         {/* 회의 정보 */}
         <div className="flex gap-4 text-xs text-neutral-sub">
-          {date && <span>📅 {date}</span>}
-          {attendees.length > 0 && <span>👥 {attendees.join(', ')}</span>}
+          {date && <span className="flex items-center gap-1"><Calendar size={12} />{date}</span>}
+          {attendees.length > 0 && <span>{attendees.join(', ')}</span>}
         </div>
 
         {/* 결정사항 */}
@@ -38,8 +40,8 @@ export default function MeetingSummaryCard({ title, date, attendees = [], decisi
                     <span className="text-neutral-main">{item.task}</span>
                     {(item.assignee || item.deadline) && (
                       <div className="flex gap-3 mt-1 text-[0.6875rem] text-neutral-muted">
-                        {item.assignee && <span>👤 {item.assignee}</span>}
-                        {item.deadline && <span>📅 {item.deadline}</span>}
+                        {item.assignee && <span className="flex items-center gap-1"><User size={11} />{item.assignee}</span>}
+                        {item.deadline && <span className="flex items-center gap-1"><Calendar size={11} />{item.deadline}</span>}
                       </div>
                     )}
                   </div>

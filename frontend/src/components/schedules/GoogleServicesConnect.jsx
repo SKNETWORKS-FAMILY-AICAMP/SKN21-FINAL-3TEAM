@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { GOOGLE_SCOPES, GOOGLE_SCOPE_LABELS } from '../../utils/constants';
 import useGoogleServices from '../../hooks/useGoogleServices';
 
+import { Calendar, CheckSquare, Mail, BarChart3 } from 'lucide-react';
+
 const SERVICES = [
-  { scope: GOOGLE_SCOPES.CALENDAR, icon: '📅', desc: '일정을 자동으로 동기화합니다' },
-  { scope: GOOGLE_SCOPES.TASKS, icon: '✅', desc: 'Action Item을 할 일로 등록합니다' },
-  { scope: GOOGLE_SCOPES.GMAIL_SEND, icon: '📧', desc: '기한 알림 메일을 발송합니다' },
-  { scope: GOOGLE_SCOPES.SHEETS, icon: '📊', desc: 'Action Item 추적 시트를 생성합니다' },
+  { scope: GOOGLE_SCOPES.CALENDAR, icon: Calendar, desc: '일정을 자동으로 동기화합니다' },
+  { scope: GOOGLE_SCOPES.TASKS, icon: CheckSquare, desc: 'Action Item을 할 일로 등록합니다' },
+  { scope: GOOGLE_SCOPES.GMAIL_SEND, icon: Mail, desc: '기한 알림 메일을 발송합니다' },
+  { scope: GOOGLE_SCOPES.SHEETS, icon: BarChart3, desc: 'Action Item 추적 시트를 생성합니다' },
 ];
 
 export default function GoogleServicesConnect() {
@@ -45,7 +47,7 @@ export default function GoogleServicesConnect() {
         </div>
         <div className="card-body">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {SERVICES.map(({ scope, icon }) => {
+            {SERVICES.map(({ scope, icon: Icon }) => {
               const active = hasScope(scope);
               return (
                 <div
@@ -56,7 +58,7 @@ export default function GoogleServicesConnect() {
                       : 'border-neutral-divider bg-surface-hover text-neutral-muted'
                   }`}
                 >
-                  <span>{icon}</span>
+                  <Icon size={16} />
                   <span className="font-medium">{GOOGLE_SCOPE_LABELS[scope]}</span>
                   {active && <span className="ml-auto text-[0.625rem] text-success font-semibold">ON</span>}
                 </div>
@@ -89,7 +91,7 @@ export default function GoogleServicesConnect() {
       <div className="card-body">
         <p className="text-xs text-neutral-muted mb-3">연결할 서비스를 선택하세요</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-          {SERVICES.map(({ scope, icon, desc }) => {
+          {SERVICES.map(({ scope, icon: Icon, desc }) => {
             const selected = selectedScopes.includes(scope);
             return (
               <button
@@ -102,7 +104,7 @@ export default function GoogleServicesConnect() {
                 }`}
               >
                 <div className="flex items-center gap-2 text-sm font-medium">
-                  <span>{icon}</span>
+                  <Icon size={16} />
                   {GOOGLE_SCOPE_LABELS[scope]}
                 </div>
                 <span className="text-[0.6875rem] text-neutral-muted">{desc}</span>

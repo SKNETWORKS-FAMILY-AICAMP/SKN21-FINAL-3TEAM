@@ -22,9 +22,9 @@ const mockStats = [
 ];
 
 const mockLogs = [
-  { type: 'query', icon: '❓', title: '외부 반출 승인 절차', description: '김정보 · 판단 Agent · 응답 2.3초', time: '5분 전' },
-  { type: 'doc', icon: '📄', title: 'Q4 예산 보고서 요약 요청', description: '이개발 · 문서 Agent · 응답 4.1초', time: '12분 전' },
-  { type: 'schedule', icon: '📆', title: '회의 일정 등록', description: '박인사 · 일정 Agent · 응답 1.2초', time: '30분 전' },
+  { type: 'query', title: '외부 반출 승인 절차', description: '김정보 · 판단 Agent · 응답 2.3초', time: '5분 전' },
+  { type: 'doc', title: 'Q4 예산 보고서 요약 요청', description: '이개발 · 문서 Agent · 응답 4.1초', time: '12분 전' },
+  { type: 'schedule', title: '회의 일정 등록', description: '박인사 · 일정 Agent · 응답 1.2초', time: '30분 전' },
 ];
 
 export default function AdminPage() {

@@ -274,6 +274,33 @@
 
 ---
 
+## 2026-02-15 (일)
+
+### 한 일
+
+#### 1) 이모지 → Lucide React 아이콘 전면 교체
+- `lucide-react` 패키지 설치
+- 38개+ 파일에서 50개+ 이모지를 Lucide SVG 아이콘으로 교체
+- `constants.js` — INTENT_ICONS / SUGGESTED_QUESTION_CATEGORIES 이모지 → Lucide 이름 문자열로 변환
+- `SuggestedQuestions.jsx` — ICON_MAP 매핑으로 Lucide 컴포넌트 렌더링
+
+#### 2) 회의록 생성 페이지 → 문서 생성 페이지에 통합
+- MeetingMinutesPage 삭제 (App.jsx 라우트 + Sidebar 메뉴 제거)
+- DocumentGeneratePage에서 `meeting_minutes` 템플릿 선택 시 MeetingInput + MeetingPreview 표시
+
+#### 3) 화면 빈 화면 버그 수정
+- **원인 1**: `client.js` 응답 인터셉터의 `window.location.href = '/login'`이 React 렌더링 중 DOM 충돌 → 리다이렉트 제거, React Router 상태 기반으로 변경
+- **원인 2**: Lucide 아이콘이 `forwardRef` 객체라 `typeof icon === 'function'` 체크 실패 → IIFE 패턴으로 수정 (`ActivityTimeline.jsx`)
+
+### 다음 할 일
+- alert() → toast 알림 컴포넌트 교체 (6곳)
+- window.confirm() → 모달 다이얼로그 교체
+- 로딩 스켈레톤 추가
+- 나머지 Mock → 실제 API 교체
+- 관리자 API 연동 (#29)
+
+---
+
 ## 현재 구현 현황 요약
 
 | 항목 | 상태 | 비고 |
