@@ -68,7 +68,7 @@ export default function useSSE() {
 
             switch (event.type) {
               case 'intent':
-                setCurrentIntent(event.value)
+                setCurrentIntent(event.intent || event.agent_type)
                 break
               case 'status':
                 setCurrentStatus(event.value)
@@ -77,10 +77,13 @@ export default function useSSE() {
                 setCurrentStatus(null)
                 appendToken(event.value)
                 break
+              case 'result':
+                // 최종 결과 (필요 시 처리)
+                break
               case 'done':
                 break
               case 'error':
-                console.error('[SSE] 서버 에러:', event.value)
+                console.error('[SSE] 서버 에러:', event.message || event.value)
                 break
             }
           } catch {

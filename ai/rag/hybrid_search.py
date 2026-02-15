@@ -7,33 +7,45 @@ import logging
 from rank_bm25 import BM25Okapi
 
 from ai.rag.embeddings import EmbeddingModel
-from ai.rag.vectorstore import VectorStore
+try:
+    from ai.rag.vectorstore import VectorStore
+except ImportError:
+    VectorStore = None
+try:
+    from ai.rag.qdrant_store import QdrantVectorStore
+except ImportError:
+    QdrantVectorStore = None
 
 logger = logging.getLogger(__name__)
 
-# 한국어 형태소 분석기 (konlpy + Java 사용 가능 시 Okt, 아니면 공백 분리 fallback)
-_okt = None
+# 한국어 형태소 분석기 (kiwipiepy 사용, 없으면 공백 분리 fallback)
+_kiwi = None
 try:
-    from konlpy.tag import Okt
-    _okt = Okt()
-    logger.info("konlpy Okt 형태소 분석기 로드 완료")
+    from kiwipiepy import Kiwi
+    _kiwi = Kiwi()
+    logger.info("kiwipiepy 형태소 분석기 로드 완료")
 except Exception:
-    logger.warning("konlpy를 사용할 수 없습니다 (Java 미설치 등). 공백 기반 토크나이징으로 대체합니다.")
+    logger.warning("kiwipiepy를 사용할 수 없습니다. 공백 기반 토크나이징으로 대체합니다.")
 
 
 def tokenize(text: str) -> list[str]:
-    """한국어 토크나이저: Okt 형태소 분석 (fallback: 공백 분리)"""
+    """한국어 토크나이저: kiwipiepy 형태소 분석 (fallback: 공백 분리)"""
     if not text:
         return []
-    if _okt is not None:
-        return _okt.morphs(text, stem=True)
+    if _kiwi is not None:
+        return [token.form for token in _kiwi.tokenize(text)]
     return text.split()
 
 
 class HybridSearcher:
     """BM25 키워드 검색 + 벡터 시멘틱 검색 결합"""
 
-    def __init__(self, vector_store: VectorStore, embedding_model: EmbeddingModel):
+    def __init__(self, vector_store, embedding_model: EmbeddingModel):
+        """
+        Args:
+            vector_store: VectorStore 또는 QdrantVectorStore 인스턴스
+            embedding_model: EmbeddingModel 인스턴스
+        """
         self.vector_store = vector_store
         self.embedding_model = embedding_model
         self.bm25 = None
@@ -42,7 +54,7 @@ class HybridSearcher:
         self._corpus_metadatas = []
 
     def build_bm25_index(self):
-        """ChromaDB에서 전체 문서를 가져와 BM25 인덱스를 구축한다."""
+        """VectorStore에서 전체 문서를 가져와 BM25 인덱스를 구축한다."""
         all_docs = self.vector_store.get_all_documents()
 
         self._corpus_docs = all_docs["documents"]
@@ -123,21 +135,23 @@ class HybridSearcher:
             list of {"content", "source", "score", "doc_id"}
         """
         # scope 필터 구성: user_id=None → company만, user_id 있으면 company + 본인 personal
-        if user_id is not None:
-            scope_filter = {
-                "$or": [
-                    {"scope": "company"},
-                    {"$and": [{"scope": "personal"}, {"user_id": str(user_id)}]},
-                ]
-            }
-        else:
-            scope_filter = {"scope": "company"}
+        # TODO: Qdrant 필터 형식 수정 후 아래 scope_filter를 _vector_search에 전달
+        # if user_id is not None:
+        #     scope_filter = {
+        #         "$or": [
+        #             {"scope": "company"},
+        #             {"$and": [{"scope": "personal"}, {"user_id": str(user_id)}]},
+        #         ]
+        #     }
+        # else:
+        #     scope_filter = {"scope": "company"}
 
         # 1. BM25 검색 → Top 15 (scope 필터 포함)
         bm25_results = self._bm25_search(query, user_id=user_id, top_k=15)
 
         # 2. Vector 검색 → Top 15
-        vector_results = self._vector_search(query, top_k=15, filter=scope_filter)
+        # TODO: Qdrant 필터 형식 수정 필요 (현재는 필터 없이 검색)
+        vector_results = self._vector_search(query, top_k=15, filter=None)
 
         # 3. RRF(Reciprocal Rank Fusion)로 합산
         rrf_scores: dict[str, dict] = {}

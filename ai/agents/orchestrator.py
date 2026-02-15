@@ -18,6 +18,7 @@ LangGraph Agent 오케스트레이터 (팀원 A 담당)
 """
 
 import logging
+import time
 
 from langgraph.graph import StateGraph, END
 
@@ -35,30 +36,43 @@ _compiled_graph = None
 
 def classify_intent(state: AgentState) -> AgentState:
     """Intent 분류 노드"""
+    _t = time.time()
+    user_input = state["user_input"]
+    print(f"[Orchestrator] classify_intent 시작 | input='{user_input}'")
+
     classifier = get_classifier()
-    result = classifier.predict(state["user_input"])
+    print(f"[Orchestrator] classifier.predict() 호출 중...")
+    result = classifier.predict(user_input)
     state["intent"] = result["intent"]
     state["confidence"] = result["confidence"]
-    logger.info("Intent: %s (%.4f)", result["intent"], result["confidence"])
+
+    print(f"[Orchestrator] classify_intent 완료 ({time.time()-_t:.2f}s) | intent={result['intent']}, confidence={result['confidence']:.4f}")
     return state
 
 
 def route_by_intent(state: AgentState) -> str:
     """조건부 라우팅"""
-    if state.get("confidence", 0) < 0.7:
-        return "clarify"
-
     intent = state.get("intent", "")
-    if intent == "judgment":
-        return "judgment_agent"
-    elif intent in ("doc_search", "doc_generate", "meeting_generate"):
-        return "document_agent"
-    elif intent.startswith("schedule_"):
-        return "schedule_agent"
-    elif intent == "general":
+    confidence = state.get("confidence", 0)
+
+    # confidence가 낮으면 general_response로 (LLM이 자연스럽게 답변)
+    if confidence < 0.7:
+        print(f"[Orchestrator] 라우팅: {intent} (confidence={confidence:.4f}) → general_response (confidence 낮음)")
         return "general_response"
+
+    if intent == "general":
+        route = "general_response"
+    elif intent == "judgment":
+        route = "judgment_agent"
+    elif intent in ("doc_search", "doc_generate", "meeting_generate"):
+        route = "document_agent"
+    elif intent.startswith("schedule_"):
+        route = "schedule_agent"
     else:
-        return "clarify"
+        route = "general_response"
+
+    print(f"[Orchestrator] 라우팅: {intent} (confidence={confidence:.4f}) → {route}")
+    return route
 
 
 def clarify_node(state: AgentState) -> AgentState:
@@ -72,16 +86,27 @@ def clarify_node(state: AgentState) -> AgentState:
 
 def _get_settings():
     """config import — FastAPI 실행 시 / 단독 실행 시 모두 대응"""
-    try:
-        from app.config import get_settings
-        return get_settings()
-    except ImportError:
-        from backend.app.config import get_settings
-        return get_settings()
+    from backend.app.config import get_settings
+    return get_settings()
 
 
 async def general_response_node(state: AgentState) -> AgentState:
-    """일반 응답 노드 — LLM API 호출"""
+    """일반 응답 노드 — LLM API 호출
+
+    stream_mode=True이면 LLM 호출을 건너뛰고 chat.py에서 직접 스트리밍 처리.
+    """
+    _t = time.time()
+    print(f"[Orchestrator] general_response_node 진입 | stream_mode={state.get('stream_mode')}")
+    # 스트리밍 모드면 chat.py에서 직접 LLM 스트리밍 처리
+    if state.get("stream_mode"):
+        state["agent_response"] = {
+            "type": "general",
+            "message": "",
+            "stream_pending": True,
+        }
+        return state
+
+    # 비스트리밍 모드 (POST /chat/) — 기존대로 전체 응답 생성
     try:
         from openai import AsyncOpenAI
 
@@ -100,7 +125,7 @@ async def general_response_node(state: AgentState) -> AgentState:
         )
 
         response = await client.chat.completions.create(
-            model=settings.LLM_MODEL_NAME,
+            model=settings.OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": "당신은 업무 도우미 '듀듀'입니다. 한국어로 친절하게 답변하세요."},
                 *state.get("chat_history", []),
@@ -130,10 +155,13 @@ async def general_response_node(state: AgentState) -> AgentState:
 
 async def safe_judgment_agent(state: AgentState) -> AgentState:
     """판단 Agent 안전 래퍼 (팀원 B)"""
+    _t = time.time()
+    print("[Orchestrator] safe_judgment_agent 진입")
     try:
         from ai.agents.judgment_agent import judgment_agent
 
         result = await judgment_agent(state)
+        print(f"[Orchestrator] safe_judgment_agent 완료 ({time.time()-_t:.2f}s)")
         return result
     except NotImplementedError:
         state["agent_response"] = {
@@ -153,10 +181,13 @@ async def safe_judgment_agent(state: AgentState) -> AgentState:
 
 async def safe_document_agent(state: AgentState) -> AgentState:
     """문서 Agent 안전 래퍼 (팀원 C)"""
+    _t = time.time()
+    print("[Orchestrator] safe_document_agent 진입")
     try:
         from ai.agents.document_agent import document_agent
 
         result = await document_agent(state)
+        print(f"[Orchestrator] safe_document_agent 완료 ({time.time()-_t:.2f}s)")
         return result
     except NotImplementedError:
         state["agent_response"] = {
@@ -176,10 +207,13 @@ async def safe_document_agent(state: AgentState) -> AgentState:
 
 async def safe_schedule_agent(state: AgentState) -> AgentState:
     """일정 Agent 안전 래퍼 (팀원 D)"""
+    _t = time.time()
+    print("[Orchestrator] safe_schedule_agent 진입")
     try:
         from ai.agents.schedule_agent import schedule_agent
 
         result = await schedule_agent(state)
+        print(f"[Orchestrator] safe_schedule_agent 완료 ({time.time()-_t:.2f}s) | response type={result.get('agent_response', {}).get('type')}")
         return result
     except NotImplementedError:
         state["agent_response"] = {
@@ -199,6 +233,7 @@ async def safe_schedule_agent(state: AgentState) -> AgentState:
 
 def format_response(state: AgentState) -> AgentState:
     """응답 포맷팅 노드 — agent_response에 type/message 필드 보장"""
+    print(f"[Orchestrator] format_response 진입 | agent_response={state.get('agent_response', {})}")
     resp = state.get("agent_response", {})
     if not resp:
         state["agent_response"] = {
@@ -260,5 +295,10 @@ def get_graph():
     """컴파일된 그래프 인스턴스 반환 (캐시)"""
     global _compiled_graph
     if _compiled_graph is None:
-        _compiled_graph = build_graph()
+        try:
+            _compiled_graph = build_graph()
+            logger.info("Orchestrator graph compiled successfully")
+        except Exception as e:
+            logger.error(f"Graph build error: {e}", exc_info=True)
+            raise
     return _compiled_graph

@@ -13,10 +13,11 @@
 """
 import json
 import logging
-from typing import Any, Dict, List, Optional
+import time
+from typing import Any, Dict, List
 
 from ai.agents.state import AgentState
-from ai.templates import get_system_template, SYSTEM_TEMPLATES
+from ai.templates import get_system_template
 
 # 로거 설정
 logger = logging.getLogger(__name__)
@@ -33,78 +34,235 @@ async def document_agent(state: AgentState) -> AgentState:
     intent = state.get("intent", "").lower()
     user_input = state.get("user_input", "")
     context = state.get("context", [])
-    
-    logger.info(f"Document Agent executing. Intent: {intent}")
+    user_id = state.get("user_id")
+
+    _t_agent = time.time()
+    print(f"[DocumentAgent] 진입 | intent={intent}, user_input='{user_input[:50]}...', user_id={user_id}")
 
     response_data = {}
 
+    stream_mode = state.get("stream_mode", False)
+    print(f"[DocumentAgent] stream_mode={stream_mode}, context 길이={len(context)}")
+
     try:
         if intent == "doc_search":
-            response_data = _handle_doc_search(user_input, context)
-        
+            print("[DocumentAgent] → _handle_doc_search 호출")
+            response_data = _handle_doc_search(user_input, context, user_id, stream_mode=stream_mode)
+
         elif intent == "doc_generate":
-            # 템플릿 ID나 종류를 state에서 가져옴 (없으면 기본값)
-            # template_id = state.get("template_id")
-            # TODO: template_id로 템플릿 로드 (시스템 또는 커스텀)
-            # 여기서는 시스템 템플릿 'report'를 기본으로 가정
-            template_type = "report" 
+            template_type = "report"
+            print(f"[DocumentAgent] → _handle_doc_generate 호출 | template={template_type}")
             response_data = _handle_doc_generate(user_input, template_type)
 
         elif intent == "meeting_generate":
+            print("[DocumentAgent] → _handle_meeting_generate 호출")
             response_data = _handle_meeting_generate(user_input)
 
         elif intent == "risk_detect":
-             # 리스크 감지만 별도로 요청하는 경우 (옵션)
+             print("[DocumentAgent] → _handle_risk_detect 호출")
              response_data = _handle_risk_detect(user_input)
-             
+
         else:
-            # 기본 처리 (general 등) 또는 에러
+            print(f"[DocumentAgent] !!! 지원하지 않는 intent: {intent}")
             response_data = {"error": f"지원하지 않는 intent입니다: {intent}"}
 
     except Exception as e:
-        logger.error(f"Error in document_agent: {e}", exc_info=True)
+        print(f"[DocumentAgent] !!! 에러 발생: {e}")
+        import traceback
+        traceback.print_exc()
         response_data = {"error": str(e)}
+
+    print(f"[DocumentAgent] 완료 ({time.time()-_t_agent:.2f}s) | response type={response_data.get('type')}, keys={list(response_data.keys())}")
 
     # State 업데이트
     state["agent_response"] = response_data
     return state
 
 
-def _handle_doc_search(query: str, context: List[str]) -> Dict[str, Any]:
-    """문서 검색 결과 처리"""
-    # 1. RAG Context + Query로 LLM 답변 생성
-    sys_prompt = "당신은 문서 검색 도우미입니다. 주어진 Context를 바탕으로 사용자의 질문에 답변하세요."
+def _detect_search_intent(query: str) -> str:
+    """사용자 질문에서 검색 의도 감지
+
+    Args:
+        query: 사용자 질문
+
+    Returns:
+        "summarize" | "find" | "explain"
+    """
+    import re
+
+    query_lower = query.lower()
+
+    # 요약 키워드 (최우선)
+    if re.search(r"요약|정리|간단히|핵심|짧게", query_lower):
+        return "summarize"
+
+    # 찾기 키워드
+    if re.search(r"찾아|검색|문서|어디|목록", query_lower):
+        return "find"
+
+    # 기본값: 설명
+    return "explain"
+
+
+def _build_search_prompt(query: str, context: list) -> tuple:
+    """검색 의도에 맞는 시스템/유저 프롬프트 생성
+
+    Returns:
+        (sys_prompt, user_prompt)
+    """
+    intent_type = _detect_search_intent(query)
+
+    if intent_type == "summarize":
+        sys_prompt = """당신은 문서 요약 전문가입니다.
+
+[중요 지시사항]
+- 반드시 핵심 내용만 2-3문장으로 간결하게 요약하세요
+- 불필요한 세부사항은 절대 포함하지 마세요
+- 가장 중요한 정보만 선택하세요
+
+답변 시 Context에 포함된 정보만 사용하고, 추측하지 마세요."""
+
+    elif intent_type == "find":
+        sys_prompt = """당신은 문서 검색 전문가입니다.
+
+[중요 지시사항]
+- 관련 문서들을 목록으로 나열하세요
+- 각 문서의 핵심 내용을 한 줄로 요약하세요
+- "다음 문서들을 찾았습니다:" 형식으로 시작하세요
+
+답변 시 Context에 포함된 정보만 사용하고, 추측하지 마세요."""
+
+    else:  # explain
+        sys_prompt = """당신은 문서 설명 전문가입니다.
+
+[중요 지시사항]
+- 관련 내용을 상세히 설명하세요 (5문장 이상)
+- 조건, 절차, 예외사항 등을 포함하세요
+- 이해하기 쉽게 구조화하여 설명하세요
+
+답변 시 Context에 포함된 정보만 사용하고, 추측하지 마세요."""
+
     user_prompt = f"Context:\n{json.dumps(context, ensure_ascii=False)}\n\nQuestion: {query}"
-    
+
+    return sys_prompt, user_prompt
+
+
+def _handle_doc_search(query: str, context: List[str], user_id: int = None, stream_mode: bool = False) -> Dict[str, Any]:
+    """문서 검색 결과 처리"""
+    _t = time.time()
+    print(f"[DocumentAgent] _handle_doc_search | query='{query[:50]}', context 길이={len(context)}, stream_mode={stream_mode}")
+    search_results = []
+
+    # 1. Context가 비어있으면 RAG 검색 수행
+    if not context:
+        try:
+            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+
+            _t_rag = time.time()
+            print(f"[DocumentAgent] RAG 검색 수행: '{query[:50]}'")
+            rag_pipeline = get_qdrant_pipeline()
+            search_results = rag_pipeline.retrieve(query, user_id=user_id, top_k=5)
+
+            # 검색된 문서의 content를 context로 사용
+            context = [doc["content"] for doc in search_results]
+            print(f"[DocumentAgent] RAG 검색 완료 ({time.time()-_t_rag:.2f}s): {len(context)}개 문서 검색됨")
+
+        except Exception as e:
+            print(f"[DocumentAgent] !!! RAG 검색 실패: {e}")
+            import traceback
+            traceback.print_exc()
+            context = []
+
+    # 2. 출처 정보 (답변 + 출처 분리, 중복 제거)
+    sources = []
+    seen_sources = set()
+    if search_results:
+        for doc in search_results:
+            content_key = doc.get("content", "")[:100]
+            if content_key in seen_sources:
+                continue
+            seen_sources.add(content_key)
+
+            sources.append({
+                "title": doc.get("title", "제목 없음"),
+                "source": doc.get("source", ""),
+                "score": doc.get("score", 0.0),
+                "content": doc.get("content", "")[:200] + "...",
+            })
+
+    print(f"[DocumentAgent] 출처 정보: {len(sources)}개")
+
+    # 3. Context가 없으면 검색 실패
+    if not context:
+        print("[DocumentAgent] context 비어있음 → 검색 실패 응답")
+        return {
+            "type": "doc_search",
+            "answer": "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요.",
+            "message": "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요.",
+            "sources": sources,
+            "context": context,
+        }
+
+    # 4. 프롬프트 생성
+    sys_prompt, user_prompt = _build_search_prompt(query, context)
+    print(f"[DocumentAgent] 프롬프트 생성 완료 | search_intent={_detect_search_intent(query)}")
+
+    # 5. 스트리밍 모드면 LLM 호출 건너뛰기 (chat.py에서 직접 스트리밍)
+    if stream_mode:
+        print(f"[DocumentAgent] stream_mode=True → stream_pending 반환 ({time.time()-_t:.2f}s)")
+        return {
+            "type": "doc_search",
+            "stream_pending": True,
+            "sys_prompt": sys_prompt,
+            "user_prompt": user_prompt,
+            "answer": "",
+            "message": "",
+            "sources": sources,
+            "context": context,
+        }
+
+    # 6. 비스트리밍: LLM 호출
+    print("[DocumentAgent] stream_mode=False → LLM 직접 호출")
     answer = _call_llm(sys_prompt, user_prompt)
-    
+    print(f"[DocumentAgent] LLM 응답 길이: {len(answer)}자")
+
     return {
         "type": "doc_search",
         "answer": answer,
-        "context": context
+        "message": answer,
+        "sources": sources,
+        "context": context,
     }
 
 def _handle_doc_generate(user_input: str, template_type: str) -> Dict[str, Any]:
     """문서 생성 처리"""
+    _t = time.time()
+    print(f"[DocumentAgent] _handle_doc_generate | template_type={template_type}")
     # 1. 템플릿 가져오기
     try:
         template = get_system_template(template_type)
+        print(f"[DocumentAgent] 템플릿 로드 성공: {template_type}")
     except ValueError:
+        print(f"[DocumentAgent] 템플릿 '{template_type}' 없음 → report fallback")
         try:
             template = get_system_template("report") # Fallback
-        except:
+        except Exception:
             template = None
 
     # 2. LLM이 템플릿 필드 채우기
     required_fields = template.REQUIRED_FIELDS if template and hasattr(template, 'REQUIRED_FIELDS') else 'all'
-    
+
     sys_prompt = f"당신은 문서 작성 도우미입니다. 사용자의 요청을 바탕으로 '{template_type}' JSON 데이터를 생성하세요."
     user_prompt = f"요청: {user_input}\n\n필수 필드: {required_fields}"
-    
+
+    print(f"[DocumentAgent] LLM 호출 (doc_generate, json_mode=True)...")
     generated_json_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
+    print(f"[DocumentAgent] LLM 응답: {generated_json_str[:200]}...")
     try:
         data = json.loads(generated_json_str)
+        print(f"[DocumentAgent] JSON 파싱 성공 | keys={list(data.keys())}")
     except json.JSONDecodeError:
+        print(f"[DocumentAgent] !!! JSON 파싱 실패 → fallback")
         data = {"content": generated_json_str} # Fallback
 
     # 3. 템플릿 렌더링 (Markdown)
@@ -125,6 +283,8 @@ def _handle_doc_generate(user_input: str, template_type: str) -> Dict[str, Any]:
 
 def _handle_meeting_generate(user_input: str) -> Dict[str, Any]:
     """회의록 생성 처리"""
+    _t = time.time()
+    print(f"[DocumentAgent] _handle_meeting_generate | input='{user_input[:80]}...'")
     # 1. LLM으로 회의 내용 분석 및 구조화
     sys_prompt = "당신은 회의록 작성 전문가입니다. 입력된 회의 내용을 분석하여 JSON 형식으로 출력하세요."
     user_prompt = f"""
@@ -142,10 +302,14 @@ def _handle_meeting_generate(user_input: str) -> Dict[str, Any]:
     }}
     """
     
+    print(f"[DocumentAgent] LLM 호출 (meeting_generate, json_mode=True)...")
     generated_json_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
+    print(f"[DocumentAgent] LLM 응답: {generated_json_str[:200]}...")
     try:
         data = json.loads(generated_json_str)
-    except:
+        print(f"[DocumentAgent] JSON 파싱 성공 | keys={list(data.keys())}")
+    except Exception:
+        print(f"[DocumentAgent] !!! JSON 파싱 실패")
         data = {"summary": "파싱 실패", "content": generated_json_str}
 
     # 2. 회의록 템플릿 렌더링
@@ -187,41 +351,47 @@ def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False) -> str
     """
     LLM 호출 (Solar API 사용)
     """
+    _t_llm = time.time()
+    print(f"[DocumentAgent] _call_llm 호출 | json_mode={json_mode}")
     try:
         from openai import OpenAI
         import os
-        
-        # 환경변수에서 API 키 로드 (없으면 에러)
+
         api_key = os.getenv("SOLAR_API_KEY")
+        print(f"[DocumentAgent] _call_llm | SOLAR_API_KEY 존재: {bool(api_key)}")
         if not api_key:
-            # 키가 없으면 개발용 Mock 리턴 (테스트 편의성 위해)
-            logger.warning("SOLAR_API_KEY not found. Returning mock response.")
+            print("[DocumentAgent] _call_llm | API 키 없음 → mock 응답")
             return _get_mock_response(user_prompt, json_mode)
 
         client = OpenAI(
             api_key=api_key,
             base_url="https://api.upstage.ai/v1/solar"
         )
-        
+
         messages = [
             {"role": "system", "content": sys_prompt},
             {"role": "user", "content": user_prompt}
         ]
-        
+
+        print(f"[DocumentAgent] _call_llm | Solar API 호출 중...")
         response = client.chat.completions.create(
             model="solar-1-mini-chat",
             messages=messages,
             temperature=0.7,
             response_format={"type": "json_object"} if json_mode else {"type": "text"}
         )
-        
-        return response.choices[0].message.content
+
+        result = response.choices[0].message.content
+        print(f"[DocumentAgent] _call_llm | Solar API 응답 ({time.time()-_t_llm:.2f}s) 길이: {len(result)}자")
+        return result
 
     except ImportError:
-        logger.error("openai package not installed.")
+        print("[DocumentAgent] _call_llm | !!! openai 패키지 없음")
         return _get_mock_response(user_prompt, json_mode)
     except Exception as e:
-        logger.error(f"LLM Call Error: {e}")
+        print(f"[DocumentAgent] _call_llm | !!! 에러: {e}")
+        import traceback
+        traceback.print_exc()
         return _get_mock_response(user_prompt, json_mode)
 
 def _get_mock_response(user_prompt: str, json_mode: bool) -> str:

@@ -11,7 +11,6 @@
 """
 import json
 
-import pytest
 
 from ai.agents.judgment_agent import (
     _build_context_prompt,

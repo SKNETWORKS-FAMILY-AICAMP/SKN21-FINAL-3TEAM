@@ -16,13 +16,14 @@
 import json
 import logging
 import re
+import time
 from collections import defaultdict
 from typing import AsyncGenerator
 
 from ai.agents.state import AgentState
 from ai.llm import get_llm
 from ai.llm.prompts import JUDGMENT_SYSTEM_PROMPT
-from ai.rag.pipeline import get_pipeline
+from ai.rag.qdrant_pipeline import get_qdrant_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -244,18 +245,28 @@ async def judgment_agent(state: AgentState) -> AgentState:
     user_id = state.get("user_id")
     chat_history = state.get("chat_history", [])
 
+    _t_agent = time.time()
+    print(f"[JudgmentAgent] 진입 | user_input='{user_input[:80]}', user_id={user_id}")
+
     try:
         # 1. RAG 검색 (다중 규정 교차 분석을 위해 top_k 확대)
-        pipeline = get_pipeline()
+        _t_rag = time.time()
+        print("[JudgmentAgent] RAG 검색 시작 (top_k=7)...")
+        pipeline = get_qdrant_pipeline()
         context = pipeline.retrieve(query=user_input, user_id=user_id, top_k=7)
+        print(f"[JudgmentAgent] RAG 검색 완료 ({time.time()-_t_rag:.2f}s) | {len(context)}개 문서 검색됨")
 
         # 2. 판단 이력 추출
         judgment_history = _extract_judgment_history(chat_history)
+        print(f"[JudgmentAgent] 판단 이력: {len(judgment_history)}건")
 
         # 3. 규정 그룹핑 정보
         groups = _group_regulations(context)
+        print(f"[JudgmentAgent] 규정 그룹: {list(groups.keys())}")
 
         # 4. LLM 호출
+        _t_llm = time.time()
+        print("[JudgmentAgent] LLM 호출 중...")
         llm = get_llm()
         context_text = _build_context_prompt(context)
         user_prompt = _build_user_prompt(
@@ -267,6 +278,7 @@ async def judgment_agent(state: AgentState) -> AgentState:
             system_prompt=JUDGMENT_SYSTEM_PROMPT,
             temperature=0.1,
         )
+        print(f"[JudgmentAgent] LLM 응답 ({time.time()-_t_llm:.2f}s) 길이: {len(response.content)}자")
 
         # 5. 응답 파싱 + confidence 보정
         parsed = _parse_llm_response(response.content)
@@ -274,6 +286,8 @@ async def judgment_agent(state: AgentState) -> AgentState:
         parsed["confidence"] = _calibrate_confidence(parsed, context)
         parsed.setdefault("cross_references", [])
         parsed["regulation_groups"] = list(groups.keys())
+
+        print(f"[JudgmentAgent] 완료 ({time.time()-_t_agent:.2f}s) | result={parsed.get('result')}, confidence={parsed.get('confidence')}")
 
         return {
             **state,
@@ -283,7 +297,9 @@ async def judgment_agent(state: AgentState) -> AgentState:
         }
 
     except Exception as e:
-        logger.error(f"judgment_agent 오류: {e}", exc_info=True)
+        print(f"[JudgmentAgent] !!! 에러 발생: {e}")
+        import traceback
+        traceback.print_exc()
         return {
             **state,
             "agent_response": {
@@ -321,7 +337,7 @@ async def judgment_agent_stream(state: AgentState) -> AsyncGenerator[str, None]:
 
     try:
         # RAG 검색
-        pipeline = get_pipeline()
+        pipeline = get_qdrant_pipeline()
         context = pipeline.retrieve(query=user_input, user_id=user_id, top_k=7)
 
         # 판단 이력 추출

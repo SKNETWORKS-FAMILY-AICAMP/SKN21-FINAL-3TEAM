@@ -16,8 +16,8 @@
 | 기능 | 설명 |
 |------|------|
 | **규정 판단** | "인턴에게 AWS 접근 줘도 돼?" → 다중 규정 교차 판단 + 근거 + 대안 제시 |
-| **회의록 생성** | 회의 내용 입력 → AI 요약 + 결정사항/Action Item 추출 → 회의록 양식 생성 |
-| **문서 생성** | 템플릿 선택/업로드 → AI가 양식에 맞게 내용 채워서 생성 → 미리보기 + 다운로드 |
+| **회의 요약 · 회의록 생성** | 회의 내용 입력 → AI 요약(결정사항·Action Item 자동 추출) → 회의록 양식 생성 → 미리보기 + 다운로드 |
+| **문서 요약 · 문서 생성** | 문서 업로드 → AI 요약 / 템플릿 선택 → AI가 양식에 맞게 내용 채워서 생성 → 미리보기 + 다운로드 |
 | **일정 관리** | Action Item → 일정 자동 등록 + Google Services 통합 (Calendar·Tasks·Gmail·Meet·Sheets) |
 
 ---
@@ -25,9 +25,9 @@
 ## 개발 전략: LLM API 먼저 → sLLM은 나중에
 
 ```
-1단계  설계 · 환경 세팅
-2단계  LLM API(GPT/Claude)로 전체 기능 먼저 구현  ← 지금 여기
-3단계  Agent 개발 — LLM API 기반으로 실제 동작 확인
+1단계  설계 · 환경 세팅                                    ✅ 완료
+2단계  LLM API(GPT/Claude)로 전체 기능 먼저 구현            ✅ 대부분 완료
+3단계  Agent 개발 — LLM API 기반으로 실제 동작 확인          ← 지금 여기
 4단계  확정된 input/output에 맞춰 데이터 수집 → LoRA 파인튜닝
 5단계  sLLM(vLLM) 교체 — 모델만 갈아끼우면 됨
 6단계  통합 테스트 → 배포
@@ -36,6 +36,33 @@
 - **왜?** 파인튜닝 먼저 하면 input/output이 바뀔 때마다 데이터를 다시 만들어야 함
 - LLM API로 기능을 완성하면서 실제 형태를 확정한 뒤, 그에 맞는 데이터를 수집하는 게 효율적
 - Agent 코드는 LLM 호출 인터페이스만 바꾸면 되는 구조 (공통 모듈 #39)
+
+### 현재 진행 상황 (2026-02-14 기준)
+
+**✅ 완료 (11개)**
+
+| 영역 | 이슈 | 내용 |
+|------|------|------|
+| PM | #4, #5 | Intent 데이터 구축 (1,868개) + 모델 학습 (Adv F1 90.2%) |
+| AI | #7 | 베이스라인 벤치마크 → Kanana-1.5-8B 선정 (종합 0.652) |
+| AI | #8, #39 | RAG 파이프라인 (8파일) + LLM 공통 모듈 (6파일) |
+| AI | #12 | 판단 Agent — 다중규정 교차판단 + SSE |
+| Backend | #19, #20 | DB 스키마 (12모델) + JWT 인증 (bcrypt + AES-256) |
+| Backend | #21, #33 | Google OAuth + Calendar + Tasks + Gmail + Meet + Sheets (13개 서비스) |
+| Frontend | #24, #25, #26 | 디자인 시스템 + 공통 컴포넌트 + 로그인 UI |
+
+**🔧 진행 중 (4개)**
+
+| 이슈 | 내용 | 남은 작업 |
+|------|------|----------|
+| #6 | 오케스트레이터 + SSE | SSE E2E 마무리 |
+| #17 | 문서 Agent (문서 요약 · 회의 요약 · 문서 생성) | AI 로직 80% 완료, 백엔드 API 연동 + 템플릿 렌더링 남음 |
+| #40 | 문서 LLM 연동 | 공통 모듈(#39) 전환 |
+| #29 | 관리자 UI | 전체 API 연동 + 반응형 |
+
+**📋 미착수 (4단계 이후)**
+
+파인튜닝 (#9, #10, #14, #16) · vLLM 서빙 (#11) · 일정 Agent (#22) · E2E 테스트 (#30) · 성능 평가 (#13, #18) · AWS 배포 (#31)
 
 ---
 
@@ -174,8 +201,8 @@
 ║  │  │ [경은]    │  │ [승언]    │  │  │                                ║
 ║  │  └───────────┘  └───────────┘  │  │                                ║
 ║  │                                 │  │                                ║
-║  │  Base: Qwen3/Kanana/EXAONE     │  │                                ║
-║  │        (7~8B, 벤치마크 후 확정) │  │                                ║
+║  │  Base: Kanana-1.5-8B            │  │                                ║
+║  │        (벤치마크 선정, 종합 0.652)│  │                               ║
 ║  └─────────────────────────────────┘  │                                ║
 ║                                       │                                ║
 ║  ┌────────────────────────────────┐   │                                ║
@@ -213,7 +240,7 @@
 [경은] 판단 Agent + RAG Pipeline + Reranker + vLLM 서빙 + LoRA v1
 [승언] 문서 Agent + Document Parser + Template Engine + LoRA v2
 [혜빈] Backend API 전체 + DB + 인증 + 일정 Agent + Google Services 통합
-[지영] Frontend 전체 (7개 화면 + 30+ 컴포넌트 + SSE 수신)
+[지영] Frontend 전체 (10개 화면 + 63 컴포넌트 + 다크모드 + 인쇄 + 애니메이션 + SSE 수신)
 ```
 
 ### Agent 처리 흐름 (예: 규정 판단)
@@ -372,7 +399,7 @@
 |------|------|------|
 | Agent Framework | **LangGraph** | StateGraph 기반 Agent 오케스트레이션 |
 | LLM API (현재) | **GPT-4 / Claude** | 기능 구현 단계에서 사용, 추후 sLLM 교체 |
-| Base sLLM (추후) | **Qwen3 / Kanana / EXAONE 3.5** (7~8B) | 벤치마크 후 확정 |
+| Base sLLM (추후) | **Kanana-1.5-8B** | 벤치마크 선정 (종합 0.652) |
 | Fine-tuning (추후) | **LoRA (PEFT)** + QLoRA 4-bit | 판단 v1 (1,500개) + 문서 v2 (1,700개) |
 | 모델 서빙 | **vLLM** | OpenAI 호환 API + LoRA 핫스왑 + 스트리밍 |
 | Vector DB | **ChromaDB** | 문서 임베딩 저장 + 유사도 검색 |
@@ -402,6 +429,7 @@
 | 스트리밍 | EventSource (SSE) |
 | 스타일 | Tailwind CSS + shadcn/ui |
 | 캘린더 | FullCalendar |
+| 애니메이션 | framer-motion |
 | 차트 | Recharts |
 
 ### Infra
@@ -423,6 +451,15 @@
 |--------|-----------|------|------|
 | **LoRA v1** (판단) | 판단 1,000 + Q&A 500 | **1,500개** | 경은 |
 | **LoRA v2** (문서) | 회의록 800 + 검색 200 + 요약 300 + 생성 200 + 리스크 200 | **1,700개** | 승언 |
+
+### Intent 분류 데이터 (완료)
+
+| 구분 | 건수 | 모델 |
+|------|------|------|
+| 원본 학습 데이터 | 1,405개 (7개 JSONL) | klue/bert-base |
+| 증강 데이터 | 463개 (13개 증강 파일) | — |
+| **학습 합계** | **1,868개** | — |
+| Adversarial 테스트셋 | 120개 | Eval F1 98.2%, Adv F1 90.2% |
 
 > 검증용 15% 별도 분리 / Claude·GPT-4 초안 → 사람 검증
 
@@ -470,16 +507,29 @@ SKN21-FINAL-3TEAM/
 │   │   ├── judgment_agent.py    # 판단 Agent (경은)
 │   │   ├── document_agent.py    # 문서 Agent (승언)
 │   │   └── schedule_agent.py    # 일정 Agent (혜빈)
+│   ├── llm/                     # LLM 공통 모듈 (경은)
+│   │   ├── base.py              # BaseLLMProvider 인터페이스
+│   │   ├── factory.py           # LLM 팩토리
+│   │   ├── openai_provider.py   # OpenAI (GPT)
+│   │   ├── anthropic_provider.py # Anthropic (Claude)
+│   │   └── prompts.py           # 프롬프트 관리
 │   ├── rag/                     # RAG 파이프라인 (경은)
 │   │   ├── hybrid_search.py     # BM25 + Vector
 │   │   ├── reranker.py          # bge-reranker-v2-m3
-│   │   └── vectorstore.py       # ChromaDB
+│   │   ├── vectorstore.py       # ChromaDB
+│   │   ├── qdrant_pipeline.py   # Qdrant 파이프라인
+│   │   └── qdrant_store.py      # Qdrant 벡터스토어
 │   ├── templates/               # 문서 템플릿 (승언)
 │   │   ├── base.py              # BaseTemplate
 │   │   ├── meeting_minutes.py   # 회의록
 │   │   ├── report.py            # 보고서
 │   │   ├── jd.py                # 채용 공고
 │   │   └── proposal.py          # 제안서
+│   ├── tests/                   # AI 테스트
+│   │   ├── test_intent.py       # Intent 분류 테스트
+│   │   ├── test_judgment_agent.py # 판단 Agent 테스트
+│   │   └── test_rag_pipeline.py # RAG 파이프라인 테스트
+│   ├── experiments/             # ML 실험 (전처리, 학습, 평가)
 │   ├── finetuning/              # LoRA 학습 (경은/승언)
 │   ├── document_parser/         # 문서 파싱 (승언)
 │   └── serving/vllm_client.py   # vLLM 클라이언트
@@ -500,13 +550,20 @@ SKN21-FINAL-3TEAM/
 │
 ├── data/                        # 학습/평가 데이터
 │   ├── training/
+│   │   ├── intent/              # Intent 데이터 (원본 1,405 + 증강 463)
 │   │   ├── v1_judgment/         # 판단 데이터 (1,500개)
 │   │   └── v2_document/         # 문서 데이터 (1,700개)
+│   ├── evaluation/              # 벤치마크 리포트 + 결과
 │   └── regulations/             # 규정 원본 문서
 │
 ├── docker/                      # Docker 설정
 │   ├── docker-compose.yml
 │   └── Dockerfile.*
+│
+├── scripts/                     # 유틸리티 스크립트
+│   ├── seed_data.py             # 초기 데이터 시딩
+│   ├── seed_qdrant_documents.py # Qdrant 문서 시딩
+│   └── setup_db.py              # DB 초기화
 │
 ├── docs/                        # 기획/설계 문서
 │   ├── TASK_BOARD.md            # 작업 보드 (일일 참고)

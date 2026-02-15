@@ -60,3 +60,6 @@ token.json
 
 # claude setting
 .claude
+.ruff_cache/
+.ruff_cache/123
+.ruff_cache/4353454353

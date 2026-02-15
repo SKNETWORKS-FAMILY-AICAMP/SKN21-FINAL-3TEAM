@@ -3,22 +3,23 @@ import sys
 import os
 import json
 import logging
+import asyncio
 from dotenv import load_dotenv
 
 # .env 파일 로드
 load_dotenv()
 
-# 상위 디렉토리를 sys.path에 추가 (모듈 import를 위해)
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# 프로젝트 루트를 sys.path에 추가 (tests/ -> 프로젝트 루트)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ai.agents.document_agent import document_agent
-from ai.agents.state import AgentState
+from ai.agents.document_agent import document_agent  # noqa: E402
+from ai.agents.state import AgentState  # noqa: E402
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def test_document_agent():
+async def test_document_agent():
     print("=== Testing Document Agent (MOCK State) ===\n")
 
     # 1. doc_search 테스트
@@ -38,8 +39,8 @@ def test_document_agent():
         "extracted_text": None,
         "google_services_result": None
     }
-    
-    result1 = document_agent(state1)
+
+    result1 = await document_agent(state1)
     print(f"Result: {json.dumps(result1['agent_response'], ensure_ascii=False, indent=2)}\n")
 
 
@@ -61,7 +62,7 @@ def test_document_agent():
         "google_services_result": None
     }
 
-    result2 = document_agent(state2)
+    result2 = await document_agent(state2)
     print(f"Result: {json.dumps(result2['agent_response'], ensure_ascii=False, indent=2)}\n")
 
 
@@ -83,7 +84,7 @@ def test_document_agent():
         "google_services_result": None
     }
 
-    result3 = document_agent(state3)
+    result3 = await document_agent(state3)
     print(f"Result: {json.dumps(result3['agent_response'], ensure_ascii=False, indent=2)}\n")
 
 
@@ -105,7 +106,7 @@ def test_document_agent():
         "google_services_result": None
     }
 
-    result4 = document_agent(state4)
+    result4 = await document_agent(state4)
     print(f"Result: {json.dumps(result4['agent_response'], ensure_ascii=False, indent=2)}\n")
 
 if __name__ == "__main__":
@@ -113,5 +114,5 @@ if __name__ == "__main__":
     # 없으면 Mock 응답 반환됨
     if not os.getenv("SOLAR_API_KEY"):
         print("WARNING: SOLAR_API_KEY not found in environment. Using MOCK responses.\n")
-    
-    test_document_agent()
+
+    asyncio.run(test_document_agent())
