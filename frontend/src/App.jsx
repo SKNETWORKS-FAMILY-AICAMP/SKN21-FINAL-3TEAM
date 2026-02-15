@@ -11,17 +11,17 @@ import DocumentsPage from './pages/DocumentsPage';
 import MeetingsPage from './pages/MeetingsPage';
 import SchedulesPage from './pages/SchedulesPage';
 import AdminPage from './pages/AdminPage';
-import MeetingMinutesPage from './pages/MeetingMinutesPage';
 import DocumentGeneratePage from './pages/DocumentGeneratePage';
 
-// DEV_BYPASS: 백엔드 JWT 인증 연동 완료 — 실제 인증 플로우 사용
+// DEV_BYPASS: true = 로그인 없이 개발 화면 확인 가능
 const DEV_BYPASS_AUTH = false;
 
 function PrivateRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const initialized = useAuthStore((s) => s.initialized);
-  if (!initialized) return null; // 초기화 완료 전 빈 화면
-  return (DEV_BYPASS_AUTH || isAuthenticated) ? <Outlet /> : <Navigate to="/login" replace />;
+  if (DEV_BYPASS_AUTH) return <Outlet />;
+  if (!initialized) return null;
+  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
 }
 
 function PublicOnlyRoute() {
@@ -58,7 +58,6 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/chat" element={<ChatPage />} />
-            <Route path="/meeting-minutes" element={<MeetingMinutesPage />} />
             <Route path="/document-generate" element={<DocumentGeneratePage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/meetings" element={<MeetingsPage />} />

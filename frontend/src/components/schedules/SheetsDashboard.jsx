@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BarChart3 } from 'lucide-react';
 import useGoogleServices from '../../hooks/useGoogleServices';
 
 export default function SheetsDashboard() {
@@ -58,8 +59,8 @@ export default function SheetsDashboard() {
                 key={sheet.spreadsheet_id || sheet.id}
                 className="flex items-center gap-3 px-3 py-3 rounded-md border border-neutral-divider hover:border-primary-300 transition"
               >
-                <div className="w-8 h-8 rounded-md bg-success-bg flex items-center justify-center text-success text-sm">
-                  📊
+                <div className="w-8 h-8 rounded-md bg-success-bg flex items-center justify-center text-success">
+                  <BarChart3 size={16} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-neutral-main truncate">

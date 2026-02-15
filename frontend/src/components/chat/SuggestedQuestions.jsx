@@ -1,5 +1,8 @@
 import { useState } from 'react';
+import { Sparkles, Scale, FileText, CalendarDays, MessageCircle } from 'lucide-react';
 import { SUGGESTED_QUESTIONS, SUGGESTED_QUESTION_CATEGORIES } from '../../utils/constants';
+
+const ICON_MAP = { Sparkles, Scale, FileText, CalendarDays, MessageCircle };
 
 export default function SuggestedQuestions({ questions = SUGGESTED_QUESTIONS, onSelect }) {
   const [activeCategory, setActiveCategory] = useState('all');
@@ -30,7 +33,7 @@ export default function SuggestedQuestions({ questions = SUGGESTED_QUESTIONS, on
                 : 'bg-surface-card border border-neutral-border text-neutral-sub hover:bg-primary-50 hover:border-primary-300'
             }`}
           >
-            {cat.icon} {cat.label}
+            {(() => { const Icon = ICON_MAP[cat.icon]; return Icon ? <Icon size={14} className="inline -mt-0.5" /> : null; })()}{' '}{cat.label}
           </button>
         ))}
       </div>
