@@ -1,0 +1,136 @@
+{
+  "model": "klue/bert-base",
+  "config": {
+    "epochs": 5,
+    "lr": 2e-05,
+    "batch_size": 16,
+    "warmup_ratio": 0.0
+  },
+  "seeds": [
+    42,
+    123,
+    456
+  ],
+  "results": [
+    {
+      "seed": 42,
+      "config": "A",
+      "eval_f1": 0.9895,
+      "eval_acc": 0.9895,
+      "adv_acc": 0.8962,
+      "adv_f1": 0.8996
+    },
+    {
+      "seed": 42,
+      "config": "B",
+      "eval_f1": 0.9895,
+      "eval_acc": 0.9895,
+      "adv_acc": 0.8962,
+      "adv_f1": 0.8996
+    },
+    {
+      "seed": 42,
+      "config": "C",
+      "eval_f1": 0.9895,
+      "eval_acc": 0.9895,
+      "adv_acc": 0.9009,
+      "adv_f1": 0.9039
+    },
+    {
+      "seed": 42,
+      "config": "D",
+      "eval_f1": 0.9824,
+      "eval_acc": 0.9825,
+      "adv_acc": 0.9009,
+      "adv_f1": 0.9041
+    },
+    {
+      "seed": 42,
+      "config": "E",
+      "eval_f1": 0.9824,
+      "eval_acc": 0.9825,
+      "adv_acc": 0.9057,
+      "adv_f1": 0.9082
+    },
+    {
+      "seed": 123,
+      "config": "A",
+      "eval_f1": 0.9578,
+      "eval_acc": 0.958,
+      "adv_acc": 0.8679,
+      "adv_f1": 0.8689
+    },
+    {
+      "seed": 123,
+      "config": "B",
+      "eval_f1": 0.9578,
+      "eval_acc": 0.958,
+      "adv_acc": 0.8726,
+      "adv_f1": 0.8735
+    },
+    {
+      "seed": 123,
+      "config": "C",
+      "eval_f1": 0.9578,
+      "eval_acc": 0.958,
+      "adv_acc": 0.8774,
+      "adv_f1": 0.877
+    },
+    {
+      "seed": 123,
+      "config": "D",
+      "eval_f1": 0.9581,
+      "eval_acc": 0.958,
+      "adv_acc": 0.8821,
+      "adv_f1": 0.8818
+    },
+    {
+      "seed": 123,
+      "config": "E",
+      "eval_f1": 0.9545,
+      "eval_acc": 0.9545,
+      "adv_acc": 0.8868,
+      "adv_f1": 0.8859
+    },
+    {
+      "seed": 456,
+      "config": "A",
+      "eval_f1": 0.9616,
+      "eval_acc": 0.9615,
+      "adv_acc": 0.8491,
+      "adv_f1": 0.851
+    },
+    {
+      "seed": 456,
+      "config": "B",
+      "eval_f1": 0.9616,
+      "eval_acc": 0.9615,
+      "adv_acc": 0.8491,
+      "adv_f1": 0.851
+    },
+    {
+      "seed": 456,
+      "config": "C",
+      "eval_f1": 0.9616,
+      "eval_acc": 0.9615,
+      "adv_acc": 0.8538,
+      "adv_f1": 0.8538
+    },
+    {
+      "seed": 456,
+      "config": "D",
+      "eval_f1": 0.9649,
+      "eval_acc": 0.965,
+      "adv_acc": 0.8585,
+      "adv_f1": 0.8587
+    },
+    {
+      "seed": 456,
+      "config": "E",
+      "eval_f1": 0.9649,
+      "eval_acc": 0.965,
+      "adv_acc": 0.8632,
+      "adv_f1": 0.8627
+    }
+  ]
+}
