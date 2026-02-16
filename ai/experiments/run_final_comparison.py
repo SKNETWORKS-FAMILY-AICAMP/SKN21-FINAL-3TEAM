@@ -221,7 +221,7 @@ def main():
     # ── 2. BERT + 풀 전처리 (실험6) ──
     print("\n  [2/4] BERT Fine-tuned + 풀 전처리 (실험6 Config E)...")
     if model is not None:
-        from ai.experiments.preprocessing import preprocess
+        from ai.agents.preprocessing import preprocess
 
         preds_bert_pp = []
         t0 = time.time()

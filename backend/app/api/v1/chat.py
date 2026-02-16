@@ -1,5 +1,7 @@
 """
 챗봇 API + SSE 스트리밍 (팀원 A 담당)
+
+v2: multi_intent / sub_query_start / sub_query_done / clarify_candidates SSE 이벤트 추가
 """
 
 import json
@@ -34,6 +36,13 @@ def _build_initial_state(request: ChatRequest, user, stream_mode: bool = False) 
         "extracted_text": None,
         "google_services_result": None,
         "stream_mode": stream_mode,
+        # 복합 질문 처리 필드
+        "is_complex": None,
+        "sub_queries": None,
+        "intent_candidates": None,
+        "resolved_input": None,
+        "sub_responses": None,
+        "needs_context_resolution": None,
     }
 
 
@@ -69,6 +78,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
 
             # astream으로 노드별 실시간 이벤트 전송
             final_state = {}
+            _classify_sent = False  # classify_intent_v2 SSE 중복 전송 방지
 
             async for event in graph.astream(initial_state):
                 # event = {"node_name": {updated_state_fields}}
@@ -78,14 +88,65 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
                     print(f"[Chat]     output keys: {list(node_output.keys())}")
                     final_state.update(node_output)
 
-                    if node_name == "classify_intent":
+                    if node_name == "classify_intent_v2":
                         # 1. Intent 분류 결과 즉시 전송
                         intent = node_output.get("intent", "general")
                         confidence = node_output.get("confidence", 0.0)
+                        is_complex = node_output.get("is_complex", False)
+                        needs_context = node_output.get("needs_context_resolution", False)
                         agent_type = _get_agent_type(intent)
-                        print(f"[Chat] Intent 분류 결과: intent={intent}, confidence={confidence:.4f}, agent_type={agent_type}")
-                        yield f"data: {json.dumps({'type': 'intent', 'intent': intent, 'confidence': confidence, 'agent_type': agent_type}, ensure_ascii=False)}\n\n"
-                        yield f"data: {json.dumps({'type': 'status', 'value': f'{agent_type} 처리 중...'}, ensure_ascii=False)}\n\n"
+                        print(f"[Chat] Intent 분류 결과: intent={intent}, confidence={confidence:.4f}, is_complex={is_complex}, 재진입={'Y' if _classify_sent else 'N'}")
+
+                        # resolve_context 후 재진입 시: 업데이트만 전송
+                        if _classify_sent:
+                            yield f"data: {json.dumps({'type': 'intent_update', 'intent': intent, 'confidence': confidence, 'agent_type': agent_type, 'is_complex': is_complex}, ensure_ascii=False)}\n\n"
+                        else:
+                            yield f"data: {json.dumps({'type': 'intent', 'intent': intent, 'confidence': confidence, 'agent_type': agent_type, 'is_complex': is_complex}, ensure_ascii=False)}\n\n"
+                        _classify_sent = True
+
+                        if is_complex:
+                            yield f"data: {json.dumps({'type': 'status', 'value': '복합 질문 감지 — 분석 중...'}, ensure_ascii=False)}\n\n"
+                        elif needs_context:
+                            yield f"data: {json.dumps({'type': 'status', 'value': '맥락 해석 중...'}, ensure_ascii=False)}\n\n"
+                        else:
+                            yield f"data: {json.dumps({'type': 'status', 'value': f'{agent_type} 처리 중...'}, ensure_ascii=False)}\n\n"
+
+                    elif node_name == "resolve_context":
+                        # 맥락 해석 완료
+                        resolved = node_output.get("resolved_input", "")
+                        print(f"[Chat] 맥락 해석 완료: '{resolved}'")
+                        yield f"data: {json.dumps({'type': 'status', 'value': f'맥락 해석 완료 → 재분류 중...'}, ensure_ascii=False)}\n\n"
+
+                    elif node_name == "decompose_and_classify":
+                        # 복합 질문 분해 결과
+                        sub_queries = node_output.get("sub_queries", [])
+                        is_complex = node_output.get("is_complex", False)
+                        if is_complex and sub_queries:
+                            print(f"[Chat] 복합 분해 완료: {len(sub_queries)}개 서브쿼리")
+                            yield f"data: {json.dumps({'type': 'multi_intent', 'data': {'total': len(sub_queries), 'sub_queries': sub_queries}}, ensure_ascii=False)}\n\n"
+                        else:
+                            print(f"[Chat] 복합 분해 실패 또는 단순 → fallback")
+
+                    elif node_name == "execute_sub_queries":
+                        # 서브쿼리 실행 결과 (개별 진행 상태는 orchestrator 내부 처리)
+                        sub_responses = node_output.get("sub_responses", [])
+                        for i, resp in enumerate(sub_responses):
+                            status = resp.get("status", "unknown")
+                            sq_intent = resp.get("intent", "")
+                            sq_query = resp.get("query", "")
+                            yield f"data: {json.dumps({'type': 'sub_query_done', 'data': {'step': i + 1, 'total': len(sub_responses), 'intent': sq_intent, 'query': sq_query, 'status': status}}, ensure_ascii=False)}\n\n"
+
+                    elif node_name == "merge_responses":
+                        # 병합 완료 — format_response에서 최종 전송
+                        print(f"[Chat] merge_responses 완료")
+                        yield f"data: {json.dumps({'type': 'status', 'value': '결과 통합 완료'}, ensure_ascii=False)}\n\n"
+
+                    elif node_name == "clarify_with_candidates":
+                        # top-3 후보 제시
+                        agent_response = node_output.get("agent_response", {})
+                        candidates = agent_response.get("candidates", [])
+                        print(f"[Chat] clarify_with_candidates: {candidates}")
+                        yield f"data: {json.dumps({'type': 'clarify_candidates', 'data': {'candidates': candidates, 'message': agent_response.get('message', '')}}, ensure_ascii=False)}\n\n"
 
                     elif node_name == "general_response":
                         # 2-1. 일반 응답 스트리밍 (Solar API)
@@ -192,6 +253,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
                         # 3. 최종 응답 전송
                         agent_response = node_output.get("agent_response", final_state.get("agent_response", {}))
                         intent = final_state.get("intent", "general")
+                        resp_type = agent_response.get("type", intent)
                         message = agent_response.get("message", "")
 
                         # message가 비어있으면 preview/summary에서 가져오기
@@ -200,16 +262,24 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
                             if message:
                                 agent_response["message"] = message
 
-                        print(f"[Chat] format_response 노드. intent={intent}, message 길이={len(message)}자")
+                        print(f"[Chat] format_response 노드. type={resp_type}, intent={intent}, message 길이={len(message)}자")
 
-                        # 이미 스트리밍한 경우 token 전송 건너뛰기
-                        if not agent_response.get("stream_pending") and intent not in ("general", "doc_search"):
+                        # multi_intent 응답: 섹션별 텍스트를 한번에 전송
+                        if resp_type == "multi_intent":
                             yield f"data: {json.dumps({'type': 'token', 'value': message}, ensure_ascii=False)}\n\n"
+                            yield f"data: {json.dumps({'type': 'result', 'intent': intent, 'data': agent_response}, ensure_ascii=False)}\n\n"
+                        elif resp_type == "clarify_candidates":
+                            # 이미 clarify_with_candidates에서 전송됨 — result만 전송
+                            yield f"data: {json.dumps({'type': 'result', 'intent': intent, 'data': agent_response}, ensure_ascii=False)}\n\n"
+                        else:
+                            # 이미 스트리밍한 경우 token 전송 건너뛰기
+                            if not agent_response.get("stream_pending") and intent not in ("general", "doc_search"):
+                                yield f"data: {json.dumps({'type': 'token', 'value': message}, ensure_ascii=False)}\n\n"
 
-                        yield f"data: {json.dumps({'type': 'result', 'intent': intent, 'data': agent_response}, ensure_ascii=False)}\n\n"
+                            yield f"data: {json.dumps({'type': 'result', 'intent': intent, 'data': agent_response}, ensure_ascii=False)}\n\n"
 
                     else:
-                        # 2. Agent 노드 완료 시 상태 업데이트
+                        # 기타 노드 완료 시 상태 업데이트
                         yield f"data: {json.dumps({'type': 'status', 'value': f'{node_name} 처리 완료'}, ensure_ascii=False)}\n\n"
 
             # 4. 완료

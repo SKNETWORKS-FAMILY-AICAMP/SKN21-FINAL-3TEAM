@@ -1,0 +1,60 @@
+[
+  {
+    "test": "Seed Variance",
+    "seeds": [
+      42,
+      123,
+      456
+    ],
+    "adv_f1_values": [
+      0.9082,
+      0.8859,
+      0.8627
+    ],
+    "adv_f1_mean": 0.8856,
+    "adv_f1_std": 0.0186,
+    "adv_f1_range": 0.0455,
+    "adv_acc_mean": 0.8852,
+    "adv_acc_std": 0.0174,
+    "interpretation": "seed간 F1 편차: 0.0186 (range: 0.0455). 모델 간 차이(0.0025)보다 seed 편차가 더 큼 --모델 차이가 통계적으로 불안정."
+  },
+  {
+    "test": "Bootstrap CI (single model)",
+    "model": "BERT + Preprocess",
+    "f1_mean": 0.8987,
+    "ci_95_lower": 0.8552,
+    "ci_95_upper": 0.9384,
+    "interpretation": "BERT F1 = 0.8987 (95% CI: [0.8552, 0.9384])"
+  },
+  {
+    "test": "McNemar (from TRAINING_LOG)",
+    "comparison": "BERT+Preprocess vs GPT Few-shot",
+    "n01_bert_correct_gpt_wrong": 21,
+    "n10_bert_wrong_gpt_correct": 11,
+    "note": "TRAINING_LOG의 오분류 상세 분석 수치 사용",
+    "chi2": 2.5312,
+    "p_value": 0.111612,
+    "significant_at_005": false,
+    "interpretation": "두 모델 간 유의미한 차이 없음 (p=0.1116)"
+  },
+  {
+    "test": "Model Difference vs Seed Variance",
+    "seed_std": 0.0186,
+    "comparisons": [
+      {
+        "pair": "BERT vs RoBERTa",
+        "f1_diff": 0.0025,
+        "diff_in_std_units": 0.13,
+        "reliable": false,
+        "interpretation": "차이(0.0025)가 seed 편차(0.0186)의 0.1배 --신뢰 불가 (노이즈 수준)"
+      },
+      {
+        "pair": "BERT vs KoELECTRA",
+        "f1_diff": 0.0159,
+        "diff_in_std_units": 0.85,
+        "reliable": false,
+        "interpretation": "차이(0.0159)가 seed 편차(0.0186)의 0.9배 --신뢰 불가 (노이즈 수준)"
+      }
+    ]
+  }
+]

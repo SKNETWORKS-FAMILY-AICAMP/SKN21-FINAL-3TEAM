@@ -233,6 +233,80 @@
 - 커밋 & push 완료
 
 **다음 할 일:**
-- 복합 질문 처리 (멀티 인텐트) — 오케스트레이터에서 LLM으로 문장 분리 → BERT 각각 분류
-- 긴 질문 / 맥락 의존 질문 처리 방안
+- ~~복합 질문 처리 (멀티 인텐트) — 오케스트레이터에서 LLM으로 문장 분리 → BERT 각각 분류~~ → 2/16 구현 완료
+- ~~긴 질문 / 맥락 의존 질문 처리 방안~~ → 2/16 구현 완료
 - #6 오케스트레이터 마무리
+
+---
+
+## 2026-02-16 (일) — 오후 세션
+
+**복합 질문 처리 시스템 (Smart Hybrid) 구현:**
+
+설계서 기반 Phase 1~2 전체 구현 완료. 4개 파일 수정.
+
+- `ai/agents/state.py`: AgentState에 6개 필드 추가
+  - is_complex, sub_queries, intent_candidates, resolved_input, sub_responses, needs_context_resolution
+- `ai/agents/intent_classifier.py`: 대규모 확장
+  - `predict(return_candidates=True)`: BERT top-3 후보 반환 지원
+  - `detect_complexity()`: 3중 AND 로직 (키워드 + confidence gap + 동사 수)
+  - `is_context_dependent()`: 대명사/지시어 패턴 감지
+  - `apply_known_overrides()`: 실험에서 발견된 반복 오분류 보정 (KNOWN_OVERRIDES dict)
+  - COMPLEX_PATTERNS 넓은 범위 확장 (아서/어서, 고, 면서, 뒤에, 바탕으로 등)
+  - 모든 fallback 모드(Solar, embedding)에서도 candidates/overrides 지원
+- `ai/agents/orchestrator.py`: 그래프 v2 전면 재구축
+  - `classify_intent_v2`: BERT 분류 + 복합감지 + 지시어감지 통합
+  - `route_by_complexity`: simple/complex/context_dep/low_confidence 4분기
+  - `resolve_context`: LLM으로 지시어 → 명확한 문장 변환 (최근 5턴 참조)
+  - `decompose_and_classify`: LLM 1회 호출로 분류+분해+순서 결정
+  - `execute_sub_queries`: 서브쿼리 순차 실행 (depends_on 체인)
+  - `merge_responses`: 섹션별 순차 표시 + 한줄 요약
+  - `clarify_with_candidates`: confidence < 0.7 시 top-3 후보 제시
+  - `post_execution_check`: 뼈대만 추가 (Agent 완성 후 실제 로직)
+  - `_validate_decomposition`: LLM 분해 결과 검증 (필수 필드, intent 유효성, 순환참조)
+- `backend/app/api/v1/chat.py`: SSE 이벤트 확장
+  - intent_update (재진입 시), multi_intent, sub_query_done, clarify_candidates
+  - classify_intent_v2 SSE 중복 전송 방지 (_classify_sent 플래그)
+  - _build_initial_state에 6개 새 필드 초기화
+
+**버그 수정 2건:**
+1. `_execute_single_agent`에서 `stream_mode=False` 추가 (서브쿼리 빈 응답 방지)
+2. SSE classify_intent_v2 재진입 시 `intent` → `intent_update`로 구분
+
+**토크나이저 버그 발견 및 수정:**
+- 회귀 테스트 중 기존에 잠재해 있던 **토크나이저 불일치 버그** 발견
+- **문제**: `ai/models/intent_classifier/tokenizer_config.json`의 `tokenizer_class`가 `"TokenizersBackend"`(무효값)로 저장됨
+  - `"BertTokenizerFast"`로 수정하여 로드 성공했지만, 로컬 vocab 파일이 klue/bert-base 원본과 불일치
+  - 동일 모델인데 **로컬 토크나이저 F1 80.54%** vs **klue/bert-base 토크나이저 F1 90.07%** (10%p 차이)
+- **원인**: RunPod에서 모델 저장 시 토크나이저 파일이 비정상 기록. 기존 실험 스크립트는 `klue/bert-base`에서 직접 로드하여 문제가 드러나지 않았지만, 실서비스(`intent_classifier.py`)는 로컬 모델 디렉토리에서 로드 중이었음
+- **수정**: `intent_classifier.py`에서 토크나이저를 `klue/bert-base` 원본에서 로드하도록 변경
+  ```python
+  # 변경 전: self.tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
+  # 변경 후:
+  self.tokenizer = AutoTokenizer.from_pretrained("klue/bert-base")
+  ```
+- **검증 결과**: 수정 후 기존 실험 결과와 정확히 일치
+  - adversarial (212문장): F1 90.07% (기존 90.07% — 동일)
+  - blind (70문장): F1 95.62% (기존 92.84% — +2.78%p 상승)
+
+**v2 회귀 테스트 (`run_regression_v2.py`):**
+- 기능 테스트 4종 전부 PASS:
+  - predict() 호환성 (기본/후보 모드): PASS
+  - detect_complexity() (단순 4 + 복합 3): 7/7 PASS
+  - is_context_dependent() (양성 5 + 음성 3): 8/8 PASS
+  - apply_known_overrides() (5 케이스): 5/5 PASS
+- BERT 성능 회귀 테스트 (토크나이저 수정 후, 로컬 데스크탑에서 실행):
+  - adversarial (212): Accuracy 90.09%, **Macro F1 90.07%** (기존과 동일)
+  - blind (70): Accuracy 95.71%, **Macro F1 95.62%** (+2.78%p)
+  - 평균 추론 시간: 14.46ms / 14.85ms
+- **결론**: v2 코드 변경이 기존 BERT 성능에 영향 0. 토크나이저 수정으로 실서비스 성능이 실험 결과와 일치하게 됨
+
+**문서:**
+- `docs/복합질문_설계서.md` 신규 생성 (아키텍처, 결정 근거, SSE 흐름, 토크나이저 수정, 검증 계획)
+- `ai/experiments/run_regression_v2.py` 신규 생성 (v2 회귀 테스트 스크립트)
+
+**다음 할 일:**
+- 복합 질문 테스트 데이터 30~50문장 제작 (Phase 3)
+- 복합 감지 정확도 측정 (오탐/미감지 비율)
+- post_execution_check 실제 로직 구현 (다른 팀원 Agent 완성 후)
+- 프론트엔드(지영)에게 SSE 새 이벤트 타입 공유 필요
