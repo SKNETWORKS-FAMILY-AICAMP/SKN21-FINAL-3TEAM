@@ -1,3 +1,5 @@
+import { Lightbulb } from 'lucide-react';
+
 const borderColors = { deny: 'border-l-error', conditional: 'border-l-warning', ref: 'border-l-primary-300' };
 
 export default function JudgmentCard({ result, resultIcon, summary, regulations = [], alternatives = [] }) {
@@ -23,7 +25,7 @@ export default function JudgmentCard({ result, resultIcon, summary, regulations 
         )}
         {alternatives.length > 0 && (
           <div>
-            <div className="text-xs font-semibold text-neutral-sub mb-2">💡 대안</div>
+            <div className="text-xs font-semibold text-neutral-sub mb-2 flex items-center gap-1"><Lightbulb size={14} /> 대안</div>
             {alternatives.map((a, i) => (
               <div key={i} className="text-xs text-neutral-main py-1.5 pl-3 border-l-2 border-l-accent-300 mb-1.5 leading-relaxed">{a}</div>
             ))}

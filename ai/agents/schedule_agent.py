@@ -37,6 +37,7 @@ schedule_view 응답 형식:
 import json
 import logging
 import os
+import time
 from datetime import datetime, timedelta
 
 from ai.agents.state import AgentState
@@ -56,7 +57,6 @@ async def schedule_agent(state: AgentState) -> AgentState:
     user_input = state.get("user_input", "")
     user_id = state.get("user_id")
 
-    import time
     _t_agent = time.time()
     print(f"[ScheduleAgent] 진입 | intent={intent}, user_input='{user_input}', user_id={user_id}")
 
@@ -109,8 +109,15 @@ async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
 
     # 2. Google Calendar API 호출
     try:
-        from backend.app.db.session import async_session
-        from backend.app.services.calendar_service import GoogleCalendarService
+        import sys
+        from pathlib import Path
+        # backend 디렉토리를 sys.path에 추가 (AI 모듈에서 backend import 가능하게)
+        backend_path = str(Path(__file__).parent.parent.parent / "backend")
+        if backend_path not in sys.path:
+            sys.path.insert(0, backend_path)
+
+        from app.db.session import async_session
+        from app.services.calendar_service import GoogleCalendarService
 
         calendar_service = GoogleCalendarService()
         event_data = {
@@ -159,8 +166,15 @@ async def _handle_schedule_view(user_input: str, user_id: int) -> dict:
 
     # 2. Google Calendar API 호출
     try:
-        from backend.app.db.session import async_session
-        from backend.app.services.calendar_service import GoogleCalendarService
+        import sys
+        from pathlib import Path
+        # backend 디렉토리를 sys.path에 추가
+        backend_path = str(Path(__file__).parent.parent.parent / "backend")
+        if backend_path not in sys.path:
+            sys.path.insert(0, backend_path)
+
+        from app.db.session import async_session
+        from app.services.calendar_service import GoogleCalendarService
 
         calendar_service = GoogleCalendarService()
 
@@ -262,10 +276,11 @@ def _parse_view_request(user_input: str) -> dict:
 
 규칙:
 - "오늘 일정" → 오늘 00:00:00Z ~ 오늘 23:59:59Z
-- "이번 주 일정" → 이번 주 월요일 00:00:00Z ~ 일요일 23:59:59Z
 - "내일 일정" → 내일 00:00:00Z ~ 내일 23:59:59Z
-- "이번 달 일정" → 이번 달 1일 ~ 말일
-- 명확하지 않으면 오늘 기준 앞뒤 7일로 설정
+- "이번 주 일정" → 이번 주 월요일 00:00:00Z ~ 일요일 23:59:59Z
+- "다음 주 일정" → 다음 주 월요일 00:00:00Z ~ 일요일 23:59:59Z
+- "이번 달 일정" → 이번 달 1일 00:00:00Z ~ 말일 23:59:59Z
+- "최근 일정", "일정 조회" 등 명확하지 않으면 → 오늘 00:00:00Z ~ 오늘로부터 +30일 23:59:59Z (향후 한 달)
 - 시간대는 UTC(Z) 형식으로 출력 (한국시간 KST = UTC+9 이므로 -9시간 보정)
 - 반드시 유효한 JSON만 출력하세요"""
 

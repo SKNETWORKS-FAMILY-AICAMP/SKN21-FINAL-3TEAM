@@ -76,7 +76,7 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-surface-main">
       <div className="bg-surface-card rounded-lg border border-neutral-border p-10 w-[28rem] max-w-[90vw] shadow-md">
         <div className="flex items-center gap-3 justify-center mb-8">
-          <div className="w-11 h-11 bg-accent-300 rounded-sm flex items-center justify-center text-[1.375rem]">📋</div>
+          <div className="w-11 h-11 bg-accent-300 rounded-sm flex items-center justify-center text-[1.375rem] font-bold text-primary-900">W</div>
           <span className="font-display text-[1.375rem] font-bold text-primary-700">WorkFlow Agent</span>
         </div>
 

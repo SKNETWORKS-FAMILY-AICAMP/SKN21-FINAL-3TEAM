@@ -43,7 +43,7 @@ export default function UserManagement({ users = [] }) {
   return (
     <div className="card">
       <div className="card-header">
-        <div className="card-title"><span>👥</span>사용자 관리</div>
+        <div className="card-title">사용자 관리</div>
         <button className="btn-primary" onClick={openAdd}>+ 사용자 추가</button>
       </div>
       <div className="overflow-x-auto">

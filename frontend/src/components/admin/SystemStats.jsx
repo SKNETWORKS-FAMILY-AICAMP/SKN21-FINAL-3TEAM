@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { HelpCircle, FileText, CalendarClock } from 'lucide-react';
 
 const PERIODS = ['일간', '주간', '월간'];
 
@@ -28,7 +29,7 @@ export default function SystemStats({ stats = [], queryLogs = [] }) {
     <div className="space-y-5">
       <div className="card">
         <div className="card-header">
-          <div className="card-title"><span>📊</span>시스템 통계</div>
+          <div className="card-title">시스템 통계</div>
           <div className="flex gap-1">
             {PERIODS.map((t) => (
               <button
@@ -52,11 +53,11 @@ export default function SystemStats({ stats = [], queryLogs = [] }) {
         </div>
       </div>
       <div className="card">
-        <div className="card-header"><div className="card-title"><span>📝</span>최근 질의 로그</div></div>
+        <div className="card-header"><div className="card-title">최근 질의 로그</div></div>
         <div className="card-body">
           {queryLogs.map((q, i) => (
             <div key={i} className={`flex items-center gap-3 px-2 py-3 rounded-sm transition hover:bg-surface-hover ${i < queryLogs.length - 1 ? 'border-b border-neutral-divider' : ''}`}>
-              <div className={`w-9 h-9 rounded-sm flex items-center justify-center text-base flex-shrink-0 ${q.type === 'query' ? 'bg-accent-50' : q.type === 'doc' ? 'bg-primary-50' : 'bg-success-bg'}`}>{q.icon}</div>
+              <div className={`w-9 h-9 rounded-sm flex items-center justify-center flex-shrink-0 ${q.type === 'query' ? 'bg-accent-50 text-accent-700' : q.type === 'doc' ? 'bg-primary-50 text-primary-700' : 'bg-success-bg text-success'}`}>{q.type === 'query' ? <HelpCircle size={18} /> : q.type === 'doc' ? <FileText size={18} /> : <CalendarClock size={18} />}</div>
               <div className="flex-1">
                 <div className="text-[0.8125rem] font-semibold">{q.title}</div>
                 <div className="text-xs text-neutral-sub mt-0.5">{q.description}</div>
