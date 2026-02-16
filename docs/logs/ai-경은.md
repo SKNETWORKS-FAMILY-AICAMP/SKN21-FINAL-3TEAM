@@ -166,3 +166,82 @@
 - PM(지용)에게 judgment_agent_stream 함수 공유 (SSE 오케스트레이터 연동용)
 - 승언과 규정 문서 ingestion 스크립트 역할 합의
 - 실 규정 데이터로 E2E 테스트 (RAG → judgment_agent → 응답)
+
+---
+
+## 2026-02-16 (일)
+
+**E2E 테스트 작성 — `ai/tests/test_e2e_judgment.py` (#12 관련):**
+
+6단계 E2E 테스트 스크립트 구현 (RAG → judgment_agent → 오케스트레이터 전체 흐름 검증):
+
+| Step | 테스트 항목 | 내용 |
+|------|-----------|------|
+| 1 | Qdrant 연결 + 데이터 확인 | 컬렉션 존재 여부, documents 포인트 수 확인 |
+| 2 | 규정 PDF → Qdrant 적재 | PyMuPDF 추출 → 조항 기반 청킹 → 임베딩 → Qdrant 저장 |
+| 3 | RAG 하이브리드 검색 | 5개 쿼리 (연차/재택/보안/출장비/개인정보) BM25+Vector 검증 |
+| 4 | judgment_agent 단독 | 3개 판단 케이스 (연차/재택/보안위반), 응답 형식 + result 검증 |
+| 5 | 오케스트레이터 judgment 라우팅 | intent 분류 → judgment_agent 라우팅 정확도 |
+| 6 | 오케스트레이터 general 라우팅 | stream_mode=True로 backend 의존성 없이 라우팅만 검증 |
+
+**QA — 버그 3건 발견 및 수정:**
+
+| # | 위치 | 문제 | 수정 |
+|---|------|------|------|
+| 1 | Step 2 PDF 추출 | `doc.close()` 후 `doc.page_count` 접근 — PyMuPDF 버전별 에러 가능 | close 전에 `page_count` 저장 |
+| 2 | Step 1 + main | 연결 실패 시 `return 0` → `0 >= 0 = True`로 PASS 처리됨 | 실패 시 `-1` 반환, main에서 분기 추가 |
+| 3 | Step 4 vs Step 5 | `stream_mode: None` vs `False` 불일치 | `False`로 통일 |
+
+**5개 개선사항 구현:**
+
+1. **타임아웃 처리** — 모든 Step에 `asyncio.wait_for` + `asyncio.to_thread` 적용, `--timeout N` CLI 옵션 (기본 60초)
+2. **fail-fast/fail-late** — 기본 fail-fast (첫 실패에서 중단 + 요약 출력), `--continue-on-failure`로 전체 실행 모드
+3. **메타데이터 검증 + 강제 재적재** — `validate_existing_data()` 신규 (Qdrant scroll로 샘플 10개 source/scope 패턴 확인), `--force-ingest` 옵션
+4. **general 테스트 분리** — 기존 Step 5에서 general 분리 → Step 6으로. `stream_mode=True`로 backend LLM 호출 없이 라우팅만 검증
+5. **expected_result WARN** — judgment test cases에 `expected_result` 추가 (USB→`no`, 연차→`conditional`). 형식 맞으면 PASS, expected 불일치 시 `[WARN]`만 (LLM 비결정성 허용)
+
+**CLI 사용법:**
+```bash
+python -m ai.tests.test_e2e_judgment                       # 기본 (fail-fast, 60s)
+python -m ai.tests.test_e2e_judgment --continue-on-failure  # 실패해도 계속
+python -m ai.tests.test_e2e_judgment --force-ingest         # 강제 재적재
+python -m ai.tests.test_e2e_judgment --timeout 120          # 타임아웃 변경
+```
+
+
+**E2E 테스트 실 환경 실행 + 규정 PDF 재적재 (#12 관련):**
+
+**1. E2E 테스트 실 환경 실행 — 6단계 전체 PASS:**
+- Qdrant Cloud 연결, RAG 하이브리드 검색 5/5, judgment_agent 3/3, 오케스트레이터 라우팅 2/2 전부 통과
+- 기존 12개 문서(간단한 요약형)로도 기본 동작은 확인
+
+**2. 규정 PDF 재적재 — 조항 기반 세밀한 청킹:**
+- 기존 12개 → **44개** 청크로 3.7배 증가
+- 청킹 전략 개선:
+  - 표지/목차 자동 스킵
+  - 장(제N장) 헤더 → chapter 메타데이터 추적 (10개 장)
+  - 조(제N조) 헤더 → 새 청크 시작 (32개 조)
+  - 긴 조항(>400자) → ● 불릿 기준 서브 분할
+- 청크 통계: 평균 260자, 최소 60자, 최대 482자
+- `--force-ingest` 시 기존 컬렉션 삭제 후 재생성 로직 추가
+
+**3. 판단 품질 개선 확인:**
+
+| 케이스 | Before (12청크) | After (44청크) | 변화 |
+|--------|----------------|---------------|------|
+| 연차 (입사 1년 미만) | `no_regulation` (0.46) | `conditional` (0.70) | 정확해짐! 제8조 근거 |
+| 재택근무 근태관리 | `yes` (0.70) | `yes` (0.70) | 제9조 근거 유지 |
+| USB 복사 | `no` (0.70) | `no` (0.70) | 제10조 복무의무 근거 |
+| 클라우드 서비스 | `no_regulation` (0.40) | `no` (0.70) | 제20조 정확히 찾음! |
+
+**4. regulation_groups 그룹핑 버그 수정:**
+- `_group_regulations()` 정규식 버그: `re.split(r"\s*\d", "제8조")` → `['제', '조']` → `'제'`
+- 수정: `chapter` 메타데이터 우선 사용, source에서 `.pdf` 확장자 제거, `제N조` 형태면 title 대체
+- 결과: `['제']` → `['제8조', '제5조', '제12조', ...]` 조항별 정확한 그룹핑
+
+**다음 할 일:**
+- PM(지용)에게 E2E 테스트 결과 공유 (44청크 재적재 + 판단 품질 개선)
+- PM(지용)에게 agent_response 필드 확장 공유 (`cross_references`, `regulation_groups`)
+- PM(지용)에게 `judgment_agent_stream` 함수 공유 (SSE 오케스트레이터 연동용)
+- 5단계 성능 평가 (#13) 준비 — 평가 메트릭 설계, 테스트셋 확장
+- 승언과 규정 문서 ingestion 스크립트 역할 합의
