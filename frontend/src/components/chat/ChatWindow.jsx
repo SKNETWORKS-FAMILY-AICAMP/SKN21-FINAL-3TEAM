@@ -151,6 +151,7 @@ export default function ChatWindow({ messages, onSend, children }) {
         </div>
       )}
 
+
       <div className="flex-1 overflow-y-auto py-4 px-4">{children}<div ref={bottomRef} /></div>
 
       {/* 파일 칩 & 에러 */}
