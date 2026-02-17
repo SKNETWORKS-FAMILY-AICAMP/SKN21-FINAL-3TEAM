@@ -35,13 +35,22 @@ def _group_regulations(context: list[dict]) -> dict[str, list[dict]]:
     """RAG 검색 결과를 규정 출처별로 그룹핑한다.
 
     Returns:
-        {"정보보안 규정": [doc1, doc2], "인사 규정": [doc3]} 형태
+        {"제3장 근로시간 및 휴가": [doc1, doc2], "제5장 정보보호 관리체계": [doc3]} 형태
     """
     groups: dict[str, list[dict]] = defaultdict(list)
     for doc in context:
+        # 1순위: chapter 메타데이터 (조항 기반 청킹에서 제공)
+        chapter = doc.get("chapter", "")
+        if chapter:
+            groups[chapter].append(doc)
+            continue
+
+        # 2순위: source에서 규정명 추출 (예: "인사규정.pdf" → "인사규정")
         source = doc.get("source", "출처 불명")
-        # 출처에서 규정명 추출 (예: "정보보안 규정 3.2조" → "정보보안 규정")
-        reg_name = re.split(r"\s*\d", source, maxsplit=1)[0].strip()
+        reg_name = re.sub(r"\.(pdf|md|txt)$", "", source, flags=re.IGNORECASE).strip()
+        # "제N조" 형태면 article 메타로 대체 시도
+        if re.match(r"^제\s*\d+\s*조", reg_name):
+            reg_name = doc.get("title", "") or reg_name
         if not reg_name:
             reg_name = source
         groups[reg_name].append(doc)

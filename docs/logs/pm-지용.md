@@ -206,3 +206,33 @@
 - 실험 6: 전처리 ablation + seed 반복 (내일)
 - TRAINING_LOG.md 실험 5 최종 결과 업데이트
 - #6 오케스트레이터 마무리
+
+---
+
+## 2026-02-16 (일)
+
+**실험 6 결과 분석 + 문서 반영:**
+- EXPERIMENT_PLAN.md에 "실험 5→6 수치 비교 해석" 섹션 추가
+  - 실험 5(90.15%) vs 실험 6(88.56%) 차이가 성능 하락이 아닌 보고 기준 차이임을 명시
+  - 같은 seed=42 기준 전처리 적용 후 90.15% → 90.82% 상승
+- 최종 모델 성능 테이블 재구성 (seed=42 전처리 없음/있음 + 3-seed 평균 나란히 배치)
+- 발표 스토리라인 6~7번 항목 개편
+
+**전처리 파이프라인 실서비스 연결 확인:**
+- intent_classifier.py:113에서 ai/experiments/preprocessing.py를 이미 import 중 → 실서비스에 전처리 적용됨
+- 추후 ai/agents/preprocessing.py로 위치 이동 필요 (실험 폴더 의존 제거)
+
+**실험 7: BERT vs GPT-4o-mini 최종 비교 (212문장 동일 조건):**
+- run_final_comparison.py 작성 (BERT 전처리 유/무 + GPT zero/few-shot, 4가지 비교)
+- 토크나이저 이슈 해결 (tokenizer_config.json의 tokenizer_class가 비정상 → klue/bert-base로 직접 로드)
+- **결과: BERT+전처리 F1=90.07% > GPT Few-shot F1=86.30% (3.8%p 역전)**
+  - 실험 1(70문장)에서 GPT가 7.5%p 우세 → 212문장에서 BERT가 3.8%p 우세
+  - GPT 약점: 1~2어절 짧은 입력("일정","규정","보고서")을 general로 오분류 (21건)
+  - BERT 약점: 맥락 의존("아까 그거"), 복합 질문 (11건)
+- EXPERIMENT_PLAN.md에 실험 7 섹션 + 발표 스토리라인 반영
+- 커밋 & push 완료
+
+**다음 할 일:**
+- 복합 질문 처리 (멀티 인텐트) — 오케스트레이터에서 LLM으로 문장 분리 → BERT 각각 분류
+- 긴 질문 / 맥락 의존 질문 처리 방안
+- #6 오케스트레이터 마무리
