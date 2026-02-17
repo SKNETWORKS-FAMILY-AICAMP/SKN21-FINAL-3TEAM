@@ -250,7 +250,6 @@
 
 ### 다음 할 일
 - 나머지 Mock → 실제 API 교체 (대시보드, 채팅, 문서, 회의 등)
-- 관리자 API 연동 (#29) — 5단계
 - 전체 E2E 테스트 지원
 
 ---
@@ -296,6 +295,23 @@
 - alert() → toast 알림 컴포넌트 교체 (6곳)
 - window.confirm() → 모달 다이얼로그 교체
 - 로딩 스켈레톤 추가
+- 나머지 Mock → 실제 API 교체
+- 관리자 API 연동 (#29)
+
+---
+
+## 2026-02-17 (화)
+
+### 한 일
+
+#### 1) 대시보드 편집 모드 구현
+- `uiStore.js` — 대시보드 레이아웃 상태 추가 (leftColumn/rightColumn/hidden, localStorage 저장)
+- `DashboardPage.jsx` — WIDGET_REGISTRY 기반 동적 렌더링, framer-motion Reorder로 드래그 순서 변경, X 버튼으로 위젯 숨기기, 점선 카드로 숨긴 위젯 복원, 편집/완료 토글 + 초기화 버튼
+
+#### 2) AI 챗봇 프로필 변경
+- `MessageBubble.jsx` — AI 프로필을 "AI" 텍스트 → accent-500 배경 + Brain 아이콘으로 변경
+
+### 다음 할 일
 - 나머지 Mock → 실제 API 교체
 - 관리자 API 연동 (#29)
 
