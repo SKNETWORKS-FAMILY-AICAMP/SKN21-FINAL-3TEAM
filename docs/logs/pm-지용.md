@@ -310,3 +310,25 @@
 - 복합 감지 정확도 측정 (오탐/미감지 비율)
 - post_execution_check 실제 로직 구현 (다른 팀원 Agent 완성 후)
 - 프론트엔드(지영)에게 SSE 새 이벤트 타입 공유 필요
+
+---
+
+## 2026-02-19 (수)
+
+**develop 최신 반영:**
+- develop pull → 충돌 없이 머지 완료 (13개 파일, +1,483줄)
+- 경은: `judgment_agent.py` 수정 + `test_e2e_judgment.py` E2E 테스트 추가 (784줄)
+- 지영: 대시보드 리뉴얼 (`AIChatWidget`, `TodaySchedule`, `GreetingBanner` 등)
+
+**BERT 복합질문 감지 로직 리뷰:**
+- `detect_complexity()` 3중 신호 구조 확인 (intent_classifier.py:436~477)
+  - 신호 1: 접속/순차 키워드 패턴 (COMPLEX_PATTERNS 6종)
+  - 신호 2: BERT top-2 confidence gap < 0.3 (모델이 헷갈리는 것 자체가 복합 신호)
+  - 신호 3: 동사 어미 2개 이상 (VERB_ENDINGS)
+  - 판정: 2개 이상 충족 시 복합 (오탐 방지를 위한 AND 로직)
+- BERT 단독으로는 복합질문 분류 불가 → confidence 분포를 간접 신호로 활용하는 하이브리드 구조
+
+**다음 할 일:**
+- 복합 질문 테스트 데이터 제작 + 감지 정확도 측정
+- post_execution_check 실제 로직 구현
+- 프론트엔드(지영)에게 SSE 새 이벤트 타입 공유
