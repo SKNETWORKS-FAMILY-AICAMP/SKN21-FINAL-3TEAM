@@ -386,6 +386,9 @@ KNOWN_OVERRIDES = {
     r"(인센티브|성과급|보너스).*(기준|조건|자격)": "judgment",
     # "남은 공휴일" → BERT가 general로 분류하지만 실제론 schedule_view
     r"(남은|다음|이번).*(공휴일|휴일|쉬는 날)": "schedule_view",
+    # "X 규정 알려줘" → BERT가 doc_search로 분류하지만 규정 해석은 judgment
+    # ("알려줘"를 "찾아줘/검색해줘"와 동일 패턴으로 학습한 문제)
+    r"(규정|규칙|지침|내규).*(알려|설명|안내)": "judgment",
 }
 
 
