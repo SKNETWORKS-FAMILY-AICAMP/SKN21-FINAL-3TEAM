@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function CalendarWidget({ events = {} }) {
+  const navigate = useNavigate();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -29,13 +31,13 @@ export default function CalendarWidget({ events = {} }) {
   };
 
   return (
-    <div className="card">
+    <div className="card cursor-pointer" onClick={() => navigate('/schedules')}>
       <div className="card-body">
         <div className="flex justify-between items-center mb-4">
           <div className="text-[0.9375rem] font-bold text-neutral-main">{year}년 {month}월</div>
           <div className="flex gap-1">
-            <button onClick={goPrev} className="w-7 h-7 rounded-md border border-neutral-border bg-surface-card text-xs text-neutral-sub flex items-center justify-center hover:bg-primary-50 transition">◀</button>
-            <button onClick={goNext} className="w-7 h-7 rounded-md border border-neutral-border bg-surface-card text-xs text-neutral-sub flex items-center justify-center hover:bg-primary-50 transition">▶</button>
+            <button onClick={(e) => { e.stopPropagation(); goPrev(); }} className="w-7 h-7 rounded-md border border-neutral-border bg-surface-card text-xs text-neutral-sub flex items-center justify-center hover:bg-primary-50 transition">◀</button>
+            <button onClick={(e) => { e.stopPropagation(); goNext(); }} className="w-7 h-7 rounded-md border border-neutral-border bg-surface-card text-xs text-neutral-sub flex items-center justify-center hover:bg-primary-50 transition">▶</button>
           </div>
         </div>
         <div className="grid grid-cols-7 gap-0.5 text-center">
@@ -44,7 +46,7 @@ export default function CalendarWidget({ events = {} }) {
             const ev = events[d.day];
             const isToday = !d.other && d.day === todayDate && year === todayYear && month === todayMonth;
             return (
-              <div key={i} className={`py-2 text-[0.8125rem] font-medium rounded-lg cursor-pointer relative transition hover:bg-surface-hover ${d.other ? 'text-neutral-muted' : 'text-neutral-main'} ${isToday ? 'bg-primary-700 text-white font-bold hover:bg-primary-900' : ''}`}>
+              <div key={i} className={`py-5 text-[0.8125rem] font-medium rounded-lg cursor-pointer relative transition hover:bg-surface-hover ${d.other ? 'text-neutral-muted' : 'text-neutral-main'} ${isToday ? 'bg-primary-700 text-white font-bold hover:bg-primary-900' : ''}`}>
                 {d.day}
                 {ev && !d.other && (
                   <span className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 w-[5px] h-[5px] rounded-full ${ev === 'meeting' ? 'bg-primary-500' : 'bg-error'}`} />
