@@ -328,7 +328,31 @@
   - 판정: 2개 이상 충족 시 복합 (오탐 방지를 위한 AND 로직)
 - BERT 단독으로는 복합질문 분류 불가 → confidence 분포를 간접 신호로 활용하는 하이브리드 구조
 
+**복합질문 기능 토글 플래그 추가:**
+- `config.py`에 `ENABLE_COMPLEX_QUERY = False` 플래그 추가
+- `orchestrator.py`의 `route_by_complexity`에서 해당 플래그 참조
+- False 시 복합질문 분해 경로 비활성화 → 단일 intent만 사용 (원래 동작)
+- True로 바꾸면 즉시 복합질문 분해 활성화
+
+**오케스트레이터 단독 테스트 (Python 3.13 환경):**
+- BERT 모델 로드 + 9개 질문 라우팅 테스트: 전부 정상
+- 복합질문도 `ENABLE_COMPLEX_QUERY=False`로 decompose 경로 안 탐 확인
+
+**BERT 오분류 패턴 발견 + 수정 (KNOWN_OVERRIDES 확장):**
+- 63개 테스트 중 8개 오분류 발견
+- 원인: "X 알려줘" 어미를 BERT가 doc_search로 학습 (학습 데이터 편향)
+  - doc_search에 "규정 찾아줘/검색해줘/보여줘" 43건 vs judgment에 "규정 알려줘" 0건
+- KNOWN_OVERRIDES 5개 패턴 추가로 해결:
+  1. `규정/규칙/지침 + 알려/설명` → judgment
+  2. `기준/평가/심사 + 알려/설명` → judgment
+  3. `복리후생/수당 + 뭐/있어` → judgment
+  4. `퇴직금/급여 + 계산/얼마` → judgment
+  5. `지각/결근 + 어떻게/징계` → judgment
+- 회귀 테스트 14건 전부 통과
+- 남은 4건은 1~2어절 초단문 (야근, 출장 등) → clarify(되묻기) 대상
+
 **다음 할 일:**
 - 복합 질문 테스트 데이터 제작 + 감지 정확도 측정
 - post_execution_check 실제 로직 구현
 - 프론트엔드(지영)에게 SSE 새 이벤트 타입 공유
+- 1~2어절 초단문 처리 방안 검토 (clarify 기능 활성화)
