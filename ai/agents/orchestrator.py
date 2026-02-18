@@ -29,6 +29,7 @@ from ai.agents.intent_classifier import (
     INTENT_LABELS,
 )
 from ai.agents.config import (
+    ENABLE_COMPLEX_QUERY,
     INTENT_CONFIDENCE_THRESHOLD,
     INTENT_FALLBACK_THRESHOLD,
     MAX_SUB_QUERIES,
@@ -248,8 +249,8 @@ def route_by_complexity(state: AgentState) -> str:
         print(f"[Orchestrator] 라우팅: context_dependent → resolve_context")
         return "resolve_context"
 
-    # 2. 복합 질문
-    if is_complex and confidence >= INTENT_FALLBACK_THRESHOLD:
+    # 2. 복합 질문 (ENABLE_COMPLEX_QUERY=False이면 단일 intent로만 라우팅)
+    if ENABLE_COMPLEX_QUERY and is_complex and confidence >= INTENT_FALLBACK_THRESHOLD:
         print(f"[Orchestrator] 라우팅: complex → decompose_and_classify")
         return "decompose_and_classify"
 

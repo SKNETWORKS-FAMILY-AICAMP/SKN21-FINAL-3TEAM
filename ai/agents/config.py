@@ -9,6 +9,7 @@ INTENT_CONFIDENCE_THRESHOLD = 0.7    # 이하면 clarify (top-3 후보 제시)
 INTENT_FALLBACK_THRESHOLD = 0.5      # 이하면 general 강제 (임베딩 fallback)
 
 # ── 복합 질문 감지 ──
+ENABLE_COMPLEX_QUERY = False         # True: 복합질문 분해 활성화 / False: 단일 intent만 사용
 COMPLEXITY_GAP_THRESHOLD = 0.3       # top-2 confidence gap (이하면 복합 신호)
 
 # ── 오케스트레이터 ──
