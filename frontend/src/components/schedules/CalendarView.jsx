@@ -1,9 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import MeetLinkBadge from './MeetLinkBadge';
+import useScheduleTypeStore, { DEFAULT_TYPES } from '../../store/scheduleTypeStore';
 
-const TYPE_LABELS = { meeting: '회의', deadline: '마감일', google: '개인 일정', holiday: '공휴일' };
-const TYPE_DOT = { meeting: 'bg-primary-500', deadline: 'bg-error', google: 'bg-success', holiday: 'bg-error' };
-const typeStyles = {
+// hex 색상을 rgba로 변환 (커스텀 유형 배경에 사용)
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// 기본 유형의 Tailwind 스타일 (기존 디자인 유지)
+const DEFAULT_TYPE_STYLES = {
   meeting: 'bg-primary-50 text-primary-700',
   deadline: 'bg-error-bg text-error',
   google: 'bg-success-bg text-success',
@@ -75,7 +83,7 @@ function getKoreanHolidays(year) {
   return [...fixed, ...lunar].map((h) => ({ ...h, type: 'holiday' }));
 }
 
-function DayDetailPopup({ day, month, year, events, onClose }) {
+function DayDetailPopup({ day, month, year, events, typeColorMap, typeLabelMap, onClose }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -101,19 +109,26 @@ function DayDetailPopup({ day, month, year, events, onClose }) {
             <p className="text-sm text-neutral-muted text-center py-6">등록된 일정이 없습니다</p>
           ) : (
             <ul className="space-y-2.5">
-              {events.map((e, i) => (
-                <li key={i} className="flex gap-3 items-start">
-                  <span className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${TYPE_DOT[e.type] || 'bg-neutral-muted'}`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-neutral-main">{e.label}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[0.6875rem] text-neutral-muted">{TYPE_LABELS[e.type] || e.type}</span>
-                      {e.time && <span className="text-[0.6875rem] text-neutral-sub font-medium">{e.time}</span>}
+              {events.map((e, i) => {
+                const dotColor = typeColorMap[e.type] || '#9CA3AF';
+                const typeLabel = typeLabelMap[e.type] || e.type;
+                return (
+                  <li key={i} className="flex gap-3 items-start">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0"
+                      style={{ backgroundColor: dotColor }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-neutral-main">{e.label}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[0.6875rem] text-neutral-muted">{typeLabel}</span>
+                        {e.time && <span className="text-[0.6875rem] text-neutral-sub font-medium">{e.time}</span>}
+                      </div>
+                      {e.meetLink && <div className="mt-1"><MeetLinkBadge meetLink={e.meetLink} /></div>}
                     </div>
-                    {e.meetLink && <div className="mt-1"><MeetLinkBadge meetLink={e.meetLink} /></div>}
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -184,6 +199,20 @@ export default function CalendarView({ events = [] }) {
   const [view, setView] = useState('month');
   const [selectedDay, setSelectedDay] = useState(null);
   const [showHolidays, setShowHolidays] = useState(true);
+
+  const { customTypes } = useScheduleTypeStore();
+  const allTypes = [...DEFAULT_TYPES, ...customTypes];
+
+  // 타입 ID → 색상 맵
+  const typeColorMap = {
+    holiday: '#C06060',
+    ...Object.fromEntries(allTypes.map((t) => [t.id, t.color])),
+  };
+  // 타입 ID → 라벨 맵
+  const typeLabelMap = {
+    holiday: '공휴일',
+    ...Object.fromEntries(allTypes.map((t) => [t.id, t.label])),
+  };
 
   const holidays = showHolidays ? getKoreanHolidays(currentYear) : [];
   const mergedEvents = [...events, ...holidays];
@@ -319,13 +348,23 @@ export default function CalendarView({ events = [] }) {
                   : i % 7 === 6 ? 'text-blue-500'
                   : 'text-neutral-main'
                 }`}>{d.day}</div>
-                {dayEvents.map((e, j) => (
-                  <div key={j} className="mb-0.5">
-                    <div className={`text-[0.625rem] px-1.5 py-0.5 rounded font-medium truncate ${typeStyles[e.type] || ''}`}>
-                      {e.label}
+                {dayEvents.map((e, j) => {
+                  const builtInStyle = DEFAULT_TYPE_STYLES[e.type];
+                  const color = typeColorMap[e.type];
+                  return (
+                    <div key={j} className="mb-0.5">
+                      <div
+                        className={`text-[0.625rem] px-1.5 py-0.5 rounded font-medium truncate ${builtInStyle || ''}`}
+                        style={!builtInStyle && color ? {
+                          backgroundColor: hexToRgba(color, 0.15),
+                          color,
+                        } : {}}
+                      >
+                        {e.label}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             );
           })}
@@ -340,6 +379,8 @@ export default function CalendarView({ events = [] }) {
           month={currentMonth}
           year={currentYear}
           events={selectedEvents}
+          typeColorMap={typeColorMap}
+          typeLabelMap={typeLabelMap}
           onClose={() => setSelectedDay(null)}
         />
       )}
