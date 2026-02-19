@@ -71,21 +71,27 @@ function renderCardMessage(msg, onSelectClarify) {
     case 'doc_search': {
       const sources = data.sources || data.references || [];
       return (
-        <div>
-          <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">
-            {content}
+        <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
+          <div className="px-4 py-3 border-b border-neutral-divider flex items-center gap-2 font-bold text-sm text-primary-700">
+            <span className="text-[0.9375rem]">📄</span>문서 검색 결과
           </div>
-          {sources.length > 0 && (
-            <div className="mt-2 px-3 py-2 bg-surface-hover rounded-lg">
-              <div className="text-xs font-semibold text-neutral-sub mb-1">출처 ({sources.length}건)</div>
-              {sources.map((s, idx) => (
-                <div key={idx} className="text-xs text-neutral-main py-1 border-b border-neutral-divider last:border-0">
-                  {s.title || s.name || s.source || `출처 ${idx + 1}`}
-                  {s.page && <span className="text-neutral-muted ml-1">p.{s.page}</span>}
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="p-4">
+            {content && <p className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5 whitespace-pre-wrap">{content}</p>}
+            {sources.length > 0 && (
+              <div>
+                <div className="text-xs font-semibold text-neutral-sub mb-2">출처 ({sources.length}건)</div>
+                {sources.map((s, idx) => (
+                  <div key={idx} className="px-3 py-2 bg-surface-hover rounded-lg mb-1.5 border-l-[3px] border-l-accent-300">
+                    <div className="text-xs font-semibold text-neutral-main">
+                      {s.title || s.name || s.source || `출처 ${idx + 1}`}
+                      {s.page && <span className="text-neutral-muted font-normal ml-1">p.{s.page}</span>}
+                    </div>
+                    {s.content && <div className="text-[0.6875rem] text-neutral-sub mt-0.5">{s.content}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       );
     }
