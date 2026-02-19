@@ -6,6 +6,6 @@ cd "$(dirname "$0")"
 
 source .venv/bin/activate
 
-export PYTHONPATH=$(pwd)
+export PYTHONPATH=$(pwd)/backend
 
-uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --workers 2
+uvicorn backend.app.main:app --host 0.0.0.0 --port 8000

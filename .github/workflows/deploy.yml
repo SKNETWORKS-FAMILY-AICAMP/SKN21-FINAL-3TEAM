@@ -25,6 +25,5 @@ jobs:
             nohup uvicorn backend.app.main:app \
               --host 0.0.0.0 \
               --port 8000 \
-              --workers 2 \
               > server.log 2>&1 &
             echo "배포 완료"
