@@ -184,7 +184,7 @@ def _handle_doc_search(query: str, context: List[str], user_id: int = None, stre
             seen_sources.add(content_key)
 
             sources.append({
-                "title": doc.get("title", "제목 없음"),
+                "title": doc.get("title") or doc.get("chapter") or doc.get("source", "제목 없음"),
                 "source": doc.get("source", ""),
                 "score": doc.get("score", 0.0),
                 "content": doc.get("content", "")[:200] + "...",

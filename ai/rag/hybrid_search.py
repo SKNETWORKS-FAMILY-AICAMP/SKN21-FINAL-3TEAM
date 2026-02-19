@@ -107,6 +107,9 @@ class HybridSearcher:
             results.append({
                 "content": self._corpus_docs[idx],
                 "source": meta.get("source", ""),
+                "title": meta.get("title", ""),
+                "chapter": meta.get("chapter", ""),
+                "article": meta.get("article", ""),
                 "score": float(normalized_scores[idx]),
                 "doc_id": self._corpus_ids[idx],
             })
@@ -173,6 +176,9 @@ class HybridSearcher:
                 rrf_scores[doc_id] = {
                     "content": doc["content"],
                     "source": doc["source"],
+                    "title": doc.get("title", ""),
+                    "chapter": doc.get("chapter", ""),
+                    "article": doc.get("article", ""),
                     "doc_id": doc_id,
                     "rrf_score": 0.0,
                 }
@@ -185,6 +191,9 @@ class HybridSearcher:
                 rrf_scores[doc_id] = {
                     "content": doc["content"],
                     "source": doc["source"],
+                    "title": doc.get("title", ""),
+                    "chapter": doc.get("chapter", ""),
+                    "article": doc.get("article", ""),
                     "doc_id": doc_id,
                     "rrf_score": 0.0,
                 }
@@ -201,6 +210,9 @@ class HybridSearcher:
             {
                 "content": doc["content"],
                 "source": doc["source"],
+                "title": doc.get("title", ""),
+                "chapter": doc.get("chapter", ""),
+                "article": doc.get("article", ""),
                 "score": doc["rrf_score"],
                 "doc_id": doc["doc_id"],
             }
