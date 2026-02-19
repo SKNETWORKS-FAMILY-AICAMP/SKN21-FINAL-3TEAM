@@ -96,7 +96,7 @@ async def schedule_agent(state: AgentState) -> AgentState:
 async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
     """일정 추가: LLM 파싱 → Google Calendar 등록"""
     # 1. LLM으로 자연어 → 구조화 데이터 파싱
-    print(f"[ScheduleAgent] _handle_schedule_add | LLM 파싱 시작...")
+    print("[ScheduleAgent] _handle_schedule_add | LLM 파싱 시작...")
     parsed = _parse_schedule_input(user_input)
     print(f"[ScheduleAgent] _handle_schedule_add | 파싱 결과: {parsed}")
 
@@ -160,7 +160,7 @@ async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
 async def _handle_schedule_view(user_input: str, user_id: int) -> dict:
     """일정 조회: LLM 파싱 → Google Calendar 조회"""
     # 1. LLM으로 조회 범위 파싱
-    print(f"[ScheduleAgent] _handle_schedule_view | LLM 파싱 시작...")
+    print("[ScheduleAgent] _handle_schedule_view | LLM 파싱 시작...")
     parsed = _parse_view_request(user_input)
     print(f"[ScheduleAgent] _handle_schedule_view | 파싱 결과: {parsed}")
 
@@ -317,7 +317,7 @@ def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False) -> str
             {"role": "user", "content": user_prompt},
         ]
 
-        print(f"[ScheduleAgent] _call_llm | Solar API 호출 중...")
+        print("[ScheduleAgent] _call_llm | Solar API 호출 중...")
         response = client.chat.completions.create(
             model="solar-1-mini-chat",
             messages=messages,

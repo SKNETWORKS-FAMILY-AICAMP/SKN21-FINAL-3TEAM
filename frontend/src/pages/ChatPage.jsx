@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import ChatWindow from '../components/chat/ChatWindow';
 import MessageBubble from '../components/chat/MessageBubble';
 import StreamingMessage from '../components/chat/StreamingMessage';
@@ -7,15 +7,10 @@ import ErrorMessage from '../components/chat/ErrorMessage';
 import SuggestedQuestions from '../components/chat/SuggestedQuestions';
 import RegulationPanel from '../components/chat/RegulationPanel';
 import ChatSessionSidebar from '../components/chat/ChatSessionSidebar';
+import JudgmentCard from '../components/chat/JudgmentCard';
+import ScheduleCard from '../components/chat/ScheduleCard';
 import useChat from '../hooks/useChat';
 import useChatStore from '../store/chatStore';
-
-// 규정 판단 응답 시 우측 패널에 보여줄 mock 규정
-const mockRegulations = [
-  { name: '근무규정', article: '제12조 (재택근무)', content: '주 2회 이내 재택근무를 허용한다. 단, 수습 기간 중에는 팀장 승인이 필요하다.', relevance: 0.95 },
-  { name: '정보보안 규정', article: '제8조 (원격접속)', content: '재택근무 시 반드시 VPN을 통해 사내 시스템에 접속해야 한다.', relevance: 0.82 },
-  { name: '인사규정', article: '제5조 (수습기간)', content: '신규 입사자의 수습 기간은 3개월로 한다.', relevance: 0.65 },
-];
 
 function exportChat(messages) {
   if (messages.length === 0) return;
@@ -42,6 +37,108 @@ function exportChat(messages) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+const RESULT_MAP = { yes: '가능', no: '불가', conditional: '조건부 가능' };
+const RESULT_ICON = { yes: '✅', no: '❌', conditional: '⚠️' };
+
+function renderCardMessage(msg, onSelectClarify) {
+  const { resultIntent, agentResponse, content } = msg;
+  const data = agentResponse || {};
+
+  switch (resultIntent) {
+    case 'judgment': {
+      const resultLabel = RESULT_MAP[data.result] || data.result || '판단 완료';
+      const resultIcon = RESULT_ICON[data.result] || '📋';
+      const regType = data.result === 'no' ? 'deny' : data.result === 'conditional' ? 'conditional' : 'ref';
+      const regulations = (data.regulations || []).map((r) => ({
+        name: `${r.name || ''} ${r.article || ''}`.trim(),
+        type: regType,
+        verdict: r.content || '',
+      }));
+      return (
+        <>
+          <JudgmentCard result={resultLabel} resultIcon={resultIcon} summary={data.reasoning || content} regulations={regulations} />
+          {content && data.reasoning && content !== data.reasoning && (
+            <div className="mt-2 bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">
+              {content}
+            </div>
+          )}
+        </>
+      );
+    }
+
+    case 'doc_search': {
+      const sources = data.sources || data.references || [];
+      return (
+        <div>
+          <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">
+            {content}
+          </div>
+          {sources.length > 0 && (
+            <div className="mt-2 px-3 py-2 bg-surface-hover rounded-lg">
+              <div className="text-xs font-semibold text-neutral-sub mb-1">출처 ({sources.length}건)</div>
+              {sources.map((s, idx) => (
+                <div key={idx} className="text-xs text-neutral-main py-1 border-b border-neutral-divider last:border-0">
+                  {s.title || s.name || s.source || `출처 ${idx + 1}`}
+                  {s.page && <span className="text-neutral-muted ml-1">p.{s.page}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    case 'schedule_add': {
+      return (
+        <div>
+          <ScheduleCard
+            title={data.title || data.summary || '일정 등록'}
+            date={data.date || ''}
+            time={data.time || ''}
+            synced={data.synced || data.google_synced || false}
+          />
+          {content && (
+            <div className="mt-2 bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">
+              {content}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    case 'clarify': {
+      const candidates = data.candidates || [];
+      return (
+        <div>
+          <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">
+            {content || data.message || '질문을 명확히 해주세요.'}
+          </div>
+          {candidates.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {candidates.map((c, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => onSelectClarify?.(typeof c === 'string' ? c : c.query || c.label)}
+                  className="px-3 py-1.5 text-xs bg-primary-50 text-primary-700 rounded-full border border-primary-200 hover:bg-primary-100 transition"
+                >
+                  {typeof c === 'string' ? c : c.label || c.query}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    default:
+      return (
+        <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">
+          {content}
+        </div>
+      );
+  }
 }
 
 export default function ChatPage() {
@@ -82,6 +179,21 @@ export default function ChatPage() {
     setLastInput('');
     setShowClearConfirm(false);
   };
+
+  // 메시지에서 마지막 judgment 응답의 regulations 추출
+  const regulationsFromMessages = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.resultIntent === 'judgment' && msg.agentResponse?.regulations) {
+        return msg.agentResponse.regulations.map((r) => ({
+          name: r.name,
+          article: r.article,
+          content: r.content,
+        }));
+      }
+    }
+    return [];
+  }, [messages]);
 
   return (
     <div className="-ml-8">
@@ -130,9 +242,6 @@ export default function ChatPage() {
           >
             규정 패널
           </button>
-          <div className="flex items-center gap-1.5 text-[0.8125rem] text-success font-medium">
-            <span className="w-[7px] h-[7px] rounded-full bg-success" />Mock 모드
-          </div>
         </div>
       </header>
 
@@ -186,7 +295,17 @@ export default function ChatPage() {
                 return <ErrorMessage key={i} message={msg.error} onRetry={handleRetry} />;
               }
 
-              // AI 완료된 응답
+              // AI 완료 — agentResponse 카드 렌더링
+              if (msg.agentResponse && msg.resultIntent) {
+                return (
+                  <MessageBubble key={i} type="bot" intent={msg.resultIntent || msg.intent}>
+                    {(msg.resultIntent || msg.intent) && <AgentIndicator intent={msg.resultIntent || msg.intent} />}
+                    {renderCardMessage(msg, handleSend)}
+                  </MessageBubble>
+                );
+              }
+
+              // AI 완료 — 기본 텍스트 버블
               return (
                 <MessageBubble key={i} type="bot" intent={msg.intent}>
                   {msg.intent && <AgentIndicator intent={msg.intent} />}
@@ -204,7 +323,7 @@ export default function ChatPage() {
 
         {/* 우측 규정 패널 */}
         <RegulationPanel
-          regulations={mockRegulations}
+          regulations={regulationsFromMessages}
           isOpen={panelOpen}
           onClose={() => setPanelOpen(false)}
         />

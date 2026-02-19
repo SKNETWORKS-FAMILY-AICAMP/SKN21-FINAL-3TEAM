@@ -1,12 +1,17 @@
 """
 Hybrid Search: BM25 + Vector Search
 RRF(Reciprocal Rank Fusion)로 두 검색 결과를 합산한다.
+
+Query Refinement:
+  BM25 검색에는 키워드 추출 + 동의어 확장된 쿼리를,
+  Vector 검색에는 원본 쿼리(시멘틱 의미 보존)를 사용한다.
 """
 import logging
 
 from rank_bm25 import BM25Okapi
 
 from ai.rag.embeddings import EmbeddingModel
+from ai.rag.query_refiner import refine_query_for_bm25, refine_query_for_vector
 try:
     from ai.rag.vectorstore import VectorStore
 except ImportError:
@@ -146,12 +151,16 @@ class HybridSearcher:
         # else:
         #     scope_filter = {"scope": "company"}
 
-        # 1. BM25 검색 → Top 15 (scope 필터 포함)
-        bm25_results = self._bm25_search(query, user_id=user_id, top_k=15)
+        # Query Refinement: BM25에는 키워드 쿼리, Vector에는 원본 쿼리
+        bm25_query = refine_query_for_bm25(query)
+        vector_query = refine_query_for_vector(query)
 
-        # 2. Vector 검색 → Top 15
+        # 1. BM25 검색 → Top 15 (scope 필터 포함, 키워드+동의어 확장 쿼리)
+        bm25_results = self._bm25_search(bm25_query, user_id=user_id, top_k=15)
+
+        # 2. Vector 검색 → Top 15 (원본 쿼리, 시멘틱 의미 보존)
         # TODO: Qdrant 필터 형식 수정 필요 (현재는 필터 없이 검색)
-        vector_results = self._vector_search(query, top_k=15, filter=None)
+        vector_results = self._vector_search(vector_query, top_k=15, filter=None)
 
         # 3. RRF(Reciprocal Rank Fusion)로 합산
         rrf_scores: dict[str, dict] = {}

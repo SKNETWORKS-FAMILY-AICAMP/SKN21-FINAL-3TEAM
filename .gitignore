@@ -23,9 +23,6 @@ outputs/
 *.safetensors
 *.gguf
 
-# User uploads
-backend/uploads/
-
 # ChromaDB
 chroma_db/
 
@@ -57,6 +54,9 @@ credentials.json
 token.json
 *.pem
 *.key
+
+# Local Docker overrides
+docker/Dockerfile.backend
 
 # claude setting
 .claude

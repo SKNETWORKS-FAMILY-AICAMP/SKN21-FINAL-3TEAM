@@ -45,9 +45,15 @@ const useChatStore = create((set, get) => ({
 
   createSession: () => {
     const state = get()
-    // 현재 대화 저장
-    if (state.activeSessionId && state.messages.length > 0) {
-      const sessions = state.sessions.map(s =>
+    let sessions = state.sessions
+
+    if (state.activeSessionId && state.messages.length === 0) {
+      // 현재 세션이 비어있으면 제거 (빈 세션 정리)
+      sessions = sessions.filter(s => s.id !== state.activeSessionId)
+      saveSessions(sessions)
+    } else if (state.activeSessionId && state.messages.length > 0) {
+      // 현재 대화 저장
+      sessions = sessions.map(s =>
         s.id === state.activeSessionId ? { ...s, messages: state.messages, updatedAt: Date.now() } : s
       )
       saveSessions(sessions)
@@ -61,10 +67,10 @@ const useChatStore = create((set, get) => ({
       createdAt: Date.now(),
       updatedAt: Date.now(),
     }
-    const sessions = [newSession, ...(get().sessions)]
-    saveSessions(sessions)
+    const newSessions = [newSession, ...sessions]
+    saveSessions(newSessions)
     saveActiveId(id)
-    set({ sessions, activeSessionId: id, messages: [], currentIntent: null, currentStatus: null })
+    set({ sessions: newSessions, activeSessionId: id, messages: [], currentIntent: null, currentStatus: null })
   },
 
   switchSession: (id) => {
@@ -159,6 +165,36 @@ const useChatStore = create((set, get) => ({
       const last = messages[messages.length - 1]
       if (last && last.role === 'assistant') {
         messages[messages.length - 1] = { ...last, content: last.content + token }
+      }
+      return { messages }
+    }),
+
+  setLastAssistantResult: (intent, agentResponse) =>
+    set((state) => {
+      const messages = [...state.messages]
+      const last = messages[messages.length - 1]
+      if (last && last.role === 'assistant') {
+        messages[messages.length - 1] = { ...last, resultIntent: intent, agentResponse }
+      }
+      return { messages }
+    }),
+
+  setLastAssistantError: (errorMsg) =>
+    set((state) => {
+      const messages = [...state.messages]
+      const last = messages[messages.length - 1]
+      if (last && last.role === 'assistant') {
+        messages[messages.length - 1] = { ...last, error: errorMsg }
+      }
+      return { messages }
+    }),
+
+  setLastAssistantIntent: (intent) =>
+    set((state) => {
+      const messages = [...state.messages]
+      const last = messages[messages.length - 1]
+      if (last && last.role === 'assistant') {
+        messages[messages.length - 1] = { ...last, intent }
       }
       return { messages }
     }),

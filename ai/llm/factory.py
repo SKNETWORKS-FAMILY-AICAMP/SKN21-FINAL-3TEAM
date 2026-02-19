@@ -4,7 +4,7 @@ LLM 팩토리 + 싱글턴
 환경변수 LLM_PROVIDER로 Provider 선택:
   - "openai" (기본값) → OpenAIProvider
   - "anthropic" → AnthropicProvider
-  - "vllm" → 4단계에서 구현
+  - "vllm" → VLLMProvider (OpenAI 호환 API, LoRA 핫스왑 지원)
 """
 import os
 import logging
@@ -31,7 +31,8 @@ def create_llm(
         from ai.llm.anthropic_provider import AnthropicProvider
         return AnthropicProvider(config)
     elif provider == "vllm":
-        raise NotImplementedError("vLLM Provider는 4단계에서 구현 예정")
+        from ai.serving.vllm_client import VLLMProvider
+        return VLLMProvider(config)
     else:
         raise ValueError(f"지원하지 않는 LLM Provider: {provider}")
 
