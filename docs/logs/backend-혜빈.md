@@ -284,3 +284,79 @@
 - `schedule_service.py`의 `create_with_google_services()` 구현 (Calendar + Tasks + Gmail + Sheets 통합 오케스트레이션)
 - `schedules.py` API 4개 엔드포인트 구현 (일정 CRUD)
 - AI 연동 엔드포인트는 팀원 C(승언) 작업 대기
+
+---
+
+## 2026-02-19 (세션 8)
+
+### 한 일
+
+**`create_tables.py` 구문 오류 수정**
+- `from app.models` 불완전한 import → `import app.models  # noqa: F401`로 수정
+- `app/models/__init__.py`에서 11개 모델 전부 import하므로 한 줄로 모두 등록
+
+**`schedules.py` CRUD API 구현 확인**
+- 4개 엔드포인트 정상 동작 확인:
+  - `GET /schedules/` — 본인 일정 목록 조회
+  - `POST /schedules/` — 일정 생성 (Google Services 통합 오케스트레이션 포함)
+  - `PUT /schedules/{id}` — 일정 수정
+  - `DELETE /schedules/{id}` — 일정 삭제
+- `schedule_service.py`의 `create_with_google_services()` 구현 완료:
+  - Calendar + Tasks + Gmail + Sheets 통합 오케스트레이션
+  - `calculate_priority()`: 마감일 기반 우선순위 자동 설정
+
+**`meetings.py` CRUD API 구현**
+- `meeting_service.py` 기존 빈 클래스 → 함수형으로 전면 재구현:
+  - `list_meetings(db, user_id)` — 본인 회의 목록 조회
+  - `create_meeting(db, user_id, data)` — 회의 생성
+  - `get_meeting(db, meeting_id, user_id)` — 상세 + Action Items
+  - `decisions_to_str(decisions)` — JSONB → str 변환 헬퍼
+- `meetings.py` 3개 엔드포인트 구현:
+  - `GET /meetings/` — 본인 회의 목록 (MeetingResponse)
+  - `POST /meetings/` — 회의 생성
+  - `GET /meetings/{meeting_id}` — 상세 + Action Items (MeetingDetailResponse)
+  - analyze, generate, download → 501 유지 (승언 연동 예정)
+
+**`admin.py` + `statistics_service.py` 전면 구현**
+- `statistics_service.py` 기존 빈 클래스 → 함수형으로 전면 재구현:
+  - `_period_start(period)` — daily/weekly/monthly 시작점 계산
+  - `get_top_queries(db, period, limit)` — 인기 질의 Top N (GROUP BY + ORDER BY count)
+  - `get_dashboard_stats(db, user_id)` — 대시보드 통계 카드 4종 (today_queries, processed_meetings, completed_action_items, risk_alerts)
+  - `get_query_logs(db, page, per_page)` — 질의 로그 페이지네이션
+- `admin.py` 기존 7개 NotImplementedError → 전부 구현:
+  - `GET /admin/users` — 사용자 목록 조회
+  - `GET /admin/stats` — 시스템 전체 통계
+  - `GET /admin/logs` — 질의 로그 조회
+  - `GET /admin/regulations` — 규정 목록 조회
+  - `GET /admin/query-logs` — 질의 로그 (UI_UX 추가)
+  - `GET /admin/top-queries` — 인기 질의 (월/주/일)
+  - `PUT /admin/users/{id}/permissions` — 사용자 권한 변경 (is_admin, is_active)
+- 모든 엔드포인트에 `get_admin_user` 의존성 적용 (관리자만 접근 가능)
+
+**DB 관리자 권한 설정**
+- 시드 데이터에 관리자 없어서 직접 `UPDATE users SET is_admin=true` 실행
+- curl로 admin API 전체 테스트 완료
+
+### 이슈 및 해결
+
+**이슈 1: `create_tables.py` SyntaxError**
+- 증상: `from app.models` 구문 불완전
+- 해결: `import app.models  # noqa: F401`로 변경
+
+**이슈 2: git push 거부**
+- 증상: 다른 팀원이 먼저 push하여 reject
+- 해결: `git pull origin develop --rebase` 후 재push
+
+**이슈 3: 패키지 미설치 (langgraph, rank_bm25)**
+- 증상: `No module named 'langgraph'`, `No module named 'rank_bm25'`
+- 원인: venv에 pip 없어서 패키지 누락
+- 해결: `python -m ensurepip` → `pip install -r requirements.txt`
+
+**이슈 4: 포트 충돌**
+- 증상: `[Errno 48] address already in use` (포트 8000)
+- 해결: `lsof -ti :8000 | xargs kill -9` 후 서버 재시작
+
+### 다음 할 일
+- AI 연동 엔드포인트 (승언 문서 Agent 완성 대기): `meetings/analyze`, `meetings/generate`, `documents/generate`, `documents/download`, `documents/search/highlight`
+- 지영님 admin 페이지 API 연동 결과 확인
+- 4단계 데이터 수집: 문서 생성 200건 (혜빈 담당)
