@@ -17,6 +17,15 @@ class ScheduleCreate(BaseModel):
     attendee_emails: list[str] = []
 
 
+class ScheduleUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    schedule_type: Optional[str] = None
+    priority: Optional[str] = None
+
+
 class ScheduleResponse(BaseModel):
     id: int
     title: str
