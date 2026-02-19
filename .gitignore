@@ -61,6 +61,5 @@ token.json
 # claude setting
 .claude
 .ruff_cache/
-.ruff_cache/123
-.ruff_cache/4353454353
+
 docs/mentoring/2026-02-15-멘토링-대본.md
