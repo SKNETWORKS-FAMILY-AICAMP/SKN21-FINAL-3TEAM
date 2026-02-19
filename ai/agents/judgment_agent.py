@@ -295,6 +295,7 @@ async def judgment_agent(state: AgentState) -> AgentState:
         parsed["confidence"] = _calibrate_confidence(parsed, context)
         parsed.setdefault("cross_references", [])
         parsed["regulation_groups"] = list(groups.keys())
+        parsed["message"] = parsed.get("reasoning", "")
 
         print(f"[JudgmentAgent] 완료 ({time.time()-_t_agent:.2f}s) | result={parsed.get('result')}, confidence={parsed.get('confidence')}")
 
@@ -376,6 +377,7 @@ async def judgment_agent_stream(state: AgentState) -> AsyncGenerator[str, None]:
         parsed.setdefault("cross_references", [])
         groups = _group_regulations(context)
         parsed["regulation_groups"] = list(groups.keys())
+        parsed["message"] = parsed.get("reasoning", "")
 
         yield "\n[DONE]" + json.dumps(parsed, ensure_ascii=False)
 
