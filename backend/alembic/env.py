@@ -1,6 +1,7 @@
 """
 Alembic 마이그레이션 환경 (팀원 D 관리)
 """
+import os
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
@@ -11,6 +12,12 @@ from app.models import *  # noqa: F401,F403 - 모든 모델 import
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# DATABASE_URL 환경변수 우선 사용 (asyncpg → psycopg2 변환)
+db_url = os.getenv("DATABASE_URL")
+if db_url:
+    db_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
+    config.set_main_option("sqlalchemy.url", db_url)
 
 target_metadata = Base.metadata
 

@@ -1,6 +1,7 @@
 import asyncio
 from app.db.session import engine
 from app.db.base import Base
+import app.models  # noqa: F401 — 모든 모델을 Base.metadata에 등록
 
 async def create_tables():
     async with engine.begin() as conn:

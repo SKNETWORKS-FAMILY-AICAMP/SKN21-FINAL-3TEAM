@@ -317,6 +317,31 @@
 
 ---
 
+## 2026-02-19 (목)
+
+### 한 일
+
+#### 1) Docker 환경 구성
+- **`docker/Dockerfile.backend`** — `ai/requirements.txt` 설치 추가, PYTHONPATH/CMD 경로 수정, bitsandbytes 제외
+- **`.env`** — DATABASE_URL/REDIS_URL 호스트를 `localhost` → `db`/`redis`로 변경 (Docker 네트워크)
+- **`backend/alembic/env.py`** — DATABASE_URL 환경변수 override 추가 (Docker에서 alembic 실행 시 자동 인식)
+- **`docker/Dockerfile.frontend`** — `npm install --legacy-peer-deps` (@eslint/js 버전 충돌 해결)
+- **`docker/docker-compose.yml`** — frontend 서비스에 `BACKEND_URL=http://backend:8000` 환경변수 추가
+- **`frontend/vite.config.js`** — 프록시 타겟 `process.env.BACKEND_URL || 'http://localhost:8000'`으로 변경
+  - Docker: `backend:8000` 사용 / 로컬: `localhost:8000` fallback
+
+#### 2) 챗봇 세션 버그 수정 (에러 후 "새 대화" 클릭 시 빈/중복 세션 생성 버그)
+- **`useChat.js`** — `createSession()` 중복 호출 제거 (`addMessage`가 이미 세션 자동 생성하므로 충돌 발생)
+- **`useSSE.js`** — SSE 에러 시 Mock 폴백 제거 → `setLastAssistantError()` 호출로 UI에 에러 직접 표시, `setStreaming(false)` 누락 수정
+- **`chatStore.js`** — `createSession()` 호출 시 현재 세션이 비어있으면 자동 제거 (빈 세션 정리)
+
+### 다음 할 일
+- Google 로그인 500 에러 계속 추적 (Docker 네트워크 Vite 프록시 수정 완료, 재테스트 필요)
+- 나머지 Mock → 실제 API 교체
+- 관리자 API 연동 (#29)
+
+---
+
 ## 현재 구현 현황 요약
 
 | 항목 | 상태 | 비고 |

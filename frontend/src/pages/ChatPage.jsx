@@ -59,7 +59,7 @@ function renderCardMessage(msg, onSelectClarify) {
       return (
         <>
           <JudgmentCard result={resultLabel} resultIcon={resultIcon} summary={data.reasoning || content} regulations={regulations} />
-          {content && (
+          {content && data.reasoning && content !== data.reasoning && (
             <div className="mt-2 bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">
               {content}
             </div>
