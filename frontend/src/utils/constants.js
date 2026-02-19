@@ -24,15 +24,15 @@ export const INTENT_LABELS = {
   general: '일반 질문',
 }
 
-// Intent별 아이콘
+// Intent별 아이콘 이름 (Lucide 매핑용)
 export const INTENT_ICONS = {
-  judgment: '⚖️',
-  doc_search: '🔍',
-  doc_generate: '📄',
-  meeting_generate: '📋',
-  schedule_add: '📅',
-  schedule_view: '📅',
-  general: '💬',
+  judgment: 'Scale',
+  doc_search: 'Search',
+  doc_generate: 'FileText',
+  meeting_generate: 'ClipboardList',
+  schedule_add: 'CalendarPlus',
+  schedule_view: 'CalendarDays',
+  general: 'MessageCircle',
 }
 
 // 판단 결과 타입
@@ -143,11 +143,11 @@ export const REGULATION_STATUS_COLORS = {
 
 // 추천 질문 카테고리
 export const SUGGESTED_QUESTION_CATEGORIES = [
-  { key: 'all', label: '전체', icon: '✨' },
-  { key: 'regulation', label: '규정', icon: '⚖️' },
-  { key: 'document', label: '문서', icon: '📄' },
-  { key: 'schedule', label: '일정', icon: '📅' },
-  { key: 'general', label: '일반', icon: '💬' },
+  { key: 'all', label: '전체', icon: 'Sparkles' },
+  { key: 'regulation', label: '규정', icon: 'Scale' },
+  { key: 'document', label: '문서', icon: 'FileText' },
+  { key: 'schedule', label: '일정', icon: 'CalendarDays' },
+  { key: 'general', label: '일반', icon: 'MessageCircle' },
 ]
 
 // 추천 질문 (카테고리 포함)

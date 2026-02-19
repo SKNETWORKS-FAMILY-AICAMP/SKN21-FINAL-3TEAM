@@ -5,7 +5,7 @@ export default function DocumentCard({ title, summary, riskLevel }) {
   return (
     <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
       <div className="px-4 py-3 border-b border-neutral-divider flex items-center gap-2 font-bold text-sm text-primary-700">
-        <span className="text-[0.9375rem]">📄</span>{title || '문서 분석 결과'}
+{title || '문서 분석 결과'}
       </div>
       <div className="p-4">
         {riskLevel && (

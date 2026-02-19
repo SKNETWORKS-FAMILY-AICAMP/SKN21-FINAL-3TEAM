@@ -250,7 +250,6 @@
 
 ### 다음 할 일
 - 나머지 Mock → 실제 API 교체 (대시보드, 채팅, 문서, 회의 등)
-- 관리자 API 연동 (#29) — 5단계
 - 전체 E2E 테스트 지원
 
 ---
@@ -267,6 +266,50 @@
   - 월간/주간/연간 뷰 전부 적용
 - 대체공휴일 데이터 추가 (`CalendarView.jsx`)
   - 2025~2027년 대체공휴일 전체 추가 
+
+### 다음 할 일
+- 나머지 Mock → 실제 API 교체
+- 관리자 API 연동 (#29)
+
+---
+
+## 2026-02-15 (일)
+
+### 한 일
+
+#### 1) 이모지 → Lucide React 아이콘 전면 교체
+- `lucide-react` 패키지 설치
+- 38개+ 파일에서 50개+ 이모지를 Lucide SVG 아이콘으로 교체
+- `constants.js` — INTENT_ICONS / SUGGESTED_QUESTION_CATEGORIES 이모지 → Lucide 이름 문자열로 변환
+- `SuggestedQuestions.jsx` — ICON_MAP 매핑으로 Lucide 컴포넌트 렌더링
+
+#### 2) 회의록 생성 페이지 → 문서 생성 페이지에 통합
+- MeetingMinutesPage 삭제 (App.jsx 라우트 + Sidebar 메뉴 제거)
+- DocumentGeneratePage에서 `meeting_minutes` 템플릿 선택 시 MeetingInput + MeetingPreview 표시
+
+#### 3) 화면 빈 화면 버그 수정
+- **원인 1**: `client.js` 응답 인터셉터의 `window.location.href = '/login'`이 React 렌더링 중 DOM 충돌 → 리다이렉트 제거, React Router 상태 기반으로 변경
+- **원인 2**: Lucide 아이콘이 `forwardRef` 객체라 `typeof icon === 'function'` 체크 실패 → IIFE 패턴으로 수정 (`ActivityTimeline.jsx`)
+
+### 다음 할 일
+- alert() → toast 알림 컴포넌트 교체 (6곳)
+- window.confirm() → 모달 다이얼로그 교체
+- 로딩 스켈레톤 추가
+- 나머지 Mock → 실제 API 교체
+- 관리자 API 연동 (#29)
+
+---
+
+## 2026-02-17 (화)
+
+### 한 일
+
+#### 1) 대시보드 편집 모드 구현
+- `uiStore.js` — 대시보드 레이아웃 상태 추가 (leftColumn/rightColumn/hidden, localStorage 저장)
+- `DashboardPage.jsx` — WIDGET_REGISTRY 기반 동적 렌더링, framer-motion Reorder로 드래그 순서 변경, X 버튼으로 위젯 숨기기, 점선 카드로 숨긴 위젯 복원, 편집/완료 토글 + 초기화 버튼
+
+#### 2) AI 챗봇 프로필 변경
+- `MessageBubble.jsx` — AI 프로필을 "AI" 텍스트 → accent-500 배경 + Brain 아이콘으로 변경
 
 ### 다음 할 일
 - 나머지 Mock → 실제 API 교체

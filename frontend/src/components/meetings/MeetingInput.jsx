@@ -22,7 +22,7 @@ export default function MeetingInput({ onSubmit, loading }) {
   return (
     <form onSubmit={handleSubmit} className="card">
       <div className="card-header">
-        <div className="card-title"><span>📝</span>회의 내용 입력</div>
+        <div className="card-title">회의 내용 입력</div>
       </div>
       <div className="card-body space-y-4">
         <div className="grid grid-cols-2 gap-4">

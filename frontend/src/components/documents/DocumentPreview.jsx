@@ -22,7 +22,7 @@ export default function DocumentPreview({ data, onDownload, loading }) {
     <div className="card" ref={printRef}>
       <div className="card-header no-print">
         <div className="card-title">
-          <span>📄</span>생성된 문서
+생성된 문서
           {data.templateType && (
             <Badge variant="document">{TEMPLATE_LABELS[data.templateType] || data.templateType}</Badge>
           )}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import useGoogleServices from '../hooks/useGoogleServices';
+import { sendMeetingInvite } from '../api/google';
 import GoogleServicesConnect from '../components/schedules/GoogleServicesConnect';
 import CalendarView from '../components/schedules/CalendarView';
 import ScheduleForm from '../components/schedules/ScheduleForm';
@@ -65,12 +66,24 @@ export default function SchedulesPage() {
         };
 
         if (data.include_meet) {
-          await createEventWithMeet(eventData);
+          const result = await createEventWithMeet(eventData);
+
+          // Meet 생성 후 참석자에게 회의 초대 메일 자동 발송
+          if (result?.meet_link && data.attendee_emails?.length > 0 && hasScope('gmail_send')) {
+            try {
+              await sendMeetingInvite({
+                recipient_emails: data.attendee_emails,
+                meeting_title: data.title,
+                meeting_time: startDateTime,
+                meet_link: result.meet_link,
+              });
+            } catch (emailErr) {
+              console.error('회의 초대 메일 발송 실패:', emailErr);
+            }
+          }
         } else {
           await syncEventToGoogle(eventData);
         }
-
-        fetchCalendarEvents();
       } catch (error) {
         console.error('일정 추가 실패:', error);
       }

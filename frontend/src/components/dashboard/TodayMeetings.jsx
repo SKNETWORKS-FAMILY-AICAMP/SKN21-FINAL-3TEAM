@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
 import Badge from '../common/Badge';
+import { Calendar, MapPin, Users } from 'lucide-react';
 
 export default function TodayMeetings({ meetings = [] }) {
   return (
     <div className="card">
       <div className="card-header">
-        <div className="card-title"><span>📅</span>오늘의 회의</div>
+        <div className="card-title"><Calendar size={16} className="text-neutral-sub" />오늘의 회의</div>
         <Link to="/meetings" className="btn-secondary text-xs">+ 새 회의</Link>
       </div>
       <div className="card-body space-y-2.5">
@@ -18,8 +19,8 @@ export default function TodayMeetings({ meetings = [] }) {
             <div className="flex-1">
               <div className="text-sm font-semibold text-neutral-main">{m.title}</div>
               <div className="flex gap-3 mt-1 text-xs text-neutral-sub">
-                <span>📍 {m.location}</span>
-                <span>👥 {m.attendees}명</span>
+                <span className="flex items-center gap-1"><MapPin size={12} />{m.location}</span>
+                <span className="flex items-center gap-1"><Users size={12} />{m.attendees}명</span>
               </div>
             </div>
             <Badge variant="status-scheduled">예정</Badge>

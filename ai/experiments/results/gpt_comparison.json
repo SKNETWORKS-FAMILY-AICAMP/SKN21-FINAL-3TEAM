@@ -1,16 +1,18 @@
 [
   {
-    "method": "GPT Zero-shot",
-    "accuracy": 0.9571,
-    "f1_macro": 0.9602,
-    "time_ms": 519.73,
-    "cost": "~$0.01"
+    "method": "GPT-4o-mini Zero-shot",
+    "accuracy": 0.8491,
+    "f1_macro": 0.8511,
+    "time_ms": 435.95,
+    "cost": "~$0.030",
+    "errors": 32
   },
   {
-    "method": "GPT Few-shot",
-    "accuracy": 0.9714,
-    "f1_macro": 0.9753,
-    "time_ms": 456.58,
-    "cost": "~$0.03"
+    "method": "GPT-4o-mini Few-shot",
+    "accuracy": 0.8538,
+    "f1_macro": 0.863,
+    "time_ms": 583.7,
+    "cost": "~$0.091",
+    "errors": 31
   }
 ]

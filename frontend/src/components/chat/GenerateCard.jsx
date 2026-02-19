@@ -7,7 +7,7 @@ export default function GenerateCard({ title, templateType, fields = [], downloa
     <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
       <div className="px-4 py-3 border-b border-neutral-divider flex items-center justify-between">
         <div className="flex items-center gap-2 font-bold text-sm text-primary-700">
-          <span className="text-[0.9375rem]">📝</span>{title || '문서 생성 완료'}
+{title || '문서 생성 완료'}
         </div>
         {templateType && <Badge variant="document">{typeLabels[templateType] || templateType}</Badge>}
       </div>

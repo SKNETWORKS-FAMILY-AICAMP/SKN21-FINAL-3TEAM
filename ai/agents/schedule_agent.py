@@ -109,8 +109,15 @@ async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
 
     # 2. Google Calendar API 호출
     try:
-        from backend.app.db.session import async_session
-        from backend.app.services.calendar_service import GoogleCalendarService
+        import sys
+        from pathlib import Path
+        # backend 디렉토리를 sys.path에 추가 (AI 모듈에서 backend import 가능하게)
+        backend_path = str(Path(__file__).parent.parent.parent / "backend")
+        if backend_path not in sys.path:
+            sys.path.insert(0, backend_path)
+
+        from app.db.session import async_session
+        from app.services.calendar_service import GoogleCalendarService
 
         calendar_service = GoogleCalendarService()
         event_data = {
@@ -159,8 +166,15 @@ async def _handle_schedule_view(user_input: str, user_id: int) -> dict:
 
     # 2. Google Calendar API 호출
     try:
-        from backend.app.db.session import async_session
-        from backend.app.services.calendar_service import GoogleCalendarService
+        import sys
+        from pathlib import Path
+        # backend 디렉토리를 sys.path에 추가
+        backend_path = str(Path(__file__).parent.parent.parent / "backend")
+        if backend_path not in sys.path:
+            sys.path.insert(0, backend_path)
+
+        from app.db.session import async_session
+        from app.services.calendar_service import GoogleCalendarService
 
         calendar_service = GoogleCalendarService()
 

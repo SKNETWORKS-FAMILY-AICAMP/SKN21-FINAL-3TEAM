@@ -42,7 +42,7 @@ export default function RegulationManagement({ regulations = [] }) {
   return (
     <div className="card">
       <div className="card-header">
-        <div className="card-title"><span>📄</span>규정 관리</div>
+        <div className="card-title">규정 관리</div>
         <button className="btn-primary" onClick={openAdd}>+ 규정 추가</button>
       </div>
       <div className="overflow-x-auto">

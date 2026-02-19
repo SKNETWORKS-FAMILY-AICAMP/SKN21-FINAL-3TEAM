@@ -1,23 +1,23 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import ThemeToggle from './ThemeToggle';
+import { LayoutDashboard, MessageSquare, FilePlus, FileText, Users2, Calendar, Settings } from 'lucide-react';
 
 const navItems = [
   { section: '메인', items: [
-    { to: '/dashboard', icon: '📊', label: '대시보드' },
-    { to: '/chat', icon: '💬', label: 'AI 챗봇' },
+    { to: '/dashboard', icon: LayoutDashboard, label: '대시보드' },
+    { to: '/chat', icon: MessageSquare, label: 'AI 챗봇' },
   ]},
   { section: 'AI 생성', items: [
-    { to: '/meeting-minutes', icon: '📋', label: '회의록 생성' },
-    { to: '/document-generate', icon: '📝', label: '문서 생성' },
+    { to: '/document-generate', icon: FilePlus, label: '문서 생성' },
   ]},
   { section: '관리', items: [
-    { to: '/documents', icon: '📄', label: '문서 관리', badge: 3 },
-    { to: '/meetings', icon: '📅', label: '회의 관리' },
-    { to: '/schedules', icon: '🗓️', label: '일정 관리' },
+    { to: '/documents', icon: FileText, label: '문서 관리', badge: 3 },
+    { to: '/meetings', icon: Users2, label: '회의 관리' },
+    { to: '/schedules', icon: Calendar, label: '일정 관리' },
   ]},
   { section: '시스템', items: [
-    { to: '/admin', icon: '⚙️', label: '관리자 설정' },
+    { to: '/admin', icon: Settings, label: '관리자 설정' },
   ]},
 ];
 
@@ -34,7 +34,7 @@ export default function Sidebar() {
   return (
     <aside className="w-60 bg-sidebar-bg flex flex-col flex-shrink-0 overflow-y-auto">
       <a href="/dashboard" className="flex items-center gap-3 px-5 pt-6 pb-7">
-        <div className="w-9 h-9 bg-accent-300 rounded-sm flex items-center justify-center text-lg">📋</div>
+        <div className="w-9 h-9 bg-accent-300 rounded-sm flex items-center justify-center text-lg font-bold text-primary-900">W</div>
         <span className="font-display text-lg font-bold text-sidebar-text tracking-tight">WorkFlow</span>
       </a>
 
@@ -56,7 +56,7 @@ export default function Sidebar() {
                   }`
                 }
               >
-                <span>{item.icon}</span>
+                <item.icon size={18} />
                 <span>{item.label}</span>
                 {item.badge && (
                   <span className="ml-auto bg-accent-300 text-primary-900 text-[0.6875rem] font-bold px-2 py-px rounded-full">

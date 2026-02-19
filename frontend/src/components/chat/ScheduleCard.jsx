@@ -2,11 +2,11 @@ export default function ScheduleCard({ title, date, time, synced }) {
   return (
     <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
       <div className="px-4 py-3 border-b border-neutral-divider flex items-center gap-2 font-bold text-sm text-success">
-        <span className="text-[0.9375rem]">✅</span>일정 등록 완료
+일정 등록 완료
       </div>
       <div className="p-4">
         <div className="bg-accent-50 rounded-[10px] p-3.5">
-          <div className="text-sm font-semibold text-neutral-main mb-2">📅 {title}</div>
+          <div className="text-sm font-semibold text-neutral-main mb-2">{title}</div>
           <div className="text-[0.8125rem] text-neutral-sub leading-[1.8]">{date}<br />{time}</div>
           {synced && (
             <div className="mt-2 text-[0.6875rem] text-success font-medium flex items-center gap-1">
