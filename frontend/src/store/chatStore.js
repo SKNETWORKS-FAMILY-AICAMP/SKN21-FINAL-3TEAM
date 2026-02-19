@@ -163,6 +163,36 @@ const useChatStore = create((set, get) => ({
       return { messages }
     }),
 
+  setLastAssistantResult: (intent, agentResponse) =>
+    set((state) => {
+      const messages = [...state.messages]
+      const last = messages[messages.length - 1]
+      if (last && last.role === 'assistant') {
+        messages[messages.length - 1] = { ...last, resultIntent: intent, agentResponse }
+      }
+      return { messages }
+    }),
+
+  setLastAssistantError: (errorMsg) =>
+    set((state) => {
+      const messages = [...state.messages]
+      const last = messages[messages.length - 1]
+      if (last && last.role === 'assistant') {
+        messages[messages.length - 1] = { ...last, error: errorMsg }
+      }
+      return { messages }
+    }),
+
+  setLastAssistantIntent: (intent) =>
+    set((state) => {
+      const messages = [...state.messages]
+      const last = messages[messages.length - 1]
+      if (last && last.role === 'assistant') {
+        messages[messages.length - 1] = { ...last, intent }
+      }
+      return { messages }
+    }),
+
   clearMessages: () => {
     const state = get()
     if (state.activeSessionId) {
