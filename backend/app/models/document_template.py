@@ -4,7 +4,7 @@
 - category: meeting_minutes | report | jd | proposal | custom
 - scope: company (회사 공용) | personal (개인)
 """
-from sqlalchemy import String, Integer, Text, Boolean, ForeignKey
+from sqlalchemy import String, Text, Boolean, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from typing import Optional
 

@@ -43,3 +43,14 @@ class AgentState(TypedDict):
 
     # ── Google 연동 (혜빈) ──
     google_services_result: Optional[dict]  # schedule_add 시 Google 서비스 결과
+
+    # ── 복합 질문 처리 (지용) ──
+    is_complex: Optional[bool]              # 복합 질문 여부
+    sub_queries: Optional[list]             # 분해된 서브쿼리 [{"query": str, "intent": str, "confidence": float, "depends_on": int|None}]
+    intent_candidates: Optional[list]       # top-k intent 후보 [{"intent": str, "confidence": float}]
+    resolved_input: Optional[str]           # 맥락 해석된 입력 (지시어 해결 후)
+    sub_responses: Optional[list]           # 서브쿼리별 agent 응답 (병합 전)
+    needs_context_resolution: Optional[bool]  # 맥락 해석 필요 여부 (지시어 감지 시 True)
+
+    # ── 스트리밍 제어 ──
+    stream_mode: Optional[bool]             # True이면 LLM 호출을 chat.py에서 직접 스트리밍 처리

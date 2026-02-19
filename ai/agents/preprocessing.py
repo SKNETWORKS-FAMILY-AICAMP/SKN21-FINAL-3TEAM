@@ -1,11 +1,11 @@
 """
-전처리 파이프라인 모듈 (실험 6)
+전처리 파이프라인 모듈 (실험 6에서 개발, 실서비스용으로 이동)
 
 4단계 전처리를 각각 on/off 가능한 모듈로 구현.
 실서비스에서 사용자 입력을 정규화한 뒤 Intent 분류기에 전달하는 용도.
 
 사용법:
-    from ai.experiments.preprocessing import preprocess, PreprocessConfig
+    from ai.agents.preprocessing import preprocess, PreprocessConfig
 
     # 전체 전처리
     result = preprocess("회이록 정리해조")
@@ -16,7 +16,7 @@
 """
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -36,8 +36,8 @@ SPELL_CORRECTIONS = {
     "보거서": "보고서", "보고ㅓ서": "보고서", "보고써": "보고서",
     "일졍": "일정", "일젱": "일정", "일정확인": "일정 확인",
     "귝정": "규정", "귶정": "규정", "규졍": "규정",
-    "연챠": "연차", "연챠": "연차", "연쨔": "연차",
-    "스케쥴": "스케줄", "스케쥴": "스케줄",
+    "연챠": "연차", "연쨔": "연차",
+    "스케쥴": "스케줄",
     "문셔": "문서", "먼서": "문서",
     "셋업": "설정", "미팅잇나": "미팅 있나",
     "잇나": "있나", "잇어": "있어", "잇는": "있는",

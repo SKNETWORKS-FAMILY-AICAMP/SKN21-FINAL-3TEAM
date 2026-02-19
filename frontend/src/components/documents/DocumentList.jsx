@@ -1,6 +1,7 @@
 import Badge from '../common/Badge';
 import DataTable from '../common/DataTable';
 import KeywordHighlight from '../common/KeywordHighlight';
+import { FileText } from 'lucide-react';
 
 export default function DocumentList({ documents = [], onSelect, searchQuery = '' }) {
   const columns = [
@@ -14,7 +15,7 @@ export default function DocumentList({ documents = [], onSelect, searchQuery = '
   return (
     <div className="card">
       <div className="card-header">
-        <div className="card-title"><span>📄</span>문서 목록</div>
+        <div className="card-title"><FileText size={16} className="text-neutral-sub" />문서 목록</div>
         <span className="text-xs text-neutral-muted">총 {documents.length}개 문서</span>
       </div>
       <div className="overflow-x-auto">

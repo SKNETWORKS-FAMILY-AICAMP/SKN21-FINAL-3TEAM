@@ -5,7 +5,7 @@ export default function StreamingMessage({ text, status }) {
       <div className="max-w-[70%]">
         {status && (
           <div className="flex items-center gap-2 px-4 py-2.5 bg-primary-50 rounded-sm mb-3 text-[0.8125rem] text-primary-700">
-            📄 {status}
+            {status}
           </div>
         )}
         {text ? (

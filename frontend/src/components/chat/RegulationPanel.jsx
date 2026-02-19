@@ -1,4 +1,5 @@
 import KeywordHighlight from '../common/KeywordHighlight';
+import { BookOpen } from 'lucide-react';
 
 export default function RegulationPanel({ regulations = [], isOpen, onClose, searchQuery = '' }) {
   if (!isOpen) return null;
@@ -7,7 +8,7 @@ export default function RegulationPanel({ regulations = [], isOpen, onClose, sea
     <div className="w-[320px] flex-shrink-0 border-l border-neutral-divider bg-surface-card h-full overflow-y-auto ml-5 -mr-8">
       <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-divider">
         <div className="text-[0.9375rem] font-bold text-neutral-main flex items-center gap-2">
-          <span>📖</span>관련 규정
+          <BookOpen size={16} />관련 규정
         </div>
         <button
           aria-label="규정 패널 닫기"

@@ -64,5 +64,15 @@ export const getSheetUrl = (meetingId) =>
 
 // ── Calendar + Meet ──
 
+export const listCalendarEvents = (timeMin = null, timeMax = null) => {
+  const params = {}
+  if (timeMin) params.time_min = timeMin
+  if (timeMax) params.time_max = timeMax
+  return client.get('/calendar/events', { params })
+}
+
 export const createEventWithMeet = (data) =>
   client.post('/calendar/event-with-meet', data)
+
+export const syncEventToGoogle = (eventData) =>
+  client.post('/calendar/sync', eventData)

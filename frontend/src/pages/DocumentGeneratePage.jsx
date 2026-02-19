@@ -2,20 +2,31 @@ import { useState } from 'react';
 import TemplateSelector from '../components/documents/TemplateSelector';
 import TemplateUploadDialog from '../components/documents/TemplateUploadDialog';
 import DocumentPreview from '../components/documents/DocumentPreview';
+import MeetingInput from '../components/meetings/MeetingInput';
+import MeetingPreview from '../components/meetings/MeetingPreview';
+
+// Mock: 회의록 AI 생성 결과
+const mockMeetingResult = {
+  title: '보안점검 정기회의',
+  date: '2026-02-10',
+  attendees: ['김정보', '이개발', '박인사'],
+  summary:
+    '정보보안 규정 개정 사항을 검토하고 신규 보안 교육 일정을 확정했습니다. ' +
+    'AWS 접근 권한 정책 변경에 따른 후속 조치를 논의했습니다.',
+  decisions: [
+    '정보보안 교육을 2월 말까지 전 직원 대상으로 실시',
+    'AWS 프로덕션 접근 권한은 팀장 승인 후 부여',
+    '재택근무 시 VPN 필수 사용 규정 재공지',
+  ],
+  actionItems: [
+    { task: '보안 교육 일정 및 강사 섭외', assignee: '김정보', deadline: '2026-02-15' },
+    { task: 'AWS 권한 신청 양식 업데이트', assignee: '이개발', deadline: '2026-02-12' },
+    { task: 'VPN 사용 가이드 문서 배포', assignee: '박인사', deadline: '2026-02-14' },
+  ],
+};
 
 // Mock: 템플릿별 생성 결과
 const mockResults = {
-  meeting_minutes: {
-    title: '2026년 2월 보안점검 회의록',
-    templateType: 'meeting_minutes',
-    fields: [
-      { label: '회의 일시', value: '2026년 2월 10일 (화) 14:00-15:30' },
-      { label: '참석자', value: '김정보, 이개발, 박인사, 최보안' },
-      { label: '회의 목적', value: '정보보안 규정 개정 사항 검토 및 교육 일정 확정' },
-      { label: '주요 논의사항', value: '1. 정보보안 교육 일정 확정\n2. AWS 접근 권한 정책 변경\n3. 재택근무 VPN 사용 규정 재공지' },
-      { label: '결정사항', value: '- 보안 교육: 2월 말까지 전 직원 대상 실시\n- AWS 권한: 팀장 승인 후 부여\n- VPN: 재택 시 필수 사용 재공지' },
-    ],
-  },
   report: {
     title: '2026년 1분기 보안 현황 보고서',
     templateType: 'report',
@@ -55,14 +66,36 @@ export default function DocumentGeneratePage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [result, setResult] = useState(null);
+  const [meetingResult, setMeetingResult] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const isMeeting = selectedTemplate === 'meeting_minutes';
+
+  const handleTemplateSelect = (template) => {
+    setSelectedTemplate(template);
+    setResult(null);
+    setMeetingResult(null);
+    setPrompt('');
+  };
 
   const handleGenerate = () => {
     if (!selectedTemplate) return;
     setLoading(true);
-    // Mock: 1.5초 후 결과 표시
     setTimeout(() => {
       setResult(mockResults[selectedTemplate] || mockResults.report);
+      setLoading(false);
+    }, 1500);
+  };
+
+  const handleMeetingSubmit = async (formData) => {
+    setLoading(true);
+    setTimeout(() => {
+      setMeetingResult({
+        ...mockMeetingResult,
+        title: formData.title || mockMeetingResult.title,
+        date: formData.date,
+        attendees: formData.attendees.length > 0 ? formData.attendees : mockMeetingResult.attendees,
+      });
       setLoading(false);
     }, 1500);
   };
@@ -72,7 +105,6 @@ export default function DocumentGeneratePage() {
   };
 
   const handleUpload = async (data) => {
-    // Mock: 나중에 API 연동
     alert(`"${data.name}" 템플릿이 업로드되었습니다. (Mock)`);
   };
 
@@ -87,39 +119,47 @@ export default function DocumentGeneratePage() {
         {/* 템플릿 선택 */}
         <TemplateSelector
           selected={selectedTemplate}
-          onSelect={setSelectedTemplate}
+          onSelect={handleTemplateSelect}
           onUploadClick={() => setUploadOpen(true)}
         />
 
-        {/* 추가 지시사항 + 생성 버튼 */}
-        {selectedTemplate && (
-          <div className="card">
-            <div className="card-header">
-              <div className="card-title"><span>✏️</span>추가 지시사항</div>
-            </div>
-            <div className="card-body space-y-4">
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="AI에게 추가 지시사항을 입력하세요 (선택). 예: 보안팀 관점에서 작성해줘"
-                rows={3}
-                className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 resize-y"
-              />
-              <div className="flex justify-end">
-                <button
-                  onClick={handleGenerate}
-                  disabled={loading}
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'AI 생성 중...' : 'AI 문서 생성'}
-                </button>
-              </div>
-            </div>
-          </div>
+        {/* 회의록 선택 시: 회의 내용 입력 폼 */}
+        {isMeeting && (
+          <>
+            <MeetingInput onSubmit={handleMeetingSubmit} loading={loading} />
+            <MeetingPreview data={meetingResult} onDownload={handleDownload} loading={loading} />
+          </>
         )}
 
-        {/* 결과 미리보기 */}
-        <DocumentPreview data={result} onDownload={handleDownload} loading={loading} />
+        {/* 기타 템플릿 선택 시: 추가 지시사항 + 문서 미리보기 */}
+        {selectedTemplate && !isMeeting && (
+          <>
+            <div className="card">
+              <div className="card-header">
+                <div className="card-title">추가 지시사항</div>
+              </div>
+              <div className="card-body space-y-4">
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="AI에게 추가 지시사항을 입력하세요 (선택). 예: 보안팀 관점에서 작성해줘"
+                  rows={3}
+                  className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 resize-y"
+                />
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleGenerate}
+                    disabled={loading}
+                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'AI 생성 중...' : 'AI 문서 생성'}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <DocumentPreview data={result} onDownload={handleDownload} loading={loading} />
+          </>
+        )}
 
         {/* 업로드 다이얼로그 */}
         <TemplateUploadDialog

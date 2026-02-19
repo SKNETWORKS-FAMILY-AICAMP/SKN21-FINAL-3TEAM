@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Search } from 'lucide-react';
 
 const SUGGESTED_TAGS = ['정보보안', '인사규정', '재택근무', '출장비', '개인정보', '코드리뷰'];
 
@@ -20,7 +21,7 @@ export default function QuickSearch() {
   return (
     <div className="card">
       <div className="card-header">
-        <div className="card-title"><span>🔍</span>빠른 규정 검색</div>
+        <div className="card-title"><Search size={16} className="text-neutral-sub" />빠른 규정 검색</div>
       </div>
       <div className="card-body">
         <div className="flex items-center gap-2 mb-3">

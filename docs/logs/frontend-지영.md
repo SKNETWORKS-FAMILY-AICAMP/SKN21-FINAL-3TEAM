@@ -228,10 +228,92 @@
   4. JWT 발급 → 프론트엔드 리다이렉트
   5. 일정 관리 페이지 접속 시 `/google/status` 호출 → "Google 서비스 연결됨" 표시 (추가 연동 불필요)
 
+#### 6) Google Calendar 실제 연동 (Mock → 실제 API)
+> 일정 관리 페이지의 Mock 데이터를 제거하고 실제 Google Calendar 이벤트를 표시하도록 연동
+
+- **`SchedulesPage.jsx`** — mockEvents/mockActions 전체 삭제, 실제 Google Calendar 데이터로 교체
+  - 연결 시 이벤트 자동 로드 (백엔드 기본값 ±3개월)
+  - 수동 새로고침 버튼 추가
+  - backend 응답 형식(`{title, start, end, meet_link}`)을 CalendarView 형식으로 변환
+- **`googleStore.js`** — Calendar 상태/액션 추가
+  - `calendarEvents`, `calendarLoading`, `calendarError` 상태
+  - `fetchCalendarEvents()`, `createEventWithMeet()`, `syncEventToGoogle()` 액션
+- **`google.js`** — `listCalendarEvents(timeMin, timeMax)`, `syncEventToGoogle(eventData)` API 추가
+- **`useGoogleServices.js`** — Calendar 자동 로드 제거 (페이지에서 시간 범위 지정하여 직접 호출)
+- **Backend `calendar_service.py` 수정**:
+  - `primary` 캘린더만 → **모든 캘린더 조회**로 변경 (Family 등 서브 캘린더 포함)
+  - 기본 시간 범위 ±3개월 설정
+  - maxResults 50 → 250 확대
+  - 공휴일 캘린더(`#holiday@group.v.calendar.google.com`) 제외 (프론트엔드 하드코딩 공휴일과 중복 방지)
+- **일괄 알림 버튼(`EmailReminderButton`) 제거** — SchedulesPage 헤더에서 삭제
+- **디버그 코드 정리** — googleStore.js, SchedulesPage.jsx의 console.log/디버그 패널 제거
+
 ### 다음 할 일
-- 백엔드 실제 연동 (Mock → 실제 API 교체)
-- 관리자 API 연동 (#29) — 5단계
+- 나머지 Mock → 실제 API 교체 (대시보드, 채팅, 문서, 회의 등)
 - 전체 E2E 테스트 지원
+
+---
+
+## 2026-02-12 (수) — 오후
+
+### 한 일
+- 일정 추가 버그 수정 (`SchedulesPage.jsx`)
+  - `useGoogleServices.getState()` 호출 오류 → 훅에서 직접 구조분해로 변경
+  - `create_meet`/`attendees` 필드명 불일치 수정
+  - 종일 이벤트 시 Invalid Date 발생 수정
+- 캘린더 토/일 색상 적용 (`CalendarView.jsx`)
+  - 토요일 헤더+날짜 파란색, 일요일 헤더+날짜 빨간색, 공휴일 날짜도 빨간색 표시
+  - 월간/주간/연간 뷰 전부 적용
+- 대체공휴일 데이터 추가 (`CalendarView.jsx`)
+  - 2025~2027년 대체공휴일 전체 추가 
+
+### 다음 할 일
+- 나머지 Mock → 실제 API 교체
+- 관리자 API 연동 (#29)
+
+---
+
+## 2026-02-15 (일)
+
+### 한 일
+
+#### 1) 이모지 → Lucide React 아이콘 전면 교체
+- `lucide-react` 패키지 설치
+- 38개+ 파일에서 50개+ 이모지를 Lucide SVG 아이콘으로 교체
+- `constants.js` — INTENT_ICONS / SUGGESTED_QUESTION_CATEGORIES 이모지 → Lucide 이름 문자열로 변환
+- `SuggestedQuestions.jsx` — ICON_MAP 매핑으로 Lucide 컴포넌트 렌더링
+
+#### 2) 회의록 생성 페이지 → 문서 생성 페이지에 통합
+- MeetingMinutesPage 삭제 (App.jsx 라우트 + Sidebar 메뉴 제거)
+- DocumentGeneratePage에서 `meeting_minutes` 템플릿 선택 시 MeetingInput + MeetingPreview 표시
+
+#### 3) 화면 빈 화면 버그 수정
+- **원인 1**: `client.js` 응답 인터셉터의 `window.location.href = '/login'`이 React 렌더링 중 DOM 충돌 → 리다이렉트 제거, React Router 상태 기반으로 변경
+- **원인 2**: Lucide 아이콘이 `forwardRef` 객체라 `typeof icon === 'function'` 체크 실패 → IIFE 패턴으로 수정 (`ActivityTimeline.jsx`)
+
+### 다음 할 일
+- alert() → toast 알림 컴포넌트 교체 (6곳)
+- window.confirm() → 모달 다이얼로그 교체
+- 로딩 스켈레톤 추가
+- 나머지 Mock → 실제 API 교체
+- 관리자 API 연동 (#29)
+
+---
+
+## 2026-02-17 (화)
+
+### 한 일
+
+#### 1) 대시보드 편집 모드 구현
+- `uiStore.js` — 대시보드 레이아웃 상태 추가 (leftColumn/rightColumn/hidden, localStorage 저장)
+- `DashboardPage.jsx` — WIDGET_REGISTRY 기반 동적 렌더링, framer-motion Reorder로 드래그 순서 변경, X 버튼으로 위젯 숨기기, 점선 카드로 숨긴 위젯 복원, 편집/완료 토글 + 초기화 버튼
+
+#### 2) AI 챗봇 프로필 변경
+- `MessageBubble.jsx` — AI 프로필을 "AI" 텍스트 → accent-500 배경 + Brain 아이콘으로 변경
+
+### 다음 할 일
+- 나머지 Mock → 실제 API 교체
+- 관리자 API 연동 (#29)
 
 ---
 
@@ -245,10 +327,8 @@
 | 챗봇 UI + SSE (#27) | ✅ UI 완료 | SSE Mock 모드, 백엔드 연동 대기 |
 | 문서 생성 페이지 | ✅ 완료 | MeetingMinutesPage, DocumentGeneratePage |
 | Google Services UI | ✅ 완료 | 5개 서비스 통합 UI |
-| 일정 관리 | ✅ 완료 | FullCalendar + 공휴일 |
+| 일정 관리 | ✅ 완료 | Google Calendar 실제 연동, 공휴일 중복 제거, 자동 갱신 |
 | KeywordHighlight (FR-DOC-006) | ✅ 완료 | 문서 검색 + 규정 패널 키워드 하이라이트 |
-| 관리자 페이지 고도화 | ✅ 완료 | 사용자/규정 CRUD 모달 + 통계 기간 탭 |
-| UI 품질 점검 | ✅ 완료 | 반응형, 접근성, ESLint 0 warning, 빈 핸들러 수정 |
 | 로그아웃 기능 | ✅ 완료 | Sidebar 하단 텍스트 버튼 + DEV_BYPASS_AUTH 복원 |
 | 글씨 크기 조절 | ✅ 완료 | FontSizeControl (가-/가+), 전체 54파일 px→rem 변환 |
 | 다크 모드 | ✅ 완료 | CSS 변수 방식, OS 감지, localStorage 유지, ThemeToggle |
@@ -256,7 +336,7 @@
 | 페이지 전환 애니메이션 | ✅ 완료 | framer-motion, fade+slide 200ms |
 | 파일 드래그&드롭 | ✅ 완료 | 채팅 파일 첨부, 검증(형식/크기), FileChip |
 | 대화 세션 관리 | ✅ 완료 | localStorage 세션 목록, 자동 생성/전환/삭제 |
-| **백엔드 실제 연동** | ⏳ 대기 | 전체 Mock 데이터 → 실제 API 교체 필요 |
+| **백엔드 실제 연동** | 🔄 진행중 | 일정 관리 완료, 나머지 페이지 교체 필요 |
 
 ### 파일 현황
 - **페이지**: 10개 전체 구현

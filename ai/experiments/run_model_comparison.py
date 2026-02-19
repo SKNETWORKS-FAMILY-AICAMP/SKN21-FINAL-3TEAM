@@ -20,14 +20,12 @@
 
 import argparse
 import json
-import os
 import random
 import time
 import shutil
 import torch
 import numpy as np
 from pathlib import Path
-from collections import Counter
 from itertools import product
 from datasets import Dataset
 from transformers import (
@@ -37,7 +35,7 @@ from transformers import (
     Trainer,
 )
 from sklearn.metrics import (
-    accuracy_score, f1_score, classification_report, confusion_matrix,
+    accuracy_score, f1_score, confusion_matrix,
 )
 
 import matplotlib
@@ -615,7 +613,7 @@ def main():
 
         # Step 1 only인 경우 best config로 한 번 더 학습하여 모델 확보
         if final_best_result is None and best_config:
-            print(f"\n  Re-training best config for model saving...")
+            print("\n  Re-training best config for model saving...")
             output_dir = MODEL_BASE / f"exp5_temp_{short_name}_final"
             output_dir.mkdir(parents=True, exist_ok=True)
             final_best_result, final_best_tok, final_best_model, final_best_preds, final_best_labels = (

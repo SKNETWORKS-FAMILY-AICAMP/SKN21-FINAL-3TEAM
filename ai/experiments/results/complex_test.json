@@ -1,0 +1,530 @@
+{
+  "total": 30,
+  "complexity_correct": 25,
+  "complexity_wrong": 5,
+  "context_correct": 30,
+  "context_wrong": 0,
+  "details": [
+    {
+      "id": 1,
+      "text": "규정 확인해서 알려줘",
+      "category": "simple_false_positive",
+      "expected_complex": false,
+      "predicted_complex": true,
+      "complexity_signals": 2,
+      "trigger_reasons": [
+        "keyword_pattern",
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": false,
+      "context_correct": true,
+      "status": "FAIL"
+    },
+    {
+      "id": 2,
+      "text": "보고서 잘 작성해서 보내줘",
+      "category": "simple_false_positive",
+      "expected_complex": false,
+      "predicted_complex": false,
+      "complexity_signals": 1,
+      "trigger_reasons": [
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 3,
+      "text": "연차 규정을 자세하게 찾아줘",
+      "category": "simple_false_positive",
+      "expected_complex": false,
+      "predicted_complex": false,
+      "complexity_signals": 1,
+      "trigger_reasons": [
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 4,
+      "text": "회의록 보기 쉽게 정리해줘",
+      "category": "simple_false_positive",
+      "expected_complex": false,
+      "predicted_complex": false,
+      "complexity_signals": 1,
+      "trigger_reasons": [
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 5,
+      "text": "내일 일정 확인하고 알려줘",
+      "category": "simple_false_positive",
+      "expected_complex": false,
+      "predicted_complex": true,
+      "complexity_signals": 2,
+      "trigger_reasons": [
+        "keyword_pattern",
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": false,
+      "context_correct": true,
+      "status": "FAIL"
+    },
+    {
+      "id": 6,
+      "text": "출장 관련 규정을 검토해서 정리해줘",
+      "category": "simple_false_positive",
+      "expected_complex": false,
+      "predicted_complex": true,
+      "complexity_signals": 2,
+      "trigger_reasons": [
+        "keyword_pattern",
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": false,
+      "context_correct": true,
+      "status": "FAIL"
+    },
+    {
+      "id": 7,
+      "text": "이번 주 금요일 3시에 미팅 넣어줘",
+      "category": "simple_false_positive",
+      "expected_complex": false,
+      "predicted_complex": false,
+      "complexity_signals": 1,
+      "trigger_reasons": [
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 8,
+      "text": "팀 보고서 양식에 맞게 작성해줘",
+      "category": "simple_false_positive",
+      "expected_complex": false,
+      "predicted_complex": true,
+      "complexity_signals": 2,
+      "trigger_reasons": [
+        "keyword_pattern",
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": false,
+      "context_correct": true,
+      "status": "FAIL"
+    },
+    {
+      "id": 9,
+      "text": "오늘 회의에서 논의된 내용 요약해줘",
+      "category": "simple_false_positive",
+      "expected_complex": false,
+      "predicted_complex": false,
+      "complexity_signals": 1,
+      "trigger_reasons": [
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 10,
+      "text": "재택근무 가능한지 규정 찾아줘",
+      "category": "simple_false_positive",
+      "expected_complex": false,
+      "predicted_complex": false,
+      "complexity_signals": 1,
+      "trigger_reasons": [
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 11,
+      "text": "연차 규정 찾아서 이번 달 사용 가능한지 판단해줘",
+      "category": "complex_true",
+      "expected_complex": true,
+      "predicted_complex": true,
+      "complexity_signals": 2,
+      "trigger_reasons": [
+        "keyword_pattern",
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 12,
+      "text": "출장비 규정 검색하고 내 출장비가 규정 위반인지 확인해줘",
+      "category": "complex_true",
+      "expected_complex": true,
+      "predicted_complex": true,
+      "complexity_signals": 2,
+      "trigger_reasons": [
+        "keyword_pattern",
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 13,
+      "text": "회의록 정리해서 보고서로 만들어줘",
+      "category": "complex_true",
+      "expected_complex": true,
+      "predicted_complex": true,
+      "complexity_signals": 2,
+      "trigger_reasons": [
+        "keyword_pattern",
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 14,
+      "text": "내일 일정 확인해서 빈 시간에 회의 추가해줘",
+      "category": "complex_true",
+      "expected_complex": true,
+      "predicted_complex": true,
+      "complexity_signals": 2,
+      "trigger_reasons": [
+        "keyword_pattern",
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 15,
+      "text": "휴가 규정 찾아보고 내가 연차 쓸 수 있는지 알려줘",
+      "category": "complex_true",
+      "expected_complex": true,
+      "predicted_complex": true,
+      "complexity_signals": 2,
+      "trigger_reasons": [
+        "keyword_pattern",
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 16,
+      "text": "이번 주 일정 보여주고 금요일에 보고서 마감 일정 추가해줘",
+      "category": "complex_true",
+      "expected_complex": true,
+      "predicted_complex": true,
+      "complexity_signals": 2,
+      "trigger_reasons": [
+        "keyword_pattern",
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 17,
+      "text": "인사 규정을 바탕으로 신입사원 JD 작성해줘",
+      "category": "complex_true",
+      "expected_complex": true,
+      "predicted_complex": true,
+      "complexity_signals": 2,
+      "trigger_reasons": [
+        "keyword_pattern",
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 18,
+      "text": "지난 회의 내용 검색해서 후속 조치 보고서 작성해줘",
+      "category": "complex_true",
+      "expected_complex": true,
+      "predicted_complex": true,
+      "complexity_signals": 2,
+      "trigger_reasons": [
+        "keyword_pattern",
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 19,
+      "text": "초과근무 규정 확인하고 이번 달 초과근무 가능 여부 판단해줘",
+      "category": "complex_true",
+      "expected_complex": true,
+      "predicted_complex": true,
+      "complexity_signals": 2,
+      "trigger_reasons": [
+        "keyword_pattern",
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 20,
+      "text": "오늘 회의록 요약한 다음 핵심 내용으로 제안서 만들어줘",
+      "category": "complex_true",
+      "expected_complex": true,
+      "predicted_complex": true,
+      "complexity_signals": 2,
+      "trigger_reasons": [
+        "keyword_pattern",
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 21,
+      "text": "아까 말한 규정 다시 찾아줘",
+      "category": "context_dependent",
+      "expected_complex": false,
+      "predicted_complex": false,
+      "complexity_signals": 1,
+      "trigger_reasons": [
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": true,
+      "predicted_context": true,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 22,
+      "text": "그거 보고서로 정리해줘",
+      "category": "context_dependent",
+      "expected_complex": false,
+      "predicted_complex": true,
+      "complexity_signals": 2,
+      "trigger_reasons": [
+        "keyword_pattern",
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": true,
+      "predicted_context": true,
+      "complex_correct": false,
+      "context_correct": true,
+      "status": "FAIL"
+    },
+    {
+      "id": 23,
+      "text": "위에 말한 내용으로 회의록 만들어줘",
+      "category": "context_dependent",
+      "expected_complex": false,
+      "predicted_complex": false,
+      "complexity_signals": 1,
+      "trigger_reasons": [
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": true,
+      "predicted_context": true,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 24,
+      "text": "이전에 검색한 그 문서 다시 보여줘",
+      "category": "context_dependent",
+      "expected_complex": false,
+      "predicted_complex": false,
+      "complexity_signals": 1,
+      "trigger_reasons": [
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": true,
+      "predicted_context": true,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 25,
+      "text": "방금 추가한 일정 한번 더 보여줘",
+      "category": "context_dependent",
+      "expected_complex": false,
+      "predicted_complex": false,
+      "complexity_signals": 1,
+      "trigger_reasons": [
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": true,
+      "predicted_context": true,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 26,
+      "text": "복리후생 규정 있으면 찾아주고 없으면 알려줘",
+      "category": "boundary",
+      "expected_complex": true,
+      "predicted_complex": true,
+      "complexity_signals": 2,
+      "trigger_reasons": [
+        "keyword_pattern",
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 27,
+      "text": "일정 추가해줘",
+      "category": "boundary",
+      "expected_complex": false,
+      "predicted_complex": false,
+      "complexity_signals": 1,
+      "trigger_reasons": [
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 28,
+      "text": "규정 위반 여부를 꼼꼼하게 살펴봐서 결과를 정리해줘",
+      "category": "boundary",
+      "expected_complex": false,
+      "predicted_complex": false,
+      "complexity_signals": 1,
+      "trigger_reasons": [
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 29,
+      "text": "스케줄 전체 확인해줘",
+      "category": "boundary",
+      "expected_complex": false,
+      "predicted_complex": false,
+      "complexity_signals": 1,
+      "trigger_reasons": [
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    },
+    {
+      "id": 30,
+      "text": "회의에서 나온 안건들을 하나씩 검토해서 판단해줘",
+      "category": "boundary",
+      "expected_complex": true,
+      "predicted_complex": true,
+      "complexity_signals": 2,
+      "trigger_reasons": [
+        "keyword_pattern",
+        "confidence_gap(0.25)"
+      ],
+      "expected_context": false,
+      "predicted_context": false,
+      "complex_correct": true,
+      "context_correct": true,
+      "status": "PASS"
+    }
+  ],
+  "complexity_accuracy": 83.33,
+  "context_accuracy": 100.0,
+  "category_stats": {
+    "simple_false_positive": {
+      "total": 10,
+      "complex_ok": 6,
+      "context_ok": 10
+    },
+    "complex_true": {
+      "total": 10,
+      "complex_ok": 10,
+      "context_ok": 10
+    },
+    "context_dependent": {
+      "total": 5,
+      "complex_ok": 4,
+      "context_ok": 5
+    },
+    "boundary": {
+      "total": 5,
+      "complex_ok": 5,
+      "context_ok": 5
+    }
+  }
+}

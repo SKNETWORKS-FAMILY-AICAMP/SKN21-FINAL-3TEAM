@@ -6,7 +6,35 @@ import { create } from 'zustand'
 const getInitialTheme = () => {
   const saved = localStorage.getItem('theme')
   if (saved === 'dark' || saved === 'light') return saved
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  return 'light' // 기본값: 라이트 모드
+}
+
+// ── 대시보드 레이아웃 ──
+const DASHBOARD_KEY = 'dashboard-layout'
+const DEFAULT_DASHBOARD = {
+  leftColumn: ['TodaySchedule', 'ActivityTimeline'],
+  rightColumn: ['AIChatWidget', 'CalendarWidget', 'RecentDocs'],
+  hidden: [],
+}
+
+function loadDashboard() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DASHBOARD_KEY))
+    const all = [...saved.leftColumn, ...saved.rightColumn, ...saved.hidden]
+    const expected = [...DEFAULT_DASHBOARD.leftColumn, ...DEFAULT_DASHBOARD.rightColumn]
+    if (expected.every(w => all.includes(w)) && all.length === expected.length) return saved
+  } catch { /* ignore */ }
+  return DEFAULT_DASHBOARD
+}
+
+function saveDashboard(d) {
+  localStorage.setItem(DASHBOARD_KEY, JSON.stringify(d))
+}
+
+// 위젯이 원래 어느 컬럼에 속하는지 판별
+function defaultColumnFor(id) {
+  if (DEFAULT_DASHBOARD.leftColumn.includes(id)) return 'leftColumn'
+  return 'rightColumn'
 }
 
 const useUIStore = create((set) => ({
@@ -19,6 +47,52 @@ const useUIStore = create((set) => ({
     localStorage.setItem('theme', next)
     return { theme: next }
   }),
+
+  // ── 대시보드 ──
+  dashboard: loadDashboard(),
+  editMode: false,
+
+  toggleEditMode: () => set((state) => ({ editMode: !state.editMode })),
+
+  setLeftColumn: (order) => set((state) => {
+    const next = { ...state.dashboard, leftColumn: order }
+    saveDashboard(next)
+    return { dashboard: next }
+  }),
+
+  setRightColumn: (order) => set((state) => {
+    const next = { ...state.dashboard, rightColumn: order }
+    saveDashboard(next)
+    return { dashboard: next }
+  }),
+
+  hideWidget: (id) => set((state) => {
+    const d = state.dashboard
+    const next = {
+      leftColumn: d.leftColumn.filter(w => w !== id),
+      rightColumn: d.rightColumn.filter(w => w !== id),
+      hidden: [...d.hidden, id],
+    }
+    saveDashboard(next)
+    return { dashboard: next }
+  }),
+
+  restoreWidget: (id) => set((state) => {
+    const d = state.dashboard
+    const col = defaultColumnFor(id)
+    const next = {
+      ...d,
+      [col]: [...d[col], id],
+      hidden: d.hidden.filter(w => w !== id),
+    }
+    saveDashboard(next)
+    return { dashboard: next }
+  }),
+
+  resetDashboard: () => {
+    saveDashboard(DEFAULT_DASHBOARD)
+    return set({ dashboard: DEFAULT_DASHBOARD })
+  },
 }))
 
 export default useUIStore

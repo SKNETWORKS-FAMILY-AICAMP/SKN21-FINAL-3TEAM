@@ -22,7 +22,6 @@
 import argparse
 import json
 import random
-import time
 import shutil
 import torch
 import numpy as np
@@ -43,7 +42,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from preprocessing import preprocess, ABLATION_CONFIGS, PreprocessConfig
+from ai.agents.preprocessing import preprocess, ABLATION_CONFIGS
 
 # ── 경로 ──
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -361,7 +360,7 @@ def main():
     print(f"  Config: epochs={best_config['epochs']}, lr={best_config['lr']}, "
           f"batch={best_config['batch_size']}, warmup={best_config['warmup_ratio']}")
     print(f"  Seeds: {seeds}")
-    print(f"  Configs: A(none), B(P4), C(P4+P1), D(P4+P1+P2), E(all)")
+    print("  Configs: A(none), B(P4), C(P4+P1), D(P4+P1+P2), E(all)")
     print("=" * 70)
 
     # 데이터 로드

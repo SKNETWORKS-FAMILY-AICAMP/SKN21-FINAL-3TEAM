@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Wand2 } from 'lucide-react';
 import IntentBadge from './IntentBadge';
 
 function CopyButton({ text }) {
@@ -68,7 +69,7 @@ export default function MessageBubble({ type = 'user', children, intent, confide
 
   return (
     <div className="flex gap-2.5 mb-5 group">
-      <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-primary-500 to-accent-500 flex-shrink-0 flex items-center justify-center text-white text-[0.6875rem] font-bold">AI</div>
+      <div className="w-8 h-8 rounded-[10px] bg-accent-500 flex-shrink-0 flex items-center justify-center text-white"><Wand2 size={18} /></div>
       <div className="max-w-[70%]">
         {intent && <IntentBadge intent={intent} confidence={confidence} confidenceLabel={confidenceLabel} />}
         <div className="flex items-start gap-1">

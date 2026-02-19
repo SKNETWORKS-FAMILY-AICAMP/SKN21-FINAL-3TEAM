@@ -1,7 +1,7 @@
 """
 회의 모델 (팀원 D 담당)
 """
-from sqlalchemy import String, Text, Integer, ForeignKey
+from sqlalchemy import String, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime

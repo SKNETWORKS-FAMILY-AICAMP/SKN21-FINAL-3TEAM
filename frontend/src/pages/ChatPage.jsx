@@ -27,7 +27,7 @@ function exportChat(messages) {
   const lines = [`AI 챗봇 대화 기록`, `내보낸 시각: ${dateStr} ${timeStr}`, `총 ${messages.length}개 메시지`, '─'.repeat(40), ''];
 
   messages.forEach((msg) => {
-    const role = msg.role === 'user' ? '👤 나' : '🤖 AI';
+    const role = msg.role === 'user' ? '[나]' : '[AI]';
     lines.push(`${role}:`);
     lines.push(msg.content);
     lines.push('');
@@ -122,13 +122,13 @@ export default function ChatPage() {
             onClick={() => setSessionSidebarOpen(!sessionSidebarOpen)}
             className={`btn-outline text-xs ${sessionSidebarOpen ? 'bg-primary-50 border-primary-300' : ''}`}
           >
-            💬 대화 목록
+            대화 목록
           </button>
           <button
             onClick={() => setPanelOpen(!panelOpen)}
             className={`btn-outline text-xs ${panelOpen ? 'bg-primary-50 border-primary-300' : ''}`}
           >
-            📖 규정 패널
+            규정 패널
           </button>
           <div className="flex items-center gap-1.5 text-[0.8125rem] text-success font-medium">
             <span className="w-[7px] h-[7px] rounded-full bg-success" />Mock 모드

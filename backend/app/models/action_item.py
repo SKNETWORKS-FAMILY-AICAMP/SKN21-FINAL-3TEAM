@@ -2,7 +2,7 @@
 Action Item 모델 (팀원 D 담당)
 - Google Tasks, Sheets, Gmail 연동 필드 포함
 """
-from sqlalchemy import String, Integer, ForeignKey
+from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 from typing import Optional

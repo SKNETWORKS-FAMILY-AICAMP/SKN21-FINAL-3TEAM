@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Badge from '../common/Badge';
+import { ListChecks, User } from 'lucide-react';
 
 export default function ActionItemList({ items = [], tabs }) {
   const [activeTab, setActiveTab] = useState(tabs?.[0] || '마감 임박');
@@ -14,7 +15,7 @@ export default function ActionItemList({ items = [], tabs }) {
   return (
     <div className="card">
       <div className="card-header">
-        <div className="card-title"><span>✅</span>진행 중인 Action Items</div>
+        <div className="card-title"><ListChecks size={16} className="text-neutral-sub" />진행 중인 Action Items</div>
         {tabs && (
           <div className="flex gap-1">
             {tabs.map((t) => (
@@ -32,7 +33,7 @@ export default function ActionItemList({ items = [], tabs }) {
             <div className="flex-1">
               <div className="text-[0.8125rem] font-semibold text-neutral-main">{item.title}</div>
               <div className="flex gap-3 mt-1 text-[0.75rem] text-neutral-sub">
-                <span>👤 {item.assignee}</span>
+                <span className="flex items-center gap-1"><User size={12} />{item.assignee}</span>
                 <span className={item.priority === 'high' || item.priority === 'medium' ? 'text-error font-semibold' : ''}>{item.deadline}</span>
               </div>
             </div>

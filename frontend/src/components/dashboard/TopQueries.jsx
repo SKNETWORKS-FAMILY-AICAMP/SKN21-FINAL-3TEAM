@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Trophy } from 'lucide-react';
 
 const PERIOD_TABS = ['월간', '주간', '일간'];
 
@@ -25,7 +26,7 @@ export default function TopQueries({ data = {} }) {
   return (
     <div className="card">
       <div className="card-header">
-        <div className="card-title"><span>🏆</span>Top 질의 응답</div>
+        <div className="card-title"><Trophy size={16} className="text-accent-500" />Top 질의 응답</div>
         <div className="flex gap-1">
           {PERIOD_TABS.map((t) => (
             <button
