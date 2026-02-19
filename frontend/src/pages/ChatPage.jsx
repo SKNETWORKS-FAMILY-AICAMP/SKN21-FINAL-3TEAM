@@ -275,16 +275,6 @@ export default function ChatPage() {
             {messages.map((msg, i) => {
               const isLastAssistant = msg.role === 'assistant' && i === messages.length - 1 && isStreaming;
 
-              // 스트리밍 중인 AI 응답
-              if (isLastAssistant) {
-                return (
-                  <div key={i}>
-                    {currentIntent && <AgentIndicator intent={currentIntent} status={currentStatus} />}
-                    <StreamingMessage text={msg.content} status={currentStatus} />
-                  </div>
-                );
-              }
-
               // 사용자 메시지
               if (msg.role === 'user') {
                 return <MessageBubble key={i} type="user">{msg.content}</MessageBubble>;
@@ -295,13 +285,23 @@ export default function ChatPage() {
                 return <ErrorMessage key={i} message={msg.error} onRetry={handleRetry} />;
               }
 
-              // AI 완료 — agentResponse 카드 렌더링
+              // AI 완료 — agentResponse 카드 렌더링 (스트리밍 중이어도 result가 오면 카드 우선)
               if (msg.agentResponse && msg.resultIntent) {
                 return (
                   <MessageBubble key={i} type="bot" intent={msg.resultIntent || msg.intent}>
                     {(msg.resultIntent || msg.intent) && <AgentIndicator intent={msg.resultIntent || msg.intent} />}
                     {renderCardMessage(msg, handleSend)}
                   </MessageBubble>
+                );
+              }
+
+              // 스트리밍 중인 AI 응답
+              if (isLastAssistant) {
+                return (
+                  <div key={i}>
+                    {currentIntent && <AgentIndicator intent={currentIntent} status={currentStatus} />}
+                    <StreamingMessage text={msg.content} status={currentStatus} />
+                  </div>
                 );
               }
 
