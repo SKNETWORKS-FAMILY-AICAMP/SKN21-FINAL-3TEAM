@@ -2,14 +2,41 @@
 관리자 API (팀원 D 담당)
 """
 from fastapi import APIRouter, Depends, Body, HTTPException
+from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_admin_user
+from app.core.security import hash_password
 from app.db.session import get_db
 from app.models.user import User
 from app.models.regulation import Regulation
 from app.services import statistics_service
+
+
+# ── 요청 스키마 ──
+
+class RegulationCreate(BaseModel):
+    title: str
+    category: str
+    article_number: str
+    content: str
+    version: str = "1.0"
+
+
+class RegulationUpdate(BaseModel):
+    title: str | None = None
+    category: str | None = None
+    article_number: str | None = None
+    content: str | None = None
+    version: str | None = None
+
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    name: str
+    password: str
+    is_admin: bool = False
 
 router = APIRouter()
 
@@ -131,3 +158,118 @@ async def update_user_permissions(
         "is_admin": user.is_admin,
         "is_active": user.is_active,
     }
+
+
+# ── 규정 CRUD ──
+
+
+@router.post("/regulations")
+async def create_regulation(
+    data: RegulationCreate,
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """규정 추가 (관리자 전용)"""
+    reg = Regulation(
+        title=data.title,
+        category=data.category,
+        article_number=data.article_number,
+        content=data.content,
+        version=data.version,
+    )
+    db.add(reg)
+    await db.flush()
+    return {
+        "id": reg.id,
+        "title": reg.title,
+        "category": reg.category,
+        "article_number": reg.article_number,
+        "content": reg.content,
+        "version": reg.version,
+    }
+
+
+@router.put("/regulations/{regulation_id}")
+async def update_regulation(
+    regulation_id: int,
+    data: RegulationUpdate,
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """규정 수정 (관리자 전용)"""
+    result = await db.execute(select(Regulation).where(Regulation.id == regulation_id))
+    reg = result.scalar_one_or_none()
+    if reg is None:
+        raise HTTPException(status_code=404, detail="규정을 찾을 수 없습니다")
+    for field, value in data.model_dump(exclude_none=True).items():
+        setattr(reg, field, value)
+    return {
+        "id": reg.id,
+        "title": reg.title,
+        "category": reg.category,
+        "article_number": reg.article_number,
+        "content": reg.content,
+        "version": reg.version,
+    }
+
+
+@router.delete("/regulations/{regulation_id}")
+async def delete_regulation(
+    regulation_id: int,
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """규정 삭제 (관리자 전용)"""
+    result = await db.execute(select(Regulation).where(Regulation.id == regulation_id))
+    reg = result.scalar_one_or_none()
+    if reg is None:
+        raise HTTPException(status_code=404, detail="규정을 찾을 수 없습니다")
+    await db.delete(reg)
+    return {"detail": "규정이 삭제되었습니다"}
+
+
+# ── 사용자 추가 / 삭제 ──
+
+
+@router.post("/users")
+async def create_user(
+    data: UserCreate,
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """사용자 추가 (관리자 전용)"""
+    existing = await db.execute(select(User).where(User.email == data.email))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="이미 존재하는 이메일입니다")
+    user = User(
+        email=data.email,
+        name=data.name,
+        hashed_password=hash_password(data.password),
+        is_admin=data.is_admin,
+    )
+    db.add(user)
+    await db.flush()
+    return {
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "is_admin": user.is_admin,
+        "is_active": user.is_active,
+    }
+
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: int,
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """사용자 삭제 (관리자 전용)"""
+    if user_id == admin.id:
+        raise HTTPException(status_code=400, detail="본인 계정은 삭제할 수 없습니다")
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다")
+    await db.delete(user)
+    return {"detail": "사용자가 삭제되었습니다"}
