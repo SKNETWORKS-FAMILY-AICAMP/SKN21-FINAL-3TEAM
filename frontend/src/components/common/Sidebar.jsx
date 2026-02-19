@@ -12,7 +12,7 @@ const navItems = [
     { to: '/document-generate', icon: FilePlus, label: '문서 생성' },
   ]},
   { section: '관리', items: [
-    { to: '/documents', icon: FileText, label: '문서 관리', badge: 3 },
+    { to: '/documents', icon: FileText, label: '문서 관리' },
     { to: '/meetings', icon: Users2, label: '회의 관리' },
     { to: '/schedules', icon: Calendar, label: '일정 관리' },
   ]},

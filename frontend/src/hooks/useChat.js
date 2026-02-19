@@ -9,7 +9,7 @@ export default function useChat() {
   const { startStream, stopStream } = useSSE()
 
   const sendMessage = async (text) => {
-    if (!text.trim() || isStreaming) return
+    if (!text.trim() || useChatStore.getState().isStreaming) return
 
     // addMessage 내부에서 activeSessionId 없을 때 세션 자동 생성함
     addMessage({ role: 'user', content: text })

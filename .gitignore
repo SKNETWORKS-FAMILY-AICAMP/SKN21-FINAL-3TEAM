@@ -49,6 +49,9 @@ nul
 logs/
 !docs/logs/
 
+# Uploads (runtime files)
+backend/uploads/
+
 # Secrets
 credentials.json
 token.json
