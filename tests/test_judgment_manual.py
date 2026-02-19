@@ -11,20 +11,16 @@ import asyncio
 import json
 import sys
 import io
-import os
 from dotenv import load_dotenv
 
 # .env 파일 로드
 load_dotenv()
 
-# 프로젝트 루트를 sys.path에 추가 (tests/ -> 프로젝트 루트)
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 # Windows 콘솔 인코딩 문제 해결
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-from ai.agents.judgment_agent import judgment_agent  # noqa: E402
-from ai.rag.qdrant_pipeline import get_qdrant_pipeline  # noqa: E402
+from ai.agents.judgment_agent import judgment_agent
+from ai.rag.pipeline import get_pipeline
 
 
 async def test_judgment_agent():
@@ -34,7 +30,7 @@ async def test_judgment_agent():
 
     # 1. RAG 파이프라인 초기화 + 테스트 규정 추가
     print("\n[1] RAG 파이프라인 초기화 중...")
-    pipeline = get_qdrant_pipeline()
+    pipeline = get_pipeline()
 
     # 테스트용 규정 문서 추가
     test_docs = [
