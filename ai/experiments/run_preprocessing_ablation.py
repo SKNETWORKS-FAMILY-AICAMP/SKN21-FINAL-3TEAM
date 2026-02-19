@@ -42,7 +42,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from preprocessing import preprocess, ABLATION_CONFIGS
+from ai.agents.preprocessing import preprocess, ABLATION_CONFIGS
 
 # ── 경로 ──
 BASE_DIR = Path(__file__).resolve().parent.parent.parent

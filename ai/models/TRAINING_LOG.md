@@ -532,11 +532,160 @@ warmup_ratio: Step1에서 0.06 고정 → Step2에서 best 근처 [0.0, 0.06, 0.
 ### 핵심 결론
 1. **데이터 품질이 핵심**: boundary 타겟 증강 + 라벨 QA(v1.3)가 가장 큰 성능 향상 (+6.0%p adversarial F1)
 2. **하이퍼파라미터 한계**: 그리드 서치(v1.4)는 Eval 미세 개선하나 실전 대응력은 오히려 하락
-3. **모델 선택**: 3모델 × 153번 학습 결과, BERT가 Adversarial F1 기준 최우수 (0.9015)
+3. **모델 선택**: 3모델 동급 성능, BERT를 기본으로 선택 (통계 검증: 실험 8 참고)
 4. **전처리 효과**: 추론 시 전처리 적용으로 +1.3%p 추가 개선 (0.873→0.886, 3 seed 평균)
-5. **최종 성능**: Eval F1 98.23% + Adversarial F1 90.15% (seed=42) + 7.48ms + $0 운영비
-6. **sLLM 실용성 확보**: GPT 대비 속도 68배, 비용 무료, 데이터 보안 + 충분한 정확도
-7. **남은 오분류 대응**: confidence < 0.7 → 오케스트레이터에서 "좀 더 구체적으로 말씀해주세요" 폴백
+5. **최종 성능**: Eval F1 98.23% + Adversarial F1 90.07% (seed=42, 전처리) + Blind F1 92.84% + 7.48ms + $0 운영비
+6. **sLLM 실용성 확보**: GPT와 동급 정확도 + 속도 45배 + 비용 무료 + 데이터 보안
+7. **남은 오분류 대응**: confidence < 0.7 → 오케스트레이터에서 "좀 더 구체적으로 말씀해주세요" 폴백 (단, overconfident error 존재: 실험 9 참고)
+
+---
+
+## EXP8 — 통계적 유의성 검증 (2026-02-16)
+
+### 실험 목적
+기존 실험 결과의 결론이 통계적으로 유의미한지 검증. "BERT가 최고" "BERT가 GPT를 이겼다"는 주장의 근거 강도 확인.
+
+### 1. Seed 분산 분석
+
+실험 6의 3-seed 결과로 모델 학습의 불확실성 범위를 측정.
+
+| 항목 | 값 |
+|------|-----|
+| Seeds | 42, 123, 456 |
+| Adv F1 값 | 0.9082, 0.8859, 0.8627 |
+| 평균 ± std | **0.8856 ± 0.0186** |
+| Range | **0.0455 (4.55%p)** |
+
+> seed를 바꾸면 F1이 4.5%p까지 변동. 모델 간 차이(BERT vs RoBERTa = 0.25%p)보다 seed 편차가 **7.4배** 더 큼.
+
+### 2. Bootstrap Confidence Interval (BERT 단일 모델)
+
+배포 모델(BERT+전처리)의 Adversarial 212문장 예측으로 10,000회 bootstrap 수행.
+
+| 항목 | 값 |
+|------|-----|
+| F1 mean | 0.8987 |
+| **95% CI** | **[0.8552, 0.9384]** |
+
+> 실제 성능이 85.5%~93.8% 사이에 있을 것으로 추정. "90%"라는 단일 수치보다 이 범위가 현실적.
+
+### 3. McNemar's Test (BERT vs GPT)
+
+실험 7의 BERT+전처리 vs GPT-4o-mini Few-shot 오분류 패턴 비교.
+
+| 항목 | 값 |
+|------|-----|
+| BERT 맞고 GPT 틀림 (n01) | 21건 |
+| BERT 틀리고 GPT 맞음 (n10) | 11건 |
+| chi² (continuity correction) | 2.5312 |
+| **p-value** | **0.1116** |
+| 유의 (α=0.05) | **No** |
+
+> **BERT와 GPT 간 유의미한 성능 차이 없음** (p=0.1116 > 0.05). "BERT가 GPT를 역전"이 아니라 **"BERT와 GPT가 동급이며, 속도/비용에서 BERT가 유리"**가 정확한 결론.
+
+### 4. 모델 간 차이 vs Seed 편차
+
+| 비교 | F1 차이 | seed std 대비 | 결론 |
+|------|:-------:|:------------:|------|
+| BERT vs RoBERTa | 0.0025 | 0.1배 | **노이즈 수준 (신뢰 불가)** |
+| BERT vs KoELECTRA | 0.0159 | 0.9배 | **노이즈 수준 (신뢰 불가)** |
+
+> 3모델 모두 동급 성능. 차이가 seed 편차보다 작으므로, seed를 바꾸면 순위가 뒤집힐 수 있음.
+
+### 결론
+
+1. **BERT vs GPT**: 통계적으로 유의미한 차이 없음. sLLM 선택 정당성은 "동급 정확도 + 속도/비용/보안 우위"
+2. **BERT vs RoBERTa vs KoELECTRA**: 3모델 동급. BERT를 기본으로 선택한 것은 합리적이지만, "BERT가 최고"라는 표현은 과장
+3. **보고 방식**: 단일 seed 수치(90.15%) 대신 95% CI [85.5%, 93.8%] 또는 3-seed 평균(88.56% ± 2.28%)으로 보고하는 것이 정직
+
+---
+
+## EXP9 — 독립 테스트셋 Blind 평가 + Confidence 분석 (2026-02-16)
+
+### 실험 목적
+1. 모델 오분류 패턴에 기반하지 않은 **독립적인** 테스트셋으로 "진짜 실력" 측정
+2. Confidence threshold의 실제 효과 정량화 (overconfident error, false rejection 분석)
+
+### Part A: 독립 테스트셋 Blind 평가
+
+#### 테스트셋 설계
+- **70문장** (7개 카테고리 × 10문장)
+- 모델 오분류 패턴을 의식하지 않은 **순수 업무 시나리오** 기반
+- 기존 adversarial_test.json과 중복 0건
+- adversarial 패턴(초성, 1어절, 복합의도 등)을 의도적으로 포함하지 않음
+
+#### 결과
+
+| 테스트셋 | F1 (macro) | Accuracy | 오분류 | 평균 confidence |
+|---------|:----------:|:--------:|:-----:|:---------------:|
+| Adversarial (212문장) | 90.07% | 90.09% | 21건 | - |
+| **Blind (70문장)** | **92.84%** | **92.86%** | **5건** | **0.9812** |
+
+> 독립 셋에서 adversarial보다 **+2.8%p 높은 성능**. 일반적인 업무 시나리오에서 모델이 충분히 잘 동작함을 확인.
+
+#### 오분류 5건 상세
+
+| 문장 | 정답 | 예측 | confidence | 분석 |
+|------|------|------|:----------:|------|
+| "인센티브 지급 기준 좀 알려줘" | judgment | doc_search | 0.988 | "기준 알려줘"가 검색 패턴으로 학습됨 |
+| "지난번 고객사 미팅 자료 공유해줘" | doc_search | meeting_generate | 0.987 | "미팅"이 meeting으로 과적합 |
+| "사무실 이전 공지문 어디에 올라왔어?" | doc_search | general | 0.672 | 유일하게 낮은 confidence |
+| "남은 공휴일이 언제야?" | schedule_view | general | 0.990 | "공휴일"이 학습 데이터에 없음 |
+| "이거 다 하면 퇴근해도 돼?" | general | judgment | 0.974 | "~해도 돼?"가 judgment 패턴 |
+
+> 5건 중 4건이 **confidence > 0.97인데 틀림** (overconfident error). confidence threshold로 잡을 수 없는 유형.
+
+#### 혼동행렬
+![Blind Test Confusion Matrix](../experiments/results/confusion_blind_test.png)
+
+### Part B: Confidence Threshold 분석
+
+전체 테스트 데이터(adversarial 212 + blind 70 = **282문장**)에 대해 threshold별 분석.
+
+#### Threshold별 Precision / Recall / Coverage
+
+| Threshold | Coverage | Precision | Recall | Overconfident | False Rejection |
+|:---------:|:--------:|:---------:|:------:|:------------:|:---------------:|
+| 0.50 | 99.3% | 91.1% | 99.6% | 25건 | 1건 |
+| 0.60 | 98.9% | 91.4% | 99.6% | 24건 | 1건 |
+| **0.70** | **95.7%** | **93.0%** | **98.0%** | **19건** | **5건** |
+| 0.80 | 93.6% | 93.2% | 96.1% | 18건 | 10건 |
+| 0.90 | 91.1% | 94.2% | 94.5% | 15건 | 14건 |
+| 0.95 | 85.8% | 95.9% | 90.6% | 10건 | 24건 |
+
+> **0.70이 최적 threshold** (Precision/Recall 조화 최대). 기존 설정과 일치.
+
+#### Overconfident Error 분석 (confidence ≥ 0.9인데 틀린 것)
+
+**15건** 존재 (전체 오분류 26건 중 57.7%):
+- "일정추가" → schedule_add인데 schedule_view (conf=0.986)
+- "내일 쉬어도 돼?" → judgment인데 schedule_view (conf=0.934)
+- "남은 공휴일이 언제야?" → schedule_view인데 general (conf=0.990)
+- 등
+
+> **핵심 발견**: 오분류의 절반 이상이 confidence > 0.9. **confidence만으로 폴백하는 전략에 한계가 있음**. 오케스트레이터에서 대화 맥락이나 후속 확인 질문 등 추가 전략 필요.
+
+#### False Rejection 분석 (confidence < 0.7인데 맞은 것)
+
+**5건** 존재:
+- "인사 규정 검색해서 내 상황에 맞는지 알려줘" → judgment (conf=0.631)
+- "아까 말한 거 정리해줘" → schedule_add (conf=0.496)
+- "회의 시간 바꿔줘" → schedule_add (conf=0.662)
+- 등
+
+> 맞았지만 threshold에 걸려 불필요하게 폴백되는 케이스 5건 (정답 256건 중 2.0%).
+
+#### 차트
+- `confidence_threshold.png` — Threshold별 Precision/Recall/Coverage
+- `confidence_distribution.png` — 정답/오답 confidence 분포
+- `confusion_blind_test.png` — Blind 테스트 혼동행렬
+
+### 결론
+
+1. **독립 테스트셋에서 F1 92.84%**: adversarial(90.07%)보다 높음. 일반 업무 시나리오에서 충분한 성능
+2. **Threshold 0.7 적정**: Precision 93.0%, Recall 98.0%, Coverage 95.7%
+3. **Overconfident error가 핵심 문제**: 오분류의 57.7%가 confidence > 0.9 — threshold만으로 해결 불가
+4. **False rejection 최소**: 0.7 기준으로 맞는 예측의 2.0%만 불필요하게 폴백
 
 ---
 
