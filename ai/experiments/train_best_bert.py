@@ -38,8 +38,8 @@ LABELS = [
     "judgment", "doc_search", "doc_generate",
     "meeting_generate", "schedule_add", "schedule_view", "general",
 ]
-LABEL2ID = {l: i for i, l in enumerate(LABELS)}
-ID2LABEL = {i: l for i, l in enumerate(LABELS)}
+LABEL2ID = {label: i for i, label in enumerate(LABELS)}
+ID2LABEL = {i: label for i, label in enumerate(LABELS)}
 
 
 def set_seed(seed=SEED):
