@@ -42,6 +42,8 @@ services:
       dockerfile: docker/Dockerfile.frontend
     ports:
       - "5173:5173"
+    environment:
+      - BACKEND_URL=http://backend:8000
     volumes:
       - ../frontend:/app/frontend
       - /app/frontend/node_modules
