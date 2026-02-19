@@ -65,7 +65,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
             print("[Chat] 그래프 로딩 중...")
             graph = get_graph()
             initial_state = _build_initial_state(request, user, stream_mode=True)
-            print(f"[Chat] 그래프 로딩 완료. astream 시작...")
+            print("[Chat] 그래프 로딩 완료. astream 시작...")
 
             # astream으로 노드별 실시간 이벤트 전송
             final_state = {}
