@@ -5,13 +5,6 @@ import DocumentList from '../components/documents/DocumentList';
 import DocumentDetail from '../components/documents/DocumentDetail';
 import { uploadDocument, listDocuments, getDocument, deleteDocument } from '../api/documents';
 
-const mockDocs = [
-  { name: '정보보안 지침', category: '규정', version: 'v2.3', status: '적용중', date: '2026-02-05', riskLevel: 'low', analysis: '총 42개 조항 파싱 완료. 주요 변경: 3.2조 외부 접근 권한 강화, 5.1조 테스트 환경 분리 기준 추가.' },
-  { name: '인사규정 매뉴얼', category: '규정', version: 'v1.8', status: '개정중', date: '2026-01-28', riskLevel: 'medium' },
-  { name: '개발 가이드라인', category: '규정', version: 'v3.1', status: '적용중', date: '2026-01-20', riskLevel: 'low' },
-  { name: '2025 보안점검 회의록', category: '회의록', version: '-', status: '완료', date: '2026-02-03' },
-  { name: 'Q4 예산 보고서', category: '보고서', version: 'v1.0', status: '검토중', date: '2026-01-15' },
-];
 
 export default function DocumentsPage() {
   const [activeTab, setActiveTab] = useState('전체');
@@ -93,10 +86,7 @@ export default function DocumentsPage() {
     created_at: doc.created_at,
   }));
 
-  // Mock 데이터와 실제 데이터 합치기
-  const allDocs = [...formattedDocs, ...mockDocs];
-
-  const filteredDocs = allDocs.filter((doc) => {
+  const filteredDocs = formattedDocs.filter((doc) => {
     const matchTab = activeTab === '전체' || doc.category === activeTab;
     const matchSearch = !searchQuery || doc.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchTab && matchSearch;

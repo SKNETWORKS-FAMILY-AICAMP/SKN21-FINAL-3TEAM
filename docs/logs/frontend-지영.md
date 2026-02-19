@@ -335,10 +335,22 @@
 - **`useSSE.js`** — SSE 에러 시 Mock 폴백 제거 → `setLastAssistantError()` 호출로 UI에 에러 직접 표시, `setStreaming(false)` 누락 수정
 - **`chatStore.js`** — `createSession()` 호출 시 현재 세션이 비어있으면 자동 제거 (빈 세션 정리)
 
+#### 3) 기타 버그 수정
+- **`ChatPage.jsx`** — judgment 카드 응답 텍스트 중복 표시 수정 (`reasoning` 없을 때 `content`가 카드 summary + 하단 텍스트에 이중 렌더링되던 문제)
+
+#### 4) Google 로그인 500 에러 해결
+- 원인: 프론트엔드가 Docker 컨테이너 내에서 실행되면서 Vite 프록시 타겟 `localhost:8000`이 자기 자신을 가리켜 ECONNREFUSED 발생
+- `vite.config.js` → `process.env.BACKEND_URL || 'http://localhost:8000'`으로 환경변수 지원
+- `docker-compose.yml` → frontend 서비스에 `BACKEND_URL=http://backend:8000` 추가
+- `docker compose up -d --force-recreate frontend`로 환경변수 적용 후 로그인 성공 확인
+
+#### 5) DocumentsPage Mock 데이터 제거
+- `mockDocs` 배열 삭제, `allDocs = [...formattedDocs, ...mockDocs]` → `formattedDocs`만 사용
+- 실제 업로드된 문서만 표시되도록 수정
+
 ### 다음 할 일
-- Google 로그인 500 에러 계속 추적 (Docker 네트워크 Vite 프록시 수정 완료, 재테스트 필요)
-- 나머지 Mock → 실제 API 교체
-- 관리자 API 연동 (#29)
+- 관리자 API 연동 (#29) — admin.py + statistics_service.py 백엔드 구현 후 AdminPage 연동
+- meetings.py CRUD 구현 후 MeetingsPage 연동
 
 ---
 
