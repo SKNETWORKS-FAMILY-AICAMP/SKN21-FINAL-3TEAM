@@ -512,26 +512,130 @@ seed=42 기준, 전처리 적용 후 오히려 **+0.67%p 상승**. 3-seed 평균
 | 5 | 다른 모델도? 충분히 탐색? | ✅ 완료 | ~4시간 (RunPod RTX 4090) |
 | 6 | 최대한 끌어올렸나? 실서비스? | ✅ 완료 | ~5분 (로컬 RTX 4070) |
 | 7 | 최종 BERT가 GPT를 이기나? | ✅ 완료 | ~5분 (로컬 + API) |
+| 8 | 결론이 통계적으로 유의미한가? | ✅ 완료 | ~2분 (로컬) |
+| 9 | 독립 셋에서도 되나? 폴백이 실제로 작동하나? | ✅ 완료 | ~2분 (로컬) |
 
 **전체 실험 완료 (2026-02-16)**
 
 ---
 
-## 최종 모델 성능 (실험 5~6 완료 후 확정)
+## 최종 모델 성능 (실험 5~9 완료 후 확정)
 
 ### 배포 모델: klue/bert-base (v1.3 데이터, 실험 5 best config)
 
 | 지표 | 값 | 비고 |
 |------|-----|------|
 | Eval F1 (macro) | **98.23%** | 정규 입력 성능 |
-| Adversarial F1 (seed=42, 전처리 없음) | **90.15%** | 실험 5 기준 |
-| Adversarial F1 (seed=42, 풀 전처리) | **90.82%** | 실험 6, 동일 seed 대비 +0.67%p |
-| Adversarial F1 (3 seed 평균, 풀 전처리) | **88.56% ± 2.28%** | 실험 6, 통계적으로 정직한 보고 |
+| Adversarial F1 (seed=42, 전처리) | **90.07%** | 실험 7 기준 (212문장) |
+| Adversarial F1 (3 seed 평균, 전처리) | **88.56% ± 2.28%** | 실험 6, 3-seed 평균 |
+| Adversarial F1 95% CI (bootstrap) | **[85.52%, 93.84%]** | 실험 8, 10,000회 bootstrap |
+| **Blind F1 (독립 테스트셋)** | **92.84%** | **실험 9, 70문장 (모델 비의존적 제작)** |
 | 추론 속도 | **7.48ms/문장** | RTX 4090 기준 |
 | 운영 비용 | **$0** | 로컬 모델 |
+| 최적 confidence threshold | **0.70** | 실험 9, Precision 93.0% / Recall 98.0% |
 
 > **참고 1**: Adversarial 테스트셋이 120→212문장으로 확장되면서 이전 기록(91.67%)과 직접 비교 불가. 212문장 기준이 더 엄격한 평가임.
 > **참고 2**: 실험 5(90.15%)와 실험 6 평균(88.56%)의 차이는 성능 하락이 아님. seed=42 단일 보고 vs 3-seed 평균의 차이이며, **같은 seed=42 기준으로는 전처리 적용 후 90.15% → 90.82%로 상승**. 실험 6은 단일 seed의 낙관적 보고를 보정하고, 전처리의 일관된 효과(+1.3%p)를 검증한 실험.
+> **참고 3 (실험 8)**: BERT vs GPT McNemar p=0.1116 → 통계적으로 유의미한 차이 없음. sLLM 정당성은 "동급 정확도 + 속도/비용/보안 우위"로 결론.
+> **참고 4 (실험 9)**: Overconfident error(conf≥0.9인데 틀림)가 오분류의 57.7% → confidence만으로 폴백하기엔 한계. 오케스트레이터에서 대화 맥락 기반 추가 검증 필요.
+
+---
+
+## 실험 8: 통계적 유의성 검증 ✅
+
+**질문**: 지금까지의 결론이 통계적으로 유의미한가?
+
+> **실행 환경**: 로컬 (2026-02-16)
+> **방법**: McNemar's Test, Bootstrap CI, Seed Variance 비교
+
+### Seed 분산 분석
+
+| 항목 | 값 |
+|------|-----|
+| Adv F1 (seed 42/123/456) | 0.9082 / 0.8859 / 0.8627 |
+| 평균 ± std | **0.8856 ± 0.0186** |
+| Range | **0.0455 (4.55%p)** |
+
+### Bootstrap CI (BERT 단일 모델, 10,000회)
+
+| 항목 | 값 |
+|------|-----|
+| F1 mean | 0.8987 |
+| **95% CI** | **[0.8552, 0.9384]** |
+
+### McNemar's Test (BERT vs GPT)
+
+| 항목 | 값 |
+|------|-----|
+| BERT 맞고 GPT 틀림 | 21건 |
+| BERT 틀리고 GPT 맞음 | 11건 |
+| chi² | 2.5312 |
+| **p-value** | **0.1116 (유의미하지 않음)** |
+
+### 모델 간 차이 vs Seed 편차
+
+| 비교 | F1 차이 | seed std 대비 | 결론 |
+|------|:-------:|:------------:|------|
+| BERT vs RoBERTa | 0.0025 | 0.1배 | 노이즈 수준 |
+| BERT vs KoELECTRA | 0.0159 | 0.9배 | 노이즈 수준 |
+
+### 핵심 결론
+1. **BERT vs GPT**: 통계적으로 유의미한 차이 없음 (p=0.1116). sLLM 정당성 = "동급 정확도 + 속도/비용/보안"
+2. **3모델 동급**: seed 편차 > 모델 간 차이. BERT 선택은 합리적이지만 "최고"는 과장
+3. **정직한 보고**: 단일 수치 90.15%가 아닌 95% CI [85.5%, 93.8%] 범위로 보고
+
+### 스크립트
+
+| 파일 | 역할 |
+|------|------|
+| `run_statistical_tests.py` | McNemar, Bootstrap CI, Seed Variance 전체 분석 |
+
+---
+
+## 실험 9: 독립 테스트셋 Blind 평가 + Confidence 분석 ✅
+
+**질문**: 모델 개발에 관여하지 않은 독립 셋에서도 잘 되는가? 폴백 전략이 실제로 작동하는가?
+
+> **실행 환경**: 로컬 RTX 4070 (2026-02-16)
+
+### Part A: 독립 테스트셋
+
+- **70문장** (7개 카테고리 × 10문장)
+- 기존 adversarial과 중복 0건, adversarial 패턴 의도적 미포함
+- 순수 업무 시나리오 기반
+
+| 테스트셋 | F1 (macro) | Accuracy | 오분류 |
+|---------|:----------:|:--------:|:-----:|
+| Adversarial (212) | 90.07% | 90.09% | 21건 |
+| **Blind (70)** | **92.84%** | **92.86%** | **5건** |
+
+오분류 5건 중 4건이 confidence > 0.97 (overconfident error).
+
+### Part B: Confidence Threshold 분석
+
+282문장(adversarial 212 + blind 70) 통합 분석.
+
+| Threshold | Coverage | Precision | Recall | Overconfident | False Rej |
+|:---------:|:--------:|:---------:|:------:|:------------:|:---------:|
+| 0.50 | 99.3% | 91.1% | 99.6% | 25건 | 1건 |
+| **0.70** | **95.7%** | **93.0%** | **98.0%** | **19건** | **5건** |
+| 0.90 | 91.1% | 94.2% | 94.5% | 15건 | 14건 |
+
+- **추천 threshold: 0.70** (기존 설정과 일치)
+- **Overconfident error 15건** (conf≥0.9인데 틀림) -- 오분류의 57.7%
+- **False rejection 5건** (conf<0.7인데 맞음) -- 정답의 2.0%
+
+### 핵심 결론
+1. **독립 셋에서 F1 92.84%**: 일반 업무 시나리오에서 충분한 성능
+2. **Threshold 0.7 적정**: Precision 93.0%, Recall 98.0%
+3. **Overconfident error가 핵심 한계**: confidence만으로 폴백 판단 불가. 오케스트레이터에서 대화 맥락 기반 추가 검증 필요
+
+### 스크립트
+
+| 파일 | 역할 |
+|------|------|
+| `run_blind_evaluation.py` | 독립 테스트셋 평가 + 혼동행렬 |
+| `run_confidence_analysis.py` | Threshold 분석 + confidence 분포 |
 
 ---
 
@@ -547,7 +651,11 @@ ai/experiments/
 ├── run_model_comparison.py         ← 실험5 (다중 모델 그리드 서치)
 ├── preprocessing.py                ← 실험6 (전처리 파이프라인 모듈)
 ├── run_preprocessing_ablation.py   ← 실험6 (ablation + seed 반복)
-├── run_final_comparison.py        ← 실험7 (BERT vs GPT 최종 비교)
+├── run_final_comparison.py         ← 실험7 (BERT vs GPT 최종 비교)
+├── run_statistical_tests.py        ← 실험8 (통계적 유의성 검증)
+├── run_blind_evaluation.py         ← 실험9 (독립 테스트셋 blind 평가)
+├── run_confidence_analysis.py      ← 실험9 (confidence threshold 분석)
+├── run_gpt_fair_comparison.py      ← (준비) GPT adversarial few-shot 공정 비교
 └── results/
     ├── method_comparison.json      ← 실험1 수치
     ├── gpt_comparison.json         ← 실험1 GPT 수치
@@ -580,10 +688,17 @@ ai/experiments/
     ├── preprocessing_ablation.png  ← 실험6 단계별 성능 차트
     ├── seed_stability.png          ← 실험6 seed별 안정성 차트
     ├── final_confusion_adv.png     ← 실험6 최종 혼동행렬
-    └── final_comparison.json       ← 실험7 BERT vs GPT 최종 비교 결과
+    ├── final_comparison.json       ← 실험7 BERT vs GPT 최종 비교 결과
+    ├── statistical_tests.json      ← 실험8 통계적 유의성 테스트 결과
+    ├── blind_evaluation.json       ← 실험9 독립 테스트셋 평가 결과
+    ├── confusion_blind_test.png    ← 실험9 Blind 테스트 혼동행렬
+    ├── confidence_analysis.json    ← 실험9 confidence threshold 분석
+    ├── confidence_threshold.png    ← 실험9 threshold별 P/R/Coverage 차트
+    └── confidence_distribution.png ← 실험9 confidence 분포 차트
 
 data/training/intent/
 ├── adversarial_test.json           ← 공용 테스트셋 (212문장, 확장 완료)
+├── blind_test.json                 ← 독립 테스트셋 (70문장, 실험9)
 ├── augment_v12_*.jsonl             ← v1.2 증강 데이터 (6파일, 300건)
 └── augment_v13_*.jsonl             ← v1.3 증강 데이터 (7파일, 163건)
 ```
@@ -598,24 +713,31 @@ data/training/intent/
 - 실험 5 결과 (3모델 × 153번 그리드 서치, 최종 모델 선정)
 - 실험 6 결과 (전처리 ablation, seed 안정성 검증, 최종 성능 확정)
 - 실험 7 결과 (BERT vs GPT 최종 비교, 212문장 동일 조건)
+- 실험 8 결과 (McNemar, Bootstrap CI, 모델 간 통계 검증)
+- 실험 9 결과 (독립 테스트셋 blind 평가, confidence threshold 분석)
 
 ---
 
 ## 발표 스토리라인
 
 1. **왜 sLLM?** → GPT 97.5% vs BERT 90%, 하지만 속도 68배 + 비용 $0 + 보안 (실험 1, 70문장 기준)
-2. **약점은?** → 혼동행렬로 패턴 분석 — general 폴백, multi-intent 혼동 (실험 2)
+2. **약점은?** → 혼동행렬로 패턴 분석 -- general 폴백, multi-intent 혼동 (실험 2)
 3. **개선 과정** → v1.0(72%)→v1.1(88%) judgment 해결, v1.2(85%)→v1.3(91.67%) boundary 해결 (실험 3~4)
 4. **데이터 vs 하이퍼파라미터** → 그리드 서치로 "데이터 품질이 핵심" 실험적 증명 (실험 4)
-5. **왜 이 모델?** → 3모델 × 153번 학습, BERT(Adv F1 0.9015) > RoBERTa(0.899) > KoELECTRA(0.886) 확정 (실험 5)
-6. **신뢰성 검증 + 전처리** (실험 6) — 핵심 메시지:
-   - seed 1개(90.15%)로 보고하면 낙관적 → seed 3개 평균(87.32%)이 현실적 기대치
-   - **같은 seed 기준, 전처리 적용 시 성능 상승** (seed=42: 90.15% → 90.82%)
+5. **왜 이 모델?** → 3모델 × 153번 학습, 3모델 동급 성능 확인 후 BERT 선택 (실험 5)
+6. **신뢰성 검증 + 전처리** (실험 6):
+   - seed 1개(90.15%)로 보고하면 낙관적 → seed 3개 평균(88.56%)이 현실적 기대치
    - 전처리는 모든 seed에서 일관되게 +0.86~1.70%p 개선 → 실서비스 적용 근거
-   - "성능이 떨어진 것이 아니라, 더 정직하게 측정하고 + 전처리로 실제 개선한 것"
-7. **GPT 재대결 — BERT 역전** (실험 7) — 발표 하이라이트:
-   - 실험 1에서 "GPT가 7.5%p 더 좋지만 속도/비용 트레이드오프"로 시작했지만
-   - 212문장(더 어려운 셋)에서 **BERT(90.07%) > GPT(86.30%)로 3.8%p 역전**
-   - GPT는 짧은 입력(1~2어절)에서 general로 폴백, BERT는 정확히 분류
-   - **"데이터+전처리로 개선한 BERT가 GPT도 이겼다"** → sLLM 정당성 완전 확보
-8. **최종 결론** → 정확도 BERT > GPT + 속도 45배 + 비용 $0 → 모든 지표에서 BERT 우위
+7. **GPT와 비교** (실험 7):
+   - 212문장 기준 BERT(90.07%) vs GPT(86.30%)
+   - 단, 통계적으로 유의미한 차이는 아님 (McNemar p=0.1116, 실험 8)
+   - **핵심 메시지: "BERT는 GPT와 동급 정확도이면서 속도 45배 + 비용 $0 + 보안"**
+8. **통계적 정직함** (실험 8) -- 발표 차별화 포인트:
+   - "90%입니다"가 아니라 **"95% CI [85.5%, 93.8%]입니다"**
+   - 3모델 차이가 seed 편차보다 작음을 스스로 밝힘
+   - 결론을 과장하지 않는 정직한 연구 자세
+9. **독립 검증 + 폴백 전략** (실험 9):
+   - 모델 개발과 무관한 독립 셋에서 **F1 92.84%** (adversarial보다 높음)
+   - confidence 0.7 threshold: Precision 93.0%, Recall 98.0%
+   - **한계도 밝힘**: overconfident error(conf>0.9인데 틀림)가 57.7% → threshold만으로 한계
+10. **최종 결론** → 동급 정확도 + 속도 45배 + 비용 $0 + 독립 검증 92.84% + 통계적 정직함

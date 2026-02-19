@@ -22,7 +22,7 @@ export default function useChat() {
     }
 
     try {
-      await startStream(text)
+      await startStream(text, useChatStore.getState().activeSessionId)
     } catch (err) {
       // 401 → 로그인 페이지로 리다이렉트
       if (err.status === 401) {

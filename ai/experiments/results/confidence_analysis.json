@@ -1,0 +1,220 @@
+{
+  "total_samples": 282,
+  "correct": 256,
+  "incorrect": 26,
+  "threshold_analysis": [
+    {
+      "threshold": 0.5,
+      "coverage": 0.9929,
+      "precision": 0.9107,
+      "recall": 0.9961,
+      "overconfident_errors": 25,
+      "overconfident_rate": 0.0893,
+      "false_rejections": 1,
+      "false_rejection_rate": 0.0039,
+      "accepted": 280,
+      "rejected": 2
+    },
+    {
+      "threshold": 0.55,
+      "coverage": 0.9894,
+      "precision": 0.914,
+      "recall": 0.9961,
+      "overconfident_errors": 24,
+      "overconfident_rate": 0.086,
+      "false_rejections": 1,
+      "false_rejection_rate": 0.0039,
+      "accepted": 279,
+      "rejected": 3
+    },
+    {
+      "threshold": 0.6,
+      "coverage": 0.9894,
+      "precision": 0.914,
+      "recall": 0.9961,
+      "overconfident_errors": 24,
+      "overconfident_rate": 0.086,
+      "false_rejections": 1,
+      "false_rejection_rate": 0.0039,
+      "accepted": 279,
+      "rejected": 3
+    },
+    {
+      "threshold": 0.65,
+      "coverage": 0.9752,
+      "precision": 0.92,
+      "recall": 0.9883,
+      "overconfident_errors": 22,
+      "overconfident_rate": 0.08,
+      "false_rejections": 3,
+      "false_rejection_rate": 0.0117,
+      "accepted": 275,
+      "rejected": 7
+    },
+    {
+      "threshold": 0.7,
+      "coverage": 0.9574,
+      "precision": 0.9296,
+      "recall": 0.9805,
+      "overconfident_errors": 19,
+      "overconfident_rate": 0.0704,
+      "false_rejections": 5,
+      "false_rejection_rate": 0.0195,
+      "accepted": 270,
+      "rejected": 12
+    },
+    {
+      "threshold": 0.75,
+      "coverage": 0.9539,
+      "precision": 0.9294,
+      "recall": 0.9766,
+      "overconfident_errors": 19,
+      "overconfident_rate": 0.0706,
+      "false_rejections": 6,
+      "false_rejection_rate": 0.0234,
+      "accepted": 269,
+      "rejected": 13
+    },
+    {
+      "threshold": 0.8,
+      "coverage": 0.9362,
+      "precision": 0.9318,
+      "recall": 0.9609,
+      "overconfident_errors": 18,
+      "overconfident_rate": 0.0682,
+      "false_rejections": 10,
+      "false_rejection_rate": 0.0391,
+      "accepted": 264,
+      "rejected": 18
+    },
+    {
+      "threshold": 0.85,
+      "coverage": 0.922,
+      "precision": 0.9346,
+      "recall": 0.9492,
+      "overconfident_errors": 17,
+      "overconfident_rate": 0.0654,
+      "false_rejections": 13,
+      "false_rejection_rate": 0.0508,
+      "accepted": 260,
+      "rejected": 22
+    },
+    {
+      "threshold": 0.9,
+      "coverage": 0.9113,
+      "precision": 0.9416,
+      "recall": 0.9453,
+      "overconfident_errors": 15,
+      "overconfident_rate": 0.0584,
+      "false_rejections": 14,
+      "false_rejection_rate": 0.0547,
+      "accepted": 257,
+      "rejected": 25
+    },
+    {
+      "threshold": 0.95,
+      "coverage": 0.8582,
+      "precision": 0.9587,
+      "recall": 0.9062,
+      "overconfident_errors": 10,
+      "overconfident_rate": 0.0413,
+      "false_rejections": 24,
+      "false_rejection_rate": 0.0938,
+      "accepted": 242,
+      "rejected": 40
+    }
+  ],
+  "overconfident_errors": [
+    {
+      "text": "일정추가",
+      "label": "schedule_add",
+      "predicted": "schedule_view",
+      "confidence": 0.9862
+    },
+    {
+      "text": "보고서 있으면 보여주고 없으면 만들어줘",
+      "label": "doc_search",
+      "predicted": "doc_generate",
+      "confidence": 0.94
+    },
+    {
+      "text": "미팅 기록 찾아줘",
+      "label": "doc_search",
+      "predicted": "meeting_generate",
+      "confidence": 0.9471
+    },
+    {
+      "text": "내일 쉬어도 돼?",
+      "label": "judgment",
+      "predicted": "schedule_view",
+      "confidence": 0.9336
+    },
+    {
+      "text": "회의이이이 언제야",
+      "label": "schedule_view",
+      "predicted": "general",
+      "confidence": 0.9467
+    },
+    {
+      "text": "출장 보고서 양식 찾아서 이번 출장 내용으로 채워줘",
+      "label": "doc_generate",
+      "predicted": "doc_search",
+      "confidence": 0.9824
+    },
+    {
+      "text": "회의록 작성하고 액션아이템 일정에 등록해줘",
+      "label": "schedule_add",
+      "predicted": "meeting_generate",
+      "confidence": 0.9915
+    },
+    {
+      "text": "방금 그거 취소해줘",
+      "label": "general",
+      "predicted": "doc_search",
+      "confidence": 0.9479
+    },
+    {
+      "text": "아까 본 그 자료 어디 있더라",
+      "label": "general",
+      "predicted": "doc_search",
+      "confidence": 0.9966
+    },
+    {
+      "text": "규정 요약해줘",
+      "label": "doc_search",
+      "predicted": "doc_generate",
+      "confidence": 0.9783
+    },
+    {
+      "text": "schedule 보여줘",
+      "label": "schedule_view",
+      "predicted": "doc_search",
+      "confidence": 0.9926
+    },
+    {
+      "text": "인센티브 지급 기준 좀 알려줘",
+      "label": "judgment",
+      "predicted": "doc_search",
+      "confidence": 0.9882
+    },
+    {
+      "text": "지난번 고객사 미팅 자료 공유해줘",
+      "label": "doc_search",
+      "predicted": "meeting_generate",
+      "confidence": 0.9874
+    },
+    {
+      "text": "남은 공휴일이 언제야?",
+      "label": "schedule_view",
+      "predicted": "general",
+      "confidence": 0.9897
+    },
+    {
+      "text": "이거 다 하면 퇴근해도 돼?",
+      "label": "general",
+      "predicted": "judgment",
+      "confidence": 0.9743
+    }
+  ],
+  "false_rejections_at_0.7": 5
+}

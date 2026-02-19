@@ -17,7 +17,10 @@ Intent Classification 모델 (팀원 A 담당)
 import json
 import logging
 import os
+import re
 from pathlib import Path
+
+from ai.agents.config import INTENT_FALLBACK_THRESHOLD, COMPLEXITY_GAP_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
@@ -84,10 +87,11 @@ class IntentClassifier:
         try:
             from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-            self.tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
+            # 토크나이저는 klue/bert-base 원본 사용 (로컬 저장본과 vocab 불일치 방지)
+            self.tokenizer = AutoTokenizer.from_pretrained("klue/bert-base")
             self.model = AutoModelForSequenceClassification.from_pretrained(str(model_dir))
             self.model.eval()
-            logger.info("Intent classifier loaded from %s", model_dir)
+            logger.info("Intent classifier loaded from %s (tokenizer: klue/bert-base)", model_dir)
         except Exception as e:
             logger.error("Failed to load intent classifier: %s", e)
             self.model = None
@@ -95,22 +99,28 @@ class IntentClassifier:
 
         self._loaded = True
 
-    def predict(self, text: str) -> dict:
+    def predict(self, text: str, return_candidates: bool = False) -> dict:
         """
         Intent 분류 추론
 
+        Args:
+            text: 사용자 입력 텍스트
+            return_candidates: True이면 top-3 후보도 함께 반환
+
         Returns:
             {"intent": "judgment", "confidence": 0.95}
+            return_candidates=True일 때:
+            {"intent": "judgment", "confidence": 0.95, "candidates": [{"intent": ..., "confidence": ...}, ...]}
         """
         self.load_model()
 
         # fallback: 모델 없으면 LLM 기반 분류
         if self.model is None or self.tokenizer is None:
-            return self._llm_based_predict(text)
+            return self._llm_based_predict(text, return_candidates=return_candidates)
 
         # 전처리
         try:
-            from ai.experiments.preprocessing import preprocess
+            from ai.agents.preprocessing import preprocess
 
             processed = preprocess(text)
         except ImportError:
@@ -124,7 +134,7 @@ class IntentClassifier:
             return_tensors="pt",
             padding=True,
             truncation=True,
-            max_length=128,
+            max_length=64,
         )
 
         with torch.no_grad():
@@ -136,9 +146,26 @@ class IntentClassifier:
 
         intent = self.id2label.get(pred_id, "general")
 
-        return {"intent": intent, "confidence": round(confidence, 4)}
+        # 알려진 오분류 패턴 보정
+        intent = apply_known_overrides(text, intent)
 
-    def _llm_based_predict(self, text: str) -> dict:
+        result = {"intent": intent, "confidence": round(confidence, 4)}
+
+        if return_candidates:
+            # top-3 후보 추출
+            sorted_indices = torch.argsort(probs[0], descending=True)
+            candidates = []
+            for idx in sorted_indices[:3]:
+                idx_int = idx.item()
+                candidates.append({
+                    "intent": self.id2label.get(idx_int, "general"),
+                    "confidence": round(probs[0][idx_int].item(), 4),
+                })
+            result["candidates"] = candidates
+
+        return result
+
+    def _llm_based_predict(self, text: str, return_candidates: bool = False) -> dict:
         """LLM 기반 intent 분류 (Solar API)"""
         import time as _time
         _t = _time.time()
@@ -147,7 +174,7 @@ class IntentClassifier:
         print(f"[IntentClassifier] SOLAR_API_KEY 존재: {bool(api_key)}, 값 앞4자: {api_key[:4] if api_key else 'None'}")
         if not api_key:
             print("[IntentClassifier] SOLAR_API_KEY 없음 → 임베딩 fallback")
-            return self._embedding_based_predict(text)
+            return self._embedding_based_predict(text, return_candidates=return_candidates)
 
         try:
             from openai import OpenAI
@@ -158,10 +185,9 @@ class IntentClassifier:
                 base_url="https://api.upstage.ai/v1/solar",
             )
 
-            response = client.chat.completions.create(
-                model="solar-1-mini-chat",
-                messages=[
-                    {"role": "system", "content": """사용자 입력의 의도를 분류하세요.
+            # return_candidates 요청 시 top-3 반환 프롬프트 추가
+            if return_candidates:
+                system_prompt = """사용자 입력의 의도를 분류하세요.
 
                 카테고리:
                 - judgment: 규정/규칙 기반 판단 요청 (예: "이거 규정 위반이야?", "이렇게 해도 돼?")
@@ -173,8 +199,28 @@ class IntentClassifier:
                 - general: 위 카테고리에 해당하지 않는 일반 질문
 
                 반드시 아래 JSON 형식으로만 응답하세요:
-                {"intent": "카테고리명", "confidence": 0.0~1.0}"""},
-                                    {"role": "user", "content": text},
+                {"intent": "카테고리명", "confidence": 0.0~1.0, "candidates": [{"intent": "카테고리명", "confidence": 0.0~1.0}, ...]}
+                candidates에는 가장 가능성 높은 상위 3개를 포함하세요."""
+            else:
+                system_prompt = """사용자 입력의 의도를 분류하세요.
+
+                카테고리:
+                - judgment: 규정/규칙 기반 판단 요청 (예: "이거 규정 위반이야?", "이렇게 해도 돼?")
+                - doc_search: 문서 검색, 규정 조회 (예: "연차 규정 알려줘", "회의 내용 찾아줘")
+                - doc_generate: 보고서/제안서/JD 작성 (예: "보고서 작성해줘", "제안서 만들어줘")
+                - meeting_generate: 회의록 작성/요약 (예: "회의록 작성해줘", "회의록 요약해줘")
+                - schedule_add: 일정 추가/등록 (예: "내일 2시 회의 일정 추가해줘", "스케줄 등록해줘")
+                - schedule_view: 일정 조회/확인 (예: "오늘 일정 보여줘", "이번 주 스케줄 확인해줘")
+                - general: 위 카테고리에 해당하지 않는 일반 질문
+
+                반드시 아래 JSON 형식으로만 응답하세요:
+                {"intent": "카테고리명", "confidence": 0.0~1.0}"""
+
+            response = client.chat.completions.create(
+                model="solar-1-mini-chat",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": text},
                 ],
                 temperature=0.1,
                 response_format={"type": "json_object"},
@@ -190,15 +236,30 @@ class IntentClassifier:
                 print(f"[IntentClassifier] 유효하지 않은 intent: {intent} → general로 변환")
                 intent = "general"
 
+            # 알려진 오분류 패턴 보정
+            intent = apply_known_overrides(text, intent)
+
             confidence = float(result.get("confidence", 0.8))
             print(f"[IntentClassifier] 최종 결과: intent={intent}, confidence={confidence:.4f} ({_time.time()-_t:.2f}s)")
-            return {"intent": intent, "confidence": round(confidence, 4)}
+
+            output = {"intent": intent, "confidence": round(confidence, 4)}
+            if return_candidates:
+                candidates = result.get("candidates", [{"intent": intent, "confidence": round(confidence, 4)}])
+                # 유효성 검증
+                valid_candidates = []
+                for c in candidates[:3]:
+                    c_intent = c.get("intent", "general")
+                    if c_intent not in INTENT_LABELS:
+                        c_intent = "general"
+                    valid_candidates.append({"intent": c_intent, "confidence": round(float(c.get("confidence", 0.5)), 4)})
+                output["candidates"] = valid_candidates
+            return output
 
         except Exception as e:
             print(f"[IntentClassifier] !!! LLM 호출 실패: {e}")
             import traceback
             traceback.print_exc()
-            return self._embedding_based_predict(text)
+            return self._embedding_based_predict(text, return_candidates=return_candidates)
 
     def _get_example_embeddings(self):
         """예제 임베딩 캐시 가져오기 (한 번만 계산)"""
@@ -265,7 +326,7 @@ class IntentClassifier:
 
         return IntentClassifier._example_embeddings_cache
 
-    def _embedding_based_predict(self, text: str) -> dict:
+    def _embedding_based_predict(self, text: str, return_candidates: bool = False) -> dict:
         """임베딩 기반 intent 분류 (jhgan/ko-sbert-nli 사용)"""
         import numpy as np
 
@@ -299,10 +360,136 @@ class IntentClassifier:
         logger.debug(f"All intent scores: {intent_scores}")
 
         # confidence가 너무 낮으면 general로
-        if confidence < 0.5:
-            return {"intent": "general", "confidence": 0.7}
+        if confidence < INTENT_FALLBACK_THRESHOLD:
+            result = {"intent": "general", "confidence": 0.7}
+            if return_candidates:
+                result["candidates"] = [{"intent": "general", "confidence": 0.7}]
+            return result
 
-        return {"intent": best_intent, "confidence": round(confidence, 4)}
+        # 알려진 오분류 패턴 보정
+        best_intent = apply_known_overrides(text, best_intent)
+
+        result = {"intent": best_intent, "confidence": round(confidence, 4)}
+
+        if return_candidates:
+            sorted_scores = sorted(intent_scores.items(), key=lambda x: x[1], reverse=True)
+            candidates = [{"intent": k, "confidence": round(float(v), 4)} for k, v in sorted_scores[:3]]
+            result["candidates"] = candidates
+
+        return result
+
+
+# ── 알려진 오분류 패턴 보정 (실험에서 발견) ──
+
+KNOWN_OVERRIDES = {
+    # "인센티브 지급 기준" → BERT가 doc_search로 분류하지만 실제론 judgment
+    r"(인센티브|성과급|보너스).*(기준|조건|자격)": "judgment",
+    # "남은 공휴일" → BERT가 general로 분류하지만 실제론 schedule_view
+    r"(남은|다음|이번).*(공휴일|휴일|쉬는 날)": "schedule_view",
+    # "X 규정 알려줘" → BERT가 doc_search로 분류하지만 규정 해석은 judgment
+    r"(규정|규칙|지침|내규).*(알려|설명|안내)": "judgment",
+    # "인사평가 기준 알려줘" → 기준/평가/심사 + 알려줘 패턴도 동일 이슈
+    r"(기준|평가|심사|절차).*(알려|설명|안내)": "judgment",
+    # "복리후생 뭐 있어" → 제도/수당 관련 질문은 judgment
+    r"(복리후생|복지|수당|혜택|지원금|포상).*(뭐|어떤|있어|있나|있습니까)": "judgment",
+    # "퇴직금 계산해줘" → 금액 산정 요청은 judgment (doc_generate 아님)
+    r"(퇴직금|급여|연봉|월급|수당|상여).*(계산|산정|산출|얼마)": "judgment",
+    # "지각하면 어떻게 돼?" → 조건부 결과 질문은 judgment (general 아님)
+    r"(지각|결근|조퇴|무단|위반|어기).*(어떻게|불이익|처벌|징계|벌|감봉)": "judgment",
+}
+
+
+def apply_known_overrides(text: str, bert_intent: str) -> str:
+    """알려진 오분류 패턴이면 강제 전환"""
+    for pattern, correct_intent in KNOWN_OVERRIDES.items():
+        if re.search(pattern, text):
+            logger.info(f"Known override: {bert_intent} → {correct_intent} for '{text}'")
+            return correct_intent
+    return bert_intent
+
+
+# ── 복합 질문 감지 ──
+
+# 접속/순차 키워드 패턴 (넓은 범위)
+# V-아/어서: 찾아서, 확인해서, 봐서 등
+# V-고: 찾고, 확인하고, 보고 등
+# V-면서: 찾으면서, 확인하면서 등
+# 순차 표현: ~한 뒤에, ~후에, ~다음에
+COMPLEX_PATTERNS = [
+    # 기본 접속: ~해서, ~하고, ~그리고
+    r"(.+)(하고|해서|후에|다음에|그리고|그런 다음)\s*(.+)(해줘|해주세요|알려줘|만들어줘|찾아줘|보여줘|정리해줘|판단해줘)",
+    # V-아/어서: 찾아서, 봐서, 확인해서 등
+    r"(.+[아어]서|.+해서)\s*(.+)(해줘|해주세요|알려줘|만들어줘|찾아줘|보여줘|정리해줘|판단해줘)",
+    # V-고: 찾고, 확인하고, 조회하고 등
+    r"(.+)(하고|찾고|보고|읽고|확인하고|조회하고|검색하고)\s*(.+)(해줘|해주세요|알려줘|만들어줘|찾아줘|보여줘|정리해줘|판단해줘)",
+    # 순차: ~한 뒤에, ~한 다음, ~후에
+    r"(.+)(한 뒤에|한 다음|을 바탕으로|를 바탕으로|에 따라)\s*(.+)",
+    # ~면서: 찾으면서, 확인하면서
+    r"(.+)(면서|으면서)\s*(.+)(해줘|해주세요|알려줘|만들어줘)",
+    # 조건부: 있으면~없으면
+    r"(.+)(있으면|없으면).+(있으면|없으면)",
+]
+
+# 동사 어미 패턴
+VERB_ENDINGS = re.compile(
+    r"(해줘|해주세요|알려줘|만들어줘|찾아줘|확인해줘|작성해줘|추가해줘|보여줘|정리해줘|판단해줘|검색해줘|조회해줘|등록해줘)"
+)
+
+# 맥락 의존 패턴 (대명사/지시어)
+CONTEXT_DEPENDENT_PATTERNS = [
+    r"(그거|그것|그걸|아까|위에|방금|이전에|앞에서|말한|언급한)",
+    r"(그|이|저)\s*(문서|보고서|회의|규정|일정|내용)",
+    r"(다시|한번 더|또)\s*(해줘|보여줘|알려줘)",
+]
+
+
+def detect_complexity(text: str, candidates: list) -> dict:
+    """
+    복합 질문 여부 감지 (규칙 기반 + confidence 분석)
+
+    3중 조건 AND 로직: 2개 이상 충족 시에만 복합 판정
+
+    Args:
+        text: 사용자 입력 텍스트
+        candidates: top-k intent 후보 [{"intent": str, "confidence": float}, ...]
+
+    Returns:
+        {"is_complex": bool, "signals": int, "trigger_reasons": list}
+    """
+    signals = 0
+    trigger_reasons = []
+
+    # 조건 1: 접속/순차 키워드 패턴
+    has_keyword = any(re.search(p, text) for p in COMPLEX_PATTERNS)
+    if has_keyword:
+        signals += 1
+        trigger_reasons.append("keyword_pattern")
+
+    # 조건 2: top-2 confidence gap이 작음 (두 intent가 경합 중)
+    if len(candidates) >= 2:
+        gap = candidates[0]["confidence"] - candidates[1]["confidence"]
+        if gap < COMPLEXITY_GAP_THRESHOLD:
+            signals += 1
+            trigger_reasons.append(f"confidence_gap({gap:.2f})")
+
+    # 조건 3: 동사 2개 이상 (행위가 2개)
+    verb_endings = VERB_ENDINGS.findall(text)
+    if len(verb_endings) >= 2:
+        signals += 1
+        trigger_reasons.append(f"multi_verb({len(verb_endings)})")
+
+    is_complex = signals >= 2
+
+    return {
+        "is_complex": is_complex,
+        "signals": signals,
+        "trigger_reasons": trigger_reasons,
+    }
+
+
+def is_context_dependent(text: str) -> bool:
+    """맥락 의존 쿼리 감지 (대명사/지시어 패턴)"""
+    return any(re.search(p, text) for p in CONTEXT_DEPENDENT_PATTERNS)
 
 
 def get_classifier() -> IntentClassifier:
