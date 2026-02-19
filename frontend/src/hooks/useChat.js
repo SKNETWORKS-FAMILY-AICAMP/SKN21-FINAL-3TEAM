@@ -5,21 +5,15 @@ import useChatStore from '../store/chatStore'
 import useSSE from './useSSE'
 
 export default function useChat() {
-  const { messages, isStreaming, currentIntent, currentStatus, addMessage, createSession, activeSessionId } = useChatStore()
+  const { messages, isStreaming, currentIntent, currentStatus, addMessage } = useChatStore()
   const { startStream, stopStream } = useSSE()
 
   const sendMessage = async (text) => {
     if (!text.trim() || isStreaming) return
 
-    const isFirstMessage = messages.length === 0 && !activeSessionId;
-
+    // addMessage 내부에서 activeSessionId 없을 때 세션 자동 생성함
     addMessage({ role: 'user', content: text })
     addMessage({ role: 'assistant', content: '' })
-
-    // 첫 메시지면 세션 자동 생성
-    if (isFirstMessage) {
-      createSession();
-    }
 
     try {
       await startStream(text, useChatStore.getState().activeSessionId)

@@ -126,16 +126,15 @@ export default function useSSE() {
     } catch (err) {
       if (err.name === 'AbortError') return // 사용자가 중단
 
-      console.warn('[SSE] 백엔드 연결 실패, Mock 모드로 폴백:', err.message)
+      setStreaming(false)
+      setCurrentStatus(null)
 
-      // 401이면 폴백 없이 에러 전파
       if (err.status === 401) {
-        setStreaming(false)
         throw err
       }
 
-      // 네트워크 에러 → Mock 폴백
-      startMockStream(message)
+      // 에러를 메시지에 기록 → UI에 표시
+      setLastAssistantError(err.message || '서버 연결에 실패했습니다')
     }
   }, [setStreaming, setCurrentIntent, setCurrentStatus, appendToken, setLastAssistantResult, setLastAssistantError, setLastAssistantIntent])
 
