@@ -22,9 +22,9 @@ jobs:
             source .venv/bin/activate
             pip install -r requirements.txt
             pkill -f uvicorn || true
-            nohup uvicorn backend.app.main:app \
+            export PYTHONPATH=/home/ubuntu/SKN21-FINAL-3TEAM:/home/ubuntu/SKN21-FINAL-3TEAM/backend
+            setsid nohup /home/ubuntu/SKN21-FINAL-3TEAM/.venv/bin/uvicorn backend.app.main:app \
               --host 0.0.0.0 \
               --port 8000 \
-              > server.log 2>&1 &
-            disown
+              > server.log 2>&1 < /dev/null &
             echo "배포 완료"
