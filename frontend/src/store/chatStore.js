@@ -27,6 +27,11 @@ const useChatStore = create((set, get) => ({
   currentIntent: null,
   currentStatus: null,
 
+  // 대시보드 → 챗 이동 시 자동 전송할 질문
+  pendingQuestion: null,
+  setPendingQuestion: (q) => set({ pendingQuestion: q }),
+  clearPendingQuestion: () => set({ pendingQuestion: null }),
+
   // 세션 관리
   sessions: [],
   activeSessionId: null,
@@ -37,7 +42,13 @@ const useChatStore = create((set, get) => ({
     const activeSession = sessions.find(s => s.id === savedId)
 
     if (activeSession) {
-      set({ sessions, activeSessionId: activeSession.id, messages: activeSession.messages || [] })
+      const state = get()
+      // 이미 같은 세션이 활성화되어 메시지가 있으면 in-memory 메시지를 보존
+      if (state.activeSessionId === activeSession.id && state.messages.length > 0) {
+        set({ sessions })
+      } else {
+        set({ sessions, activeSessionId: activeSession.id, messages: activeSession.messages || [] })
+      }
     } else {
       set({ sessions, activeSessionId: null, messages: [] })
     }

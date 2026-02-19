@@ -322,35 +322,34 @@
 ### 한 일
 
 #### 1) Docker 환경 구성
-- **`docker/Dockerfile.backend`** — `ai/requirements.txt` 설치 추가, PYTHONPATH/CMD 경로 수정, bitsandbytes 제외
-- **`.env`** — DATABASE_URL/REDIS_URL 호스트를 `localhost` → `db`/`redis`로 변경 (Docker 네트워크)
-- **`backend/alembic/env.py`** — DATABASE_URL 환경변수 override 추가 (Docker에서 alembic 실행 시 자동 인식)
-- **`docker/Dockerfile.frontend`** — `npm install --legacy-peer-deps` (@eslint/js 버전 충돌 해결)
-- **`docker/docker-compose.yml`** — frontend 서비스에 `BACKEND_URL=http://backend:8000` 환경변수 추가
-- **`frontend/vite.config.js`** — 프록시 타겟 `process.env.BACKEND_URL || 'http://localhost:8000'`으로 변경
-  - Docker: `backend:8000` 사용 / 로컬: `localhost:8000` fallback
+- `Dockerfile.backend` — `ai/requirements.txt` 설치 추가, PYTHONPATH/CMD 경로 수정, bitsandbytes 제외
+- `.env` — DATABASE_URL/REDIS_URL 호스트 `localhost` → `db`/`redis`로 변경
+- `vite.config.js` — 프록시 타겟 `process.env.BACKEND_URL || 'http://localhost:8000'`으로 변경
+- `docker-compose.yml` — frontend에 `BACKEND_URL=http://backend:8000` 추가 (Google 로그인 500 에러 해결)
 
-#### 2) 챗봇 세션 버그 수정 (에러 후 "새 대화" 클릭 시 빈/중복 세션 생성 버그)
-- **`useChat.js`** — `createSession()` 중복 호출 제거 (`addMessage`가 이미 세션 자동 생성하므로 충돌 발생)
-- **`useSSE.js`** — SSE 에러 시 Mock 폴백 제거 → `setLastAssistantError()` 호출로 UI에 에러 직접 표시, `setStreaming(false)` 누락 수정
-- **`chatStore.js`** — `createSession()` 호출 시 현재 세션이 비어있으면 자동 제거 (빈 세션 정리)
+#### 2) 챗봇 버그 수정
+- `useChat.js` — `createSession()` 중복 호출 제거, `isStreaming` 스테일 클로저 버그 수정
+- `useSSE.js` — SSE 에러 시 Mock 폴백 제거 → `setLastAssistantError()`로 UI에 직접 표시
+- `chatStore.js` — 빈 세션 자동 정리, `initSession()` 수정 (in-memory 메시지 있으면 덮어쓰지 않음)
+- `ChatPage.jsx` — judgment 카드 텍스트 이중 렌더링 수정
 
-#### 3) 기타 버그 수정
-- **`ChatPage.jsx`** — judgment 카드 응답 텍스트 중복 표시 수정 (`reasoning` 없을 때 `content`가 카드 summary + 하단 텍스트에 이중 렌더링되던 문제)
+#### 3) DocumentsPage Mock 데이터 제거
+- `mockDocs` 삭제, 실제 업로드 문서만 표시
 
-#### 4) Google 로그인 500 에러 해결
-- 원인: 프론트엔드가 Docker 컨테이너 내에서 실행되면서 Vite 프록시 타겟 `localhost:8000`이 자기 자신을 가리켜 ECONNREFUSED 발생
-- `vite.config.js` → `process.env.BACKEND_URL || 'http://localhost:8000'`으로 환경변수 지원
-- `docker-compose.yml` → frontend 서비스에 `BACKEND_URL=http://backend:8000` 추가
-- `docker compose up -d --force-recreate frontend`로 환경변수 적용 후 로그인 성공 확인
+#### 4) 대시보드 예시 질문 → 챗봇 자동 전송
+- `chatStore.js` — `pendingQuestion` 상태 추가
+- `AIChatWidget.jsx` — 질문 클릭 시 `setPendingQuestion(q)` 후 `/chat` 이동
+- `ChatPage.jsx` — 마운트 시 `pendingQuestion` 감지 → 새 세션 생성 + 자동 전송
+- React StrictMode 이중 실행 + Auth 리마운트 문제 → `mountedRef`로 해결
 
-#### 5) DocumentsPage Mock 데이터 제거
-- `mockDocs` 배열 삭제, `allDocs = [...formattedDocs, ...mockDocs]` → `formattedDocs`만 사용
-- 실제 업로드된 문서만 표시되도록 수정
+#### 5) 대시보드 위젯 자유 배치 (컬럼 간 드래그)
+- `framer-motion Reorder` → HTML5 드래그 앤 드롭으로 교체
+- `uiStore.js` — `moveWidget()` 추가
+- `DashboardPage.jsx` — 좌↔우 컬럼 자유 이동, 드롭 위치 파란 선 표시
 
 ### 다음 할 일
-- 관리자 API 연동 (#29) — admin.py + statistics_service.py 백엔드 구현 후 AdminPage 연동
-- meetings.py CRUD 구현 후 MeetingsPage 연동
+- 관리자 API 연동 (#29)
+- 나머지 Mock → 실제 API 교체 (대시보드, 채팅, 문서, 회의)
 
 ---
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import ChatWindow from '../components/chat/ChatWindow';
 import MessageBubble from '../components/chat/MessageBubble';
 import StreamingMessage from '../components/chat/StreamingMessage';
@@ -145,15 +145,32 @@ export default function ChatPage() {
   const { messages, isStreaming, currentIntent, currentStatus, sendMessage } = useChat();
   const clearMessages = useChatStore((s) => s.clearMessages);
   const initSession = useChatStore((s) => s.initSession);
+  const createSession = useChatStore((s) => s.createSession);
+  const pendingQuestion = useChatStore((s) => s.pendingQuestion);
+  const clearPendingQuestion = useChatStore((s) => s.clearPendingQuestion);
   const [panelOpen, setPanelOpen] = useState(false);
   const [sessionSidebarOpen, setSessionSidebarOpen] = useState(false);
   const [lastError, setLastError] = useState(null);
   const [lastInput, setLastInput] = useState('');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
+  const mountedRef = useRef(false);
+
   useEffect(() => {
-    initSession();
-  }, [initSession]);
+    if (mountedRef.current) return;
+    mountedRef.current = true;
+
+    const q = useChatStore.getState().pendingQuestion;
+    if (q) {
+      // 대시보드에서 질문 클릭 → 새 세션 시작 후 자동 전송
+      clearPendingQuestion();
+      createSession();
+      setLastInput(q);
+      sendMessage(q);
+    } else {
+      initSession();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSend = (text) => {
     setLastError(null);
