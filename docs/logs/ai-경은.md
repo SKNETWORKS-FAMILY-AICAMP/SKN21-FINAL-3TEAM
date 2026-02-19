@@ -245,3 +245,123 @@ python -m ai.tests.test_e2e_judgment --timeout 120          # 타임아웃 변�
 - PM(지용)에게 `judgment_agent_stream` 함수 공유 (SSE 오케스트레이터 연동용)
 - 5단계 성능 평가 (#13) 준비 — 평가 메트릭 설계, 테스트셋 확장
 - 승언과 규정 문서 ingestion 스크립트 역할 합의
+
+---
+
+## 2026-02-19 (수) — 멘토 피드백 반영 + 고도화
+
+**멘토 피드백 6개 항목 구현 (우선순위순):**
+
+### Priority 1: Confidence Score 신뢰성 강화 — 4중 보조장치 (`judgment_agent.py`)
+
+| 보조장치 | 함수 | 역할 |
+|---------|------|------|
+| 1. 환각 탐지 | `_check_keyword_match()` | LLM 인용 조항이 RAG 결과에 실제 있는지 cross-check (0.0~1.0) |
+| 2. 조항 존재 검증 | `_validate_article_exists()` | 인용된 "제8조" 등이 RAG context에 존재하는지 validate |
+| 3. 카테고리 제한 | `_validate_result_category()` | yes/no/conditional/no_regulation 외 결과 자동 reject |
+| 4. 일관성 모니터링 | `_check_consistency()` | 동일 쿼리 캐싱, 이전과 다른 답이면 flag |
+
+- `_calibrate_confidence()` 보정 공식 확장: 기존 3요소 + 환각 감점 + 조항 미존재 감점
+- `_judgment_cache` 메모리 누수 방지: `_CACHE_MAX_SIZE=500` + FIFO 퇴출
+- 응답에 `article_validations`, `consistency_flag`, `warnings` 필드 추가
+
+### Priority 2: 판단 Agent vs 문서 Agent 경계 문서화
+
+- `docs/판단Agent_vs_문서Agent_리스크감지.md` 신규 작성
+- 입력/목적/RAG 대상/출력/트리거 차이 비교표
+- 라우팅 시나리오 4개 + 기술 차이 테이블 + 발표 토킹포인트
+
+### Priority 3: Query Refinement 모듈 구현 (`query_refiner.py`)
+
+- `ai/rag/query_refiner.py` 신규 — kiwipiepy 형태소 분석 + 도메인 동의어 20개 + 불용어 35개
+- BM25용: 키워드 추출 + 동의어 확장 (`refine_query_for_bm25`)
+- Vector용: 구어체→문어체 변환 15개 패턴 (`refine_query_for_vector`)
+  - 예: "연차 몇 일이나 쓸 수 있어요?" → "연차 일수 기준 사용 가능 여부?"
+- `hybrid_search.py`에 통합 — BM25/Vector 각각 다른 쿼리 사용
+- kiwipiepy 인스턴스 `hybrid_search.py`와 공유 (이중 로딩 방지, ~30MB 절약)
+
+### Priority 4: 다양한 문서 RAG 테스트
+
+- 가이드 작성 완료 (실제 테스트는 문서 확보 후 진행)
+
+### Priority 5: vLLM 아키텍처 분리 (`vllm_client.py`)
+
+- `ai/serving/vllm_client.py` — `VLLMProvider(BaseLLM)` 전체 구현
+  - generate / stream_generate / chat / stream_chat 4개 메서드
+  - `with_lora(adapter_name)` — LoRA 어댑터 핫스왑
+  - OpenAI SDK 사용 (vLLM의 OpenAI 호환 API)
+- `ai/llm/factory.py` — `LLM_PROVIDER=vllm` 시 VLLMProvider 연결
+- 환경변수: `VLLM_BASE_URL`, `VLLM_MODEL`, `VLLM_API_KEY`
+
+### Priority 6: agent_response 표준 문서화
+
+- `docs/agent_response_표준.md` 신규 — 7개 Agent 응답 형식 표준 정의
+- 공통 필수 필드 (`type`, `message`) + Agent별 상세 스키마
+- 복합 쿼리에서 이전 Agent 결과 참조 패턴 문서화
+
+---
+
+### 추가 개선 3건 (멘토 피드백 후속)
+
+**1. 조항 패턴 범위 확장:**
+- 기존 `제N조`만 지원 → 5가지 패턴으로 확장
+  - `제N조 제N항`, `제N장/편/절/관`, `별표 N`, `부칙 N`, `N.N조`
+- `judgment_agent.py`의 `_extract_cited_articles` + `_validate_article_exists` 통일
+- `query_refiner.py`의 `_extract_article_refs`도 동일 패턴 적용
+
+**2. Confidence Score breakdown 시각화 데이터:**
+- `_calibrate_confidence()` 반환값 변경: `float` → `tuple[float, dict]`
+- `confidence_breakdown` 필드가 응답에 포함:
+  ```
+  LLM raw 0.90 → ×0.6 = 0.540
+  RAG score 0.75 → ×0.25 = 0.234
+  Coverage → ×0.15 = 0.150
+  환각 감점 -0.000, 조항 감점 -0.000
+  → 최종 0.85
+  ```
+- 스트리밍 버전(`judgment_agent_stream`)에도 동일 적용
+- `docs/agent_response_표준.md`에 breakdown 필드 상세 문서화
+
+**3. Vector 쿼리 구어체→문어체 변환:**
+- `_COLLOQUIAL_TO_FORMAL` 15개 regex 패턴
+- 문장 구조 보존하면서 구어 표현만 문서체로 변환
+- LLM 호출 없이 즉시 처리 (비용/지연 0)
+
+---
+
+### QA 자체 점검 — 버그 5건 발견 및 수정
+
+| # | 위치 | 문제 | 수정 |
+|---|------|------|------|
+| 1 | `judgment_agent.py` | `_check_keyword_match` + `_validate_article_exists` 이중 호출 (calibrate 내부 + agent 함수) | 한 번만 호출 후 결과를 파라미터로 전달 |
+| 2 | `judgment_agent.py` | `keyword_match=0.5`(중립)일 때 불필요한 감점 | `< 0.5`일 때만 감점하도록 조건 수정 |
+| 3 | `judgment_agent.py` | `_judgment_cache` 무한 증가 (메모리 누수) | `_CACHE_MAX_SIZE=500` + FIFO 퇴출 |
+| 4 | `query_refiner.py` | kiwipiepy 이중 인스턴스 (~60MB 낭비) | `hybrid_search.py` 인스턴스 재사용 |
+| 5 | `judgment_agent.py` | 스트리밍 버전 `message` 필드 누락 | `parsed["message"]` 추가 |
+
+---
+
+### 참고 파일 목록
+
+| 파일 | 설명 |
+|------|------|
+| `ai/agents/judgment_agent.py` | 판단 Agent 메인 — 4중 보조장치 + confidence breakdown |
+| `ai/rag/query_refiner.py` | Query Refinement — 키워드 추출, 동의어 확장, 구어체→문어체 |
+| `ai/rag/hybrid_search.py` | 하이브리드 검색 — query_refiner 통합 (BM25/Vector 분리 쿼리) |
+| `ai/serving/vllm_client.py` | vLLM Provider — BaseLLM 호환, LoRA 핫스왑 |
+| `ai/llm/factory.py` | LLM 팩토리 — vllm provider 연결 |
+| `ai/llm/base.py` | BaseLLM 추상 인터페이스 (vLLM 구현 시 참고) |
+| `ai/llm/prompts.py` | 시스템 프롬프트 (JUDGMENT_SYSTEM_PROMPT 등) |
+| `ai/agents/state.py` | AgentState TypedDict 정의 |
+| `ai/agents/orchestrator.py` | LangGraph 오케스트레이터 (라우팅 + 복합쿼리) |
+| `ai/rag/qdrant_pipeline.py` | Qdrant 기반 RAG 파이프라인 |
+| `ai/rag/qdrant_store.py` | Qdrant 벡터 스토어 |
+| `docs/agent_response_표준.md` | agent_response 표준 형식 (confidence_breakdown 포함) |
+| `docs/판단Agent_vs_문서Agent_리스크감지.md` | 판단 Agent vs 문서 Agent 경계 문서 |
+
+**다음 할 일:**
+- 지영(Frontend)과 `warnings` 배열, `confidence_breakdown` 렌더링 방식 논의
+- PM(지용)에게 `confidence_breakdown` 필드 추가 공유
+- 실 규정 문서의 조항 번호 체계 확인 → `_ARTICLE_PATTERNS` 정규식 검증
+- Priority 4: 다양한 문서(AWS 정책, 논문, 계약서) RAG 테스트 — 문서 확보 후 진행
+- 5단계 성능 평가 (#13) — 환각 탐지 정확도, confidence 보정 효과 정량 평가

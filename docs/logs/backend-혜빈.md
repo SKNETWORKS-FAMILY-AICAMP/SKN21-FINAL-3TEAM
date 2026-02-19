@@ -236,7 +236,51 @@
 - 해결: 다중 인코딩 fallback 로직 추가
 
 ### 다음 할 일
-- DOCX 파일 업로드 테스트 (python-docx)
-- 팀원들에게 개발 환경 세팅 가이드 공유 (Python 3.13, 의존성 설치)
+- DOCX 파일 업로드 테스트 (python-docx) - 완료
+- 팀원들에게 개발 환경 세팅 가이드 공유 (Python 3.13, 의존성 설치) - 완료
 - AI 연동 엔드포인트는 팀원 C(승언) 작업 대기
 - Google Calendar/Gmail 추가 테스트
+
+---
+
+## 2026-02-15 (세션 7)
+
+### 한 일
+
+**#22 schedule_agent 완성**
+- `ai/agents/schedule_agent.py` 정리 및 완성:
+  - 중복 라인 정리 (docstring, import, logger 중복 제거)
+  - Import 경로 수정: `backend.app.*` → `app.*` (sys.path에 backend 추가하여 AI 모듈에서 backend import 가능하게)
+  - `_handle_schedule_add()`: 자연어 → Solar API 파싱 → Google Calendar 등록
+  - `_handle_schedule_view()`: 자연어 → Solar API 파싱 → Google Calendar 조회
+  - Mock 응답 지원 (API 키 없을 때)
+- 커밋: `feat: schedule_agent 완성 #22` (1de1c24)
+
+**#33 Google Services 전체 테스트 완료**
+- Google Calendar Push/Pull 테스트:
+  - ✅ `POST /calendar/sync` — 이벤트 생성 성공
+  - ✅ `GET /calendar/events` — 이벤트 조회 성공
+  - ✅ `POST /calendar/event-with-meet` — **Meet 링크 자동 생성 성공**
+- Gmail 테스트:
+  - ✅ `POST /gmail/send-meeting-invite` — **회의 초대 메일 발송 성공**
+- Google Services 5개 전체 정상 동작 확인:
+  - ✅ Calendar (Push/Pull/Meet)
+  - ✅ Tasks (양방향 동기화)
+  - ✅ Gmail (초대 메일 발송)
+  - ✅ Sheets (스프레드시트 생성 + 동기화)
+
+**일정 추가 시 Meet + Gmail 연쇄 호출 구현**
+- `frontend/src/pages/SchedulesPage.jsx` 수정:
+  - `sendMeetingInvite` import 추가 (`api/google.js`)
+  - `handleAddSchedule`에서 Meet 토글 ON 시:
+    1. `createEventWithMeet()` 호출 → meet_link 받기
+    2. 참석자 이메일이 있으면 → `sendMeetingInvite()` 자동 호출
+  - Gmail scope 없으면 메일 발송 건너뜀
+  - 중복 `fetchCalendarEvents()` 호출 제거
+- 커밋: `feat: 일정 추가 시 Meet 링크 생성 + 참석자 초대 메일 자동 발송 #33` (c4c3b52)
+- develop push 완료
+
+### 다음 할 일
+- `schedule_service.py`의 `create_with_google_services()` 구현 (Calendar + Tasks + Gmail + Sheets 통합 오케스트레이션)
+- `schedules.py` API 4개 엔드포인트 구현 (일정 CRUD)
+- AI 연동 엔드포인트는 팀원 C(승언) 작업 대기
