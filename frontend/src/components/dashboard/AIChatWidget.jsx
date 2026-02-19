@@ -22,13 +22,15 @@ export default function AIChatWidget() {
   const navigate = useNavigate();
   const sessions = useChatStore((s) => s.sessions);
   const switchSession = useChatStore((s) => s.switchSession);
+  const setPendingQuestion = useChatStore((s) => s.setPendingQuestion);
 
   const recentSessions = sessions.slice(0, 3);
 
   const handleSearch = (text) => {
     const q = (text || query).trim();
     if (!q) return;
-    navigate(`/chat?q=${encodeURIComponent(q)}`);
+    setPendingQuestion(q);
+    navigate('/chat');
   };
 
   const handleKeyDown = (e) => {

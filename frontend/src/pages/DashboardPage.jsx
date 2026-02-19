@@ -1,4 +1,4 @@
-import { Reorder } from 'framer-motion';
+import { useState } from 'react';
 import { X, Plus, Pencil, Check, RotateCcw } from 'lucide-react';
 import GreetingBanner from '../components/dashboard/GreetingBanner';
 import TodaySchedule from '../components/dashboard/TodaySchedule';
@@ -44,8 +44,8 @@ const WIDGET_REGISTRY = {
   RecentDocs: { component: RecentDocs, label: '최근 문서', props: { docs: mockDocs } },
 };
 
-// ── 위젯 카드 (편집 모드에서 래핑) ──
-function WidgetItem({ id, editMode, onHide }) {
+// ── 위젯 카드 ──
+function WidgetItem({ id, col, editMode, onHide, isDragging, isDropTarget, onDragStart, onDragEnd, onDragOver, onDrop }) {
   const entry = WIDGET_REGISTRY[id];
   if (!entry) return null;
   const { component: Comp, props } = entry;
@@ -53,8 +53,19 @@ function WidgetItem({ id, editMode, onHide }) {
   if (!editMode) return <Comp {...props} />;
 
   return (
-    <div className="relative group">
-      <div className="rounded-lg border-2 border-dashed border-primary-300 dark:border-primary-600">
+    <div
+      draggable
+      onDragStart={(e) => { e.stopPropagation(); onDragStart(id); }}
+      onDragEnd={onDragEnd}
+      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); onDragOver(id, col); }}
+      onDrop={(e) => { e.preventDefault(); e.stopPropagation(); onDrop(id, col); }}
+      className={`relative group transition-opacity ${isDragging ? 'opacity-30' : ''}`}
+    >
+      {/* 드롭 위치 표시선 */}
+      {isDropTarget && !isDragging && (
+        <div className="absolute -top-3 left-0 right-0 h-1 bg-primary-500 rounded-full z-20 shadow-sm" />
+      )}
+      <div className="rounded-lg border-2 border-dashed border-primary-300 dark:border-primary-600 cursor-grab active:cursor-grabbing">
         <Comp {...props} />
       </div>
       <button
@@ -67,8 +78,8 @@ function WidgetItem({ id, editMode, onHide }) {
   );
 }
 
-// ── 컬럼 (Reorder 그룹) ──
-function DraggableColumn({ items, onReorder, editMode, onHide }) {
+// ── 컬럼 ──
+function WidgetColumn({ col, items, editMode, onHide, dragId, dropTarget, onDragStart, onDragEnd, onDragOver, onDrop, onColumnDragOver, onColumnDrop }) {
   if (!editMode) {
     return (
       <div className="space-y-5">
@@ -79,14 +90,30 @@ function DraggableColumn({ items, onReorder, editMode, onHide }) {
     );
   }
 
+  const isColumnEndTarget = dropTarget?.end && dropTarget?.col === col;
+
   return (
-    <Reorder.Group axis="y" values={items} onReorder={onReorder} className="space-y-5">
+    <div
+      className={`space-y-5 min-h-32 rounded-lg transition-all p-1 ${isColumnEndTarget ? 'outline-dashed outline-2 outline-primary-400 bg-primary-50/30 dark:bg-primary-900/10' : ''}`}
+      onDragOver={(e) => { e.preventDefault(); onColumnDragOver(col); }}
+      onDrop={(e) => { e.preventDefault(); onColumnDrop(col); }}
+    >
       {items.map(id => (
-        <Reorder.Item key={id} value={id} className="cursor-grab active:cursor-grabbing">
-          <WidgetItem id={id} editMode onHide={onHide} />
-        </Reorder.Item>
+        <WidgetItem
+          key={id}
+          id={id}
+          col={col}
+          editMode
+          onHide={onHide}
+          isDragging={dragId === id}
+          isDropTarget={dropTarget?.id === id}
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+        />
       ))}
-    </Reorder.Group>
+    </div>
   );
 }
 
@@ -110,29 +137,38 @@ function HiddenWidgetCard({ id, onRestore }) {
 export default function DashboardPage() {
   const {
     dashboard, editMode, toggleEditMode,
-    setLeftColumn, setRightColumn,
-    hideWidget, restoreWidget, resetDashboard,
+    hideWidget, restoreWidget, resetDashboard, moveWidget,
   } = useUIStore();
 
   const { leftColumn, rightColumn, hidden } = dashboard;
+
+  const [dragId, setDragId] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null); // { id, col } | { col, end: true }
+
+  const handleDragStart = (id) => setDragId(id);
+  const handleDragEnd = () => { setDragId(null); setDropTarget(null); };
+  const handleDragOver = (id, col) => { if (dragId !== id) setDropTarget({ id, col }); };
+  const handleDrop = (targetId, targetCol) => {
+    if (dragId && dragId !== targetId) moveWidget(dragId, targetId, targetCol);
+    setDragId(null);
+    setDropTarget(null);
+  };
+  const handleColumnDragOver = (col) => setDropTarget({ col, end: true });
+  const handleColumnDrop = (col) => {
+    if (dragId) moveWidget(dragId, null, col);
+    setDragId(null);
+    setDropTarget(null);
+  };
+
+  const dragProps = { dragId, dropTarget, onDragStart: handleDragStart, onDragEnd: handleDragEnd, onDragOver: handleDragOver, onDrop: handleDrop, onColumnDragOver: handleColumnDragOver, onColumnDrop: handleColumnDrop };
 
   return (
     <div className="py-6">
       <GreetingBanner meetingCount={2} actionCount={2} riskCount={0} />
 
       <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-5">
-        <DraggableColumn
-          items={leftColumn}
-          onReorder={setLeftColumn}
-          editMode={editMode}
-          onHide={hideWidget}
-        />
-        <DraggableColumn
-          items={rightColumn}
-          onReorder={setRightColumn}
-          editMode={editMode}
-          onHide={hideWidget}
-        />
+        <WidgetColumn col="leftColumn" items={leftColumn} editMode={editMode} onHide={hideWidget} {...dragProps} />
+        <WidgetColumn col="rightColumn" items={rightColumn} editMode={editMode} onHide={hideWidget} {...dragProps} />
       </div>
 
       {/* 숨긴 위젯 영역 */}
