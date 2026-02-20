@@ -73,7 +73,7 @@ export default function Sidebar() {
       <div className="flex flex-col flex-1 overflow-y-auto">
 
       {/* 로고 + 햄버거 버튼 */}
-      <div className={`flex flex-col px-4 pt-5 pb-5 gap-3 ${collapsed ? 'items-center' : ''}`}>
+      <div className={`flex px-4 pt-5 pb-5 ${collapsed ? 'flex-col items-center gap-3' : 'items-center justify-between'}`}>
         <a
           href="/dashboard"
           className={`flex items-center gap-3 overflow-hidden ${collapsed ? 'justify-center' : ''}`}
