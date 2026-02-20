@@ -45,7 +45,7 @@
 
 **RAG 파이프라인 전체 구현 (#8) — 2단계 완료:**
 - `ai/rag/embeddings.py` — SentenceTransformer("jhgan/ko-sbert-nli") 싱글턴 임베딩 모델
-- `ai/rag/vectorstore.py` — ChromaDB PersistentClient, cosine 유사도, scope 필터, upsert 지원
+- `ai/rag/vectorstore.py` — Qdrant PersistentClient, cosine 유사도, scope 필터, upsert 지원
 - `ai/rag/hybrid_search.py` — BM25 + Vector 하이브리드 검색, RRF(k=60) 합산, scope 필터 (BM25/Vector 양쪽)
 - `ai/rag/reranker.py` — CrossEncoder("BAAI/bge-reranker-v2-m3") 싱글턴 리랭커
 - `ai/rag/pipeline.py` — 오케스트레이션 (initialize → add_documents → retrieve), 배치 처리(batch_size=100), 싱글턴 팩토리
@@ -53,7 +53,7 @@
 
 **RAG QA 및 버그 수정:**
 - BM25 scope 필터 누락 (보안 이슈) → personal 문서 격리 로직 추가
-- ChromaDB n_results > collection.count() 에러 → min(top_k, count) 캡 추가
+- Qdrant n_results > collection.count() 에러 → min(top_k, count) 캡 추가
 - collection.add() 중복 ID 에러 → upsert()로 변경
 - user_id=None일 때 전체 문서 반환 → company 문서만 반환하도록 정책 변경
 

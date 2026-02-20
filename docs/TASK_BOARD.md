@@ -193,12 +193,12 @@
 | # | 이슈 | 할 일 |
 |---|------|-------|
 | #39 | **[B-8] LLM API 연동 모듈** | GPT/Claude API 호출 공통 모듈 작성 |
-| #8 | **[B-2] RAG 파이프라인 구축** | ChromaDB + BM25 + Vector + Reranker |
+| #8 | **[B-2] RAG 파이프라인 구축** | Qdrant + BM25 + Vector + Reranker |
 
 **체크리스트:**
 - [ ] LLM API 공통 모듈 작성 (나중에 sLLM으로 교체 가능한 구조)
 - [ ] judgment_agent LLM API 연동 (규정 판단 + Q&A)
-- [ ] ChromaDB 세팅 + 규정 문서 임베딩
+- [ ] Qdrant 세팅 + 규정 문서 임베딩
 - [ ] BM25 + Vector 하이브리드 검색 구현
 - [ ] Reranker 연동
 
