@@ -37,9 +37,53 @@ function defaultColumnFor(id) {
   return 'rightColumn'
 }
 
+// ── 메모 ──
+const MEMOS_KEY = 'sidebar-memos'
+function loadMemos() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(MEMOS_KEY))
+    if (Array.isArray(saved) && saved.length > 0) return saved
+  } catch { /* ignore */ }
+  // 기존 단일 메모 마이그레이션
+  const old = localStorage.getItem('sidebar-memo')
+  if (old) {
+    const migrated = [{ id: Date.now().toString(), text: old, createdAt: Date.now() }]
+    localStorage.setItem(MEMOS_KEY, JSON.stringify(migrated))
+    localStorage.removeItem('sidebar-memo')
+    return migrated
+  }
+  return []
+}
+function saveMemos(memos) {
+  localStorage.setItem(MEMOS_KEY, JSON.stringify(memos))
+}
+
 const useUIStore = create((set) => ({
   sidebarOpen: true,
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+
+  // ── 메모 ──
+  memos: loadMemos(),
+  memoOpen: false,
+  activeMemoId: null,
+  toggleMemo: () => set((state) => ({ memoOpen: !state.memoOpen })),
+  selectMemo: (id) => set({ activeMemoId: id }),
+  addMemo: () => set((state) => {
+    const newMemo = { id: Date.now().toString(), text: '', createdAt: Date.now() }
+    const next = [newMemo, ...state.memos]
+    saveMemos(next)
+    return { memos: next, activeMemoId: newMemo.id }
+  }),
+  updateMemo: (id, text) => set((state) => {
+    const next = state.memos.map(m => m.id === id ? { ...m, text } : m)
+    saveMemos(next)
+    return { memos: next }
+  }),
+  deleteMemo: (id) => set((state) => {
+    const next = state.memos.filter(m => m.id !== id)
+    saveMemos(next)
+    return { memos: next, activeMemoId: state.activeMemoId === id ? null : state.activeMemoId }
+  }),
 
   theme: getInitialTheme(),
   toggleTheme: () => set((state) => {
