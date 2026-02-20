@@ -12,6 +12,7 @@ from qdrant_client.models import (
     Filter,
     FieldCondition,
     MatchValue,
+    FilterSelector,
 )
 
 
@@ -193,6 +194,19 @@ class QdrantVectorStore:
             "documents": documents,
             "metadatas": metadatas,
         }
+
+    def delete_by_filter(self, filter_dict: dict):
+        """메타데이터 필터 조건에 맞는 포인트 삭제"""
+        if self.client is None:
+            raise RuntimeError("QdrantVectorStore가 초기화되지 않았습니다.")
+        conditions = [
+            FieldCondition(key=k, match=MatchValue(value=v))
+            for k, v in filter_dict.items()
+        ]
+        self.client.delete(
+            collection_name=self.collection_name,
+            points_selector=FilterSelector(filter=Filter(must=conditions)),
+        )
 
     def delete_collection(self):
         """컬렉션 삭제"""
