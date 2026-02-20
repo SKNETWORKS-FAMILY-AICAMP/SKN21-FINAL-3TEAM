@@ -11,6 +11,7 @@ import JudgmentCard from '../components/chat/JudgmentCard';
 import ScheduleCard from '../components/chat/ScheduleCard';
 import useChat from '../hooks/useChat';
 import useChatStore from '../store/chatStore';
+import { listRegulations } from '../api/regulations';
 
 function exportChat(messages) {
   if (messages.length === 0) return;
@@ -159,6 +160,7 @@ export default function ChatPage() {
   const [lastError, setLastError] = useState(null);
   const [lastInput, setLastInput] = useState('');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [dbRegulations, setDbRegulations] = useState([]);
 
   const mountedRef = useRef(false);
 
@@ -177,6 +179,12 @@ export default function ChatPage() {
       initSession();
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    listRegulations()
+      .then((res) => setDbRegulations(res.data || []))
+      .catch((err) => console.warn('[ChatPage] 규정 로드 실패:', err));
+  }, []);
 
   const handleSend = (text) => {
     setLastError(null);
@@ -203,20 +211,27 @@ export default function ChatPage() {
     setShowClearConfirm(false);
   };
 
-  // 메시지에서 마지막 judgment 응답의 regulations 추출
+  // 메시지에서 마지막 judgment 응답의 regulations 추출 (DB 원문 우선 병합)
   const regulationsFromMessages = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i];
       if (msg.resultIntent === 'judgment' && msg.agentResponse?.regulations) {
-        return msg.agentResponse.regulations.map((r) => ({
-          name: r.name,
-          article: r.article,
-          content: r.content,
-        }));
+        return msg.agentResponse.regulations.map((r) => {
+          const articleKey = (r.article || r.name || '').match(/제\d+조/)?.[0];
+          const dbReg = articleKey
+            ? dbRegulations.find((db) => db.article_number === articleKey)
+            : null;
+          return {
+            name: r.name || dbReg?.title || '',
+            article: r.article || dbReg?.article_number || '',
+            content: dbReg?.content || r.content || '',
+            relevance: r.relevance || r.score || null,
+          };
+        });
       }
     }
     return [];
-  }, [messages]);
+  }, [messages, dbRegulations]);
 
   return (
     <div className="-ml-8">
