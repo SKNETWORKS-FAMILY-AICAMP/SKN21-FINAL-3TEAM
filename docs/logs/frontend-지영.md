@@ -363,6 +363,38 @@
 
 ---
 
+## 2026-02-20 (금)
+
+### 한 일
+
+#### 1) 회원가입 성공 팝업 + 로그인 자동 입력 구현
+
+- **문제**: 회원가입 후 팝업 없이 바로 동작하거나, 대시보드로 튕기는 버그
+- **원인 분석**: `PublicOnlyRoute`가 `isAuthenticated = true` 감지 시 즉시 대시보드로 리다이렉트하여 팝업이 렌더링되지 못함
+
+- **`useAuth.js`** 수정
+  - `register()` 성공 후 자동 `/login` 이동 제거 → 이동 제어권을 `LoginPage`로 위임
+
+- **`LoginPage.jsx`** 수정
+  - `showRegisterSuccess` 상태 추가 — 성공 팝업 표시 여부 관리
+  - `registeredCredentials` 상태 추가 — 회원가입한 이메일/비밀번호 임시 보관
+  - `handleRegister` — 회원가입 성공 시 자동 로그인 없이 팝업만 표시 (토큰 저장 안 함 → PublicOnlyRoute 리다이렉트 방지)
+  - `handleRegisterSuccessConfirm` — 팝업 확인 시 `switchTab('login')`으로 로그인 탭 전환
+  - 성공 팝업 UI 추가 (체크 아이콘 + "회원가입 완료!" + "확인" 버튼)
+  - `LoginForm`에 `defaultEmail`, `defaultPassword` prop 전달
+
+- **`LoginForm.jsx`** 수정
+  - `defaultEmail`, `defaultPassword` prop 추가
+  - `useState` 초기값을 prop 값으로 설정 → 로그인 탭 전환 시 이메일/비밀번호 자동 입력
+
+- **최종 흐름**: 회원가입 제출 → 성공 팝업 → "확인" 클릭 → 로그인 탭 (이메일·비밀번호 자동 입력)
+
+### 다음 할 일
+- 관리자 API 연동 (#29)
+- 나머지 Mock → 실제 API 교체 (대시보드, 채팅, 문서, 회의)
+
+---
+
 ## 현재 구현 현황 요약
 
 | 항목 | 상태 | 비고 |
