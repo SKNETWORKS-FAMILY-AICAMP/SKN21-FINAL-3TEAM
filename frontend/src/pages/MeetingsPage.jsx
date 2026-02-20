@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import FilterBar from '../components/common/FilterBar';
 import MeetingList from '../components/meetings/MeetingList';
 import MeetingDetail from '../components/meetings/MeetingDetail';
 
@@ -18,7 +17,6 @@ const mockMeetings = [
 ];
 
 export default function MeetingsPage() {
-  const [activeTab, setActiveTab] = useState('전체');
   const [selected, setSelected] = useState(mockMeetings[0]);
 
   return (
@@ -27,7 +25,6 @@ export default function MeetingsPage() {
         <div><h1 className="text-2xl font-bold">회의 관리</h1><p className="text-sm text-neutral-sub mt-1">회의록을 업로드하면 AI가 자동으로 분석합니다</p></div>
         <button className="btn-primary">+ 회의록 업로드</button>
       </header>
-      <FilterBar tabs={['전체', '분석완료', '분석중']} activeTab={activeTab} onTabChange={setActiveTab} />
       <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-5">
         <MeetingList meetings={mockMeetings} selected={selected} onSelect={setSelected} />
         <MeetingDetail meeting={selected} />
