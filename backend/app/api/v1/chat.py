@@ -307,8 +307,8 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             yield f"data: {json.dumps({'type': 'token', 'value': message}, ensure_ascii=False)}\n\n"
                             yield f"data: {json.dumps({'type': 'result', 'intent': intent, 'data': agent_response}, ensure_ascii=False)}\n\n"
                         elif resp_type == "clarify_candidates":
-                            # 이미 clarify_with_candidates에서 전송됨 — result만 전송
-                            yield f"data: {json.dumps({'type': 'result', 'intent': intent, 'data': agent_response}, ensure_ascii=False)}\n\n"
+                            # clarify로 전송해야 프론트에서 버튼 카드로 렌더링됨
+                            yield f"data: {json.dumps({'type': 'result', 'intent': 'clarify', 'data': agent_response}, ensure_ascii=False)}\n\n"
                         else:
                             # 이미 스트리밍한 경우 token 전송 건너뛰기
                             if not agent_response.get("stream_pending") and intent not in ("general", "doc_search", "judgment"):
