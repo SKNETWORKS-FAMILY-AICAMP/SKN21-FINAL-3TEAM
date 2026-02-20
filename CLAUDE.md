@@ -150,7 +150,7 @@ frontend/src/         — React 프론트엔드 (지영)
 
 | 영역 | 기술 |
 |------|------|
-| AI | LangGraph, GPT/Claude API (현재) → vLLM + LoRA (추후), ChromaDB, BM25, bge-reranker |
+| AI | LangGraph, GPT/Claude API (현재) → vLLM + LoRA (추후), Qdrant, BM25, bge-reranker |
 | Backend | FastAPI + SSE, PostgreSQL, SQLAlchemy + Alembic, JWT, Google OAuth 2.0 |
 | Frontend | React (Vite), Zustand, TanStack Query, Tailwind + shadcn/ui, FullCalendar |
 | Infra | AWS (EC2+S3+RDS), Docker, GitHub Actions, RunPod (A100) |
