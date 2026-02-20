@@ -1,51 +1,73 @@
+import { useState, useEffect } from 'react';
 import UserManagement from '../components/admin/UserManagement';
 import RegulationManagement from '../components/admin/RegulationManagement';
 import SystemStats from '../components/admin/SystemStats';
-
-const mockUsers = [
-  { name: '김정보', department: '정보보안팀', role: '관리자', active: true },
-  { name: '이개발', department: '개발팀', role: '일반', active: true },
-  { name: '박인사', department: '인사팀', role: '일반', active: true },
-  { name: '최보안', department: '정보보안팀', role: '일반', active: false },
-];
-
-const mockRegs = [
-  { name: '정보보안 지침', count: 42, status: '적용중' },
-  { name: '인사규정 매뉴얼', count: 38, status: '개정중' },
-  { name: '개발 가이드라인', count: 31, status: '적용중' },
-];
-
-const mockStats = [
-  { label: '판단 질의', percent: 72, color: '#6E87A0' },
-  { label: '문서 분석', percent: 18, color: '#A89580' },
-  { label: '일정 관리', percent: 10, color: '#5B9A6F' },
-];
-
-const mockLogs = [
-  { type: 'query', title: '외부 반출 승인 절차', description: '김정보 · 판단 Agent · 응답 2.3초', time: '5분 전' },
-  { type: 'doc', title: 'Q4 예산 보고서 요약 요청', description: '이개발 · 문서 Agent · 응답 4.1초', time: '12분 전' },
-  { type: 'schedule', title: '회의 일정 등록', description: '박인사 · 일정 Agent · 응답 1.2초', time: '30분 전' },
-];
+import { listUsers, getSystemStats, getQueryLogs, listRegulations } from '../api/admin';
 
 export default function AdminPage() {
+  const [users, setUsers] = useState([]);
+  const [regulations, setRegulations] = useState([]);
+  const [stats, setStats] = useState({ today_queries: 0, processed_meetings: 0, completed_action_items: 0, risk_alerts: 0 });
+  const [queryLogs, setQueryLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadAll = async () => {
+    setLoading(true);
+    try {
+      const [usersRes, regsRes, statsRes, logsRes] = await Promise.all([
+        listUsers().catch(() => ({ data: [] })),
+        listRegulations().catch(() => ({ data: [] })),
+        getSystemStats().catch(() => ({ data: {} })),
+        getQueryLogs().catch(() => ({ data: { items: [] } })),
+      ]);
+      setUsers(usersRes.data || []);
+      setRegulations(regsRes.data || []);
+      setStats(statsRes.data || {});
+      setQueryLogs(logsRes.data?.items || []);
+    } catch (e) {
+      console.error('Admin data load failed:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadAll(); }, []);
+
   return (
     <div>
       <header className="py-6 sticky top-0 bg-surface-main z-10">
         <h1 className="text-2xl font-bold">관리자 설정</h1>
         <p className="text-sm text-neutral-sub mt-1">시스템 설정 및 사용자를 관리합니다</p>
       </header>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        {[{ l: '전체 사용자', v: '24' }, { l: '이번 달 질의 수', v: '847' }, { l: '등록된 규정', v: '6' }].map(({ l, v }) => (
-          <div key={l} className="card p-5"><div className="text-xs text-neutral-sub">{l}</div><div className="font-display text-[1.75rem] font-bold text-primary-700 mt-1">{v}</div></div>
-        ))}
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-5">
-        <div className="space-y-5">
-          <UserManagement users={mockUsers} />
-          <RegulationManagement regulations={mockRegs} />
+
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500" />
         </div>
-        <SystemStats stats={mockStats} queryLogs={mockLogs} />
-      </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+            {[
+              { l: '전체 사용자', v: users.length },
+              { l: '오늘 질의 수', v: stats.today_queries || 0 },
+              { l: '처리된 회의', v: stats.processed_meetings || 0 },
+              { l: '등록된 규정', v: regulations.length },
+            ].map(({ l, v }) => (
+              <div key={l} className="card p-5">
+                <div className="text-xs text-neutral-sub">{l}</div>
+                <div className="font-display text-[1.75rem] font-bold text-primary-700 mt-1">{v}</div>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-5">
+            <div className="space-y-5">
+              <UserManagement users={users} onRefresh={loadAll} />
+              <RegulationManagement regulations={regulations} onRefresh={loadAll} />
+            </div>
+            <SystemStats queryLogs={queryLogs} />
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -53,7 +53,7 @@ async def get_top_queries(
             "question": row.user_message,
             "intent": row.intent,
             "count": row.count,
-            "last_asked": row.last_asked.isoformat() if row.last_asked else None,
+            "last_asked": (row.last_asked.isoformat() + "Z") if row.last_asked else None,
         }
         for row in result.all()
     ]
@@ -129,7 +129,7 @@ async def get_query_logs(
                 "intent_confidence": log.intent_confidence,
                 "agent": log.agent_type,
                 "response_time_ms": log.response_time_ms,
-                "timestamp": log.created_at.isoformat() if log.created_at else None,
+                "timestamp": (log.created_at.isoformat() + "Z") if log.created_at else None,
             }
             for log in logs
         ],
