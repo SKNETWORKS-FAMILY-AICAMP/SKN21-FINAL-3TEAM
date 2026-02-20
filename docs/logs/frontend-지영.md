@@ -347,6 +347,16 @@
 - `uiStore.js` — `moveWidget()` 추가
 - `DashboardPage.jsx` — 좌↔우 컬럼 자유 이동, 드롭 위치 파란 선 표시
 
+#### 6) 일정 유형 커스터마이즈 기능 구현
+
+- **`store/scheduleTypeStore.js`** 신규 생성
+  - 기본 유형 3개 (회의/마감일/개인 일정) + 커스텀 유형 localStorage 저장
+  - `addType(label, color)`, `removeType(id)` 액션
+- **`components/schedules/ScheduleTypeManager.jsx`** 신규 생성
+  - 기본 유형 목록 (삭제 불가) + 커스텀 유형 목록 (삭제 가능)
+  - 이름 입력 + 색상 스와치 12개 선택 → `+ 추가` 버튼 배경색이 선택 색상으로 실시간 변경
+- **`ScheduleForm.jsx`** 수정 — 스토어에서 동적으로 유형 목록 불러와 버튼 렌더링 (커스텀 유형 자동 반영)
+
 ### 다음 할 일
 - 관리자 API 연동 (#29)
 - 나머지 Mock → 실제 API 교체 (대시보드, 채팅, 문서, 회의)
