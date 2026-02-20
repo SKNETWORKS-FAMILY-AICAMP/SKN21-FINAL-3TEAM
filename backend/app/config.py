@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/google/callback"
+    GOOGLE_LOGIN_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
 
     # LLM API (현재: OpenAI, 추후: vLLM 전환 시 BASE_URL만 변경)
     LLM_PROVIDER: str = "openai"
