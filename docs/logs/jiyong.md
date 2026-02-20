@@ -143,7 +143,7 @@
 - judgment_agent, document_agent, schedule_agent → `async def`로 전환
 - orchestrator.py 3개 wrapper 함수에 `await` 추가
 - develop pull → 경은 judgment_agent 구현 코드와 merge conflict 해결
-- feat/pm-지용 + develop 양쪽 push 완료
+- feat/jiyong + develop 양쪽 push 완료
 
 **인프라:**
 - GitHub main 브랜치 보호 설정 (CLI): PR 필수 + 1 approval + force push 차단
