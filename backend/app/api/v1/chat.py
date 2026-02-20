@@ -228,7 +228,12 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                     "type": "judgment",
                                     "message": full_judgment,
                                 }
-                            final_state["agent_response"] = judgment_result
+
+                            # document_agent와 동일하게 원본 dict를 in-place 수정
+                            # (LangGraph 내부 state에 반영 → format_response가 올바른 데이터 수신)
+                            agent_response.pop("stream_pending", None)
+                            agent_response.update(judgment_result)
+                            final_state["agent_response"] = agent_response
                             print(f"[Chat] judgment_agent 스트리밍 완료. 응답 길이: {len(full_judgment)}자")
                         else:
                             yield f"data: {json.dumps({'type': 'status', 'value': 'judgment_agent 처리 완료'}, ensure_ascii=False)}\n\n"

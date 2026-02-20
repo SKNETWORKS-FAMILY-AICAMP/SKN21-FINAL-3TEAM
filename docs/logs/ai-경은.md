@@ -365,3 +365,56 @@ python -m ai.tests.test_e2e_judgment --timeout 120          # 타임아웃 변�
 - 실 규정 문서의 조항 번호 체계 확인 → `_ARTICLE_PATTERNS` 정규식 검증
 - Priority 4: 다양한 문서(AWS 정책, 논문, 계약서) RAG 테스트 — 문서 확보 후 진행
 - 5단계 성능 평가 (#13) — 환각 탐지 정확도, confidence 보정 효과 정량 평가
+
+---
+
+## 2026-02-20 (목)
+
+### judgment_agent_stream SSE 연동 완료
+
+**1. orchestrator.py — judgment 스트리밍 분기 추가:**
+- `safe_judgment_agent()`에 `stream_mode` 체크 추가
+- `stream_mode=True`일 때 `stream_pending=True` 반환 → chat.py에서 직접 스트리밍 처리
+- `general_response_node`와 동일한 패턴 적용
+
+**2. chat.py — judgment SSE 핸들러 추가:**
+- `judgment_agent` 노드 이벤트에서 `judgment_agent_stream()` 호출
+- 토큰 단위 `{'type': 'token', 'value': ...}` SSE 전송
+- `\n[DONE]` 이후 JSON 파싱 → `final_state["agent_response"]`에 저장
+  - `confidence_breakdown`, `cross_references`, `regulation_groups` 등 전부 포함
+- `format_response`에서 `judgment` intent 토큰 중복 전송 방지 (`intent not in ("general", "doc_search", "judgment")`)
+
+**SSE 이벤트 흐름:**
+```
+intent → status("judgment_agent 처리 중...")
+       → token (토큰 단위 스트리밍)
+       → result (confidence_breakdown, cross_references, regulation_groups 포함)
+       → done
+```
+
+### document_parser 스텁 → 실제 구현 완성
+
+| 파일 | 구현 내용 |
+|------|----------|
+| `docling_parser.py` | Docling PDF 구조화 파싱 + `split_by_sections()` 조항 단위 청킹 (표지/목차 스킵, 제N장 chapter 추적, 제N조 청크 분할, 400자 초과 시 불릿 서브 분할) |
+| `docx_parser.py` | python-docx 파싱 (Heading 스타일 → 마크다운 헤딩, 테이블 → 마크다운 테이블 변환) |
+| `ocr_parser.py` | PaddleOCR lazy 초기화 + `extract_text()` 이미지 OCR + `extract_text_from_pdf()` 스캔 PDF 페이지별 OCR |
+| `parser.py` | 확장자별 자동 분기 라우터 + PDF OCR fallback (Docling 결과 50자 미만 시) + `parse_and_chunk()` 원스톱 메서드 |
+
+### ingestion 스크립트 작성
+
+- `scripts/ingest_documents.py` 신규 — 문서 파싱 → Qdrant RAG 적재 CLI 스크립트
+- 승언의 `DocumentParser`(파싱+청킹) → 경은의 `QdrantRAGPipeline`(임베딩+적재) 연결
+- CLI 옵션: `--scope`, `--user-id`, `--force` (재적재), `--test` (검색 테스트), `--batch-size`
+- 사용법: `python scripts/ingest_documents.py data/regulations/ --force --test "연차 휴가"`
+
+### 커밋 & 머지
+
+- `feat/ai-yoon` → origin push 완료 (`34c4f0b`)
+- `develop` ← `feat/ai-yoon` Fast-forward 머지 완료 (충돌 없음)
+
+**다음 할 일:**
+- 지영(Frontend)과 judgment 스트리밍 응답(`confidence_breakdown`, `warnings`) 렌더링 협의
+- `ingest_documents.py`로 실제 규정 PDF 적재 테스트 (`data/regulations/dudu_tech_regulations.pdf`)
+- 다양한 문서 형식(DOCX, 스캔 PDF) 파싱 테스트
+- 5단계 성능 평가 (#13) — 환각 탐지 정확도, confidence 보정 효과 정량 평가
