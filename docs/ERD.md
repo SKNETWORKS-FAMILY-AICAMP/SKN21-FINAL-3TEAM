@@ -235,7 +235,7 @@ erDiagram
 | created_at | DATETIME | NOT NULL | `now()` | |
 | updated_at | DATETIME | NOT NULL | `now()` | 자동 갱신 |
 
-> FK 없음 — RAG 파이프라인(ChromaDB + BM25)에서 별도 임베딩하여 검색
+> FK 없음 — RAG 파이프라인(Qdrant + BM25)에서 별도 임베딩하여 검색
 
 ### 5. meetings — 회의
 

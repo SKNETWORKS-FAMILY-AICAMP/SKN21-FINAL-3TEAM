@@ -160,7 +160,7 @@ async def confirm_password_reset(
 
 # ── Google 소셜 로그인 ──
 
-GOOGLE_LOGIN_REDIRECT_URI = "http://localhost:8000/api/v1/auth/google/callback"
+
 
 
 @router.get("/google")
@@ -170,7 +170,7 @@ async def google_login():
     scope_parts = ["openid", "email", "profile"] + list(GOOGLE_SCOPES.values())
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
-        "redirect_uri": GOOGLE_LOGIN_REDIRECT_URI,
+        "redirect_uri": settings.GOOGLE_LOGIN_REDIRECT_URI,
         "response_type": "code",
         "scope": " ".join(scope_parts),
         "access_type": "offline",
@@ -193,7 +193,7 @@ async def google_login_callback(
                 "code": code,
                 "client_id": settings.GOOGLE_CLIENT_ID,
                 "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                "redirect_uri": GOOGLE_LOGIN_REDIRECT_URI,
+                "redirect_uri": settings.GOOGLE_LOGIN_REDIRECT_URI,
                 "grant_type": "authorization_code",
             },
         )

@@ -215,12 +215,12 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             full_judgment = ""
                             judgment_result = {}
                             async for chunk in judgment_agent_stream(judgment_state):
-                                if chunk.startswith("\n[DONE]"):
+                                stripped = chunk.strip()
+                                if stripped.startswith("[DONE]"):
                                     # 최종 구조화 JSON 파싱
-                                    judgment_result = json.loads(chunk[len("\n[DONE]"):])
+                                    judgment_result = json.loads(stripped[len("[DONE]"):])
                                 else:
                                     full_judgment += chunk
-                                    yield f"data: {json.dumps({'type': 'token', 'value': chunk}, ensure_ascii=False)}\n\n"
 
                             # 최종 응답 저장
                             if not judgment_result:
@@ -228,7 +228,20 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                     "type": "judgment",
                                     "message": full_judgment,
                                 }
-                            final_state["agent_response"] = judgment_result
+
+                            # reasoning 텍스트를 단어 단위로 스트리밍 (LLM 응답이 JSON이라 원문은 보내면 안 됨)
+                            reasoning_text = judgment_result.get("reasoning", full_judgment)
+                            if reasoning_text:
+                                words = reasoning_text.split(" ")
+                                for i, word in enumerate(words):
+                                    token = word if i == 0 else " " + word
+                                    yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
+
+                            # document_agent와 동일하게 원본 dict를 in-place 수정
+                            # (LangGraph 내부 state에 반영 → format_response가 올바른 데이터 수신)
+                            agent_response.pop("stream_pending", None)
+                            agent_response.update(judgment_result)
+                            final_state["agent_response"] = agent_response
                             print(f"[Chat] judgment_agent 스트리밍 완료. 응답 길이: {len(full_judgment)}자")
                         else:
                             yield f"data: {json.dumps({'type': 'status', 'value': 'judgment_agent 처리 완료'}, ensure_ascii=False)}\n\n"
@@ -307,8 +320,8 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             yield f"data: {json.dumps({'type': 'token', 'value': message}, ensure_ascii=False)}\n\n"
                             yield f"data: {json.dumps({'type': 'result', 'intent': intent, 'data': agent_response}, ensure_ascii=False)}\n\n"
                         elif resp_type == "clarify_candidates":
-                            # 이미 clarify_with_candidates에서 전송됨 — result만 전송
-                            yield f"data: {json.dumps({'type': 'result', 'intent': intent, 'data': agent_response}, ensure_ascii=False)}\n\n"
+                            # clarify로 전송해야 프론트에서 버튼 카드로 렌더링됨
+                            yield f"data: {json.dumps({'type': 'result', 'intent': 'clarify', 'data': agent_response}, ensure_ascii=False)}\n\n"
                         else:
                             # 이미 스트리밍한 경우 token 전송 건너뛰기
                             if not agent_response.get("stream_pending") and intent not in ("general", "doc_search", "judgment"):

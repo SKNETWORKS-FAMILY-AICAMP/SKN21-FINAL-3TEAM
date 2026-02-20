@@ -555,7 +555,7 @@ docs: API 스키마 문서 업데이트
 **RAG 파이프라인**
 - Hybrid Search (BM25 + Vector Search)
 - **Reranking 단계 추가** (BAAI/bge-reranker-v2-m3)
-- Vector DB(ChromaDB) 구축 및 인덱싱
+- Vector DB(Qdrant) 구축 및 인덱싱
 - 임베딩 모델 최적화 (jhgan/ko-sbert-nli)
 - Chunk 전략 설계 (규정: 조항 단위, 회의록: 문단 단위)
 
@@ -704,7 +704,7 @@ docs: API 스키마 문서 업데이트
 | 양자화 | bitsandbytes (4-bit QLoRA) | 유지 |
 | 추론 서빙 | **vLLM (확정)** | 🔄 TGI 옵션 제거 |
 | Agent Framework | **LangGraph** | 🔴 LangChain에서 전환 |
-| Vector DB | ChromaDB | 유지 |
+| Vector DB | Qdrant | 유지 |
 | Embedding | jhgan/ko-sbert-nli | 유지 |
 | **Reranker** | **BAAI/bge-reranker-v2-m3** | 🆕 추가 |
 | 키워드 검색 | BM25 (rank_bm25) | 유지 |
