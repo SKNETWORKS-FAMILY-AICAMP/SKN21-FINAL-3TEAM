@@ -119,8 +119,17 @@ async def general_response_node(state: AgentState) -> AgentState:
 async def safe_judgment_agent(state: AgentState) -> AgentState:
     """판단 Agent 안전 래퍼 (팀원 B)"""
     _t = time.time()
-    print("[Orchestrator] safe_judgment_agent 진입")
+    print(f"[Orchestrator] safe_judgment_agent 진입 | stream_mode={state.get('stream_mode')}")
     try:
+        # 스트리밍 모드면 chat.py에서 judgment_agent_stream으로 직접 처리
+        if state.get("stream_mode"):
+            state["agent_response"] = {
+                "type": "judgment",
+                "message": "",
+                "stream_pending": True,
+            }
+            return state
+
         from ai.agents.judgment_agent import judgment_agent
 
         result = await judgment_agent(state)

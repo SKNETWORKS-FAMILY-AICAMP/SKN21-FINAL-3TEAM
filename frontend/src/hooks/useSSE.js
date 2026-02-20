@@ -10,11 +10,10 @@
  *
  * 동작 방식:
  *   1) fetch + ReadableStream으로 POST /api/v1/chat/stream 호출
- *   2) 네트워크 에러 시 기존 Mock 모드로 자동 폴백
+ *   2) 네트워크 에러 시 UI에 에러 메시지 표시
  */
 import { useCallback, useRef } from 'react'
 import useChatStore from '../store/chatStore'
-import { MOCK_RESPONSES } from '../utils/mockData'
 
 export default function useSSE() {
   const abortRef = useRef(null)
@@ -138,37 +137,6 @@ export default function useSSE() {
     }
   }, [setStreaming, setCurrentIntent, setCurrentStatus, appendToken, setLastAssistantResult, setLastAssistantError, setLastAssistantIntent])
 
-  // Mock 스트리밍 (백엔드 미연결 시 폴백)
-  const startMockStream = useCallback((message) => {
-    const mock = findMockResponse(message)
-
-    const intentTimer = setTimeout(() => {
-      setCurrentIntent(mock.intent)
-      setCurrentStatus(mock.status)
-    }, 300)
-
-    const tokens = mock.content.split('')
-    let index = 0
-
-    const streamTimer = setTimeout(() => {
-      setCurrentStatus(null)
-      timerRef.current = setInterval(() => {
-        if (index < tokens.length) {
-          appendToken(tokens[index])
-          index++
-        } else {
-          clearInterval(timerRef.current)
-          timerRef.current = null
-          setStreaming(false)
-          setCurrentIntent(null)
-          saveCurrentSession()
-        }
-      }, 30)
-    }, 800)
-
-    timerRef.current = { intentTimer, streamTimer }
-  }, [setStreaming, setCurrentIntent, setCurrentStatus, appendToken, saveCurrentSession])
-
   // 스트리밍 중단
   const stopStream = useCallback(() => {
     // 실제 SSE 중단
@@ -194,14 +162,4 @@ export default function useSSE() {
   }, [setStreaming, setCurrentIntent, setCurrentStatus])
 
   return { startStream, stopStream }
-}
-
-function findMockResponse(message) {
-  const msg = message.toLowerCase()
-  for (const mock of MOCK_RESPONSES) {
-    if (mock.keywords.some((kw) => msg.includes(kw))) {
-      return mock
-    }
-  }
-  return MOCK_RESPONSES[MOCK_RESPONSES.length - 1]
 }

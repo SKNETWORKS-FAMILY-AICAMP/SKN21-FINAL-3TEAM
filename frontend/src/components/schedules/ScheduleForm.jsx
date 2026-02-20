@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import useGoogleServices from '../../hooks/useGoogleServices';
+import useScheduleTypeStore, { DEFAULT_TYPES } from '../../store/scheduleTypeStore';
 
 // 00:00 ~ 23:50 (10분 간격) 타임 옵션 생성
 const timeOptions = [];
@@ -12,6 +13,8 @@ for (let h = 0; h < 24; h++) {
 
 export default function ScheduleForm({ onSubmit, onClose }) {
   const { connected, hasScope } = useGoogleServices();
+  const { customTypes } = useScheduleTypeStore();
+  const allTypes = [...DEFAULT_TYPES, ...customTypes];
   const [form, setForm] = useState({
     title: '',
     date: '',
@@ -58,23 +61,19 @@ export default function ScheduleForm({ onSubmit, onClose }) {
         {/* 일정 유형 */}
         <div>
           <label className="text-[0.8125rem] font-semibold block mb-1">일정 유형</label>
-          <div className="flex gap-2">
-            {[
-              { value: 'meeting', label: '회의', dot: 'bg-primary-500' },
-              { value: 'deadline', label: '마감일', dot: 'bg-error' },
-              { value: 'google', label: '개인 일정', dot: 'bg-success' },
-            ].map(({ value, label, dot }) => (
+          <div className="flex flex-wrap gap-2">
+            {allTypes.map(({ id, label, color }) => (
               <button
-                key={value}
+                key={id}
                 type="button"
-                onClick={() => setForm({ ...form, type: value })}
+                onClick={() => setForm({ ...form, type: id })}
                 className={`flex items-center gap-1.5 px-3.5 py-2 rounded-md border text-sm font-medium transition ${
-                  form.type === value
+                  form.type === id
                     ? 'border-primary-500 bg-primary-50 text-primary-700'
                     : 'border-neutral-border bg-surface-card text-neutral-sub hover:border-primary-300'
                 }`}
               >
-                <span className={`w-2.5 h-2.5 rounded-full ${dot}`} />
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
                 {label}
               </button>
             ))}
