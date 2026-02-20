@@ -221,7 +221,6 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                     judgment_result = json.loads(stripped[len("[DONE]"):])
                                 else:
                                     full_judgment += chunk
-                                    yield f"data: {json.dumps({'type': 'token', 'value': chunk}, ensure_ascii=False)}\n\n"
 
                             # 최종 응답 저장
                             if not judgment_result:
@@ -229,6 +228,11 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                     "type": "judgment",
                                     "message": full_judgment,
                                 }
+
+                            # reasoning 텍스트만 토큰으로 전송 (LLM 응답이 JSON이라 원문 그대로 보내면 안 됨)
+                            reasoning_text = judgment_result.get("reasoning", full_judgment)
+                            if reasoning_text:
+                                yield f"data: {json.dumps({'type': 'token', 'value': reasoning_text}, ensure_ascii=False)}\n\n"
 
                             # document_agent와 동일하게 원본 dict를 in-place 수정
                             # (LangGraph 내부 state에 반영 → format_response가 올바른 데이터 수신)
