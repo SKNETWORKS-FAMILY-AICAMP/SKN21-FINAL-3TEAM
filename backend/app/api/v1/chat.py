@@ -200,6 +200,39 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             "message": full_response,
                         }
 
+                    elif node_name == "judgment_agent":
+                        # 2-4. 판단 Agent 스트리밍 (judgment_agent_stream)
+                        agent_response = node_output.get("agent_response", {})
+                        print(f"[Chat] judgment_agent 노드 진입. stream_pending={agent_response.get('stream_pending')}")
+
+                        if agent_response.get("stream_pending"):
+                            from ai.agents.judgment_agent import judgment_agent_stream
+
+                            judgment_state = dict(final_state)
+                            judgment_state["user_input"] = final_state.get("resolved_input") or final_state.get("user_input", "")
+                            judgment_state["chat_history"] = final_state.get("chat_history", [])
+
+                            full_judgment = ""
+                            judgment_result = {}
+                            async for chunk in judgment_agent_stream(judgment_state):
+                                if chunk.startswith("\n[DONE]"):
+                                    # 최종 구조화 JSON 파싱
+                                    judgment_result = json.loads(chunk[len("\n[DONE]"):])
+                                else:
+                                    full_judgment += chunk
+                                    yield f"data: {json.dumps({'type': 'token', 'value': chunk}, ensure_ascii=False)}\n\n"
+
+                            # 최종 응답 저장
+                            if not judgment_result:
+                                judgment_result = {
+                                    "type": "judgment",
+                                    "message": full_judgment,
+                                }
+                            final_state["agent_response"] = judgment_result
+                            print(f"[Chat] judgment_agent 스트리밍 완료. 응답 길이: {len(full_judgment)}자")
+                        else:
+                            yield f"data: {json.dumps({'type': 'status', 'value': 'judgment_agent 처리 완료'}, ensure_ascii=False)}\n\n"
+
                     elif node_name == "document_agent":
                         # 2-2. 문서 Agent 스트리밍
                         agent_response = node_output.get("agent_response", {})
@@ -274,11 +307,11 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             yield f"data: {json.dumps({'type': 'token', 'value': message}, ensure_ascii=False)}\n\n"
                             yield f"data: {json.dumps({'type': 'result', 'intent': intent, 'data': agent_response}, ensure_ascii=False)}\n\n"
                         elif resp_type == "clarify_candidates":
-                            # 이미 clarify_with_candidates에서 전송됨 — result만 전송
-                            yield f"data: {json.dumps({'type': 'result', 'intent': intent, 'data': agent_response}, ensure_ascii=False)}\n\n"
+                            # clarify로 전송해야 프론트에서 버튼 카드로 렌더링됨
+                            yield f"data: {json.dumps({'type': 'result', 'intent': 'clarify', 'data': agent_response}, ensure_ascii=False)}\n\n"
                         else:
                             # 이미 스트리밍한 경우 token 전송 건너뛰기
-                            if not agent_response.get("stream_pending") and intent not in ("general", "doc_search"):
+                            if not agent_response.get("stream_pending") and intent not in ("general", "doc_search", "judgment"):
                                 yield f"data: {json.dumps({'type': 'token', 'value': message}, ensure_ascii=False)}\n\n"
 
                             yield f"data: {json.dumps({'type': 'result', 'intent': intent, 'data': agent_response}, ensure_ascii=False)}\n\n"

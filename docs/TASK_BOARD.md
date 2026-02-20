@@ -403,7 +403,7 @@
 ```
 main (배포용 - PM 지용만 머지)
  └── develop (통합 개발 - PR 머지 대상)
-      ├── feat/pm-지용          스키마, Intent, 오케스트레이터, SSE
+      ├── feat/jiyong            스키마, Intent, 오케스트레이터, SSE
       ├── feat/ai-경은          LLM API, RAG, 판단 Agent, 파인튜닝
       ├── feat/ai-승언          문서 Agent, 파서, 템플릿, 파인튜닝
       ├── feat/backend-혜빈     DB, 인증, API, Google Services

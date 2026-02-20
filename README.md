@@ -593,7 +593,7 @@ SKN21-FINAL-3TEAM/
 ```
 main (배포용 - PM 지용만 머지)
  └── develop (통합 개발 - PR 머지 대상)
-      ├── feat/pm-지용          Intent, 오케스트레이터, SSE, 스키마
+      ├── feat/jiyong            Intent, 오케스트레이터, SSE, 스키마
       ├── feat/ai-경은          LLM API, RAG, 판단 Agent, 파인튜닝
       ├── feat/ai-승언          문서 Agent, 파서, 템플릿, 파인튜닝
       ├── feat/backend-혜빈     DB, 인증, API, Google Services
