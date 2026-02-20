@@ -317,6 +317,42 @@
 
 ---
 
+## 2026-02-19 (목)
+
+### 한 일
+
+#### 1) Docker 환경 구성
+- `Dockerfile.backend` — `ai/requirements.txt` 설치 추가, PYTHONPATH/CMD 경로 수정, bitsandbytes 제외
+- `.env` — DATABASE_URL/REDIS_URL 호스트 `localhost` → `db`/`redis`로 변경
+- `vite.config.js` — 프록시 타겟 `process.env.BACKEND_URL || 'http://localhost:8000'`으로 변경
+- `docker-compose.yml` — frontend에 `BACKEND_URL=http://backend:8000` 추가 (Google 로그인 500 에러 해결)
+
+#### 2) 챗봇 버그 수정
+- `useChat.js` — `createSession()` 중복 호출 제거, `isStreaming` 스테일 클로저 버그 수정
+- `useSSE.js` — SSE 에러 시 Mock 폴백 제거 → `setLastAssistantError()`로 UI에 직접 표시
+- `chatStore.js` — 빈 세션 자동 정리, `initSession()` 수정 (in-memory 메시지 있으면 덮어쓰지 않음)
+- `ChatPage.jsx` — judgment 카드 텍스트 이중 렌더링 수정
+
+#### 3) DocumentsPage Mock 데이터 제거
+- `mockDocs` 삭제, 실제 업로드 문서만 표시
+
+#### 4) 대시보드 예시 질문 → 챗봇 자동 전송
+- `chatStore.js` — `pendingQuestion` 상태 추가
+- `AIChatWidget.jsx` — 질문 클릭 시 `setPendingQuestion(q)` 후 `/chat` 이동
+- `ChatPage.jsx` — 마운트 시 `pendingQuestion` 감지 → 새 세션 생성 + 자동 전송
+- React StrictMode 이중 실행 + Auth 리마운트 문제 → `mountedRef`로 해결
+
+#### 5) 대시보드 위젯 자유 배치 (컬럼 간 드래그)
+- `framer-motion Reorder` → HTML5 드래그 앤 드롭으로 교체
+- `uiStore.js` — `moveWidget()` 추가
+- `DashboardPage.jsx` — 좌↔우 컬럼 자유 이동, 드롭 위치 파란 선 표시
+
+### 다음 할 일
+- 관리자 API 연동 (#29)
+- 나머지 Mock → 실제 API 교체 (대시보드, 채팅, 문서, 회의)
+
+---
+
 ## 현재 구현 현황 요약
 
 | 항목 | 상태 | 비고 |

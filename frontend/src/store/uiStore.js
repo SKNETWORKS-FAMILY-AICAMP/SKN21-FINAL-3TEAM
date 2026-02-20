@@ -66,6 +66,25 @@ const useUIStore = create((set) => ({
     return { dashboard: next }
   }),
 
+  // dragId를 targetCol의 targetId 앞에 삽입 (targetId=null이면 끝에)
+  moveWidget: (dragId, targetId, targetCol) => set((state) => {
+    const d = state.dashboard
+    let left = d.leftColumn.filter(w => w !== dragId)
+    let right = d.rightColumn.filter(w => w !== dragId)
+
+    if (targetCol === 'leftColumn') {
+      const idx = targetId != null ? left.indexOf(targetId) : -1
+      left = idx === -1 ? [...left, dragId] : [...left.slice(0, idx), dragId, ...left.slice(idx)]
+    } else {
+      const idx = targetId != null ? right.indexOf(targetId) : -1
+      right = idx === -1 ? [...right, dragId] : [...right.slice(0, idx), dragId, ...right.slice(idx)]
+    }
+
+    const next = { ...d, leftColumn: left, rightColumn: right }
+    saveDashboard(next)
+    return { dashboard: next }
+  }),
+
   hideWidget: (id) => set((state) => {
     const d = state.dashboard
     const next = {

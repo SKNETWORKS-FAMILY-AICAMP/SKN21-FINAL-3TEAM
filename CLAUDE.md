@@ -5,7 +5,7 @@
 작업 전 반드시 아래 문서를 확인할 것:
 
 - `docs/logs/` — **팀원별 작업 로그** (이전 세션에서 뭘 했는지 확인)
-  - `pm-지용.md` / `ai-경은.md` / `ai-승언.md` / `backend-혜빈.md` / `frontend-지영.md`
+  - `jiyong.md` / `ai-경은.md` / `ai-승언.md` / `backend-혜빈.md` / `frontend-지영.md`
 - `README.md` — **프로젝트 소개 및 전체 개요** (세션 시작 시 반드시 참고)
 - `docs/TASK_BOARD.md` — **일일 작업 기준 문서** (이슈 목록, 체크리스트, 담당자, 단계별 할 일)
 - `docs/역할분배_기술스택_v5_final.md` — 기술 결정 배경, 멘토 피드백, 아키텍처 상세 (수정하지 않음)
@@ -51,7 +51,7 @@
 
 | 이름 | 역할 | GitHub 라벨 | 브랜치 | GitHub ID |
 |------|------|-------------|--------|-----------|
-| 신지용 | PM + Intent + 오케스트레이션 | `지용:PM` | `feat/pm-지용` | sjy361872 |
+| 신지용 | PM + Intent + 오케스트레이션 | `지용:PM` | `feat/jiyong` | sjy361872 |
 | 윤경은 | AI서브 (LLM API + 판단 Agent + RAG) | `경은:AI서브` | `feat/ai-경은` | ykgstar37-lab |
 | 진승언 | AI리드 (문서 Agent + 파서 + 템플릿) | `승언:AI리드` | `feat/ai-승언` | jse8406 |
 | 안혜빈 | Backend + DB + 인증 + Google Services | `혜빈:Backend` | `feat/backend-혜빈` | hyebinhy |
@@ -94,7 +94,7 @@
 ```
 main (배포용 - PM 지용만 머지)
  └── develop (통합 개발)
-      ├── feat/pm-지용
+      ├── feat/jiyong
       ├── feat/ai-경은
       ├── feat/ai-승언
       ├── feat/backend-혜빈

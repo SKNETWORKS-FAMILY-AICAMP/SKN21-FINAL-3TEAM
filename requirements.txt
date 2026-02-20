@@ -1,0 +1,91 @@
+# ==============================================
+# WorkFlow Agent 통합 requirements
+# (backend/requirements.txt + ai/requirements.txt 합본)
+# ==============================================
+
+# ── FastAPI ──
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.18
+sse-starlette==2.2.1
+
+# ── Database ──
+sqlalchemy==2.0.36
+alembic==1.14.0
+psycopg2-binary==2.9.10
+asyncpg==0.30.0
+greenlet==3.3.1
+
+# ── Authentication ──
+PyJWT==2.10.1
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+cryptography==44.0.0
+
+# ── Google Services ──
+google-api-python-client==2.158.0
+google-auth==2.37.0
+google-auth-oauthlib==1.2.1
+
+# ── Task Queue ──
+celery==5.4.0
+redis==5.2.1
+
+# ── Document Parsing ──
+docling==2.14.0
+paddleocr==3.4.0
+python-docx==1.1.2
+PyMuPDF==1.25.2
+
+# ── LangGraph / LangChain ──
+langgraph>=1.0.0
+langgraph-checkpoint>=2.0.0
+langgraph-prebuilt>=1.0.0
+langchain>=1.0.0
+langchain-core>=1.2.0
+langchain-community>=0.4.0
+langchain-openai>=1.1.0
+langchain-text-splitters>=1.1.0
+langchain-qdrant>=1.1.0
+
+# ── LLM API ──
+openai>=1.44.0
+anthropic>=0.34.0
+
+# ── ML / Fine-tuning (4단계) ──
+torch>=2.0.0
+transformers>=4.44.0
+peft>=0.12.0
+trl>=0.11.0
+bitsandbytes>=0.43.0
+accelerate>=0.33.0
+datasets>=3.0.0
+
+# ── Embedding & Reranker ──
+sentence-transformers>=3.0.0
+
+# ── Vector DB ──
+chromadb>=0.5.0
+qdrant-client==1.16.2
+
+# ── BM25 / Search ──
+rank_bm25==0.2.2
+
+# ── Korean NLP ──
+kiwipiepy==0.22.2
+
+# ── Evaluation ──
+rouge-score==0.1.2
+bert-score==0.3.13
+scikit-learn>=1.5.0
+
+# ── Utilities ──
+python-dotenv==1.0.1
+pydantic==2.10.6
+pydantic-settings>=2.10.1
+email-validator==2.3.0
+httpx==0.28.1
+numpy>=1.26.0
+pandas>=2.2.0
+pyyaml>=6.0.0
+tqdm>=4.66.0

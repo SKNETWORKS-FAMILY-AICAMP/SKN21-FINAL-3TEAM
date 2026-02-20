@@ -19,23 +19,31 @@ import { MOCK_RESPONSES } from '../utils/mockData'
 export default function useSSE() {
   const abortRef = useRef(null)
   const timerRef = useRef(null)
-  const { setStreaming, setCurrentIntent, setCurrentStatus, appendToken, saveCurrentSession } = useChatStore()
+  const currentIntentRef = useRef(null)
+  const {
+    setStreaming, setCurrentIntent, setCurrentStatus, appendToken, saveCurrentSession,
+    setLastAssistantResult, setLastAssistantError, setLastAssistantIntent,
+  } = useChatStore()
 
   // 실제 SSE 스트리밍
-  const startStream = useCallback(async (message) => {
+  const startStream = useCallback(async (message, sessionId) => {
     setStreaming(true)
+    currentIntentRef.current = null
     const token = localStorage.getItem('access_token')
     const controller = new AbortController()
     abortRef.current = controller
 
     try {
+      const body = { message }
+      if (sessionId) body.session_id = sessionId
+
       const res = await fetch('/api/v1/chat/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify(body),
         signal: controller.signal,
       })
 
@@ -68,7 +76,12 @@ export default function useSSE() {
 
             switch (event.type) {
               case 'intent':
-                setCurrentIntent(event.intent || event.agent_type)
+                currentIntentRef.current = event.intent || event.agent_type
+                setCurrentIntent(currentIntentRef.current)
+                break
+              case 'intent_update':
+                currentIntentRef.current = event.intent
+                setCurrentIntent(event.intent)
                 break
               case 'status':
                 setCurrentStatus(event.value)
@@ -78,12 +91,26 @@ export default function useSSE() {
                 appendToken(event.value)
                 break
               case 'result':
-                // 최종 결과 (필요 시 처리)
+                setLastAssistantResult(event.intent || currentIntentRef.current, event.data)
                 break
               case 'done':
+                if (currentIntentRef.current) {
+                  setLastAssistantIntent(currentIntentRef.current)
+                }
                 break
               case 'error':
                 console.error('[SSE] 서버 에러:', event.message || event.value)
+                setLastAssistantError(event.message || event.value || '서버 오류가 발생했습니다')
+                break
+              case 'multi_intent':
+                setCurrentStatus(`복합 질문 분석: ${event.data?.total || ''}개 하위 질문`)
+                break
+              case 'sub_query_done':
+                setCurrentStatus(`처리 중 ${event.data?.step || ''}/${event.data?.total || ''}`)
+                break
+              case 'clarify_candidates':
+                setLastAssistantResult('clarify', event.data)
+                if (event.data?.message) appendToken(event.data.message)
                 break
             }
           } catch {
@@ -99,18 +126,17 @@ export default function useSSE() {
     } catch (err) {
       if (err.name === 'AbortError') return // 사용자가 중단
 
-      console.warn('[SSE] 백엔드 연결 실패, Mock 모드로 폴백:', err.message)
+      setStreaming(false)
+      setCurrentStatus(null)
 
-      // 401이면 폴백 없이 에러 전파
       if (err.status === 401) {
-        setStreaming(false)
         throw err
       }
 
-      // 네트워크 에러 → Mock 폴백
-      startMockStream(message)
+      // 에러를 메시지에 기록 → UI에 표시
+      setLastAssistantError(err.message || '서버 연결에 실패했습니다')
     }
-  }, [setStreaming, setCurrentIntent, setCurrentStatus, appendToken])
+  }, [setStreaming, setCurrentIntent, setCurrentStatus, appendToken, setLastAssistantResult, setLastAssistantError, setLastAssistantIntent])
 
   // Mock 스트리밍 (백엔드 미연결 시 폴백)
   const startMockStream = useCallback((message) => {
