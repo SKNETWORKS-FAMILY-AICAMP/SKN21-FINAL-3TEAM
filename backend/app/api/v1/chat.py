@@ -215,9 +215,10 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             full_judgment = ""
                             judgment_result = {}
                             async for chunk in judgment_agent_stream(judgment_state):
-                                if chunk.startswith("\n[DONE]"):
+                                stripped = chunk.strip()
+                                if stripped.startswith("[DONE]"):
                                     # 최종 구조화 JSON 파싱
-                                    judgment_result = json.loads(chunk[len("\n[DONE]"):])
+                                    judgment_result = json.loads(stripped[len("[DONE]"):])
                                 else:
                                     full_judgment += chunk
                                     yield f"data: {json.dumps({'type': 'token', 'value': chunk}, ensure_ascii=False)}\n\n"
