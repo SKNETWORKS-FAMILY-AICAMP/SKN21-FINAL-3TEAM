@@ -1,70 +1,118 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { HelpCircle, FileText, CalendarClock } from 'lucide-react';
+import { getTopQueries } from '../../api/admin';
 
-const PERIODS = ['일간', '주간', '월간'];
+const PERIODS = [
+  { label: '일간', value: 'daily' },
+  { label: '주간', value: 'weekly' },
+  { label: '월간', value: 'monthly' },
+];
 
-const STATS_BY_PERIOD = {
-  '일간': [
-    { label: '판단 질의', percent: 72, color: '#6E87A0' },
-    { label: '문서 분석', percent: 18, color: '#A89580' },
-    { label: '일정 관리', percent: 10, color: '#5B9A6F' },
-  ],
-  '주간': [
-    { label: '판단 질의', percent: 58, color: '#6E87A0' },
-    { label: '문서 분석', percent: 27, color: '#A89580' },
-    { label: '일정 관리', percent: 15, color: '#5B9A6F' },
-  ],
-  '월간': [
-    { label: '판단 질의', percent: 63, color: '#6E87A0' },
-    { label: '문서 분석', percent: 22, color: '#A89580' },
-    { label: '일정 관리', percent: 15, color: '#5B9A6F' },
-  ],
+const INTENT_COLORS = {
+  judgment: '#6E87A0',
+  doc_generate: '#A89580',
+  meeting_generate: '#A89580',
+  schedule_add: '#5B9A6F',
+  schedule_view: '#5B9A6F',
+  general: '#9B8EC4',
 };
 
-export default function SystemStats({ stats = [], queryLogs = [] }) {
-  const [period, setPeriod] = useState('일간');
-  const currentStats = STATS_BY_PERIOD[period] || stats;
+const INTENT_LABELS = {
+  judgment: '판단 질의',
+  doc_generate: '문서 생성',
+  meeting_generate: '회의록 생성',
+  schedule_add: '일정 추가',
+  schedule_view: '일정 조회',
+  general: '일반 질문',
+};
+
+function timeAgo(timestamp) {
+  if (!timestamp) return '';
+  const diff = Date.now() - new Date(timestamp).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return '방금';
+  if (minutes < 60) return `${minutes}분 전`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  return `${Math.floor(hours / 24)}일 전`;
+}
+
+export default function SystemStats({ queryLogs = [] }) {
+  const [period, setPeriod] = useState('daily');
+  const [topQueries, setTopQueries] = useState([]);
+
+  useEffect(() => {
+    getTopQueries(period, 5)
+      .then((res) => setTopQueries(res.data || []))
+      .catch(() => setTopQueries([]));
+  }, [period]);
+
+  // Top queries → 비율 계산
+  const total = topQueries.reduce((sum, q) => sum + q.count, 0) || 1;
+  const stats = topQueries.map((q) => ({
+    label: q.question?.slice(0, 20) + (q.question?.length > 20 ? '...' : ''),
+    intent: q.intent,
+    percent: Math.round((q.count / total) * 100),
+    color: INTENT_COLORS[q.intent] || '#999',
+    count: q.count,
+  }));
 
   return (
     <div className="space-y-5">
       <div className="card">
         <div className="card-header">
-          <div className="card-title">시스템 통계</div>
+          <div className="card-title">인기 질의</div>
           <div className="flex gap-1">
             {PERIODS.map((t) => (
               <button
-                key={t}
-                onClick={() => setPeriod(t)}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition ${period === t ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-sub hover:bg-surface-hover'}`}
+                key={t.value}
+                onClick={() => setPeriod(t.value)}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition ${period === t.value ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-sub hover:bg-surface-hover'}`}
               >
-                {t}
+                {t.label}
               </button>
             ))}
           </div>
         </div>
         <div className="card-body space-y-3">
-          {currentStats.map((s, i) => (
+          {stats.length === 0 ? (
+            <p className="text-sm text-neutral-sub text-center py-4">데이터가 없습니다</p>
+          ) : stats.map((s, i) => (
             <div key={i} className="flex justify-between items-center">
-              <span className="text-[0.8125rem] text-neutral-sub w-16">{s.label}</span>
-              <div className="flex-1 mx-3 h-2 bg-neutral-divider rounded-full"><div className="h-full rounded-full transition-all duration-300" style={{ width: s.percent + '%', background: s.color }} /></div>
-              <span className="text-[0.8125rem] font-semibold w-10 text-right" style={{ color: s.color }}>{s.percent}%</span>
+              <span className="text-[0.8125rem] text-neutral-sub w-40 truncate" title={s.label}>{s.label}</span>
+              <div className="flex-1 mx-3 h-2 bg-neutral-divider rounded-full">
+                <div className="h-full rounded-full transition-all duration-300" style={{ width: s.percent + '%', background: s.color }} />
+              </div>
+              <span className="text-[0.8125rem] font-semibold w-12 text-right" style={{ color: s.color }}>{s.count}건</span>
             </div>
           ))}
         </div>
       </div>
+
       <div className="card">
         <div className="card-header"><div className="card-title">최근 질의 로그</div></div>
         <div className="card-body">
-          {queryLogs.map((q, i) => (
-            <div key={i} className={`flex items-center gap-3 px-2 py-3 rounded-sm transition hover:bg-surface-hover ${i < queryLogs.length - 1 ? 'border-b border-neutral-divider' : ''}`}>
-              <div className={`w-9 h-9 rounded-sm flex items-center justify-center flex-shrink-0 ${q.type === 'query' ? 'bg-accent-50 text-accent-700' : q.type === 'doc' ? 'bg-primary-50 text-primary-700' : 'bg-success-bg text-success'}`}>{q.type === 'query' ? <HelpCircle size={18} /> : q.type === 'doc' ? <FileText size={18} /> : <CalendarClock size={18} />}</div>
-              <div className="flex-1">
-                <div className="text-[0.8125rem] font-semibold">{q.title}</div>
-                <div className="text-xs text-neutral-sub mt-0.5">{q.description}</div>
+          {queryLogs.length === 0 ? (
+            <p className="text-sm text-neutral-sub text-center py-4">질의 로그가 없습니다</p>
+          ) : queryLogs.slice(0, 10).map((q, i) => {
+            const type = q.intent?.startsWith('doc') || q.intent?.startsWith('meeting') ? 'doc'
+              : q.intent?.startsWith('schedule') ? 'schedule' : 'query';
+            return (
+              <div key={q.id || i} className={`flex items-center gap-3 px-2 py-3 rounded-sm transition hover:bg-surface-hover ${i < queryLogs.length - 1 ? 'border-b border-neutral-divider' : ''}`}>
+                <div className={`w-9 h-9 rounded-sm flex items-center justify-center flex-shrink-0 ${type === 'query' ? 'bg-accent-50 text-accent-700' : type === 'doc' ? 'bg-primary-50 text-primary-700' : 'bg-success-bg text-success'}`}>
+                  {type === 'query' ? <HelpCircle size={18} /> : type === 'doc' ? <FileText size={18} /> : <CalendarClock size={18} />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[0.8125rem] font-semibold truncate">{q.question}</div>
+                  <div className="text-xs text-neutral-sub mt-0.5">
+                    {INTENT_LABELS[q.intent] || q.agent || q.intent || '-'}
+                    {q.response_time_ms ? ` · ${(q.response_time_ms / 1000).toFixed(1)}초` : ''}
+                  </div>
+                </div>
+                <span className="text-[0.6875rem] text-neutral-muted whitespace-nowrap">{timeAgo(q.timestamp)}</span>
               </div>
-              <span className="text-[0.6875rem] text-neutral-muted whitespace-nowrap">{q.time}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

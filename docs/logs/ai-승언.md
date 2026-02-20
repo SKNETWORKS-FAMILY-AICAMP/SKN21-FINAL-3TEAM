@@ -65,3 +65,36 @@
    - Docling 파서 통합
 
 ---
+
+## 2026-02-19 (목)
+
+### 작업 내용
+
+#### 1. Judgment Agent 빈 응답 버그 수정
+- **원인**: `judgment_agent.py`가 `agent_response`에 `message` 필드를 포함하지 않아 프론트에 빈 응답 전달
+- **수정**: `parsed["message"] = parsed.get("reasoning", "")` 추가 (`judgment_agent` 함수)
+- **파일**: `ai/agents/judgment_agent.py`
+
+#### 2. 출처 "제목 없음" 버그 수정
+- **원인**: `hybrid_search.py`가 검색 결과 조립 시 `title`, `chapter`, `article` 메타데이터를 3곳에서 모두 드롭
+  - `_bm25_search` 결과, RRF 합산 루프(BM25/Vector), 최종 반환 모두 `source`만 유지
+- **수정**: 3곳 모두 `title`, `chapter`, `article` 필드 추가 전달
+- **파일**: `ai/rag/hybrid_search.py`, `ai/agents/document_agent.py`
+
+#### 3. 통합 requirements.txt 생성
+- **원인**: `Dockerfile.backend`가 `ai/requirements.txt`를 설치하지 않아 배포 시 `langgraph`, `torch` 등 누락
+- **수정**: `backend/requirements.txt` + `ai/requirements.txt` 합본을 프로젝트 루트 `requirements.txt`로 생성
+- **파일**: `requirements.txt` (신규 생성)
+
+#### 4. AWS 배포 준비 (git clone 방식)
+- Linux 배포 스크립트 `run.sh` 생성 (프로젝트 루트)
+  - PYTHONPATH 자동 설정, `.venv` 활성화, `--workers 2` 프로덕션 설정
+- **파일**: `run.sh` (신규 생성)
+
+### 다음 할 일
+
+1. EC2에서 git clone 후 배포 실행 및 동작 확인
+2. RDS 연결 및 alembic 마이그레이션 확인
+3. Google OAuth 콜백 URL EC2 IP로 업데이트
+
+---
