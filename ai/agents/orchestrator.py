@@ -236,7 +236,7 @@ def route_by_intent(state: AgentState) -> str:
         route = "general_response"
     elif intent == "judgment":
         route = "judgment_agent"
-    elif intent in ("doc_search", "doc_generate", "meeting_generate"):
+    elif intent in ("doc_search", "doc_generate", "doc_summary", "doc_qa"):
         route = "document_agent"
     elif intent.startswith("schedule_"):
         route = "schedule_agent"
@@ -257,7 +257,8 @@ def clarify_with_candidates(state: AgentState) -> AgentState:
         "judgment": "규정 판단",
         "doc_search": "문서 검색",
         "doc_generate": "문서 작성",
-        "meeting_generate": "회의록 작성",
+        "doc_summary": "문서 요약",
+        "doc_qa": "문서 QA",
         "schedule_add": "일정 추가",
         "schedule_view": "일정 조회",
         "general": "일반 질문",

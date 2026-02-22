@@ -33,9 +33,12 @@ def _build_initial_state(request: ChatRequest, user, stream_mode: bool = False) 
         "chat_history": [],
         "error": None,
         "template_id": request.template_id,
+        "template_type": request.template_type,
         "source_page": request.source_page,
         "template_fields": None,
         "extracted_text": None,
+        "document_id": request.document_id,
+        "document_content": None,
         "google_services_result": None,
         "stream_mode": stream_mode,
         "intent_candidates": None,
@@ -46,7 +49,7 @@ def _get_agent_type(intent: str) -> str:
     """intent에 대응하는 agent_type 반환"""
     if intent == "judgment":
         return "judgment_agent"
-    elif intent in ("doc_search", "doc_generate", "meeting_generate"):
+    elif intent in ("doc_search", "doc_generate", "doc_summary", "doc_qa"):
         return "document_agent"
     elif intent.startswith("schedule_"):
         return "schedule_agent"
@@ -71,6 +74,20 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
             print("[Chat] 그래프 로딩 중...")
             graph = get_graph()
             initial_state = _build_initial_state(request, user, stream_mode=True)
+
+            # document_id가 있으면 DB에서 문서 내용 로딩
+            if request.document_id:
+                try:
+                    from sqlalchemy import select
+                    from app.models.document import Document
+                    result = await db.execute(select(Document).where(Document.id == request.document_id))
+                    doc = result.scalar_one_or_none()
+                    if doc:
+                        initial_state["document_content"] = doc.content
+                        print(f"[Chat] document_id={request.document_id} → content 로딩 ({len(doc.content) if doc.content else 0}자)")
+                except Exception as doc_err:
+                    print(f"[Chat] document_id 로딩 실패: {doc_err}")
+
             print("[Chat] 그래프 로딩 완료. astream 시작...")
 
             # astream으로 노드별 실시간 이벤트 전송
@@ -268,7 +285,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             yield f"data: {json.dumps({'type': 'result', 'intent': 'clarify', 'data': agent_response}, ensure_ascii=False)}\n\n"
                         else:
                             # 이미 스트리밍한 경우 token 전송 건너뛰기
-                            if not agent_response.get("stream_pending") and intent not in ("general", "doc_search", "judgment"):
+                            if not agent_response.get("stream_pending") and intent not in ("general", "doc_search", "doc_summary", "doc_qa", "judgment"):
                                 yield f"data: {json.dumps({'type': 'token', 'value': message}, ensure_ascii=False)}\n\n"
 
                             yield f"data: {json.dumps({'type': 'result', 'intent': intent, 'data': agent_response}, ensure_ascii=False)}\n\n"
@@ -323,6 +340,18 @@ async def chat(request: ChatRequest, user=Depends(get_current_user), db: AsyncSe
 
         graph = get_graph()
         initial_state = _build_initial_state(request, user)
+
+        # document_id가 있으면 DB에서 문서 내용 로딩
+        if request.document_id:
+            try:
+                from sqlalchemy import select
+                from app.models.document import Document
+                result_doc = await db.execute(select(Document).where(Document.id == request.document_id))
+                doc = result_doc.scalar_one_or_none()
+                if doc:
+                    initial_state["document_content"] = doc.content
+            except Exception as doc_err:
+                logger.warning("document_id 로딩 실패: %s", doc_err)
 
         result = await graph.ainvoke(initial_state)
 

@@ -18,7 +18,7 @@ class AgentState(TypedDict):
     user_id: int                            # 사용자 ID
 
     # ── Intent 분류 (지용) ──
-    intent: str                             # judgment | doc_search | doc_generate | meeting_generate | schedule_add | schedule_view | general
+    intent: str                             # judgment | doc_search | doc_generate | doc_summary | doc_qa | schedule_add | schedule_view | general
     confidence: float                       # 분류 신뢰도 (0.0~1.0)
     intent_candidates: Optional[list]       # top-k intent 후보 [{"intent": str, "confidence": float}]
 
@@ -39,8 +39,10 @@ class AgentState(TypedDict):
     source_page: Optional[str]              # 요청 출처: chatbot | meeting_page | document_page
     template_fields: Optional[list[str]]    # 동적 필드 목록 (예: ["title", "summary", "key_points"])
 
-    # ── 문서 요약 (승언) ──
+    # ── 문서 요약/QA (승언) ──
     extracted_text: Optional[str]           # 업로드 파일에서 추출한 텍스트
+    document_id: Optional[int]              # 문서 DB ID (프론트에서 선택 시)
+    document_content: Optional[str]         # 문서 본문 텍스트 (DB 로딩 or 프론트 전달)
 
     # ── Google 연동 (혜빈) ──
     google_services_result: Optional[dict]  # schedule_add 시 Google 서비스 결과

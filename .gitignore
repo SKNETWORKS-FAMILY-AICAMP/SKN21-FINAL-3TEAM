@@ -21,7 +21,12 @@ outputs/
 *.pth
 *.bin
 *.safetensors
+*.safetensors.*
 *.gguf
+
+# Test artifacts
+test-results/
+tests/screenshots/
 
 # ChromaDB
 chroma_db/
