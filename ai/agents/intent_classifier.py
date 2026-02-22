@@ -20,7 +20,7 @@ import os
 import re
 from pathlib import Path
 
-from ai.agents.config import INTENT_FALLBACK_THRESHOLD, COMPLEXITY_GAP_THRESHOLD
+from ai.agents.config import INTENT_FALLBACK_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
@@ -406,90 +406,6 @@ def apply_known_overrides(text: str, bert_intent: str) -> str:
             logger.info(f"Known override: {bert_intent} → {correct_intent} for '{text}'")
             return correct_intent
     return bert_intent
-
-
-# ── 복합 질문 감지 ──
-
-# 접속/순차 키워드 패턴 (넓은 범위)
-# V-아/어서: 찾아서, 확인해서, 봐서 등
-# V-고: 찾고, 확인하고, 보고 등
-# V-면서: 찾으면서, 확인하면서 등
-# 순차 표현: ~한 뒤에, ~후에, ~다음에
-COMPLEX_PATTERNS = [
-    # 기본 접속: ~해서, ~하고, ~그리고
-    r"(.+)(하고|해서|후에|다음에|그리고|그런 다음)\s*(.+)(해줘|해주세요|알려줘|만들어줘|찾아줘|보여줘|정리해줘|판단해줘)",
-    # V-아/어서: 찾아서, 봐서, 확인해서 등
-    r"(.+[아어]서|.+해서)\s*(.+)(해줘|해주세요|알려줘|만들어줘|찾아줘|보여줘|정리해줘|판단해줘)",
-    # V-고: 찾고, 확인하고, 조회하고 등
-    r"(.+)(하고|찾고|보고|읽고|확인하고|조회하고|검색하고)\s*(.+)(해줘|해주세요|알려줘|만들어줘|찾아줘|보여줘|정리해줘|판단해줘)",
-    # 순차: ~한 뒤에, ~한 다음, ~후에
-    r"(.+)(한 뒤에|한 다음|을 바탕으로|를 바탕으로|에 따라)\s*(.+)",
-    # ~면서: 찾으면서, 확인하면서
-    r"(.+)(면서|으면서)\s*(.+)(해줘|해주세요|알려줘|만들어줘)",
-    # 조건부: 있으면~없으면
-    r"(.+)(있으면|없으면).+(있으면|없으면)",
-]
-
-# 동사 어미 패턴
-VERB_ENDINGS = re.compile(
-    r"(해줘|해주세요|알려줘|만들어줘|찾아줘|확인해줘|작성해줘|추가해줘|보여줘|정리해줘|판단해줘|검색해줘|조회해줘|등록해줘)"
-)
-
-# 맥락 의존 패턴 (대명사/지시어)
-CONTEXT_DEPENDENT_PATTERNS = [
-    r"(그거|그것|그걸|아까|위에|방금|이전에|앞에서|말한|언급한)",
-    r"(그|이|저)\s*(문서|보고서|회의|규정|일정|내용)",
-    r"(다시|한번 더|또)\s*(해줘|보여줘|알려줘)",
-]
-
-
-def detect_complexity(text: str, candidates: list) -> dict:
-    """
-    복합 질문 여부 감지 (규칙 기반 + confidence 분석)
-
-    3중 조건 AND 로직: 2개 이상 충족 시에만 복합 판정
-
-    Args:
-        text: 사용자 입력 텍스트
-        candidates: top-k intent 후보 [{"intent": str, "confidence": float}, ...]
-
-    Returns:
-        {"is_complex": bool, "signals": int, "trigger_reasons": list}
-    """
-    signals = 0
-    trigger_reasons = []
-
-    # 조건 1: 접속/순차 키워드 패턴
-    has_keyword = any(re.search(p, text) for p in COMPLEX_PATTERNS)
-    if has_keyword:
-        signals += 1
-        trigger_reasons.append("keyword_pattern")
-
-    # 조건 2: top-2 confidence gap이 작음 (두 intent가 경합 중)
-    if len(candidates) >= 2:
-        gap = candidates[0]["confidence"] - candidates[1]["confidence"]
-        if gap < COMPLEXITY_GAP_THRESHOLD:
-            signals += 1
-            trigger_reasons.append(f"confidence_gap({gap:.2f})")
-
-    # 조건 3: 동사 2개 이상 (행위가 2개)
-    verb_endings = VERB_ENDINGS.findall(text)
-    if len(verb_endings) >= 2:
-        signals += 1
-        trigger_reasons.append(f"multi_verb({len(verb_endings)})")
-
-    is_complex = signals >= 2
-
-    return {
-        "is_complex": is_complex,
-        "signals": signals,
-        "trigger_reasons": trigger_reasons,
-    }
-
-
-def is_context_dependent(text: str) -> bool:
-    """맥락 의존 쿼리 감지 (대명사/지시어 패턴)"""
-    return any(re.search(p, text) for p in CONTEXT_DEPENDENT_PATTERNS)
 
 
 def get_classifier() -> IntentClassifier:
