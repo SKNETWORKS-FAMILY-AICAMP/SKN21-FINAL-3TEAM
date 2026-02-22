@@ -1,8 +1,8 @@
 # Intent 분류 모델 실험 재설계 (v2)
 
-> **상태**: Stage 1 완료, Stage 2 Baseline 완료 → Stage 3 Grid Search 대기
+> **상태**: Stage 1~4 완료 → 오분류 분석 + 보강 대기
 > **작성일**: 2026-02-22
-> **최종 수정**: 2026-02-23 (Stage 2 Baseline 3모델 완료)
+> **최종 수정**: 2026-02-23 (Stage 4 최종 평가 완료)
 > **담당**: 신지용 (PM)
 
 ---
@@ -20,6 +20,8 @@
 | 2026-02-23 | Stage 2 Baseline 학습 시작 (로컬 → RunPod 전환) |
 | 2026-02-23 | 경계 쌍 600개 + 적대적 450개 생성 완료, QA 재실행 |
 | 2026-02-23 | **Stage 2 Baseline 완료**: koelectra 0.9825 > bert 0.9780 > distilkobert 0.9498 |
+| 2026-02-23 | **Stage 3 Grid Search 완료**: best config ep10/lr3e-5/bs16 → F1 0.9897, seed 안정성 0.9874±0.0033 |
+| 2026-02-23 | **Stage 4 최종 평가 완료**: koelectra Adv F1 86.04% > bert 85.17% > distilkobert 79.26% |
 
 ---
 
@@ -244,6 +246,30 @@ data/training/intent_v2/
 
 ## 5. 실험 실행 방식
 
+### RunPod 환경 세팅 (복붙용)
+
+```bash
+# 1. 레포 클론
+git clone https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN21-FINAL-3TEAM.git
+cd SKN21-FINAL-3TEAM
+git checkout feat/jiyong
+
+# 2. 의존성 설치 (한번에 전부)
+pip install --upgrade torch torchvision transformers accelerate datasets scikit-learn matplotlib seaborn sentencepiece
+
+# 3. 실험 실행
+python ai/experiments_v2/run_grid_search.py     # Stage 3
+python ai/experiments_v2/run_final_eval.py      # Stage 4
+python ai/experiments_v2/run_error_analysis.py  # 오분류 분석
+
+# 4. 결과 push (실험 끝난 후)
+git add ai/experiments_v2/results/
+git commit -m "feat: Stage N 실험 결과"
+git push origin feat/jiyong
+```
+
+> **주의**: RunPod 이미지에 이전 버전 torch가 설치돼 있을 수 있음 → 반드시 `--upgrade` 사용
+
 ### 원칙: 로컬 터미널 실행 + 결과 보고
 
 ```
@@ -315,35 +341,118 @@ data/training/intent_v2/
 **결과**: `results/baseline_results.json`
 **차트**: baseline_comparison.png, training_curves.png, per_class_f1_radar.png, confusion matrix 3장
 
-### Stage 3: HP 튜닝 (~1-2시간)
+### Stage 3: HP 튜닝 ✅ 완료 (RunPod RTX 4090)
 
-| 단계 | 작업 |
-|------|------|
-| 3.1 | 32-point grid search (최상위 모델) |
-| 3.2 | Best config 확인 |
-| 3.3 | Seeds [42, 123, 456]으로 안정성 검증 |
-| 3.4 | HP 히트맵 생성 |
+| 단계 | 작업 | 결과 |
+|------|------|------|
+| 3.1 | 32-point grid search (koelectra) | ✅ 32 runs 완료 (~17분) |
+| 3.2 | Best config 확인 | ✅ ep10/lr3e-5/bs16 → F1 0.9897 |
+| 3.3 | Seeds [42, 123, 456] 안정성 검증 | ✅ 0.9874 ± 0.0033 |
+| 3.4 | HP 히트맵 생성 | ✅ hp_heatmap_bs16.png, hp_heatmap_bs32.png |
+
+**Best Config:**
+
+| 파라미터 | 값 |
+|----------|-----|
+| epochs | 10 |
+| learning_rate | 3e-5 |
+| batch_size | 16 |
+| Val F1 | **0.9897** |
+
+**Top 5 Grid Search 결과:**
+
+| 순위 | epochs | lr | batch | Val F1 |
+|:---:|:------:|:---:|:----:|:------:|
+| 1 | **10** | **3e-5** | **16** | **0.9897** |
+| 2 | 3 | 2e-5 | 16 | 0.9864 |
+| 2 | 7 | 2e-5 | 32 | 0.9864 |
+| 2 | 10 | 2e-5 | 32 | 0.9864 |
+| 5 | 5 | 3e-5 | 16 | 0.9862 |
+
+**Seed 안정성:**
+
+| Seed | Val F1 |
+|:----:|:------:|
+| 42 | 0.9897 |
+| 123 | 0.9898 |
+| 456 | 0.9828 |
+| **평균 ± std** | **0.9874 ± 0.0033** |
+
+**분석:**
+- Baseline(0.9825) → Best(0.9897): **+0.72%p** → v1 결론 재확인: **데이터 > 하이퍼파라미터**
+- lr=1e-5 부족, lr=3e-5 최적, lr=5e-5 과적합 경향
+- batch_size=16이 32보다 일관적으로 좋음
+- Seed 안정성 양호 (std 0.0033)
 
 **실행**: `python ai/experiments_v2/run_grid_search.py`
-**결과**: `results/grid_search_summary.md`
+**결과**: `results/grid_search_results.json`, `results/seed_stability_results.json`
+**차트**: hp_heatmap_bs16.png, hp_heatmap_bs32.png, seed_stability.png
 
-### Stage 4: 최종 평가 (~2시간)
+### Stage 4: 최종 평가 ✅ 완료 (RunPod RTX 4090)
 
-| 단계 | 작업 |
-|------|------|
-| 4.1 | Hold-out test set 평가 (**최초 1회**) |
-| 4.2 | 3모델 adversarial v2 평가 |
-| 4.3 | 레거시 테스트셋 비교 (212 + 70) |
-| 4.4 | 전처리 ablation (Config A~E) |
-| 4.5 | 추론 속도 + 메모리 측정 |
-| 4.6 | 통계 검증 (McNemar, Bootstrap CI) |
-| 4.7 | 오분류 수집 + 유형 분류 |
-| 4.8 | 시나리오 테스트 |
-| 4.9 | 차트 10장 생성 |
-| 4.10 | 최종 보고서 작성 |
+| 단계 | 작업 | 결과 |
+|------|------|------|
+| 4.1 | Hold-out test set 평가 | ✅ bert 0.9756 / koelectra 0.9726 / distilkobert 0.9645 |
+| 4.2 | 3모델 adversarial v2 평가 | ✅ koelectra **0.8604** > bert 0.8517 > distilkobert 0.7926 |
+| 4.3 | 레거시 테스트셋 비교 | ⬜ (v2 데이터 기준 평가로 대체) |
+| 4.4 | 전처리 ablation (Config A~E) | ✅ A~E 전부 동일 → 전처리 효과 없음 |
+| 4.5 | 추론 속도 + 메모리 측정 | ✅ koelectra 8.3ms / bert 10.4ms / distilkobert 2.8ms |
+| 4.6 | 통계 검증 (McNemar, Bootstrap CI) | ✅ McNemar 전부 n.s. / CI 산출 완료 |
+| 4.7 | 오분류 수집 + 유형 분류 | ⬜ run_error_analysis.py 실행 필요 |
+| 4.8 | 시나리오 테스트 | ⬜ 30개 미작성 |
+| 4.9 | 차트 생성 | ✅ 11장 (confusion 3, ablation 3, confidence 3, speed 1, f1_vs_speed 1) |
+| 4.10 | 최종 보고서 작성 | ⬜ |
+
+**최종 결과:**
+
+| 순위 | 모델 | Test F1 | **Adv F1** | 속도 | 파라미터 | Bootstrap 95% CI |
+|:---:|------|:------:|:--------:|:----:|:------:|:----------------:|
+| 1 | **koelectra-v3** | 0.9726 | **0.8604** | **8.3ms** | 112.9M | [0.952, 0.990] |
+| 2 | bert-base | 0.9756 | 0.8517 | 10.4ms | 110.6M | [0.956, 0.992] |
+| 3 | distilkobert | 0.9645 | 0.7926 | **2.8ms** | **28.4M** | [0.940, 0.984] |
+
+**Adversarial Per-class F1 (약점 분석):**
+
+| Intent | koelectra | bert | distilkobert |
+|--------|:---------:|:----:|:------------:|
+| judgment | **0.920** | 0.855 | 0.832 |
+| doc_search | **0.827** | 0.803 | 0.718 |
+| doc_generate | **0.882** | 0.845 | 0.779 |
+| doc_summary | 0.875 | **0.926** | 0.839 |
+| schedule_add | **0.944** | 0.935 | 0.933 |
+| schedule_view | 0.887 | **0.909** | 0.855 |
+| general | **0.836** | 0.803 | 0.688 |
+| **doc_qa** | **0.710** | 0.738 | 0.698 |
+
+**분석:**
+- koelectra가 Adv F1에서 bert 역전 (86.04% > 85.17%)
+- **doc_qa가 3모델 모두 최약점** (70~74%) → 보강 1순위
+- Val F1 97~98% vs Adv F1 79~86% → 12~17%p 하락, Val 과대추정 확인
+- 전처리 Ablation A~E 전부 동일 → LLM 생성 데이터는 이미 깨끗
+- McNemar 전부 n.s. → Test 286개로는 통계적 유의차 검출 불가
+- **Decision: koelectra 최종 선택** (Adv F1, 속도, 강건성 모두 우위)
+
+**보강 필요 intent:**
+
+| 우선순위 | Intent | Adv F1 | 보강 방향 |
+|:-------:|--------|:------:|----------|
+| 1 | doc_qa | 71.0% | doc_search/judgment와 경계 데이터 추가 |
+| 2 | doc_search | 82.7% | doc_qa와 구분되는 검색 표현 추가 |
+| 3 | general | 83.6% | 짧은 일상 표현 + 모호한 입력 추가 |
 
 **실행**: `python ai/experiments_v2/run_final_eval.py`
-**결과**: `results/final_eval_summary.md`
+**결과**: `results/final_eval_results.json`
+**차트**: confusion 3장, ablation 3장, confidence 3장, speed_comparison, f1_vs_speed
+
+### Stage 5: 보강 + 재평가 (다음 단계)
+
+| 순서 | 작업 | 상태 |
+|:---:|------|:----:|
+| 5.1 | `run_error_analysis.py` 실행 — 오분류 유형 분석 | ⬜ |
+| 5.2 | doc_qa/doc_search/general 타겟 보강 (오분류 결과 기반) | ⬜ |
+| 5.3 | 재학습 + 재평가 (Stage 2부터) | ⬜ |
+| 5.4 | 시나리오 테스트 30개 작성 + 실행 (정성평가) | ⬜ |
+| 5.5 | 최종 모델 저장 (`ai/models/intent_classifier/`) | ⬜ |
 
 ---
 

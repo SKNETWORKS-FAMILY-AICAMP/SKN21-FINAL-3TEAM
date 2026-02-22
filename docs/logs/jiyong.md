@@ -454,13 +454,29 @@ QA 결과:
 - 고정 HP: epochs=5, lr=2e-5, batch=16
 - koelectra: **Val F1 0.9825** (112.9M, 860s)
 - bert-base: Val F1 0.9780 (110.6M, 808s)
-- distilkobert: sentencepiece 미설치로 실패 → 설치 후 재실행 중
-- 차트: baseline_comparison.png, training_curves.png, per_class_f1_radar.png, confusion matrix 2장
+- distilkobert: Val F1 0.9498 (28.4M, 243s) — sentencepiece 설치 후 완료
+- 차트: baseline_comparison.png, training_curves.png, per_class_f1_radar.png, confusion matrix 3장
 
-**기술 이슈:** GPT-5 추론 모델 비호환 → GPT-4o 전환 / Python 3.11/3.13 이중 설치 → python -m pip / distilkobert sentencepiece 누락
+**Stage 3 Grid Search (RunPod RTX 4090):**
+- koelectra 대상 32-point grid search (~17분)
+- Best config: **ep10/lr3e-5/bs16 → Val F1 0.9897**
+- Seed 안정성: 0.9874 ± 0.0033 (3-seed)
+- Baseline(0.9825) → Best(0.9897): +0.72%p → **데이터 > HP** 재확인
+
+**Stage 4 최종 평가 (RunPod RTX 4090):**
+- 3모델 best config으로 재학습 + adversarial 450개 평가
+- koelectra **Adv F1 86.04%** > bert 85.17% > distilkobert 79.26%
+- doc_qa 3모델 모두 최약점 (70~74%)
+- 전처리 Ablation A~E 전부 동일 (효과 없음)
+- McNemar 전부 n.s., Bootstrap CI 산출 완료
+- **최종 선택: koelectra** (Adv F1, 속도 8.3ms, 강건성 모두 우위)
+- 차트 11장 생성 (confusion, ablation, confidence, speed, f1_vs_speed)
+
+**기술 이슈:** GPT-5 추론 모델 비호환 → GPT-4o 전환 / Python 3.11/3.13 이중 설치 → python -m pip / distilkobert sentencepiece 누락 / RunPod torch 버전 충돌 → --upgrade 필수 / run_final_eval.py mcnemar 리스트 버그 수정
 
 **다음 할 일:**
-- distilkobert baseline 결과 확인
-- Stage 3 Grid Search (최상위 모델 대상, 32-point grid + 3-seed)
-- Stage 4 최종 평가 + 차트 10장
+- run_error_analysis.py 실행 (오분류 유형 분석)
+- 시나리오 테스트 30개 작성
+- doc_qa/doc_search/general 타겟 보강 → 재학습
+- 최종 모델 저장 (ai/models/intent_classifier/)
 - 발표 자료 준비
