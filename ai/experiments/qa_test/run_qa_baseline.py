@@ -42,11 +42,13 @@ MODEL_CONFIGS = {
         "model_id": "K-intelligence/Midm-2.0-Base-Instruct",
         "short_name": "Midm-2.0-Base",
         "max_new_tokens": 128,
+        "quantize": True,   # 11.5B → 4-bit 필요
     },
     "ax": {
         "model_id": "skt/A.X-3.1-Light",
         "short_name": "A.X-3.1-Light",
         "max_new_tokens": 128,
+        "quantize": False,  # 7B → fp16 그대로 사용
     },
 }
 
@@ -98,24 +100,36 @@ def rouge_l(pred: str, gold: str, scorer) -> float:
 
 # ── 모델 로드 ──
 
-def load_model_4bit(model_id: str):
-    """bitsandbytes 4-bit 양자화로 모델 로드"""
-    print(f"\n  모델 로드 중: {model_id}")
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.float16,
-        bnb_4bit_use_double_quant=True,
-    )
+def load_model(model_id: str, quantize: bool = True):
+    """모델 로드 (quantize=True: 4-bit NF4, quantize=False: fp16)"""
+    print(f"\n  모델 로드 중: {model_id} ({'4-bit NF4' if quantize else 'fp16'})")
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        quantization_config=bnb_config,
-        device_map="auto",
-        trust_remote_code=True,
-    )
+
+    if quantize:
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.float16,
+            bnb_4bit_use_double_quant=True,
+        )
+        model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            quantization_config=bnb_config,
+            device_map="auto",
+            trust_remote_code=True,
+        )
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            torch_dtype=torch.float16,
+            device_map="auto",
+            trust_remote_code=True,
+        )
+
     model.eval()
-    print(f"  로드 완료. Device map: {model.hf_device_map}")
+    torch.cuda.empty_cache()
+    print(f"  로드 완료. Device map: {getattr(model, 'hf_device_map', 'N/A')}")
+    print(f"  VRAM - Allocated: {torch.cuda.memory_allocated()/1e9:.1f} GB / Reserved: {torch.cuda.memory_reserved()/1e9:.1f} GB")
     return tokenizer, model
 
 
@@ -154,8 +168,6 @@ def generate_answer(tokenizer, model, context: str, question: str, max_new_token
 
     generated = outputs[0][input_len:]
     answer = tokenizer.decode(generated, skip_special_tokens=True).strip()
-    # 첫 줄만 취함 (모델이 추가 설명을 붙이는 경우 방지)
-    answer = answer.split("\n")[0].strip()
     return answer
 
 
@@ -163,7 +175,7 @@ def generate_answer(tokenizer, model, context: str, question: str, max_new_token
 
 def evaluate_model(model_key: str, samples: list) -> dict:
     cfg = MODEL_CONFIGS[model_key]
-    tokenizer, model = load_model_4bit(cfg["model_id"])
+    tokenizer, model = load_model(cfg["model_id"], quantize=cfg["quantize"])
     scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=False)
 
     predictions = []
@@ -279,27 +291,44 @@ def extract_qualitative(all_results: list) -> list:
 # ── 저장 ──
 
 def save_results(all_results: list, summaries: list):
-    # 정량 결과
+    # ── 정량 결과: 기존 파일과 병합 (모델명 기준 upsert) ──
     quant_path = RESULTS_DIR / "qa_quantitative.json"
-    with open(quant_path, "w", encoding="utf-8") as f:
-        json.dump(summaries, f, ensure_ascii=False, indent=2)
-    print(f"\n  [저장] {quant_path}")
+    existing_quant = []
+    if quant_path.exists():
+        with open(quant_path, encoding="utf-8") as f:
+            existing_quant = json.load(f)
 
-    # 정성 결과 (전체 예측 + 정성 샘플 플래그)
-    qual_data = []
+    existing_models = {s["model"] for s in existing_quant}
+    for s in summaries:
+        if s["model"] in existing_models:
+            existing_quant = [e for e in existing_quant if e["model"] != s["model"]]
+        existing_quant.append(s)
+
+    with open(quant_path, "w", encoding="utf-8") as f:
+        json.dump(existing_quant, f, ensure_ascii=False, indent=2)
+    print(f"\n  [저장] {quant_path} (총 {len(existing_quant)}개 모델)")
+
+    # ── 정성 결과: 기존 파일과 병합 (모델명 기준 upsert) ──
+    qual_path = RESULTS_DIR / "qa_qualitative.json"
+    existing_qual = []
+    if qual_path.exists():
+        with open(qual_path, encoding="utf-8") as f:
+            existing_qual = json.load(f)
+
+    new_model_names = {r["short_name"] for r in all_results}
+    existing_qual = [e for e in existing_qual if e["model"] not in new_model_names]
+
     for result in all_results:
         for pred in result["predictions"]:
-            entry = {
+            existing_qual.append({
                 "model": result["short_name"],
                 "qualitative_sample": pred["id"] in QUALITATIVE_SAMPLE_IDS,
                 **pred,
-            }
-            qual_data.append(entry)
+            })
 
-    qual_path = RESULTS_DIR / "qa_qualitative.json"
     with open(qual_path, "w", encoding="utf-8") as f:
-        json.dump(qual_data, f, ensure_ascii=False, indent=2)
-    print(f"  [저장] {qual_path}")
+        json.dump(existing_qual, f, ensure_ascii=False, indent=2)
+    print(f"  [저장] {qual_path} (총 {len(existing_qual)}건)")
 
 
 # ── 엔트리포인트 ──
