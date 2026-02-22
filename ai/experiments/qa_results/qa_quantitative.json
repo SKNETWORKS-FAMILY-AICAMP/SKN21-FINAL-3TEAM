@@ -3,13 +3,13 @@
     "model": "Midm-2.0-Base",
     "model_id": "K-intelligence/Midm-2.0-Base-Instruct",
     "overall": {
-      "token_f1": 0.3063,
-      "rouge_l": 0.6221,
+      "token_f1": 0.3216,
+      "rouge_l": 0.6129,
       "count": 40
     },
     "general": {
-      "token_f1": 0.2068,
-      "rouge_l": 0.4933,
+      "token_f1": 0.2375,
+      "rouge_l": 0.475,
       "count": 20
     },
     "business": {
@@ -17,8 +17,8 @@
       "rouge_l": 0.7508,
       "count": 20
     },
-    "avg_infer_sec": 3.19,
-    "total_infer_sec": 127.43
+    "avg_infer_sec": 3.13,
+    "total_infer_sec": 125.32
   },
   {
     "model": "A.X-3.1-Light",
@@ -39,6 +39,6 @@
       "count": 20
     },
     "avg_infer_sec": 0.55,
-    "total_infer_sec": 21.93
+    "total_infer_sec": 21.92
   }
 ]
