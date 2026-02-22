@@ -688,9 +688,7 @@ def main():
         print(f"\n{'모델':<35} {'Test F1':>8} {'Adv F1':>8} {'Speed':>8} {'Params':>8}")
         print("-" * 67)
 
-        for name, data in sorted(final_results.items(), key=lambda x: x[1].get("test_f1", 0), reverse=True):
-            if name == "mcnemar":
-                continue
+        for name, data in sorted(model_only_results.items(), key=lambda x: x[1].get("test_f1", 0), reverse=True):
             short = name.split("/")[-1]
             tf1 = data.get("test_f1", "-")
             af1 = data.get("adv_f1", "-")
