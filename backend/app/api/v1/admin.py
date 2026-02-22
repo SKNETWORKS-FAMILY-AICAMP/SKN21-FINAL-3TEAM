@@ -1,6 +1,8 @@
 """
 관리자 API (팀원 D 담당)
 """
+import asyncio
+
 from fastapi import APIRouter, Depends, Body, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
@@ -179,6 +181,33 @@ async def create_regulation(
     )
     db.add(reg)
     await db.flush()
+
+    # flush 후 값 캡처
+    reg_id, reg_title, reg_content, reg_article, reg_category = (
+        reg.id, reg.title, reg.content, reg.article_number, reg.category
+    )
+
+    def _add():
+        from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+        pipeline = get_qdrant_pipeline()
+        pipeline.add_documents(
+            documents=[reg_content],
+            metadatas=[{
+                "source": "regulations",
+                "title": reg_title,
+                "article_number": reg_article,
+                "category": reg_category,
+                "regulation_id": reg_id,
+                "scope": "company",
+            }],
+        )
+
+    try:
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, _add)
+    except Exception as e:
+        print(f"[Qdrant] 규정 인덱싱 실패 (DB는 저장됨): {e}")
+
     return {
         "id": reg.id,
         "title": reg.title,
@@ -203,6 +232,33 @@ async def update_regulation(
         raise HTTPException(status_code=404, detail="규정을 찾을 수 없습니다")
     for field, value in data.model_dump(exclude_none=True).items():
         setattr(reg, field, value)
+
+    reg_id, reg_title, reg_content, reg_article, reg_category = (
+        reg.id, reg.title, reg.content, reg.article_number, reg.category
+    )
+
+    def _update():
+        from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+        pipeline = get_qdrant_pipeline()
+        pipeline.vector_store.delete_by_filter({"regulation_id": reg_id})
+        pipeline.add_documents(
+            documents=[reg_content],
+            metadatas=[{
+                "source": "regulations",
+                "title": reg_title,
+                "article_number": reg_article,
+                "category": reg_category,
+                "regulation_id": reg_id,
+                "scope": "company",
+            }],
+        )
+
+    try:
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, _update)
+    except Exception as e:
+        print(f"[Qdrant] 규정 업데이트 실패 (DB는 수정됨): {e}")
+
     return {
         "id": reg.id,
         "title": reg.title,
@@ -224,6 +280,21 @@ async def delete_regulation(
     reg = result.scalar_one_or_none()
     if reg is None:
         raise HTTPException(status_code=404, detail="규정을 찾을 수 없습니다")
+
+    reg_id = regulation_id
+
+    def _delete():
+        from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+        pipeline = get_qdrant_pipeline()
+        pipeline.vector_store.delete_by_filter({"regulation_id": reg_id})
+        pipeline.searcher.build_bm25_index()
+
+    try:
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, _delete)
+    except Exception as e:
+        print(f"[Qdrant] 규정 삭제 실패 (DB는 삭제 진행): {e}")
+
     await db.delete(reg)
     return {"detail": "규정이 삭제되었습니다"}
 

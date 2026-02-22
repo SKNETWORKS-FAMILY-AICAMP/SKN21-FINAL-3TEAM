@@ -7,12 +7,16 @@ v2: multi_intent / sub_query_start / sub_query_done / clarify_candidates SSE 이
 import json
 import logging
 import time
+import uuid
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.api.deps import get_current_user
+from app.db.session import get_db
+from app.models.chat_log import ChatLog
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +62,9 @@ def _get_agent_type(intent: str) -> str:
 
 
 @router.post("/stream")
-async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
+async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """SSE 스트리밍 챗봇 응답"""
+    session_id = request.session_id or str(uuid.uuid4())
 
     async def event_generator():
         try:
@@ -195,6 +200,52 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
                             "message": full_response,
                         }
 
+                    elif node_name == "judgment_agent":
+                        # 2-4. 판단 Agent 스트리밍 (judgment_agent_stream)
+                        agent_response = node_output.get("agent_response", {})
+                        print(f"[Chat] judgment_agent 노드 진입. stream_pending={agent_response.get('stream_pending')}")
+
+                        if agent_response.get("stream_pending"):
+                            from ai.agents.judgment_agent import judgment_agent_stream
+
+                            judgment_state = dict(final_state)
+                            judgment_state["user_input"] = final_state.get("resolved_input") or final_state.get("user_input", "")
+                            judgment_state["chat_history"] = final_state.get("chat_history", [])
+
+                            full_judgment = ""
+                            judgment_result = {}
+                            async for chunk in judgment_agent_stream(judgment_state):
+                                stripped = chunk.strip()
+                                if stripped.startswith("[DONE]"):
+                                    # 최종 구조화 JSON 파싱
+                                    judgment_result = json.loads(stripped[len("[DONE]"):])
+                                else:
+                                    full_judgment += chunk
+
+                            # 최종 응답 저장
+                            if not judgment_result:
+                                judgment_result = {
+                                    "type": "judgment",
+                                    "message": full_judgment,
+                                }
+
+                            # reasoning 텍스트를 단어 단위로 스트리밍 (LLM 응답이 JSON이라 원문은 보내면 안 됨)
+                            reasoning_text = judgment_result.get("reasoning", full_judgment)
+                            if reasoning_text:
+                                words = reasoning_text.split(" ")
+                                for i, word in enumerate(words):
+                                    token = word if i == 0 else " " + word
+                                    yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
+
+                            # document_agent와 동일하게 원본 dict를 in-place 수정
+                            # (LangGraph 내부 state에 반영 → format_response가 올바른 데이터 수신)
+                            agent_response.pop("stream_pending", None)
+                            agent_response.update(judgment_result)
+                            final_state["agent_response"] = agent_response
+                            print(f"[Chat] judgment_agent 스트리밍 완료. 응답 길이: {len(full_judgment)}자")
+                        else:
+                            yield f"data: {json.dumps({'type': 'status', 'value': 'judgment_agent 처리 완료'}, ensure_ascii=False)}\n\n"
+
                     elif node_name == "document_agent":
                         # 2-2. 문서 Agent 스트리밍
                         agent_response = node_output.get("agent_response", {})
@@ -269,11 +320,11 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
                             yield f"data: {json.dumps({'type': 'token', 'value': message}, ensure_ascii=False)}\n\n"
                             yield f"data: {json.dumps({'type': 'result', 'intent': intent, 'data': agent_response}, ensure_ascii=False)}\n\n"
                         elif resp_type == "clarify_candidates":
-                            # 이미 clarify_with_candidates에서 전송됨 — result만 전송
-                            yield f"data: {json.dumps({'type': 'result', 'intent': intent, 'data': agent_response}, ensure_ascii=False)}\n\n"
+                            # clarify로 전송해야 프론트에서 버튼 카드로 렌더링됨
+                            yield f"data: {json.dumps({'type': 'result', 'intent': 'clarify', 'data': agent_response}, ensure_ascii=False)}\n\n"
                         else:
                             # 이미 스트리밍한 경우 token 전송 건너뛰기
-                            if not agent_response.get("stream_pending") and intent not in ("general", "doc_search"):
+                            if not agent_response.get("stream_pending") and intent not in ("general", "doc_search", "judgment"):
                                 yield f"data: {json.dumps({'type': 'token', 'value': message}, ensure_ascii=False)}\n\n"
 
                             yield f"data: {json.dumps({'type': 'result', 'intent': intent, 'data': agent_response}, ensure_ascii=False)}\n\n"
@@ -282,8 +333,29 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
                         # 기타 노드 완료 시 상태 업데이트
                         yield f"data: {json.dumps({'type': 'status', 'value': f'{node_name} 처리 완료'}, ensure_ascii=False)}\n\n"
 
-            # 4. 완료
+            # 4. chat_logs에 저장
             _t_done = time.time() - _t_total
+            response_time_ms = int(_t_done * 1000)
+            try:
+                intent = final_state.get("intent", "general")
+                agent_response = final_state.get("agent_response", {})
+                log = ChatLog(
+                    session_id=session_id,
+                    user_id=user.id,
+                    user_message=request.message,
+                    intent=intent,
+                    intent_confidence=final_state.get("confidence", 0.0),
+                    agent_type=_get_agent_type(intent),
+                    agent_response=json.dumps(agent_response, ensure_ascii=False, default=str)[:5000],
+                    response_time_ms=response_time_ms,
+                )
+                db.add(log)
+                await db.commit()
+                print(f"[Chat] chat_log 저장 완료 (id={log.id})")
+            except Exception as log_err:
+                print(f"[Chat] chat_log 저장 실패: {log_err}")
+
+            # 5. 완료
             print(f"[Chat] 스트림 완료 ✓ (총 {_t_done:.2f}s)")
             print(f"{'='*60}\n")
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
@@ -298,8 +370,10 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user)):
 
 
 @router.post("/", response_model=ChatResponse)
-async def chat(request: ChatRequest, user=Depends(get_current_user)):
+async def chat(request: ChatRequest, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """일반 (비스트리밍) 챗봇 응답"""
+    _t_start = time.time()
+    session_id = request.session_id or str(uuid.uuid4())
     try:
         from ai.agents.orchestrator import get_graph
 
@@ -311,6 +385,23 @@ async def chat(request: ChatRequest, user=Depends(get_current_user)):
         intent = result.get("intent", "general")
         confidence = result.get("confidence", 0.0)
         agent_response = result.get("agent_response", {})
+
+        # chat_logs에 저장
+        try:
+            log = ChatLog(
+                session_id=session_id,
+                user_id=user.id,
+                user_message=request.message,
+                intent=intent,
+                intent_confidence=confidence,
+                agent_type=_get_agent_type(intent),
+                agent_response=json.dumps(agent_response, ensure_ascii=False, default=str)[:5000],
+                response_time_ms=int((time.time() - _t_start) * 1000),
+            )
+            db.add(log)
+            await db.commit()
+        except Exception as log_err:
+            logger.warning("chat_log 저장 실패: %s", log_err)
 
         return ChatResponse(
             intent=intent,

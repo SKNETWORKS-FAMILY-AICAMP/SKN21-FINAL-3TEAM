@@ -98,3 +98,58 @@
 3. Google OAuth 콜백 URL EC2 IP로 업데이트
 
 ---
+
+## 2026-02-19 (목) — 2차 세션
+
+### 작업 내용
+
+#### 1. GitHub Actions CI/CD 구축 (`.github/workflows/deploy.yml`)
+- develop 브랜치 push 시 EC2에 자동 배포되도록 설정
+- `appleboy/ssh-action@v1.0.3` 사용
+- GitHub Secrets 등록: `EC2_HOST`, `EC2_USER`, `EC2_KEY`
+- **문제 해결 과정**:
+  - `status=143 (SIGTERM)` 반복 발생 → `disown` → `setsid` 시도 모두 실패
+  - 근본 원인: SSH 세션 종료 시 프로세스 그룹 전체에 SIGTERM 전달
+  - **최종 해결**: `nohup` 방식 포기 → `sudo systemctl restart workflow-agent` 방식으로 전환
+
+#### 2. systemd 서비스 설정 (`/etc/systemd/system/workflow-agent.service`)
+- EC2 재부팅 시 uvicorn 자동 시작 + 크래시 시 자동 재시작
+- `start.sh` 스크립트 생성 (EC2 프로젝트 루트)
+  - `PYTHONPATH` 설정 포함 (`프로젝트루트:프로젝트루트/backend`)
+  - `exec uvicorn` 절대 경로 사용
+- **문제 해결**: `status=127` → `start.sh` 파일이 EC2에 없었던 것이 원인
+
+#### 3. `ModuleNotFoundError: No module named 'app'` 해결
+- **원인**: `backend/app/main.py` 내부에서 `from app.config import ...` 사용 중인데 PYTHONPATH에 `backend/` 경로 누락
+- **수정**: `PYTHONPATH`에 `/home/ubuntu/SKN21-FINAL-3TEAM/backend` 추가
+- **적용 위치**: `start.sh`, `deploy.yml`
+
+#### 4. EC2 GitHub SSH 인증 설정
+- `git pull` 시 `fatal: could not read Username` 에러 발생
+- EC2에서 SSH 키 생성 후 GitHub Deploy Key 등록
+- git remote URL을 HTTPS → SSH 방식으로 변경
+
+#### 5. sudo 권한 설정
+- ubuntu 사용자가 비밀번호 없이 서비스 재시작 가능하도록 설정
+- `/etc/sudoers.d/workflow-agent` 추가
+
+#### 6. 프론트엔드 API 엔드포인트 EC2로 변경
+- **파일**: `frontend/vite.config.js`
+- `localhost:8000` → `3.37.118.197:8000` (EC2 퍼블릭 IP)
+- 로컬 개발 환경에서 EC2 백엔드로 테스트 가능
+
+#### 7. RDS SSL 연결 에러 해결
+- **에러**: `no pg_hba.conf entry for host ... no encryption`
+- **원인**: RDS 연결 시 SSL 미적용
+- **수정**: `.env`의 `DATABASE_URL` 끝에 `?ssl=require` 추가
+
+#### 8. server.log 타임스탬프 추가
+- `start.sh` 수정: uvicorn 출력을 `while read` 파이프로 받아 타임스탬프 붙여 `server.log`에 저장
+
+### 다음 할 일
+
+1. **Alembic 마이그레이션 실행** (`alembic upgrade head`) — `relation "users" does not exist` 에러 해결 필요
+2. Google OAuth 콜백 URL EC2 IP로 업데이트
+3. 전체 E2E 동작 확인 (로그인 → 채팅 → RAG 검색)
+
+---

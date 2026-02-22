@@ -143,7 +143,7 @@
 - judgment_agent, document_agent, schedule_agent → `async def`로 전환
 - orchestrator.py 3개 wrapper 함수에 `await` 추가
 - develop pull → 경은 judgment_agent 구현 코드와 merge conflict 해결
-- feat/pm-지용 + develop 양쪽 push 완료
+- feat/jiyong + develop 양쪽 push 완료
 
 **인프라:**
 - GitHub main 브랜치 보호 설정 (CLI): PR 필수 + 1 approval + force push 차단
@@ -350,6 +350,43 @@
   5. `지각/결근 + 어떻게/징계` → judgment
 - 회귀 테스트 14건 전부 통과
 - 남은 4건은 1~2어절 초단문 (야근, 출장 등) → clarify(되묻기) 대상
+
+**다음 할 일:**
+- 복합 질문 테스트 데이터 제작 + 감지 정확도 측정
+- post_execution_check 실제 로직 구현
+- 프론트엔드(지영)에게 SSE 새 이벤트 타입 공유
+- 1~2어절 초단문 처리 방안 검토 (clarify 기능 활성화)
+
+---
+
+## 2026-02-20 (목)
+
+**오케스트레이터 복합질문 코드 주석 처리:**
+- `ENABLE_COMPLEX_QUERY=False`로 이미 비활성 상태인 복합질문 관련 코드를 주석 처리
+  - `classify_intent_v2`: complexity 감지 블록 주석 → `is_complex = False` 고정
+  - `route_by_complexity`: complex 라우팅 체크 주석
+  - `build_graph`: decompose/execute/merge 노드 및 엣지 주석
+  - 함수 정의 자체는 유지 (향후 재활성화 가능)
+- 현재 그래프 흐름: 3분기 (지시어→resolve_context→재분류 / 저신뢰→clarify / 고신뢰→Agent 직행)
+
+**오케스트레이터 구조 설명 문서 작성:**
+- `docs/지용/오케스트레이터_구조_설명.md` 신규 생성
+- 그래프 흐름도, 노드별 설명, config 값, 지시어 패턴, 비활성 기능 정리
+
+**ChromaDB → Qdrant 일괄 변경:**
+- 프로젝트 전체에서 ChromaDB 참조를 Qdrant로 수정 (11개 문서)
+  - CLAUDE.md, README.md, DATA_PLAN.md, DATA_GUIDE.md, ERD.md, TASK_BOARD.md
+  - 멘토링 문서 2개, 학습가이드, 팀원 로그, 역할분배 문서
+
+**중간발표 멘토링 문서 최신화:**
+- `docs/멘토링/중간발표_멘토링_20260220.md` 전체 업데이트
+  - 단계별 진행률: 2단계 100%, 3단계 80%, 5단계 10%, 6단계 40%
+  - 5명 팀원 최신 작업 내역 반영 (전체 로그 크로스체크)
+  - Agent 구현율 조정 (Judgment 98%, Schedule 85%)
+  - AWS 배포 블로커 완료 반영
+
+**프로젝트 구조 학습가이드 이동:**
+- `docs/지용/프로젝트_구조_학습가이드.md` → `docs/프로젝트_구조_학습가이드.md`
 
 **다음 할 일:**
 - 복합 질문 테스트 데이터 제작 + 감지 정확도 측정

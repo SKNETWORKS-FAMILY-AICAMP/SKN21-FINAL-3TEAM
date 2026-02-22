@@ -180,7 +180,7 @@
 ║  │                  │  │              │                                ║
 ║  │ BM25 (Top 15)   │  │              │                                ║
 ║  │   + Vector Search│  │              │                                ║
-║  │   (ChromaDB)    │  │              │                                ║
+║  │   (Qdrant)    │  │              │                                ║
 ║  │ → 합산 (Top 20) │  │              │                                ║
 ║  │ → Reranker      │  │              │                                ║
 ║  │   (bge-v2-m3)   │  │              │                                ║
@@ -402,7 +402,7 @@
 | Base sLLM (추후) | **Kanana-1.5-8B** | 벤치마크 선정 (종합 0.652) |
 | Fine-tuning (추후) | **LoRA (PEFT)** + QLoRA 4-bit | 판단 v1 (1,500개) + 문서 v2 (1,700개) |
 | 모델 서빙 | **vLLM** | OpenAI 호환 API + LoRA 핫스왑 + 스트리밍 |
-| Vector DB | **ChromaDB** | 문서 임베딩 저장 + 유사도 검색 |
+| Vector DB | **Qdrant** | 문서 임베딩 저장 + 유사도 검색 |
 | Embedding | **jhgan/ko-sbert-nli** | 한국어 문장 임베딩 |
 | Reranker | **BAAI/bge-reranker-v2-m3** | 검색 결과 재정렬 (Top 5) |
 | 키워드 검색 | **BM25 (rank_bm25)** | Hybrid Search의 키워드 매칭 |
@@ -516,7 +516,7 @@ SKN21-FINAL-3TEAM/
 │   ├── rag/                     # RAG 파이프라인 (경은)
 │   │   ├── hybrid_search.py     # BM25 + Vector
 │   │   ├── reranker.py          # bge-reranker-v2-m3
-│   │   ├── vectorstore.py       # ChromaDB
+│   │   ├── vectorstore.py       # Qdrant
 │   │   ├── qdrant_pipeline.py   # Qdrant 파이프라인
 │   │   └── qdrant_store.py      # Qdrant 벡터스토어
 │   ├── templates/               # 문서 템플릿 (승언)
@@ -593,7 +593,7 @@ SKN21-FINAL-3TEAM/
 ```
 main (배포용 - PM 지용만 머지)
  └── develop (통합 개발 - PR 머지 대상)
-      ├── feat/pm-지용          Intent, 오케스트레이터, SSE, 스키마
+      ├── feat/jiyong            Intent, 오케스트레이터, SSE, 스키마
       ├── feat/ai-경은          LLM API, RAG, 판단 Agent, 파인튜닝
       ├── feat/ai-승언          문서 Agent, 파서, 템플릿, 파인튜닝
       ├── feat/backend-혜빈     DB, 인증, API, Google Services

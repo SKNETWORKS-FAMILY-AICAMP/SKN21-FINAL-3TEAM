@@ -17,7 +17,6 @@ export default function TodaySchedule({ meetings = [], actions = [] }) {
       {/* 섹션 1: 오늘 일정 */}
       <div className="card-header">
         <div className="card-title"><Calendar size={16} className="text-neutral-sub" />오늘 일정</div>
-        <Link to="/meetings" className="text-xs text-primary-700 font-medium hover:underline">전체 보기</Link>
       </div>
       <div className="card-body space-y-2.5">
         {meetings.length === 0 && (
@@ -47,7 +46,6 @@ export default function TodaySchedule({ meetings = [], actions = [] }) {
       {/* 섹션 2: 마감 임박 */}
       <div className="card-header mt-1">
         <div className="card-title"><ListChecks size={16} className="text-neutral-sub" />마감 임박</div>
-        <Link to="/schedules" className="text-xs text-primary-700 font-medium hover:underline">전체 보기</Link>
       </div>
       <div className="card-body space-y-1">
         {actionData.length === 0 && (

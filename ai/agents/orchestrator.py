@@ -119,8 +119,17 @@ async def general_response_node(state: AgentState) -> AgentState:
 async def safe_judgment_agent(state: AgentState) -> AgentState:
     """판단 Agent 안전 래퍼 (팀원 B)"""
     _t = time.time()
-    print("[Orchestrator] safe_judgment_agent 진입")
+    print(f"[Orchestrator] safe_judgment_agent 진입 | stream_mode={state.get('stream_mode')}")
     try:
+        # 스트리밍 모드면 chat.py에서 judgment_agent_stream으로 직접 처리
+        if state.get("stream_mode"):
+            state["agent_response"] = {
+                "type": "judgment",
+                "message": "",
+                "stream_pending": True,
+            }
+            return state
+
         from ai.agents.judgment_agent import judgment_agent
 
         result = await judgment_agent(state)
@@ -223,16 +232,16 @@ def classify_intent_v2(state: AgentState) -> AgentState:
 
     state["needs_context_resolution"] = False
 
-    # 복합 감지
-    candidates = state["intent_candidates"]
-    complexity = detect_complexity(user_input, candidates)
-    state["is_complex"] = complexity["is_complex"]
+    # 복합 감지 (현재 비활성 — ENABLE_COMPLEX_QUERY=False)
+    # candidates = state["intent_candidates"]
+    # complexity = detect_complexity(user_input, candidates)
+    # state["is_complex"] = complexity["is_complex"]
+    state["is_complex"] = False
 
     print(
         f"[Orchestrator] classify_intent_v2 완료 ({time.time()-_t:.2f}s) | "
         f"intent={state['intent']}, confidence={state['confidence']:.4f}, "
-        f"is_complex={state['is_complex']}, signals={complexity['signals']}, "
-        f"reasons={complexity['trigger_reasons']}"
+        f"is_complex={state['is_complex']}"
     )
     return state
 
@@ -249,10 +258,10 @@ def route_by_complexity(state: AgentState) -> str:
         print(f"[Orchestrator] 라우팅: context_dependent → resolve_context")
         return "resolve_context"
 
-    # 2. 복합 질문 (ENABLE_COMPLEX_QUERY=False이면 단일 intent로만 라우팅)
-    if ENABLE_COMPLEX_QUERY and is_complex and confidence >= INTENT_FALLBACK_THRESHOLD:
-        print(f"[Orchestrator] 라우팅: complex → decompose_and_classify")
-        return "decompose_and_classify"
+    # 2. 복합 질문 (현재 비활성)
+    # if ENABLE_COMPLEX_QUERY and is_complex and confidence >= INTENT_FALLBACK_THRESHOLD:
+    #     print(f"[Orchestrator] 라우팅: complex → decompose_and_classify")
+    #     return "decompose_and_classify"
 
     # 3. 낮은 confidence → top-3 후보 제시
     if confidence < INTENT_CONFIDENCE_THRESHOLD:
@@ -779,9 +788,10 @@ def build_graph():
     # 노드 등록
     graph.add_node("classify_intent_v2", classify_intent_v2)
     graph.add_node("resolve_context", resolve_context)
-    graph.add_node("decompose_and_classify", decompose_and_classify)
-    graph.add_node("execute_sub_queries", execute_sub_queries)
-    graph.add_node("merge_responses", merge_responses)
+    # 복합 질문 노드 (현재 비활성)
+    # graph.add_node("decompose_and_classify", decompose_and_classify)
+    # graph.add_node("execute_sub_queries", execute_sub_queries)
+    # graph.add_node("merge_responses", merge_responses)
     graph.add_node("clarify_with_candidates", clarify_with_candidates)
     graph.add_node("judgment_agent", safe_judgment_agent)
     graph.add_node("document_agent", safe_document_agent)
@@ -798,7 +808,7 @@ def build_graph():
         route_by_complexity,
         {
             "resolve_context": "resolve_context",
-            "decompose_and_classify": "decompose_and_classify",
+            # "decompose_and_classify": "decompose_and_classify",  # 복합 질문 비활성
             "clarify_with_candidates": "clarify_with_candidates",
             "judgment_agent": "judgment_agent",
             "document_agent": "document_agent",
@@ -816,25 +826,21 @@ def build_graph():
         },
     )
 
-    # decompose → 실행 or fallback
-    graph.add_conditional_edges(
-        "decompose_and_classify",
-        _route_after_decompose,
-        {
-            "execute_sub_queries": "execute_sub_queries",
-            "judgment_agent": "judgment_agent",
-            "document_agent": "document_agent",
-            "schedule_agent": "schedule_agent",
-            "general_response": "general_response",
-            "format_response": "format_response",
-        },
-    )
-
-    # execute_sub_queries → merge_responses
-    graph.add_edge("execute_sub_queries", "merge_responses")
-
-    # merge_responses → format_response
-    graph.add_edge("merge_responses", "format_response")
+    # 복합 질문 엣지 (현재 비활성)
+    # graph.add_conditional_edges(
+    #     "decompose_and_classify",
+    #     _route_after_decompose,
+    #     {
+    #         "execute_sub_queries": "execute_sub_queries",
+    #         "judgment_agent": "judgment_agent",
+    #         "document_agent": "document_agent",
+    #         "schedule_agent": "schedule_agent",
+    #         "general_response": "general_response",
+    #         "format_response": "format_response",
+    #     },
+    # )
+    # graph.add_edge("execute_sub_queries", "merge_responses")
+    # graph.add_edge("merge_responses", "format_response")
 
     # 모든 Agent/노드 → format_response → END
     graph.add_edge("judgment_agent", "format_response")

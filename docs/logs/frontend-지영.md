@@ -347,6 +347,87 @@
 - `uiStore.js` — `moveWidget()` 추가
 - `DashboardPage.jsx` — 좌↔우 컬럼 자유 이동, 드롭 위치 파란 선 표시
 
+#### 6) 일정 유형 커스터마이즈 기능 구현
+
+- **`store/scheduleTypeStore.js`** 신규 생성
+  - 기본 유형 3개 (회의/마감일/개인 일정) + 커스텀 유형 localStorage 저장
+  - `addType(label, color)`, `removeType(id)` 액션
+- **`components/schedules/ScheduleTypeManager.jsx`** 신규 생성
+  - 기본 유형 목록 (삭제 불가) + 커스텀 유형 목록 (삭제 가능)
+  - 이름 입력 + 색상 스와치 12개 선택 → `+ 추가` 버튼 배경색이 선택 색상으로 실시간 변경
+- **`ScheduleForm.jsx`** 수정 — 스토어에서 동적으로 유형 목록 불러와 버튼 렌더링 (커스텀 유형 자동 반영)
+
+### 다음 할 일
+- 관리자 API 연동 (#29)
+- 나머지 Mock → 실제 API 교체 (대시보드, 채팅, 문서, 회의)
+
+---
+
+## 2026-02-20 (금)
+
+### 한 일
+
+#### 1) 회원가입 성공 팝업 + 로그인 자동 입력 구현
+
+- **문제**: 회원가입 후 팝업 없이 바로 동작하거나, 대시보드로 튕기는 버그
+- **원인 분석**: `PublicOnlyRoute`가 `isAuthenticated = true` 감지 시 즉시 대시보드로 리다이렉트하여 팝업이 렌더링되지 못함
+
+- **`useAuth.js`** 수정
+  - `register()` 성공 후 자동 `/login` 이동 제거 → 이동 제어권을 `LoginPage`로 위임
+
+- **`LoginPage.jsx`** 수정
+  - `showRegisterSuccess` 상태 추가 — 성공 팝업 표시 여부 관리
+  - `registeredCredentials` 상태 추가 — 회원가입한 이메일/비밀번호 임시 보관
+  - `handleRegister` — 회원가입 성공 시 자동 로그인 없이 팝업만 표시 (토큰 저장 안 함 → PublicOnlyRoute 리다이렉트 방지)
+  - `handleRegisterSuccessConfirm` — 팝업 확인 시 `switchTab('login')`으로 로그인 탭 전환
+  - 성공 팝업 UI 추가 (체크 아이콘 + "회원가입 완료!" + "확인" 버튼)
+  - `LoginForm`에 `defaultEmail`, `defaultPassword` prop 전달
+
+- **`LoginForm.jsx`** 수정
+  - `defaultEmail`, `defaultPassword` prop 추가
+  - `useState` 초기값을 prop 값으로 설정 → 로그인 탭 전환 시 이메일/비밀번호 자동 입력
+
+- **최종 흐름**: 회원가입 제출 → 성공 팝업 → "확인" 클릭 → 로그인 탭 (이메일·비밀번호 자동 입력)
+
+### 다음 할 일
+- 관리자 API 연동 (#29)
+- 나머지 Mock → 실제 API 교체 (대시보드, 채팅, 문서, 회의)
+
+---
+
+## 2026-02-20 (금) — 오후
+
+### 한 일
+
+#### 1) 사이드바 접기/펼치기 기능 구현 (`Sidebar.jsx`, `Layout.jsx`)
+
+- **토글 버튼 추가**: 사이드바 상단 W 로고 아래에 햄버거 아이콘(`Menu`) 버튼 배치
+  - 펼쳐진 상태에서 커서 올리면 → `메뉴 접기` 툴팁
+  - 접힌 상태에서 커서 올리면 → `메뉴 펼치기` 툴팁
+- **접힌 상태 (`w-16`)**: 아이콘만 중앙 정렬 표시
+  - 섹션 레이블(`메인`, `관리` 등) → 얇은 구분선으로 대체
+  - 각 메뉴 아이템 → 아이콘만, `title` 속성으로 마우스 오버 시 메뉴명 표시
+  - 유저 프로필 → 아바타만, ThemeToggle + LogOut 아이콘 버튼으로 대체
+- **펼친 상태 (`w-60`)**: 기존과 동일
+- **애니메이션**: `transition-[width] duration-300 ease-in-out` 부드러운 전환
+- **버튼 클리핑 버그 수정**: `aside`의 `overflow-y-auto`를 내부 `<div>`로 이동하여 절대 위치 버튼이 잘리지 않도록 수정
+
+#### 2) 대시보드 TodaySchedule 전체 보기 버튼 제거 (`TodaySchedule.jsx`)
+
+- 오늘 일정 섹션 우측 "전체 보기" 링크 제거
+- 마감 임박 섹션 우측 "전체 보기" 링크 제거
+
+#### 3) 사이드바 메모 기능 구현 (`Sidebar.jsx`, `uiStore.js`)
+
+- **다중 메모 지원**: 단일 textarea → 메모 리스트 방식으로 구현
+  - `uiStore.js` — `memos` 배열 상태 (`{ id, text, createdAt }`), localStorage 자동 저장
+  - `addMemo()`, `updateMemo()`, `deleteMemo()`, `selectMemo()` 액션
+  - 기존 단일 메모(`sidebar-memo`) 있으면 새 형식(`sidebar-memos`)으로 자동 마이그레이션
+- **목록 보기**: 메모 제목(첫 줄) 리스트 표시, `+` 버튼으로 새 메모 추가, 휴지통 아이콘으로 삭제 (hover 시 표시)
+- **편집 보기**: 메모 클릭 시 textarea 표시, "목록으로" 버튼으로 리스트 복귀
+- **사이드바 접힌 상태**: StickyNote 아이콘 + 메모 개수 뱃지 표시
+- **자동 저장 표시**: 타이핑 멈추고 0.5초 후 `✓ 자동 저장됨` accent 색상 텍스트 페이드인 → 2초 후 페이드아웃
+
 ### 다음 할 일
 - 관리자 API 연동 (#29)
 - 나머지 Mock → 실제 API 교체 (대시보드, 채팅, 문서, 회의)
@@ -372,6 +453,7 @@
 | 페이지 전환 애니메이션 | ✅ 완료 | framer-motion, fade+slide 200ms |
 | 파일 드래그&드롭 | ✅ 완료 | 채팅 파일 첨부, 검증(형식/크기), FileChip |
 | 대화 세션 관리 | ✅ 완료 | localStorage 세션 목록, 자동 생성/전환/삭제 |
+| 사이드바 메모 | ✅ 완료 | 다중 메모 리스트, localStorage 저장, 자동 저장 표시 |
 | **백엔드 실제 연동** | 🔄 진행중 | 일정 관리 완료, 나머지 페이지 교체 필요 |
 
 ### 파일 현황

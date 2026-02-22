@@ -4,12 +4,16 @@ import { sendMeetingInvite } from '../api/google';
 import GoogleServicesConnect from '../components/schedules/GoogleServicesConnect';
 import CalendarView from '../components/schedules/CalendarView';
 import ScheduleForm from '../components/schedules/ScheduleForm';
+import ScheduleTypeManager from '../components/schedules/ScheduleTypeManager';
 import TasksPanel from '../components/schedules/TasksPanel';
 import SheetsDashboard from '../components/schedules/SheetsDashboard';
+import useScheduleTypeStore, { DEFAULT_TYPES } from '../store/scheduleTypeStore';
 
 export default function SchedulesPage() {
   const { connected, calendarEvents, calendarLoading, calendarError, fetchCalendarEvents, hasScope, syncEventToGoogle, createEventWithMeet } = useGoogleServices();
+  const { customTypes } = useScheduleTypeStore();
   const [showForm, setShowForm] = useState(false);
+  const [showTypeManager, setShowTypeManager] = useState(false);
   const [activeTab, setActiveTab] = useState('calendar');
 
   // Google Calendar 연결 시 이벤트 자동 로드 (백엔드 기본값: ±3개월)
@@ -111,6 +115,13 @@ export default function SchedulesPage() {
               {calendarLoading ? '🔄 동기화 중...' : '🔄 새로고침'}
             </button>
           )}
+          <button
+            onClick={() => setShowTypeManager(true)}
+            className="btn-outline"
+            title="일정 유형 관리"
+          >
+            유형 관리
+          </button>
           <button onClick={() => setShowForm(!showForm)} className="btn-primary">
             {showForm ? '취소' : '+ 일정 추가'}
           </button>
@@ -119,6 +130,11 @@ export default function SchedulesPage() {
 
       {/* Google 서비스 연결 */}
       <GoogleServicesConnect />
+
+      {/* 유형 관리 모달 */}
+      {showTypeManager && (
+        <ScheduleTypeManager onClose={() => setShowTypeManager(false)} />
+      )}
 
       {/* 일정 추가 팝업 */}
       {showForm && (
@@ -154,15 +170,15 @@ export default function SchedulesPage() {
       {activeTab === 'calendar' && (
         <>
           {/* 범례 */}
-          <div className="flex gap-4 mb-5">
+          <div className="flex flex-wrap gap-4 mb-5">
             {[
-              { dot: 'bg-primary-500', l: '회의' },
-              { dot: 'bg-error', l: '마감일' },
-              { dot: 'bg-success', l: 'Google Calendar' },
-              { dot: 'bg-red-400', l: '공휴일' },
-            ].map(({ dot, l }) => (
-              <div key={l} className="flex items-center gap-1.5 text-xs text-neutral-sub">
-                <span className={`w-2.5 h-2.5 rounded-full ${dot}`} />{l}
+              ...DEFAULT_TYPES,
+              ...customTypes,
+              { id: 'holiday', label: '공휴일', color: '#C06060' },
+            ].map(({ id, label, color }) => (
+              <div key={id} className="flex items-center gap-1.5 text-xs text-neutral-sub">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+                {label}
               </div>
             ))}
           </div>

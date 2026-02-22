@@ -62,7 +62,7 @@
 사용자: "접근 권한 관련 규정 뭐 있어?"
   → Intent Classifier: "doc_search" 분류
   → document_agent:
-      1) ChromaDB에서 관련 문서/규정 검색 (BM25 + Vector)
+      1) Qdrant에서 관련 문서/규정 검색 (BM25 + Vector)
       2) Reranker로 상위 결과 정렬
       3) 검색 결과 + 사용자 질문을 sLLM(LoRA v2)에 전달
       4) sLLM이 검색 결과를 자연스럽게 정리하여 답변
@@ -76,7 +76,7 @@
 사용자: "인턴에게 서버 접근 권한 줘도 돼?"
   → Intent Classifier: "judgment" 분류
   → judgment_agent:
-      1) ChromaDB에서 관련 규정 검색 (RAG)
+      1) Qdrant에서 관련 규정 검색 (RAG)
       2) 규정 원문 + 사용자 질문을 sLLM(LoRA v1)에 전달
       3) sLLM이 Yes/No/조건부 판단 + 근거 + 대안 생성
 ```
@@ -88,7 +88,7 @@
 ```
 회의록 분석 또는 문서 요약 완료 후 자동 트리거:
   → 분석된 내용에서 키워드 추출
-  → ChromaDB에서 관련 규정 검색 (RAG)
+  → Qdrant에서 관련 규정 검색 (RAG)
   → 규정 원문 + 분석 내용을 sLLM(LoRA v2)에 전달
   → sLLM이 위반 여부 판단 (risk_detected, risk_level, violation 등)
   → 위반 감지 시 사용자에게 경고 표시
@@ -112,7 +112,7 @@
 |---------|------|------|
 | **텍스트 추출기** | PDF → PyMuPDF, DOCX → python-docx | 문서 요약 시 파일에서 텍스트 추출 |
 | **청크 분할기** | 긴 문서를 sLLM 컨텍스트에 맞게 분할 | 문서가 토큰 제한 초과 시 대응 |
-| **ChromaDB** | 규정/문서 벡터 저장소 | doc_search, judgment, 리스크 감지에 RAG 제공 |
+| **Qdrant** | 규정/문서 벡터 저장소 | doc_search, judgment, 리스크 감지에 RAG 제공 |
 | **Reranker** | 검색 결과 재정렬 | doc_search 정확도 향상 |
 
 ---

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 
-export default function LoginForm({ onSubmit, onGoogleLogin, error, loading }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export default function LoginForm({ onSubmit, onGoogleLogin, error, loading, defaultEmail = '', defaultPassword = '' }) {
+  const [email, setEmail] = useState(defaultEmail);
+  const [password, setPassword] = useState(defaultPassword);
   const [localError, setLocalError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
