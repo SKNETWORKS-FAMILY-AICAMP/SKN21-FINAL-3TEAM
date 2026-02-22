@@ -1,0 +1,44 @@
+[
+  {
+    "model": "Midm-2.0-Base",
+    "model_id": "K-intelligence/Midm-2.0-Base-Instruct",
+    "overall": {
+      "token_f1": 0.3063,
+      "rouge_l": 0.6221,
+      "count": 40
+    },
+    "general": {
+      "token_f1": 0.2068,
+      "rouge_l": 0.4933,
+      "count": 20
+    },
+    "business": {
+      "token_f1": 0.4057,
+      "rouge_l": 0.7508,
+      "count": 20
+    },
+    "avg_infer_sec": 3.19,
+    "total_infer_sec": 127.43
+  },
+  {
+    "model": "A.X-3.1-Light",
+    "model_id": "skt/A.X-3.1-Light",
+    "overall": {
+      "token_f1": 0.7516,
+      "rouge_l": 0.6625,
+      "count": 40
+    },
+    "general": {
+      "token_f1": 0.8663,
+      "rouge_l": 0.55,
+      "count": 20
+    },
+    "business": {
+      "token_f1": 0.6369,
+      "rouge_l": 0.775,
+      "count": 20
+    },
+    "avg_infer_sec": 0.55,
+    "total_infer_sec": 21.93
+  }
+]
