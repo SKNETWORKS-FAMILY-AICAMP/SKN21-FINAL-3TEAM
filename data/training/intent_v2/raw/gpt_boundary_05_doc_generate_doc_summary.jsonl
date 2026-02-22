@@ -1,0 +1,30 @@
+{"text": "이번 프로젝트 계획서 작성해줘", "label": "doc_generate"}
+{"text": "지난 회의록 요약해줄래?", "label": "doc_summary"}
+{"text": "출장을 위한 보고서 만들어줘", "label": "doc_generate"}
+{"text": "작년 연차 사용내역 요약해줘", "label": "doc_summary"}
+{"text": "급여명세서 새로 만들어 주세요", "label": "doc_generate"}
+{"text": "기존 급여명세서 내용 간단히 정리해줘", "label": "doc_summary"}
+{"text": "보안 규정 문서 작성해줘", "label": "doc_generate"}
+{"text": "보안 규정의 핵심 부분만 정리해줄래?", "label": "doc_summary"}
+{"text": "신입사원 JD 작성 부탁해", "label": "doc_generate"}
+{"text": "신입사원 JD 내용 좀 요약해봐", "label": "doc_summary"}
+{"text": "회의록 작성해 주실래요?", "label": "doc_generate"}
+{"text": "이 회의록의 주요 포인트만 정리해줘", "label": "doc_summary"}
+{"text": "회사 정책에 대한 제안서 작성해줘", "label": "doc_generate"}
+{"text": "회사 정책 제안서의 핵심만 요약해줘", "label": "doc_summary"}
+{"text": "새 프로젝트 보고서 만들어주시겠어요?", "label": "doc_generate"}
+{"text": "출장 보고서 요약해줘", "label": "doc_summary"}
+{"text": "다음 분기 계획서 작성해줘", "label": "doc_generate"}
+{"text": "지난 분기 계획서 간단히 정리해줘", "label": "doc_summary"}
+{"text": "연차 계획 문서 좀 만들어줘", "label": "doc_generate"}
+{"text": "기존 연차 계획서 요약해줄 수 있어?", "label": "doc_summary"}
+{"text": "보안 절차 문서 새로 작성해줘", "label": "doc_generate"}
+{"text": "보안 절차 문서의 중요한 부분만 요약해줘", "label": "doc_summary"}
+{"text": "프로젝트 제안서 만들어주세요", "label": "doc_generate"}
+{"text": "프로젝트 제안서 내용 요약 좀 해줄래요?", "label": "doc_summary"}
+{"text": "급여 보고서 작성해줘", "label": "doc_generate"}
+{"text": "급여 보고서의 요점만 간단히 정리해줘", "label": "doc_summary"}
+{"text": "자료조사 결과로 보고서 만들어줘", "label": "doc_generate"}
+{"text": "자료조사 결과 요약해줘", "label": "doc_summary"}
+{"text": "신규 입사자 안내문 작성 부탁해", "label": "doc_generate"}
+{"text": "신규 입사자 안내문의 핵심 정리해줘", "label": "doc_summary"}

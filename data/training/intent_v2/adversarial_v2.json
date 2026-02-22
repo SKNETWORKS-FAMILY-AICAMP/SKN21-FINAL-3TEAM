@@ -1,0 +1,1802 @@
+[
+  {
+    "text": "연차 되나?",
+    "label": "judgment"
+  },
+  {
+    "text": "반차 쓸 수 있어?",
+    "label": "judgment"
+  },
+  {
+    "text": "재택 가능?",
+    "label": "judgment"
+  },
+  {
+    "text": "겸직 괜찮나요?",
+    "label": "judgment"
+  },
+  {
+    "text": "연챠 사용이 가능한가요?",
+    "label": "judgment"
+  },
+  {
+    "text": "유급휴가 남은거 쓸수잇나요",
+    "label": "judgment"
+  },
+  {
+    "text": "경조사 휴가가 몇일인지 확인좀요",
+    "label": "judgment"
+  },
+  {
+    "text": "수습기간에 연챠 되나요?",
+    "label": "judgment"
+  },
+  {
+    "text": "업무 시간 외 초과 근무에 대한 수당 지급 여부를 확인 부탁드립니다",
+    "label": "judgment"
+  },
+  {
+    "text": "퇴직 후 동종업계 취업 제한 조항 적용 대상인지 검토 요청드립니다",
+    "label": "judgment"
+  },
+  {
+    "text": "개인 노트북으로 사내 시스템 접속이 허용되는 사안인지 판단 부탁드립니다",
+    "label": "judgment"
+  },
+  {
+    "text": "해외 출장 중 개인 일정 병행 가능 여부에 대해 규정 확인을 요청드립니다",
+    "label": "judgment"
+  },
+  {
+    "text": "그거 돼?",
+    "label": "judgment"
+  },
+  {
+    "text": "아까 물어본 건 괜찮은 거야?",
+    "label": "judgment"
+  },
+  {
+    "text": "방금 말한 거 위반이야?",
+    "label": "judgment"
+  },
+  {
+    "text": "그게 허용되는 건지 모르겠어",
+    "label": "judgment"
+  },
+  {
+    "text": "사외 강연하고 싶은데 별도 수입이 생길 수도 있거든...",
+    "label": "judgment"
+  },
+  {
+    "text": "주말에 프리랜서로 일하는 사람도 있다던데",
+    "label": "judgment"
+  },
+  {
+    "text": "퇴근 후에 유튜브 하는 건 좀 그런가",
+    "label": "judgment"
+  },
+  {
+    "text": "팀장님이 괜찮다고 하셨는데 규정상으로도 문제없는 건지 궁금해서",
+    "label": "judgment"
+  },
+  {
+    "text": "ㅇㅊ ㄱㄴ?",
+    "label": "judgment"
+  },
+  {
+    "text": "반차 ㄱㄴ함?",
+    "label": "judgment"
+  },
+  {
+    "text": "겸업 ㄱㅊ?",
+    "label": "judgment"
+  },
+  {
+    "text": "외근 ㄱㄴ여?",
+    "label": "judgment"
+  },
+  {
+    "text": "입사한 지 3개월밖에 안 됐는데 경조사 휴가를 쓸 수 있는 건지 취업규칙에 뭐라고 되어있는지 알고 싶어요",
+    "label": "judgment"
+  },
+  {
+    "text": "프로젝트 마감이 코앞인데 팀원이 연차를 신청했거든요 이걸 반려할 수 있는 건지 궁금합니다",
+    "label": "judgment"
+  },
+  {
+    "text": "고객사 미팅에서 받은 선물이 있는데 금액이 좀 되는 것 같아서 수령해도 되는 건지 판단이 필요해요",
+    "label": "judgment"
+  },
+  {
+    "text": "야근하면 택시비 나와?",
+    "label": "judgment"
+  },
+  {
+    "text": "파견 중인데 원래 회사 복지 적용돼?",
+    "label": "judgment"
+  },
+  {
+    "text": "시용기간 중 퇴사 가능해?",
+    "label": "judgment"
+  },
+  {
+    "text": "취업규칙 어디있어?",
+    "label": "doc_search"
+  },
+  {
+    "text": "인사규정 찾아줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "출장 양식 줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "복리후생 문서 있나?",
+    "label": "doc_search"
+  },
+  {
+    "text": "경비처리 메뉴얼 어디잇어?",
+    "label": "doc_search"
+  },
+  {
+    "text": "연봉계약서 양식좀 찾아조",
+    "label": "doc_search"
+  },
+  {
+    "text": "보안규졍 파일 어디있나요",
+    "label": "doc_search"
+  },
+  {
+    "text": "근태관리 메뉴얼 검색해조",
+    "label": "doc_search"
+  },
+  {
+    "text": "사내 보안 관련 최신 가이드라인 문서의 위치를 확인하고 싶습니다",
+    "label": "doc_search"
+  },
+  {
+    "text": "2024년도 하반기 성과평가 기준표 문서를 열람할 수 있도록 안내 부탁드립니다",
+    "label": "doc_search"
+  },
+  {
+    "text": "해외 파견 근무자 복리후생 관련 세부 규정 문서를 찾아주시기 바랍니다",
+    "label": "doc_search"
+  },
+  {
+    "text": "전사 조직도 최신본이 어디에 게시되어 있는지 확인 부탁드립니다",
+    "label": "doc_search"
+  },
+  {
+    "text": "아까 그 문서 어디 있었지?",
+    "label": "doc_search"
+  },
+  {
+    "text": "그거 파일로 있을 텐데",
+    "label": "doc_search"
+  },
+  {
+    "text": "예전에 공유받은 그 양식",
+    "label": "doc_search"
+  },
+  {
+    "text": "지난번에 본 그 규정 다시 보고 싶어",
+    "label": "doc_search"
+  },
+  {
+    "text": "어딘가에 매뉴얼이 있었던 것 같은데...",
+    "label": "doc_search"
+  },
+  {
+    "text": "서식 파일이 필요한 상황이야",
+    "label": "doc_search"
+  },
+  {
+    "text": "경비 처리 방법을 알고 싶은데 참고할 문서가 있으면 좋겠어",
+    "label": "doc_search"
+  },
+  {
+    "text": "신입사원 온보딩 가이드가 어딘가 있을 것 같거든",
+    "label": "doc_search"
+  },
+  {
+    "text": "ㅊㅈ 양식 어디",
+    "label": "doc_search"
+  },
+  {
+    "text": "ㅇㅅㄱㅈ 찾아줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "복지 규정 ㅇㄷ?",
+    "label": "doc_search"
+  },
+  {
+    "text": "ㄱㅌ 메뉴얼 ㅇㄷ있음?",
+    "label": "doc_search"
+  },
+  {
+    "text": "팀에서 쓰는 프로젝트 관리 템플릿이 있다고 들었는데 SharePoint인지 구글 드라이브인지 어디서 받을 수 있는지 모르겠어요",
+    "label": "doc_search"
+  },
+  {
+    "text": "작년에 인사팀에서 배포했던 평가 면담 질문지가 있었는데 어디에 저장되어 있는지 알려줄 수 있어?",
+    "label": "doc_search"
+  },
+  {
+    "text": "보안 서약서 양식이 올해 바뀌었다고 하던데 최신 버전 파일 위치 좀",
+    "label": "doc_search"
+  },
+  {
+    "text": "NDA 템플릿 있어?",
+    "label": "doc_search"
+  },
+  {
+    "text": "IP 관련 계약서 양식 검색",
+    "label": "doc_search"
+  },
+  {
+    "text": "퇴직금 정산 규정 찾아줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "JD 작성해줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "제안서 초안 잡아줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "회이록 정리해조",
+    "label": "doc_generate"
+  },
+  {
+    "text": "보거서 작성해줘어",
+    "label": "doc_generate"
+  },
+  {
+    "text": "재안서 만들어조",
+    "label": "doc_generate"
+  },
+  {
+    "text": "주간업무 보고서 작성해조",
+    "label": "doc_generate"
+  },
+  {
+    "text": "금일 진행된 프로젝트 킥오프 미팅에 대한 회의록 작성을 부탁드리겠습니다",
+    "label": "doc_generate"
+  },
+  {
+    "text": "마케팅 부서 시니어 매니저 포지션에 대한 직무기술서 초안 작성을 요청드립니다",
+    "label": "doc_generate"
+  },
+  {
+    "text": "고객사 제출용 기술 제안서를 작성하여 주시기 바랍니다",
+    "label": "doc_generate"
+  },
+  {
+    "text": "분기별 실적 보고서를 정해진 템플릿에 맞추어 생성해 주시기 바랍니다",
+    "label": "doc_generate"
+  },
+  {
+    "text": "아까 회의 내용으로 작성해줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "방금 한 얘기 문서로 정리해줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "오늘 논의 사항 기반으로 만들어줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "그 포지션으로 하나 뽑아줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "이번 분기 성과를 정리해야 하는데...",
+    "label": "doc_generate"
+  },
+  {
+    "text": "고객한테 보낼 문서가 하나 필요해",
+    "label": "doc_generate"
+  },
+  {
+    "text": "미팅 다녀왔는데 기록으로 남겨야 할 것 같아",
+    "label": "doc_generate"
+  },
+  {
+    "text": "채용 공고를 올려야 하는 상황인데 JD가 없어서",
+    "label": "doc_generate"
+  },
+  {
+    "text": "ㅂㄱㅅ 써줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "ㅎㅇㄹ 정리해줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "ㅈㅇㅅ 작성 ㄱㄱ",
+    "label": "doc_generate"
+  },
+  {
+    "text": "JD 하나 ㄱㄱ",
+    "label": "doc_generate"
+  },
+  {
+    "text": "오늘 오전에 했던 전략 회의 참석자 5명이었고 안건이 3개였는데 결정사항 포함해서 회의록 형태로 깔끔하게 만들어줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "백엔드 개발자 시니어 레벨로 채용하려는데 우리 팀 기술스택이 Python FastAPI거든 이거 기반으로 JD 하나 작성해줄래?",
+    "label": "doc_generate"
+  },
+  {
+    "text": "이번 달 마케팅 캠페인 결과를 경영진한테 보고해야 해서 수치 포함된 월간 보고서 하나 만들어줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "내일 고객사 PT인데 슬라이드 대본 좀 만들어줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "워크샵 결과 보고서 양식으로 정리해줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "프로젝트 종료 보고서 초안 작성해줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "요약해줘",
+    "label": "doc_summary"
+  },
+  {
+    "text": "핵심만 정리해",
+    "label": "doc_summary"
+  },
+  {
+    "text": "간단히 줄여줘",
+    "label": "doc_summary"
+  },
+  {
+    "text": "3줄 요약 부탁",
+    "label": "doc_summary"
+  },
+  {
+    "text": "이 문서 요약해조",
+    "label": "doc_summary"
+  },
+  {
+    "text": "보고서 핵심만 졍리해줘",
+    "label": "doc_summary"
+  },
+  {
+    "text": "내용 줄여조 간단하게",
+    "label": "doc_summary"
+  },
+  {
+    "text": "회이록 핵심 졍리 부탁",
+    "label": "doc_summary"
+  },
+  {
+    "text": "첨부된 프로젝트 기획서의 핵심 내용을 요약하여 정리해 주시기 바랍니다",
+    "label": "doc_summary"
+  },
+  {
+    "text": "지난 분기 경영 실적 보고서를 경영진 보고용으로 간략히 요약 부탁드립니다",
+    "label": "doc_summary"
+  },
+  {
+    "text": "해당 기술 검토 보고서의 주요 결론과 권고사항만 추출하여 정리해 주십시오",
+    "label": "doc_summary"
+  },
+  {
+    "text": "입찰 제안서 전체 내용을 한 페이지 분량으로 축약하여 요약해 주시기 바랍니다",
+    "label": "doc_summary"
+  },
+  {
+    "text": "아까 그 문서 짧게 정리해줘",
+    "label": "doc_summary"
+  },
+  {
+    "text": "방금 공유한 거 핵심만",
+    "label": "doc_summary"
+  },
+  {
+    "text": "그거 너무 긴데 줄여서",
+    "label": "doc_summary"
+  },
+  {
+    "text": "위에 올린 파일 요점만",
+    "label": "doc_summary"
+  },
+  {
+    "text": "문서가 너무 길어서 다 읽기 힘든데...",
+    "label": "doc_summary"
+  },
+  {
+    "text": "팀장님한테 보고하려면 핵심만 뽑아야 할 것 같아",
+    "label": "doc_summary"
+  },
+  {
+    "text": "전체 다 읽을 시간이 없어서 중요한 것만 알면 되거든",
+    "label": "doc_summary"
+  },
+  {
+    "text": "이걸 한눈에 파악할 수 있게 정리가 필요한 상황이야",
+    "label": "doc_summary"
+  },
+  {
+    "text": "ㅇㅇ 3줄로",
+    "label": "doc_summary"
+  },
+  {
+    "text": "핵심만 ㄱㄱ",
+    "label": "doc_summary"
+  },
+  {
+    "text": "ㅈㄹ 길다 줄여줘",
+    "label": "doc_summary"
+  },
+  {
+    "text": "50페이지짜리 기술 백서인데 우리 팀에 관련된 부분만 추려서 핵심 포인트 5개 이내로 요약해줄 수 있어?",
+    "label": "doc_summary"
+  },
+  {
+    "text": "경쟁사 분석 보고서가 3개나 있는데 공통적으로 언급되는 핵심 위협 요소만 뽑아서 정리해줘",
+    "label": "doc_summary"
+  },
+  {
+    "text": "지난주 전체 부서 회의록이 너무 길어서 우리 팀 관련 결정사항과 액션 아이템만 추려줘",
+    "label": "doc_summary"
+  },
+  {
+    "text": "감사 보고서 내용 중 지적사항만 골라서 정리해줘",
+    "label": "doc_summary"
+  },
+  {
+    "text": "계약서 주요 조항만 뽑아줘",
+    "label": "doc_summary"
+  },
+  {
+    "text": "리서치 페이퍼 결론 부분만 요약",
+    "label": "doc_summary"
+  },
+  {
+    "text": "내일 회의 잡아줘",
+    "label": "schedule_add"
+  },
+  {
+    "text": "일정 추가해줘",
+    "label": "schedule_add"
+  },
+  {
+    "text": "미팅 넣어줘",
+    "label": "schedule_add"
+  },
+  {
+    "text": "스케줄 등록해",
+    "label": "schedule_add"
+  },
+  {
+    "text": "일졍 추가해줘어",
+    "label": "schedule_add"
+  },
+  {
+    "text": "미팅 넣어조 내일 2시",
+    "label": "schedule_add"
+  },
+  {
+    "text": "화요일에 회의 잡아조",
+    "label": "schedule_add"
+  },
+  {
+    "text": "스켸줄 등록해줘",
+    "label": "schedule_add"
+  },
+  {
+    "text": "3월 15일 오후 2시에 마케팅 부서와의 협업 미팅을 등록해 주시기 바랍니다",
+    "label": "schedule_add"
+  },
+  {
+    "text": "매주 월요일 오전 10시 정기 스탠드업 미팅 일정을 캘린더에 추가 부탁드립니다",
+    "label": "schedule_add"
+  },
+  {
+    "text": "금주 금요일 오후 4시에 고객사 방문 일정을 신규 등록해 주십시오",
+    "label": "schedule_add"
+  },
+  {
+    "text": "분기 실적 리뷰 회의를 다음 주 수요일 오전 11시로 잡아 주시기 바랍니다",
+    "label": "schedule_add"
+  },
+  {
+    "text": "그날로 하나 잡아줘",
+    "label": "schedule_add"
+  },
+  {
+    "text": "아까 말한 시간으로 넣어줘",
+    "label": "schedule_add"
+  },
+  {
+    "text": "그 사람이랑 미팅 하나 잡아야 해",
+    "label": "schedule_add"
+  },
+  {
+    "text": "다음 주 그때쯤으로 등록해줘",
+    "label": "schedule_add"
+  },
+  {
+    "text": "팀 회식 날짜를 정해야 하는데...",
+    "label": "schedule_add"
+  },
+  {
+    "text": "고객사 미팅을 잡아야 할 것 같아",
+    "label": "schedule_add"
+  },
+  {
+    "text": "워크샵 일정을 캘린더에 넣으면 좋겠는데",
+    "label": "schedule_add"
+  },
+  {
+    "text": "면접 시간을 조율해서 등록해야 하거든",
+    "label": "schedule_add"
+  },
+  {
+    "text": "일정 ㄱㄱ",
+    "label": "schedule_add"
+  },
+  {
+    "text": "미팅 ㄱㄱ 내일",
+    "label": "schedule_add"
+  },
+  {
+    "text": "ㅎㅇ 잡아줘 모레",
+    "label": "schedule_add"
+  },
+  {
+    "text": "스케줄 ㄴㅎ",
+    "label": "schedule_add"
+  },
+  {
+    "text": "다음 주 화요일 오전 10시에 디자인팀이랑 UX 리뷰 미팅을 잡아야 하는데 참석자가 5명이고 회의실은 B동 302호로 예약해줘",
+    "label": "schedule_add"
+  },
+  {
+    "text": "이번 달 마지막 주 금요일에 팀 빌딩 행사가 있는데 오후 반차 이후 시간으로 일정 등록하고 전체 팀원한테 공유해줘",
+    "label": "schedule_add"
+  },
+  {
+    "text": "고객사 최종 발표가 3월 둘째 주로 잡혔는데 그 전날 리허설까지 포함해서 이틀치 일정을 캘린더에 넣어줄래?",
+    "label": "schedule_add"
+  },
+  {
+    "text": "점심 미팅 내일 12시 강남역 근처로 잡아",
+    "label": "schedule_add"
+  },
+  {
+    "text": "온라인 세미나 참석 등록해줘 목요일 3시",
+    "label": "schedule_add"
+  },
+  {
+    "text": "1:1 면담 다음 주 월요일로 잡아줘",
+    "label": "schedule_add"
+  },
+  {
+    "text": "이번 주 일정 뭐야?",
+    "label": "schedule_view"
+  },
+  {
+    "text": "내일 뭐 있어?",
+    "label": "schedule_view"
+  },
+  {
+    "text": "일정 확인",
+    "label": "schedule_view"
+  },
+  {
+    "text": "담주 일졍 뭐잇어?",
+    "label": "schedule_view"
+  },
+  {
+    "text": "오늘 미팅 잇나?",
+    "label": "schedule_view"
+  },
+  {
+    "text": "이번달 스켸줄 보여조",
+    "label": "schedule_view"
+  },
+  {
+    "text": "월요일에 뭐잇더라",
+    "label": "schedule_view"
+  },
+  {
+    "text": "금주 전체 일정을 확인하고 싶습니다",
+    "label": "schedule_view"
+  },
+  {
+    "text": "3월 셋째 주 미팅 스케줄을 조회해 주시기 바랍니다",
+    "label": "schedule_view"
+  },
+  {
+    "text": "다음 주 월요일부터 금요일까지의 회의 일정을 안내해 주십시오",
+    "label": "schedule_view"
+  },
+  {
+    "text": "이번 분기 남은 주요 마일스톤 일정을 확인 부탁드립니다",
+    "label": "schedule_view"
+  },
+  {
+    "text": "그날 뭐 있었지?",
+    "label": "schedule_view"
+  },
+  {
+    "text": "아까 말한 날짜에 비어있어?",
+    "label": "schedule_view"
+  },
+  {
+    "text": "다음 주 그때 괜찮은지 봐줘",
+    "label": "schedule_view"
+  },
+  {
+    "text": "그 주간에 빈 시간 있나?",
+    "label": "schedule_view"
+  },
+  {
+    "text": "다음 주에 시간이 좀 남는지 궁금해서",
+    "label": "schedule_view"
+  },
+  {
+    "text": "미팅이 겹치는지 확인하고 싶은데",
+    "label": "schedule_view"
+  },
+  {
+    "text": "오후에 뭐가 잡혀 있는지 알면 좋겠어",
+    "label": "schedule_view"
+  },
+  {
+    "text": "수요일이 비어있는지 봐야 할 것 같아",
+    "label": "schedule_view"
+  },
+  {
+    "text": "ㅇㅂㅈ 일정 뭐",
+    "label": "schedule_view"
+  },
+  {
+    "text": "내일 ㅁㅇ?",
+    "label": "schedule_view"
+  },
+  {
+    "text": "스케줄 ㅂㅇ",
+    "label": "schedule_view"
+  },
+  {
+    "text": "ㄷㅈ ㅇㅈ ㅇㄸ?",
+    "label": "schedule_view"
+  },
+  {
+    "text": "이번 주 월요일부터 금요일까지 각 요일별로 몇 시에 무슨 미팅이 있는지 전체적으로 정리해서 보여줄 수 있어?",
+    "label": "schedule_view"
+  },
+  {
+    "text": "다음 달 출장이랑 외부 미팅 일정만 따로 골라서 날짜순으로 보여줘",
+    "label": "schedule_view"
+  },
+  {
+    "text": "팀원들 공통으로 비어있는 시간대를 다음 주 기준으로 확인해줄 수 있을까?",
+    "label": "schedule_view"
+  },
+  {
+    "text": "3월 전체 캘린더 한눈에 보여줘",
+    "label": "schedule_view"
+  },
+  {
+    "text": "오늘 남은 일정 뭐 있지?",
+    "label": "schedule_view"
+  },
+  {
+    "text": "금요일 오후 비어있나?",
+    "label": "schedule_view"
+  },
+  {
+    "text": "안녕",
+    "label": "general"
+  },
+  {
+    "text": "고마워",
+    "label": "general"
+  },
+  {
+    "text": "넌 뭐야?",
+    "label": "general"
+  },
+  {
+    "text": "뭐 할수잇어?",
+    "label": "general"
+  },
+  {
+    "text": "기능이 뭐잇나요",
+    "label": "general"
+  },
+  {
+    "text": "도움말 보여조",
+    "label": "general"
+  },
+  {
+    "text": "넌 누가 만들엇어?",
+    "label": "general"
+  },
+  {
+    "text": "현재 사용 가능한 기능 목록을 안내해 주시기 바랍니다",
+    "label": "general"
+  },
+  {
+    "text": "서비스 이용에 관한 전반적인 안내를 부탁드립니다",
+    "label": "general"
+  },
+  {
+    "text": "본 시스템의 개발 배경과 목적에 대해 설명해 주시면 감사하겠습니다",
+    "label": "general"
+  },
+  {
+    "text": "업무 지원 범위가 어디까지인지 상세히 안내 부탁드립니다",
+    "label": "general"
+  },
+  {
+    "text": "아 그렇구나",
+    "label": "general"
+  },
+  {
+    "text": "알겠어",
+    "label": "general"
+  },
+  {
+    "text": "응 맞아",
+    "label": "general"
+  },
+  {
+    "text": "아 그래?",
+    "label": "general"
+  },
+  {
+    "text": "오늘 날씨가 좋네",
+    "label": "general"
+  },
+  {
+    "text": "점심 뭐 먹을지 고민이야",
+    "label": "general"
+  },
+  {
+    "text": "요즘 좀 바쁘다",
+    "label": "general"
+  },
+  {
+    "text": "커피 한잔 하고 싶네",
+    "label": "general"
+  },
+  {
+    "text": "ㅂㅂ",
+    "label": "general"
+  },
+  {
+    "text": "ㅋㅋㅋ",
+    "label": "general"
+  },
+  {
+    "text": "이 봇이 뭘 할 수 있는지 잘 모르겠는데 문서 관련이랑 일정 관리 같은 거 다 되는 건지 아니면 특정 기능만 되는 건지 알려줘",
+    "label": "general"
+  },
+  {
+    "text": "다른 팀에서도 이 시스템 쓰고 있어? 우리 팀만 쓰는 건지 전사적으로 도입된 건지 궁금해서",
+    "label": "general"
+  },
+  {
+    "text": "사용법을 잘 모르겠어서 튜토리얼 같은 게 있으면 보여주고 아니면 주요 기능 위주로 설명해줘",
+    "label": "general"
+  },
+  {
+    "text": "아 진짜? 대박이다",
+    "label": "general"
+  },
+  {
+    "text": "오키 알겠어 고마워",
+    "label": "general"
+  },
+  {
+    "text": "심심하다",
+    "label": "general"
+  },
+  {
+    "text": "매출 얼마야?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "결정사항이 뭐였지?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "예산 얼마 남았어?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "담당자 누구야?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "매출 목표가 얼마엿지?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "작년 이익률이 몇퍼센트엿나요",
+    "label": "doc_qa"
+  },
+  {
+    "text": "프로젝트 마감일이 언제엿더라",
+    "label": "doc_qa"
+  },
+  {
+    "text": "계약 금액이 얼마잇나요",
+    "label": "doc_qa"
+  },
+  {
+    "text": "지난 분기 매출 대비 영업이익률이 몇 퍼센트였는지 확인 부탁드립니다",
+    "label": "doc_qa"
+  },
+  {
+    "text": "최근 이사회에서 결의된 배당금 규모가 얼마인지 알려주시기 바랍니다",
+    "label": "doc_qa"
+  },
+  {
+    "text": "해당 프로젝트의 총 투입 인원과 예상 소요 기간이 어떻게 되는지 확인하고 싶습니다",
+    "label": "doc_qa"
+  },
+  {
+    "text": "올해 채용 계획에서 개발 직군 충원 인원이 몇 명으로 책정되어 있는지 문의드립니다",
+    "label": "doc_qa"
+  },
+  {
+    "text": "거기에 뭐라고 써있었어?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "아까 그 숫자가 뭐였지?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "그 보고서에서 결론이 뭐였더라?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "위에 언급된 날짜가 정확히 언제야?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "KPI 달성률이 궁금한데",
+    "label": "doc_qa"
+  },
+  {
+    "text": "프로젝트 리스크 요인으로 뭐가 나왔는지 알고 싶어서",
+    "label": "doc_qa"
+  },
+  {
+    "text": "지난번 감사에서 지적된 사항이 뭐였는지 궁금해",
+    "label": "doc_qa"
+  },
+  {
+    "text": "계약 조건 중에 위약금 관련 내용이 있었을 텐데",
+    "label": "doc_qa"
+  },
+  {
+    "text": "매출 ㅇㅁ?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "예산 ㅇㅁ 남음?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "ㄱㅇ 얼마야?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "결정사항 ㅁ?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "이번 프로젝트에서 외주 비용이 전체 예산의 몇 퍼센트를 차지하는지 그리고 작년 동기 대비 증감이 어떻게 되는지 알려줘",
+    "label": "doc_qa"
+  },
+  {
+    "text": "고객 만족도 조사 결과에서 가장 낮은 점수를 받은 항목이 뭐고 전년 대비 변화가 있었는지 확인해줘",
+    "label": "doc_qa"
+  },
+  {
+    "text": "지난달 퇴사율이 어떻게 됐는지 부서별로 차이가 있는지 인사 보고서에서 확인해줄 수 있어?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "SLA 위반 건수가 이번 달에 몇 건이야?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "특허 출원 건수가 작년 대비 어떻게 돼?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "클레임 처리 평균 소요일이 얼마야?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "휴가 가능?",
+    "label": "judgment"
+  },
+  {
+    "text": "규정 위반 아냐?",
+    "label": "judgment"
+  },
+  {
+    "text": "이거 가능?",
+    "label": "judgment"
+  },
+  {
+    "text": "연차 사용해도 될까요?",
+    "label": "judgment"
+  },
+  {
+    "text": "이 정책 맞아?",
+    "label": "judgment"
+  },
+  {
+    "text": "법 위반인가?",
+    "label": "judgment"
+  },
+  {
+    "text": "이 행위 가능?",
+    "label": "judgment"
+  },
+  {
+    "text": "규정 맞나?",
+    "label": "judgment"
+  },
+  {
+    "text": "법에 저촉됨?",
+    "label": "judgment"
+  },
+  {
+    "text": "규칙 위반?",
+    "label": "judgment"
+  },
+  {
+    "text": "정책 이해하려면?",
+    "label": "judgment"
+  },
+  {
+    "text": "이 규정 맞나요?",
+    "label": "judgment"
+  },
+  {
+    "text": "이거 위반?",
+    "label": "judgment"
+  },
+  {
+    "text": "규정에 맞음?",
+    "label": "judgment"
+  },
+  {
+    "text": "정책 적용됨?",
+    "label": "judgment"
+  },
+  {
+    "text": "규정에 어긋남?",
+    "label": "judgment"
+  },
+  {
+    "text": "휴가 되나?",
+    "label": "judgment"
+  },
+  {
+    "text": "규정상 가능한가요?",
+    "label": "judgment"
+  },
+  {
+    "text": "규정 위반 아니겠죠?",
+    "label": "judgment"
+  },
+  {
+    "text": "이 규정에 맞나요?",
+    "label": "judgment"
+  },
+  {
+    "text": "정책에 부합?",
+    "label": "judgment"
+  },
+  {
+    "text": "이 행위 허용?",
+    "label": "judgment"
+  },
+  {
+    "text": "정책 위반 아님?",
+    "label": "judgment"
+  },
+  {
+    "text": "규정 따라 가능?",
+    "label": "judgment"
+  },
+  {
+    "text": "이거 허용되나?",
+    "label": "judgment"
+  },
+  {
+    "text": "규정 맞는지 확인",
+    "label": "judgment"
+  },
+  {
+    "text": "정책에 위배?",
+    "label": "judgment"
+  },
+  {
+    "text": "위반 사항?",
+    "label": "judgment"
+  },
+  {
+    "text": "이 규정대로 가능?",
+    "label": "judgment"
+  },
+  {
+    "text": "보고서 줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "서류있어?",
+    "label": "doc_search"
+  },
+  {
+    "text": "문서 가져와",
+    "label": "doc_search"
+  },
+  {
+    "text": "파일 위치?",
+    "label": "doc_search"
+  },
+  {
+    "text": "문서 찾아줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "문서 어디?",
+    "label": "doc_search"
+  },
+  {
+    "text": "파일 있나요?",
+    "label": "doc_search"
+  },
+  {
+    "text": "문서 위치?",
+    "label": "doc_search"
+  },
+  {
+    "text": "문서 검색",
+    "label": "doc_search"
+  },
+  {
+    "text": "파일 찾기",
+    "label": "doc_search"
+  },
+  {
+    "text": "문서 위치 확인",
+    "label": "doc_search"
+  },
+  {
+    "text": "파일 좀",
+    "label": "doc_search"
+  },
+  {
+    "text": "파일 받아와",
+    "label": "doc_search"
+  },
+  {
+    "text": "문서 있어?",
+    "label": "doc_search"
+  },
+  {
+    "text": "서류 찾아줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "파일 검색",
+    "label": "doc_search"
+  },
+  {
+    "text": "문서 어디에?",
+    "label": "doc_search"
+  },
+  {
+    "text": "파일 찾아줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "문서 좀 줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "서류 좀",
+    "label": "doc_search"
+  },
+  {
+    "text": "파일 있나?",
+    "label": "doc_search"
+  },
+  {
+    "text": "문서요",
+    "label": "doc_search"
+  },
+  {
+    "text": "파일 요청",
+    "label": "doc_search"
+  },
+  {
+    "text": "문서 검색해줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "파일 좀 찾아줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "문서 주세요",
+    "label": "doc_search"
+  },
+  {
+    "text": "보고서 있어요?",
+    "label": "doc_search"
+  },
+  {
+    "text": "파일 좀 줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "문서 좀 찾아줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "파일 줘",
+    "label": "doc_search"
+  },
+  {
+    "text": "보고서 작성해줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "문서 만들어",
+    "label": "doc_generate"
+  },
+  {
+    "text": "파일 생성",
+    "label": "doc_generate"
+  },
+  {
+    "text": "문서 작성",
+    "label": "doc_generate"
+  },
+  {
+    "text": "제안서 준비",
+    "label": "doc_generate"
+  },
+  {
+    "text": "문서 만들어줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "파일 작성",
+    "label": "doc_generate"
+  },
+  {
+    "text": "보고서 준비",
+    "label": "doc_generate"
+  },
+  {
+    "text": "문서 생성",
+    "label": "doc_generate"
+  },
+  {
+    "text": "파일 만들어줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "보고서 작성",
+    "label": "doc_generate"
+  },
+  {
+    "text": "문서 준비",
+    "label": "doc_generate"
+  },
+  {
+    "text": "파일 준비",
+    "label": "doc_generate"
+  },
+  {
+    "text": "문서 작성해",
+    "label": "doc_generate"
+  },
+  {
+    "text": "파일 작성해줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "문서 준비해줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "보고서 준비해",
+    "label": "doc_generate"
+  },
+  {
+    "text": "문서 생성해",
+    "label": "doc_generate"
+  },
+  {
+    "text": "보고서 작성부탁",
+    "label": "doc_generate"
+  },
+  {
+    "text": "문서 작성부탁",
+    "label": "doc_generate"
+  },
+  {
+    "text": "파일 준비해줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "보고서 준비해줘",
+    "label": "doc_generate"
+  },
+  {
+    "text": "파일 생성해",
+    "label": "doc_generate"
+  },
+  {
+    "text": "문서 부탁",
+    "label": "doc_generate"
+  },
+  {
+    "text": "보고서 요약해줘",
+    "label": "doc_summary"
+  },
+  {
+    "text": "문서 정리",
+    "label": "doc_summary"
+  },
+  {
+    "text": "파일 요약",
+    "label": "doc_summary"
+  },
+  {
+    "text": "내용 요약",
+    "label": "doc_summary"
+  },
+  {
+    "text": "문서 요약해줘",
+    "label": "doc_summary"
+  },
+  {
+    "text": "요점 정리",
+    "label": "doc_summary"
+  },
+  {
+    "text": "파일 정리",
+    "label": "doc_summary"
+  },
+  {
+    "text": "내용 정리해줘",
+    "label": "doc_summary"
+  },
+  {
+    "text": "문서 요약",
+    "label": "doc_summary"
+  },
+  {
+    "text": "파일 요약해줘",
+    "label": "doc_summary"
+  },
+  {
+    "text": "문서 요약부탁",
+    "label": "doc_summary"
+  },
+  {
+    "text": "내용 요약해줘",
+    "label": "doc_summary"
+  },
+  {
+    "text": "파일 정리해줘",
+    "label": "doc_summary"
+  },
+  {
+    "text": "문서 정리해줘",
+    "label": "doc_summary"
+  },
+  {
+    "text": "요점 요약",
+    "label": "doc_summary"
+  },
+  {
+    "text": "파일 요약부탁",
+    "label": "doc_summary"
+  },
+  {
+    "text": "문서 요점정리",
+    "label": "doc_summary"
+  },
+  {
+    "text": "내용 정리",
+    "label": "doc_summary"
+  },
+  {
+    "text": "파일 요점정리",
+    "label": "doc_summary"
+  },
+  {
+    "text": "문서 요약해",
+    "label": "doc_summary"
+  },
+  {
+    "text": "내용 요약부탁",
+    "label": "doc_summary"
+  },
+  {
+    "text": "문서 정리부탁",
+    "label": "doc_summary"
+  },
+  {
+    "text": "요점정리 해줘",
+    "label": "doc_summary"
+  },
+  {
+    "text": "파일 정리부탁",
+    "label": "doc_summary"
+  },
+  {
+    "text": "일정 추가",
+    "label": "schedule_add"
+  },
+  {
+    "text": "미팅 등록",
+    "label": "schedule_add"
+  },
+  {
+    "text": "새 이벤트 추가",
+    "label": "schedule_add"
+  },
+  {
+    "text": "캘린더에 추가",
+    "label": "schedule_add"
+  },
+  {
+    "text": "일정 등록",
+    "label": "schedule_add"
+  },
+  {
+    "text": "새 일정 추가",
+    "label": "schedule_add"
+  },
+  {
+    "text": "캘린더 등록",
+    "label": "schedule_add"
+  },
+  {
+    "text": "이벤트 추가",
+    "label": "schedule_add"
+  },
+  {
+    "text": "새 일정 등록",
+    "label": "schedule_add"
+  },
+  {
+    "text": "캘린더에 등록",
+    "label": "schedule_add"
+  },
+  {
+    "text": "새 이벤트 등록",
+    "label": "schedule_add"
+  },
+  {
+    "text": "일정 추가해",
+    "label": "schedule_add"
+  },
+  {
+    "text": "캘린더에 일정",
+    "label": "schedule_add"
+  },
+  {
+    "text": "등록해줘",
+    "label": "schedule_add"
+  },
+  {
+    "text": "새 일정",
+    "label": "schedule_add"
+  },
+  {
+    "text": "일정 캘린더 등록",
+    "label": "schedule_add"
+  },
+  {
+    "text": "새 미팅 추가",
+    "label": "schedule_add"
+  },
+  {
+    "text": "캘린더 일정 추가",
+    "label": "schedule_add"
+  },
+  {
+    "text": "일정 캘린더 추가",
+    "label": "schedule_add"
+  },
+  {
+    "text": "새 이벤트",
+    "label": "schedule_add"
+  },
+  {
+    "text": "캘린더 일정 등록",
+    "label": "schedule_add"
+  },
+  {
+    "text": "미팅 새로 추가",
+    "label": "schedule_add"
+  },
+  {
+    "text": "일정 새로 추가",
+    "label": "schedule_add"
+  },
+  {
+    "text": "캘린더에 일정 등록",
+    "label": "schedule_add"
+  },
+  {
+    "text": "새로운 일정 추가",
+    "label": "schedule_add"
+  },
+  {
+    "text": "새로운 미팅 등록",
+    "label": "schedule_add"
+  },
+  {
+    "text": "캘린더 조회",
+    "label": "schedule_view"
+  },
+  {
+    "text": "일정 봐줘",
+    "label": "schedule_view"
+  },
+  {
+    "text": "미팅 확인",
+    "label": "schedule_view"
+  },
+  {
+    "text": "이벤트 조회",
+    "label": "schedule_view"
+  },
+  {
+    "text": "캘린더 확인",
+    "label": "schedule_view"
+  },
+  {
+    "text": "일정 조회",
+    "label": "schedule_view"
+  },
+  {
+    "text": "캘린더 봐줘",
+    "label": "schedule_view"
+  },
+  {
+    "text": "미팅 조회",
+    "label": "schedule_view"
+  },
+  {
+    "text": "이벤트 확인",
+    "label": "schedule_view"
+  },
+  {
+    "text": "기존 일정 확인",
+    "label": "schedule_view"
+  },
+  {
+    "text": "기존 일정 조회",
+    "label": "schedule_view"
+  },
+  {
+    "text": "캘린더 일정 확인",
+    "label": "schedule_view"
+  },
+  {
+    "text": "일정 캘린더 조회",
+    "label": "schedule_view"
+  },
+  {
+    "text": "일정 캘린더 확인",
+    "label": "schedule_view"
+  },
+  {
+    "text": "캘린더 일정 조회",
+    "label": "schedule_view"
+  },
+  {
+    "text": "기존 캘린더 확인",
+    "label": "schedule_view"
+  },
+  {
+    "text": "기존 일정 봐줘",
+    "label": "schedule_view"
+  },
+  {
+    "text": "캘린더 이벤트 조회",
+    "label": "schedule_view"
+  },
+  {
+    "text": "일정 캘린더 봐줘",
+    "label": "schedule_view"
+  },
+  {
+    "text": "캘린더 일정 봐줘",
+    "label": "schedule_view"
+  },
+  {
+    "text": "기존 미팅 확인",
+    "label": "schedule_view"
+  },
+  {
+    "text": "기존 이벤트 조회",
+    "label": "schedule_view"
+  },
+  {
+    "text": "기존 일정 캘린더",
+    "label": "schedule_view"
+  },
+  {
+    "text": "캘린더 이벤트 확인",
+    "label": "schedule_view"
+  },
+  {
+    "text": "기존 일정 캘린더 조회",
+    "label": "schedule_view"
+  },
+  {
+    "text": "캘린더 확인해줘",
+    "label": "schedule_view"
+  },
+  {
+    "text": "기존 일정 캘린더 확인",
+    "label": "schedule_view"
+  },
+  {
+    "text": "감사해요",
+    "label": "general"
+  },
+  {
+    "text": "잘 지냈나요?",
+    "label": "general"
+  },
+  {
+    "text": "도움 필요해요",
+    "label": "general"
+  },
+  {
+    "text": "봇 기능 뭐야?",
+    "label": "general"
+  },
+  {
+    "text": "오늘 어때?",
+    "label": "general"
+  },
+  {
+    "text": "잘 부탁해",
+    "label": "general"
+  },
+  {
+    "text": "안부 전해줘",
+    "label": "general"
+  },
+  {
+    "text": "대화하자",
+    "label": "general"
+  },
+  {
+    "text": "도움 줘",
+    "label": "general"
+  },
+  {
+    "text": "안부 묻고 싶어",
+    "label": "general"
+  },
+  {
+    "text": "잡담하자",
+    "label": "general"
+  },
+  {
+    "text": "잘 부탁해요",
+    "label": "general"
+  },
+  {
+    "text": "감사드립니다",
+    "label": "general"
+  },
+  {
+    "text": "잘 지내시죠?",
+    "label": "general"
+  },
+  {
+    "text": "도움 부탁해요",
+    "label": "general"
+  },
+  {
+    "text": "봇 기능 있어?",
+    "label": "general"
+  },
+  {
+    "text": "오늘 어때요?",
+    "label": "general"
+  },
+  {
+    "text": "잘 지내세요?",
+    "label": "general"
+  },
+  {
+    "text": "안부 전합니다",
+    "label": "general"
+  },
+  {
+    "text": "대화하고 싶어",
+    "label": "general"
+  },
+  {
+    "text": "도움이 필요해",
+    "label": "general"
+  },
+  {
+    "text": "안부 전하고 싶어",
+    "label": "general"
+  },
+  {
+    "text": "잡담하고 싶어",
+    "label": "general"
+  },
+  {
+    "text": "잘 부탁드립니다",
+    "label": "general"
+  },
+  {
+    "text": "감사합니다",
+    "label": "general"
+  },
+  {
+    "text": "잘 지내셨나요?",
+    "label": "general"
+  },
+  {
+    "text": "도움이 필요합니다",
+    "label": "general"
+  },
+  {
+    "text": "봇 기능 있나요?",
+    "label": "general"
+  },
+  {
+    "text": "이거 뭐지?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "숫자 확인해줘",
+    "label": "doc_qa"
+  },
+  {
+    "text": "결정 뭐였어?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "문서에 뭐 있어?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "결과 알려줘",
+    "label": "doc_qa"
+  },
+  {
+    "text": "문서 확인",
+    "label": "doc_qa"
+  },
+  {
+    "text": "정보 좀 줘",
+    "label": "doc_qa"
+  },
+  {
+    "text": "문서 뭐지?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "결정 확인",
+    "label": "doc_qa"
+  },
+  {
+    "text": "정보 확인",
+    "label": "doc_qa"
+  },
+  {
+    "text": "숫자 뭐지?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "문서 정보",
+    "label": "doc_qa"
+  },
+  {
+    "text": "결과 뭐야?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "문서에 뭐 있나?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "이거 정보",
+    "label": "doc_qa"
+  },
+  {
+    "text": "문서 결과",
+    "label": "doc_qa"
+  },
+  {
+    "text": "결정 뭐야?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "정보 좀 확인",
+    "label": "doc_qa"
+  },
+  {
+    "text": "문서 숫자",
+    "label": "doc_qa"
+  },
+  {
+    "text": "결과 확인해줘",
+    "label": "doc_qa"
+  },
+  {
+    "text": "숫자 뭐였어?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "정보 뭐지?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "문서 결정",
+    "label": "doc_qa"
+  },
+  {
+    "text": "결과 뭐였어?",
+    "label": "doc_qa"
+  },
+  {
+    "text": "문서 확인해줘",
+    "label": "doc_qa"
+  },
+  {
+    "text": "결정 확인해줘",
+    "label": "doc_qa"
+  },
+  {
+    "text": "정보 확인해줘",
+    "label": "doc_qa"
+  },
+  {
+    "text": "숫자 좀 알려줘",
+    "label": "doc_qa"
+  },
+  {
+    "text": "문서 정보 확인",
+    "label": "doc_qa"
+  }
+]

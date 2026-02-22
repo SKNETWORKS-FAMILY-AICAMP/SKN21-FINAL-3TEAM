@@ -1,0 +1,30 @@
+{"text": "이번 프로젝트 보고서 핵심만 정리해줘", "label": "doc_summary"}
+{"text": "연차 정책 문서 요점이 뭐야?", "label": "doc_summary"}
+{"text": "보안 가이드라인 요약 좀 부탁해", "label": "doc_summary"}
+{"text": "이번 달 급여 보고서 내용 좀 요약해줘", "label": "doc_summary"}
+{"text": "출장 경비 규정 문서 요약해줄래?", "label": "doc_summary"}
+{"text": "기업 보안 문서의 핵심 포인트가 뭐야?", "label": "doc_summary"}
+{"text": "휴가 신청 절차 문서 내용을 간단히 정리해줘", "label": "doc_summary"}
+{"text": "회의록의 주요 내용만 알려줘", "label": "doc_summary"}
+{"text": "이번 분기 성과 보고서 요약 부탁해", "label": "doc_summary"}
+{"text": "회사 정책 문서의 중요한 부분이 뭐야?", "label": "doc_summary"}
+{"text": "프로젝트 계획서 전체 요약 좀 해줘", "label": "doc_summary"}
+{"text": "문서에서 중요한 결론만 정리해줘", "label": "doc_summary"}
+{"text": "회의록 요점만 간추려줄래?", "label": "doc_summary"}
+{"text": "연차 사용 규정의 핵심 내용을 알고 싶어", "label": "doc_summary"}
+{"text": "보안 관련 문서 요약 부탁드립니다", "label": "doc_summary"}
+{"text": "이번 프로젝트의 예산이 얼마인지 알려줘", "label": "doc_qa"}
+{"text": "연차 정책 문서에서 최대 사용일이 몇일이야?", "label": "doc_qa"}
+{"text": "보안 가이드라인에서 암호화 방식은 뭐야?", "label": "doc_qa"}
+{"text": "이번 달 급여 보고서에서 총액이 얼마나 돼?", "label": "doc_qa"}
+{"text": "출장 경비 규정에서 1박당 한도는 얼마야?", "label": "doc_qa"}
+{"text": "기업 보안 문서에서 사용 금지된 소프트웨어가 뭐야?", "label": "doc_qa"}
+{"text": "휴가 신청 절차 문서에서 필요한 서류가 뭐야?", "label": "doc_qa"}
+{"text": "회의록에서 다음 회의 일정이 언제로 잡혔어?", "label": "doc_qa"}
+{"text": "이번 분기 성과 보고서에서 매출이 어떻게 돼?", "label": "doc_qa"}
+{"text": "회사 정책 문서에서 연차 지급 기준이 뭐야?", "label": "doc_qa"}
+{"text": "프로젝트 계획서에서 마감일이 언제야?", "label": "doc_qa"}
+{"text": "문서에서 결정된 담당자가 누구야?", "label": "doc_qa"}
+{"text": "회의록에서 참석자 명단 확인해줄래?", "label": "doc_qa"}
+{"text": "연차 사용 규정에서 신청 절차는 어떻게 돼?", "label": "doc_qa"}
+{"text": "보안 관련 문서에서 사용 가능한 암호화 방식은?", "label": "doc_qa"}
