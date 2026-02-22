@@ -168,8 +168,6 @@ def generate_answer(tokenizer, model, context: str, question: str, max_new_token
 
     generated = outputs[0][input_len:]
     answer = tokenizer.decode(generated, skip_special_tokens=True).strip()
-    # 첫 줄만 취함 (모델이 추가 설명을 붙이는 경우 방지)
-    answer = answer.split("\n")[0].strip()
     return answer
 
 
