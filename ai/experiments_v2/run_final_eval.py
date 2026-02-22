@@ -670,8 +670,9 @@ def main():
     # 차트
     if all_speed and len(all_speed) >= 2:
         plot_speed_comparison(all_speed)
-    if final_results and len(final_results) >= 2:
-        plot_f1_vs_speed(final_results)
+    model_only_results = {k: v for k, v in final_results.items() if isinstance(v, dict)}
+    if model_only_results and len(model_only_results) >= 2:
+        plot_f1_vs_speed(model_only_results)
 
     # 결과 저장
     results_path = RESULTS_DIR / "final_eval_results.json"
