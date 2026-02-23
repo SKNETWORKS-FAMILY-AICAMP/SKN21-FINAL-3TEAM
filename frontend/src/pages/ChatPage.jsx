@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { MessageSquarePlus, Menu } from 'lucide-react';
 import ChatWindow from '../components/chat/ChatWindow';
 import MessageBubble from '../components/chat/MessageBubble';
@@ -157,6 +158,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc) {
 }
 
 export default function ChatPage() {
+  const { isScrolled } = useOutletContext();
   const { messages, isStreaming, currentIntent, currentStatus, sendMessage } = useChat();
   const clearMessages = useChatStore((s) => s.clearMessages);
   const initSession = useChatStore((s) => s.initSession);
@@ -258,13 +260,12 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="flex justify-between items-center py-4 pl-8 pr-8 bg-surface-main z-10 flex-shrink-0">
+      <header className={`flex justify-between items-center pl-8 pr-8 bg-surface-main z-10 flex-shrink-0 transition-all duration-300 ${isScrolled ? 'py-2.5' : 'py-6'}`}>
         <div>
-          <h1 className="text-2xl font-bold">나에게 물어봐</h1>
-          <p className="text-sm text-neutral-sub mt-1">규정 판단, 문서 분석, 일정 관리를 도와드립니다</p>
+          <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-2xl'}`}>나에게 물어봐</h1>
+          <p className={`text-neutral-sub transition-all duration-300 overflow-hidden ${isScrolled ? 'text-xs mt-0 max-h-0 opacity-0' : 'text-sm mt-0.5 max-h-6 opacity-100'}`}>규정 판단, 문서 분석, 일정 관리를 도와드립니다</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* 대화 내보내기 */}
           <button
             onClick={() => exportChat(messages)}
             disabled={messages.length === 0}
@@ -278,7 +279,6 @@ export default function ChatPage() {
             </svg>
             내보내기
           </button>
-          {/* 대화 초기화 */}
           <button
             onClick={handleClear}
             disabled={messages.length === 0}
