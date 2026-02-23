@@ -1,7 +1,7 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect } from 'react';
-import Sidebar from './Sidebar';
+import Topbar from './Topbar';
 
 const pageVariants = {
   initial: { opacity: 0, y: 8 },
@@ -17,8 +17,8 @@ export default function Layout() {
   }, [location.pathname]);
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar />
+    <div className="flex flex-col h-screen overflow-hidden">
+      <Topbar />
       <main className="flex-1 overflow-y-auto px-8 pb-8">
         <AnimatePresence mode="wait">
           <motion.div

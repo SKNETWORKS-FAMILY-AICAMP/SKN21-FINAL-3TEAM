@@ -32,6 +32,12 @@ const useChatStore = create((set, get) => ({
   setPendingQuestion: (q) => set({ pendingQuestion: q }),
   clearPendingQuestion: () => set({ pendingQuestion: null }),
 
+  // 문서 요약용 선택 문서
+  selectedDocumentId: null,
+  selectedDocumentName: null,
+  setSelectedDocument: (id, name) => set({ selectedDocumentId: id, selectedDocumentName: name }),
+  clearSelectedDocument: () => set({ selectedDocumentId: null, selectedDocumentName: null }),
+
   // 세션 관리
   sessions: [],
   activeSessionId: null,

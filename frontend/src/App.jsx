@@ -12,6 +12,7 @@ import MeetingsPage from './pages/MeetingsPage';
 import SchedulesPage from './pages/SchedulesPage';
 import AdminPage from './pages/AdminPage';
 import DocumentGeneratePage from './pages/DocumentGeneratePage';
+import NavPreviewPage from './pages/NavPreviewPage';
 
 // DEV_BYPASS: true = 로그인 없이 개발 화면 확인 가능
 const DEV_BYPASS_AUTH = false;
@@ -65,6 +66,9 @@ export default function App() {
             <Route path="/admin" element={<AdminPage />} />
           </Route>
         </Route>
+
+        {/* 네비게이션 프리뷰 (인증 없이 접근 가능) */}
+        <Route path="/nav-preview" element={<NavPreviewPage />} />
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

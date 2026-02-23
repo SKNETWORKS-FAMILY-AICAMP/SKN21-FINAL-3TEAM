@@ -45,7 +45,7 @@ function FileChip({ file, onRemove }) {
   );
 }
 
-export default function ChatWindow({ messages, onSend, children }) {
+export default function ChatWindow({ messages, onSend, selectedDocumentName, onClearDocument, children }) {
   const [input, setInput] = useState('');
   const [files, setFiles] = useState([]);
   const [dragOver, setDragOver] = useState(false);
@@ -154,19 +154,29 @@ export default function ChatWindow({ messages, onSend, children }) {
 
       <div className="flex-1 overflow-y-auto py-4 px-4">{children}<div ref={bottomRef} /></div>
 
-      {/* 파일 칩 & 에러 */}
-      {(files.length > 0 || fileError) && (
-        <div className="px-4 pb-2">
+      {/* 선택 문서 칩 & 파일 칩 & 에러 */}
+      {(selectedDocumentName || files.length > 0 || fileError) && (
+        <div className="px-4 pb-2 flex flex-wrap gap-1.5">
+          {selectedDocumentName && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent-50 text-accent-700 text-xs rounded-full border border-accent-300/40">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              <span className="max-w-[160px] truncate">{selectedDocumentName}</span>
+              <button onClick={onClearDocument} className="hover:text-error transition ml-0.5" title="문서 선택 해제">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </span>
+          )}
           {fileError && (
-            <p className="text-xs text-error mb-1">{fileError}</p>
+            <p className="w-full text-xs text-error">{fileError}</p>
           )}
-          {files.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {files.map((file, i) => (
-                <FileChip key={`${file.name}-${i}`} file={file} onRemove={() => removeFile(i)} />
-              ))}
-            </div>
-          )}
+          {files.map((file, i) => (
+            <FileChip key={`${file.name}-${i}`} file={file} onRemove={() => removeFile(i)} />
+          ))}
         </div>
       )}
 
