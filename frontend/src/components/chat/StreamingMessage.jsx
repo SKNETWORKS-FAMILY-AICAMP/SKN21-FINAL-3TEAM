@@ -1,7 +1,9 @@
+import { Wand2 } from 'lucide-react';
+
 export default function StreamingMessage({ text, status }) {
   return (
     <div className="flex gap-2.5">
-      <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-primary-500 to-accent-500 flex-shrink-0 flex items-center justify-center text-white text-[0.6875rem] font-bold">AI</div>
+      <div className="w-8 h-8 rounded-[10px] bg-accent-500 flex-shrink-0 flex items-center justify-center text-white"><Wand2 size={18} /></div>
       <div className="max-w-[70%]">
         {status && (
           <div className="flex items-center gap-2 px-4 py-2.5 bg-primary-50 rounded-sm mb-3 text-[0.8125rem] text-primary-700">

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { Scale, FileText, CalendarDays, MessageCircle } from 'lucide-react';
 
 const ALLOWED_TYPES = [
   'application/pdf',
@@ -45,7 +46,40 @@ function FileChip({ file, onRemove }) {
   );
 }
 
-export default function ChatWindow({ messages, onSend, selectedDocumentName, onClearDocument, children }) {
+const AGENTS = [
+  { key: 'judgment', icon: Scale, label: '규정 판단', intents: ['judgment'] },
+  { key: 'document', icon: FileText, label: '문서', intents: ['doc_search', 'doc_generate', 'doc_summary', 'doc_qa'] },
+  { key: 'schedule', icon: CalendarDays, label: '일정', intents: ['schedule_add', 'schedule_view'] },
+  { key: 'general', icon: MessageCircle, label: '일반', intents: ['general'] },
+];
+
+function AgentBar({ activeIntent, isStreaming }) {
+  const activeKey = AGENTS.find((a) => a.intents.includes(activeIntent))?.key;
+
+  return (
+    <div className="flex items-center justify-center gap-2 px-4 py-2">
+      {AGENTS.map((agent) => {
+        const isActive = agent.key === activeKey;
+        const Icon = agent.icon;
+        return (
+          <div
+            key={agent.key}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300 select-none ${
+              isActive
+                ? 'bg-primary-700 text-white shadow-md scale-105'
+                : 'bg-surface-hover text-neutral-sub'
+            }`}
+          >
+            <Icon size={14} className={isActive && isStreaming ? 'animate-pulse' : ''} />
+            {agent.label}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function ChatWindow({ messages, onSend, selectedDocumentName, onClearDocument, activeIntent, isStreaming, children }) {
   const [input, setInput] = useState('');
   const [files, setFiles] = useState([]);
   const [dragOver, setDragOver] = useState(false);
@@ -153,6 +187,9 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
 
 
       <div className="flex-1 overflow-y-auto py-4 px-4">{children}<div ref={bottomRef} /></div>
+
+      {/* Agent 선택 바 */}
+      <AgentBar activeIntent={activeIntent} isStreaming={isStreaming} />
 
       {/* 선택 문서 칩 & 파일 칩 & 에러 */}
       {(selectedDocumentName || files.length > 0 || fileError) && (
