@@ -201,35 +201,118 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         }
 
                     elif node_name == "judgment_agent":
-                        # 2-4. 판단 Agent 스트리밍 (judgment_agent_stream)
+                        # 2-4. 판단 Agent 스트리밍 (document_agent와 동일한 패턴)
                         agent_response = node_output.get("agent_response", {})
                         print(f"[Chat] judgment_agent 노드 진입. stream_pending={agent_response.get('stream_pending')}")
 
                         if agent_response.get("stream_pending"):
-                            from ai.agents.judgment_agent import judgment_agent_stream
+                            import os as _os_j
+                            from openai import AsyncOpenAI as _AsyncOpenAI_j
 
-                            judgment_state = dict(final_state)
-                            judgment_state["user_input"] = final_state.get("resolved_input") or final_state.get("user_input", "")
-                            judgment_state["chat_history"] = final_state.get("chat_history", [])
+                            openai_key = _os_j.getenv("OPENAI_API_KEY")
+                            openai_model = _os_j.getenv("OPENAI_MODEL", "gpt-4o-mini")
+                            openai_base = _os_j.getenv("LLM_BASE_URL") or None
 
-                            full_judgment = ""
-                            judgment_result = {}
-                            async for chunk in judgment_agent_stream(judgment_state):
-                                if chunk.startswith("\n[DONE]"):
-                                    # 최종 구조화 JSON 파싱
-                                    judgment_result = json.loads(chunk[len("\n[DONE]"):])
-                                else:
-                                    full_judgment += chunk
-                                    yield f"data: {json.dumps({'type': 'token', 'value': chunk}, ensure_ascii=False)}\n\n"
+                            if not openai_key:
+                                yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
+                                continue
 
-                            # 최종 응답 저장
-                            if not judgment_result:
-                                judgment_result = {
-                                    "type": "judgment",
-                                    "message": full_judgment,
-                                }
-                            final_state["agent_response"] = judgment_result
-                            print(f"[Chat] judgment_agent 스트리밍 완료. 응답 길이: {len(full_judgment)}자")
+                            j_client = _AsyncOpenAI_j(
+                                api_key=openai_key,
+                                base_url=openai_base,
+                            )
+
+                            print(f"[Chat] judgment OpenAI 스트리밍 시작 (model={openai_model})")
+                            j_stream = await j_client.chat.completions.create(
+                                model=openai_model,
+                                messages=[
+                                    {"role": "system", "content": agent_response["sys_prompt"]},
+                                    {"role": "user", "content": agent_response["user_prompt"]},
+                                ],
+                                temperature=0.1,
+                                max_tokens=2048,
+                                stream=True,
+                            )
+
+                            # document_agent와 동일: 토큰 즉시 전송, ```json 이후만 숨김
+                            full_response = ""
+                            in_json_block = False
+                            token_count = 0
+
+                            async for chunk in j_stream:
+                                delta = chunk.choices[0].delta
+                                if delta.content:
+                                    token = delta.content
+                                    full_response += token
+
+                                    # ```json 감지: 이후 토큰은 전송하지 않음
+                                    if not in_json_block:
+                                        if "```json" in full_response:
+                                            in_json_block = True
+                                            print(f"[Chat] judgment ```json 마커 감지 (토큰 {token_count}개 전송됨)")
+                                        else:
+                                            token_count += 1
+                                            yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
+
+                            print(f"[Chat] judgment 스트리밍 완료. 전송 토큰: {token_count}개, 전체: {len(full_response)}자")
+
+                            # JSON 파싱 + 3중 검증
+                            from ai.agents.judgment_agent import (
+                                _parse_llm_response,
+                                _validate_result_category,
+                                _check_keyword_match,
+                                _validate_article_exists,
+                                _calibrate_confidence,
+                                _check_consistency,
+                                _group_regulations,
+                            )
+
+                            parsed = _parse_llm_response(full_response)
+                            parsed["type"] = "judgment"
+                            parsed = _validate_result_category(parsed)
+
+                            rag_context = agent_response.get("_rag_context", [])
+                            keyword_match = _check_keyword_match(parsed, rag_context)
+                            article_validations = _validate_article_exists(parsed, rag_context)
+
+                            calibrated, confidence_breakdown = _calibrate_confidence(
+                                parsed, rag_context,
+                                keyword_match=keyword_match,
+                                article_validations=article_validations,
+                            )
+                            parsed["confidence"] = calibrated
+                            parsed["confidence_breakdown"] = confidence_breakdown
+                            parsed.setdefault("cross_references", [])
+
+                            groups = _group_regulations(rag_context)
+                            parsed["regulation_groups"] = list(groups.keys())
+
+                            if article_validations:
+                                parsed["article_validations"] = article_validations
+                                hallucinated = [v["article"] for v in article_validations if not v["exists"]]
+                                if hallucinated:
+                                    parsed.setdefault("warnings", []).append(
+                                        f"환각 의심 조항: {', '.join(hallucinated)} (RAG 검색 결과에 미존재)"
+                                    )
+
+                            inconsistency = _check_consistency(final_state.get("user_input", ""), parsed)
+                            if inconsistency:
+                                parsed["consistency_flag"] = inconsistency
+
+                            # message = ```json 이전 자연어 부분
+                            if "```json" in full_response:
+                                clean_natural = full_response.split("```json")[0].strip()
+                            else:
+                                clean_natural = ""
+                            parsed["message"] = clean_natural or parsed.get("reasoning", "")
+
+                            # agent_response 업데이트 (document_agent와 동일 패턴)
+                            agent_response.pop("stream_pending", None)
+                            agent_response.pop("sys_prompt", None)
+                            agent_response.pop("user_prompt", None)
+                            agent_response.pop("_rag_context", None)
+                            agent_response.update(parsed)
+                            final_state["agent_response"] = agent_response
                         else:
                             yield f"data: {json.dumps({'type': 'status', 'value': 'judgment_agent 처리 완료'}, ensure_ascii=False)}\n\n"
 

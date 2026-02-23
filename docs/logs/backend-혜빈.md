@@ -360,3 +360,25 @@
 - AI 연동 엔드포인트 (승언 문서 Agent 완성 대기): `meetings/analyze`, `meetings/generate`, `documents/generate`, `documents/download`, `documents/search/highlight`
 - 지영님 admin 페이지 API 연동 결과 확인
 - 4단계 데이터 수집: 문서 생성 200건 (혜빈 담당)
+
+---
+
+## 2026-02-23 (세션 9)
+
+### 한 일
+
+**판단 Agent 스트리밍 수정 시도 (#12)**
+
+수정 파일 3개:
+- `ai/llm/prompts.py`: `JUDGMENT_STREAMING_SYSTEM_PROMPT` 추가 (자연어 설명 → JSON 코드블록 2파트 출력 프롬프트)
+- `ai/agents/orchestrator.py`: `safe_judgment_agent()` 수정 — stream_mode=True일 때 RAG 검색 + 프롬프트 빌드 후 `stream_pending` 패턴으로 chat.py에 위임 (document_agent와 동일)
+- `backend/app/api/v1/chat.py`: judgment_agent 핸들러 교체 — OpenAI API 직접 스트리밍 호출, `` ```json `` 마커 이전 토큰은 실시간 전송, 이후 JSON은 조용히 누적 후 파싱 + 3중 검증
+
+현재 상태: **스트리밍 미동작 (디버깅 필요)**
+- 프롬프트/오케스트레이터/chat.py 3파일 수정 완료
+- 서버 재시작 후 테스트했으나 여전히 답변이 한번에 표시됨
+- 원인 미파악 — 다음 세션에서 백엔드 로그 확인 필요
+
+### 다음 할 일
+- 판단 Agent 스트리밍 디버깅 (백엔드 터미널 로그로 토큰 전송 여부 확인)
+- AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
