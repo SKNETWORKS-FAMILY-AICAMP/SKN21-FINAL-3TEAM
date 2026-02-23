@@ -422,12 +422,6 @@
   - 패널 외부 클릭 시 닫힘
 - `NavPreviewPage.jsx` 생성 — Topbar/CommandPalette/TabBar 3종 비교 프리뷰 페이지 (`/nav-preview`)
 
-#### 2) 로컬 Docker 개발 환경 구성
-- `docker-compose.yml` 수정
-  - Qdrant 서비스 추가 (`qdrant/qdrant:latest`, 6333 포트)
-  - backend `environment`에 `DATABASE_URL`(로컬 DB), `QDRANT_HOST`, `QDRANT_PORT` 오버라이드 추가
-- `frontend/.env` 생성 — `BACKEND_URL=http://localhost:8000`
-
 #### 3) doc_summary 프론트엔드 연동 (6개 파일)
 - `api/chat.js` — `sendMessage`에 `documentId` 파라미터 추가
 - `store/chatStore.js` — `selectedDocumentId`, `selectedDocumentName`, `setSelectedDocument`, `clearSelectedDocument` 상태 추가
@@ -476,63 +470,18 @@
 - 템플릿 5개 → 3개로 축소: 회의록 / 보고서 / 제안서 (채용 공고, 사용자 정의 제거)
 - `grid-cols-2` → `grid-cols-3`으로 한 줄에 3개 표시
 
-### 다음 할 일
-- 나머지 Mock → 실제 API 교체 (대시보드, 문서 생성)
-- 관리자 API 연동 (#29)
-
----
-
-## 2026-02-23 (월) — 오후
-
-### 한 일
-
-#### 1) UI 디테일 개선
-- AIDock: '듀듀 챗봇' → 'AI 챗봇' 레이블 수정, 툴팁 폰트 `font-bold` → `font-medium`
-- ChatWindow: 전송 버튼 우측 여백 `pr-32` → `pr-4` (좌우 중앙 정렬)
-- SchedulesPage: 새로고침 버튼 🔄 이모지 제거
-
-#### 2) 회의 관리 페이지 제거
-- `App.jsx` — import 및 `/meetings` 라우트 제거
-- `AIDock.jsx` — 회의 관리 아이콘 제거
-- `Topbar.jsx` — 네비게이션 메뉴에서 회의 관리 항목 제거
-
-#### 3) FontSizeControl 조건부 표시
-- `App.jsx` — `ConditionalFontSizeControl` 컴포넌트 추가
-- 로그인/회원가입 페이지에서만 글씨 크기 버튼 표시, 내부 페이지에서는 숨김
-
-#### 4) 메모 기능 개선
-- 자동 저장 → **저장 버튼** 클릭 시에만 저장되도록 변경 (로컬 draft 상태 분리)
-- 빈 메모 저장 방지 (`draft.trim()` 비어있으면 버튼 비활성화)
-- 메모 개수 알림 뱃지 제거
-- 메모 목록 빈 상태 시 '새 메모 만들기' 버튼 제거 (우측 상단 + 버튼으로 통일)
-
-#### 5) 상단바 색상 개선
-- 네비 메뉴 비활성: `text-primary-500` → `text-primary-700`
-- 네비 메뉴 활성: `text-primary-700` → `text-primary-900 border-primary-700`
-- 메모/다크모드 버튼: `text-sidebar-text-muted` → `text-primary-700` (브랜드 색 통일)
-
-#### 6) 사용자 관리 팀 속성 추가 (`UserManagement.jsx`)
-- 테이블에 '팀' 컬럼 추가 (팀 있으면 파란 뱃지, 없으면 `-`)
-- 사용자 추가 모달에 팀 선택 드롭다운 추가 (PM팀/AI팀/Backend팀/Frontend팀)
-
-#### 7) 문서 관리 검색 버튼 추가 (`DocumentsPage.jsx`)
-- 기존 입력 즉시 필터링 → 검색 버튼 클릭 또는 Enter 시 검색 실행
-- `searchInput`(로컬) / `searchQuery`(실제 필터) 분리
-
-#### 8) 비밀번호 변경 기능 추가 (`Topbar.jsx`, `api/auth.js`)
-- `api/auth.js` — `changePassword()` 함수 추가 (`POST /auth/change-password`)
-- 유저 드롭다운에 '비밀번호 변경' 버튼 추가
-- 모달: 현재 비밀번호 / 새 비밀번호 / 새 비밀번호 확인, 유효성 검사 포함
-
-#### 9) 일정 관리 캘린더 유형별 필터 버튼 (`CalendarView.jsx`)
-- 기존 '공휴일' 단일 토글 → **전체 + 회의/마감일/개인일정/공휴일** 개별 토글로 확장
-- `hiddenTypes` Set 상태로 유형별 on/off 관리, 커스텀 유형 자동 반영
-- 비활성 버튼 `opacity-40`으로 표시, SchedulesPage 범례 제거
+#### 11) UI 개선 및 기능 추가
+- 회의 관리 페이지 전체 제거 (라우트, AIDock, Topbar 메뉴)
+- 글씨 크기 버튼 로그인/회원가입에서만 표시
+- 사용자 관리에 팀 컬럼/드롭다운 추가
+- 문서 관리 검색 버튼 추가
+- 비밀번호 변경 모달 추가 (유저 드롭다운)
+- 일정 캘린더 유형별 필터 버튼 (전체/회의/마감일/개인일정/공휴일)
 
 ### 다음 할 일
 - 나머지 Mock → 실제 API 교체 (대시보드, 문서 생성)
 - 관리자 API 연동 (#29)
-- 비밀번호 변경 백엔드 엔드포인트 구현 요청 (혜빈) — `POST /auth/change-password`
+- 비밀번호 변경 백엔드 엔드포인트 구현 요청 (혜빈)
 
 ---
 

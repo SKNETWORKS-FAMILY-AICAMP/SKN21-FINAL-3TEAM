@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import UserManagement from '../components/admin/UserManagement';
 import RegulationManagement from '../components/admin/RegulationManagement';
 import SystemStats from '../components/admin/SystemStats';
 import { listUsers, getSystemStats, getQueryLogs, listRegulations } from '../api/admin';
 
 export default function AdminPage() {
+  const { isScrolled } = useOutletContext();
   const [users, setUsers] = useState([]);
   const [regulations, setRegulations] = useState([]);
   const [stats, setStats] = useState({ today_queries: 0, processed_meetings: 0, completed_action_items: 0, risk_alerts: 0 });
@@ -35,9 +37,9 @@ export default function AdminPage() {
 
   return (
     <div>
-      <header className="py-6 sticky top-0 bg-surface-main z-10">
-        <h1 className="text-2xl font-bold">관리자 설정</h1>
-        <p className="text-sm text-neutral-sub mt-1">시스템 설정 및 사용자를 관리합니다</p>
+      <header className={`sticky top-0 bg-surface-main z-10 transition-all duration-300 ${isScrolled ? 'py-2.5' : 'py-6'}`}>
+        <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-2xl'}`}>관리자 설정</h1>
+        <p className={`text-neutral-sub transition-all duration-300 overflow-hidden ${isScrolled ? 'text-xs mt-0 max-h-0 opacity-0' : 'text-sm mt-1 max-h-6 opacity-100'}`}>시스템 설정 및 사용자를 관리합니다</p>
       </header>
 
       {loading ? (
