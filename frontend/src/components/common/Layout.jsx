@@ -2,6 +2,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect } from 'react';
 import Topbar from './Topbar';
+import AIDock from './AIDock';
 
 const pageVariants = {
   initial: { opacity: 0, y: 8 },
@@ -33,6 +34,7 @@ export default function Layout() {
           </motion.div>
         </AnimatePresence>
       </main>
+      <AIDock />
     </div>
   );
 }

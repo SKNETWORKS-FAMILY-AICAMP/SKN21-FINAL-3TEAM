@@ -76,11 +76,10 @@ function MemoPanel() {
       <button
         onClick={() => setOpen((o) => !o)}
         title="메모"
-        className={`w-8 h-8 flex items-center justify-center rounded-md transition relative ${
-          open
-            ? 'bg-sidebar-active text-sidebar-text'
-            : 'text-sidebar-text-muted hover:text-sidebar-text hover:bg-white/[0.06]'
-        }`}
+        className={`w-8 h-8 flex items-center justify-center rounded-md transition relative ${open
+          ? 'bg-sidebar-active text-sidebar-text'
+          : 'text-sidebar-text-muted hover:text-sidebar-text hover:bg-white/[0.06]'
+          }`}
       >
         <StickyNote size={16} />
         {memos.length > 0 && (
@@ -203,10 +202,9 @@ export default function Topbar() {
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
-                isActive
-                  ? 'bg-sidebar-active text-sidebar-text'
-                  : 'text-sidebar-text-muted hover:text-sidebar-text hover:bg-white/[0.06]'
+              `flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${isActive
+                ? 'bg-sidebar-active text-sidebar-text'
+                : 'text-sidebar-text-muted hover:text-sidebar-text hover:bg-white/[0.06]'
               }`
             }
           >
