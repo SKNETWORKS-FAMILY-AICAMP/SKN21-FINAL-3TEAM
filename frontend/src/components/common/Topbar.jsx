@@ -83,7 +83,7 @@ function MemoPanel() {
       >
         <StickyNote size={16} />
         {memos.length > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-accent-300 text-primary-900 text-[0.5rem] font-bold flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-accent-500 text-white text-[0.5rem] font-bold flex items-center justify-center">
             {memos.length}
           </span>
         )}
@@ -240,7 +240,7 @@ export default function Topbar() {
               onClick={() => setUserMenuOpen((o) => !o)}
               className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-border/30 transition-all"
             >
-              <div className="w-7 h-7 rounded-full bg-accent-300 flex items-center justify-center text-xs font-bold text-primary-900 flex-shrink-0">
+              <div className="w-7 h-7 rounded-full bg-accent-500 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
                 {user?.name?.[0] || '?'}
               </div>
               <span className="text-sm font-medium text-neutral-sub">{user?.name || '사용자'}</span>

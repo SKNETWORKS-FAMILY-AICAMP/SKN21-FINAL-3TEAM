@@ -190,7 +190,7 @@ export const GOOGLE_SCOPES = {
 export const GOOGLE_SCOPE_LABELS = {
   calendar: 'Google Calendar',
   tasks: 'Google Tasks',
-  gmail_send: 'Gmail 발송',
+  gmail_send: 'Gmail',
   sheets: 'Google Sheets',
 }
 
