@@ -418,3 +418,135 @@ intent → status("judgment_agent 처리 중...")
 - `ingest_documents.py`로 실제 규정 PDF 적재 테스트 (`data/regulations/dudu_tech_regulations.pdf`)
 - 다양한 문서 형식(DOCX, 스캔 PDF) 파싱 테스트
 - 5단계 성능 평가 (#13) — 환각 탐지 정확도, confidence 보정 효과 정량 평가
+
+---
+
+## 2026-02-23 (일) — 규정 문서 확보 + RAG 검색 고도화
+
+### 가상 규정 문서 7개 생성 (3단계 RAG 커버리지 확보)
+
+기존 `dudu_tech_regulations.pdf` 1개(30조)로는 교차 규정 판단이 불가능하여,
+듀듀 테크놀로지 스타일의 가상 규정 .txt 파일 7개를 생성하여 `data/regulations/`에 추가:
+
+| # | 파일명 | 문서번호 | 조항 수 | 주요 내용 |
+|---|--------|---------|---------|----------|
+| 1 | 급여규정_NC-HR-2026-002.txt | NC-HR-2026-002 | 21조 | 급여체계, 수당, 상여금, 퇴직금 |
+| 2 | 출장규정_NC-HR-2026-003.txt | NC-HR-2026-003 | 17조 | 국내/해외출장, 출장비, 정산 |
+| 3 | 교육훈련규정_NC-HR-2026-004.txt | NC-HR-2026-004 | 14조 | 직무교육, 법정교육, 교육비 지원 |
+| 4 | 복리후생규정_NC-HR-2026-005.txt | NC-HR-2026-005 | 17조 | 건강검진, 경조사, 자녀학자금, 동호회 |
+| 5 | 징계규정_NC-HR-2026-006.txt | NC-HR-2026-006 | 17조 | 징계종류, 사유, 절차, 이의신청 |
+| 6 | 개인정보처리규정_NC-IT-2026-001.txt | NC-IT-2026-001 | 20조 | 개인정보 수집/이용/파기, CCTV, 침해사고 |
+| 7 | 윤리강령_NC-GV-2026-001.txt | NC-GV-2026-001 | 21조 | 이해충돌, 부정청탁, 금품수수, 내부고발 |
+
+- 총 127개 조항, 규정 간 교차 참조 포함 (징계규정↔개인정보처리규정 등)
+- 기존 PDF(제N장 > 제N조 > 불릿)와 동일한 조항 구조
+
+### Qdrant 적재 완료 — 270개 청크
+
+- docling 설치 후 PDF 포함 전체 재적재 (`--force`)
+- PDF: 101 청크 + TXT 7개: 169 청크 = **총 270개 청크**
+- 기존 44개 → 270개로 **6.1배 증가**
+
+### 교차 규정 검색 품질 개선
+
+"출장 중 개인정보 유출 시 처분은?" 쿼리로 교차 규정 검색 테스트 후 3가지 문제 발견 및 해결:
+
+**문제 1: 단일 규정 독점** — 개인정보처리규정이 top-5 전체 점령
+→ **해결**: `hybrid_search.py`에 `max_per_source=3` 소스 다양성 적용 (RRF 합산 후)
+
+**문제 2: BM25 토큰 불일치** — "징계의"와 "징계"가 매칭 안 됨 (공백 기반 토크나이징)
+→ **해결**: `hybrid_search.py`의 `tokenize()`에 `_strip_suffixes()` 한국어 접미사 제거 추가
+
+**문제 3: 쿼리 키워드 추출 실패** — "처분은?" → "처분은" (조사 잔류)
+→ **해결**: `query_refiner.py`의 `_extract_keywords()`에 `_strip_suffixes()` 추가, "처분" → 동의어 "징계" 확장
+
+**개선 결과:**
+- 징계규정이 rank 8에 등장 (제7조 중징계 사유: "고객 개인정보를 고의로 유출한 경우")
+- 5개 이상 규정에서 교차 검색 결과 확보
+- 기존 4개 쿼리 회귀 테스트 전부 통과
+
+### 수정된 파일 (4개)
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `ai/agents/judgment_agent.py` | top_k 7→10 (일반 + 스트리밍 양쪽) |
+| `ai/rag/hybrid_search.py` | `_strip_suffixes()` + `max_per_source=3` 소스 다양성 |
+| `ai/rag/query_refiner.py` | `_strip_suffixes()` fallback + 동의어 확장 개선 |
+| `scripts/ingest_documents.py` | test top_k 5→10 |
+
+### Git — 커밋 & 푸시 완료
+
+- `feat/ai-yoon` 커밋 (11 files, 970 insertions) → origin push
+- `develop` ← `feat/ai-yoon` 머지 + origin pull(프론트엔드 변경 반영) → push
+- 양쪽 브랜치 origin과 동기화 완료 (`158c53a`)
+
+**다음 할 일:**
+- 5단계 성능 평가 (#13) — 판단 정확도, RAG MRR, 교차 규정 검색 정량 평가
+- 공개 규정 다운로드 검토 (현재 270 청크로 충분한지 평가 후 결정)
+- ~~4단계 파인튜닝 데이터 준비 (#9, #10) — 판단 1,000건 JSONL 변환, 규정 Q&A 수집~~ ✅ 완료
+- E2E 교차 규정 판단 테스트 (judgment_agent 실제 호출)
+
+---
+
+## 2026-02-23 (일) — 4단계: 파인튜닝 데이터 준비 (#9, #10)
+
+### Step 1: 데이터 변환 스크립트 — `scripts/prepare_finetuning_data.py` (신규)
+
+Excel 2개 → JSONL chat format 변환 스크립트 구현:
+
+**Judgment (1,000건) 변환:**
+- 조항 컬럼 → `regulation_texts.py`에서 원문 자동 조회 (30개 조항 전체 매핑)
+- 판단유형 → result 매핑 (Yes→yes, No→no, 조건부→conditional)
+- 근거/대안 → reasoning + conditions/alternatives 분기
+- user message = `## 관련 규정 문서\n### 제N조(...)\n{원문}\n\n## 사용자 질문\n{질문}` (프로덕션 동일)
+- assistant message = `JUDGMENT_SYSTEM_PROMPT` 기반 JSON 응답
+
+**QA (500건) 변환:**
+- 답변 텍스트 키워드 기반 판단 카테고리 자동 분류
+  - 불가/금지/안 됩니다 → no, 가능/허용/됩니다 → yes, 조건/단,/다만 → conditional
+- 순수 설명형 Q&A → yes (규정 존재 확인)
+
+**Confidence 기준:**
+- Judgment: Yes/No → 0.92, 조건부 → 0.75
+- QA: Yes/No → 0.88, 조건부 → 0.72 (추론 분류이므로 약간 낮게)
+
+### Step 2: 설정 업데이트 — `ai/finetuning/configs/v1_judgment.yaml`
+
+- `base_model`: `Qwen/Qwen3-8B` → `kakaocorp/kanana-1.5-8b-instruct-2505` (벤치마크 #7 선정)
+
+### Step 3: 학습 스크립트 — `ai/finetuning/train_v1_judgment.py` (스텁 → 전체 구현)
+
+`train_qa_lora.py` 패턴 기반으로 전체 구현:
+- YAML config 로드 (`configs/v1_judgment.yaml`)
+- 모델: Kanana-1.5-8B + BitsAndBytesConfig 4-bit QLoRA
+- 데이터: messages 배열 → `tokenizer.apply_chat_template()` → `{"text": ...}`
+- LoRA: r=16, alpha=32, target=q/k/v/o_proj, dropout=0.05
+- Training: 3 epochs, batch=4, accum=4, lr=2e-4, cosine scheduler
+- 평가: judgment 전용 메트릭 (판단 정확도, JSON 유효율, 카테고리별 정확도)
+
+### Step 4: 데이터 변환 실행 + 검증 결과
+
+| 항목 | 결과 |
+|------|------|
+| 총 건수 | **1,500건** (judgment 1,000 + QA 500) |
+| Train / Eval | **1,351 / 149** (90/10 층화추출) |
+| JSON 파싱 성공 | **100%** (1,500/1,500) |
+| 규정 원문 포함 | **100%** (1,500/1,500) |
+| Result 분포 | yes=710, conditional=411, no=379 |
+| Source 분포 | judgment=1,000, qa=500 |
+
+### 수정/생성 파일
+
+| 파일 | 작업 | 설명 |
+|------|------|------|
+| `scripts/prepare_finetuning_data.py` | 신규 | Excel → JSONL 변환 스크립트 |
+| `data/training/v1_judgment/train.jsonl` | 신규 | 학습 데이터 (1,351건) |
+| `data/training/v1_judgment/eval.jsonl` | 신규 | 평가 데이터 (149건) |
+| `ai/finetuning/train_v1_judgment.py` | 수정 | TODO 스텁 → QLoRA + SFTTrainer 전체 구현 |
+| `ai/finetuning/configs/v1_judgment.yaml` | 수정 | base_model → Kanana-1.5-8B |
+
+**다음 할 일:**
+- RunPod에서 `train_v1_judgment.py` 실제 학습 실행 (A100 40GB)
+- 학습 완료 후 eval 메트릭 확인 (판단 정확도 목표 ≥85%)
+- vLLM 서빙에 LoRA 어댑터 연결 테스트
+- 5단계 성능 평가 (#13) — 파인튜닝 전/후 비교
