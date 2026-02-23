@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
+from app.schemas.document import DocumentGenerateResponse
 from app.services import document_service, parsing_service, template_service
 
 GENERATED_DOCS_DIR = Path(__file__).resolve().parents[4] / "backend" / "generated_docs"
@@ -78,7 +79,7 @@ async def upload_document(
     }
 
 
-@router.post("/generate")
+@router.post("/generate", response_model=DocumentGenerateResponse)
 async def generate_document(
     request: GenerateDocumentRequest,
     user=Depends(get_current_user),
@@ -131,10 +132,9 @@ async def search_with_highlight(
     키워드 검색 + 하이라이트 (FR-DOC-006)
     — RAG 연동 필요, 팀원 B 구현 후 연동
     """
-    # TODO: 팀원 D (API) + 팀원 B (RAG 검색)
     raise HTTPException(
         status_code=501,
-        detail="검색 기능은 RAG 연동 후 사용 가능합니다",
+        detail="키워드 하이라이트 검색은 RAG(Qdrant) 연동 대기 중입니다. 일반 검색은 GET /documents/?keyword= 를 사용하세요.",
     )
 
 
@@ -155,10 +155,9 @@ async def upload_template(
     커스텀 템플릿 업로드
     — AI 구조 추출 필요, 팀원 C 구현 후 연동
     """
-    # TODO: 팀원 D (API) + 팀원 C (구조 추출)
     raise HTTPException(
         status_code=501,
-        detail="커스텀 템플릿 업로드 기능은 AI Agent 연동 후 사용 가능합니다",
+        detail="커스텀 템플릿 업로드는 문서 구조 추출(from_parsed_structure) 구현 대기 중입니다.",
     )
 
 

@@ -2,19 +2,19 @@ import { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, MessageSquare, FilePlus, FileText,
-  Users2, Calendar, Settings, LogOut,
+  Calendar, Settings, LogOut, KeyRound,
   StickyNote, Plus, Trash2, ArrowLeft, Check,
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useUIStore from '../../store/uiStore';
 import ThemeToggle from './ThemeToggle';
+import { changePassword } from '../../api/auth';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: '대시보드' },
   { to: '/chat', icon: MessageSquare, label: 'AI 챗봇' },
   { to: '/document-generate', icon: FilePlus, label: '문서 생성' },
   { to: '/documents', icon: FileText, label: '문서 관리' },
-  { to: '/meetings', icon: Users2, label: '회의 관리' },
   { to: '/schedules', icon: Calendar, label: '일정 관리' },
   { to: '/admin', icon: Settings, label: '관리자 설정' },
 ];
@@ -22,7 +22,7 @@ const navItems = [
 function MemoPanel() {
   const [open, setOpen] = useState(false);
   const panelRef = useRef(null);
-  const saveTimerRef = useRef(null);
+  const [draft, setDraft] = useState('');
   const [savedVisible, setSavedVisible] = useState(false);
 
   const memos = useUIStore((s) => s.memos);
@@ -46,23 +46,23 @@ function MemoPanel() {
     return () => document.removeEventListener('mousedown', handler);
   }, [open, selectMemo]);
 
-  // 메모 전환 시 저장 표시 초기화
+  // 메모 선택 시 draft 초기화
   useEffect(() => {
+    setDraft(activeMemo?.text || '');
     setSavedVisible(false);
   }, [activeMemoId]);
 
-  // 자동 저장 표시 숨기기
+  // 저장됨 표시 2초 후 숨기기
   useEffect(() => {
     if (!savedVisible) return;
     const t = setTimeout(() => setSavedVisible(false), 2000);
     return () => clearTimeout(t);
   }, [savedVisible]);
 
-  const handleChange = (e) => {
-    updateMemo(activeMemo.id, e.target.value);
-    setSavedVisible(false);
-    clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => setSavedVisible(true), 500);
+  const handleSave = () => {
+    if (!draft.trim()) return;
+    updateMemo(activeMemo.id, draft);
+    setSavedVisible(true);
   };
 
   const handleClose = () => {
@@ -77,16 +77,11 @@ function MemoPanel() {
         onClick={() => setOpen((o) => !o)}
         title="메모"
         className={`w-8 h-8 flex items-center justify-center rounded-md transition relative ${open
-          ? 'bg-sidebar-active text-sidebar-text'
-          : 'text-sidebar-text-muted hover:text-sidebar-text hover:bg-white/[0.06]'
+          ? 'bg-primary-50 text-primary-900'
+          : 'text-primary-700 hover:text-primary-900 hover:bg-primary-50'
           }`}
       >
         <StickyNote size={16} />
-        {memos.length > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-accent-500 text-white text-[0.5rem] font-bold flex items-center justify-center">
-            {memos.length}
-          </span>
-        )}
       </button>
 
       {/* 플로팅 메모 패널 */}
@@ -122,13 +117,6 @@ function MemoPanel() {
               {memos.length === 0 ? (
                 <div className="py-8 text-center text-xs text-sidebar-text-muted opacity-60">
                   메모가 없습니다
-                  <br />
-                  <button
-                    onClick={addMemo}
-                    className="mt-2 text-accent-300 hover:underline"
-                  >
-                    + 새 메모 만들기
-                  </button>
                 </div>
               ) : (
                 memos.map((m) => (
@@ -159,15 +147,24 @@ function MemoPanel() {
             <div className="p-3">
               <textarea
                 autoFocus
-                value={activeMemo.text}
-                onChange={handleChange}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
                 placeholder="메모를 입력하세요..."
                 rows={8}
                 className="w-full px-2.5 py-2 text-xs rounded-md bg-white/[0.06] text-sidebar-text placeholder:text-sidebar-text-muted/50 border border-sidebar-border focus:border-accent-300 focus:outline-none resize-none"
               />
-              <div className={`flex items-center gap-1 mt-1 text-[0.625rem] text-accent-300 transition-opacity duration-300 ${savedVisible ? 'opacity-100' : 'opacity-0'}`}>
-                <Check size={10} />
-                자동 저장됨
+              <div className="flex items-center justify-between mt-2">
+                <div className={`flex items-center gap-1 text-[0.625rem] text-accent-300 transition-opacity duration-300 ${savedVisible ? 'opacity-100' : 'opacity-0'}`}>
+                  <Check size={10} />
+                  저장됨
+                </div>
+                <button
+                  onClick={handleSave}
+                  disabled={!draft.trim()}
+                  className="px-2.5 py-1 text-[0.625rem] font-semibold rounded bg-accent-500 text-white hover:bg-accent-600 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  저장
+                </button>
               </div>
             </div>
           )}
@@ -177,16 +174,43 @@ function MemoPanel() {
   );
 }
 
-export default function Topbar() {
+export default function Topbar({ isScrolled = false }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
+  const [pwModal, setPwModal] = useState(false);
+  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
+  const [pwError, setPwError] = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const openPwModal = () => {
+    setUserMenuOpen(false);
+    setPwForm({ current: '', next: '', confirm: '' });
+    setPwError('');
+    setPwModal(true);
+  };
+
+  const handleChangePassword = async () => {
+    if (!pwForm.current.trim()) return setPwError('현재 비밀번호를 입력하세요.');
+    if (pwForm.next.length < 6) return setPwError('새 비밀번호는 6자 이상이어야 합니다.');
+    if (pwForm.next !== pwForm.confirm) return setPwError('새 비밀번호가 일치하지 않습니다.');
+    setPwSaving(true);
+    setPwError('');
+    try {
+      await changePassword(pwForm.current, pwForm.next);
+      setPwModal(false);
+    } catch (e) {
+      setPwError(e.response?.data?.detail || '비밀번호 변경에 실패했습니다.');
+    } finally {
+      setPwSaving(false);
+    }
   };
 
   useEffect(() => {
@@ -201,14 +225,15 @@ export default function Topbar() {
   }, [userMenuOpen]);
 
   return (
-    <header className="h-[100px] bg-surface-main flex-shrink-0 z-20">
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center px-10 py-[30px]">
+    <>
+    <header className={`bg-surface-main flex-shrink-0 z-20 transition-all duration-300 ease-in-out ${isScrolled ? 'h-[56px] shadow-sm' : 'h-[100px]'}`}>
+      <div className={`grid grid-cols-[1fr_auto_1fr] items-center px-10 transition-all duration-300 ease-in-out ${isScrolled ? 'py-2.5' : 'py-[30px]'}`}>
 
         {/* 좌측 - 로고 */}
         <div className="flex items-center">
-          <a href="/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-700 rounded-sm flex items-center justify-center text-lg font-bold text-white font-display">W</div>
-            <span className="font-display text-2xl font-bold text-primary-700 tracking-tight">WorkFlow</span>
+          <a href="/dashboard" className="flex items-center gap-2.5">
+            <div className={`bg-primary-700 rounded-sm flex items-center justify-center font-bold text-white font-display transition-all duration-300 ease-in-out ${isScrolled ? 'w-7 h-7 text-sm' : 'w-10 h-10 text-lg'}`}>W</div>
+            <span className={`font-display font-bold text-primary-700 tracking-tight transition-all duration-300 ease-in-out ${isScrolled ? 'text-xl' : 'text-2xl'}`}>WorkFlow</span>
           </a>
         </div>
 
@@ -219,9 +244,11 @@ export default function Topbar() {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `px-5 pb-3 text-base font-medium transition-all whitespace-nowrap border-b-2 ${isActive
-                  ? 'text-primary-700 border-primary-500'
-                  : 'text-primary-500 border-transparent hover:text-primary-700 hover:border-primary-500'
+                `font-medium whitespace-nowrap border-b-2 transition-all duration-300 ease-in-out ${
+                  isScrolled ? 'px-4 pb-1.5 text-sm' : 'px-5 pb-3 text-base'
+                } ${isActive
+                  ? 'text-primary-900 border-primary-700'
+                  : 'text-primary-700 border-transparent hover:text-primary-900 hover:border-primary-700'
                 }`
               }
             >
@@ -240,10 +267,10 @@ export default function Topbar() {
               onClick={() => setUserMenuOpen((o) => !o)}
               className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-border/30 transition-all"
             >
-              <div className="w-7 h-7 rounded-full bg-accent-500 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+              <div className={`rounded-full bg-accent-500 flex items-center justify-center font-bold text-white flex-shrink-0 transition-all duration-300 ease-in-out ${isScrolled ? 'w-6 h-6 text-[10px]' : 'w-7 h-7 text-xs'}`}>
                 {user?.name?.[0] || '?'}
               </div>
-              <span className="text-sm font-medium text-neutral-sub">{user?.name || '사용자'}</span>
+              <span className={`font-medium text-neutral-sub transition-all duration-300 ease-in-out ${isScrolled ? 'text-xs' : 'text-sm'}`}>{user?.name || '사용자'}</span>
             </button>
 
             {userMenuOpen && (
@@ -252,6 +279,13 @@ export default function Topbar() {
                   <div className="text-xs font-semibold text-neutral-main">{user?.name || '사용자'}</div>
                   <div className="text-[0.625rem] text-neutral-muted mt-0.5">{user?.is_admin ? '관리자' : '일반 사용자'}</div>
                 </div>
+                <button
+                  onClick={openPwModal}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-neutral-sub hover:text-neutral-main hover:bg-neutral-divider transition-all"
+                >
+                  <KeyRound size={12} />
+                  비밀번호 변경
+                </button>
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center gap-2 px-3 py-2 text-xs text-neutral-sub hover:text-error hover:bg-neutral-divider transition-all"
@@ -265,5 +299,39 @@ export default function Topbar() {
         </div>
       </div>
     </header>
+
+    {pwModal && (
+      <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setPwModal(false)}>
+        <div className="bg-surface-card rounded-lg border border-neutral-border shadow-lg w-[380px] p-6" onClick={(e) => e.stopPropagation()}>
+          <h3 className="text-base font-bold mb-4">비밀번호 변경</h3>
+          <div className="space-y-3">
+            {[
+              { label: '현재 비밀번호', key: 'current', placeholder: '현재 비밀번호를 입력하세요' },
+              { label: '새 비밀번호', key: 'next', placeholder: '6자 이상 입력하세요' },
+              { label: '새 비밀번호 확인', key: 'confirm', placeholder: '새 비밀번호를 다시 입력하세요' },
+            ].map(({ label, key, placeholder }) => (
+              <div key={key}>
+                <label className="text-xs font-semibold text-neutral-sub block mb-1">{label}</label>
+                <input
+                  type="password"
+                  value={pwForm[key]}
+                  onChange={(e) => setPwForm({ ...pwForm, [key]: e.target.value })}
+                  placeholder={placeholder}
+                  className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
+                />
+              </div>
+            ))}
+            {pwError && <p className="text-xs text-error">{pwError}</p>}
+          </div>
+          <div className="flex justify-end gap-2 mt-5">
+            <button className="btn-outline" onClick={() => setPwModal(false)}>취소</button>
+            <button className="btn-primary" onClick={handleChangePassword} disabled={pwSaving}>
+              {pwSaving ? '변경 중...' : '변경'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

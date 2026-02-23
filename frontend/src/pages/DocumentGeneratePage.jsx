@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import TemplateSelector from '../components/documents/TemplateSelector';
 import TemplateUploadDialog from '../components/documents/TemplateUploadDialog';
 import DocumentPreview from '../components/documents/DocumentPreview';
@@ -63,6 +64,7 @@ const mockResults = {
 };
 
 export default function DocumentGeneratePage() {
+  const { isScrolled } = useOutletContext();
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [prompt, setPrompt] = useState('');
@@ -143,9 +145,9 @@ export default function DocumentGeneratePage() {
 
   return (
     <div>
-      <header className="py-6 sticky top-0 bg-surface-main z-10">
-        <h1 className="text-2xl font-bold">문서 생성</h1>
-        <p className="text-sm text-neutral-sub mt-1">템플릿을 선택하고 AI가 내용을 자동으로 채워줍니다</p>
+      <header className={`sticky top-0 bg-surface-main z-10 transition-all duration-300 ${isScrolled ? 'py-2.5' : 'py-6'}`}>
+        <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-2xl'}`}>문서 생성</h1>
+        <p className={`text-neutral-sub transition-all duration-300 overflow-hidden ${isScrolled ? 'text-xs mt-0 max-h-0 opacity-0' : 'text-sm mt-1 max-h-6 opacity-100'}`}>템플릿을 선택하고 AI가 내용을 자동으로 채워줍니다</p>
       </header>
 
       <div className="space-y-6">

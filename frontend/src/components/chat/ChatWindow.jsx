@@ -186,7 +186,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       )}
 
 
-      <div className="flex-1 overflow-y-auto py-4 px-4">{children}<div ref={bottomRef} /></div>
+      <div className="flex-1 overflow-y-auto py-4 px-4" data-main-scroll="">{children}<div ref={bottomRef} /></div>
 
       {/* 선택 문서 칩 & 파일 칩 & 에러 */}
       {(selectedDocumentName || files.length > 0 || fileError) && (

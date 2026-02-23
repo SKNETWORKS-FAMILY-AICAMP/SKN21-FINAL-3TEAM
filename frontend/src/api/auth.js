@@ -17,3 +17,6 @@ export const requestPasswordReset = (email) =>
 
 export const confirmPasswordReset = (token, newPassword) =>
   client.post('/auth/password-reset/confirm', { token, new_password: newPassword })
+
+export const changePassword = (currentPassword, newPassword) =>
+  client.post('/auth/change-password', { current_password: currentPassword, new_password: newPassword })

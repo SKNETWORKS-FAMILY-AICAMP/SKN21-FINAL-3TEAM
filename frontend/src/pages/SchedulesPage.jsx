@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import useGoogleServices from '../hooks/useGoogleServices';
 import { sendMeetingInvite } from '../api/google';
 import GoogleServicesConnect from '../components/schedules/GoogleServicesConnect';
@@ -10,6 +11,7 @@ import SheetsDashboard from '../components/schedules/SheetsDashboard';
 import useScheduleTypeStore, { DEFAULT_TYPES } from '../store/scheduleTypeStore';
 
 export default function SchedulesPage() {
+  const { isScrolled } = useOutletContext();
   const { connected, calendarEvents, calendarLoading, calendarError, fetchCalendarEvents, hasScope, syncEventToGoogle, createEventWithMeet } = useGoogleServices();
   const { customTypes } = useScheduleTypeStore();
   const [showForm, setShowForm] = useState(false);
@@ -99,10 +101,10 @@ export default function SchedulesPage() {
   return (
     <div>
       {/* 헤더 */}
-      <header className="flex justify-between items-center py-6 sticky top-0 bg-surface-main z-10">
+      <header className={`flex justify-between items-center sticky top-0 bg-surface-main z-10 transition-all duration-300 ${isScrolled ? 'py-2.5' : 'py-6'}`}>
         <div>
-          <h1 className="text-2xl font-bold">일정 관리</h1>
-          <p className="text-sm text-neutral-sub mt-1">Action Item과 회의 일정을 통합 관리합니다</p>
+          <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-2xl'}`}>일정 관리</h1>
+          <p className={`text-neutral-sub transition-all duration-300 overflow-hidden ${isScrolled ? 'text-xs mt-0 max-h-0 opacity-0' : 'text-sm mt-1 max-h-6 opacity-100'}`}>Action Item과 회의 일정을 통합 관리합니다</p>
         </div>
         <div className="flex items-center gap-3">
           {connected && hasScope('calendar') && (
@@ -112,7 +114,7 @@ export default function SchedulesPage() {
               className="btn-outline"
               title="Google Calendar 동기화"
             >
-              {calendarLoading ? '🔄 동기화 중...' : '🔄 새로고침'}
+              {calendarLoading ? '동기화 중...' : '새로고침'}
             </button>
           )}
           <button
@@ -170,18 +172,6 @@ export default function SchedulesPage() {
       {activeTab === 'calendar' && (
         <>
           {/* 범례 */}
-          <div className="flex flex-wrap gap-4 mb-5">
-            {[
-              ...DEFAULT_TYPES,
-              ...customTypes,
-              { id: 'holiday', label: '공휴일', color: '#C06060' },
-            ].map(({ id, label, color }) => (
-              <div key={id} className="flex items-center gap-1.5 text-xs text-neutral-sub">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-                {label}
-              </div>
-            ))}
-          </div>
 
           {/* 에러 메시지 */}
           {calendarError && (

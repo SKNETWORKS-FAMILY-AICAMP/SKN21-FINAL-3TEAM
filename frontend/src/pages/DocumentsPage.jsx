@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import DocumentUpload from '../components/documents/DocumentUpload';
 import CustomSelect from '../components/common/CustomSelect';
 import DocumentList from '../components/documents/DocumentList';
@@ -7,8 +8,10 @@ import { uploadDocument, listDocuments, getDocument, deleteDocument } from '../a
 
 
 export default function DocumentsPage() {
+  const { isScrolled } = useOutletContext();
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [searchType, setSearchType] = useState('제목');
   const [scopeFilter, setScopeFilter] = useState('전체');
   const [scope, setScope] = useState('company');
@@ -134,8 +137,11 @@ export default function DocumentsPage() {
 
   return (
     <div>
-      <header className="flex justify-between items-center py-6 sticky top-0 bg-surface-main z-10">
-        <div><h1 className="text-2xl font-bold">문서 관리</h1><p className="text-sm text-neutral-sub mt-1">회사 규정 및 문서를 관리합니다</p></div>
+      <header className={`flex justify-between items-center sticky top-0 bg-surface-main z-10 transition-all duration-300 ${isScrolled ? 'py-2.5' : 'py-6'}`}>
+        <div>
+          <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-2xl'}`}>문서 관리</h1>
+          <p className={`text-neutral-sub transition-all duration-300 overflow-hidden ${isScrolled ? 'text-xs mt-0 max-h-0 opacity-0' : 'text-sm mt-1 max-h-6 opacity-100'}`}>회사 규정 및 문서를 관리합니다</p>
+        </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <CustomSelect
@@ -144,7 +150,8 @@ export default function DocumentsPage() {
               options={['제목', '제목+내용', '날짜']}
               buttonClassName="py-2"
             />
-            <div className="flex items-center gap-2 bg-surface-card border border-neutral-border rounded-md px-4 py-2 min-w-[280px]"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-muted flex-shrink-0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="문서 검색..." className="border-none bg-transparent text-[0.8125rem] w-full outline-none" /></div>
+            <div className="flex items-center gap-2 bg-surface-card border border-neutral-border rounded-md px-4 py-2 min-w-[280px]"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-muted flex-shrink-0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && setSearchQuery(searchInput)} placeholder="문서 검색..." className="border-none bg-transparent text-[0.8125rem] w-full outline-none" /></div>
+            <button onClick={() => setSearchQuery(searchInput)} className="btn-primary py-2 px-4 text-sm">검색</button>
           </div>
         </div>
       </header>
