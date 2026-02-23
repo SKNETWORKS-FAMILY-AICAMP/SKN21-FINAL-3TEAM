@@ -1,6 +1,6 @@
 {
   "base_model": "monologg/koelectra-base-v3-discriminator",
-  "experiment": "v2_stage5",
+  "experiment": "v2_stage6",
   "intents": [
     "judgment",
     "doc_search",
@@ -11,5 +11,6 @@
     "general",
     "doc_qa"
   ],
-  "augmented": true
+  "augmented": true,
+  "label_smoothing": 0.1
 }
