@@ -8,7 +8,6 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ChatPage from './pages/ChatPage';
 import DocumentsPage from './pages/DocumentsPage';
-import MeetingsPage from './pages/MeetingsPage';
 import SchedulesPage from './pages/SchedulesPage';
 import AdminPage from './pages/AdminPage';
 import DocumentGeneratePage from './pages/DocumentGeneratePage';
@@ -67,7 +66,6 @@ export default function App() {
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/document-generate" element={<DocumentGeneratePage />} />
             <Route path="/documents" element={<DocumentsPage />} />
-            <Route path="/meetings" element={<MeetingsPage />} />
             <Route path="/schedules" element={<SchedulesPage />} />
             <Route path="/admin" element={<AdminPage />} />
           </Route>
