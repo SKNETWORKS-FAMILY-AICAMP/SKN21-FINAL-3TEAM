@@ -19,7 +19,7 @@ export default function TemplateSelector({ selected, onSelect, onUploadClick }) 
         </button>
       </div>
       <div className="card-body">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           {TEMPLATE_CATEGORIES.map((tpl) => {
             const Icon = templateIcons[tpl.value] || FileText;
             return (

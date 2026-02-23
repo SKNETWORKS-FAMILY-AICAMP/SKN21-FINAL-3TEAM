@@ -7,6 +7,7 @@ import StreamingMessage from '../components/chat/StreamingMessage';
 import ErrorMessage from '../components/chat/ErrorMessage';
 import SuggestedQuestions from '../components/chat/SuggestedQuestions';
 import RegulationPanel from '../components/chat/RegulationPanel';
+import DocumentViewPanel from '../components/chat/DocumentViewPanel';
 import ChatSessionSidebar from '../components/chat/ChatSessionSidebar';
 import JudgmentCard from '../components/chat/JudgmentCard';
 import ScheduleCard from '../components/chat/ScheduleCard';
@@ -45,7 +46,7 @@ function exportChat(messages) {
 const RESULT_MAP = { yes: '가능', no: '불가', conditional: '조건부 가능' };
 const RESULT_ICON = { yes: '✅', no: '❌', conditional: '⚠️' };
 
-function renderCardMessage(msg, onSelectClarify) {
+function renderCardMessage(msg, onSelectClarify, onSelectDoc) {
   const { resultIntent, agentResponse, content } = msg;
   const data = agentResponse || {};
 
@@ -84,13 +85,18 @@ function renderCardMessage(msg, onSelectClarify) {
               <div>
                 <div className="text-xs font-semibold text-neutral-sub mb-2">출처 ({sources.length}건)</div>
                 {sources.map((s, idx) => (
-                  <div key={idx} className="px-3 py-2 bg-surface-hover rounded-lg mb-1.5 border-l-[3px] border-l-accent-300">
+                  <button
+                    key={idx}
+                    onClick={() => onSelectDoc?.(s)}
+                    className="w-full text-left px-3 py-2 bg-surface-hover rounded-lg mb-1.5 border-l-[3px] border-l-accent-300 hover:border-l-accent-500 hover:bg-accent-50 transition"
+                  >
                     <div className="text-xs font-semibold text-neutral-main">
                       {s.title || s.name || s.source || `출처 ${idx + 1}`}
                       {s.page && <span className="text-neutral-muted font-normal ml-1">p.{s.page}</span>}
                     </div>
                     {s.content && <div className="text-[0.6875rem] text-neutral-sub mt-0.5">{s.content}</div>}
-                  </div>
+                    <div className="mt-1.5 text-[0.6875rem] text-accent-600 font-medium">전체 보기 →</div>
+                  </button>
                 ))}
               </div>
             )}
@@ -162,6 +168,7 @@ export default function ChatPage() {
   const setSelectedDocument = useChatStore((s) => s.setSelectedDocument);
   const clearSelectedDocument = useChatStore((s) => s.clearSelectedDocument);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [docViewDoc, setDocViewDoc] = useState(null);
   const [sessionSidebarOpen, setSessionSidebarOpen] = useState(false);
   const [lastError, setLastError] = useState(null);
   const [lastInput, setLastInput] = useState('');
@@ -394,7 +401,7 @@ export default function ChatPage() {
 
         {/* 챗 영역 */}
         <div className="flex-1 min-w-0">
-          <ChatWindow onSend={handleSend} messages={messages} selectedDocumentName={selectedDocumentName} onClearDocument={clearSelectedDocument} activeIntent={currentIntent || messages.filter(m => m.role === 'assistant').at(-1)?.resultIntent || messages.filter(m => m.role === 'assistant').at(-1)?.intent} isStreaming={isStreaming} panelOpen={panelOpen}>
+          <ChatWindow onSend={handleSend} messages={messages} selectedDocumentName={selectedDocumentName} onClearDocument={clearSelectedDocument} activeIntent={currentIntent || messages.filter(m => m.role === 'assistant').at(-1)?.resultIntent || messages.filter(m => m.role === 'assistant').at(-1)?.intent} isStreaming={isStreaming} panelOpen={panelOpen || !!docViewDoc}>
             {/* 메시지가 없을 때 — 추천 질문 */}
             {messages.length === 0 && (
               <SuggestedQuestions onSelect={handleSend} />
@@ -418,7 +425,7 @@ export default function ChatPage() {
               if (msg.agentResponse && msg.resultIntent) {
                 return (
                   <MessageBubble key={i} type="bot" intent={msg.resultIntent || msg.intent}>
-                    {renderCardMessage(msg, handleSend)}
+                    {renderCardMessage(msg, handleSend, setDocViewDoc)}
                   </MessageBubble>
                 );
               }
@@ -447,12 +454,16 @@ export default function ChatPage() {
           </ChatWindow>
         </div>
 
-        {/* 우측 규정 패널 */}
-        <RegulationPanel
-          regulations={regulationsFromMessages}
-          isOpen={panelOpen}
-          onClose={() => setPanelOpen(false)}
-        />
+        {/* 우측 패널: 문서 보기 or 규정 패널 */}
+        {docViewDoc ? (
+          <DocumentViewPanel doc={docViewDoc} onClose={() => setDocViewDoc(null)} />
+        ) : (
+          <RegulationPanel
+            regulations={regulationsFromMessages}
+            isOpen={panelOpen}
+            onClose={() => setPanelOpen(false)}
+          />
+        )}
       </div>
     </div>
   );
