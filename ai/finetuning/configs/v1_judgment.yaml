@@ -1,6 +1,6 @@
 # LoRA v1: RAG 판단 특화 (팀원 B 관리)
 model:
-  base_model: "Qwen/Qwen3-8B"  # 벤치마크 후 변경 가능
+  base_model: "kakaocorp/kanana-1.5-8b-instruct-2505"  # 벤치마크 #7에서 Kanana-1.5-8B 선정
   quantization: "4bit"  # QLoRA
 
 lora:

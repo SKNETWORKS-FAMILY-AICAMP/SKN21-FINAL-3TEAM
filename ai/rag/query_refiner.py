@@ -96,12 +96,29 @@ _COLLOQUIAL_TO_FORMAL: list[tuple[str, str]] = [
 _KEY_POS_TAGS = {"NNG", "NNP", "VV", "VA", "SL", "SH", "SN"}
 
 
+def _strip_suffixes(token: str) -> str:
+    """kiwipiepy 없을 때 한국어 조사/어미를 간이 제거"""
+    # 긴 접미사부터 매칭 (순서 중요)
+    _SUFFIXES = [
+        "에서는", "으로는", "에서", "으로", "에는", "까지",
+        "은?", "는?", "이?", "가?",
+        "은", "는", "이", "가", "을", "를", "의", "에", "도",
+        "로", "와", "과", "시", "중",
+    ]
+    for suf in _SUFFIXES:
+        if token.endswith(suf) and len(token) > len(suf):
+            return token[: -len(suf)]
+    # 물음표만 제거
+    return token.rstrip("?")
+
+
 def _extract_keywords(text: str) -> list[str]:
     """형태소 분석으로 핵심 키워드 추출 (명사/동사/형용사/외국어만)"""
     if _kiwi is None:
-        # fallback: 공백 분리 후 불용어 제거
+        # fallback: 공백 분리 → 접미사 제거 → 불용어 제거
         tokens = text.split()
-        return [t for t in tokens if t not in _STOPWORDS and len(t) > 1]
+        stripped = [_strip_suffixes(t) for t in tokens]
+        return [t for t in stripped if t not in _STOPWORDS and len(t) > 1]
 
     keywords = []
     for token in _kiwi.tokenize(text):
