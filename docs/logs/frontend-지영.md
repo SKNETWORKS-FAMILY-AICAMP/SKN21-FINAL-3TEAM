@@ -466,6 +466,61 @@
 
 ---
 
+## 2026-02-23 (월) — 오후
+
+### 한 일
+
+#### 1) 대시보드 달력 오늘 날짜 원형 표시 (`CalendarWidget.jsx`)
+- 오늘 날짜 배경을 사각형에서 40px 원형 배지(`w-10 h-10 rounded-full bg-primary-700`)로 변경
+- 셀 패딩 `py-5` → `py-3.5` 조정으로 달력 전체 크기 유지
+
+#### 2) 상단바 디자인 조정 (`Topbar.jsx`)
+- 상하 패딩 30px 통일 (`py-[30px]`)
+- 하단 구분선(`border-b`) 제거
+- 수직 정렬 `items-end` → `items-center` 변경
+- 활성 메뉴 밑줄 위치 조정 (`pb-3` 추가)
+
+#### 3) 챗봇 페이지 레이아웃 전면 개편 (`Layout.jsx`, `ChatPage.jsx`, `ChatWindow.jsx`)
+- `/chat` 경로 감지 → `Layout.jsx`에서 패딩/오버플로 조건 분기 (overflow 클리핑 문제 해결)
+- AgentBar(입력창 위 4개 Agent pill) 제거 → AI 답변 위 `AgentIndicator`로 대체 (`MessageBubble.jsx`)
+- `RegulationPanel` 우측 여백(`-mr-8`) 제거 (`RegulationPanel.jsx`)
+- `ChatSessionSidebar` 폭 `w-64` → `w-[320px]` (RegulationPanel과 통일)
+- 채팅 입력 영역 우측 패딩 분기: 패널 열림 `pr-[3px]`, 닫힘 `pr-32` (글씨 크기 조절 버튼 겹침 방지)
+
+#### 4) JudgmentCard 헤더 제거 (`JudgmentCard.jsx`)
+- ✅가능 / ❌불가 / ⚠️조건부 가능 헤더 바 제거, 카드 본문만 유지
+
+#### 5) 문서 클릭 시 오른쪽 패널 보기 기능 (`DocumentViewPanel.jsx`, `ChatPage.jsx`)
+- `doc_search` 결과의 출처 항목 클릭 시 오른쪽에 문서 내용 패널 표시
+- `DocumentViewPanel` 신규 생성 — 너비 `w-[55%]` (화면 절반 이상)
+- 패널 열림 시 채팅 영역 축소, X 버튼으로 닫기
+- 문서 패널 / 규정 패널 우측 슬롯 공유 (하나씩 표시)
+
+#### 6) 문서 관리 페이지 UI 개선 (`DocumentsPage.jsx`, `DocumentList.jsx`, `DocumentUpload.jsx`, `ScopeSelector.jsx`)
+- `FilterBar` 전체 제거 (전체/규정/회의록/보고서 탭, 상태/구분 드롭다운)
+- 검색창 좌측에 검색 타입 선택 추가: 제목 / 제목+내용 / 날짜
+- 문서 업로드 영역 높이 `min-h-[280px]`, `flex flex-col items-center justify-center` 중앙 정렬
+- '개인 문서' → '팀 문서' 변경 (`ScopeSelector.jsx`)
+- 문서 목록 헤더에 scope 필터 추가: 전체 / 회사 / 팀
+
+#### 7) CustomSelect 커스텀 드롭다운 컴포넌트 신규 생성 (`components/common/CustomSelect.jsx`)
+- 브라우저 기본 select 대신 사이트 테마(blue-grey 팔레트)에 맞는 커스텀 드롭다운
+- ChevronDown 아이콘 회전 애니메이션, 외부 클릭 시 자동 닫힘
+- 선택 항목: `bg-primary-100`(진함), 호버: `bg-primary-50`(연함)
+- `buttonClassName` prop으로 컨텍스트별 높이 조정 가능
+- `whitespace-nowrap` 적용으로 텍스트 줄바꿈 방지
+- 검색 타입 선택 / 문서 목록 scope 필터 두 곳에 적용
+
+#### 8) 문서 생성 페이지 템플릿 축소 (`constants.js`, `TemplateSelector.jsx`)
+- 템플릿 5개 → 3개로 축소: 회의록 / 보고서 / 제안서 (채용 공고, 사용자 정의 제거)
+- `grid-cols-2` → `grid-cols-3`으로 한 줄에 3개 표시
+
+### 다음 할 일
+- 나머지 Mock → 실제 API 교체 (대시보드, 문서 생성)
+- 관리자 API 연동 (#29)
+
+---
+
 ## 현재 구현 현황 요약
 
 | 항목 | 상태 | 비고 |

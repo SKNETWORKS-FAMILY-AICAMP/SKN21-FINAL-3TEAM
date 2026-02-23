@@ -79,7 +79,7 @@ function AgentBar({ activeIntent, isStreaming }) {
   );
 }
 
-export default function ChatWindow({ messages, onSend, selectedDocumentName, onClearDocument, activeIntent, isStreaming, children }) {
+export default function ChatWindow({ messages, onSend, selectedDocumentName, onClearDocument, activeIntent, isStreaming, panelOpen, children }) {
   const [input, setInput] = useState('');
   const [files, setFiles] = useState([]);
   const [dragOver, setDragOver] = useState(false);
@@ -188,9 +188,6 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
 
       <div className="flex-1 overflow-y-auto py-4 px-4">{children}<div ref={bottomRef} /></div>
 
-      {/* Agent 선택 바 */}
-      <AgentBar activeIntent={activeIntent} isStreaming={isStreaming} />
-
       {/* 선택 문서 칩 & 파일 칩 & 에러 */}
       {(selectedDocumentName || files.length > 0 || fileError) && (
         <div className="px-4 pb-2 flex flex-wrap gap-1.5">
@@ -218,7 +215,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       )}
 
       {/* 입력 영역 */}
-      <div className="flex gap-2.5 pt-4 pb-4 px-4 pr-32 border-t border-neutral-divider flex-shrink-0">
+      <div className={`flex gap-2.5 pt-4 pb-4 pl-4 border-t border-neutral-divider flex-shrink-0 ${panelOpen ? 'pr-[3px]' : 'pr-32'}`}>
         <div className="flex-1 flex items-center bg-surface-card rounded-md border border-neutral-border px-4 py-3 transition focus-within:border-primary-300">
           {/* 파일 첨부 버튼 */}
           <button
@@ -249,7 +246,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
             placeholder="질문을 입력하세요..." className="border-none bg-transparent text-sm text-neutral-main w-full outline-none"
           />
         </div>
-        <button onClick={handleSend} className="w-11 h-11 rounded-md bg-primary-700 flex items-center justify-center transition hover:bg-primary-900">
+        <button onClick={handleSend} className="w-11 h-11 rounded-md bg-primary-700 flex-shrink-0 flex items-center justify-center transition hover:bg-primary-900">
           <svg width="18" height="18" viewBox="0 0 18 18"><path d="M2 9L16 2L12 16L9 10L2 9Z" fill="white"/></svg>
         </button>
       </div>
