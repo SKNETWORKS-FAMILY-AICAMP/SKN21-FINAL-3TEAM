@@ -12,6 +12,7 @@ const pageVariants = {
 
 export default function Layout() {
   const location = useLocation();
+  const isChatPage = location.pathname === '/chat';
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -20,7 +21,7 @@ export default function Layout() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <Topbar />
-      <main className="flex-1 overflow-y-auto px-8 pb-8">
+      <main className={`flex-1 overflow-hidden flex flex-col ${isChatPage ? '' : 'px-8 pb-8'}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
@@ -29,6 +30,7 @@ export default function Layout() {
             animate="animate"
             exit="exit"
             transition={{ duration: 0.2, ease: 'easeOut' }}
+            className={`flex-1 min-h-0 ${isChatPage ? '' : 'overflow-y-auto'}`}
           >
             <Outlet />
           </motion.div>

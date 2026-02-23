@@ -201,11 +201,11 @@ export default function Topbar() {
   }, [userMenuOpen]);
 
   return (
-    <header className="h-24 bg-surface-main border-b border-neutral-border flex-shrink-0 z-20">
-      <div className="h-full grid grid-cols-[1fr_auto_1fr] items-end px-10">
+    <header className="h-[100px] bg-surface-main flex-shrink-0 z-20">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center px-10 py-[30px]">
 
         {/* 좌측 - 로고 */}
-        <div className="flex items-center pb-5">
+        <div className="flex items-center">
           <a href="/dashboard" className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary-700 rounded-sm flex items-center justify-center text-lg font-bold text-white font-display">W</div>
             <span className="font-display text-2xl font-bold text-primary-700 tracking-tight">WorkFlow</span>
@@ -213,13 +213,13 @@ export default function Topbar() {
         </div>
 
         {/* 중앙 - 네비게이션 */}
-        <nav className="flex items-end gap-0 h-full">
+        <nav className="flex items-center gap-0">
           {navItems.map(item => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `px-5 pb-5 pt-2 text-base font-medium transition-all whitespace-nowrap border-b-2 ${isActive
+                `px-5 pb-3 text-base font-medium transition-all whitespace-nowrap border-b-2 ${isActive
                   ? 'text-primary-700 border-primary-500'
                   : 'text-primary-500 border-transparent hover:text-primary-700 hover:border-primary-500'
                 }`
@@ -231,7 +231,7 @@ export default function Topbar() {
         </nav>
 
         {/* 우측 - 유틸리티 */}
-        <div className="flex items-center justify-end gap-3 pb-4">
+        <div className="flex items-center justify-end gap-3">
           <ThemeToggle />
           <MemoPanel />
 

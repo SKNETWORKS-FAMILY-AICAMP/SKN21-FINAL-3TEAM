@@ -250,8 +250,8 @@ export default function ChatPage() {
   }, [messages, dbRegulations]);
 
   return (
-    <div className="-ml-8 -mb-8 flex flex-col h-[calc(100vh-4rem-2rem)]">
-      <header className="flex justify-between items-center py-4 pl-8 bg-surface-main z-10 flex-shrink-0">
+    <div className="flex flex-col h-full">
+      <header className="flex justify-between items-center py-4 pl-8 pr-8 bg-surface-main z-10 flex-shrink-0">
         <div>
           <h1 className="text-2xl font-bold">나에게 물어봐</h1>
           <p className="text-sm text-neutral-sub mt-1">규정 판단, 문서 분석, 일정 관리를 도와드립니다</p>
@@ -366,7 +366,7 @@ export default function ChatPage() {
         </div>
       )}
 
-      <div className="flex flex-1 min-h-0 -mb-8">
+      <div className="flex flex-1 min-h-0">
         {/* 왼쪽 아이콘 레일 + 세션 사이드바 */}
         <div className="flex flex-shrink-0 h-full">
           <div className="w-11 bg-surface-card border-r border-neutral-divider flex flex-col items-center py-2 gap-2">
@@ -394,7 +394,7 @@ export default function ChatPage() {
 
         {/* 챗 영역 */}
         <div className="flex-1 min-w-0">
-          <ChatWindow onSend={handleSend} messages={messages} selectedDocumentName={selectedDocumentName} onClearDocument={clearSelectedDocument} activeIntent={currentIntent || messages.filter(m => m.role === 'assistant').at(-1)?.resultIntent || messages.filter(m => m.role === 'assistant').at(-1)?.intent} isStreaming={isStreaming}>
+          <ChatWindow onSend={handleSend} messages={messages} selectedDocumentName={selectedDocumentName} onClearDocument={clearSelectedDocument} activeIntent={currentIntent || messages.filter(m => m.role === 'assistant').at(-1)?.resultIntent || messages.filter(m => m.role === 'assistant').at(-1)?.intent} isStreaming={isStreaming} panelOpen={panelOpen}>
             {/* 메시지가 없을 때 — 추천 질문 */}
             {messages.length === 0 && (
               <SuggestedQuestions onSelect={handleSend} />
