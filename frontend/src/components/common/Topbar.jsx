@@ -181,61 +181,88 @@ export default function Topbar() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handler = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [userMenuOpen]);
+
   return (
-    <header className="h-16 bg-sidebar-bg border-b border-sidebar-border flex items-center px-6 gap-6 flex-shrink-0 z-20">
-      {/* 로고 */}
-      <a href="/dashboard" className="flex items-center gap-2.5 flex-shrink-0">
-        <div className="w-8 h-8 bg-accent-300 rounded-sm flex items-center justify-center text-base font-bold text-primary-900 font-display">W</div>
-        <span className="font-display text-base font-bold text-sidebar-text tracking-tight">WorkFlow</span>
-      </a>
+    <header className="h-24 bg-surface-main border-b border-neutral-border flex-shrink-0 z-20">
+      <div className="h-full grid grid-cols-[1fr_auto_1fr] items-end px-10">
 
-      {/* 네비게이션 */}
-      <nav className="flex items-center gap-1 flex-1">
-        {navItems.map(item => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              `flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${isActive
-                ? 'bg-sidebar-active text-sidebar-text'
-                : 'text-sidebar-text-muted hover:text-sidebar-text hover:bg-white/[0.06]'
-              }`
-            }
-          >
-            <item.icon size={15} />
-            {item.label}
-          </NavLink>
-        ))}
-      </nav>
-
-      {/* 우측 유틸리티 */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <ThemeToggle />
-        <MemoPanel />
-        <div className="flex items-center gap-2 pl-3 border-l border-sidebar-border">
-          <div className="w-7 h-7 rounded-full bg-accent-300 flex items-center justify-center text-xs font-bold text-primary-900 flex-shrink-0">
-            {user?.name?.[0] || '?'}
-          </div>
-          <div className="leading-none">
-            <div className="text-xs font-semibold text-sidebar-text">{user?.name || '사용자'}</div>
-            <div className="text-[0.625rem] text-sidebar-text-muted mt-0.5">{user?.is_admin ? '관리자' : '사용자'}</div>
-          </div>
+        {/* 좌측 - 로고 */}
+        <div className="flex items-center pb-5">
+          <a href="/dashboard" className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary-700 rounded-sm flex items-center justify-center text-lg font-bold text-white font-display">W</div>
+            <span className="font-display text-2xl font-bold text-primary-700 tracking-tight">WorkFlow</span>
+          </a>
         </div>
 
-        <button
-          onClick={handleLogout}
-          title="로그아웃"
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-sidebar-text-muted hover:text-sidebar-text hover:bg-white/[0.06] border border-sidebar-border transition-all"
-        >
-          <LogOut size={13} />
-          로그아웃
-        </button>
+        {/* 중앙 - 네비게이션 */}
+        <nav className="flex items-end gap-0 h-full">
+          {navItems.map(item => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `px-5 pb-5 pt-2 text-base font-medium transition-all whitespace-nowrap border-b-2 ${isActive
+                  ? 'text-primary-700 border-primary-500'
+                  : 'text-primary-500 border-transparent hover:text-primary-700 hover:border-primary-500'
+                }`
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+
+        {/* 우측 - 유틸리티 */}
+        <div className="flex items-center justify-end gap-3 pb-4">
+          <ThemeToggle />
+          <MemoPanel />
+
+          <div className="relative" ref={userMenuRef}>
+            <button
+              onClick={() => setUserMenuOpen((o) => !o)}
+              className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-border/30 transition-all"
+            >
+              <div className="w-7 h-7 rounded-full bg-accent-300 flex items-center justify-center text-xs font-bold text-primary-900 flex-shrink-0">
+                {user?.name?.[0] || '?'}
+              </div>
+              <span className="text-sm font-medium text-neutral-sub">{user?.name || '사용자'}</span>
+            </button>
+
+            {userMenuOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-44 bg-surface-card border border-neutral-border rounded-md shadow-md z-50 overflow-hidden">
+                <div className="px-3 py-2.5 border-b border-neutral-divider">
+                  <div className="text-xs font-semibold text-neutral-main">{user?.name || '사용자'}</div>
+                  <div className="text-[0.625rem] text-neutral-muted mt-0.5">{user?.is_admin ? '관리자' : '일반 사용자'}</div>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-neutral-sub hover:text-error hover:bg-neutral-divider transition-all"
+                >
+                  <LogOut size={12} />
+                  로그아웃
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </header>
   );

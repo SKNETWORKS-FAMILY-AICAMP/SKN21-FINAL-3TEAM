@@ -60,11 +60,21 @@ export default function AIDock() {
 
     useEffect(() => {
         const handleMouseMove = (e) => {
-            // 화면 하단 80px 이내로 마우스가 들어오면 독을 표시
-            if (e.clientY > window.innerHeight - 80) {
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+            const centerX = screenWidth / 2;
+            const horizontalRange = screenWidth * 0.25; // 중앙 50% 범위 (좌우 25%씩)
+
+            // 화면 하단 가운데 영역(하단 40px, 중앙 50% 너비)에 마우스가 들어오면 독을 표시
+            const isInTriggerZone =
+                e.clientY > screenHeight - 40 &&
+                e.clientX > centerX - horizontalRange &&
+                e.clientX < centerX + horizontalRange;
+
+            if (isInTriggerZone) {
                 setIsVisible(true);
-            } else if (e.clientY < window.innerHeight - 150) {
-                // 독에서 좀 더 멀어지면 다시 숨김 (사용 편의성 위해 여유 공간 둠)
+            } else if (e.clientY < screenHeight - 120) {
+                // 독에서 좀 더 멀어지면 다시 숨김
                 setIsVisible(false);
             }
         };
