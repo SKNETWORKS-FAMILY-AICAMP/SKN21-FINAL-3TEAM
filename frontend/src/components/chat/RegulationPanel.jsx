@@ -67,7 +67,7 @@ export default function RegulationPanel({ regulations = [], isOpen, onClose, sea
 
   return (
     <>
-      <div className="w-[320px] flex-shrink-0 border-l border-neutral-divider bg-surface-card h-full overflow-y-auto ml-5 -mr-8">
+      <div className="w-[320px] flex-shrink-0 border-l border-neutral-divider bg-surface-card h-full overflow-y-auto ml-5">
         <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-divider">
           <div className="text-[0.9375rem] font-bold text-neutral-main flex items-center gap-2">
             <BookOpen size={16} />관련 규정

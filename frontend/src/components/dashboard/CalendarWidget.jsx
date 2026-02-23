@@ -46,8 +46,10 @@ export default function CalendarWidget({ events = {} }) {
             const ev = events[d.day];
             const isToday = !d.other && d.day === todayDate && year === todayYear && month === todayMonth;
             return (
-              <div key={i} className={`py-5 text-[0.8125rem] font-medium rounded-lg cursor-pointer relative transition hover:bg-surface-hover ${d.other ? 'text-neutral-muted' : 'text-neutral-main'} ${isToday ? 'bg-primary-700 text-white font-bold hover:bg-primary-900' : ''}`}>
-                {d.day}
+              <div key={i} className={`py-3.5 text-[0.8125rem] font-medium rounded-lg cursor-pointer relative transition hover:bg-surface-hover flex items-center justify-center ${d.other ? 'text-neutral-muted' : 'text-neutral-main'}`}>
+                <span className={`w-10 h-10 flex items-center justify-center rounded-full ${isToday ? 'bg-primary-700 text-white font-bold' : ''}`}>
+                  {d.day}
+                </span>
                 {ev && !d.other && (
                   <span className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 w-[5px] h-[5px] rounded-full ${ev === 'meeting' ? 'bg-primary-500' : 'bg-error'}`} />
                 )}

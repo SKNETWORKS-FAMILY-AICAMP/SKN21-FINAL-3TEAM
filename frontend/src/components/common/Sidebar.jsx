@@ -269,13 +269,17 @@ export default function Sidebar() {
               </button>
             </div>
           ) : (
-            <button
-              onClick={handleLogout}
-              title="로그아웃 할래 말래"
-              className="w-full py-2 rounded-md text-[0.8125rem] font-medium text-sidebar-text-muted border border-sidebar-border hover:bg-white/10 hover:text-sidebar-text transition"
-            >
-              로그아웃
-            </button>
+            <div className="relative group">
+              <button
+                onClick={handleLogout}
+                className="w-full py-2 rounded-md text-[0.8125rem] font-medium text-sidebar-text-muted border border-sidebar-border hover:bg-white/10 hover:text-sidebar-text transition"
+              >
+                로그아웃
+              </button>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded bg-gray-800 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150">
+                로그아웃 할래 말래
+              </div>
+            </div>
           )}
         </div>
 
