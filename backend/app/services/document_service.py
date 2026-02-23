@@ -232,3 +232,79 @@ async def delete_document(
 
     await db.delete(doc)
     return {"message": "문서가 삭제되었습니다", "document_id": document_id}
+
+
+async def generate_and_save(
+    db: AsyncSession,
+    user_input: str,
+    user_id: int,
+    template_type: str | None = None,
+    template_id: int | None = None,
+) -> tuple[Document, dict]:
+    """
+    Document Agent를 호출하여 문서를 생성하고 DB에 저장한다.
+
+    Returns:
+        (Document, agent_response)
+    """
+    import json as _json
+
+    settings = get_settings()
+
+    # 1. AgentState 구성
+    state = {
+        "user_input": user_input,
+        "user_id": user_id,
+        "intent": "doc_generate",
+        "stream_mode": False,
+        "template_type": template_type,
+        "template_id": template_id,
+        "context": [],
+        "agent_response": {},
+        "confidence": 0.0,
+    }
+
+    # 2. Document Agent 호출 (lazy import — backend 실행 시 ai/ 의존 최소화)
+    from ai.agents.document_agent import document_agent
+    state = await document_agent(state)
+
+    agent_response = state.get("agent_response", {})
+
+    # Agent가 에러를 반환한 경우
+    if "error" in agent_response:
+        raise HTTPException(status_code=500, detail=agent_response["error"])
+
+    # 3. 생성된 데이터를 JSON 파일로 저장
+    generated_dir = os.path.join(settings.UPLOAD_DIR, "generated")
+    os.makedirs(generated_dir, exist_ok=True)
+
+    file_name = f"{uuid.uuid4().hex}.json"
+    file_path = os.path.join(generated_dir, file_name)
+
+    data = agent_response.get("data", agent_response)
+    with open(file_path, "w", encoding="utf-8") as f:
+        _json.dump(data, f, ensure_ascii=False, indent=2)
+
+    # 4. Document 레코드 생성
+    resolved_type = agent_response.get("template_type", template_type or "report")
+    title = data.get("title", f"{resolved_type} 문서")
+
+    doc = Document(
+        title=title,
+        file_path=file_path,
+        file_type="json",
+        content=agent_response.get("preview", ""),
+        scope="personal",
+        uploaded_by=user_id,
+        status="completed",
+    )
+    db.add(doc)
+    await db.flush()
+    await db.refresh(doc)
+
+    # agent_response의 mock ID를 실제 ID로 교체
+    agent_response["document_id"] = doc.id
+    agent_response["download_url"] = f"/api/v1/documents/{doc.id}/download"
+
+    logger.info(f"문서 생성 완료: document_id={doc.id}, template_type={resolved_type}")
+    return doc, agent_response
