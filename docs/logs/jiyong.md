@@ -356,3 +356,127 @@
 - post_execution_check 실제 로직 구현
 - 프론트엔드(지영)에게 SSE 새 이벤트 타입 공유
 - 1~2어절 초단문 처리 방안 검토 (clarify 기능 활성화)
+
+---
+
+## 2026-02-20 (목)
+
+**오케스트레이터 복합질문 코드 주석 처리:**
+- `ENABLE_COMPLEX_QUERY=False`로 이미 비활성 상태인 복합질문 관련 코드를 주석 처리
+  - `classify_intent_v2`: complexity 감지 블록 주석 → `is_complex = False` 고정
+  - `route_by_complexity`: complex 라우팅 체크 주석
+  - `build_graph`: decompose/execute/merge 노드 및 엣지 주석
+  - 함수 정의 자체는 유지 (향후 재활성화 가능)
+- 현재 그래프 흐름: 3분기 (지시어→resolve_context→재분류 / 저신뢰→clarify / 고신뢰→Agent 직행)
+
+**오케스트레이터 구조 설명 문서 작성:**
+- `docs/지용/오케스트레이터_구조_설명.md` 신규 생성
+- 그래프 흐름도, 노드별 설명, config 값, 지시어 패턴, 비활성 기능 정리
+
+**ChromaDB → Qdrant 일괄 변경:**
+- 프로젝트 전체에서 ChromaDB 참조를 Qdrant로 수정 (11개 문서)
+  - CLAUDE.md, README.md, DATA_PLAN.md, DATA_GUIDE.md, ERD.md, TASK_BOARD.md
+  - 멘토링 문서 2개, 학습가이드, 팀원 로그, 역할분배 문서
+
+**중간발표 멘토링 문서 최신화:**
+- `docs/멘토링/중간발표_멘토링_20260220.md` 전체 업데이트
+  - 단계별 진행률: 2단계 100%, 3단계 80%, 5단계 10%, 6단계 40%
+  - 5명 팀원 최신 작업 내역 반영 (전체 로그 크로스체크)
+  - Agent 구현율 조정 (Judgment 98%, Schedule 85%)
+  - AWS 배포 블로커 완료 반영
+
+**프로젝트 구조 학습가이드 이동:**
+- `docs/지용/프로젝트_구조_학습가이드.md` → `docs/프로젝트_구조_학습가이드.md`
+
+**다음 할 일:**
+- 복합 질문 테스트 데이터 제작 + 감지 정확도 측정
+- post_execution_check 실제 로직 구현
+- 프론트엔드(지영)에게 SSE 새 이벤트 타입 공유
+- 1~2어절 초단문 처리 방안 검토 (clarify 기능 활성화)
+
+---
+
+## 2026-02-22 (일)
+
+**오케스트레이터 단일질문 분류 전용으로 초기화 (`fb7eeb9`):**
+- 복합질문 분해/실행/병합 로직 전면 제거 (11개 함수 삭제)
+- 맥락해석(resolve_context) 로직 제거
+- classify_intent_v2 → classify_intent, route_by_complexity → route_by_intent 리네임
+- AgentState에서 is_complex, sub_queries 등 5개 필드 삭제
+- intent_classifier에서 detect_complexity, COMPLEX_PATTERNS 등 삭제
+- chat.py SSE 핸들러 정리
+- vite.config.js loadEnv 적용
+- 실험 파일 2개 삭제
+
+**develop 최신 반영 머지 (`f01ea8b`):**
+- develop 브랜치 최신 코드 merge
+
+**Agent 설계문서 + 산출물 동기화 업데이트 (`e9950b3`):**
+- docs/agent/architecture.md, agent_data.md 추가
+- README.md Document Agent 기능 설명 구체화
+- 산출물 docx 2종 업데이트
+- 멘토링 PDF 추가
+
+**다음 할 일:**
+- Intent 분류 실험 v2 착수 (데이터 생성 + 모델 비교)
+
+---
+
+## 2026-02-23 (일)
+
+**Intent 분류 실험 v2 — Stage 1 데이터 생성 완료:**
+
+기본 데이터 생성 (GPT-4o + Claude Sonnet 4):
+- Claude: 8개 intent x 150개 = 1,200개 (CLI 에이전트 7개 병렬 실행)
+- GPT-4o: 8개 intent x ~137개(평균) = 1,099개 (CMD에서 스크립트 실행)
+- 합계: **2,299개** (중복 제거 후)
+- GPT-5 시도 → 추론 모델이라 데이터 생성 부적합 (파싱 0개) → GPT-4o로 변경
+
+QA 결과:
+- 비유효 라벨: 0개, Cross-LLM 중복: 0개
+- 클래스 균형 max/min: 1.11 (양호)
+- Train/Val/Test: 1,847 / 226 / 226 (stratified, seed=42, 누출 없음)
+
+**실험 스크립트 4개 작성 완료:**
+- `ai/experiments_v2/run_baseline.py` — Stage 2: 3모델 동일 HP 비교
+- `ai/experiments_v2/run_grid_search.py` — Stage 3: 32-point grid + 3-seed 안정성
+- `ai/experiments_v2/run_final_eval.py` — Stage 4: hold-out, adversarial, ablation, 속도, 통계
+- `ai/experiments_v2/run_error_analysis.py` — 오분류 유형 분류 + 보고서
+
+**경계 쌍 + 적대적 데이터 생성:**
+- 경계 쌍: GPT 300개 + Claude 300개 = 600개 (10쌍 x 30개 x 2 LLM)
+- 적대적: GPT 232개 + Claude 240개 → 중복 제거 후 **450개**
+- Train-Val 누출 1건 제거, Train-Adversarial 중복 13건 제거
+- 최종 Split: Train 2,327 / Val 285 / Test 286
+
+**Stage 2 Baseline 학습 (로컬 RTX 4070):**
+- 3모델: klue/bert-base, koelectra-base-v3, distilkobert
+- 고정 HP: epochs=5, lr=2e-5, batch=16
+- koelectra: **Val F1 0.9825** (112.9M, 860s)
+- bert-base: Val F1 0.9780 (110.6M, 808s)
+- distilkobert: Val F1 0.9498 (28.4M, 243s) — sentencepiece 설치 후 완료
+- 차트: baseline_comparison.png, training_curves.png, per_class_f1_radar.png, confusion matrix 3장
+
+**Stage 3 Grid Search (RunPod RTX 4090):**
+- koelectra 대상 32-point grid search (~17분)
+- Best config: **ep10/lr3e-5/bs16 → Val F1 0.9897**
+- Seed 안정성: 0.9874 ± 0.0033 (3-seed)
+- Baseline(0.9825) → Best(0.9897): +0.72%p → **데이터 > HP** 재확인
+
+**Stage 4 최종 평가 (RunPod RTX 4090):**
+- 3모델 best config으로 재학습 + adversarial 450개 평가
+- koelectra **Adv F1 86.04%** > bert 85.17% > distilkobert 79.26%
+- doc_qa 3모델 모두 최약점 (70~74%)
+- 전처리 Ablation A~E 전부 동일 (효과 없음)
+- McNemar 전부 n.s., Bootstrap CI 산출 완료
+- **최종 선택: koelectra** (Adv F1, 속도 8.3ms, 강건성 모두 우위)
+- 차트 11장 생성 (confusion, ablation, confidence, speed, f1_vs_speed)
+
+**기술 이슈:** GPT-5 추론 모델 비호환 → GPT-4o 전환 / Python 3.11/3.13 이중 설치 → python -m pip / distilkobert sentencepiece 누락 / RunPod torch 버전 충돌 → --upgrade 필수 / run_final_eval.py mcnemar 리스트 버그 수정
+
+**다음 할 일:**
+- run_error_analysis.py 실행 (오분류 유형 분석)
+- 시나리오 테스트 30개 작성
+- doc_qa/doc_search/general 타겟 보강 → 재학습
+- 최종 모델 저장 (ai/models/intent_classifier/)
+- 발표 자료 준비

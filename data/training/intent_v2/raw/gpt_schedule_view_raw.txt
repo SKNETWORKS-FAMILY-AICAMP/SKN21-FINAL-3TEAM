@@ -1,0 +1,146 @@
+{"text": "오늘 일정 뭐야?", "label": "schedule_view"}
+{"text": "내일 스케줄 볼 수 있어?", "label": "schedule_view"}
+{"text": "이번 주 금요일 일정 알려줘", "label": "schedule_view"}
+{"text": "다음 주 회의 일정 좀 봐줘", "label": "schedule_view"}
+{"text": "주말에 뭐 있었지?", "label": "schedule_view"}
+{"text": "오늘 회의 몇 시였어?", "label": "schedule_view"}
+{"text": "3월 출장 일정 확인해줘", "label": "schedule_view"}
+{"text": "이번 주 연차 계획 볼 수 있어?", "label": "schedule_view"}
+{"text": "다음 달 보안 관련 미팅 일정이 뭐야?", "label": "schedule_view"}
+{"text": "오늘 오후 일정 뭐였더라?", "label": "schedule_view"}
+{"text": "이번 달 인사평가 스케줄 볼래", "label": "schedule_view"}
+{"text": "다음 주 월요일에 뭐 있어?", "label": "schedule_view"}
+{"text": "이번 주 약속이 뭐였지?", "label": "schedule_view"}
+{"text": "오늘 남은 시간 스케줄 좀 봐줘", "label": "schedule_view"}
+{"text": "내일 급여 관련 회의 시간 알아?", "label": "schedule_view"}
+{"text": "프로젝트 마감일 다시 확인해줘", "label": "schedule_view"}
+{"text": "이번 주 회의 언제였지?", "label": "schedule_view"}
+{"text": "다음 달 복리후생 일정 보여줘", "label": "schedule_view"}
+{"text": "이번 주 금요일 약속 확인해줘", "label": "schedule_view"}
+{"text": "다음 주 출장 계획 있어?", "label": "schedule_view"}
+{"text": "이번 달 남은 일정 공유해줄래?", "label": "schedule_view"}
+{"text": "다음 주 회의 일정 확인", "label": "schedule_view"}
+{"text": "연차 일정 언제였더라?", "label": "schedule_view"}
+{"text": "오늘 오후 미팅 몇 시?", "label": "schedule_view"}
+{"text": "이번 달 회의 몇 번 있어?", "label": "schedule_view"}
+{"text": "이번 주말 일정 뭐였지?", "label": "schedule_view"}
+{"text": "다음 달 프로젝트 스케줄 알려줄래?", "label": "schedule_view"}
+{"text": "이번 주 일정 저한테 보여주세요", "label": "schedule_view"}
+{"text": "다음 주 수요일에 뭐 있어?", "label": "schedule_view"}
+{"text": "출장 일정 다시 확인해줘", "label": "schedule_view"}
+{"text": "이번 주 연차 계획 얼마남았어?", "label": "schedule_view"}
+{"text": "다음 달 보안 미팅 일정 볼래?", "label": "schedule_view"}
+{"text": "오늘 남은 일정 뭐야?", "label": "schedule_view"}
+{"text": "이번 달 인사평가 언제야?", "label": "schedule_view"}
+{"text": "다음 주 월요일 약속 확인해줘", "label": "schedule_view"}
+{"text": "이번 주 회의 언제였지?", "label": "schedule_view"}
+{"text": "다음 주 복리후생 일정 알려줘", "label": "schedule_view"}
+{"text": "3월 일정 전체 보여줄 수 있어?", "label": "schedule_view"}
+{"text": "다음 주 출장 계획 있어?", "label": "schedule_view"}
+{"text": "이번 달 프로젝트 마감일 언제야?", "label": "schedule_view"}
+{"text": "이번 주 회의 언제였더라?", "label": "schedule_view"}
+{"text": "다음 주 금요일에 뭐 있지?", "label": "schedule_view"}
+{"text": "이번 달 복리후생 일정 언제야?", "label": "schedule_view"}
+{"text": "다음 주 회의 시간 알려줄 수 있어?", "label": "schedule_view"}
+{"text": "이번 주 연차 계획 있나?", "label": "schedule_view"}
+{"text": "다음 달 보안 미팅 언제야?", "label": "schedule_view"}
+{"text": "오늘 남은 일정 뭐였더라?", "label": "schedule_view"}
+{"text": "이번 주 인사평가 언제야?", "label": "schedule_view"}
+{"text": "다음 주 월요일 약속 있어?", "label": "schedule_view"}
+{"text": "이번 주 회의 일정이 어떻게 되지?", "label": "schedule_view"}
+{"text": "다음 주 복리후생 일정 알려줘", "label": "schedule_view"}
+{"text": "3월 일정 전체 보여줄래?", "label": "schedule_view"}
+{"text": "다음 주 출장 계획 보여줘", "label": "schedule_view"}
+{"text": "이번 달 프로젝트 마감일 언제지?", "label": "schedule_view"}
+{"text": "이번 주 회의 언제야?", "label": "schedule_view"}
+{"text": "다음 주 금요일 일정 있어?", "label": "schedule_view"}
+{"text": "다음 달 복리후생 일정 알려줄래?", "label": "schedule_view"}
+{"text": "다음 주 회의 일정 확인해줘", "label": "schedule_view"}
+{"text": "이번 주 연차 계획 확인해줘", "label": "schedule_view"}
+{"text": "다음 달 보안 미팅 일정 확인해줘", "label": "schedule_view"}
+{"text": "오늘 남은 일정 확인해줘", "label": "schedule_view"}
+{"text": "이번 주 인사평가 일정 보여줘", "label": "schedule_view"}
+{"text": "다음 주 월요일에 회의 있어?", "label": "schedule_view"}
+{"text": "이번 주 회의 일정 뭐야?", "label": "schedule_view"}
+{"text": "다음 주 복리후생 일정 볼래?", "label": "schedule_view"}
+{"text": "3월 일정 전체 보여줘", "label": "schedule_view"}
+{"text": "다음 주 출장 계획은?", "label": "schedule_view"}
+{"text": "이번 달 프로젝트 마감일 확인해줘", "label": "schedule_view"}
+{"text": "이번 주 회의 일정 있어?", "label": "schedule_view"}
+{"text": "다음 주 금요일 일정 확인해줘", "label": "schedule_view"}
+{"text": "다음 달 복리후생 일정 보여줘", "label": "schedule_view"}
+{"text": "다음 주 회의 시간 있나?", "label": "schedule_view"}
+{"text": "이번 주 연차 계획 있어?", "label": "schedule_view"}
+{"text": "다음 달 보안 미팅 일정이 뭐야?", "label": "schedule_view"}
+{"text": "오늘 남은 일정 뭐였지?", "label": "schedule_view"}
+{"text": "이번 주 인사평가 언제지?", "label": "schedule_view"}
+{"text": "다음 주 월요일 약속 알려줘", "label": "schedule_view"}
+{"text": "이번 주 회의 일정 확인해줘", "label": "schedule_view"}
+{"text": "다음 주 복리후생 일정 있어?", "label": "schedule_view"}
+{"text": "3월 일정 보여줘", "label": "schedule_view"}
+{"text": "다음 주 출장 계획 있나?", "label": "schedule_view"}
+{"text": "이번 달 프로젝트 마감일 보여줘", "label": "schedule_view"}
+{"text": "이번 주 회의 일정이 뭐야?", "label": "schedule_view"}
+{"text": "다음 주 금요일에 뭐 있어?", "label": "schedule_view"}
+{"text": "다음 달 복리후생 일정 있나?", "label": "schedule_view"}
+{"text": "다음 주 회의 일정 알려줘", "label": "schedule_view"}
+{"text": "이번 주 연차 계획 알려줘", "label": "schedule_view"}
+{"text": "다음 달 보안 미팅 일정 보여줘", "label": "schedule_view"}
+{"text": "오늘 남은 일정 알려줘", "label": "schedule_view"}
+{"text": "이번 주 인사평가 일정 있어?", "label": "schedule_view"}
+{"text": "다음 주 월요일에 약속 있어?", "label": "schedule_view"}
+{"text": "이번 주 회의 일정 알려줄래?", "label": "schedule_view"}
+{"text": "다음 주 복리후생 일정 확인해줘", "label": "schedule_view"}
+{"text": "3월 일정 알려줄래?", "label": "schedule_view"}
+{"text": "다음 주 출장 계획 확인", "label": "schedule_view"}
+{"text": "이번 달 프로젝트 마감일 알려줘", "label": "schedule_view"}
+{"text": "이번 주 회의 일정이 어떻게 돼?", "label": "schedule_view"}
+{"text": "다음 주 금요일 일정 보여줘", "label": "schedule_view"}
+{"text": "다음 달 복리후생 일정 있어?", "label": "schedule_view"}
+{"text": "다음 주 회의 일정 알려줄래?", "label": "schedule_view"}
+{"text": "이번 주 연차 계획 보여줘", "label": "schedule_view"}
+{"text": "다음 달 보안 미팅 일정 있나?", "label": "schedule_view"}
+{"text": "오늘 남은 일정이 뭐야?", "label": "schedule_view"}
+{"text": "이번 주 인사평가 일정 알려줘", "label": "schedule_view"}
+{"text": "다음 주 월요일 약속 있어?", "label": "schedule_view"}
+{"text": "이번 주 회의 일정 확인", "label": "schedule_view"}
+{"text": "다음 주 복리후생 일정 알려줄래?", "label": "schedule_view"}
+{"text": "3월 일정이 어떻게 돼?", "label": "schedule_view"}
+{"text": "다음 주 출장 계획 있나?", "label": "schedule_view"}
+{"text": "이번 달 프로젝트 마감일 알려줄래?", "label": "schedule_view"}
+{"text": "이번 주 회의 일정 어떻게 돼?", "label": "schedule_view"}
+{"text": "다음 주 금요일 일정 있나?", "label": "schedule_view"}
+{"text": "다음 달 복리후생 일정 어떻게 돼?", "label": "schedule_view"}
+{"text": "다음 주 회의 일정 보여줘", "label": "schedule_view"}
+{"text": "이번 주 연차 계획 확인해", "label": "schedule_view"}
+{"text": "다음 달 보안 미팅 일정 어떻게 돼?", "label": "schedule_view"}
+{"text": "오늘 남은 일정 확인해", "label": "schedule_view"}
+{"text": "이번 주 인사평가 일정 있어?", "label": "schedule_view"}
+{"text": "다음 주 월요일에 약속 있어?", "label": "schedule_view"}
+{"text": "이번 주 회의 일정 좀 알려줘", "label": "schedule_view"}
+{"text": "다음 주 복리후생 일정 확인해 줘", "label": "schedule_view"}
+{"text": "3월 일정 좀 볼래", "label": "schedule_view"}
+{"text": "다음 주 출장 계획 보여줘", "label": "schedule_view"}
+{"text": "이번 달 프로젝트 마감일 좀 알려줘", "label": "schedule_view"}
+{"text": "이번 주 회의 일정 좀 확인해줘", "label": "schedule_view"}
+{"text": "다음 주 금요일 일정 볼래?", "label": "schedule_view"}
+{"text": "다음 달 복리후생 일정 좀 알려줘", "label": "schedule_view"}
+{"text": "다음 주 회의 일정 어떻게 돼?", "label": "schedule_view"}
+{"text": "이번 주 연차 계획 좀 알려줘", "label": "schedule_view"}
+{"text": "다음 달 보안 미팅 일정 좀 확인해줘", "label": "schedule_view"}
+{"text": "오늘 남은 일정 좀 확인해", "label": "schedule_view"}
+{"text": "이번 주 인사평가 일정 좀 보여줘", "label": "schedule_view"}
+{"text": "다음 주 월요일에 약속 있나?", "label": "schedule_view"}
+{"text": "이번 주 회의 일정 좀 확인해 줘", "label": "schedule_view"}
+{"text": "다음 주 복리후생 일정 좀 볼 수 있어?", "label": "schedule_view"}
+{"text": "3월 일정 어떻게 돼?", "label": "schedule_view"}
+{"text": "다음 주 출장 계획 확인할 수 있어?", "label": "schedule_view"}
+{"text": "이번 달 프로젝트 마감일 좀 확인할 수 있어?", "label": "schedule_view"}
+{"text": "이번 주 회의 일정 어떻게 되는지 알려줘", "label": "schedule_view"}
+{"text": "다음 주 금요일 일정 있나 확인해줘", "label": "schedule_view"}
+{"text": "다음 달 복리후생 일정 좀 보여줄래?", "label": "schedule_view"}
+{"text": "다음 주 회의 일정 좀 확인해", "label": "schedule_view"}
+{"text": "이번 주 연차 계획 있나 볼래?", "label": "schedule_view"}
+{"text": "다음 달 보안 미팅 일정 확인할 수 있나?", "label": "schedule_view"}
+{"text": "오늘 남은 일정 볼 수 있나?", "label": "schedule_view"}
+{"text": "이번 주 인사평가 일정 확인해 줄래?", "label": "schedule_view"}

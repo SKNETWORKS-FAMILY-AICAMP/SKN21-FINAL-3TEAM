@@ -1,0 +1,240 @@
+{
+  "bert-base_seed42": {
+    "model": "klue/bert-base",
+    "seed": 42,
+    "val_acc": 0.9779,
+    "val_f1": 0.978,
+    "train_loss": 0.2288,
+    "train_time_sec": 808.4,
+    "hp": {
+      "epochs": 5,
+      "learning_rate": 2e-05,
+      "batch_size": 16,
+      "warmup_ratio": 0.06,
+      "weight_decay": 0.01,
+      "max_length": 64
+    },
+    "val_infer_ms": 14.38,
+    "val_per_class": {
+      "judgment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "doc_search": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "doc_generate": {
+        "precision": 0.963,
+        "recall": 0.963,
+        "f1": 0.963
+      },
+      "doc_summary": {
+        "precision": 1.0,
+        "recall": 0.9655,
+        "f1": 0.9825
+      },
+      "schedule_add": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "schedule_view": {
+        "precision": 0.9643,
+        "recall": 0.9643,
+        "f1": 0.9643
+      },
+      "general": {
+        "precision": 0.9655,
+        "recall": 0.9333,
+        "f1": 0.9492
+      },
+      "doc_qa": {
+        "precision": 0.9333,
+        "recall": 1.0,
+        "f1": 0.9655
+      }
+    },
+    "val_mean_confidence": 0.9892,
+    "param_count": 110623496,
+    "param_count_m": 110.6,
+    "model_size_mb": 422.0,
+    "gpu_peak_mb": 0
+  },
+  "koelectra-base-v3-discriminator_seed42": {
+    "model": "monologg/koelectra-base-v3-discriminator",
+    "seed": 42,
+    "val_acc": 0.9823,
+    "val_f1": 0.9825,
+    "train_loss": 0.7001,
+    "train_time_sec": 859.9,
+    "hp": {
+      "epochs": 5,
+      "learning_rate": 2e-05,
+      "batch_size": 16,
+      "warmup_ratio": 0.06,
+      "weight_decay": 0.01,
+      "max_length": 64
+    },
+    "val_infer_ms": 14.18,
+    "val_per_class": {
+      "judgment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "doc_search": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "doc_generate": {
+        "precision": 1.0,
+        "recall": 0.963,
+        "f1": 0.9811
+      },
+      "doc_summary": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "schedule_add": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "schedule_view": {
+        "precision": 0.9643,
+        "recall": 0.9643,
+        "f1": 0.9643
+      },
+      "general": {
+        "precision": 0.9655,
+        "recall": 0.9333,
+        "f1": 0.9492
+      },
+      "doc_qa": {
+        "precision": 0.9333,
+        "recall": 1.0,
+        "f1": 0.9655
+      }
+    },
+    "val_mean_confidence": 0.9331,
+    "param_count": 112927496,
+    "param_count_m": 112.9,
+    "model_size_mb": 430.8,
+    "gpu_peak_mb": 0
+  },
+  "distilkobert_seed42": {
+    "model": "monologg/distilkobert",
+    "seed": 42,
+    "val_acc": 0.9474,
+    "val_f1": 0.9498,
+    "train_loss": 0.9385,
+    "train_time_sec": 242.5,
+    "hp": {
+      "epochs": 5,
+      "learning_rate": 2e-05,
+      "batch_size": 16,
+      "warmup_ratio": 0.06,
+      "weight_decay": 0.01,
+      "max_length": 64
+    },
+    "val_infer_ms": 3.9,
+    "val_per_class": {
+      "judgment": {
+        "precision": 0.9722,
+        "recall": 0.9722,
+        "f1": 0.9722
+      },
+      "doc_search": {
+        "precision": 0.9737,
+        "recall": 0.925,
+        "f1": 0.9487
+      },
+      "doc_generate": {
+        "precision": 0.9722,
+        "recall": 0.9722,
+        "f1": 0.9722
+      },
+      "doc_summary": {
+        "precision": 0.973,
+        "recall": 0.9474,
+        "f1": 0.96
+      },
+      "schedule_add": {
+        "precision": 1.0,
+        "recall": 0.9688,
+        "f1": 0.9841
+      },
+      "schedule_view": {
+        "precision": 0.9355,
+        "recall": 0.9355,
+        "f1": 0.9355
+      },
+      "general": {
+        "precision": 0.9688,
+        "recall": 0.9688,
+        "f1": 0.9688
+      },
+      "doc_qa": {
+        "precision": 0.8182,
+        "recall": 0.9,
+        "f1": 0.8571
+      }
+    },
+    "val_mean_confidence": 0.7393,
+    "adv_acc": 0.7178,
+    "adv_f1": 0.7252,
+    "adv_infer_ms": 3.48,
+    "adv_per_class": {
+      "judgment": {
+        "precision": 0.7966,
+        "recall": 0.7966,
+        "f1": 0.7966
+      },
+      "doc_search": {
+        "precision": 0.5067,
+        "recall": 0.6333,
+        "f1": 0.563
+      },
+      "doc_generate": {
+        "precision": 0.7308,
+        "recall": 0.7308,
+        "f1": 0.7308
+      },
+      "doc_summary": {
+        "precision": 0.8,
+        "recall": 0.8302,
+        "f1": 0.8148
+      },
+      "schedule_add": {
+        "precision": 0.9388,
+        "recall": 0.8214,
+        "f1": 0.8762
+      },
+      "schedule_view": {
+        "precision": 0.9412,
+        "recall": 0.5714,
+        "f1": 0.7111
+      },
+      "general": {
+        "precision": 0.5181,
+        "recall": 0.7818,
+        "f1": 0.6232
+      },
+      "doc_qa": {
+        "precision": 0.814,
+        "recall": 0.5932,
+        "f1": 0.6863
+      }
+    },
+    "adv_mean_confidence": 0.6116,
+    "param_count": 28400648,
+    "param_count_m": 28.4,
+    "model_size_mb": 108.3,
+    "gpu_peak_mb": 0
+  }
+}

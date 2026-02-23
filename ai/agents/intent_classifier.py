@@ -1,17 +1,18 @@
 """
 Intent Classification 모델 (팀원 A 담당)
 
-카테고리 (7개):
+카테고리 (8개):
   - judgment: 규정 기반 판단
   - doc_search: 문서 검색
-  - doc_generate: 문서 요약 및 생성 (기존 doc_summary 통합)
-  - meeting_generate: 회의록 요약 및 생성 (기존 meeting_analysis에서 변경)
+  - doc_generate: 문서 생성 (보고서/회의록/JD/제안서)
+  - doc_summary: 문서 요약
   - schedule_add: 일정 추가
   - schedule_view: 일정 조회
   - general: 일반 질문
+  - doc_qa: 문서 내용 기반 질의응답
 
-모델: klue/bert-base (Fine-tuned)
-학습 데이터: 카테고리별 150~200문장
+모델: klue/bert-base (Fine-tuned) — 현재 fallback 모드
+학습 데이터: experiments_v2에서 재학습 예정
 """
 
 import json
@@ -20,7 +21,7 @@ import os
 import re
 from pathlib import Path
 
-from ai.agents.config import INTENT_FALLBACK_THRESHOLD, COMPLEXITY_GAP_THRESHOLD
+from ai.agents.config import INTENT_FALLBACK_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +29,11 @@ INTENT_LABELS = [
     "judgment",
     "doc_search",
     "doc_generate",
-    "meeting_generate",
+    "doc_summary",
     "schedule_add",
     "schedule_view",
     "general",
+    "doc_qa",
 ]
 
 # 모델 weights 경로 (RunPod 학습 후 저장되는 위치)
@@ -191,9 +193,10 @@ class IntentClassifier:
 
                 카테고리:
                 - judgment: 규정/규칙 기반 판단 요청 (예: "이거 규정 위반이야?", "이렇게 해도 돼?")
-                - doc_search: 문서 검색, 규정 조회 (예: "연차 규정 알려줘", "회의 내용 찾아줘")
-                - doc_generate: 보고서/제안서/JD 작성 (예: "보고서 작성해줘", "제안서 만들어줘")
-                - meeting_generate: 회의록 작성/요약 (예: "회의록 작성해줘", "회의록 요약해줘")
+                - doc_search: 문서 검색 — 어떤 문서가 있는지 찾기 (예: "마케팅 문서 찾아줘", "보고서 검색")
+                - doc_generate: 문서 작성 — 보고서/회의록/JD/제안서 생성 (예: "보고서 작성해줘", "회의록 만들어줘")
+                - doc_summary: 문서 요약 — 특정 문서의 핵심 정리 (예: "이 문서 요약해줘", "핵심만 정리해줘")
+                - doc_qa: 문서 QA — 문서 내용 기반 질의응답 (예: "지난 회의 결정사항이 뭐야?", "예산 얼마야?")
                 - schedule_add: 일정 추가/등록 (예: "내일 2시 회의 일정 추가해줘", "스케줄 등록해줘")
                 - schedule_view: 일정 조회/확인 (예: "오늘 일정 보여줘", "이번 주 스케줄 확인해줘")
                 - general: 위 카테고리에 해당하지 않는 일반 질문
@@ -206,9 +209,10 @@ class IntentClassifier:
 
                 카테고리:
                 - judgment: 규정/규칙 기반 판단 요청 (예: "이거 규정 위반이야?", "이렇게 해도 돼?")
-                - doc_search: 문서 검색, 규정 조회 (예: "연차 규정 알려줘", "회의 내용 찾아줘")
-                - doc_generate: 보고서/제안서/JD 작성 (예: "보고서 작성해줘", "제안서 만들어줘")
-                - meeting_generate: 회의록 작성/요약 (예: "회의록 작성해줘", "회의록 요약해줘")
+                - doc_search: 문서 검색 — 어떤 문서가 있는지 찾기 (예: "마케팅 문서 찾아줘", "보고서 검색")
+                - doc_generate: 문서 작성 — 보고서/회의록/JD/제안서 생성 (예: "보고서 작성해줘", "회의록 만들어줘")
+                - doc_summary: 문서 요약 — 특정 문서의 핵심 정리 (예: "이 문서 요약해줘", "핵심만 정리해줘")
+                - doc_qa: 문서 QA — 문서 내용 기반 질의응답 (예: "지난 회의 결정사항이 뭐야?", "예산 얼마야?")
                 - schedule_add: 일정 추가/등록 (예: "내일 2시 회의 일정 추가해줘", "스케줄 등록해줘")
                 - schedule_view: 일정 조회/확인 (예: "오늘 일정 보여줘", "이번 주 스케줄 확인해줘")
                 - general: 위 카테고리에 해당하지 않는 일반 질문
@@ -231,6 +235,15 @@ class IntentClassifier:
             result = json.loads(raw_content)
             intent = result.get("intent", "general")
 
+            # deprecated intent 매핑 (Solar LLM이 옛날 라벨 반환할 수 있음)
+            _DEPRECATED_INTENT_MAP = {
+                "meeting_generate": "doc_generate",
+            }
+            if intent in _DEPRECATED_INTENT_MAP:
+                new_intent = _DEPRECATED_INTENT_MAP[intent]
+                print(f"[IntentClassifier] deprecated intent 매핑: {intent} → {new_intent}")
+                intent = new_intent
+
             # 유효하지 않은 intent가 오면 general로 처리
             if intent not in INTENT_LABELS:
                 print(f"[IntentClassifier] 유효하지 않은 intent: {intent} → general로 변환")
@@ -249,6 +262,8 @@ class IntentClassifier:
                 valid_candidates = []
                 for c in candidates[:3]:
                     c_intent = c.get("intent", "general")
+                    if c_intent in _DEPRECATED_INTENT_MAP:
+                        c_intent = _DEPRECATED_INTENT_MAP[c_intent]
                     if c_intent not in INTENT_LABELS:
                         c_intent = "general"
                     valid_candidates.append({"intent": c_intent, "confidence": round(float(c.get("confidence", 0.5)), 4)})
@@ -290,11 +305,20 @@ class IntentClassifier:
                     "제안서 만들어줘",
                     "문서 생성해줘",
                     "JD 작성해줘",
-                ],
-                "meeting_generate": [
                     "회의록 작성해줘",
-                    "회의록 생성해줘",
-                    "회의록 요약해줘",
+                    "회의록 만들어줘",
+                ],
+                "doc_summary": [
+                    "이 문서 요약해줘",
+                    "핵심만 정리해줘",
+                    "문서 내용 요약해줘",
+                    "간단히 정리해줘",
+                ],
+                "doc_qa": [
+                    "지난 회의 결정사항이 뭐야?",
+                    "예산이 얼마야?",
+                    "문서에 뭐라고 써있어?",
+                    "이 보고서에서 핵심 이슈가 뭐야?",
                 ],
                 "schedule_add": [
                     "일정 추가해줘",
@@ -396,6 +420,12 @@ KNOWN_OVERRIDES = {
     r"(퇴직금|급여|연봉|월급|수당|상여).*(계산|산정|산출|얼마)": "judgment",
     # "지각하면 어떻게 돼?" → 조건부 결과 질문은 judgment (general 아님)
     r"(지각|결근|조퇴|무단|위반|어기).*(어떻게|불이익|처벌|징계|벌|감봉)": "judgment",
+    # doc_summary 패턴: "이 문서 요약해줘", "핵심만 정리해줘"
+    r"(이 문서|이 파일|업로드한|첨부).*(요약|정리|핵심)": "doc_summary",
+    r"(요약|정리).*(해줘|해 줘|해주세요|부탁)": "doc_summary",
+    # doc_qa 패턴: "문서에 뭐라고 써있어?", "결정사항이 뭐야?"
+    r"(문서에|보고서에|회의록에).*(뭐라고|어떻게|뭐야|뭐가)": "doc_qa",
+    r"(결정사항|합의|결론|핵심 이슈).*(뭐야|뭐였|알려|있어)": "doc_qa",
 }
 
 
@@ -406,90 +436,6 @@ def apply_known_overrides(text: str, bert_intent: str) -> str:
             logger.info(f"Known override: {bert_intent} → {correct_intent} for '{text}'")
             return correct_intent
     return bert_intent
-
-
-# ── 복합 질문 감지 ──
-
-# 접속/순차 키워드 패턴 (넓은 범위)
-# V-아/어서: 찾아서, 확인해서, 봐서 등
-# V-고: 찾고, 확인하고, 보고 등
-# V-면서: 찾으면서, 확인하면서 등
-# 순차 표현: ~한 뒤에, ~후에, ~다음에
-COMPLEX_PATTERNS = [
-    # 기본 접속: ~해서, ~하고, ~그리고
-    r"(.+)(하고|해서|후에|다음에|그리고|그런 다음)\s*(.+)(해줘|해주세요|알려줘|만들어줘|찾아줘|보여줘|정리해줘|판단해줘)",
-    # V-아/어서: 찾아서, 봐서, 확인해서 등
-    r"(.+[아어]서|.+해서)\s*(.+)(해줘|해주세요|알려줘|만들어줘|찾아줘|보여줘|정리해줘|판단해줘)",
-    # V-고: 찾고, 확인하고, 조회하고 등
-    r"(.+)(하고|찾고|보고|읽고|확인하고|조회하고|검색하고)\s*(.+)(해줘|해주세요|알려줘|만들어줘|찾아줘|보여줘|정리해줘|판단해줘)",
-    # 순차: ~한 뒤에, ~한 다음, ~후에
-    r"(.+)(한 뒤에|한 다음|을 바탕으로|를 바탕으로|에 따라)\s*(.+)",
-    # ~면서: 찾으면서, 확인하면서
-    r"(.+)(면서|으면서)\s*(.+)(해줘|해주세요|알려줘|만들어줘)",
-    # 조건부: 있으면~없으면
-    r"(.+)(있으면|없으면).+(있으면|없으면)",
-]
-
-# 동사 어미 패턴
-VERB_ENDINGS = re.compile(
-    r"(해줘|해주세요|알려줘|만들어줘|찾아줘|확인해줘|작성해줘|추가해줘|보여줘|정리해줘|판단해줘|검색해줘|조회해줘|등록해줘)"
-)
-
-# 맥락 의존 패턴 (대명사/지시어)
-CONTEXT_DEPENDENT_PATTERNS = [
-    r"(그거|그것|그걸|아까|위에|방금|이전에|앞에서|말한|언급한)",
-    r"(그|이|저)\s*(문서|보고서|회의|규정|일정|내용)",
-    r"(다시|한번 더|또)\s*(해줘|보여줘|알려줘)",
-]
-
-
-def detect_complexity(text: str, candidates: list) -> dict:
-    """
-    복합 질문 여부 감지 (규칙 기반 + confidence 분석)
-
-    3중 조건 AND 로직: 2개 이상 충족 시에만 복합 판정
-
-    Args:
-        text: 사용자 입력 텍스트
-        candidates: top-k intent 후보 [{"intent": str, "confidence": float}, ...]
-
-    Returns:
-        {"is_complex": bool, "signals": int, "trigger_reasons": list}
-    """
-    signals = 0
-    trigger_reasons = []
-
-    # 조건 1: 접속/순차 키워드 패턴
-    has_keyword = any(re.search(p, text) for p in COMPLEX_PATTERNS)
-    if has_keyword:
-        signals += 1
-        trigger_reasons.append("keyword_pattern")
-
-    # 조건 2: top-2 confidence gap이 작음 (두 intent가 경합 중)
-    if len(candidates) >= 2:
-        gap = candidates[0]["confidence"] - candidates[1]["confidence"]
-        if gap < COMPLEXITY_GAP_THRESHOLD:
-            signals += 1
-            trigger_reasons.append(f"confidence_gap({gap:.2f})")
-
-    # 조건 3: 동사 2개 이상 (행위가 2개)
-    verb_endings = VERB_ENDINGS.findall(text)
-    if len(verb_endings) >= 2:
-        signals += 1
-        trigger_reasons.append(f"multi_verb({len(verb_endings)})")
-
-    is_complex = signals >= 2
-
-    return {
-        "is_complex": is_complex,
-        "signals": signals,
-        "trigger_reasons": trigger_reasons,
-    }
-
-
-def is_context_dependent(text: str) -> bool:
-    """맥락 의존 쿼리 감지 (대명사/지시어 패턴)"""
-    return any(re.search(p, text) for p in CONTEXT_DEPENDENT_PATTERNS)
 
 
 def get_classifier() -> IntentClassifier:

@@ -1,0 +1,232 @@
+{"text": "연차 되나?", "label": "judgment"}
+{"text": "휴가 가능?", "label": "judgment"}
+{"text": "규정 위반 아냐?", "label": "judgment"}
+{"text": "이거 가능?", "label": "judgment"}
+{"text": "연차 사용해도 될까요?", "label": "judgment"}
+{"text": "이 정책 맞아?", "label": "judgment"}
+{"text": "법 위반인가?", "label": "judgment"}
+{"text": "이 행위 가능?", "label": "judgment"}
+{"text": "규정 맞나?", "label": "judgment"}
+{"text": "법에 저촉됨?", "label": "judgment"}
+{"text": "규칙 위반?", "label": "judgment"}
+{"text": "정책 이해하려면?", "label": "judgment"}
+{"text": "이 규정 맞나요?", "label": "judgment"}
+{"text": "이거 위반?", "label": "judgment"}
+{"text": "규정에 맞음?", "label": "judgment"}
+{"text": "정책 적용됨?", "label": "judgment"}
+{"text": "규정에 어긋남?", "label": "judgment"}
+{"text": "휴가 되나?", "label": "judgment"}
+{"text": "규정상 가능한가요?", "label": "judgment"}
+{"text": "규정 위반 아니겠죠?", "label": "judgment"}
+{"text": "이 규정에 맞나요?", "label": "judgment"}
+{"text": "정책에 부합?", "label": "judgment"}
+{"text": "이 행위 허용?", "label": "judgment"}
+{"text": "정책 위반 아님?", "label": "judgment"}
+{"text": "규정 따라 가능?", "label": "judgment"}
+{"text": "이거 허용되나?", "label": "judgment"}
+{"text": "규정 맞는지 확인", "label": "judgment"}
+{"text": "정책에 위배?", "label": "judgment"}
+{"text": "위반 사항?", "label": "judgment"}
+{"text": "이 규정대로 가능?", "label": "judgment"}
+{"text": "보고서 줘", "label": "doc_search"}
+{"text": "서류있어?", "label": "doc_search"}
+{"text": "문서 가져와", "label": "doc_search"}
+{"text": "파일 위치?", "label": "doc_search"}
+{"text": "문서 찾아줘", "label": "doc_search"}
+{"text": "문서 어디?", "label": "doc_search"}
+{"text": "파일 있나요?", "label": "doc_search"}
+{"text": "문서 위치?", "label": "doc_search"}
+{"text": "문서 검색", "label": "doc_search"}
+{"text": "파일 찾기", "label": "doc_search"}
+{"text": "문서 위치 확인", "label": "doc_search"}
+{"text": "파일 좀", "label": "doc_search"}
+{"text": "파일 받아와", "label": "doc_search"}
+{"text": "문서 있어?", "label": "doc_search"}
+{"text": "서류 찾아줘", "label": "doc_search"}
+{"text": "파일 검색", "label": "doc_search"}
+{"text": "문서 어디에?", "label": "doc_search"}
+{"text": "파일 찾아줘", "label": "doc_search"}
+{"text": "문서 좀 줘", "label": "doc_search"}
+{"text": "서류 좀", "label": "doc_search"}
+{"text": "파일 있나?", "label": "doc_search"}
+{"text": "문서요", "label": "doc_search"}
+{"text": "파일 요청", "label": "doc_search"}
+{"text": "문서 검색해줘", "label": "doc_search"}
+{"text": "파일 좀 찾아줘", "label": "doc_search"}
+{"text": "문서 주세요", "label": "doc_search"}
+{"text": "보고서 있어요?", "label": "doc_search"}
+{"text": "파일 좀 줘", "label": "doc_search"}
+{"text": "문서 좀 찾아줘", "label": "doc_search"}
+{"text": "파일 줘", "label": "doc_search"}
+{"text": "문서 찾아줘", "label": "doc_search"}
+{"text": "보고서 작성해줘", "label": "doc_generate"}
+{"text": "문서 만들어", "label": "doc_generate"}
+{"text": "파일 생성", "label": "doc_generate"}
+{"text": "문서 작성", "label": "doc_generate"}
+{"text": "회의록 작성해", "label": "doc_generate"}
+{"text": "제안서 준비", "label": "doc_generate"}
+{"text": "문서 만들어줘", "label": "doc_generate"}
+{"text": "파일 작성", "label": "doc_generate"}
+{"text": "보고서 준비", "label": "doc_generate"}
+{"text": "문서 생성", "label": "doc_generate"}
+{"text": "파일 만들어줘", "label": "doc_generate"}
+{"text": "보고서 작성", "label": "doc_generate"}
+{"text": "문서 준비", "label": "doc_generate"}
+{"text": "파일 준비", "label": "doc_generate"}
+{"text": "문서 작성해", "label": "doc_generate"}
+{"text": "보고서 만들어줘", "label": "doc_generate"}
+{"text": "파일 작성해줘", "label": "doc_generate"}
+{"text": "문서 준비해줘", "label": "doc_generate"}
+{"text": "보고서 준비해", "label": "doc_generate"}
+{"text": "파일 만들어줘", "label": "doc_generate"}
+{"text": "문서 생성해", "label": "doc_generate"}
+{"text": "보고서 작성부탁", "label": "doc_generate"}
+{"text": "문서 작성부탁", "label": "doc_generate"}
+{"text": "파일 준비해줘", "label": "doc_generate"}
+{"text": "문서 만들어줘", "label": "doc_generate"}
+{"text": "보고서 준비해줘", "label": "doc_generate"}
+{"text": "파일 생성해", "label": "doc_generate"}
+{"text": "문서 부탁", "label": "doc_generate"}
+{"text": "보고서 요약해줘", "label": "doc_summary"}
+{"text": "문서 정리", "label": "doc_summary"}
+{"text": "파일 요약", "label": "doc_summary"}
+{"text": "내용 요약", "label": "doc_summary"}
+{"text": "문서 요약해줘", "label": "doc_summary"}
+{"text": "요점 정리", "label": "doc_summary"}
+{"text": "파일 정리", "label": "doc_summary"}
+{"text": "내용 정리해줘", "label": "doc_summary"}
+{"text": "문서 요약", "label": "doc_summary"}
+{"text": "파일 요약해줘", "label": "doc_summary"}
+{"text": "문서 요약부탁", "label": "doc_summary"}
+{"text": "내용 요약해줘", "label": "doc_summary"}
+{"text": "파일 정리해줘", "label": "doc_summary"}
+{"text": "문서 정리해줘", "label": "doc_summary"}
+{"text": "요점 요약", "label": "doc_summary"}
+{"text": "파일 요약부탁", "label": "doc_summary"}
+{"text": "문서 요점정리", "label": "doc_summary"}
+{"text": "내용 정리", "label": "doc_summary"}
+{"text": "파일 요점정리", "label": "doc_summary"}
+{"text": "문서 요약해", "label": "doc_summary"}
+{"text": "내용 요약부탁", "label": "doc_summary"}
+{"text": "파일 요약", "label": "doc_summary"}
+{"text": "문서 정리부탁", "label": "doc_summary"}
+{"text": "요점정리 해줘", "label": "doc_summary"}
+{"text": "내용 요약", "label": "doc_summary"}
+{"text": "파일 정리부탁", "label": "doc_summary"}
+{"text": "일정 추가", "label": "schedule_add"}
+{"text": "미팅 등록", "label": "schedule_add"}
+{"text": "새 이벤트 추가", "label": "schedule_add"}
+{"text": "캘린더에 추가", "label": "schedule_add"}
+{"text": "일정 등록", "label": "schedule_add"}
+{"text": "새 일정 추가", "label": "schedule_add"}
+{"text": "캘린더 등록", "label": "schedule_add"}
+{"text": "이벤트 추가", "label": "schedule_add"}
+{"text": "새 일정 등록", "label": "schedule_add"}
+{"text": "캘린더에 등록", "label": "schedule_add"}
+{"text": "미팅 추가", "label": "schedule_add"}
+{"text": "새 이벤트 등록", "label": "schedule_add"}
+{"text": "일정 추가해", "label": "schedule_add"}
+{"text": "캘린더에 일정", "label": "schedule_add"}
+{"text": "등록해줘", "label": "schedule_add"}
+{"text": "새 일정", "label": "schedule_add"}
+{"text": "일정 캘린더 등록", "label": "schedule_add"}
+{"text": "새 미팅 추가", "label": "schedule_add"}
+{"text": "캘린더 일정 추가", "label": "schedule_add"}
+{"text": "이벤트 등록해줘", "label": "schedule_add"}
+{"text": "일정 캘린더 추가", "label": "schedule_add"}
+{"text": "새 이벤트", "label": "schedule_add"}
+{"text": "캘린더 일정 등록", "label": "schedule_add"}
+{"text": "미팅 새로 추가", "label": "schedule_add"}
+{"text": "일정 새로 추가", "label": "schedule_add"}
+{"text": "캘린더에 일정 등록", "label": "schedule_add"}
+{"text": "새로운 일정 추가", "label": "schedule_add"}
+{"text": "새로운 미팅 등록", "label": "schedule_add"}
+{"text": "일정 확인", "label": "schedule_view"}
+{"text": "캘린더 조회", "label": "schedule_view"}
+{"text": "일정 봐줘", "label": "schedule_view"}
+{"text": "미팅 확인", "label": "schedule_view"}
+{"text": "이벤트 조회", "label": "schedule_view"}
+{"text": "캘린더 확인", "label": "schedule_view"}
+{"text": "일정 조회", "label": "schedule_view"}
+{"text": "캘린더 봐줘", "label": "schedule_view"}
+{"text": "미팅 조회", "label": "schedule_view"}
+{"text": "이벤트 확인", "label": "schedule_view"}
+{"text": "기존 일정 확인", "label": "schedule_view"}
+{"text": "기존 일정 조회", "label": "schedule_view"}
+{"text": "캘린더 일정 확인", "label": "schedule_view"}
+{"text": "일정 캘린더 조회", "label": "schedule_view"}
+{"text": "일정 캘린더 확인", "label": "schedule_view"}
+{"text": "캘린더 일정 조회", "label": "schedule_view"}
+{"text": "기존 캘린더 확인", "label": "schedule_view"}
+{"text": "기존 일정 봐줘", "label": "schedule_view"}
+{"text": "캘린더 이벤트 조회", "label": "schedule_view"}
+{"text": "일정 캘린더 봐줘", "label": "schedule_view"}
+{"text": "캘린더 일정 봐줘", "label": "schedule_view"}
+{"text": "기존 미팅 확인", "label": "schedule_view"}
+{"text": "기존 이벤트 조회", "label": "schedule_view"}
+{"text": "기존 일정 캘린더", "label": "schedule_view"}
+{"text": "캘린더 이벤트 확인", "label": "schedule_view"}
+{"text": "기존 일정 캘린더 조회", "label": "schedule_view"}
+{"text": "캘린더 확인해줘", "label": "schedule_view"}
+{"text": "기존 일정 캘린더 확인", "label": "schedule_view"}
+{"text": "안녕하세요", "label": "general"}
+{"text": "감사해요", "label": "general"}
+{"text": "잘 지냈나요?", "label": "general"}
+{"text": "도움 필요해요", "label": "general"}
+{"text": "봇 기능 뭐야?", "label": "general"}
+{"text": "오늘 어때?", "label": "general"}
+{"text": "잘 부탁해", "label": "general"}
+{"text": "고마워요", "label": "general"}
+{"text": "안부 전해줘", "label": "general"}
+{"text": "대화하자", "label": "general"}
+{"text": "도움 줘", "label": "general"}
+{"text": "안부 묻고 싶어", "label": "general"}
+{"text": "잡담하자", "label": "general"}
+{"text": "잘 부탁해요", "label": "general"}
+{"text": "감사드립니다", "label": "general"}
+{"text": "잘 지내시죠?", "label": "general"}
+{"text": "도움 부탁해요", "label": "general"}
+{"text": "봇 기능 있어?", "label": "general"}
+{"text": "오늘 어때요?", "label": "general"}
+{"text": "잘 지내세요?", "label": "general"}
+{"text": "고마워", "label": "general"}
+{"text": "안부 전합니다", "label": "general"}
+{"text": "대화하고 싶어", "label": "general"}
+{"text": "도움이 필요해", "label": "general"}
+{"text": "안부 전하고 싶어", "label": "general"}
+{"text": "잡담하고 싶어", "label": "general"}
+{"text": "잘 부탁드립니다", "label": "general"}
+{"text": "감사합니다", "label": "general"}
+{"text": "잘 지내셨나요?", "label": "general"}
+{"text": "도움이 필요합니다", "label": "general"}
+{"text": "봇 기능 있나요?", "label": "general"}
+{"text": "이거 뭐지?", "label": "doc_qa"}
+{"text": "숫자 확인해줘", "label": "doc_qa"}
+{"text": "결정 뭐였어?", "label": "doc_qa"}
+{"text": "문서에 뭐 있어?", "label": "doc_qa"}
+{"text": "결과 알려줘", "label": "doc_qa"}
+{"text": "문서 확인", "label": "doc_qa"}
+{"text": "정보 좀 줘", "label": "doc_qa"}
+{"text": "문서 뭐지?", "label": "doc_qa"}
+{"text": "결정 확인", "label": "doc_qa"}
+{"text": "정보 확인", "label": "doc_qa"}
+{"text": "숫자 뭐지?", "label": "doc_qa"}
+{"text": "문서 정보", "label": "doc_qa"}
+{"text": "결과 뭐야?", "label": "doc_qa"}
+{"text": "문서에 뭐 있나?", "label": "doc_qa"}
+{"text": "이거 정보", "label": "doc_qa"}
+{"text": "문서 결과", "label": "doc_qa"}
+{"text": "결정 뭐야?", "label": "doc_qa"}
+{"text": "정보 좀 확인", "label": "doc_qa"}
+{"text": "문서 숫자", "label": "doc_qa"}
+{"text": "결과 확인해줘", "label": "doc_qa"}
+{"text": "숫자 뭐였어?", "label": "doc_qa"}
+{"text": "정보 뭐지?", "label": "doc_qa"}
+{"text": "문서 결정", "label": "doc_qa"}
+{"text": "결과 뭐였어?", "label": "doc_qa"}
+{"text": "문서 확인해줘", "label": "doc_qa"}
+{"text": "결정 확인해줘", "label": "doc_qa"}
+{"text": "정보 확인해줘", "label": "doc_qa"}
+{"text": "숫자 좀 알려줘", "label": "doc_qa"}
+{"text": "문서 정보 확인", "label": "doc_qa"}
+{"text": "결과 알려줘", "label": "doc_qa"}

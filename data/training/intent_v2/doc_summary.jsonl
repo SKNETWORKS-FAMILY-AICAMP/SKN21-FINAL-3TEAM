@@ -1,0 +1,294 @@
+{"text": "이거 요약해줘", "label": "doc_summary"}
+{"text": "요약 좀", "label": "doc_summary"}
+{"text": "핵심만 뽑아줘", "label": "doc_summary"}
+{"text": "간단히 정리해줘", "label": "doc_summary"}
+{"text": "정리 좀 해줘", "label": "doc_summary"}
+{"text": "핵심이 뭐야", "label": "doc_summary"}
+{"text": "요점만 말해줘", "label": "doc_summary"}
+{"text": "한줄 요약 해줘", "label": "doc_summary"}
+{"text": "브리핑 해줘", "label": "doc_summary"}
+{"text": "개요 정리해줘", "label": "doc_summary"}
+{"text": "요약본 만들어줘", "label": "doc_summary"}
+{"text": "핵심 정리 부탁", "label": "doc_summary"}
+{"text": "짧게 정리해줘", "label": "doc_summary"}
+{"text": "요약 부탁해", "label": "doc_summary"}
+{"text": "서머리 해줘", "label": "doc_summary"}
+{"text": "핵심 좀 뽑아", "label": "doc_summary"}
+{"text": "이거 축약해줘", "label": "doc_summary"}
+{"text": "문서 요약 ㄱㄱ", "label": "doc_summary"}
+{"text": "요약 ㄱ", "label": "doc_summary"}
+{"text": "정리좀 ㅎ", "label": "doc_summary"}
+{"text": "핵심만 ㄱ", "label": "doc_summary"}
+{"text": "요약좀 부탁", "label": "doc_summary"}
+{"text": "문서요약 해조", "label": "doc_summary"}
+{"text": "요약 플리즈", "label": "doc_summary"}
+{"text": "이거 서머리좀", "label": "doc_summary"}
+{"text": "대충 정리해줘", "label": "doc_summary"}
+{"text": "줄여서 알려줘", "label": "doc_summary"}
+{"text": "이거 요약해 줄래?", "label": "doc_summary"}
+{"text": "보고서 줄여줘 ㅎ", "label": "doc_summary"}
+{"text": "간략하게 알려줘", "label": "doc_summary"}
+{"text": "이 보고서 핵심만 세 줄로 정리해줘", "label": "doc_summary"}
+{"text": "첨부한 문서 내용 좀 요약 부탁할게", "label": "doc_summary"}
+{"text": "이 회의록 핵심 안건만 간단히 뽑아줘", "label": "doc_summary"}
+{"text": "올린 파일 핵심만 간단히 정리해줘", "label": "doc_summary"}
+{"text": "이 계약서 주요 조건만 따로 정리해줘", "label": "doc_summary"}
+{"text": "제안서 내용 좀 간단히 요약해줘", "label": "doc_summary"}
+{"text": "이 기획서의 핵심 포인트가 대체 뭐야?", "label": "doc_summary"}
+{"text": "규정집 주요 항목 위주로 요약 좀 부탁해", "label": "doc_summary"}
+{"text": "보고서를 세 줄 정도로 요약 좀 부탁드려", "label": "doc_summary"}
+{"text": "이 문서 내용을 한눈에 보게 정리해줘", "label": "doc_summary"}
+{"text": "첨부 파일 읽기 귀찮은데 요약 좀 해줘", "label": "doc_summary"}
+{"text": "이 자료 좀 짧게 핵심만 정리해줄래?", "label": "doc_summary"}
+{"text": "분기 실적 보고서 핵심 수치만 좀 알려줘", "label": "doc_summary"}
+{"text": "이 매뉴얼에서 주요 내용만 요약 가능해?", "label": "doc_summary"}
+{"text": "회의 자료 요점 위주로 좀 간략히 정리해줘", "label": "doc_summary"}
+{"text": "이 기획안의 주요 전략만 뽑아서 알려줘", "label": "doc_summary"}
+{"text": "연간 실적 보고서 요약 좀 해줄 수 있어?", "label": "doc_summary"}
+{"text": "이 논문의 결론이랑 핵심만 간단히 뽑아줘", "label": "doc_summary"}
+{"text": "매출 분석 보고서의 핵심 인사이트만 정리해줘", "label": "doc_summary"}
+{"text": "이 공문의 핵심 사항만 좀 간단하게 알려줘", "label": "doc_summary"}
+{"text": "내부 규정 주요 변경 사항만 좀 정리 부탁해", "label": "doc_summary"}
+{"text": "사업 계획서 요점만 좀 빠르게 정리해줄래?", "label": "doc_summary"}
+{"text": "마케팅 기획서 핵심 전략만 간략히 뽑아줘", "label": "doc_summary"}
+{"text": "이 감사 보고서 지적 사항만 요약해줄래?", "label": "doc_summary"}
+{"text": "취업 규칙 주요 조항만 간단히 정리 부탁해", "label": "doc_summary"}
+{"text": "이전 회의 기록 핵심 결정 사항만 요약해줘", "label": "doc_summary"}
+{"text": "예산안 문서 주요 항목만 정리해줄 수 있어?", "label": "doc_summary"}
+{"text": "인사 규정 개정안 핵심 변경 포인트만 뽑아줘", "label": "doc_summary"}
+{"text": "실적 보고서 주요 성과 지표만 요약 좀 부탁해", "label": "doc_summary"}
+{"text": "발표 자료 핵심만 요약 정리 좀 해줘", "label": "doc_summary"}
+{"text": "제출한 분석 보고서 핵심 요점만 정리해줘", "label": "doc_summary"}
+{"text": "이 문서 내용 요약 좀 부탁드립니다", "label": "doc_summary"}
+{"text": "보고서 핵심 내용을 정리해 주세요", "label": "doc_summary"}
+{"text": "첨부한 파일의 내용 요약을 부탁드립니다", "label": "doc_summary"}
+{"text": "이 회의록의 요점만 정리해 주실 수 있나요?", "label": "doc_summary"}
+{"text": "제안서 내용을 간략하게 요약해 주세요", "label": "doc_summary"}
+{"text": "보내드린 자료의 주요 내용을 요약해 주세요", "label": "doc_summary"}
+{"text": "장문의 보고서인데 핵심만 추려서 알려주세요", "label": "doc_summary"}
+{"text": "지난 회의 기록의 핵심 안건을 요약해 주세요", "label": "doc_summary"}
+{"text": "공유해주신 문서의 핵심을 정리해 주시겠어요?", "label": "doc_summary"}
+{"text": "거래처에서 받은 제안서 핵심 조건만 요약해줘", "label": "doc_summary"}
+{"text": "출장 보고서 핵심 성과랑 결론만 간단히 알려줘", "label": "doc_summary"}
+{"text": "팀 주간 보고서 핵심 이슈만 간략하게 정리해줘", "label": "doc_summary"}
+{"text": "이 문서 요약 좀 ㅋㅋ 부탁할게", "label": "doc_summary"}
+{"text": "ㅇㅇ 이거 핵심만 좀 정리해줘", "label": "doc_summary"}
+{"text": "이 문서가 상당히 긴데 핵심 내용만 요약해서 간단히 정리해줄 수 있어?", "label": "doc_summary"}
+{"text": "지난주 회의록인데 참석을 못 해서 그러는데 핵심 내용 좀 요약해줘", "label": "doc_summary"}
+{"text": "이 보고서 전체를 다 읽을 시간이 없으니까 핵심 포인트만 뽑아서 알려줘", "label": "doc_summary"}
+{"text": "이 규정 문서가 너무 길어서 읽기가 힘든데 주요 조항만 간단히 좀 정리해줘", "label": "doc_summary"}
+{"text": "이 제안서 내용이 너무 방대한데 핵심 주장과 결론 위주로 좀 축약해줄래?", "label": "doc_summary"}
+{"text": "올해 사업 계획서가 꽤 두꺼운데 주요 전략과 핵심 목표만 뽑아서 정리해줘", "label": "doc_summary"}
+{"text": "이 계약서 전체 내용을 다 읽기 어려우니 핵심 조건만 좀 요약해줄 수 있을까?", "label": "doc_summary"}
+{"text": "신규 프로젝트 기획안이 상당히 길어서 의사 결정에 필요한 핵심만 뽑아서 요약해줘", "label": "doc_summary"}
+{"text": "첨부한 연구 보고서의 목적과 결론 그리고 주요 발견 사항 위주로 정리해줘", "label": "doc_summary"}
+{"text": "설계 문서에서 주요 사양과 핵심 설계 포인트만 간략히 뽑아서 정리해줘", "label": "doc_summary"}
+{"text": "연구 보고서 결론 부분과 핵심 데이터 위주로 짧게 요약 좀 부탁해", "label": "doc_summary"}
+{"text": "운영 매뉴얼이 너무 두꺼운데 꼭 알아야 할 핵심 내용만 좀 알려줘", "label": "doc_summary"}
+{"text": "이번 달 업무 보고서 내용 중에서 요점만 짧게 정리해 줄 수 있을까?", "label": "doc_summary"}
+{"text": "고객사에서 보내 온 계약서인데 우리한테 중요한 주요 조건만 정리 부탁", "label": "doc_summary"}
+{"text": "기술 검토 보고서의 주요 결론과 권고 사항만 뽑아서 간단히 알려줘", "label": "doc_summary"}
+{"text": "시장 동향 보고서에서 우리 업계에 관련된 핵심 트렌드 위주로 요약 정리해줘", "label": "doc_summary"}
+{"text": "경영진 회의록이 길어서 핵심 논의 사항과 결정된 내용만 간단히 요약 부탁할게", "label": "doc_summary"}
+{"text": "이 보고서가 너무 전문적인데 핵심만 알기 쉽게 풀어서 정리해줘", "label": "doc_summary"}
+{"text": "프로젝트 현황 보고서의 핵심 이슈와 진행 상황만 간략하게 정리해 주세요", "label": "doc_summary"}
+{"text": "이 기획서의 핵심 사항을 한눈에 볼 수 있도록 정리해 주시면 감사하겠습니다", "label": "doc_summary"}
+{"text": "이 규정 문서의 핵심 조항만 발췌해서 간단히 정리해 주시겠습니까?", "label": "doc_summary"}
+{"text": "사업 계획서의 주요 내용과 핵심 전략을 간추려 주실 수 있으신가요?", "label": "doc_summary"}
+{"text": "이 자료를 읽을 시간이 없어서 요약을 좀 부탁드려도 될까요?", "label": "doc_summary"}
+{"text": "이 문서 핵심 내용 좀 요약해 주면 좋겠는데 가능할까요?", "label": "doc_summary"}
+{"text": "지난번에 공유된 보고서 내용 중에서 핵심만 간단히 알려 주세요", "label": "doc_summary"}
+{"text": "이번에 새로 나온 규정 문서의 변경 사항 위주로 요약 부탁드립니다", "label": "doc_summary"}
+{"text": "첨부된 기획서의 핵심 아이디어와 주요 일정만 정리해 주시면 됩니다", "label": "doc_summary"}
+{"text": "올해 예산 관련 문서의 핵심 변경 사항만 간략하게 정리해 주세요", "label": "doc_summary"}
+{"text": "이번 주 팀 미팅 회의록에서 핵심 결정 사항만 요약해서 공유해 주세요", "label": "doc_summary"}
+{"text": "상기 문서의 핵심 내용을 간략하게 요약 정리하여 주시기 바랍니다", "label": "doc_summary"}
+{"text": "해당 보고서의 주요 사항을 항목별로 나누어 간략히 정리해 주십시오", "label": "doc_summary"}
+{"text": "본 기획서의 핵심 전략 및 주요 목표를 요약하여 주시기 바랍니다", "label": "doc_summary"}
+{"text": "첨부된 계약서의 주요 조건과 핵심 조항을 정리해 주시면 감사하겠습니다", "label": "doc_summary"}
+{"text": "해당 규정 문서의 핵심 조항을 발췌하여 간결하게 정리해 주십시오", "label": "doc_summary"}
+{"text": "금번 회의록의 주요 안건 및 핵심 결정 사항을 요약해 주시기 바랍니다", "label": "doc_summary"}
+{"text": "상기 사업 계획서의 핵심 내용을 간략히 정리하여 보고해 주십시오", "label": "doc_summary"}
+{"text": "제출된 연구 보고서의 핵심 결과와 주요 결론을 간결하게 요약해 주시기 바랍니다", "label": "doc_summary"}
+{"text": "해당 법률 검토서의 주요 의견과 핵심 리스크를 정리하여 제출해 주십시오", "label": "doc_summary"}
+{"text": "본 분석 자료의 핵심 인사이트와 주요 발견 사항을 요약 정리해 주시기 바랍니다", "label": "doc_summary"}
+{"text": "금번 실적 보고서의 주요 성과 지표와 미달 항목을 중심으로 요약해 주십시오", "label": "doc_summary"}
+{"text": "해당 제안서의 주요 제안 사항과 핵심 조건을 요약하여 검토용으로 정리해 주십시오", "label": "doc_summary"}
+{"text": "본 운영 보고서의 핵심 현황과 주요 이슈를 간결하게 요약 정리해 주시기 바랍니다", "label": "doc_summary"}
+{"text": "본 감사 보고서의 주요 지적 사항과 개선 권고를 요약 정리해 주시기 바랍니다", "label": "doc_summary"}
+{"text": "ㅇㅋ 이거 너무 긴데 핵심 포인트만 간단히 뽑아서 알려줘", "label": "doc_summary"}
+{"text": "이거 넘 긴데 ㅠㅠ 핵심만 간단히 요약해서 정리 좀 ㄱ", "label": "doc_summary"}
+{"text": "첨부한 기획서가 50 페이지가 넘는데 이거 한 페이지 정도 분량으로 핵심만 추려서 요약해 줄 수 있어?", "label": "doc_summary"}
+{"text": "지난달에 있었던 프로젝트 회의록 전체를 제가 한눈에 쉽게 파악할 수 있도록 요약 정리 좀 해 줘", "label": "doc_summary"}
+{"text": "이번 분기 매출 분석 보고서를 핵심 인사이트 위주로 한 세 줄에서 다섯 줄 정도로 요약 부탁할게", "label": "doc_summary"}
+{"text": "이 기술 문서가 너무 전문적이고 분량도 상당히 긴데 비전공자도 쉽게 이해할 수 있도록 간략하게 요약해 줘", "label": "doc_summary"}
+{"text": "팀장님이 보낸 전략 문서인데 내일 아침 미팅 전까지 핵심만 빠르게 파악할 수 있도록 간단히 요약해 줘", "label": "doc_summary"}
+{"text": "이 내부 감사 보고서가 정말 길어서 다 읽기 어려운데 주요 지적 사항과 개선 권고 사항만 별도로 뽑아서 정리 좀 부탁해", "label": "doc_summary"}
+{"text": "외부 컨설팅 업체에서 보내 온 보고서가 첨부 파일로 되어 있는데 우리 회사에 해당하는 핵심 내용만 간단히 요약해 줘", "label": "doc_summary"}
+{"text": "전체 인사 규정 개정안을 이번에 변경된 부분을 중심으로 핵심만 간략히 정리해서 팀원들에게 공유해 줄 수 있을까?", "label": "doc_summary"}
+{"text": "이 시장 조사 보고서에서 올해 핵심 트렌드랑 우리 사업에 시사점이 있는 내용만 따로 뽑아서 알려 줘", "label": "doc_summary"}
+{"text": "예산 심의 관련 자료가 너무 복잡한데 각 부서별로 핵심 요청 사항 위주로 간략하게 요약 좀 부탁해", "label": "doc_summary"}
+{"text": "지난 분기 경영 실적 보고서에서 주요 성과 항목과 목표 미달 항목을 중심으로 간단히 요약 정리 좀 부탁할게", "label": "doc_summary"}
+{"text": "이 법률 검토 의견서가 너무 어려운데 최종 결론과 주요 리스크 부분 위주로 좀 쉽게 풀어서 정리해 줘", "label": "doc_summary"}
+{"text": "올해 신규 입사자 교육용으로 만든 사내 규정집인데 신입 사원이 꼭 알아야 할 핵심만 뽑아서 정리해 주세요", "label": "doc_summary"}
+{"text": "경쟁사 분석 보고서 분량이 엄청 방대한데 우리 사업에 직접적으로 영향이 있는 부분만 따로 요약해 주실 수 있나요?", "label": "doc_summary"}
+{"text": "이사회 회의록이 너무 길어서 다 읽기가 정말 어려운데요 주요 결의 사항과 핵심 안건만 뽑아서 정리해 주세요", "label": "doc_summary"}
+{"text": "지난 한 달간의 고객 피드백 분석 보고서인데 주요 이슈와 개선이 필요한 사항들을 위주로 요약 좀 부탁드려요", "label": "doc_summary"}
+{"text": "해외 지사에서 올린 현지 시장 보고서인데 한국어로 핵심 내용만 알기 쉽게 간추려서 정리해 줄 수 있을까요?", "label": "doc_summary"}
+{"text": "이번 프로젝트 완료 보고서의 분량이 꽤 있는데 핵심 성과 지표와 프로젝트에서 얻은 교훈 위주로 간략히 요약해 주세요", "label": "doc_summary"}
+{"text": "이 문서가 너무 길어서 회의 시간 안에 다 읽을 수가 없는데 핵심 내용만 요약해서 알려 주실 수 있나요?", "label": "doc_summary"}
+{"text": "영업팀에서 작성한 거래처 미팅 보고서인데 주요 협의 내용과 향후 액션 아이템만 간단히 정리해 주실 수 있나요?", "label": "doc_summary"}
+{"text": "금번 분기에 발행된 전략 기획 보고서의 핵심 추진 과제와 기대 효과를 간결하게 요약하여 보고해 주시기 바랍니다", "label": "doc_summary"}
+{"text": "제출된 기술 검토 보고서의 주요 분석 결과와 향후 개선 방안을 항목별로 나누어 정리하여 보고해 주시기 바랍니다", "label": "doc_summary"}
+{"text": "본 조직 개편안의 주요 변경 사항과 각 부서별 역할 변화를 한눈에 볼 수 있도록 요약 정리해 주시기 바랍니다", "label": "doc_summary"}
+{"text": "해당 연간 사업 성과 보고서의 핵심 KPI 달성 현황과 미달 항목에 대한 원인을 간략히 정리하여 공유해 주십시오", "label": "doc_summary"}
+{"text": "첨부된 외부 시장 분석 보고서 중에서 신규 사업 기회와 관련된 핵심 데이터와 인사이트만 발췌하여 요약해 주시기 바랍니다", "label": "doc_summary"}
+{"text": "본 프로젝트 제안서에 포함된 기술적 내용이 많으므로 경영진이 이해할 수 있도록 비즈니스 관점에서 핵심만 정리해 주십시오", "label": "doc_summary"}
+{"text": "상기 전략 기획 문서의 핵심 방향성과 주요 실행 과제를 간략히 정리하여 경영진 보고용으로 요약해 주시기 바랍니다", "label": "doc_summary"}
+{"text": "신규 사업 타당성 분석 보고서가 있는데 투자 대비 수익 전망 부분과 핵심 리스크 부분만 따로 요약 부탁해", "label": "doc_summary"}
+{"text": "이번 달에 진행한 전체 팀 회의들의 회의록을 통합해서 핵심 결정 사항만 한 페이지 분량으로 정리해 줘", "label": "doc_summary"}
+{"text": "인사팀에서 보내온 복리후생 제도 변경 안내 문서인데 직원들이 꼭 알아야 할 핵심 변경 사항만 정리해 줘", "label": "doc_summary"}
+{"text": "이 연차 문서 핵심만 얘기해줄래?", "label": "doc_summary"}
+{"text": "출장 보고서 요약해봐", "label": "doc_summary"}
+{"text": "보안 정책 한 줄로 요약해줘", "label": "doc_summary"}
+{"text": "인사평가 문서 요점 정리 좀 해줘", "label": "doc_summary"}
+{"text": "급여 명세서 요약 필요해", "label": "doc_summary"}
+{"text": "복리후생 정보 간단히 정리해줘", "label": "doc_summary"}
+{"text": "프로젝트 계획서 핵심 부분만 알려줘", "label": "doc_summary"}
+{"text": "회의록 주요 내용 정리해줘", "label": "doc_summary"}
+{"text": "연차 사용 규정 요약 부탁해", "label": "doc_summary"}
+{"text": "출장비 문서 한눈에 볼 수 있게 정리해줘", "label": "doc_summary"}
+{"text": "보안 지침 요약문 만들어줘", "label": "doc_summary"}
+{"text": "인사 평가서 중요한 부분만 말해줘", "label": "doc_summary"}
+{"text": "급여 문서 요점만 추려줘", "label": "doc_summary"}
+{"text": "복리후생 문서 요약해서 보내줘", "label": "doc_summary"}
+{"text": "프로젝트 보고서 짧게 요약해줘", "label": "doc_summary"}
+{"text": "회의록 간단히 요약해줄 수 있어?", "label": "doc_summary"}
+{"text": "첨부된 연차 문서 간단히 요약해줘", "label": "doc_summary"}
+{"text": "출장비 규정 요약본 부탁해", "label": "doc_summary"}
+{"text": "보안 문서 핵심만 뽑아줘", "label": "doc_summary"}
+{"text": "인사평가 문서 요약본 필요해", "label": "doc_summary"}
+{"text": "급여 문서 주요 내용만 얘기해줘", "label": "doc_summary"}
+{"text": "복리후생 관련 문서 핵심 문장만 알려줘", "label": "doc_summary"}
+{"text": "프로젝트 계획서 요약 필요해", "label": "doc_summary"}
+{"text": "회의 내용 요약해서 알려줘", "label": "doc_summary"}
+{"text": "연차 문서 간단 요약 부탁드려요", "label": "doc_summary"}
+{"text": "출장 관련 문서 요약해 주세요", "label": "doc_summary"}
+{"text": "보안 관련 문서 요약본이 필요해요", "label": "doc_summary"}
+{"text": "인사 평가서 간단히 요약 부탁드립니다", "label": "doc_summary"}
+{"text": "급여 명세서 요점을 간단히 정리해 주세요", "label": "doc_summary"}
+{"text": "복리후생 문서 요약 부탁드립니다", "label": "doc_summary"}
+{"text": "프로젝트 문서의 주요 내용 요약해 주세요", "label": "doc_summary"}
+{"text": "회의록 내용을 간단히 요약해 주세요", "label": "doc_summary"}
+{"text": "연차 관련 문서의 핵심 내용을 요약해 주세요", "label": "doc_summary"}
+{"text": "출장비 문서의 주요 내용을 요약해 주세요", "label": "doc_summary"}
+{"text": "보안 정책 문서 요약 부탁드려요", "label": "doc_summary"}
+{"text": "인사평가 관련 문서의 요약본을 만들어 주세요", "label": "doc_summary"}
+{"text": "급여 문서의 주요 내용을 간단히 요약해 주세요", "label": "doc_summary"}
+{"text": "복리후생 문서의 요점을 정리해 주세요", "label": "doc_summary"}
+{"text": "프로젝트 계획서의 핵심 내용을 요약해 주세요", "label": "doc_summary"}
+{"text": "회의록의 주요 내용을 간단히 요약해 주세요", "label": "doc_summary"}
+{"text": "연차 문서 요점만 추려서 알려줘", "label": "doc_summary"}
+{"text": "출장비 문서 요약 간단히 부탁해", "label": "doc_summary"}
+{"text": "보안 문서 요약해서 알려줘", "label": "doc_summary"}
+{"text": "인사평가 내용 요약 가능해?", "label": "doc_summary"}
+{"text": "급여 문서 요약 좀 해줘", "label": "doc_summary"}
+{"text": "복리후생 문서 요약서 부탁해", "label": "doc_summary"}
+{"text": "프로젝트 계획 요약해줄래?", "label": "doc_summary"}
+{"text": "회의록 요약 좀 해줘", "label": "doc_summary"}
+{"text": "연차 규정 요약해서 보고해줘", "label": "doc_summary"}
+{"text": "출장 문서 포인트만 요약해줘", "label": "doc_summary"}
+{"text": "보안 지침서 요약해줘", "label": "doc_summary"}
+{"text": "인사평가 보고서 간단히 요약해줘", "label": "doc_summary"}
+{"text": "급여 명세서 요점만 요약해줘", "label": "doc_summary"}
+{"text": "복리후생 문서 요약 부탁해", "label": "doc_summary"}
+{"text": "프로젝트 문서 요점만 요약해줘", "label": "doc_summary"}
+{"text": "회의록 요약해 줘", "label": "doc_summary"}
+{"text": "연차 문서 요약 좀 부탁해", "label": "doc_summary"}
+{"text": "출장비 문서 요약해 줘", "label": "doc_summary"}
+{"text": "보안 문서 간단히 요약해 줘", "label": "doc_summary"}
+{"text": "인사평가 문서 요약해 줘", "label": "doc_summary"}
+{"text": "급여 관련 문서 요약 좀 부탁해", "label": "doc_summary"}
+{"text": "프로젝트 계획서 요약 요청해", "label": "doc_summary"}
+{"text": "회의록 요약좀 부탁해", "label": "doc_summary"}
+{"text": "연차 문서 간단히 요약해 줘", "label": "doc_summary"}
+{"text": "출장비 관련 문서 요약해 줘", "label": "doc_summary"}
+{"text": "보안 관련 문서 요약해 줘", "label": "doc_summary"}
+{"text": "급여 문서 요약해 줘", "label": "doc_summary"}
+{"text": "복리후생 문서 요약해 줘", "label": "doc_summary"}
+{"text": "프로젝트 문서 요약해 줘", "label": "doc_summary"}
+{"text": "연차 문서 간단 요약 부탁해", "label": "doc_summary"}
+{"text": "보안 문서 요약해 줘", "label": "doc_summary"}
+{"text": "급여 문서 요약 부탁해", "label": "doc_summary"}
+{"text": "연차 문서 요약해줘", "label": "doc_summary"}
+{"text": "출장비 문서 요약해줘", "label": "doc_summary"}
+{"text": "보안 문서 요약해줘", "label": "doc_summary"}
+{"text": "인사평가 문서 요약해줘", "label": "doc_summary"}
+{"text": "급여 문서 요약해줘", "label": "doc_summary"}
+{"text": "복리후생 문서 요약해줘", "label": "doc_summary"}
+{"text": "프로젝트 문서 요약해줘", "label": "doc_summary"}
+{"text": "회의록 요약해줘", "label": "doc_summary"}
+{"text": "연차 문서 요약 부탁드립니다", "label": "doc_summary"}
+{"text": "출장비 관련 문서 요약 바랍니다", "label": "doc_summary"}
+{"text": "보안 문서 요약 부탁드립니다", "label": "doc_summary"}
+{"text": "인사평가 문서 요약 바랍니다", "label": "doc_summary"}
+{"text": "급여 문서 요약 부탁드립니다", "label": "doc_summary"}
+{"text": "복리후생 문서 요약 바랍니다", "label": "doc_summary"}
+{"text": "프로젝트 문서 요약 부탁드립니다", "label": "doc_summary"}
+{"text": "회의록 요약 부탁드립니다", "label": "doc_summary"}
+{"text": "연차 문서 간단히 요약 부탁드립니다", "label": "doc_summary"}
+{"text": "출장비 관련 문서 간단히 요약 바랍니다", "label": "doc_summary"}
+{"text": "보안 문서 간단히 요약 부탁드립니다", "label": "doc_summary"}
+{"text": "인사평가 문서 간단히 요약 바랍니다", "label": "doc_summary"}
+{"text": "급여 문서 간단히 요약 부탁드립니다", "label": "doc_summary"}
+{"text": "복리후생 문서 간단히 요약 바랍니다", "label": "doc_summary"}
+{"text": "프로젝트 문서 간단히 요약 부탁드립니다", "label": "doc_summary"}
+{"text": "회의록 간단히 요약 부탁드립니다", "label": "doc_summary"}
+{"text": "연차 문서 요점만 요약해 줘", "label": "doc_summary"}
+{"text": "출장비 문서 요점만 요약해 줘", "label": "doc_summary"}
+{"text": "보안 문서 요점만 요약해 줘", "label": "doc_summary"}
+{"text": "인사평가 문서 요점만 요약해 줘", "label": "doc_summary"}
+{"text": "급여 문서 요점만 요약해 줘", "label": "doc_summary"}
+{"text": "복리후생 문서 요점만 요약해 줘", "label": "doc_summary"}
+{"text": "프로젝트 문서 요점만 요약해 줘", "label": "doc_summary"}
+{"text": "회의록 요점만 요약해 줘", "label": "doc_summary"}
+{"text": "연차 문서 요약 부탁드려요", "label": "doc_summary"}
+{"text": "출장비 문서 요약 부탁드려요", "label": "doc_summary"}
+{"text": "보안 문서 요약 부탁드려요", "label": "doc_summary"}
+{"text": "인사평가 문서 요약 부탁드려요", "label": "doc_summary"}
+{"text": "급여 문서 요약 부탁드려요", "label": "doc_summary"}
+{"text": "복리후생 문서 요약 부탁드려요", "label": "doc_summary"}
+{"text": "프로젝트 문서 요약 부탁드려요", "label": "doc_summary"}
+{"text": "회의록 요약 부탁드려요", "label": "doc_summary"}
+{"text": "연차 문서 요약해줄래?", "label": "doc_summary"}
+{"text": "출장비 문서 요약해줄래?", "label": "doc_summary"}
+{"text": "보안 문서 요약해줄래?", "label": "doc_summary"}
+{"text": "인사평가 문서 요약해줄래?", "label": "doc_summary"}
+{"text": "급여 문서 요약해줄래?", "label": "doc_summary"}
+{"text": "복리후생 문서 요약해줄래?", "label": "doc_summary"}
+{"text": "프로젝트 문서 요약해줄래?", "label": "doc_summary"}
+{"text": "회의록 요약해줄래?", "label": "doc_summary"}
+{"text": "연차 문서 요점만 요약 부탁해", "label": "doc_summary"}
+{"text": "출장비 문서 요점만 요약 부탁해", "label": "doc_summary"}
+{"text": "보안 문서 요점만 요약 부탁해", "label": "doc_summary"}
+{"text": "인사평가 문서 요점만 요약 부탁해", "label": "doc_summary"}
+{"text": "급여 문서 요점만 요약 부탁해", "label": "doc_summary"}
+{"text": "복리후생 문서 요점만 요약 부탁해", "label": "doc_summary"}
+{"text": "프로젝트 문서 요점만 요약 부탁해", "label": "doc_summary"}
+{"text": "회의록 요점만 요약 부탁해", "label": "doc_summary"}
+{"text": "연차 문서 요악해줘", "label": "doc_summary"}
+{"text": "출장비 문서 요약 부탁드림", "label": "doc_summary"}
+{"text": "보안 문서 요약 해줘", "label": "doc_summary"}
+{"text": "인사평가 요약좀", "label": "doc_summary"}
+{"text": "급여 문서 요약 플리즈", "label": "doc_summary"}
+{"text": "복리후생문서 요약요", "label": "doc_summary"}
+{"text": "프로젝트 문서 요약좀여", "label": "doc_summary"}
+{"text": "회의록 요약부탁염", "label": "doc_summary"}
+{"text": "연차 문서 요약 조용히 부탁해", "label": "doc_summary"}
+{"text": "출장 지침 요약해줄 수 있어?", "label": "doc_summary"}
+{"text": "보안 규정 요약해 줬으면 좋겠어", "label": "doc_summary"}
+{"text": "인사 평가 문서 요약 부탁해", "label": "doc_summary"}
+{"text": "급여 정책 요점만 요약해 줄 수 있어?", "label": "doc_summary"}
+{"text": "복리후생 문서, 요점 요약 부탁할게", "label": "doc_summary"}
+{"text": "프로젝트 문서 요약 부탁해", "label": "doc_summary"}
+{"text": "회의 기록 요약 가능해?", "label": "doc_summary"}
