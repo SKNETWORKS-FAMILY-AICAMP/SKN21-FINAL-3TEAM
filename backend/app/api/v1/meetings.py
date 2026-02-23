@@ -10,7 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.meeting import MeetingCreate, MeetingResponse, MeetingDetailResponse, ActionItemResponse
+from app.schemas.meeting import (
+    MeetingCreate, MeetingResponse, MeetingDetailResponse,
+    ActionItemResponse, MeetingGenerateResponse, GeneratedActionItem, DetectedRisk,
+)
 from app.services import meeting_service
 
 router = APIRouter()
@@ -93,12 +96,40 @@ async def analyze_meeting(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """회의록 AI 분석 (결정사항, Action Item 추출) — 팀원 C 연동 예정"""
-    from fastapi.responses import JSONResponse
-    return JSONResponse(status_code=501, content={"detail": "팀원 C(승언) 문서 Agent 연동 후 구현 예정"})
+    """
+    기존 회의 AI 분석 — Document Agent를 호출하여 요약/결정사항/Action Items 추출
+    """
+    meeting, action_items, agent_response = await meeting_service.analyze_meeting(
+        db, meeting_id=meeting_id, user_id=user.id
+    )
+    data = agent_response.get("data", {})
+    risks = data.get("risks") or agent_response.get("risks", [])
+
+    return {
+        "meeting_id": meeting.id,
+        "summary": meeting.summary,
+        "decisions": meeting.decisions or [],
+        "action_items": [
+            GeneratedActionItem(
+                content=item.content,
+                assignee=item.assignee,
+                due_date=item.due_date.strftime("%Y-%m-%d") if item.due_date else None,
+            )
+            for item in action_items
+        ],
+        "risk_level": meeting.risk_level,
+        "risks": [
+            DetectedRisk(
+                description=r.get("description", ""),
+                regulation=r.get("regulation"),
+                level=r.get("level", "medium"),
+            )
+            for r in risks
+        ],
+    }
 
 
-@router.post("/generate")
+@router.post("/generate", response_model=MeetingGenerateResponse)
 async def generate_meeting_minutes(
     title: Optional[str] = Body(None),
     meeting_date: Optional[str] = Body(None),
@@ -107,9 +138,58 @@ async def generate_meeting_minutes(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """회의록 생성 — 팀원 C(승언) 문서 Agent 연동 예정"""
-    from fastapi.responses import JSONResponse
-    return JSONResponse(status_code=501, content={"detail": "팀원 C(승언) 문서 Agent 연동 후 구현 예정"})
+    """
+    회의록 생성 — Document Agent를 호출하여 회의록 + Action Items 생성
+    """
+    from datetime import datetime as dt
+
+    # meeting_date 문자열 → datetime 변환
+    parsed_date = None
+    if meeting_date:
+        for fmt in ("%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y/%m/%d"):
+            try:
+                parsed_date = dt.strptime(meeting_date.strip(), fmt)
+                break
+            except ValueError:
+                continue
+
+    meeting, action_items, agent_response = await meeting_service.generate_meeting(
+        db,
+        user_id=user.id,
+        title=title,
+        meeting_date=parsed_date,
+        attendees=attendees,
+        raw_content=raw_content,
+    )
+    data = agent_response.get("data", {})
+    risks = data.get("risks") or agent_response.get("risks", [])
+
+    return MeetingGenerateResponse(
+        meeting_id=meeting.id,
+        document_id=agent_response.get("document_id", 0),
+        summary=meeting.summary or "",
+        decisions=meeting.decisions if isinstance(meeting.decisions, list) else [],
+        action_items=[
+            GeneratedActionItem(
+                content=item.content,
+                assignee=item.assignee,
+                due_date=item.due_date.strftime("%Y-%m-%d") if item.due_date else None,
+            )
+            for item in action_items
+        ],
+        risk_level=meeting.risk_level,
+        risks=[
+            DetectedRisk(
+                description=r.get("description", ""),
+                regulation=r.get("regulation"),
+                level=r.get("level", "medium"),
+            )
+            for r in risks
+        ],
+        preview=agent_response.get("preview", ""),
+        download_url=agent_response.get("download_url", ""),
+        created_at=meeting.created_at,
+    )
 
 
 @router.get("/{meeting_id}/download")
@@ -119,6 +199,11 @@ async def download_meeting_document(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """회의록 다운로드 — 팀원 C(승언) 문서 Agent 연동 예정"""
+    """회의록 다운로드 (DOCX/PDF) — to_docx 구현 대기 중"""
     from fastapi.responses import JSONResponse
-    return JSONResponse(status_code=501, content={"detail": "팀원 C(승언) 문서 Agent 연동 후 구현 예정"})
+    return JSONResponse(
+        status_code=501,
+        content={
+            "detail": "회의록 다운로드(DOCX/PDF 변환)는 to_docx 구현 대기 중입니다. 미리보기는 GET /meetings/{id} 에서 확인 가능합니다."
+        },
+    )

@@ -550,3 +550,59 @@ Excel 2개 → JSONL chat format 변환 스크립트 구현:
 - 학습 완료 후 eval 메트릭 확인 (판단 정확도 목표 ≥85%)
 - vLLM 서빙에 LoRA 어댑터 연결 테스트
 - 5단계 성능 평가 (#13) — 파인튜닝 전/후 비교
+
+---
+
+## 2026-02-23 (일) — 매뉴얼/설명서 PDF 파싱 지원 파서 개선
+
+### 문제
+
+기존 `DocumentParser`의 PDF 청킹이 `제N장/제N조` 패턴(한국어 사내 규정)에만 특화되어 있어,
+MakerBot METHOD 매뉴얼처럼 `1장 소개`, `## 안전 경고 기호`, `**무선 사양**` 같은
+일반 헤딩 구조를 가진 문서는 청킹이 제대로 안 됨.
+
+### 구현 내용
+
+**1. `ai/document_parser/manual_parser.py` (신규) — 매뉴얼 전용 섹션 분할기:**
+
+| 기능 | 설명 |
+|------|------|
+| 마크다운 헤딩 | `#`, `##`, `###` 기반 섹션 분할 |
+| 숫자 헤딩 | `1장`, `2장`, `Chapter 1` 등 인식 |
+| 굵은 텍스트 헤딩 | `**제목**` (줄 전체 볼드) 인식 |
+| 표지/목차 스킵 | DoclingParser와 동일한 toc_patterns 재활용 |
+| 긴 섹션 서브 분할 | 400자 초과 시 단락(`\n\n`) 기준 분할 |
+| 메타데이터 | `section`(상위 섹션), `title`(현재 헤딩), `chapter`(장 번호), `article`(빈 문자열) |
+
+**2. `ai/document_parser/parser.py` (수정) — 문서 유형 자동 판별 라우팅:**
+
+- `__init__`에 `ManualParser` 인스턴스 추가
+- `parse_and_chunk()`에 `doc_type` 파라미터 추가 (`"auto"` / `"regulation"` / `"manual"`)
+- `_detect_doc_type()` 정적 메서드 추가: `제N조` 패턴 2회 이상 → `regulation`, 미만 → `manual`
+- 기본값 `doc_type="auto"` → 기존 호출부 수정 불필요 (하위 호환)
+
+**3. `scripts/ingest_documents.py` (수정) — CLI 옵션 추가:**
+
+- `--doc-type` argparse 옵션 추가 (`auto` / `regulation` / `manual`)
+- `parse_and_chunk()`, `ingest()` 함수에 `doc_type` 파라미터 전달
+- 사용법: `python scripts/ingest_documents.py manual.pdf --doc-type manual`
+
+### 기존 코드 영향
+
+- 기존 규정 PDF: `doc_type="auto"` → `제N조` 패턴 감지 → 기존 DoclingParser 로직 그대로
+- 기존 DOCX/TXT: 변경 없음
+- 기존 호출부: `parse_and_chunk()` 기본값 `doc_type="auto"` → 수정 불필요
+
+### 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `ai/document_parser/manual_parser.py` | 신규 |
+| `ai/document_parser/parser.py` | 수정 |
+| `scripts/ingest_documents.py` | 수정 |
+
+**다음 할 일:**
+- MakerBot 매뉴얼 PDF로 `doc_type="auto"` 실 파싱 테스트
+- 기존 규정 PDF 회귀 테스트 (기존과 동일하게 조항 청킹 되는지 확인)
+- RunPod에서 `train_v1_judgment.py` 실제 학습 실행 (A100 40GB)
+- 5단계 성능 평가 (#13) — 파인튜닝 전/후 비교
