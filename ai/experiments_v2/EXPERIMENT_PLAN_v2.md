@@ -616,6 +616,46 @@ git push origin feat/jiyong
 **결과**: `results/stage6_results.json`, `results/scenario_test_stage5.json`, `results/scenario_test_stage6.json`
 **차트**: `stage6_confusion_adv.png`, `stage6_comparison.png`
 
+### 최종 모델 성능 요약 (Stage 6 — KoELECTRA v2_stage6)
+
+| 항목 | 값 |
+|------|-----|
+| **모델** | monologg/koelectra-base-v3-discriminator |
+| **학습 방식** | Full Fine-tuning + Label Smoothing 0.1 |
+| **파라미터** | 112.9M |
+| **모델 크기** | 431MB |
+| **추론 속도** | 8.3ms (RTX 4090 기준) |
+
+| 메트릭 | Val | Test | Adversarial |
+|--------|:---:|:----:|:-----------:|
+| **Accuracy** | 0.9895 | 0.9790 | 0.8756 |
+| **Macro F1** | **0.9894** | **0.9788** | **0.8758** |
+
+| Intent | Adv P | Adv R | Adv F1 |
+|--------|:-----:|:-----:|:------:|
+| judgment | 0.982 | 0.898 | **0.938** |
+| doc_search | 0.818 | 0.900 | **0.857** |
+| doc_generate | 0.902 | 0.885 | **0.893** |
+| doc_summary | 0.893 | 0.943 | **0.917** |
+| schedule_add | 0.964 | 0.946 | **0.955** |
+| schedule_view | 0.785 | 0.911 | **0.843** |
+| general | 0.836 | 0.836 | **0.836** |
+| doc_qa | 0.854 | 0.695 | **0.766** |
+
+| 시나리오 테스트 | 정확도 |
+|----------------|:------:|
+| normal (7) | 7/7 (100%) |
+| boundary (8) | 7/8 (87.5%) |
+| informal (7) | 6/7 (85.7%) |
+| short (8) | 6/8 (75.0%) |
+| **전체 (30)** | **27/30 (90.0%)** |
+
+| 서비스 설정 | 값 | 효과 |
+|------------|:---:|------|
+| INTENT_CONFIDENCE_THRESHOLD | **0.85** | 이하 → clarify (top-3 후보 제시) |
+| INTENT_FALLBACK_THRESHOLD | **0.4** | 이하 → general 강제 |
+| 과신뢰 오류 (>90% conf) | **13건** | Stage 5 대비 -69% (42→13) |
+
 ---
 
 ## 7. 발표 스토리라인
