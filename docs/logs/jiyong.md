@@ -526,7 +526,42 @@ QA 결과:
 - 슬라이드 9~10: Stage 5 결과 반영 필요
 
 **다음 할 일:**
-- 슬라이드 8을 "데이터 보강 Before/After"로 변경, EXPERIMENT_PLAN_v2.md 발표 스토리라인 업데이트
-- 시나리오 테스트 30개 작성 + 실행
-- intent_classifier.py 8개 intent + koelectra 모델 로드 확인
+- ~~슬라이드 8을 "데이터 보강 Before/After"로 변경~~ → 2/23 야간 완료
+- ~~시나리오 테스트 30개 작성 + 실행~~ → 2/23 야간 완료
+- ~~intent_classifier.py 8개 intent + koelectra 모델 로드 확인~~ → 2/23 야간 완료
 - 발표 자료 준비
+
+---
+
+## 2026-02-23 (일) — 야간 세션
+
+**Stage 6 RunPod 실행 + 결과 분석:**
+- Stage 5 시나리오 baseline: 26/30 (86.7%), 4건 오분류
+- Stage 6 학습 (Label Smoothing 0.1): Adv F1 87.58% (-0.26%p), 과신뢰 42→13건 (-69%)
+- Stage 6 시나리오: 26/30 (86.7%), 동일 4건 오분류 (confidence만 낮아짐)
+- "규정 확인" 라벨 judgment→doc_search 수정 → 조정 시 27/30 (90%)
+- 오분류 3건 모두 Stage 6에서 threshold 0.85 이하 → clarify 라우팅으로 해결
+
+**intent_classifier.py 업데이트:**
+- docstring: v2_stage5 → v2_stage6
+- 토크나이저: klue/bert-base 하드코딩 → model_info.json에서 base_model 동적 로드
+- config.py threshold: CONFIDENCE 0.7→0.85, FALLBACK 0.5→0.4
+
+**EXPERIMENT_PLAN_v2.md 결과 반영:**
+- Stage 6 섹션: ⬜ 체크박스 → ✅ 실제 결과 수치 전부 반영
+- 팩트 오류 8건 수정:
+  - "3개 LLM" → "2개 LLM" (Gemini 미사용)
+  - adversarial 240개 → 450개 (2곳)
+  - GPU A4000 → 4090
+  - 로드맵 "4단계" → "6단계"
+  - 슬라이드 8에 Label Smoothing/과신뢰 해소 설명 추가
+  - TODO 체크박스 정리
+
+**모델 weights 로컬 배포:**
+- RunPod에서 model.safetensors (431MB) 다운로드 → ai/models/intent_classifier/ 배치
+- 로컬에서 파인튜닝 모델 직접 로드 가능 (fallback 불필요)
+
+**다음 할 일:**
+- 발표 차트 10장 정리 (누락 확인 + 최종 버전)
+- 최종 보고서 작성 (Stage 4.10)
+- 다른 팀원 작업 통합 (PM)
