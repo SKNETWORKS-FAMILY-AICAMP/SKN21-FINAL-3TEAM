@@ -5,6 +5,7 @@ import TemplateUploadDialog from '../components/documents/TemplateUploadDialog';
 import DocumentPreview from '../components/documents/DocumentPreview';
 import MeetingInput from '../components/meetings/MeetingInput';
 import MeetingPreview from '../components/meetings/MeetingPreview';
+import { generateDocument, downloadDocument } from '../api/documents';
 
 // Mock: 회의록 AI 생성 결과
 const mockMeetingResult = {
@@ -91,19 +92,51 @@ export default function DocumentGeneratePage() {
 
   const handleMeetingSubmit = async (formData) => {
     setLoading(true);
-    setTimeout(() => {
-      setMeetingResult({
-        ...mockMeetingResult,
-        title: formData.title || mockMeetingResult.title,
+    try {
+      const response = await generateDocument({
+        template_type: 'meeting_minutes',
+        title: formData.title,
         date: formData.date,
-        attendees: formData.attendees.length > 0 ? formData.attendees : mockMeetingResult.attendees,
+        attendees: formData.attendees,
+        content: formData.content,
       });
+      const apiData = response.data;
+      setMeetingResult({
+        title: apiData.title || formData.title,
+        date: apiData.date || formData.date,
+        attendees: apiData.attendees?.length > 0 ? apiData.attendees : formData.attendees,
+        summary: apiData.summary,
+        decisions: apiData.decisions || [],
+        actionItems: (apiData.action_items || []).map((ai) => ({
+          task: ai.content,
+          assignee: ai.assignee,
+          deadline: ai.due_date,
+        })),
+        document_id: apiData.document_id,
+      });
+    } catch (err) {
+      alert('회의록 생성 실패: ' + (err.response?.data?.detail || err.message));
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
-  const handleDownload = (format) => {
-    alert(`${format.toUpperCase()} 다운로드는 백엔드 연동 후 사용 가능합니다.`);
+  const handleDownload = async (format) => {
+    if (!meetingResult?.document_id) {
+      alert('먼저 회의록을 생성해주세요.');
+      return;
+    }
+    try {
+      const response = await downloadDocument(meetingResult.document_id, format);
+      const url = URL.createObjectURL(response.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `회의록.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('다운로드 실패: ' + (err.response?.data?.detail || err.message));
+    }
   };
 
   const handleUpload = async (data) => {
