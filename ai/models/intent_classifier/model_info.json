@@ -1,15 +1,15 @@
 {
-  "base_model": "klue/bert-base",
-  "experiment": "exp5",
-  "best_config": {
-    "epochs": 5,
-    "lr": 2e-5,
-    "batch_size": 16,
-    "warmup_ratio": 0.0
-  },
-  "metrics": {
-    "eval_f1": 0.9823,
-    "adv_acc": 0.9009,
-    "adv_f1": 0.9015
-  }
+  "base_model": "monologg/koelectra-base-v3-discriminator",
+  "experiment": "v2_stage5",
+  "intents": [
+    "judgment",
+    "doc_search",
+    "doc_generate",
+    "doc_summary",
+    "schedule_add",
+    "schedule_view",
+    "general",
+    "doc_qa"
+  ],
+  "augmented": true
 }
