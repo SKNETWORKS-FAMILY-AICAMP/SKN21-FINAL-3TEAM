@@ -11,8 +11,8 @@ Intent Classification 모델 (팀원 A 담당)
   - general: 일반 질문
   - doc_qa: 문서 내용 기반 질의응답
 
-모델: klue/bert-base (Fine-tuned) — 현재 fallback 모드
-학습 데이터: experiments_v2에서 재학습 예정
+모델: monologg/koelectra-base-v3-discriminator (Fine-tuned, v2_stage6)
+학습 데이터: experiments_v2 Stage 6 (augmented + Label Smoothing 0.1)
 """
 
 import json
@@ -89,11 +89,18 @@ class IntentClassifier:
         try:
             from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
-            # 토크나이저는 klue/bert-base 원본 사용 (로컬 저장본과 vocab 불일치 방지)
-            self.tokenizer = AutoTokenizer.from_pretrained("klue/bert-base")
+            # model_info.json에서 base_model 읽기 (토크나이저 결정용)
+            base_model = "monologg/koelectra-base-v3-discriminator"  # default
+            model_info_file = model_dir / "model_info.json"
+            if model_info_file.exists():
+                with open(model_info_file, "r", encoding="utf-8") as f:
+                    model_info = json.load(f)
+                base_model = model_info.get("base_model", base_model)
+
+            self.tokenizer = AutoTokenizer.from_pretrained(base_model)
             self.model = AutoModelForSequenceClassification.from_pretrained(str(model_dir))
             self.model.eval()
-            logger.info("Intent classifier loaded from %s (tokenizer: klue/bert-base)", model_dir)
+            logger.info("Intent classifier loaded from %s (tokenizer: %s)", model_dir, base_model)
         except Exception as e:
             logger.error("Failed to load intent classifier: %s", e)
             self.model = None

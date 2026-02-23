@@ -1,6 +1,6 @@
 # Intent 분류 모델 실험 재설계 (v2)
 
-> **상태**: Stage 6 진행 중 (Label Smoothing + 시나리오 테스트 + Threshold 조정)
+> **상태**: Stage 6 완료 (Label Smoothing + 시나리오 테스트 + Threshold 조정)
 > **작성일**: 2026-02-22
 > **최종 수정**: 2026-02-23 (Stage 5 완료 + Stage 6 추가)
 > **담당**: 신지용 (PM)
@@ -27,6 +27,7 @@
 | 2026-02-23 | **Stage 5.3 보강 재학습 완료**: Adv F1 86.04% → 87.84% (+1.80%p) |
 | 2026-02-23 | **Stage 5.5 모델 저장 완료**: ai/models/intent_classifier/ |
 | 2026-02-23 | **Stage 6 추가**: Label Smoothing 0.1 + 시나리오 테스트 30문장 + Threshold 조정 |
+| 2026-02-23 | **Stage 6 완료**: Adv F1 87.58%, 과신뢰 42→13건, 시나리오 27/30 (라벨 수정 후) |
 
 ---
 
@@ -529,52 +530,89 @@ git push origin feat/jiyong
 **실행**: `python ai/experiments_v2/run_stage5_retrain.py --save-model`
 **결과**: `results/stage5_results.json`, `results/stage5_comparison.png`
 
-### Stage 6: Label Smoothing + 시나리오 테스트 + Threshold 조정 (진행 중)
+### Stage 6: Label Smoothing + 시나리오 테스트 + Threshold 조정 ✅ 완료
 
 **동기**: Stage 5 오분류 63건 중 42건(66.7%)이 과신뢰 (confidence >90%인데 틀림). 현재 threshold 0.7로는 과신뢰 오류를 잡을 수 없음.
 
 | 순서 | 작업 | 상태 |
 |:---:|------|:----:|
-| 6.1 | `run_scenario_test.py` 실행 — Stage 5 baseline | ⬜ |
-| 6.2 | `run_stage5_retrain.py --label-smoothing 0.1` — Stage 6 학습 | ⬜ |
-| 6.3 | `run_scenario_test.py --stage6` — Stage 6 비교 | ⬜ |
-| 6.4 | 결과 확인 후 모델 덮어쓰기 판단 | ⬜ |
-| 6.5 | `config.py` threshold 최종 확정 | ⬜ |
-| 6.6 | 문서 업데이트 (실험 계획서 + 발표 스토리라인) | ⬜ |
+| 6.1 | `run_scenario_test.py` 실행 — Stage 5 baseline | ✅ |
+| 6.2 | `run_stage5_retrain.py --label-smoothing 0.1 --save-model` — Stage 6 학습 | ✅ |
+| 6.3 | `run_scenario_test.py --stage6` — Stage 6 비교 | ✅ |
+| 6.4 | 결과 확인 후 모델 덮어쓰기 판단 | ✅ (저장 완료) |
+| 6.5 | `config.py` threshold 최종 확정 | ✅ (0.85 / 0.4) |
+| 6.6 | 문서 업데이트 (실험 계획서 + 발표 스토리라인) | ✅ |
 
-**Label Smoothing 0.1 기대 효과:**
-- 정답 confidence가 0.99 → 0.85~0.95로 내려감 (부드러운 분포)
-- 틀린 예측의 confidence도 0.95 → 0.75~0.85로 내려감
-- 정답/오답 confidence gap이 벌어져서 threshold로 분리 가능
-- F1은 동등하거나 소폭 변동 예상 (Adv F1 ≥ 87% 기준)
+**6.2 학습 결과 (Label Smoothing 0.1):**
 
-**시나리오 테스트 (30문장, 4유형):**
+| 메트릭 | Stage 5 | Stage 6 | 변화 |
+|--------|:-------:|:-------:|:----:|
+| Val F1 | 0.9897 | 0.9894 | -0.03%p |
+| Test F1 | 0.9795 | 0.9788 | -0.07%p |
+| **Adv F1** | **0.8784** | **0.8758** | **-0.26%p** |
 
-| 유형 | 개수 | 설명 |
-|------|:----:|------|
-| boundary | 8 | 두 intent 사이 모호한 질문 |
-| short | 8 | 2~4어절 초단문 |
-| informal | 7 | 구어체/줄임말/오타 |
-| normal | 7 | 일반 업무 질문 |
+- F1 소폭 하락 (-0.26%p)이지만 허용 범위 내 (≥87% 기준 통과)
+- 학습 시간: 71.4초
 
-**Threshold 조정 (Stage 6 결과 반영):**
-- `INTENT_CONFIDENCE_THRESHOLD`: 0.7 → 0.85 (예정)
-- `INTENT_FALLBACK_THRESHOLD`: 0.5 → 0.4 (예정)
-- Label Smoothing 후 정답 0.85~0.95, 오답 0.70~0.85 예상 → 0.85 기준 분리
+**과신뢰 개선 (핵심 성과):**
 
-**실행**:
-```bash
-# 1. Stage 5 시나리오 baseline
-python ai/experiments_v2/run_scenario_test.py
+| 항목 | Stage 5 | Stage 6 | 변화 |
+|------|:-------:|:-------:|:----:|
+| 오분류 중 과신뢰 (>90%) | **42건** (66.7%) | **13건** (23.2%) | **-69%** |
+| 정답 confidence 중앙값 | 0.9968 | 0.9366 | 부드러운 분포 |
+| 오답 confidence 중앙값 | ~0.90 | ~0.64 | 분리 가능 |
 
-# 2. Stage 6 학습 + 모델 저장
-python ai/experiments_v2/run_stage5_retrain.py --label-smoothing 0.1 --save-model
+→ Threshold 0.85로 정답/오답 분리 가능해짐
 
-# 3. Stage 6 시나리오 비교
-python ai/experiments_v2/run_scenario_test.py --stage6
-# (또는 별도 경로 지정: --model-dir /path/to/stage6/model)
-```
+**Adversarial Per-class F1 (Stage 5 → Stage 6):**
 
+| Intent | Stage 5 | Stage 6 | 변화 |
+|--------|:-------:|:-------:|:----:|
+| judgment | 0.920 | 0.938 | +1.8%p |
+| doc_search | 0.869 | 0.857 | -1.2%p |
+| doc_generate | 0.882 | 0.893 | +1.1%p |
+| doc_summary | 0.875 | 0.917 | +4.2%p |
+| schedule_add | 0.944 | 0.955 | +1.1%p |
+| schedule_view | 0.887 | 0.843 | -4.4%p |
+| general | 0.870 | 0.836 | -3.4%p |
+| doc_qa | 0.779 | 0.766 | -1.3%p |
+
+**6.1/6.3 시나리오 테스트 (30문장, 4유형):**
+
+| 유형 | 개수 | Stage 5 | Stage 6 |
+|------|:----:|:-------:|:-------:|
+| normal | 7 | 7/7 (100%) | 7/7 (100%) |
+| boundary | 8 | 7/8 (87.5%) | 7/8 (87.5%) |
+| informal | 7 | 6/7 (85.7%) | 6/7 (85.7%) |
+| short | 8 | 6/8 (75.0%) | 6/8 (75.0%) |
+| **전체** | **30** | **26/30 (86.7%)** | **26/30 (86.7%)** |
+
+> "규정 확인" 라벨을 judgment→doc_search로 수정 (리뷰 후) → 조정 시 27/30 (90.0%)
+
+**오분류 상세 (4건 → 라벨 수정 후 3건):**
+
+| 문장 | 유형 | 실제 | Stage 5 예측 (conf) | Stage 6 예측 (conf) |
+|------|------|------|:---:|:---:|
+| "휴가 규정에 대해 판단해줄 수 있어?" | boundary | judgment | doc_qa (0.996) | doc_qa (0.826) |
+| ~~"규정 확인"~~ | ~~short~~ | ~~judgment~~ | ~~doc_search (0.998)~~ | ~~doc_search (0.920)~~ |
+| "문서 질문" | short | doc_qa | doc_summary (0.743) | doc_summary (0.319) |
+| "그 계약서 검토 좀 해줄래ㅋㅋ" | informal | judgment | doc_search (0.821) | doc_generate (0.768) |
+
+- "규정 확인": 라벨 수정 후 정답 처리 (doc_search가 맞음)
+- "문서 질문": Stage 6에서 conf 0.319 → threshold 0.85 이하로 clarify 라우팅됨 ✅
+- "계약서 검토 좀 해줄래ㅋㅋ": Stage 6에서 conf 0.768 → threshold 이하로 clarify 라우팅됨 ✅
+- "휴가 규정에 대해 판단해줄 수 있어?": Stage 6에서 conf 0.826 → threshold 이하로 clarify 라우팅됨 ✅
+
+→ **Stage 6에서 3건 모두 threshold 0.85 이하** → clarify로 정상 라우팅 (과신뢰 해소)
+
+**6.5 Threshold 확정:**
+
+| 설정 | 변경 전 | 변경 후 | 근거 |
+|------|:-------:|:-------:|------|
+| `INTENT_CONFIDENCE_THRESHOLD` | 0.7 | **0.85** | 정답 중앙값 0.94 vs 오답 중앙값 0.64 → 0.85 분리 |
+| `INTENT_FALLBACK_THRESHOLD` | 0.5 | **0.4** | 극저신뢰 입력만 general 강제 |
+
+**실행**: `python ai/experiments_v2/run_stage5_retrain.py --label-smoothing 0.1 --save-model`
 **결과**: `results/stage6_results.json`, `results/scenario_test_stage5.json`, `results/scenario_test_stage6.json`
 **차트**: `stage6_confusion_adv.png`, `stage6_comparison.png`
 

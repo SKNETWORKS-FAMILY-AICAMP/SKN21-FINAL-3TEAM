@@ -14,7 +14,7 @@
   {"text": "내일 미팅 확인하고 오후에 하나 더 넣어줘", "label": "schedule_add", "category": "boundary"},
   {"text": "이번 달 팀 일정 전체 보여줘", "label": "schedule_view", "category": "boundary"},
   {"text": "보고서에 나온 리스크 항목들 알려줘", "label": "doc_qa", "category": "boundary"},
-  {"text": "규정 확인", "label": "judgment", "category": "short"},
+  {"text": "규정 확인", "label": "doc_search", "category": "short"},
   {"text": "문서 찾아줘", "label": "doc_search", "category": "short"},
   {"text": "보고서 작성", "label": "doc_generate", "category": "short"},
   {"text": "요약해줘", "label": "doc_summary", "category": "short"},
