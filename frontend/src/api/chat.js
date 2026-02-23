@@ -3,8 +3,8 @@
  */
 import client from './client'
 
-export const sendMessage = (message, sessionId) =>
-  client.post('/chat/', { message, session_id: sessionId })
+export const sendMessage = (message, sessionId, documentId) =>
+  client.post('/chat/', { message, session_id: sessionId, document_id: documentId })
 
 /**
  * SSE 스트리밍 요청 URL
