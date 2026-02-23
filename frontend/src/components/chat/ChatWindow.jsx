@@ -215,7 +215,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       )}
 
       {/* 입력 영역 */}
-      <div className={`flex gap-2.5 pt-4 pb-4 pl-4 border-t border-neutral-divider flex-shrink-0 ${panelOpen ? 'pr-[3px]' : 'pr-32'}`}>
+      <div className={`flex gap-2.5 pt-4 pb-4 pl-4 border-t border-neutral-divider flex-shrink-0 ${panelOpen ? 'pr-[3px]' : 'pr-4'}`}>
         <div className="flex-1 flex items-center bg-surface-card rounded-md border border-neutral-border px-4 py-3 transition focus-within:border-primary-300">
           {/* 파일 첨부 버튼 */}
           <button
