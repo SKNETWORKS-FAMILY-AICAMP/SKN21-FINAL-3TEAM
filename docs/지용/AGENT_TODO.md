@@ -2,6 +2,28 @@
 
 > 파인튜닝(Intent BERT, 문서 sLLM) 제외, 기능 완성에 필요한 작업만 정리
 
+## 리팩토링 배경
+
+2/22에 Document Agent 리팩토링이 develop에 머지 & EC2 배포되었습니다.
+
+**변경 요약 (intent 7개 → 8개)**:
+
+| Before | After |
+|--------|-------|
+| `meeting_generate` (삭제) | `doc_summary` (신규) — 문서 요약 |
+| - | `doc_qa` (신규) — 문서 내용 기반 질의응답 |
+| `doc_generate` | `doc_generate` — 회의록을 meeting_minutes 템플릿으로 통합 |
+
+- `meeting_generate` 제거 → `doc_generate`의 `template_type=meeting_minutes`로 통합
+- `doc_summary` 신규 — 선택한 문서의 내용을 요약 (document_id 필요)
+- `doc_qa` 신규 — 문서 내용 기반 질의응답 (RAG + LLM)
+- BERT는 현재 비활성화, Solar LLM + 임베딩 유사도 fallback으로 분류 중
+
+> 상세 변경 기록: `docs/지용/REFACTORING_DOC_AGENT_v2.md`
+> 수정 파일 15개, 커밋: `c6bc62f`
+
+---
+
 ## 현재 상태 (2026-02-22)
 
 | 기능 | AI Agent | Backend | Frontend | E2E |
