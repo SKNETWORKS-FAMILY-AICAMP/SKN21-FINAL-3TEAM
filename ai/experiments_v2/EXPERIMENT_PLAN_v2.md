@@ -1,8 +1,8 @@
 # Intent 분류 모델 실험 재설계 (v2)
 
-> **상태**: Stage 5 진행 중 (오분류 분석 완료 → 보강 재학습 대기)
+> **상태**: Stage 6 진행 중 (Label Smoothing + 시나리오 테스트 + Threshold 조정)
 > **작성일**: 2026-02-22
-> **최종 수정**: 2026-02-23 (Stage 5.1 오분류 분석 + 5.2 보강 데이터 준비)
+> **최종 수정**: 2026-02-23 (Stage 5 완료 + Stage 6 추가)
 > **담당**: 신지용 (PM)
 
 ---
@@ -24,6 +24,9 @@
 | 2026-02-23 | **Stage 4 최종 평가 완료**: koelectra Adv F1 86.04% > bert 85.17% > distilkobert 79.26% |
 | 2026-02-23 | **Stage 5.1 오분류 분석 완료**: test 8건(2.8%), adversarial 63건(14.0%) 오분류 |
 | 2026-02-23 | **Stage 5.2 보강 데이터 준비**: 98개 타겟 보강 (QA 통과: 적대적 누출 0건) |
+| 2026-02-23 | **Stage 5.3 보강 재학습 완료**: Adv F1 86.04% → 87.84% (+1.80%p) |
+| 2026-02-23 | **Stage 5.5 모델 저장 완료**: ai/models/intent_classifier/ |
+| 2026-02-23 | **Stage 6 추가**: Label Smoothing 0.1 + 시나리오 테스트 30문장 + Threshold 조정 |
 
 ---
 
@@ -116,7 +119,7 @@ data/training/intent_v2/
 | Split | 80/10/10 | Train 2,327 / Val 285 / Test 286 | ✅ 완료 |
 | 적대적 테스트 | 240개 (30/intent) | **450개** (GPT 232 + Claude 240, 중복 제거) | ✅ 완료 |
 | 보강 데이터 (Stage 5) | ~100개 | **98개** | ✅ 완료 |
-| 시나리오 테스트 | 30개 | 0개 | ⬜ 미작성 |
+| 시나리오 테스트 | 30개 | **30개** | ✅ 완료 |
 
 **기본 데이터 intent별 분포 (중복 제거 후):**
 
@@ -402,7 +405,7 @@ git push origin feat/jiyong
 | 4.5 | 추론 속도 + 메모리 측정 | ✅ koelectra 8.3ms / bert 10.4ms / distilkobert 2.8ms |
 | 4.6 | 통계 검증 (McNemar, Bootstrap CI) | ✅ McNemar 전부 n.s. / CI 산출 완료 |
 | 4.7 | 오분류 수집 + 유형 분류 | ✅ test 8건, adversarial 63건 분석 완료 |
-| 4.8 | 시나리오 테스트 | ⬜ 30개 미작성 |
+| 4.8 | 시나리오 테스트 | → Stage 6에서 실행 |
 | 4.9 | 차트 생성 | ✅ 11장 (confusion 3, ablation 3, confidence 3, speed 1, f1_vs_speed 1) |
 | 4.10 | 최종 보고서 작성 | ⬜ |
 
@@ -447,15 +450,30 @@ git push origin feat/jiyong
 **결과**: `results/final_eval_results.json`
 **차트**: confusion 3장, ablation 3장, confidence 3장, speed_comparison, f1_vs_speed
 
-### Stage 5: 보강 + 재평가 (진행 중)
+### Stage 5: 보강 + 재평가 ✅ 완료
 
 | 순서 | 작업 | 상태 |
 |:---:|------|:----:|
 | 5.1 | `run_error_analysis.py` 실행 — 오분류 유형 분석 | ✅ |
 | 5.2 | 타겟 보강 데이터 생성 + QA | ✅ |
-| 5.3 | 재학습 + 재평가 (`run_stage5_retrain.py`) | ⬜ |
-| 5.4 | 시나리오 테스트 30개 작성 + 실행 (정성평가) | ⬜ |
-| 5.5 | 최종 모델 저장 (`ai/models/intent_classifier/`) | ⬜ |
+| 5.3 | 재학습 + 재평가 (`run_stage5_retrain.py`) | ✅ |
+| 5.4 | 시나리오 테스트 30개 작성 + 실행 (정성평가) | → Stage 6 |
+| 5.5 | 최종 모델 저장 (`ai/models/intent_classifier/`) | ✅ |
+
+**5.3 재학습 결과:**
+
+| 메트릭 | Stage 4 | Stage 5 | 변화 |
+|--------|:-------:|:-------:|:----:|
+| Test F1 | 0.9726 | 0.9795 | +0.69%p |
+| **Adv F1** | **0.8604** | **0.8784** | **+1.80%p** |
+
+**향상된 intent:**
+- doc_qa: 0.710 → 0.779 (+6.9%p)
+- doc_search: 0.827 → 0.869 (+4.2%p)
+- general: 0.836 → 0.870 (+3.4%p)
+
+**잔존 과제:**
+- 오분류 63건 중 42건(66.7%)이 과신뢰 (confidence >90%) → Stage 6에서 해결
 
 **5.1 오분류 분석 결과:**
 
@@ -511,6 +529,55 @@ git push origin feat/jiyong
 **실행**: `python ai/experiments_v2/run_stage5_retrain.py --save-model`
 **결과**: `results/stage5_results.json`, `results/stage5_comparison.png`
 
+### Stage 6: Label Smoothing + 시나리오 테스트 + Threshold 조정 (진행 중)
+
+**동기**: Stage 5 오분류 63건 중 42건(66.7%)이 과신뢰 (confidence >90%인데 틀림). 현재 threshold 0.7로는 과신뢰 오류를 잡을 수 없음.
+
+| 순서 | 작업 | 상태 |
+|:---:|------|:----:|
+| 6.1 | `run_scenario_test.py` 실행 — Stage 5 baseline | ⬜ |
+| 6.2 | `run_stage5_retrain.py --label-smoothing 0.1` — Stage 6 학습 | ⬜ |
+| 6.3 | `run_scenario_test.py --stage6` — Stage 6 비교 | ⬜ |
+| 6.4 | 결과 확인 후 모델 덮어쓰기 판단 | ⬜ |
+| 6.5 | `config.py` threshold 최종 확정 | ⬜ |
+| 6.6 | 문서 업데이트 (실험 계획서 + 발표 스토리라인) | ⬜ |
+
+**Label Smoothing 0.1 기대 효과:**
+- 정답 confidence가 0.99 → 0.85~0.95로 내려감 (부드러운 분포)
+- 틀린 예측의 confidence도 0.95 → 0.75~0.85로 내려감
+- 정답/오답 confidence gap이 벌어져서 threshold로 분리 가능
+- F1은 동등하거나 소폭 변동 예상 (Adv F1 ≥ 87% 기준)
+
+**시나리오 테스트 (30문장, 4유형):**
+
+| 유형 | 개수 | 설명 |
+|------|:----:|------|
+| boundary | 8 | 두 intent 사이 모호한 질문 |
+| short | 8 | 2~4어절 초단문 |
+| informal | 7 | 구어체/줄임말/오타 |
+| normal | 7 | 일반 업무 질문 |
+
+**Threshold 조정 (Stage 6 결과 반영):**
+- `INTENT_CONFIDENCE_THRESHOLD`: 0.7 → 0.85 (예정)
+- `INTENT_FALLBACK_THRESHOLD`: 0.5 → 0.4 (예정)
+- Label Smoothing 후 정답 0.85~0.95, 오답 0.70~0.85 예상 → 0.85 기준 분리
+
+**실행**:
+```bash
+# 1. Stage 5 시나리오 baseline
+python ai/experiments_v2/run_scenario_test.py
+
+# 2. Stage 6 학습 + 모델 저장
+python ai/experiments_v2/run_stage5_retrain.py --label-smoothing 0.1 --save-model
+
+# 3. Stage 6 시나리오 비교
+python ai/experiments_v2/run_scenario_test.py --stage6
+# (또는 별도 경로 지정: --model-dir /path/to/stage6/model)
+```
+
+**결과**: `results/stage6_results.json`, `results/scenario_test_stage5.json`, `results/scenario_test_stage6.json`
+**차트**: `stage6_confusion_adv.png`, `stage6_comparison.png`
+
 ---
 
 ## 7. 발표 스토리라인
@@ -524,7 +591,7 @@ git push origin feat/jiyong
 | 5 | 효율성 vs 정확도 | 111M이 과한가? | F1 vs 속도 scatter |
 | 6 | HP 민감도 | 데이터 > 하이퍼파라미터 | 히트맵 + seed 안정성 |
 | 7 | 오분류 분석 | 어디서, 왜 틀리나 | Confusion Matrix + 사례 |
-| 8 | 전처리 효과 | 규칙 기반 +α | Ablation 바 차트 |
+| 8 | 오분류 보강 | 타겟 보강 98개 → Adv F1 +1.8%p + confidence 캘리브레이션 | Stage 4→5 비교 바 차트 |
 | 9 | 결론 | 모델 선택 근거 (정량) | 최종 비교표 + CI |
 | 10 | 통합 | 실제 서비스 적용 | 코드 스니펫 + 플로우 |
 
@@ -536,7 +603,7 @@ git push origin feat/jiyong
 4. HP 히트맵 (lr × epochs)
 5. Seed 안정성 (Error bar)
 6. Confusion Matrix — best model, adversarial (Heatmap)
-7. 전처리 ablation (Bar)
+7. Stage 4→5 보강 전후 비교 (Bar)
 8. Per-class F1 (Radar)
 9. Training loss curves (Line)
 10. Confidence 분포 (Histogram)
@@ -608,7 +675,7 @@ git push origin feat/jiyong
 - [x] intent별 기본 데이터 JSONL (8개, 2,299개) ✅
 - [x] 경계 쌍 데이터 (600개, GPT+Claude) ✅
 - [x] 적대적 테스트 v2 (450개, 중복 제거 후) ✅
-- [ ] 시나리오 테스트 (30개) ⬜
+- [x] 시나리오 테스트 (30개, 4유형) ✅
 - [x] Train/Val/Test 분할 (2,327/285/286) ✅
 - [x] 품질 검증 보고서 (DATA_QA_REPORT.md) ✅
 
@@ -618,7 +685,8 @@ git push origin feat/jiyong
 - [x] `ai/experiments_v2/run_grid_search.py` — Stage 3 ✅
 - [x] `ai/experiments_v2/run_final_eval.py` — Stage 4 ✅
 - [x] `ai/experiments_v2/run_error_analysis.py` — 오분류 분석 ✅
-- [x] `ai/experiments_v2/run_stage5_retrain.py` — Stage 5 보강 재학습 ✅
+- [x] `ai/experiments_v2/run_stage5_retrain.py` — Stage 5/6 보강 재학습 + Label Smoothing ✅
+- [x] `ai/experiments_v2/run_scenario_test.py` — 시나리오 테스트 (30문장, 4유형) ✅
 
 ### 결과물
 - [x] 3모델 성능 비교표 ✅ (koelectra 0.9825 > bert 0.9780 > distilkobert 0.9498)
