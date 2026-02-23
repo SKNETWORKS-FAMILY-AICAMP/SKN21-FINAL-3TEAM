@@ -27,6 +27,7 @@ class ChatRequest(BaseModel):
     source_page: Optional[str] = None       # 어느 페이지에서 보냈는지 (chatbot | meeting_page | document_page)
     template_id: Optional[int] = None       # 문서/회의록 페이지에서 템플릿 지정 시
     template_type: Optional[str] = None     # 시스템 템플릿 타입 직접 지정 시
+    document_id: Optional[int] = None       # 문서 요약/QA 시 대상 문서 ID
 
 
 # ── Agent별 Result 데이터 모델 ──
@@ -38,22 +39,27 @@ class JudgmentResultData(BaseModel):
     regulations: list[dict] = []            # [{"name": "...", "article": "...", "content": "..."}]
 
 
-class MeetingResultData(BaseModel):
-    """meeting_generate intent 응답 데이터"""
-    meeting_id: int
-    summary: str
-    decisions: list[str] = []
-    action_items: list[dict] = []           # [{"content": "...", "assignee": "...", "due_date": "..."}]
-    preview: str
-    download_url: str
-
-
 class DocGenerateResultData(BaseModel):
     """doc_generate intent 응답 데이터"""
     document_id: int
     preview: str
     template_type: str
     download_url: str
+
+
+class DocSummaryResultData(BaseModel):
+    """doc_summary intent 응답 데이터"""
+    title: Optional[str] = None
+    core_summary: str
+    key_points: list[str] = []
+    keywords: list[str] = []
+
+
+class DocQAResultData(BaseModel):
+    """doc_qa intent 응답 데이터"""
+    answer: str
+    citations: list[dict] = []              # [{"source": "...", "content": "...", "relevance": "높음|중간|낮음"}]
+    confidence: float = 0.0
 
 
 class DocSearchResultData(BaseModel):
@@ -73,7 +79,7 @@ class ScheduleAddResultData(BaseModel):
 class SSEIntentEvent(BaseModel):
     """[intent] 이벤트 — Intent 분류 결과 알려줌"""
     event: str = "intent"
-    intent: str                             # judgment, doc_search, doc_generate, meeting_generate, schedule_add, schedule_view, general
+    intent: str                             # judgment, doc_search, doc_generate, doc_summary, doc_qa, schedule_add, schedule_view, general
     confidence: float
     agent_type: str                         # judgment_agent, document_agent, schedule_agent, general
 
@@ -89,9 +95,10 @@ class SSEResultEvent(BaseModel):
 
     intent별 data 구조:
       judgment         → JudgmentResultData
-      meeting_generate → MeetingResultData
       doc_generate     → DocGenerateResultData
       doc_search       → DocSearchResultData
+      doc_summary      → DocSummaryResultData
+      doc_qa           → DocQAResultData
       schedule_add     → ScheduleAddResultData
       schedule_view    → list[ScheduleResponse]
       general          → {"answer": "..."}

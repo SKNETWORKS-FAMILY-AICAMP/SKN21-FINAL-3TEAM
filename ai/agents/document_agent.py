@@ -3,16 +3,18 @@
 
 기능:
   - 문서 검색 결과 반환 (doc_search)
-  - 사용자 템플릿(업로드 or 선택) 기반 문서 요약 및 생성 (doc_generate)
-  - 회의 내용 요약 + 회의록 양식 채워서 생성 (meeting_generate)
+  - 문서 생성 — 보고서/회의록/JD/제안서 (doc_generate)
+  - 문서 요약 (doc_summary)
+  - 문서 내용 기반 질의응답 (doc_qa)
   - 규정 리스크 자동 감지 (RAG 기반 규정 대조)
 
 입출력:
-  Input: AgentState (user_input, intent, context, template_id)
+  Input: AgentState (user_input, intent, context, template_id, document_id, document_content)
   Output: AgentState (agent_response 채움)
 """
 import json
 import logging
+import re
 import time
 from typing import Any, Dict, List
 
@@ -28,8 +30,9 @@ async def document_agent(state: AgentState) -> AgentState:
 
     intent에 따라 분기:
       - doc_search: 문서 검색 결과 반환
-      - doc_generate: 사용자 템플릿(업로드 or 선택) 기반 문서 요약 및 생성
-      - meeting_generate: 회의 내용 요약 + 회의록 양식 채워서 생성
+      - doc_generate: 문서 생성 (보고서/회의록/JD/제안서)
+      - doc_summary: 문서 요약
+      - doc_qa: 문서 내용 기반 질의응답
     """
     intent = state.get("intent", "").lower()
     user_input = state.get("user_input", "")
@@ -50,13 +53,28 @@ async def document_agent(state: AgentState) -> AgentState:
             response_data = _handle_doc_search(user_input, context, user_id, stream_mode=stream_mode)
 
         elif intent == "doc_generate":
-            template_type = "report"
+            # template_type 결정: ① state에서 프론트가 보낸 값 ② 키워드 감지
+            template_type = state.get("template_type") or _detect_template_type(user_input)
             print(f"[DocumentAgent] → _handle_doc_generate 호출 | template={template_type}")
             response_data = _handle_doc_generate(user_input, template_type)
 
-        elif intent == "meeting_generate":
-            print("[DocumentAgent] → _handle_meeting_generate 호출")
-            response_data = _handle_meeting_generate(user_input)
+        elif intent == "doc_summary":
+            print("[DocumentAgent] → _handle_doc_summary 호출")
+            document_content = state.get("document_content") or state.get("extracted_text")
+            response_data = _handle_doc_summary(
+                user_input,
+                document_content=document_content,
+                stream_mode=stream_mode,
+            )
+
+        elif intent == "doc_qa":
+            print("[DocumentAgent] → _handle_doc_qa 호출")
+            response_data = _handle_doc_qa(
+                user_input,
+                context=context,
+                user_id=user_id,
+                stream_mode=stream_mode,
+            )
 
         elif intent == "risk_detect":
              print("[DocumentAgent] → _handle_risk_detect 호출")
@@ -79,6 +97,25 @@ async def document_agent(state: AgentState) -> AgentState:
     return state
 
 
+# ── 헬퍼 ──
+
+def _detect_template_type(user_input: str) -> str:
+    """사용자 입력에서 템플릿 타입을 키워드로 감지
+
+    Returns:
+        "meeting_minutes" | "jd" | "proposal" | "report" (기본값)
+    """
+    input_lower = user_input.lower()
+
+    if re.search(r"회의록|미팅.*(기록|노트|정리)", input_lower):
+        return "meeting_minutes"
+    if re.search(r"jd|채용.*공고|직무.*기술서|job.*description", input_lower):
+        return "jd"
+    if re.search(r"제안서|proposal", input_lower):
+        return "proposal"
+    return "report"
+
+
 def _detect_search_intent(query: str) -> str:
     """사용자 질문에서 검색 의도 감지
 
@@ -88,8 +125,6 @@ def _detect_search_intent(query: str) -> str:
     Returns:
         "summarize" | "find" | "explain"
     """
-    import re
-
     query_lower = query.lower()
 
     # 요약 키워드 (최우선)
@@ -147,6 +182,8 @@ def _build_search_prompt(query: str, context: list) -> tuple:
     return sys_prompt, user_prompt
 
 
+# ── Intent 핸들러 ──
+
 def _handle_doc_search(query: str, context: List[str], user_id: int = None, stream_mode: bool = False) -> Dict[str, Any]:
     """문서 검색 결과 처리"""
     _t = time.time()
@@ -174,22 +211,7 @@ def _handle_doc_search(query: str, context: List[str], user_id: int = None, stre
             context = []
 
     # 2. 출처 정보 (답변 + 출처 분리, 중복 제거)
-    sources = []
-    seen_sources = set()
-    if search_results:
-        for doc in search_results:
-            content_key = doc.get("content", "")[:100]
-            if content_key in seen_sources:
-                continue
-            seen_sources.add(content_key)
-
-            sources.append({
-                "title": doc.get("title") or doc.get("chapter") or doc.get("source", "제목 없음"),
-                "source": doc.get("source", ""),
-                "score": doc.get("score", 0.0),
-                "content": doc.get("content", "")[:200] + "...",
-            })
-
+    sources = _build_sources(search_results)
     print(f"[DocumentAgent] 출처 정보: {len(sources)}개")
 
     # 3. Context가 없으면 검색 실패
@@ -235,9 +257,14 @@ def _handle_doc_search(query: str, context: List[str], user_id: int = None, stre
     }
 
 def _handle_doc_generate(user_input: str, template_type: str) -> Dict[str, Any]:
-    """문서 생성 처리"""
+    """문서 생성 처리 (보고서/회의록/JD/제안서)"""
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_generate | template_type={template_type}")
+
+    # 회의록 생성인 경우 전용 프롬프트
+    if template_type == "meeting_minutes":
+        return _generate_meeting_minutes(user_input)
+
     # 1. 템플릿 가져오기
     try:
         template = get_system_template(template_type)
@@ -266,43 +293,40 @@ def _handle_doc_generate(user_input: str, template_type: str) -> Dict[str, Any]:
         data = {"content": generated_json_str} # Fallback
 
     # 3. 템플릿 렌더링 (Markdown)
-    # BaseTemplate.render()가 구현되어 있다면:
-    # preview = template.render(data)
-    # 현재는 미구현이므로 임시 처리
     preview = f"# {data.get('title', '문서')}\n\n{data.get('content', '내용 없음')}"
 
     return {
         "type": "doc_generate",
-        "template_id": None, # 추후 DB ID
+        "template_type": template_type,
+        "template_id": None,
         "template_name": template.template_name if template else template_type,
         "preview": preview,
         "data": data,
         "document_id": 123, # Mock ID
-        "download_url": "/api/v1/documents/123/download" # Mock URL
+        "download_url": "/api/v1/documents/123/download"
     }
 
-def _handle_meeting_generate(user_input: str) -> Dict[str, Any]:
-    """회의록 생성 처리"""
+
+def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
+    """회의록 생성 (doc_generate의 meeting_minutes 분기)"""
     _t = time.time()
-    print(f"[DocumentAgent] _handle_meeting_generate | input='{user_input[:80]}...'")
-    # 1. LLM으로 회의 내용 분석 및 구조화
+    print(f"[DocumentAgent] _generate_meeting_minutes | input='{user_input[:80]}...'")
+
     sys_prompt = "당신은 회의록 작성 전문가입니다. 입력된 회의 내용을 분석하여 JSON 형식으로 출력하세요."
-    user_prompt = f"""
-    회의 내용: {user_input}
-    
-    출력 형식(JSON):
-    {{
-        "title": "회의 제목",
-        "date": "YYYY-MM-DD",
-        "attendees": ["참석자1", "참석자2"],
-        "summary": "전체 요약",
-        "decisions": ["결정사항1", ...],
-        "action_items": [{{"content": "할일", "assignee": "담당자", "due_date": "기한"}}],
-        "risks": [{{"description": "리스크", "level": "상/중/하", "regulation": "관련 규정"}}]
-    }}
-    """
-    
-    print(f"[DocumentAgent] LLM 호출 (meeting_generate, json_mode=True)...")
+    user_prompt = f"""회의 내용: {user_input}
+
+출력 형식(JSON):
+{{
+    "title": "회의 제목",
+    "date": "YYYY-MM-DD",
+    "attendees": ["참석자1", "참석자2"],
+    "summary": "전체 요약",
+    "decisions": ["결정사항1", ...],
+    "action_items": [{{"content": "할일", "assignee": "담당자", "due_date": "기한"}}],
+    "risks": [{{"description": "리스크", "level": "상/중/하", "regulation": "관련 규정"}}]
+}}"""
+
+    print(f"[DocumentAgent] LLM 호출 (meeting_minutes, json_mode=True)...")
     generated_json_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
     print(f"[DocumentAgent] LLM 응답: {generated_json_str[:200]}...")
     try:
@@ -312,13 +336,9 @@ def _handle_meeting_generate(user_input: str) -> Dict[str, Any]:
         print(f"[DocumentAgent] !!! JSON 파싱 실패")
         data = {"summary": "파싱 실패", "content": generated_json_str}
 
-    # 2. 회의록 템플릿 렌더링
-    # meeting_template = get_system_template("meeting_minutes")
-    # preview = meeting_template.render(data)
-    
-    # 임시 렌더링
+    # 회의록 미리보기
     preview = f"""# {data.get('title', '회의록')}
-    
+
 ## 요약
 {data.get('summary', '')}
 
@@ -326,26 +346,182 @@ def _handle_meeting_generate(user_input: str) -> Dict[str, Any]:
 {chr(10).join(['- ' + d for d in data.get('decisions', [])])}
 
 ## Action Items
-{chr(10).join([f"- {ai.get('content')} ({ai.get('assignee')})" for ai in data.get('action_items', [])])}
-"""
+{chr(10).join([f"- {ai.get('content')} ({ai.get('assignee')})" for ai in data.get('action_items', [])])}"""
 
     return {
-        "type": "meeting_generate",
+        "type": "doc_generate",
+        "template_type": "meeting_minutes",
+        "template_id": None,
+        "template_name": "회의록",
         "summary": data.get("summary"),
         "decisions": data.get("decisions", []),
         "action_items": data.get("action_items", []),
-        "risk_level": "중간", # 로직 필요
         "risks": data.get("risks", []),
         "preview": preview,
+        "data": data,
         "document_id": 456, # Mock ID
-        "download_url": "/api/v1/meetings/456/download",
-        "auto_scan": True
+        "download_url": "/api/v1/documents/456/download",
     }
+
+
+def _handle_doc_summary(user_input: str, document_content: str = None, stream_mode: bool = False) -> Dict[str, Any]:
+    """문서 요약 처리"""
+    _t = time.time()
+    print(f"[DocumentAgent] _handle_doc_summary | content_len={len(document_content) if document_content else 0}, stream_mode={stream_mode}")
+
+    # 문서 내용이 없으면 안내 메시지
+    if not document_content:
+        print("[DocumentAgent] document_content 없음 → 안내 메시지")
+        return {
+            "type": "doc_summary",
+            "message": "요약할 문서를 선택해주세요. 문서관리 페이지에서 문서를 선택하거나, 챗봇에 파일을 업로드해주세요.",
+            "answer": "요약할 문서를 선택해주세요. 문서관리 페이지에서 문서를 선택하거나, 챗봇에 파일을 업로드해주세요.",
+        }
+
+    from ai.llm.prompts import DOC_SUMMARY_SYSTEM_PROMPT
+
+    sys_prompt = DOC_SUMMARY_SYSTEM_PROMPT
+    # 문서 내용이 너무 길면 앞부분만 사용 (토큰 제한)
+    truncated = document_content[:8000] if len(document_content) > 8000 else document_content
+    user_prompt = f"다음 문서를 요약해주세요.\n\n사용자 요청: {user_input}\n\n문서 내용:\n{truncated}"
+
+    # 스트리밍 모드: stream_pending 패턴 (doc_search와 동일)
+    if stream_mode:
+        print(f"[DocumentAgent] stream_mode=True → stream_pending 반환 ({time.time()-_t:.2f}s)")
+        return {
+            "type": "doc_summary",
+            "stream_pending": True,
+            "sys_prompt": sys_prompt,
+            "user_prompt": user_prompt,
+            "answer": "",
+            "message": "",
+        }
+
+    # 비스트리밍: LLM 직접 호출
+    print("[DocumentAgent] stream_mode=False → LLM 직접 호출 (doc_summary)")
+    answer = _call_llm(sys_prompt, user_prompt)
+    print(f"[DocumentAgent] LLM 응답 길이: {len(answer)}자")
+
+    return {
+        "type": "doc_summary",
+        "answer": answer,
+        "message": answer,
+    }
+
+
+def _handle_doc_qa(query: str, context: list = None, user_id: int = None, stream_mode: bool = False) -> Dict[str, Any]:
+    """문서 내용 기반 질의응답"""
+    _t = time.time()
+    print(f"[DocumentAgent] _handle_doc_qa | query='{query[:50]}', context_len={len(context) if context else 0}, stream_mode={stream_mode}")
+    search_results = []
+
+    # Context가 비어있으면 RAG 검색
+    if not context:
+        try:
+            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+
+            _t_rag = time.time()
+            print(f"[DocumentAgent] RAG 검색 수행 (doc_qa): '{query[:50]}'")
+            rag_pipeline = get_qdrant_pipeline()
+            search_results = rag_pipeline.retrieve(query, user_id=user_id, top_k=5)
+            context = [doc["content"] for doc in search_results]
+            print(f"[DocumentAgent] RAG 검색 완료 ({time.time()-_t_rag:.2f}s): {len(context)}개 문서")
+
+        except Exception as e:
+            print(f"[DocumentAgent] !!! RAG 검색 실패: {e}")
+            import traceback
+            traceback.print_exc()
+            context = []
+
+    # 출처 정보 구성
+    sources = _build_sources(search_results)
+
+    # Context가 없으면 실패
+    if not context:
+        print("[DocumentAgent] context 비어있음 → 검색 실패 응답")
+        return {
+            "type": "doc_qa",
+            "answer": "관련 문서를 찾지 못했습니다. 다른 질문을 시도해보세요.",
+            "message": "관련 문서를 찾지 못했습니다. 다른 질문을 시도해보세요.",
+            "sources": sources,
+            "citations": [],
+            "confidence": 0.0,
+        }
+
+    from ai.llm.prompts import DOC_QA_SYSTEM_PROMPT
+
+    # 스트리밍 모드: answer 텍스트만 토큰으로 전송, sources는 result 이벤트로
+    if stream_mode:
+        # 스트리밍용 프롬프트 (자연어 답변 → sources는 별도 전달)
+        sys_prompt = """당신은 기업 문서 기반 질의응답 전문가입니다.
+주어진 문서 내용을 근거로 사용자의 질문에 정확하게 답변하세요.
+
+규칙:
+- 반드시 제공된 문서 내용만을 근거로 답변하세요.
+- 답변 근거가 되는 문서를 언급하세요.
+- 문서에서 답을 찾을 수 없으면 솔직히 답하세요.
+- 한국어로 답변하세요."""
+
+        user_prompt = f"Context:\n{json.dumps(context, ensure_ascii=False)}\n\nQuestion: {query}"
+
+        print(f"[DocumentAgent] stream_mode=True → stream_pending 반환 ({time.time()-_t:.2f}s)")
+        return {
+            "type": "doc_qa",
+            "stream_pending": True,
+            "sys_prompt": sys_prompt,
+            "user_prompt": user_prompt,
+            "answer": "",
+            "message": "",
+            "sources": sources,
+        }
+
+    # 비스트리밍: JSON mode로 구조화된 응답
+    user_prompt = f"Context:\n{json.dumps(context, ensure_ascii=False)}\n\nQuestion: {query}"
+    print("[DocumentAgent] stream_mode=False → LLM 직접 호출 (doc_qa, json_mode)")
+    answer_json_str = _call_llm(DOC_QA_SYSTEM_PROMPT, user_prompt, json_mode=True)
+
+    try:
+        qa_result = json.loads(answer_json_str)
+    except json.JSONDecodeError:
+        qa_result = {"answer": answer_json_str, "citations": [], "confidence": 0.5}
+
+    return {
+        "type": "doc_qa",
+        "answer": qa_result.get("answer", ""),
+        "message": qa_result.get("answer", ""),
+        "citations": qa_result.get("citations", []),
+        "confidence": qa_result.get("confidence", 0.5),
+        "sources": sources,
+    }
+
 
 def _handle_risk_detect(user_input: str) -> Dict[str, Any]:
     """리스크 감지"""
     # 구현 필요
     return {"type": "risk_detect", "risks": []}
+
+
+# ── 공통 유틸 ──
+
+def _build_sources(search_results: list) -> list:
+    """검색 결과에서 출처 정보 구성 (중복 제거)"""
+    sources = []
+    seen_sources = set()
+    if search_results:
+        for doc in search_results:
+            content_key = doc.get("content", "")[:100]
+            if content_key in seen_sources:
+                continue
+            seen_sources.add(content_key)
+
+            sources.append({
+                "title": doc.get("title") or doc.get("chapter") or doc.get("source", "제목 없음"),
+                "source": doc.get("source", ""),
+                "score": doc.get("score", 0.0),
+                "content": doc.get("content", "")[:200] + "...",
+            })
+    return sources
+
 
 def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False) -> str:
     """
@@ -396,8 +572,19 @@ def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False) -> str
 
 def _get_mock_response(user_prompt: str, json_mode: bool) -> str:
     """API 키 없을 때 나가는 Mock 응답"""
+    prompt_lower = user_prompt.lower()
     if json_mode:
-        if "회의" in user_prompt or "summary" in user_prompt:
+        # doc_qa mock — "Question:" 패턴 우선 검사
+        if "question" in prompt_lower or "answer" in prompt_lower:
+            return json.dumps({
+                "answer": "문서에 따르면 해당 내용은 다음과 같습니다. (Mock 응답)",
+                "citations": [
+                    {"source": "내부 규정 문서", "content": "관련 조항 내용 발췌 (Mock)", "relevance": "높음"}
+                ],
+                "confidence": 0.85,
+            }, ensure_ascii=False)
+        # meeting mock
+        if "회의" in user_prompt or "summary" in prompt_lower:
              return json.dumps({
                 "title": "주간 개발 회의 (Mock)",
                 "date": "2026-02-12",
@@ -412,10 +599,14 @@ def _get_mock_response(user_prompt: str, json_mode: bool) -> str:
                     {"description": "일정 지연 가능성 존재", "regulation": "프로젝트 관리 규정", "level": "중간"}
                 ]
             }, ensure_ascii=False)
-        else:
-            return json.dumps({
-                "title": "자동 생성 문서 (Mock)",
-                "content": "LLM에 의해 생성된 문서 내용입니다.\\n사용자 요청을 반영하여 작성되었습니다."
-            }, ensure_ascii=False)
-    
+        # 기본 문서 mock
+        return json.dumps({
+            "title": "자동 생성 문서 (Mock)",
+            "content": "LLM에 의해 생성된 문서 내용입니다.\\n사용자 요청을 반영하여 작성되었습니다."
+        }, ensure_ascii=False)
+
+    # 요약 mock
+    if "요약" in user_prompt or "문서 내용" in user_prompt:
+        return "## 핵심 요약\n\n이 문서는 주요 업무 프로세스를 설명합니다. (Mock 요약 응답)\n\n### 주요 포인트\n- 포인트 1\n- 포인트 2\n- 포인트 3"
+
     return "LLM이 생성한 답변입니다. (문서 검색 결과 등) - Mock Response"

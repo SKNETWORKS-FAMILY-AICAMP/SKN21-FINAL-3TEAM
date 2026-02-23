@@ -16,9 +16,11 @@
 | 기능 | 설명 |
 |------|------|
 | **규정 판단** | "인턴에게 AWS 접근 줘도 돼?" → 다중 규정 교차 판단 + 근거 + 대안 제시 |
-| **회의 요약 · 회의록 생성** | 회의 내용 입력 → AI 요약(결정사항·Action Item 자동 추출) → 회의록 양식 생성 → 미리보기 + 다운로드 |
-| **문서 요약 · 문서 생성** | 문서 업로드 → AI 요약 / 템플릿 선택 → AI가 양식에 맞게 내용 채워서 생성 → 미리보기 + 다운로드 |
-| **일정 관리** | Action Item → 일정 자동 등록 + Google Services 통합 (Calendar·Tasks·Gmail·Meet·Sheets) |
+| **문서 생성** | 등록된 템플릿(template_id)에 맞춰 초안 생성 → 초안 + 추가 입력 항목 반환 (챗봇/문서생성 페이지 공용) |
+| **문서 요약** | 사용자가 선택한 문서(document_id)를 회사 요약 포맷으로 요약 (챗봇/페이지 공용) |
+| **문서 검색** | query(+필터)로 문서 검색. 챗봇: 질문→쿼리 변환 후 추천 / 페이지: 키워드/목록/필터 탐색 |
+| **문서 QA** | 질문에 대해 RAG로 근거를 찾아 답변+인용 반환 (주 사용처: 챗봇) |
+| **일정 관리** | 자연어 → 일정 자동 등록/조회 + Google Calendar 통합 |
 
 ---
 
@@ -37,42 +39,120 @@
 - LLM API로 기능을 완성하면서 실제 형태를 확정한 뒤, 그에 맞는 데이터를 수집하는 게 효율적
 - Agent 코드는 LLM 호출 인터페이스만 바꾸면 되는 구조 (공통 모듈 #39)
 
-### 현재 진행 상황 (2026-02-14 기준)
-
-**✅ 완료 (11개)**
-
-| 영역 | 이슈 | 내용 |
-|------|------|------|
-| PM | #4, #5 | Intent 데이터 구축 (1,868개) + 모델 학습 (Adv F1 90.2%) |
-| AI | #7 | 베이스라인 벤치마크 → Kanana-1.5-8B 선정 (종합 0.652) |
-| AI | #8, #39 | RAG 파이프라인 (8파일) + LLM 공통 모듈 (6파일) |
-| AI | #12 | 판단 Agent — 다중규정 교차판단 + SSE |
-| Backend | #19, #20 | DB 스키마 (12모델) + JWT 인증 (bcrypt + AES-256) |
-| Backend | #21, #33 | Google OAuth + Calendar + Tasks + Gmail + Meet + Sheets (13개 서비스) |
-| Frontend | #24, #25, #26 | 디자인 시스템 + 공통 컴포넌트 + 로그인 UI |
-
-**🔧 진행 중 (4개)**
-
-| 이슈 | 내용 | 남은 작업 |
-|------|------|----------|
-| #6 | 오케스트레이터 + SSE | SSE E2E 마무리 |
-| #17 | 문서 Agent (문서 요약 · 회의 요약 · 문서 생성) | AI 로직 80% 완료, 백엔드 API 연동 + 템플릿 렌더링 남음 |
-| #40 | 문서 LLM 연동 | 공통 모듈(#39) 전환 |
-| #29 | 관리자 UI | 전체 API 연동 + 반응형 |
-
-**📋 미착수 (4단계 이후)**
-
-파인튜닝 (#9, #10, #14, #16) · vLLM 서빙 (#11) · 일정 Agent (#22) · E2E 테스트 (#30) · 성능 평가 (#13, #18) · AWS 배포 (#31)
-
 ---
 
 ## 시스템 아키텍처
+
+### 전체 파이프라인
+
+```
+사용자 입력 (챗봇 / 회의록 페이지 / 문서 페이지)
+       │
+       ▼
+ Frontend (React) ── POST /api/v1/chat/stream ──→ Backend (FastAPI)
+                                                       │
+                                                  JWT 인증 → AgentState 초기화
+                                                       │
+                                                       ▼
+                                          ┌─── Orchestrator (LangGraph) ───┐
+                                          │                                │
+                                          │  [classify_intent]             │
+                                          │   BERT → Solar LLM → Embedding │
+                                          │   (3단계 fallback)              │
+                                          │         │                      │
+                                          │   confidence < 0.7?            │
+                                          │    ├─ Yes → clarify (top-3)    │
+                                          │    └─ No  → Agent 라우팅        │
+                                          │         │                      │
+                                          │    ┌────┼────┬──────┐         │
+                                          │    ▼    ▼    ▼      ▼         │
+                                          │  Judge Doc  Sched  General    │
+                                          │    │    │    │      │         │
+                                          │    └────┴────┴──────┘         │
+                                          │         │                      │
+                                          │  [format_response]             │
+                                          └─────────┼──────────────────────┘
+                                                    │
+                                                    ▼
+                                          chat_logs DB 저장
+                                                    │
+       ┌────────────────────────────────────────────┘
+       │  SSE (text/event-stream)
+       ▼
+ Frontend 렌더링
+  intent → 처리중 표시 / token → 스트리밍 / result → 최종 응답 / done → 종료
+```
+
+### 각 Agent 워크플로우
+
+```
+┌─ Judgment Agent (경은) ─────────────────────────────────────────────────────┐
+│                                                                             │
+│  user_input ──→ RAG 하이브리드 검색 (규정문서, top_k=7) ──→ LLM 판단 (JSON)  │
+│                    │                                          │             │
+│                    │  Qdrant + BM25                            │             │
+│                    │  bge-reranker                             ▼             │
+│                                                   3중 보조장치 검증           │
+│                                                   ├─ 환각 탐지 (인용 cross-check)
+│                                                   ├─ 조항 존재 검증          │
+│                                                   └─ confidence 보정        │
+│                                                          │                  │
+│                                                          ▼                  │
+│  Output: { result: yes/no/conditional, confidence, reasoning, regulations } │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ Document Agent (승언) ─────────────────────────────────────────────────────┐
+│                                                                             │
+│  intent에 따라 4가지 분기 (챗봇/페이지 공용):                                  │
+│                                                                             │
+│  doc_generate ──→ 템플릿 로드(template_id) ──→ LLM 초안 생성 (JSON)          │
+│                  → { data, preview, additional_fields }                      │
+│                                                                             │
+│  doc_summary ──→ 문서 로드(document_id) ──→ LLM 회사 요약 포맷 생성          │
+│                  → { title, core_summary, key_points, keywords }            │
+│                                                                             │
+│  doc_search ──→ query(+필터) ──→ RAG 하이브리드 검색 (전체문서)               │
+│                  챗봇: 질문→쿼리 변환 후 추천 / 페이지: 키워드/필터 탐색       │
+│                  → { results[], message }                                    │
+│                                                                             │
+│  doc_qa ──→ RAG 검색 (비규정 문서) ──→ LLM 답변 + 인용 (주 사용처: 챗봇)     │
+│                  → { answer, citations[] }                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ Schedule Agent (혜빈) ─────────────────────────────────────────────────────┐
+│                                                                             │
+│  schedule_add ──→ LLM 파싱 (자연어→구조화) ──→ Google Calendar API 등록      │
+│                  → { schedule{title,start,end}, google_services{event_id} }  │
+│                                                                             │
+│  schedule_view ──→ LLM 기간 추출 ──→ Google Calendar API 조회               │
+│                  → { schedules[], message }                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ General Response ──────────────────────────────────────────────────────────┐
+│                                                                             │
+│  user_input ──→ LLM 일반 응답 (업무 관련 친절 답변)                           │
+│                  → { message }                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Intent 분류 체계 (8개)
+
+```
+judgment       → Judgment Agent    (규정 판단/정보)
+doc_search     → Document Agent    (문서 검색)
+doc_generate   → Document Agent    (문서 생성, 회의록 포함)
+doc_summary    → Document Agent    (문서 요약)
+doc_qa         → Document Agent    (문서 QA)
+schedule_add   → Schedule Agent    (일정 추가)
+schedule_view  → Schedule Agent    (일정 조회)
+general        → General Response  (일반 대화)
+```
 
 ### 전체 구조 (담당자 표시)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════╗
-║  🖥️ Frontend — 지영                                                    ║
+║  Frontend — 지영                                                        ║
 ║                                                                        ║
 ║  React (Vite) + Zustand + TanStack Query + Tailwind + shadcn/ui       ║
 ║                                                                        ║
@@ -108,7 +188,7 @@
 ╚═══════════════════════════╤════════════════════════════════════════════╝
                             │ REST API + SSE Stream
 ╔═══════════════════════════╧════════════════════════════════════════════╗
-║  ⚙️ Backend API — 혜빈 (+ 지용: chat/stream SSE)                       ║
+║  Backend API — 혜빈 (+ 지용: chat/stream SSE)                          ║
 ║                                                                        ║
 ║  FastAPI                                                               ║
 ║  ┌──────────────────────────────────────────────────────────┐          ║
@@ -148,17 +228,17 @@
 ╚═══════════════════════════╤════════════════════════════════════════════╝
                             │
 ╔═══════════════════════════╧════════════════════════════════════════════╗
-║  🤖 AI Engine                                                          ║
+║  AI Engine                                                             ║
 ║                                                                        ║
 ║  ┌──────────────────────────────────────────────────────┐              ║
 ║  │  Intent Classifier (klue/bert-base)        [지용]    │              ║
-║  │  7개: judgment, doc_search, doc_generate,            │              ║
-║  │       meeting_generate, schedule_*, general           │              ║
+║  │  8개: judgment, doc_search, doc_generate,            │              ║
+║  │       doc_summary, doc_qa, schedule_*, general        │              ║
 ║  └──────────┬───────────────────────────────────────────┘              ║
 ║             │                                                          ║
 ║  ┌──────────▼───────────────────────────────────────────┐              ║
 ║  │  LangGraph Orchestrator (StateGraph)       [지용]    │              ║
-║  │  조건부 라우팅 + 멀티턴 컨텍스트 + SSE 스트리밍       │              ║
+║  │  단일질문 분류 → 조건부 라우팅 + SSE 스트리밍          │              ║
 ║  └──────┬──────────────┬──────────────┬─────────────────┘              ║
 ║         │              │              │                                ║
 ║         ▼              ▼              ▼                                ║
@@ -166,11 +246,11 @@
 ║  │ 판단 Agent   ││ 문서 Agent   ││ 일정 Agent   │                     ║
 ║  │    [경은]    ││    [승언]    ││    [혜빈]    │                     ║
 ║  │              ││              ││              │                     ║
-║  │ · 다중규정   ││ · 회의록생성 ││ · CRUD       │                     ║
+║  │ · 다중규정   ││ · 문서검색   ││ · CRUD       │                     ║
 ║  │   교차판단   ││ · 문서생성   ││ · 우선순위   │                     ║
-║  │ · confidence ││ · 템플릿관리 ││ · 담당자배정 │                     ║
-║  │ · 조건부판단 ││ · 리스크감지 ││ · Google 통합│                     ║
-║  │ · 이력참조   ││ · 자동스캔   ││              │                     ║
+║  │ · confidence ││ · 문서요약   ││ · 담당자배정 │                     ║
+║  │ · 조건부판단 ││ · 문서QA     ││ · Google 통합│                     ║
+║  │ · 이력참조   ││ · 템플릿관리 ││              │                     ║
 ║  └──────┬───────┘└──────┬───────┘└──────┬───────┘                     ║
 ║         │              │              │                                ║
 ║         ▼              │              │                                ║
@@ -222,7 +302,7 @@
 ╚═══════════════════════════╤═══════════╧════════════════════════════════╝
                             │
 ╔═══════════════════════════╧════════════════════════════════════════════╗
-║  ☁️ External Services                                                   ║
+║  External Services                                                     ║
 ║                                                                        ║
 ║  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐        ║
 ║  │ Google OAuth 2.0│  │ Google APIs     │  │ RunPod (A100)   │        ║
@@ -233,15 +313,17 @@
 ╚════════════════════════════════════════════════════════════════════════╝
 ```
 
-### 담당자별 색상 요약
+### RAG 검색 대상
 
-```
-[지용] Intent 분류 + LangGraph 오케스트레이터 + SSE 스트리밍 + 배포
-[경은] 판단 Agent + RAG Pipeline + Reranker + vLLM 서빙 + LoRA v1
-[승언] 문서 Agent + Document Parser + Template Engine + LoRA v2
-[혜빈] Backend API 전체 + DB + 인증 + 일정 Agent + Google Services 통합
-[지영] Frontend 전체 (10개 화면 + 63 컴포넌트 + 다크모드 + 인쇄 + 애니메이션 + SSE 수신)
-```
+| Agent/기능 | RAG | 검색 대상 | 비고 |
+|-----------|-----|----------|------|
+| Judgment | O | 규정/규칙 문서 | 문서 카테고리 필터 |
+| doc_search | O | 모든 문서 | 필터 없음 |
+| doc_qa | O | 비규정 업무 문서 | 문서 카테고리 필터 |
+| doc_generate | X | - | 사용자 입력 기반 생성 |
+| doc_summary | X | - | 대상 문서가 명시적으로 주어짐 |
+| Schedule | X | - | |
+| General | X | - | |
 
 ### Agent 처리 흐름 (예: 규정 판단)
 
@@ -267,10 +349,10 @@
              ▼
 ┌─────────────────────────────────────┐
 │ 3. RAG Pipeline            [경은]   │
-│    ① BM25 검색 (Top 15)            │
-│    ② Vector 검색 (Top 15)          │
-│    ③ 합산 (Top 20)                 │
-│    ④ Reranker (Top 5)              │
+│    1) BM25 검색 (Top 15)            │
+│    2) Vector 검색 (Top 15)          │
+│    3) 합산 (Top 20)                 │
+│    4) Reranker (Top 5)              │
 │    → 정보보안 규정 3.2조            │
 │    → 개발 가이드라인 5.1조          │
 │    → 인사 규정 2.3조                │
@@ -304,48 +386,6 @@
 │    → confidence 게이지               │
 │    → 대안 제시                       │
 └─────────────────────────────────────┘
-```
-
-### 회의록 생성 흐름
-
-```
-[회의록 생성 페이지 — 지영]
-  사용자: 회의 내용 텍스트 입력 + (선택) 제목/날짜/참석자
-     │
-     ▼
-  POST /api/v1/meetings/generate  [혜빈]
-     │
-     ▼
-  [문서 Agent — meeting_generate — 승언]
-     ├── sLLM으로 요약 (결정사항, Action Item 추출)
-     ├── MeetingMinutesTemplate 양식에 데이터 채움
-     ├── 규정 리스크 자동 스캔 (RAG)
-     ├── meetings + documents + action_items 테이블 저장
-     │
-     ▼
-  [MeetingPreview — 지영]
-  응답: 요약 + 결정사항 + Action Items + 미리보기(MD) + 다운로드 URL + 리스크
-```
-
-### 문서 생성 흐름
-
-```
-[문서 생성 페이지 — 지영]
-  사용자: 템플릿 업로드 OR 기존 템플릿 선택 → 내용/지시사항 입력
-     │
-     ▼
-  POST /api/v1/documents/generate { template_id, user_input }  [혜빈]
-     │
-     ▼
-  [문서 Agent — doc_generate — 승언]
-     ├── document_templates에서 parsed_structure 로딩
-     ├── sLLM으로 양식에 맞는 내용 생성
-     ├── BaseTemplate.render_from_structure()로 렌더링
-     ├── documents 테이블 저장
-     │
-     ▼
-  [DocumentPreview — 지영]
-  응답: 미리보기(MD) + 다운로드 URL (DOCX/PDF)
 ```
 
 ### DB ERD (11 테이블) — [혜빈]
@@ -406,7 +446,7 @@
 | Embedding | **jhgan/ko-sbert-nli** | 한국어 문장 임베딩 |
 | Reranker | **BAAI/bge-reranker-v2-m3** | 검색 결과 재정렬 (Top 5) |
 | 키워드 검색 | **BM25 (rank_bm25)** | Hybrid Search의 키워드 매칭 |
-| Intent 분류 | **klue/bert-base** | 7개 카테고리: judgment, doc_search, doc_generate, meeting_generate, schedule_add, schedule_view, general |
+| Intent 분류 | **klue/bert-base** | 8개 카테고리: judgment, doc_search, doc_generate, doc_summary, doc_qa, schedule_add, schedule_view, general |
 | 문서 파싱 | **Docling + PaddleOCR** | PDF 구조화 + 스캔 OCR |
 
 ### Backend
@@ -486,7 +526,7 @@ SKN21-FINAL-3TEAM/
 │       │   ├── gmail.py         # Gmail 발송 API
 │       │   ├── sheets.py        # Google Sheets API
 │       │   └── admin.py         # 관리자 + 통계 + 로그
-│       ├── models/              # ORM 모델 (11개 테이블, google_sheet_trackers 포함)
+│       ├── models/              # ORM 모델 (11개 테이블)
 │       ├── schemas/             # Pydantic 스키마
 │       └── services/            # 비즈니스 로직
 │           ├── template_service.py   # 문서 생성/다운로드
@@ -502,6 +542,7 @@ SKN21-FINAL-3TEAM/
 ├── ai/                          # AI/ML 모듈
 │   ├── agents/                  # LangGraph Agent (지용/경은/승언)
 │   │   ├── state.py             # AgentState 공유 상태
+│   │   ├── config.py            # 분류 임계값 설정
 │   │   ├── orchestrator.py      # StateGraph 오케스트레이터
 │   │   ├── intent_classifier.py # Intent 분류 (klue/bert-base)
 │   │   ├── judgment_agent.py    # 판단 Agent (경은)
@@ -526,9 +567,6 @@ SKN21-FINAL-3TEAM/
 │   │   ├── jd.py                # 채용 공고
 │   │   └── proposal.py          # 제안서
 │   ├── tests/                   # AI 테스트
-│   │   ├── test_intent.py       # Intent 분류 테스트
-│   │   ├── test_judgment_agent.py # 판단 Agent 테스트
-│   │   └── test_rag_pipeline.py # RAG 파이프라인 테스트
 │   ├── experiments/             # ML 실험 (전처리, 학습, 평가)
 │   ├── finetuning/              # LoRA 학습 (경은/승언)
 │   ├── document_parser/         # 문서 파싱 (승언)
@@ -537,7 +575,7 @@ SKN21-FINAL-3TEAM/
 ├── frontend/                    # React 프론트엔드 (지영)
 │   └── src/
 │       ├── components/
-│       │   ├── chat/            # 챗봇 UI + 응답 카드 7종
+│       │   ├── chat/            # 챗봇 UI + 응답 카드
 │       │   ├── dashboard/       # 대시보드 위젯
 │       │   ├── documents/       # 문서 관리
 │       │   ├── meetings/        # 회의 관리
@@ -546,7 +584,7 @@ SKN21-FINAL-3TEAM/
 │       │   └── admin/           # 관리자
 │       ├── hooks/               # useAuth, useSSE, useChat
 │       ├── store/               # Zustand (auth, chat, ui, google)
-│       └── pages/               # 페이지 라우팅 (10개, MeetingMinutesPage/DocumentGeneratePage 추가)
+│       └── pages/               # 페이지 라우팅
 │
 ├── data/                        # 학습/평가 데이터
 │   ├── training/
@@ -556,16 +594,8 @@ SKN21-FINAL-3TEAM/
 │   ├── evaluation/              # 벤치마크 리포트 + 결과
 │   └── regulations/             # 규정 원본 문서
 │
-├── docker/                      # Docker 설정
-│   ├── docker-compose.yml
-│   └── Dockerfile.*
-│
-├── scripts/                     # 유틸리티 스크립트
-│   ├── seed_data.py             # 초기 데이터 시딩
-│   ├── seed_qdrant_documents.py # Qdrant 문서 시딩
-│   └── setup_db.py              # DB 초기화
-│
 ├── docs/                        # 기획/설계 문서
+│   ├── agent/architecture.md    # 아키텍처 설계
 │   ├── TASK_BOARD.md            # 작업 보드 (일일 참고)
 │   └── 역할분배_기술스택_v5_final.md # 기술 참고서
 │
@@ -580,9 +610,9 @@ SKN21-FINAL-3TEAM/
 |------|------|----------|
 | **신지용** (PM) | Intent + 오케스트레이션 | `ai/agents/orchestrator.py`, SSE 스트리밍, API 스키마, 배포 |
 | **윤경은** (AI서브) | 파인튜닝 v1 + 판단 + RAG | `judgment_agent.py`, `ai/rag/*`, LoRA v1, vLLM 서빙 |
-| **진승언** (AI리드) | 파인튜닝 v2 + 문서 Agent | `document_agent.py`, `ai/templates/*`, `document_parser/*`, LoRA v2, 회의록 생성 + 문서 생성 |
-| **안혜빈** (Backend) | DB + 인증 + 일정 Agent | `models/*`, `services/*`, JWT, Google Services 통합 (Calendar·Tasks·Gmail·Meet·Sheets), 관리자 API |
-| **문지영** (Frontend) | React UI 전담 | `frontend/src/` 전체, SSE 수신, 카드 UI, 회의록 생성 페이지, 문서 생성 페이지, 반응형 |
+| **진승언** (AI리드) | 파인튜닝 v2 + 문서 Agent | `document_agent.py`, `ai/templates/*`, `document_parser/*`, LoRA v2 |
+| **안혜빈** (Backend) | DB + 인증 + 일정 Agent | `models/*`, `services/*`, JWT, Google Services 통합, 관리자 API |
+| **문지영** (Frontend) | React UI 전담 | `frontend/src/` 전체, SSE 수신, 카드 UI, 반응형 |
 
 ---
 
@@ -645,6 +675,7 @@ cd frontend && npm install && npm run dev
 
 | 문서 | 용도 |
 |------|------|
+| `docs/agent/architecture.md` | 아키텍처 설계 (Agent 워크플로우, RAG 대상, 파인튜닝 전략) |
 | `docs/TASK_BOARD.md` | 일일 작업 참고 (체크리스트, 이슈 매핑) |
 | `docs/역할분배_기술스택_v5_final.md` | 기술 결정 배경, 멘토 피드백, 아키텍처 상세 |
 | Swagger UI (`/docs`) | API 스펙 확인 (서버 실행 후) |

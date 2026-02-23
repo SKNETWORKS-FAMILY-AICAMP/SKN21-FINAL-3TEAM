@@ -18,8 +18,9 @@ class AgentState(TypedDict):
     user_id: int                            # 사용자 ID
 
     # ── Intent 분류 (지용) ──
-    intent: str                             # judgment | doc_search | doc_generate | meeting_generate | schedule_add | schedule_view | general
+    intent: str                             # judgment | doc_search | doc_generate | doc_summary | doc_qa | schedule_add | schedule_view | general
     confidence: float                       # 분류 신뢰도 (0.0~1.0)
+    intent_candidates: Optional[list]       # top-k intent 후보 [{"intent": str, "confidence": float}]
 
     # ── RAG 검색 결과 (승언) ──
     context: list[dict]                     # [{"content": str, "source": str, "score": float}]
@@ -38,19 +39,13 @@ class AgentState(TypedDict):
     source_page: Optional[str]              # 요청 출처: chatbot | meeting_page | document_page
     template_fields: Optional[list[str]]    # 동적 필드 목록 (예: ["title", "summary", "key_points"])
 
-    # ── 문서 요약 (승언) ──
+    # ── 문서 요약/QA (승언) ──
     extracted_text: Optional[str]           # 업로드 파일에서 추출한 텍스트
+    document_id: Optional[int]              # 문서 DB ID (프론트에서 선택 시)
+    document_content: Optional[str]         # 문서 본문 텍스트 (DB 로딩 or 프론트 전달)
 
     # ── Google 연동 (혜빈) ──
     google_services_result: Optional[dict]  # schedule_add 시 Google 서비스 결과
-
-    # ── 복합 질문 처리 (지용) ──
-    is_complex: Optional[bool]              # 복합 질문 여부
-    sub_queries: Optional[list]             # 분해된 서브쿼리 [{"query": str, "intent": str, "confidence": float, "depends_on": int|None}]
-    intent_candidates: Optional[list]       # top-k intent 후보 [{"intent": str, "confidence": float}]
-    resolved_input: Optional[str]           # 맥락 해석된 입력 (지시어 해결 후)
-    sub_responses: Optional[list]           # 서브쿼리별 agent 응답 (병합 전)
-    needs_context_resolution: Optional[bool]  # 맥락 해석 필요 여부 (지시어 감지 시 True)
 
     # ── 스트리밍 제어 ──
     stream_mode: Optional[bool]             # True이면 LLM 호출을 chat.py에서 직접 스트리밍 처리

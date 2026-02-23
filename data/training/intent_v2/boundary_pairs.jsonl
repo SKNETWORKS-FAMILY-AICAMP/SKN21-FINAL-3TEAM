@@ -1,0 +1,600 @@
+{"text": "출장비 관련 규정 문서 찾아줘", "label": "doc_search"}
+{"text": "출장비 한도가 얼마인지 알려줘", "label": "doc_qa"}
+{"text": "연차 사용 관련 사내 규정 어디있어?", "label": "doc_search"}
+{"text": "연차 수당 얼마야?", "label": "doc_qa"}
+{"text": "보안 정책 문서 좀 찾아주세요", "label": "doc_search"}
+{"text": "보안 정책에서 비밀번호 변경 주기가 몇 개월이야?", "label": "doc_qa"}
+{"text": "급여 체계 관련 내규 있나요?", "label": "doc_search"}
+{"text": "급여 체계에서 직급별 기본급 차이가 얼마야?", "label": "doc_qa"}
+{"text": "인사평가 기준 문서 검색해줘", "label": "doc_search"}
+{"text": "인사평가에서 S등급 비율이 몇 퍼센트야?", "label": "doc_qa"}
+{"text": "프로젝트 관리 가이드라인 자료 있어?", "label": "doc_search"}
+{"text": "프로젝트 관리 가이드라인에서 보고 주기가 어떻게 돼?", "label": "doc_qa"}
+{"text": "복리후생 관련 규정집 어디서 볼수있어", "label": "doc_search"}
+{"text": "복리후생에서 건강검진 지원 금액이 얼마야?", "label": "doc_qa"}
+{"text": "재택근무 정책 문서 좀 보내줘", "label": "doc_search"}
+{"text": "재택근무 시 근무시간 기록 방법이 뭐야?", "label": "doc_qa"}
+{"text": "교육비 지원 내규 찾아주세요", "label": "doc_search"}
+{"text": "교육비 지원 한도가 연간 얼마로 되어있어?", "label": "doc_qa"}
+{"text": "경조사 관련 사내 규정집 있나", "label": "doc_search"}
+{"text": "경조사 휴가 일수가 며칠이야?", "label": "doc_qa"}
+{"text": "회의실 사용 규정 문서 어디있지?", "label": "doc_search"}
+{"text": "회의실 최대 사용시간이 몇 시간이야?", "label": "doc_qa"}
+{"text": "법인카드 사용 지침서 좀 찾아줄래?", "label": "doc_search"}
+{"text": "법인카드 월 한도가 얼마로 설정되어 있나요?", "label": "doc_qa"}
+{"text": "야근 수당 관련 규정 있으면 알려줘", "label": "doc_search"}
+{"text": "야근 수당이 시간당 얼마야?", "label": "doc_qa"}
+{"text": "해외출장 규정 문서 검색해주세요", "label": "doc_search"}
+{"text": "해외출장 일비가 얼마로 정해져있어?", "label": "doc_qa"}
+{"text": "사내 동호회 운영 규정 파일 찾아줘", "label": "doc_search"}
+{"text": "동호회 지원금이 분기별 얼마야?", "label": "doc_qa"}
+{"text": "연차 사용 규정 어디에 있어?", "label": "doc_search"}
+{"text": "연차 며칠 남았어?", "label": "doc_qa"}
+{"text": "보안 정책 전문 좀 보여줘", "label": "doc_search"}
+{"text": "보안 정책에 비밀번호 정책이 뭐야?", "label": "doc_qa"}
+{"text": "급여 명세서 어디서 찾을 수 있어?", "label": "doc_search"}
+{"text": "이번 달 급여 얼마야?", "label": "doc_qa"}
+{"text": "프로젝트 계획서 문서 어디 저장했어?", "label": "doc_search"}
+{"text": "이번 프로젝트 마감일 언제야?", "label": "doc_qa"}
+{"text": "회의록 전체 파일 좀 찾아줘", "label": "doc_search"}
+{"text": "지난 회의 결정사항 뭐였어?", "label": "doc_qa"}
+{"text": "출장 보고서 어디에 올렸어?", "label": "doc_search"}
+{"text": "출장비 지급 기준이 어떻게 돼?", "label": "doc_qa"}
+{"text": "회사 차량 이용 규정 책자 있어?", "label": "doc_search"}
+{"text": "회사 차량 이용할 수 있는 조건이 뭐야?", "label": "doc_qa"}
+{"text": "복리후생 관련 문서 찾아줄래?", "label": "doc_search"}
+{"text": "복리후생 혜택에 건강검진 포함돼?", "label": "doc_qa"}
+{"text": "신규 입사자 안내책자 어디 있어?", "label": "doc_search"}
+{"text": "신입사원 교육 기간이 어떻게 돼?", "label": "doc_qa"}
+{"text": "본사 주소가 적힌 문서 찾아줘", "label": "doc_search"}
+{"text": "본사 주소가 뭐야?", "label": "doc_qa"}
+{"text": "연말 정산 관련 문서 어디서 봐?", "label": "doc_search"}
+{"text": "연말 정산 언제까지야?", "label": "doc_qa"}
+{"text": "사내 행사 일정표 찾아줘", "label": "doc_search"}
+{"text": "다음 사내 행사 언제야?", "label": "doc_qa"}
+{"text": "회의실 예약 시스템 매뉴얼 있니?", "label": "doc_search"}
+{"text": "회의실 예약하려면 어떻게 해야 돼?", "label": "doc_qa"}
+{"text": "부서별 연락처 문서 어디에 있어?", "label": "doc_search"}
+{"text": "인사팀 전화번호 뭐야?", "label": "doc_qa"}
+{"text": "재택근무 규정 문서 찾아줘", "label": "doc_search"}
+{"text": "재택근무 신청하려면 어떻게 해야 돼?", "label": "doc_qa"}
+{"text": "연차 사용 규정 알려줘", "label": "doc_search"}
+{"text": "내일 연차 써도 돼?", "label": "judgment"}
+{"text": "출장비 정산 규정 문서 있어?", "label": "doc_search"}
+{"text": "출장비로 택시비 청구해도 되나요?", "label": "judgment"}
+{"text": "재택근무 관련 내규 찾아줘", "label": "doc_search"}
+{"text": "금요일에 재택근무 해도 될까?", "label": "judgment"}
+{"text": "법인카드 사용 지침 어디서 볼 수 있어?", "label": "doc_search"}
+{"text": "법인카드로 간식 사도 괜찮아?", "label": "judgment"}
+{"text": "보안 규정 문서 좀 찾아주세요", "label": "doc_search"}
+{"text": "개인 노트북으로 사내 시스템 접속해도 돼?", "label": "judgment"}
+{"text": "복장 규정 있나요?", "label": "doc_search"}
+{"text": "반바지 입고 출근해도 되나요?", "label": "judgment"}
+{"text": "초과근무 관련 규정 검색해줘", "label": "doc_search"}
+{"text": "주말에 초과근무 신청해도 돼?", "label": "judgment"}
+{"text": "휴직 제도 관련 내규 어디있어", "label": "doc_search"}
+{"text": "육아휴직 1년 넘게 써도 되는 거야?", "label": "judgment"}
+{"text": "겸직 관련 사내 규정 찾아줘", "label": "doc_search"}
+{"text": "부업으로 유튜브 해도 문제 없어?", "label": "judgment"}
+{"text": "퇴직금 산정 기준 문서 있나", "label": "doc_search"}
+{"text": "1년 미만 근무자도 퇴직금 받을 수 있어?", "label": "judgment"}
+{"text": "사내 교육 이수 규정 찾아줘", "label": "doc_search"}
+{"text": "필수 교육 안 들으면 불이익 있어?", "label": "judgment"}
+{"text": "경비 처리 관련 내규 알려주세요", "label": "doc_search"}
+{"text": "야근 식대 2만원 넘어도 경비 처리 돼?", "label": "judgment"}
+{"text": "개인정보 처리 방침 문서 어디있지?", "label": "doc_search"}
+{"text": "고객 이메일을 마케팅에 사용해도 돼?", "label": "judgment"}
+{"text": "사내 메신저 사용 가이드 있어?", "label": "doc_search"}
+{"text": "사내 메신저로 외부인에게 파일 보내도 되나?", "label": "judgment"}
+{"text": "연봉 협상 관련 절차 문서 검색해줘", "label": "doc_search"}
+{"text": "수습 기간 중에 연봉 협상 요청해도 돼?", "label": "judgment"}
+{"text": "회의록 작성법 문서 어디 있어?", "label": "doc_search"}
+{"text": "이번 주 출장 보고서 양식 좀 찾아줘.", "label": "doc_search"}
+{"text": "사내 보안 규정 파일 보내줄래?", "label": "doc_search"}
+{"text": "연차 사용 규정 전문 어디서 볼 수 있어?", "label": "doc_search"}
+{"text": "프로젝트 계획서 샘플 어디서 찾을 수 있어?", "label": "doc_search"}
+{"text": "회사 급여 지급일 관련 정책 문서 있어?", "label": "doc_search"}
+{"text": "업무 성공 사례집 문서 링크 좀 줘.", "label": "doc_search"}
+{"text": "사내 출장 신청 양식 찾아줘", "label": "doc_search"}
+{"text": "연말 회식 규정 문서 어디 있지?", "label": "doc_search"}
+{"text": "보안 교육 자료 어디서 확인할 수 있나?", "label": "doc_search"}
+{"text": "회의실 예약 가이드라인 문서 보내줘", "label": "doc_search"}
+{"text": "출퇴근 기록 정책 문서 검색해봐", "label": "doc_search"}
+{"text": "부서별 업무 분장표 어디서 볼 수 있지?", "label": "doc_search"}
+{"text": "회사 복장 규정 전문 찾아줄래?", "label": "doc_search"}
+{"text": "사내 전자기기 사용 정책 파일 있어?", "label": "doc_search"}
+{"text": "이번 주에 연차 써도 돼?", "label": "judgment"}
+{"text": "출장 가도 문제 없을까?", "label": "judgment"}
+{"text": "사내 메신저 사용해도 괜찮아?", "label": "judgment"}
+{"text": "사이버 보안 교육 꼭 들어야 해?", "label": "judgment"}
+{"text": "회사 컴퓨터 집에 가져가도 돼?", "label": "judgment"}
+{"text": "업무 시간에 개인 메일 확인해도 되나?", "label": "judgment"}
+{"text": "프로젝트 중에 다른 일정 잡아도 돼?", "label": "judgment"}
+{"text": "비상근무 수당 받을 수 있을까?", "label": "judgment"}
+{"text": "회의 시간에 개인 노트북 써도 돼?", "label": "judgment"}
+{"text": "고객 정보 외부에 공유해도 문제 없나?", "label": "judgment"}
+{"text": "점심시간에 온라인 쇼핑 해도 되냐?", "label": "judgment"}
+{"text": "회사 로고 사용해서 개인 프로젝트 진행해도 돼?", "label": "judgment"}
+{"text": "부서 회식 참석 안 해도 괜찮겠지?", "label": "judgment"}
+{"text": "주말에 회사 메일 확인하라는 지시 따르지 않아도 돼?", "label": "judgment"}
+{"text": "사내 방송 시스템 써도 되나?", "label": "judgment"}
+{"text": "보안 규정에 USB 사용 관련 내용이 뭐라고 되어있어?", "label": "doc_qa"}
+{"text": "USB 메모리 사용해도 돼?", "label": "judgment"}
+{"text": "출장 규정에서 숙박비 상한이 얼마야?", "label": "doc_qa"}
+{"text": "출장 중 호텔 업그레이드 해도 되나요?", "label": "judgment"}
+{"text": "연차 규정에 반차 사용 횟수 제한이 있어?", "label": "doc_qa"}
+{"text": "이번 달에 반차 또 써도 괜찮을까?", "label": "judgment"}
+{"text": "복장 규정에 뭐라고 적혀있어?", "label": "doc_qa"}
+{"text": "슬리퍼 신고 회사 와도 돼?", "label": "judgment"}
+{"text": "재택근무 규정에서 신청 기한이 며칠 전이야?", "label": "doc_qa"}
+{"text": "오늘 갑자기 재택으로 전환해도 되나?", "label": "judgment"}
+{"text": "법인카드 사용 지침에 식대 한도가 얼마로 나와있어?", "label": "doc_qa"}
+{"text": "법인카드로 저녁 회식비 결제해도 돼?", "label": "judgment"}
+{"text": "개인정보 처리 방침에서 보관 기간이 어떻게 되어있나요?", "label": "doc_qa"}
+{"text": "퇴사자 개인정보를 바로 삭제해야 하나요?", "label": "judgment"}
+{"text": "겸업 금지 조항에 구체적으로 뭐라고 써있어?", "label": "doc_qa"}
+{"text": "프리랜서로 외부 프로젝트 참여해도 돼?", "label": "judgment"}
+{"text": "경조사 규정에 부모님 칠순 관련 조항이 있어?", "label": "doc_qa"}
+{"text": "부모님 칠순에 특별휴가 써도 되나?", "label": "judgment"}
+{"text": "교육비 지원 규정에서 대학원 학비도 포함돼있어?", "label": "doc_qa"}
+{"text": "대학원 다니면서 교육비 지원받아도 되는 거야?", "label": "judgment"}
+{"text": "초과근무 규정에 월 한도 시간이 몇 시간이야?", "label": "doc_qa"}
+{"text": "이번 주에 야근 40시간 더 해도 돼?", "label": "judgment"}
+{"text": "인사평가 기준에 동료 평가 반영 비율이 얼마야?", "label": "doc_qa"}
+{"text": "인사평가에서 동료 평가 거부해도 되나?", "label": "judgment"}
+{"text": "사내 동호회 규정에 최소 인원이 몇 명이야?", "label": "doc_qa"}
+{"text": "3명이서 동호회 만들어도 돼?", "label": "judgment"}
+{"text": "휴가 규정에 병가 일수가 어떻게 되어있지?", "label": "doc_qa"}
+{"text": "감기 걸렸는데 병가 써도 될까?", "label": "judgment"}
+{"text": "사내 메신저 보안 정책에서 파일 전송 제한 용량이 얼마야?", "label": "doc_qa"}
+{"text": "사내 메신저로 100MB 파일 보내도 되나?", "label": "judgment"}
+{"text": "연차 규정에 따르면 연차 어떻게 사용하지?", "label": "doc_qa"}
+{"text": "내일 연차 써도 될까요?", "label": "judgment"}
+{"text": "출장비 지급 규정이 어떻게 되어있지?", "label": "doc_qa"}
+{"text": "출장 가는데 회사가 교통비 대줘?", "label": "judgment"}
+{"text": "급여 명세서에 뭐가 포함되어 있는지 알려줘.", "label": "doc_qa"}
+{"text": "이번 달 보너스 받을 수 있나?", "label": "judgment"}
+{"text": "보안 문서 보관 방법이 뭐라고 적혀있어?", "label": "doc_qa"}
+{"text": "사무실에서 개인 USB 사용해도 돼?", "label": "judgment"}
+{"text": "회의록에 어떤 내용이 들어있어?", "label": "doc_qa"}
+{"text": "우리가 그 회의에 참석해야 하나요?", "label": "judgment"}
+{"text": "프로젝트 마감일이 문서에 언제라고 되어있어?", "label": "doc_qa"}
+{"text": "이 프로젝트 연장 가능할까?", "label": "judgment"}
+{"text": "회사 이메일 정책에 대해 설명해줘.", "label": "doc_qa"}
+{"text": "개인 이메일을 업무에 사용해도 되는지?", "label": "judgment"}
+{"text": "복리후생 문서에 언급된 혜택이 뭐야?", "label": "doc_qa"}
+{"text": "이 혜택 신규 입사자도 받을 수 있는 건가?", "label": "judgment"}
+{"text": "업무 시간에 대한 규정이 어떻게 되는지 알 수 있을까?", "label": "doc_qa"}
+{"text": "오늘 좀 일찍 퇴근해도 될까요?", "label": "judgment"}
+{"text": "출장 보고서는 무엇을 포함해야 해?", "label": "doc_qa"}
+{"text": "출장 보고서를 제출 안 하면 문제가 되나요?", "label": "judgment"}
+{"text": "인사 기록에 내 직급이 어떻게 되어있어?", "label": "doc_qa"}
+{"text": "이번 분기에 승진할 가능성이 있어?", "label": "judgment"}
+{"text": "성과 평가 문서에 어떤 기준이 있지?", "label": "doc_qa"}
+{"text": "이번 평가는 작년보다 어려운가?", "label": "judgment"}
+{"text": "연말 파티 관련 안내 메일에 뭐라고 쓰여있어?", "label": "doc_qa"}
+{"text": "연말 파티에 가족 동반 가능한가요?", "label": "judgment"}
+{"text": "사내 교육 프로그램에 어떤 것들이 포함되어 있지?", "label": "doc_qa"}
+{"text": "내가 이번 교육 프로그램에 참여 가능한가?", "label": "judgment"}
+{"text": "사내 공모전 수상 기준이 뭐야?", "label": "doc_qa"}
+{"text": "내가 이 공모전에 나가도 되는지?", "label": "judgment"}
+{"text": "이번 분기 실적 보고서 요약해줘", "label": "doc_summary"}
+{"text": "이번 분기 매출이 얼마야?", "label": "doc_qa"}
+{"text": "지난 회의록 핵심만 정리해줘", "label": "doc_summary"}
+{"text": "지난 회의에서 결정된 출시일이 언제야?", "label": "doc_qa"}
+{"text": "프로젝트 제안서 내용 간략하게 요약 부탁해", "label": "doc_summary"}
+{"text": "프로젝트 제안서에서 예상 비용이 얼마로 잡혀있어?", "label": "doc_qa"}
+{"text": "신규 사업 기획안 핵심 포인트 뽑아줘", "label": "doc_summary"}
+{"text": "신규 사업 기획안에서 타겟 고객층이 누구야?", "label": "doc_qa"}
+{"text": "인사 규정 개정안 요약 좀 해주세요", "label": "doc_summary"}
+{"text": "인사 규정 개정안에서 변경된 조항이 뭐야?", "label": "doc_qa"}
+{"text": "마케팅 전략 보고서 핵심 내용 정리해줘", "label": "doc_summary"}
+{"text": "마케팅 보고서에서 올해 광고 예산이 얼마야?", "label": "doc_qa"}
+{"text": "연간 사업 계획서 요약본 만들어줘", "label": "doc_summary"}
+{"text": "연간 사업 계획서에서 신규 채용 인원이 몇 명이야?", "label": "doc_qa"}
+{"text": "이 계약서 주요 내용 요약해줄래?", "label": "doc_summary"}
+{"text": "계약서에서 위약금 조항이 어떻게 돼있어?", "label": "doc_qa"}
+{"text": "지난달 월간 보고서 핵심 정리 부탁드립니다", "label": "doc_summary"}
+{"text": "지난달 월간 보고서에서 KPI 달성률이 몇 퍼센트야?", "label": "doc_qa"}
+{"text": "기술 검토 문서 요약해줘", "label": "doc_summary"}
+{"text": "기술 검토 문서에서 추천 솔루션이 뭐야?", "label": "doc_qa"}
+{"text": "이번 주 팀 회의 내용 간단히 정리해주세요", "label": "doc_summary"}
+{"text": "이번 주 팀 회의에서 다음 마일스톤 날짜가 언제야?", "label": "doc_qa"}
+{"text": "고객 피드백 리포트 요약 부탁", "label": "doc_summary"}
+{"text": "고객 피드백에서 가장 많이 나온 불만이 뭐야?", "label": "doc_qa"}
+{"text": "보안 감사 결과 보고서 핵심만 알려줘", "label": "doc_summary"}
+{"text": "보안 감사에서 발견된 취약점이 몇 개야?", "label": "doc_qa"}
+{"text": "채용 공고 JD 내용 요약해줘", "label": "doc_summary"}
+{"text": "이 JD에서 필수 자격 요건이 뭐야?", "label": "doc_qa"}
+{"text": "연구개발 중간보고서 핵심 내용 뽑아줘", "label": "doc_summary"}
+{"text": "연구개발 보고서에서 현재 진행률이 몇 퍼센트야?", "label": "doc_qa"}
+{"text": "이번 프로젝트 보고서 핵심만 정리해줘", "label": "doc_summary"}
+{"text": "연차 정책 문서 요점이 뭐야?", "label": "doc_summary"}
+{"text": "보안 가이드라인 요약 좀 부탁해", "label": "doc_summary"}
+{"text": "이번 달 급여 보고서 내용 좀 요약해줘", "label": "doc_summary"}
+{"text": "출장 경비 규정 문서 요약해줄래?", "label": "doc_summary"}
+{"text": "기업 보안 문서의 핵심 포인트가 뭐야?", "label": "doc_summary"}
+{"text": "휴가 신청 절차 문서 내용을 간단히 정리해줘", "label": "doc_summary"}
+{"text": "회의록의 주요 내용만 알려줘", "label": "doc_summary"}
+{"text": "이번 분기 성과 보고서 요약 부탁해", "label": "doc_summary"}
+{"text": "회사 정책 문서의 중요한 부분이 뭐야?", "label": "doc_summary"}
+{"text": "프로젝트 계획서 전체 요약 좀 해줘", "label": "doc_summary"}
+{"text": "문서에서 중요한 결론만 정리해줘", "label": "doc_summary"}
+{"text": "회의록 요점만 간추려줄래?", "label": "doc_summary"}
+{"text": "연차 사용 규정의 핵심 내용을 알고 싶어", "label": "doc_summary"}
+{"text": "보안 관련 문서 요약 부탁드립니다", "label": "doc_summary"}
+{"text": "이번 프로젝트의 예산이 얼마인지 알려줘", "label": "doc_qa"}
+{"text": "연차 정책 문서에서 최대 사용일이 몇일이야?", "label": "doc_qa"}
+{"text": "보안 가이드라인에서 암호화 방식은 뭐야?", "label": "doc_qa"}
+{"text": "이번 달 급여 보고서에서 총액이 얼마나 돼?", "label": "doc_qa"}
+{"text": "출장 경비 규정에서 1박당 한도는 얼마야?", "label": "doc_qa"}
+{"text": "기업 보안 문서에서 사용 금지된 소프트웨어가 뭐야?", "label": "doc_qa"}
+{"text": "휴가 신청 절차 문서에서 필요한 서류가 뭐야?", "label": "doc_qa"}
+{"text": "회의록에서 다음 회의 일정이 언제로 잡혔어?", "label": "doc_qa"}
+{"text": "이번 분기 성과 보고서에서 매출이 어떻게 돼?", "label": "doc_qa"}
+{"text": "회사 정책 문서에서 연차 지급 기준이 뭐야?", "label": "doc_qa"}
+{"text": "프로젝트 계획서에서 마감일이 언제야?", "label": "doc_qa"}
+{"text": "문서에서 결정된 담당자가 누구야?", "label": "doc_qa"}
+{"text": "회의록에서 참석자 명단 확인해줄래?", "label": "doc_qa"}
+{"text": "연차 사용 규정에서 신청 절차는 어떻게 돼?", "label": "doc_qa"}
+{"text": "보안 관련 문서에서 사용 가능한 암호화 방식은?", "label": "doc_qa"}
+{"text": "오늘 회의 내용으로 회의록 작성해줘", "label": "doc_generate"}
+{"text": "오늘 회의 내용 요약해줘", "label": "doc_summary"}
+{"text": "프로젝트 진행 상황 보고서 만들어주세요", "label": "doc_generate"}
+{"text": "프로젝트 진행 상황 보고서 핵심만 정리해줘", "label": "doc_summary"}
+{"text": "신규 채용 JD 작성해줘", "label": "doc_generate"}
+{"text": "기존 JD 내용 요약 부탁해", "label": "doc_summary"}
+{"text": "이번 분기 실적 보고서 새로 작성해주세요", "label": "doc_generate"}
+{"text": "이번 분기 실적 보고서 간략하게 요약해줘", "label": "doc_summary"}
+{"text": "클라이언트 미팅 내용 기반으로 제안서 작성해줘", "label": "doc_generate"}
+{"text": "클라이언트 미팅 내용 정리해줘", "label": "doc_summary"}
+{"text": "팀 주간 업무 보고서 만들어줄래?", "label": "doc_generate"}
+{"text": "팀 주간 업무 보고서 핵심 포인트만 뽑아줘", "label": "doc_summary"}
+{"text": "인수인계 문서 작성해주세요", "label": "doc_generate"}
+{"text": "인수인계 문서 요약 좀 해줘", "label": "doc_summary"}
+{"text": "마케팅 캠페인 기획서 새로 만들어줘", "label": "doc_generate"}
+{"text": "마케팅 캠페인 기획서 내용 정리해줄래?", "label": "doc_summary"}
+{"text": "고객사 미팅 회의록 작성 부탁드립니다", "label": "doc_generate"}
+{"text": "고객사 미팅 회의록 요약 부탁드립니다", "label": "doc_summary"}
+{"text": "연구 결과 기반으로 기술 보고서 작성해줘", "label": "doc_generate"}
+{"text": "연구 기술 보고서 핵심 내용 정리해줘", "label": "doc_summary"}
+{"text": "이번 스프린트 회고 문서 만들어줘", "label": "doc_generate"}
+{"text": "이번 스프린트 회고 문서 요약해줘", "label": "doc_summary"}
+{"text": "신규 서비스 사업 제안서 작성해주세요", "label": "doc_generate"}
+{"text": "신규 서비스 사업 제안서 핵심만 알려줘", "label": "doc_summary"}
+{"text": "교육 프로그램 결과 보고서 만들어줘", "label": "doc_generate"}
+{"text": "교육 프로그램 결과 보고서 요약 부탁", "label": "doc_summary"}
+{"text": "월간 매출 분석 리포트 새로 작성해줘", "label": "doc_generate"}
+{"text": "월간 매출 분석 리포트 정리해줘", "label": "doc_summary"}
+{"text": "보안 점검 결과로 보고서 만들어주세요", "label": "doc_generate"}
+{"text": "보안 점검 결과 보고서 핵심 요약해줘", "label": "doc_summary"}
+{"text": "이번 프로젝트 계획서 작성해줘", "label": "doc_generate"}
+{"text": "지난 회의록 요약해줄래?", "label": "doc_summary"}
+{"text": "출장을 위한 보고서 만들어줘", "label": "doc_generate"}
+{"text": "작년 연차 사용내역 요약해줘", "label": "doc_summary"}
+{"text": "급여명세서 새로 만들어 주세요", "label": "doc_generate"}
+{"text": "기존 급여명세서 내용 간단히 정리해줘", "label": "doc_summary"}
+{"text": "보안 규정 문서 작성해줘", "label": "doc_generate"}
+{"text": "보안 규정의 핵심 부분만 정리해줄래?", "label": "doc_summary"}
+{"text": "신입사원 JD 작성 부탁해", "label": "doc_generate"}
+{"text": "신입사원 JD 내용 좀 요약해봐", "label": "doc_summary"}
+{"text": "회의록 작성해 주실래요?", "label": "doc_generate"}
+{"text": "이 회의록의 주요 포인트만 정리해줘", "label": "doc_summary"}
+{"text": "회사 정책에 대한 제안서 작성해줘", "label": "doc_generate"}
+{"text": "회사 정책 제안서의 핵심만 요약해줘", "label": "doc_summary"}
+{"text": "새 프로젝트 보고서 만들어주시겠어요?", "label": "doc_generate"}
+{"text": "출장 보고서 요약해줘", "label": "doc_summary"}
+{"text": "다음 분기 계획서 작성해줘", "label": "doc_generate"}
+{"text": "지난 분기 계획서 간단히 정리해줘", "label": "doc_summary"}
+{"text": "연차 계획 문서 좀 만들어줘", "label": "doc_generate"}
+{"text": "기존 연차 계획서 요약해줄 수 있어?", "label": "doc_summary"}
+{"text": "보안 절차 문서 새로 작성해줘", "label": "doc_generate"}
+{"text": "보안 절차 문서의 중요한 부분만 요약해줘", "label": "doc_summary"}
+{"text": "프로젝트 제안서 만들어주세요", "label": "doc_generate"}
+{"text": "프로젝트 제안서 내용 요약 좀 해줄래요?", "label": "doc_summary"}
+{"text": "급여 보고서 작성해줘", "label": "doc_generate"}
+{"text": "급여 보고서의 요점만 간단히 정리해줘", "label": "doc_summary"}
+{"text": "자료조사 결과로 보고서 만들어줘", "label": "doc_generate"}
+{"text": "자료조사 결과 요약해줘", "label": "doc_summary"}
+{"text": "신규 입사자 안내문 작성 부탁해", "label": "doc_generate"}
+{"text": "신규 입사자 안내문의 핵심 정리해줘", "label": "doc_summary"}
+{"text": "다음주 월요일에 팀 미팅 잡아줘", "label": "schedule_add"}
+{"text": "다음주 월요일에 팀 미팅 있어?", "label": "schedule_view"}
+{"text": "내일 오후 3시에 클라이언트 미팅 등록해줘", "label": "schedule_add"}
+{"text": "내일 오후 3시에 뭐 있지?", "label": "schedule_view"}
+{"text": "금요일에 프로젝트 킥오프 회의 넣어주세요", "label": "schedule_add"}
+{"text": "금요일 일정 뭐 있어?", "label": "schedule_view"}
+{"text": "3월 5일에 면접 일정 추가해줘", "label": "schedule_add"}
+{"text": "3월 5일 일정 확인해줘", "label": "schedule_view"}
+{"text": "이번 주 수요일 오전에 팀 빌딩 일정 잡아줘", "label": "schedule_add"}
+{"text": "이번 주 수요일 오전 스케줄 알려줘", "label": "schedule_view"}
+{"text": "다음 달 첫째 주에 워크숍 등록해주세요", "label": "schedule_add"}
+{"text": "다음 달 첫째 주 일정 보여줘", "label": "schedule_view"}
+{"text": "오후 2시에 1:1 미팅 넣어줄래?", "label": "schedule_add"}
+{"text": "오후 2시에 미팅 있나?", "label": "schedule_view"}
+{"text": "화요일에 디자인 리뷰 회의 추가 부탁해", "label": "schedule_add"}
+{"text": "화요일에 무슨 회의 있어?", "label": "schedule_view"}
+{"text": "4월 1일에 분기 보고 미팅 잡아주세요", "label": "schedule_add"}
+{"text": "4월 1일 스케줄 조회해줘", "label": "schedule_view"}
+{"text": "목요일 오전 10시에 인터뷰 일정 등록해줘", "label": "schedule_add"}
+{"text": "목요일 오전 10시에 뭐 잡혀있어?", "label": "schedule_view"}
+{"text": "다음주에 전체 미팅 하나 넣어줘", "label": "schedule_add"}
+{"text": "다음주 전체 일정 보여줘", "label": "schedule_view"}
+{"text": "28일에 송별회 일정 추가해주세요", "label": "schedule_add"}
+{"text": "28일에 일정 있나요?", "label": "schedule_view"}
+{"text": "이번 달 마지막 주에 마감 회의 잡아줘", "label": "schedule_add"}
+{"text": "이번 달 마지막 주 일정 어떻게 돼?", "label": "schedule_view"}
+{"text": "수요일 점심시간에 런치 미팅 등록해줘", "label": "schedule_add"}
+{"text": "수요일 점심시간에 뭐 있더라?", "label": "schedule_view"}
+{"text": "내일 아침 9시에 스탠드업 미팅 넣어줘", "label": "schedule_add"}
+{"text": "내일 아침 스케줄 확인 좀", "label": "schedule_view"}
+{"text": "다음 주 화요일에 연차 일정 추가해줘", "label": "schedule_add"}
+{"text": "다음 주 화요일에 연차 있나?", "label": "schedule_view"}
+{"text": "이번 주 출장 일정 잡아줄래?", "label": "schedule_add"}
+{"text": "이번 주 출장 일정 확인해줘", "label": "schedule_view"}
+{"text": "다음 회의는 언제지?", "label": "schedule_view"}
+{"text": "다음 주 월요일 오전 10시에 회의 예약해줘", "label": "schedule_add"}
+{"text": "금요일 보안 교육 일정 있어?", "label": "schedule_view"}
+{"text": "이번 주 금요일에 보안 교육 등록해줘", "label": "schedule_add"}
+{"text": "프로젝트 킥오프 미팅 언제야?", "label": "schedule_view"}
+{"text": "프로젝트 킥오프 미팅 잡자", "label": "schedule_add"}
+{"text": "급여 발표 회의 일정 확인해줘", "label": "schedule_view"}
+{"text": "급여 발표 회의 추가해줘", "label": "schedule_add"}
+{"text": "다음 주 출장 언제지?", "label": "schedule_view"}
+{"text": "다음 주 출장 일정 잡아줘", "label": "schedule_add"}
+{"text": "내일 회의 있나?", "label": "schedule_view"}
+{"text": "내일 회의 추가해줘", "label": "schedule_add"}
+{"text": "이번 주 금요일에 뭐 있어?", "label": "schedule_view"}
+{"text": "이번 주 금요일에 일정 넣어줘", "label": "schedule_add"}
+{"text": "보안 교육 언제야?", "label": "schedule_view"}
+{"text": "보안 교육 일정 추가해줘", "label": "schedule_add"}
+{"text": "목요일 오후 3시에 뭐 있지?", "label": "schedule_view"}
+{"text": "목요일 오후 3시에 회의 잡아줘", "label": "schedule_add"}
+{"text": "다음 달 연차 일정 보여줘", "label": "schedule_view"}
+{"text": "다음 달 연차 일정 추가해줘", "label": "schedule_add"}
+{"text": "회의실 예약 상황 확인해줘", "label": "schedule_view"}
+{"text": "회의실 예약해줘", "label": "schedule_add"}
+{"text": "다음 주 월요일 일정 알려줘", "label": "schedule_view"}
+{"text": "다음 주 월요일 일정 추가해줘", "label": "schedule_add"}
+{"text": "프로젝트 회의 언제지?", "label": "schedule_view"}
+{"text": "프로젝트 회의 일정 잡아줘", "label": "schedule_add"}
+{"text": "보안 규정 문서 있어?", "label": "doc_search"}
+{"text": "보안 규정 요약해줘", "label": "doc_summary"}
+{"text": "출장 관련 내규 찾아줘", "label": "doc_search"}
+{"text": "출장 규정 핵심만 정리해줘", "label": "doc_summary"}
+{"text": "인사평가 기준 문서 어디있어?", "label": "doc_search"}
+{"text": "인사평가 기준 요약 부탁해", "label": "doc_summary"}
+{"text": "복리후생 규정집 검색해줘", "label": "doc_search"}
+{"text": "복리후생 규정 간략하게 요약해줄래?", "label": "doc_summary"}
+{"text": "급여 체계 관련 문서 있나요?", "label": "doc_search"}
+{"text": "급여 체계 문서 핵심 내용 정리해주세요", "label": "doc_summary"}
+{"text": "프로젝트 관리 가이드 자료 찾아줘", "label": "doc_search"}
+{"text": "프로젝트 관리 가이드 요약해줘", "label": "doc_summary"}
+{"text": "재택근무 정책 문서 어디서 볼 수 있어?", "label": "doc_search"}
+{"text": "재택근무 정책 핵심 포인트 뽑아줘", "label": "doc_summary"}
+{"text": "사내 교육 규정 파일 있나", "label": "doc_search"}
+{"text": "사내 교육 규정 내용 정리해줘", "label": "doc_summary"}
+{"text": "개인정보 처리 방침 문서 검색해주세요", "label": "doc_search"}
+{"text": "개인정보 처리 방침 요약 좀 해줘", "label": "doc_summary"}
+{"text": "연차 관련 규정 자료 좀 찾아줘", "label": "doc_search"}
+{"text": "연차 규정 핵심만 알려줘", "label": "doc_summary"}
+{"text": "법인카드 사용 가이드 있어?", "label": "doc_search"}
+{"text": "법인카드 사용 가이드 요약해줄래?", "label": "doc_summary"}
+{"text": "경조사 관련 내규 파일 찾아줘", "label": "doc_search"}
+{"text": "경조사 규정 간단히 정리해줘", "label": "doc_summary"}
+{"text": "회의실 예약 규정 문서 어디있지?", "label": "doc_search"}
+{"text": "회의실 예약 규정 요약 부탁드립니다", "label": "doc_summary"}
+{"text": "퇴직금 산정 기준 자료 검색해줘", "label": "doc_search"}
+{"text": "퇴직금 산정 기준 핵심 내용 알려줘", "label": "doc_summary"}
+{"text": "사내 메신저 사용 정책 있나요?", "label": "doc_search"}
+{"text": "사내 메신저 사용 정책 요약해주세요", "label": "doc_summary"}
+{"text": "연차 사용 규정 어디 있어?", "label": "doc_search"}
+{"text": "연차 사용 규정 핵심만 요약해줘", "label": "doc_summary"}
+{"text": "출장비 정책 문서 찾아줘", "label": "doc_search"}
+{"text": "출장비 정책 간단히 설명해줘", "label": "doc_summary"}
+{"text": "보안 매뉴얼 전문 볼 수 있어?", "label": "doc_search"}
+{"text": "보안 매뉴얼에서 중요한 부분만 알려줘", "label": "doc_summary"}
+{"text": "급여명세서 작성법 문서 어디에?", "label": "doc_search"}
+{"text": "급여명세서 작성법 문서 요약 부탁해", "label": "doc_summary"}
+{"text": "회의록 작성 가이드 문서 찾아봐", "label": "doc_search"}
+{"text": "회의록 작성 가이드에서 필수 항목 알려줘", "label": "doc_summary"}
+{"text": "프로젝트 계획서 어딨어?", "label": "doc_search"}
+{"text": "프로젝트 계획서 요약해봐", "label": "doc_summary"}
+{"text": "사내 복지 규정 문서 줘봐", "label": "doc_search"}
+{"text": "사내 복지 규정 중요한 점 요약해 줘", "label": "doc_summary"}
+{"text": "재택근무 지침 파일 찾을 수 있어?", "label": "doc_search"}
+{"text": "재택근무 지침에서 요점만 정리해 줘", "label": "doc_summary"}
+{"text": "인사 평가 기준 문서 찾아줘", "label": "doc_search"}
+{"text": "인사 평가 기준 핵심만 알려줘", "label": "doc_summary"}
+{"text": "사내 교육 정책 자료 어디 있는지 알아?", "label": "doc_search"}
+{"text": "사내 교육 정책에서 중요한 부분만 요약해", "label": "doc_summary"}
+{"text": "복리후생 안내문 어디서 찾을 수 있어?", "label": "doc_search"}
+{"text": "복리후생 안내문 요약 좀 부탁해", "label": "doc_summary"}
+{"text": "코드 리뷰 가이드라인 문서 위치 알려줘", "label": "doc_search"}
+{"text": "코드 리뷰 가이드라인에서 꼭 알아야 할 것만 요약해", "label": "doc_summary"}
+{"text": "회사 비전 문서 좀 보여줄래?", "label": "doc_search"}
+{"text": "회사 비전 문서 간단히 요약해 줘", "label": "doc_summary"}
+{"text": "비상 상황 대응 매뉴얼 어디 있어?", "label": "doc_search"}
+{"text": "비상 상황 대응 매뉴얼 포인트만 정리해 줘", "label": "doc_summary"}
+{"text": "프로젝트 보고서 초안 찾아줘", "label": "doc_search"}
+{"text": "프로젝트 보고서 초안 요약해봐", "label": "doc_summary"}
+{"text": "재택근무 해도 돼?", "label": "judgment"}
+{"text": "오늘 점심 뭐 먹을까?", "label": "general"}
+{"text": "연차를 당일에 신청해도 되나요?", "label": "judgment"}
+{"text": "안녕하세요 오늘 날씨 좋네요", "label": "general"}
+{"text": "회사 노트북으로 개인 작업 해도 돼?", "label": "judgment"}
+{"text": "이 봇은 뭘 할 수 있어?", "label": "general"}
+{"text": "야근 수당 안 받고 자발적으로 야근해도 되나?", "label": "judgment"}
+{"text": "주말에 뭐 했어?", "label": "general"}
+{"text": "사내 와이파이로 넷플릭스 봐도 괜찮아?", "label": "judgment"}
+{"text": "고마워 도움이 많이 됐어", "label": "general"}
+{"text": "출장 중에 개인 일정 소화해도 돼?", "label": "judgment"}
+{"text": "오늘 기분이 좀 안 좋네", "label": "general"}
+{"text": "동료한테 사내 기밀 문서 공유해도 되나요?", "label": "judgment"}
+{"text": "점심시간에 산책 다녀올게", "label": "general"}
+{"text": "회의 중에 녹음해도 돼?", "label": "judgment"}
+{"text": "수고하셨습니다 좋은 하루 되세요", "label": "general"}
+{"text": "경쟁사 이직 제안 받았는데 면접 봐도 되나?", "label": "judgment"}
+{"text": "커피 한 잔 하고 싶다", "label": "general"}
+{"text": "인턴이 외부 미팅에 단독 참석해도 돼?", "label": "judgment"}
+{"text": "오늘 퇴근하고 운동 갈 거야", "label": "general"}
+{"text": "재택근무 중에 카페에서 일해도 괜찮아?", "label": "judgment"}
+{"text": "헬로 반가워", "label": "general"}
+{"text": "수습 기간에 유급 휴가 써도 되는 거야?", "label": "judgment"}
+{"text": "이번 주말 날씨 어떨까?", "label": "general"}
+{"text": "퇴근 후에 회사 장비 집에 가져가도 돼?", "label": "judgment"}
+{"text": "ㅋㅋㅋ 재밌다", "label": "general"}
+{"text": "팀장 승인 없이 외부 세미나 참석해도 되나?", "label": "judgment"}
+{"text": "듀듀야 넌 누가 만들었어?", "label": "general"}
+{"text": "병가를 전화로만 신청해도 되나요?", "label": "judgment"}
+{"text": "오늘 하루도 파이팅!", "label": "general"}
+{"text": "내일 연차 써도 문제 없어?", "label": "judgment"}
+{"text": "안녕하세요! 오늘 기분 어떠세요?", "label": "general"}
+{"text": "출장비 회사에서 지원돼?", "label": "judgment"}
+{"text": "점심 먹었어?", "label": "general"}
+{"text": "회사 보안 정책 어기면 어떻게 돼?", "label": "judgment"}
+{"text": "주말 잘 보냈어?", "label": "general"}
+{"text": "연말 보너스 언제 주는지 아는 사람?", "label": "general"}
+{"text": "급여 명세서 확인해줄 수 있어?", "label": "judgment"}
+{"text": "휴가 내고 싶으면 어떻게 해야 해?", "label": "judgment"}
+{"text": "이 프로젝트 재밌어 보인다!", "label": "general"}
+{"text": "회의 안건 미리 보내야 해?", "label": "judgment"}
+{"text": "커피 마실래?", "label": "general"}
+{"text": "프로젝트 마감일 연기 가능한가요?", "label": "judgment"}
+{"text": "오늘 날씨 좋다", "label": "general"}
+{"text": "회사 컴퓨터로 개인 작업 해도 돼?", "label": "judgment"}
+{"text": "오후에 잠깐 산책할래?", "label": "general"}
+{"text": "점심시간에 외출 가능할까?", "label": "judgment"}
+{"text": "요새 일 많지?", "label": "general"}
+{"text": "지각했을 때 어떻게 처리돼?", "label": "judgment"}
+{"text": "새로운 규정이 생겼어?", "label": "general"}
+{"text": "메일로 지시 받으면 문제가 되나?", "label": "judgment"}
+{"text": "요즘 책 읽고 있어?", "label": "general"}
+{"text": "야근 교통비 지원되나?", "label": "judgment"}
+{"text": "주말에 뭐 할 거야?", "label": "general"}
+{"text": "회사에서 개인 이메일 사용해도 되나요?", "label": "judgment"}
+{"text": "요즘 무슨 드라마 봐?", "label": "general"}
+{"text": "비밀 유지 계약 어떻게 적용돼?", "label": "judgment"}
+{"text": "오늘 운동할 계획 있어?", "label": "general"}
+{"text": "업무 중에 개인 전화 받으면 안 되나?", "label": "judgment"}
+{"text": "좋은 하루 보내!", "label": "general"}
+{"text": "백엔드 개발자 JD 만들어줘", "label": "doc_generate"}
+{"text": "백엔드 개발자 JD에서 필수 자격 요건이 뭐야?", "label": "doc_qa"}
+{"text": "이번 프로젝트 제안서 작성해주세요", "label": "doc_generate"}
+{"text": "프로젝트 제안서에서 예산이 얼마로 잡혀있어?", "label": "doc_qa"}
+{"text": "오늘 회의 내용으로 회의록 만들어줘", "label": "doc_generate"}
+{"text": "오늘 회의록에서 액션 아이템이 뭐야?", "label": "doc_qa"}
+{"text": "마케팅 기획서 새로 작성해줘", "label": "doc_generate"}
+{"text": "마케팅 기획서에서 타겟 연령대가 어떻게 돼?", "label": "doc_qa"}
+{"text": "분기 실적 보고서 작성 부탁해", "label": "doc_generate"}
+{"text": "분기 실적 보고서에서 영업이익이 얼마야?", "label": "doc_qa"}
+{"text": "데이터 분석가 채용 JD 만들어줄래?", "label": "doc_generate"}
+{"text": "데이터 분석가 JD에 우대사항이 뭐가 있어?", "label": "doc_qa"}
+{"text": "신규 서비스 기획안 작성해주세요", "label": "doc_generate"}
+{"text": "신규 서비스 기획안에서 론칭 일정이 언제야?", "label": "doc_qa"}
+{"text": "팀 주간 보고서 만들어줘", "label": "doc_generate"}
+{"text": "주간 보고서에서 이번 주 이슈가 뭐야?", "label": "doc_qa"}
+{"text": "사업 제안서 작성해줘", "label": "doc_generate"}
+{"text": "사업 제안서에서 ROI가 얼마로 예상되어 있어?", "label": "doc_qa"}
+{"text": "인수인계서 만들어주세요", "label": "doc_generate"}
+{"text": "인수인계서에서 미완료 업무가 뭐야?", "label": "doc_qa"}
+{"text": "고객 미팅 결과 보고서 작성해줘", "label": "doc_generate"}
+{"text": "고객 미팅 보고서에서 합의된 납기일이 언제야?", "label": "doc_qa"}
+{"text": "디자이너 JD 새로 만들어줄래?", "label": "doc_generate"}
+{"text": "디자이너 JD에서 필수 툴이 뭐야?", "label": "doc_qa"}
+{"text": "연간 교육 계획서 작성해주세요", "label": "doc_generate"}
+{"text": "연간 교육 계획서에서 총 예산이 얼마야?", "label": "doc_qa"}
+{"text": "기술 검토 보고서 만들어줘", "label": "doc_generate"}
+{"text": "기술 검토 보고서에서 추천된 벤더가 어디야?", "label": "doc_qa"}
+{"text": "스프린트 회고 보고서 작성해줘", "label": "doc_generate"}
+{"text": "스프린트 회고에서 개선 포인트가 뭐였어?", "label": "doc_qa"}
+{"text": "내 연차 계획서 작성해줘", "label": "doc_generate"}
+{"text": "이번 달 급여 명세서에 뭐라고 적혀있어?", "label": "doc_qa"}
+{"text": "다음 주 회의록 작성 부탁해요", "label": "doc_generate"}
+{"text": "보안 규정 변경된 부분이 뭐야?", "label": "doc_qa"}
+{"text": "새 프로젝트 제안서 만들어줘", "label": "doc_generate"}
+{"text": "프로젝트 계획서에 주요 목표가 뭐였지?", "label": "doc_qa"}
+{"text": "출장 보고서 작성 좀 해줘", "label": "doc_generate"}
+{"text": "올해 보너스 지급 기준이 뭐야?", "label": "doc_qa"}
+{"text": "급여 명세서 작성 부탁드립니다", "label": "doc_generate"}
+{"text": "회의록에 다음 회의 일정이 뭐라고 되어있어?", "label": "doc_qa"}
+{"text": "보안 점검 체크리스트 만들어줘", "label": "doc_generate"}
+{"text": "지난주 출장비 내역서에 결재 담당자가 누구야?", "label": "doc_qa"}
+{"text": "프로젝트 완료 보고서 작성해줘", "label": "doc_generate"}
+{"text": "회사의 연차 사용 규정이 어떻게 되어있어?", "label": "doc_qa"}
+{"text": "내 연간 성과 보고서 만들어줘", "label": "doc_generate"}
+{"text": "이번 프로젝트 담당자가 누구인지 알려줄래?", "label": "doc_qa"}
+{"text": "다음 달 회의록 작성해주세요", "label": "doc_generate"}
+{"text": "보안 교육 자료에 중요한 점이 뭐였어?", "label": "doc_qa"}
+{"text": "프로젝트 계획서 작성해 주세요", "label": "doc_generate"}
+{"text": "이번 회의록에서 결론 부분이 뭐야?", "label": "doc_qa"}
+{"text": "이번 분기 재무 보고서 작성해줘", "label": "doc_generate"}
+{"text": "출장 계획서에 필요한 서류가 뭐야?", "label": "doc_qa"}
+{"text": "신입사원 JD 새로 작성 부탁드려요", "label": "doc_generate"}
+{"text": "작년 연차 사용 내역이 어떻게 되어있어?", "label": "doc_qa"}
+{"text": "보안 감사 보고서 작성 좀 부탁할게", "label": "doc_generate"}
+{"text": "이번 회의록에 참석자가 몇 명이었어?", "label": "doc_qa"}
+{"text": "내 연봉계약서 작성해줘", "label": "doc_generate"}
+{"text": "제안서에 비용 항목이 어떻게 되어있어?", "label": "doc_qa"}
+{"text": "다음 주 출장 계획서 작성해 줘", "label": "doc_generate"}
+{"text": "회의록에서 결정된 사항이 뭐였어?", "label": "doc_qa"}
+{"text": "제안서 양식 있어?", "label": "doc_search"}
+{"text": "제안서 만들어줘", "label": "doc_generate"}
+{"text": "회의록 템플릿 찾아줘", "label": "doc_search"}
+{"text": "회의록 작성해줘", "label": "doc_generate"}
+{"text": "보고서 서식 어디서 다운받을 수 있어?", "label": "doc_search"}
+{"text": "보고서 새로 작성해주세요", "label": "doc_generate"}
+{"text": "JD 양식 파일 있나요?", "label": "doc_search"}
+{"text": "JD 새로 만들어줄래?", "label": "doc_generate"}
+{"text": "기획안 템플릿 검색해줘", "label": "doc_search"}
+{"text": "기획안 작성해줘", "label": "doc_generate"}
+{"text": "출장 보고서 양식 찾아줘", "label": "doc_search"}
+{"text": "출장 보고서 작성해주세요", "label": "doc_generate"}
+{"text": "인수인계 문서 서식 있어?", "label": "doc_search"}
+{"text": "인수인계 문서 만들어줘", "label": "doc_generate"}
+{"text": "주간 업무 보고 양식 어디있지?", "label": "doc_search"}
+{"text": "주간 업무 보고서 작성해줘", "label": "doc_generate"}
+{"text": "사업 계획서 템플릿 찾아주세요", "label": "doc_search"}
+{"text": "사업 계획서 작성 부탁드립니다", "label": "doc_generate"}
+{"text": "경비 정산서 양식 파일 있나", "label": "doc_search"}
+{"text": "경비 정산서 만들어줘", "label": "doc_generate"}
+{"text": "프레젠테이션 템플릿 검색해줘", "label": "doc_search"}
+{"text": "프레젠테이션 자료 만들어줘", "label": "doc_generate"}
+{"text": "채용 공고 서식 어디있어?", "label": "doc_search"}
+{"text": "채용 공고 작성해줘", "label": "doc_generate"}
+{"text": "회의 안건 양식 찾아줘", "label": "doc_search"}
+{"text": "회의 안건 문서 작성해줘", "label": "doc_generate"}
+{"text": "계약서 템플릿 있나요?", "label": "doc_search"}
+{"text": "계약서 초안 만들어주세요", "label": "doc_generate"}
+{"text": "교육 결과 보고서 양식 검색해줘", "label": "doc_search"}
+{"text": "교육 결과 보고서 작성해줘", "label": "doc_generate"}
+{"text": "연차 신청서 어디에 있죠?", "label": "doc_search"}
+{"text": "이번 주말 출장 보고서 작성 부탁해요.", "label": "doc_generate"}
+{"text": "보안 규정 파일 좀 찾아줘.", "label": "doc_search"}
+{"text": "다음 회의 회의록 작성해줄래?", "label": "doc_generate"}
+{"text": "급여 명세서 양식 있나요?", "label": "doc_search"}
+{"text": "새로운 프로젝트 제안서 만들어줄 수 있어?", "label": "doc_generate"}
+{"text": "지난 회의록 전문 보내줄 수 있어?", "label": "doc_search"}
+{"text": "이번 월급 계산 좀 부탁해.", "label": "doc_generate"}
+{"text": "출장 경비 규정 어디에 있나요?", "label": "doc_search"}
+{"text": "이번 프로젝트 보고서 작성해줘.", "label": "doc_generate"}
+{"text": "회사 보안정책 문서 위치 알려줄래?", "label": "doc_search"}
+{"text": "주간 업무 보고서 만들어줘.", "label": "doc_generate"}
+{"text": "최근 회의록 파일 있어?", "label": "doc_search"}
+{"text": "제안서 초안 작성 부탁드립니다.", "label": "doc_generate"}
+{"text": "근무 시간 규정 문서를 찾아줄래?", "label": "doc_search"}
+{"text": "회의 안건 정리해서 문서로 만들어줘.", "label": "doc_generate"}
+{"text": "연차 사용 규정 어디서 볼 수 있지?", "label": "doc_search"}
+{"text": "다음 주 발표 자료 작성 도와줘.", "label": "doc_generate"}
+{"text": "회사 급여 정책 문서 있어?", "label": "doc_search"}
+{"text": "다음 회의 안건 정리 부탁해.", "label": "doc_generate"}
+{"text": "프로젝트 일정표 파일 찾아줄 수 있나요?", "label": "doc_search"}
+{"text": "이번 회계 연도 보고서 작성해줘.", "label": "doc_generate"}
+{"text": "보안 관련 사례 문서 좀 찾아줘.", "label": "doc_search"}
+{"text": "오늘 미팅 노트 작성해줄래?", "label": "doc_generate"}
+{"text": "출장 신청서 양식 어디에 있지?", "label": "doc_search"}
+{"text": "이번 주 회의록 작성 부탁드립니다.", "label": "doc_generate"}
+{"text": "회사 정책 매뉴얼 파일 있어?", "label": "doc_search"}
+{"text": "다음 분기 계획서 작성 부탁해.", "label": "doc_generate"}
+{"text": "퇴사 절차 문서 있어?", "label": "doc_search"}
+{"text": "신제품 소개서 만들어줄 수 있어?", "label": "doc_generate"}

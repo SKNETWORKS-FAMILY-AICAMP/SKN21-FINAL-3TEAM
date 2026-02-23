@@ -1,0 +1,30 @@
+{"text": "출장비 관련 규정 문서 찾아줘", "label": "doc_search"}
+{"text": "출장비 한도가 얼마인지 알려줘", "label": "doc_qa"}
+{"text": "연차 사용 관련 사내 규정 어디있어?", "label": "doc_search"}
+{"text": "연차 수당 얼마야?", "label": "doc_qa"}
+{"text": "보안 정책 문서 좀 찾아주세요", "label": "doc_search"}
+{"text": "보안 정책에서 비밀번호 변경 주기가 몇 개월이야?", "label": "doc_qa"}
+{"text": "급여 체계 관련 내규 있나요?", "label": "doc_search"}
+{"text": "급여 체계에서 직급별 기본급 차이가 얼마야?", "label": "doc_qa"}
+{"text": "인사평가 기준 문서 검색해줘", "label": "doc_search"}
+{"text": "인사평가에서 S등급 비율이 몇 퍼센트야?", "label": "doc_qa"}
+{"text": "프로젝트 관리 가이드라인 자료 있어?", "label": "doc_search"}
+{"text": "프로젝트 관리 가이드라인에서 보고 주기가 어떻게 돼?", "label": "doc_qa"}
+{"text": "복리후생 관련 규정집 어디서 볼수있어", "label": "doc_search"}
+{"text": "복리후생에서 건강검진 지원 금액이 얼마야?", "label": "doc_qa"}
+{"text": "재택근무 정책 문서 좀 보내줘", "label": "doc_search"}
+{"text": "재택근무 시 근무시간 기록 방법이 뭐야?", "label": "doc_qa"}
+{"text": "교육비 지원 내규 찾아주세요", "label": "doc_search"}
+{"text": "교육비 지원 한도가 연간 얼마로 되어있어?", "label": "doc_qa"}
+{"text": "경조사 관련 사내 규정집 있나", "label": "doc_search"}
+{"text": "경조사 휴가 일수가 며칠이야?", "label": "doc_qa"}
+{"text": "회의실 사용 규정 문서 어디있지?", "label": "doc_search"}
+{"text": "회의실 최대 사용시간이 몇 시간이야?", "label": "doc_qa"}
+{"text": "법인카드 사용 지침서 좀 찾아줄래?", "label": "doc_search"}
+{"text": "법인카드 월 한도가 얼마로 설정되어 있나요?", "label": "doc_qa"}
+{"text": "야근 수당 관련 규정 있으면 알려줘", "label": "doc_search"}
+{"text": "야근 수당이 시간당 얼마야?", "label": "doc_qa"}
+{"text": "해외출장 규정 문서 검색해주세요", "label": "doc_search"}
+{"text": "해외출장 일비가 얼마로 정해져있어?", "label": "doc_qa"}
+{"text": "사내 동호회 운영 규정 파일 찾아줘", "label": "doc_search"}
+{"text": "동호회 지원금이 분기별 얼마야?", "label": "doc_qa"}

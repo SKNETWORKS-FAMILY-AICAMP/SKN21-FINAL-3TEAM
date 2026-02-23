@@ -1,0 +1,134 @@
+{"text": "연차 사용 규칙이 뭐야?", "label": "doc_qa"}
+{"text": "올해 보너스 책정 기준 뭐야?", "label": "doc_qa"}
+{"text": "출장비 지급 조건 알려줘", "label": "doc_qa"}
+{"text": "보안 정책 어떻게 되어 있어?", "label": "doc_qa"}
+{"text": "이번 인사평가 기준은 뭐야?", "label": "doc_qa"}
+{"text": "급여는 언제 지급되나?", "label": "doc_qa"}
+{"text": "복리후생에 뭐 포함돼?", "label": "doc_qa"}
+{"text": "프로젝트 마감일 언제로 정해졌어?", "label": "doc_qa"}
+{"text": "회의록 작성 기준 알려줘", "label": "doc_qa"}
+{"text": "퇴직금 계산 방법이 어떻게 돼?", "label": "doc_qa"}
+{"text": "성과급 기준이 뭐야?", "label": "doc_qa"}
+{"text": "사내 교육 일정이 어떻게 돼?", "label": "doc_qa"}
+{"text": "연차 소진 시한이 언제야?", "label": "doc_qa"}
+{"text": "지난 회의록에 뭐가 기록됐어?", "label": "doc_qa"}
+{"text": "이번 프로젝트 예산 얼마야?", "label": "doc_qa"}
+{"text": "출장보고서 제출 마감 언제야?", "label": "doc_qa"}
+{"text": "사내 규정 어디에 있지?", "label": "doc_qa"}
+{"text": "올해 평가 항목 달라진 거 있어?", "label": "doc_qa"}
+{"text": "월간 매출 목표는 얼마야?", "label": "doc_qa"}
+{"text": "보안 점검 일정 언제야?", "label": "doc_qa"}
+{"text": "복지 포인트 사용처 뭐야?", "label": "doc_qa"}
+{"text": "프로젝트 팀원 배정 어떻게 됐어?", "label": "doc_qa"}
+{"text": "회의 날짜가 언제로 잡혔어?", "label": "doc_qa"}
+{"text": "올해 연차 사용 계획은?", "label": "doc_qa"}
+{"text": "예산 책정 기준이 뭐야?", "label": "doc_qa"}
+{"text": "출퇴근 시간 변경됐어?", "label": "doc_qa"}
+{"text": "최근 인사평가 결과는 어땠어?", "label": "doc_qa"}
+{"text": "사내 규정 변경된 거 있어?", "label": "doc_qa"}
+{"text": "연차 사용 가능 기간 언제야?", "label": "doc_qa"}
+{"text": "이번 분기 성과 평가 기준은 뭐야?", "label": "doc_qa"}
+{"text": "보안 점검 결과가 어떻게 나왔어?", "label": "doc_qa"}
+{"text": "복지 혜택 변경 사항 있어?", "label": "doc_qa"}
+{"text": "프로젝트 진행 상황은 어때?", "label": "doc_qa"}
+{"text": "회의록 작성 기준이 뭐야?", "label": "doc_qa"}
+{"text": "퇴직금 지급 조건은 어떻게 돼?", "label": "doc_qa"}
+{"text": "성과급 지급 시기가 언제야?", "label": "doc_qa"}
+{"text": "교육 일정이 언제로 잡혔어?", "label": "doc_qa"}
+{"text": "연차 사용 계획서 언제 제출해야 해?", "label": "doc_qa"}
+{"text": "사내 규정 어디서 찾을 수 있어?", "label": "doc_qa"}
+{"text": "평가 항목에 변화 있나?", "label": "doc_qa"}
+{"text": "월간 매출 목표 얼마로 설정됐어?", "label": "doc_qa"}
+{"text": "보안 점검 계획이 어떻게 되어 있어?", "label": "doc_qa"}
+{"text": "복지 포인트 어디서 쓸 수 있어?", "label": "doc_qa"}
+{"text": "프로젝트 팀원 역할 분담 어떻게 되어 있어?", "label": "doc_qa"}
+{"text": "회의 일정이 어떻게 되어 있어?", "label": "doc_qa"}
+{"text": "올해 연차 사용 규칙 어떻게 돼?", "label": "doc_qa"}
+{"text": "예산 책정에 어떤 기준 사용해?", "label": "doc_qa"}
+{"text": "출퇴근 시간 변경 사항 있나?", "label": "doc_qa"}
+{"text": "최근 인사평가 결과 발표됐어?", "label": "doc_qa"}
+{"text": "사내 규정 변동 사항 확인됐어?", "label": "doc_qa"}
+{"text": "연차 사용 가능 시기가 언제야?", "label": "doc_qa"}
+{"text": "이번 분기 성과 평가 기준 변경됐어?", "label": "doc_qa"}
+{"text": "보안 점검 결과 발표됐어?", "label": "doc_qa"}
+{"text": "복지 혜택에 변화가 있어?", "label": "doc_qa"}
+{"text": "프로젝트 진행 상황 보고서 나왔어?", "label": "doc_qa"}
+{"text": "회의록 작성 지침이 뭐야?", "label": "doc_qa"}
+{"text": "퇴직금 지급 기준이 뭐야?", "label": "doc_qa"}
+{"text": "성과급 지급 조건은 어떻게 돼?", "label": "doc_qa"}
+{"text": "교육 일정 언제 예정되어 있어?", "label": "doc_qa"}
+{"text": "연차 사용 계획 언제 제출해야 해?", "label": "doc_qa"}
+{"text": "사내 규정은 어디서 확인할 수 있어?", "label": "doc_qa"}
+{"text": "평가 항목이 변경되었나?", "label": "doc_qa"}
+{"text": "월간 매출 목표는 얼마로 설정되었어?", "label": "doc_qa"}
+{"text": "보안 점검 계획은 어떻게 되어 있어?", "label": "doc_qa"}
+{"text": "복지 포인트 사용 가능한 곳이 어디야?", "label": "doc_qa"}
+{"text": "프로젝트 팀원 역할 분담이 어떻게 되어 있어?", "label": "doc_qa"}
+{"text": "회의 일정은 어떻게 되어 있어?", "label": "doc_qa"}
+{"text": "올해 연차 사용 규칙은 어떻게 돼?", "label": "doc_qa"}
+{"text": "예산 책정 기준은 무엇인가?", "label": "doc_qa"}
+{"text": "출퇴근 시간에 변경 사항이 있습니까?", "label": "doc_qa"}
+{"text": "최근 인사평가 결과는 발표되었습니까?", "label": "doc_qa"}
+{"text": "사내 규정의 변동 사항은 확인되었습니까?", "label": "doc_qa"}
+{"text": "연차 사용 가능 시기는 언제입니까?", "label": "doc_qa"}
+{"text": "이번 분기 성과 평가 기준은 무엇입니까?", "label": "doc_qa"}
+{"text": "보안 점검 결과가 발표되었습니까?", "label": "doc_qa"}
+{"text": "복지 혜택에 변화가 있습니까?", "label": "doc_qa"}
+{"text": "프로젝트 진행 상황 보고서는 발표되었습니까?", "label": "doc_qa"}
+{"text": "회의록 작성 지침은 무엇입니까?", "label": "doc_qa"}
+{"text": "퇴직금 지급 기준은 무엇입니까?", "label": "doc_qa"}
+{"text": "성과급 지급 조건은 무엇입니까?", "label": "doc_qa"}
+{"text": "교육 일정은 언제 예정되어 있습니까?", "label": "doc_qa"}
+{"text": "연차 사용 계획은 언제 제출해야 합니까?", "label": "doc_qa"}
+{"text": "사내 규정은 어디에서 확인할 수 있습니까?", "label": "doc_qa"}
+{"text": "평가 항목에 변경 사항이 있습니까?", "label": "doc_qa"}
+{"text": "월간 매출 목표는 얼마로 설정되었습니까?", "label": "doc_qa"}
+{"text": "보안 점검 계획은 어떻게 되어 있습니까?", "label": "doc_qa"}
+{"text": "복지 포인트 사용 가능한 곳은 어디입니까?", "label": "doc_qa"}
+{"text": "프로젝트 팀원 역할 분담은 어떻게 되어 있습니까?", "label": "doc_qa"}
+{"text": "회의 일정은 어떻게 되어 있습니까?", "label": "doc_qa"}
+{"text": "올해 연차 사용 규칙은 무엇입니까?", "label": "doc_qa"}
+{"text": "예산 책정 기준은 무엇을 기준으로 합니까?", "label": "doc_qa"}
+{"text": "출퇴근 시간 변경 사항을 알려줄 수 있습니까?", "label": "doc_qa"}
+{"text": "최근 인사평가 결과 발표가 있었는지요?", "label": "doc_qa"}
+{"text": "사내 규정 변동 사항을 확인할 수 있습니까?", "label": "doc_qa"}
+{"text": "연차 사용 가능 시기가 언제인지요?", "label": "doc_qa"}
+{"text": "이번 분기 성과 평가 기준은 무엇인지요?", "label": "doc_qa"}
+{"text": "보안 점검 결과는 발표되었는지요?", "label": "doc_qa"}
+{"text": "복지 혜택에 변화가 있었는지요?", "label": "doc_qa"}
+{"text": "프로젝트 진행 상황 보고서를 받을 수 있습니까?", "label": "doc_qa"}
+{"text": "회의록 작성 지침은 무엇인지요?", "label": "doc_qa"}
+{"text": "퇴직금 지급 기준을 알려줄 수 있습니까?", "label": "doc_qa"}
+{"text": "성과급 지급 조건은 무엇인지요?", "label": "doc_qa"}
+{"text": "교육 일정은 언제 예정되어 있는지요?", "label": "doc_qa"}
+{"text": "연차 사용 계획 제출 기한은 언제인지요?", "label": "doc_qa"}
+{"text": "사내 규정을 어디서 확인할 수 있는지요?", "label": "doc_qa"}
+{"text": "평가 항목 변경 사항이 있는지요?", "label": "doc_qa"}
+{"text": "월간 매출 목표를 얼마로 설정했는지요?", "label": "doc_qa"}
+{"text": "보안 점검 계획은 어떻게 되어 있는지요?", "label": "doc_qa"}
+{"text": "복지 포인트 사용 가능한 곳은 어디인지요?", "label": "doc_qa"}
+{"text": "프로젝트 팀원 역할 분담은 어떻게 되어 있는지요?", "label": "doc_qa"}
+{"text": "회의 일정은 어떻게 되어 있는지요?", "label": "doc_qa"}
+{"text": "올해 연차 사용 규칙은 무엇인지요?", "label": "doc_qa"}
+{"text": "예산 책정 기준을 무엇으로 하는지요?", "label": "doc_qa"}
+{"text": "출퇴근 시간 변경 사항 알려줄 수 있나?", "label": "doc_qa"}
+{"text": "최근 인사평가 결과 발표 있었나?", "label": "doc_qa"}
+{"text": "사내 규정 변동 사항 확인할 수 있나요?", "label": "doc_qa"}
+{"text": "연차 사용 가능 시기가 언제인지 아나요?", "label": "doc_qa"}
+{"text": "이번 분기 성과 평가 기준 뭐죠?", "label": "doc_qa"}
+{"text": "보안 점검 결과 발표 됐나요?", "label": "doc_qa"}
+{"text": "복지 혜택에 어떤 변화가 있나요?", "label": "doc_qa"}
+{"text": "프로젝트 진행 상황 보고서 어디서 보나요?", "label": "doc_qa"}
+{"text": "회의록 작성 지침 뭔지 아세요?", "label": "doc_qa"}
+{"text": "퇴직금 지급 기준 알려줄 수 있나요?", "label": "doc_qa"}
+{"text": "성과급 지급 조건 뭐죠?", "label": "doc_qa"}
+{"text": "교육 일정 언제 예정된 건가요?", "label": "doc_qa"}
+{"text": "연차 사용 계획 제출 기한 언제인가요?", "label": "doc_qa"}
+{"text": "사내 규정 어디서 확인할 수 있는지 아세요?", "label": "doc_qa"}
+{"text": "평가 항목 변경 사항 있나요?", "label": "doc_qa"}
+{"text": "월간 매출 목표 얼마로 설정했는지 아세요?", "label": "doc_qa"}
+{"text": "보안 점검 계획 어떻게 되어 있는지 아나요?", "label": "doc_qa"}
+{"text": "복지 포인트 사용 가능한 곳 어디죠?", "label": "doc_qa"}
+{"text": "프로젝트 팀원 역할 분담 어떻게 되어 있는지 아시나요?", "label": "doc_qa"}
+{"text": "회의 일정 어떻게 되어 있는지 아세요?", "label": "doc_qa"}
+{"text": "올해 연차 사용 규칙 무엇인지 아나요?", "label": "doc_qa"}

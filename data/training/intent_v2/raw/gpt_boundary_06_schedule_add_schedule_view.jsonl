@@ -1,0 +1,30 @@
+{"text": "다음 주 화요일에 연차 일정 추가해줘", "label": "schedule_add"}
+{"text": "다음 주 화요일에 연차 있나?", "label": "schedule_view"}
+{"text": "이번 주 출장 일정 잡아줄래?", "label": "schedule_add"}
+{"text": "이번 주 출장 일정 확인해줘", "label": "schedule_view"}
+{"text": "다음 회의는 언제지?", "label": "schedule_view"}
+{"text": "다음 주 월요일 오전 10시에 회의 예약해줘", "label": "schedule_add"}
+{"text": "금요일 보안 교육 일정 있어?", "label": "schedule_view"}
+{"text": "이번 주 금요일에 보안 교육 등록해줘", "label": "schedule_add"}
+{"text": "프로젝트 킥오프 미팅 언제야?", "label": "schedule_view"}
+{"text": "프로젝트 킥오프 미팅 잡자", "label": "schedule_add"}
+{"text": "급여 발표 회의 일정 확인해줘", "label": "schedule_view"}
+{"text": "급여 발표 회의 추가해줘", "label": "schedule_add"}
+{"text": "다음 주 출장 언제지?", "label": "schedule_view"}
+{"text": "다음 주 출장 일정 잡아줘", "label": "schedule_add"}
+{"text": "내일 회의 있나?", "label": "schedule_view"}
+{"text": "내일 회의 추가해줘", "label": "schedule_add"}
+{"text": "이번 주 금요일에 뭐 있어?", "label": "schedule_view"}
+{"text": "이번 주 금요일에 일정 넣어줘", "label": "schedule_add"}
+{"text": "보안 교육 언제야?", "label": "schedule_view"}
+{"text": "보안 교육 일정 추가해줘", "label": "schedule_add"}
+{"text": "목요일 오후 3시에 뭐 있지?", "label": "schedule_view"}
+{"text": "목요일 오후 3시에 회의 잡아줘", "label": "schedule_add"}
+{"text": "다음 달 연차 일정 보여줘", "label": "schedule_view"}
+{"text": "다음 달 연차 일정 추가해줘", "label": "schedule_add"}
+{"text": "회의실 예약 상황 확인해줘", "label": "schedule_view"}
+{"text": "회의실 예약해줘", "label": "schedule_add"}
+{"text": "다음 주 월요일 일정 알려줘", "label": "schedule_view"}
+{"text": "다음 주 월요일 일정 추가해줘", "label": "schedule_add"}
+{"text": "프로젝트 회의 언제지?", "label": "schedule_view"}
+{"text": "프로젝트 회의 일정 잡아줘", "label": "schedule_add"}
