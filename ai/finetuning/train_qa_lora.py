@@ -33,9 +33,8 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     BitsAndBytesConfig,
-    TrainingArguments,
 )
-from trl import SFTTrainer
+from trl import SFTTrainer, SFTConfig
 
 # ── 경로 ──
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -134,14 +133,14 @@ def train():
         task_type="CAUSAL_LM",
     )
 
-    training_args = TrainingArguments(
+    sft_config = SFTConfig(
         output_dir=str(OUTPUT_DIR / "checkpoints"),
         num_train_epochs=3,
         per_device_train_batch_size=4,
         gradient_accumulation_steps=4,      # effective batch size = 16
         learning_rate=2e-4,
         lr_scheduler_type="cosine",
-        warmup_ratio=0.05,
+        warmup_steps=20,
         logging_steps=10,
         save_strategy="epoch",
         eval_strategy="epoch",
@@ -151,17 +150,17 @@ def train():
         gradient_checkpointing=True,
         optim="paged_adamw_8bit",
         report_to="none",
+        max_seq_length=MAX_SEQ_LENGTH,
+        dataset_text_field="text",
     )
 
     print("\n[3/4] 학습 시작...")
     trainer = SFTTrainer(
         model=model,
-        args=training_args,
+        args=sft_config,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         peft_config=lora_config,
-        max_seq_length=MAX_SEQ_LENGTH,
-        dataset_text_field="text",
     )
 
     trainer.train()
