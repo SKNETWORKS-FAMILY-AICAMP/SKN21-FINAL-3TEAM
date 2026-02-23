@@ -2,7 +2,7 @@
 
 > **상태**: Stage 6 완료 (Label Smoothing + 시나리오 테스트 + Threshold 조정)
 > **작성일**: 2026-02-22
-> **최종 수정**: 2026-02-23 (Stage 5 완료 + Stage 6 추가)
+> **최종 수정**: 2026-02-23 (Stage 6 완료)
 > **담당**: 신지용 (PM)
 
 ---
@@ -68,7 +68,7 @@
 ### 생성 전략: 멀티 LLM 혼합형 (방법 C)
 
 기존 데이터는 BERT 실패 패턴 보정용으로 누적 → 특정 모델에 편향.
-클린 실험을 위해 **3개 LLM으로 통일된 기준으로 재생성**.
+클린 실험을 위해 **2개 LLM(Claude + GPT)으로 통일된 기준으로 재생성**.
 
 #### 왜 멀티 LLM인가?
 - **다양성**: 단일 LLM은 비슷한 문체/패턴 반복 → 3개 LLM이 각각 다른 스타일의 한국어 생성
@@ -101,7 +101,7 @@
 data/training/intent_v2/
 ├── {intent}.jsonl × 8          # 기본 데이터 (intent별 300개)
 ├── boundary_pairs.jsonl        # 경계 쌍 데이터 (~300개)
-├── adversarial_v2.json         # 새 적대적 테스트 (240개, 30/intent)
+├── adversarial_v2.json         # 새 적대적 테스트 (450개, GPT+Claude)
 ├── scenario_test.json          # 라우팅 시나리오 테스트 (30개)
 ├── splits/
 │   ├── train.jsonl             # 80%
@@ -145,9 +145,9 @@ data/training/intent_v2/
 | 단계 | 작업 | 방식 |
 |------|------|------|
 | 1 | **Seed 문장** — intent별 10개 직접 작성 | 수동 (앵커) |
-| 2 | **기본 생성** — intent별 300개 | Claude 100 + GPT 100 + Gemini 100 |
-| 3 | **경계 쌍** — 혼동 쌍별 30개 | 3 LLM 전부 생성 → 2/3 투표 |
-| 4 | **적대적 세트** — 8개 유형별 30개 | 3 LLM 전부 생성 → 2/3 투표 |
+| 2 | **기본 생성** — intent별 300개 | Claude 150 + GPT 150 |
+| 3 | **경계 쌍** — 혼동 쌍별 30개 | GPT 300 + Claude 300 |
+| 4 | **적대적 세트** — 8개 유형별 30개 | GPT 232 + Claude 240 (중복 제거) |
 | 5 | **자동 QA** — 중복/형식/균형 | 스크립트 |
 | 6 | **수동 검토** — intent별 50개 샘플링 | 직접 확인 |
 | 7 | **분할** — Train/Val/Test | Stratified 80/10/10 |
@@ -198,14 +198,14 @@ data/training/intent_v2/
 
 ### 예상 소요 시간
 
-| 단계 | RunPod (RTX A4000) | 로컬 (RTX 4070) |
+| 단계 | RunPod (RTX 4090) | 로컬 (RTX 4070) |
 |------|:------------------:|:---------------:|
 | Stage 2 (3모델 baseline) | ~3분 | ~10분 |
-| Stage 3 (32 grid + 3 seed) | ~20분 | ~1시간 |
+| Stage 3 (32 grid + 3 seed) | ~17분 | ~1시간 |
 | Stage 4 (전체 평가) | ~10분 | ~30분 |
-| **합계** | **~35분** | **~1.5시간** |
+| **합계** | **~30분** | **~1.5시간** |
 
-> RunPod 사용으로 전환. GPU: RTX A4000 (16GB) 권장.
+> RunPod 사용으로 전환. GPU: RTX 4090 (24GB).
 
 ---
 
@@ -226,7 +226,7 @@ data/training/intent_v2/
 |------|------|------|
 | Validation | 매 epoch | HP 선택, early stopping |
 | Test (hold-out) | Stage 4에서 **1회만** | 최종 성능 보고 |
-| Adversarial v2 (240개) | Stage 4 | 강건성 평가 |
+| Adversarial v2 (450개) | Stage 4 | 강건성 평가 |
 | Legacy adversarial (212개) | Stage 4 | 이전 실험과 비교 |
 | Legacy blind (70개) | Stage 4 | 이전 실험과 비교 |
 | Scenario test (30개) | Stage 4 | 실제 라우팅 시뮬레이션 |
@@ -304,7 +304,7 @@ git push origin feat/jiyong
 
 ---
 
-## 6. 실험 로드맵 (4단계)
+## 6. 실험 로드맵 (6단계)
 
 ### Stage 1: 데이터 준비 ✅ 완료
 
@@ -629,7 +629,7 @@ git push origin feat/jiyong
 | 5 | 효율성 vs 정확도 | 111M이 과한가? | F1 vs 속도 scatter |
 | 6 | HP 민감도 | 데이터 > 하이퍼파라미터 | 히트맵 + seed 안정성 |
 | 7 | 오분류 분석 | 어디서, 왜 틀리나 | Confusion Matrix + 사례 |
-| 8 | 오분류 보강 | 타겟 보강 98개 → Adv F1 +1.8%p + confidence 캘리브레이션 | Stage 4→5 비교 바 차트 |
+| 8 | 오분류 보강 + 과신뢰 해소 | 타겟 보강 98개 → Adv F1 +1.8%p / Label Smoothing 0.1 → 과신뢰 42→13건(-69%), threshold 0.85로 오분류 clarify 라우팅 | Stage 4→6 비교 바 차트 |
 | 9 | 결론 | 모델 선택 근거 (정량) | 최종 비교표 + CI |
 | 10 | 통합 | 실제 서비스 적용 | 코드 스니펫 + 플로우 |
 
@@ -641,7 +641,7 @@ git push origin feat/jiyong
 4. HP 히트맵 (lr × epochs)
 5. Seed 안정성 (Error bar)
 6. Confusion Matrix — best model, adversarial (Heatmap)
-7. Stage 4→5 보강 전후 비교 (Bar)
+7. Stage 4→5→6 보강 + Label Smoothing 전후 비교 (Bar)
 8. Per-class F1 (Radar)
 9. Training loss curves (Line)
 10. Confidence 분포 (Histogram)
@@ -763,7 +763,7 @@ git push origin feat/jiyong
 - [x] 8개 intent 목록 확정 ✅ (doc_summary, doc_qa 추가, meeting_generate 제거)
 - [x] 경계 쌍(혼동 쌍) 10쌍 정의 ✅
 - [x] generate_data.py 프롬프트에 intent 정의 반영 ✅
-- [ ] intent_classifier.py의 INTENT_LABELS 업데이트 확인 (최종 모델 배포 시)
+- [x] intent_classifier.py의 INTENT_LABELS 업데이트 확인 ✅ (8개 라벨 정상, v2_stage6 반영)
 
 ## 기술 이슈 기록
 
