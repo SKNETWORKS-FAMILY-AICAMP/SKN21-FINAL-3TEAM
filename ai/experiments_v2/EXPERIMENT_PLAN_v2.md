@@ -1,8 +1,8 @@
 # Intent 분류 모델 실험 재설계 (v2)
 
-> **상태**: Stage 1~4 완료 → 오분류 분석 + 보강 대기
+> **상태**: Stage 5 진행 중 (오분류 분석 완료 → 보강 재학습 대기)
 > **작성일**: 2026-02-22
-> **최종 수정**: 2026-02-23 (Stage 4 최종 평가 완료)
+> **최종 수정**: 2026-02-23 (Stage 5.1 오분류 분석 + 5.2 보강 데이터 준비)
 > **담당**: 신지용 (PM)
 
 ---
@@ -22,6 +22,8 @@
 | 2026-02-23 | **Stage 2 Baseline 완료**: koelectra 0.9825 > bert 0.9780 > distilkobert 0.9498 |
 | 2026-02-23 | **Stage 3 Grid Search 완료**: best config ep10/lr3e-5/bs16 → F1 0.9897, seed 안정성 0.9874±0.0033 |
 | 2026-02-23 | **Stage 4 최종 평가 완료**: koelectra Adv F1 86.04% > bert 85.17% > distilkobert 79.26% |
+| 2026-02-23 | **Stage 5.1 오분류 분석 완료**: test 8건(2.8%), adversarial 63건(14.0%) 오분류 |
+| 2026-02-23 | **Stage 5.2 보강 데이터 준비**: 98개 타겟 보강 (QA 통과: 적대적 누출 0건) |
 
 ---
 
@@ -113,6 +115,7 @@ data/training/intent_v2/
 | **학습 총량** | **~2,700개** | **2,899개** (기본 + 경계 쌍) | ✅ 완료 |
 | Split | 80/10/10 | Train 2,327 / Val 285 / Test 286 | ✅ 완료 |
 | 적대적 테스트 | 240개 (30/intent) | **450개** (GPT 232 + Claude 240, 중복 제거) | ✅ 완료 |
+| 보강 데이터 (Stage 5) | ~100개 | **98개** | ✅ 완료 |
 | 시나리오 테스트 | 30개 | 0개 | ⬜ 미작성 |
 
 **기본 데이터 intent별 분포 (중복 제거 후):**
@@ -398,7 +401,7 @@ git push origin feat/jiyong
 | 4.4 | 전처리 ablation (Config A~E) | ✅ A~E 전부 동일 → 전처리 효과 없음 |
 | 4.5 | 추론 속도 + 메모리 측정 | ✅ koelectra 8.3ms / bert 10.4ms / distilkobert 2.8ms |
 | 4.6 | 통계 검증 (McNemar, Bootstrap CI) | ✅ McNemar 전부 n.s. / CI 산출 완료 |
-| 4.7 | 오분류 수집 + 유형 분류 | ⬜ run_error_analysis.py 실행 필요 |
+| 4.7 | 오분류 수집 + 유형 분류 | ✅ test 8건, adversarial 63건 분석 완료 |
 | 4.8 | 시나리오 테스트 | ⬜ 30개 미작성 |
 | 4.9 | 차트 생성 | ✅ 11장 (confusion 3, ablation 3, confidence 3, speed 1, f1_vs_speed 1) |
 | 4.10 | 최종 보고서 작성 | ⬜ |
@@ -444,15 +447,69 @@ git push origin feat/jiyong
 **결과**: `results/final_eval_results.json`
 **차트**: confusion 3장, ablation 3장, confidence 3장, speed_comparison, f1_vs_speed
 
-### Stage 5: 보강 + 재평가 (다음 단계)
+### Stage 5: 보강 + 재평가 (진행 중)
 
 | 순서 | 작업 | 상태 |
 |:---:|------|:----:|
-| 5.1 | `run_error_analysis.py` 실행 — 오분류 유형 분석 | ⬜ |
-| 5.2 | doc_qa/doc_search/general 타겟 보강 (오분류 결과 기반) | ⬜ |
-| 5.3 | 재학습 + 재평가 (Stage 2부터) | ⬜ |
+| 5.1 | `run_error_analysis.py` 실행 — 오분류 유형 분석 | ✅ |
+| 5.2 | 타겟 보강 데이터 생성 + QA | ✅ |
+| 5.3 | 재학습 + 재평가 (`run_stage5_retrain.py`) | ⬜ |
 | 5.4 | 시나리오 테스트 30개 작성 + 실행 (정성평가) | ⬜ |
 | 5.5 | 최종 모델 저장 (`ai/models/intent_classifier/`) | ⬜ |
+
+**5.1 오분류 분석 결과:**
+
+| 데이터셋 | 정답 | 오답 | 정확도 |
+|---------|:---:|:---:|:-----:|
+| Test (286개) | 278 | 8 | 97.2% |
+| Adversarial (450개) | 387 | 63 | 86.0% |
+
+**Adversarial 오분류 유형:**
+
+| 유형 | 건수 | 비율 |
+|------|:---:|:---:|
+| short_text (≤4어절) | 47 | 74.6% |
+| overconfident (>90%) | 42 | 66.7% |
+| boundary_high | 30 | 47.6% |
+| boundary_medium | 10 | 15.9% |
+| typo_chosung | 7 | 11.1% |
+
+**Top 5 혼동 쌍:**
+
+| 실제 → 예측 | 건수 | 분석 |
+|------------|:---:|------|
+| doc_qa → doc_search | 10 | "문서 확인" 류 초단문이 search로 빠짐 |
+| doc_generate → doc_summary | 5 | "정리해줘" 패턴을 summary로 오인 |
+| doc_qa → doc_summary | 5 | 문서 내용 질문이 요약으로 오인 |
+| schedule_add → schedule_view | 4 | "일정 ㄱㄱ" 류 초단문이 view로 빠짐 |
+| general → doc_qa/doc_search | 8 | 봇 기능 질문을 문서 관련으로 오인 |
+
+**근본적 한계 (보강으로 해결 불가):**
+- 1~2어절 초단문 ("문서 확인", "일정 ㄱㄱ")은 맥락 없이는 인간도 판단 곤란
+- 초성 축약 ("ㅇㅊ ㄱㄴ?")은 BERT 토크나이저가 의미 추출 불가
+- → 실서비스에서는 clarify(되묻기)로 처리하는 것이 적절
+
+**5.2 보강 데이터 (98개):**
+
+| Intent | 보강 | 보강 방향 |
+|--------|:---:|----------|
+| doc_qa | +20 | 문서 **내용** 질문 (doc_search/summary와 구분) |
+| doc_generate | +15 | "정리해줘" = 문서 **생성** (summary와 구분) |
+| schedule_add | +11 | "추가/등록/넣어줘" 패턴 강화 |
+| schedule_view | +11 | "확인/보여줘/뭐야" 패턴 (누락 보완) |
+| general | +11 | 봇 기능 관련 질문 + 일상 표현 |
+| judgment | +10 | 규정 판단 요청 (general과 구분) |
+| doc_search | +10 | 문서 **위치/경로** 질문 (doc_qa와 구분) |
+| doc_summary | +10 | "요약/줄여줘" 패턴 (doc_generate와 구분) |
+
+**보강 데이터 QA:**
+- 적대적↔보강 exact 중복: **0건** ✅
+- train↔보강 exact 중복: 1건 (같은 라벨, 무해) ✅
+- 적대적↔보강 유사도 80%+: 1건 (같은 라벨, 무해) ✅
+- 라벨 유효성: 8개 전부 포함 ✅
+
+**실행**: `python ai/experiments_v2/run_stage5_retrain.py --save-model`
+**결과**: `results/stage5_results.json`, `results/stage5_comparison.png`
 
 ---
 
@@ -561,12 +618,13 @@ git push origin feat/jiyong
 - [x] `ai/experiments_v2/run_grid_search.py` — Stage 3 ✅
 - [x] `ai/experiments_v2/run_final_eval.py` — Stage 4 ✅
 - [x] `ai/experiments_v2/run_error_analysis.py` — 오분류 분석 ✅
+- [x] `ai/experiments_v2/run_stage5_retrain.py` — Stage 5 보강 재학습 ✅
 
 ### 결과물
 - [x] 3모델 성능 비교표 ✅ (koelectra 0.9825 > bert 0.9780 > distilkobert 0.9498)
 - [x] Confusion Matrix 3장 ✅
 - [x] 차트 3장 (baseline_comparison, training_curves, per_class_f1_radar) ✅
-- [ ] 오분류 사례 분석 문서
+- [x] 오분류 사례 분석 문서 ✅ (error_analysis_adversarial.md, error_analysis_test.md)
 - [ ] 모델 선택 근거 문서
 - [ ] 실험 기록 (MD 템플릿 기반)
 
