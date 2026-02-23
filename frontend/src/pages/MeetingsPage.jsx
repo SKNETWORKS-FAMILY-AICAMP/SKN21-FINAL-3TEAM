@@ -1,23 +1,75 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import MeetingList from '../components/meetings/MeetingList';
 import MeetingDetail from '../components/meetings/MeetingDetail';
+import { listMeetings, getMeeting } from '../api/meetings';
 
-const mockMeetings = [
-  { id: 1, dateShort: '02/03', dayOfWeek: '월', title: '보안점검 정기회의', attendeeCount: 5, duration: '1시간 20분', analyzed: true, riskLevel: 'medium',
-    info: '일시: 2026-02-03 10:00~11:20\n참석자: 김정보, 이개발, 박인사, 최보안, 정관리\n장소: 회의실 A',
-    decisions: [{ title: '외부 접근 권한 정책 강화', assignee: '김정보' }, { title: '보안 교육 분기별 실시', assignee: '전원' }],
-    actionItems: [
-      { title: '정보보안 교육 계획서 제출', assignee: '김정보', deadline: 'D-1 (2026-02-06)', priority: 'high' },
-      { title: '개인정보 접근 권한 검토', assignee: '이개발', deadline: 'D-3 (2026-02-08)', priority: 'medium' },
-      { title: '신규 입사자 보안 서약서 수집', assignee: '박인사', deadline: 'D-7 (2026-02-12)', priority: 'low' },
-    ],
-  },
-  { id: 2, dateShort: '01/28', dayOfWeek: '화', title: '인사규정 개정 검토회의', attendeeCount: 8, duration: '55분', analyzed: true },
-  { id: 3, dateShort: '01/20', dayOfWeek: '월', title: 'Q4 예산 검토 회의', attendeeCount: 6, duration: '45분', analyzed: false },
-];
+const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+
+function formatDDay(dateStr) {
+  if (!dateStr) return '';
+  const diff = Math.ceil((new Date(dateStr) - Date.now()) / (1000 * 60 * 60 * 24));
+  const formatted = new Date(dateStr).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '-').replace('.', '');
+  if (diff > 0) return `D-${diff} (${formatted})`;
+  if (diff === 0) return `D-Day (${formatted})`;
+  return `D+${Math.abs(diff)} (${formatted})`;
+}
+
+function toListItem(m) {
+  const d = m.meeting_date ? new Date(m.meeting_date) : new Date(m.created_at);
+  return {
+    ...m,
+    dateShort: `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`,
+    dayOfWeek: DAY_NAMES[d.getDay()],
+    analyzed: !!m.summary,
+    riskLevel: m.risk_level || null,
+  };
+}
+
+function toDetail(m) {
+  let decisions = [];
+  if (m.decisions) {
+    try {
+      const parsed = typeof m.decisions === 'string' ? JSON.parse(m.decisions) : m.decisions;
+      decisions = Array.isArray(parsed)
+        ? parsed.map((d) => (typeof d === 'string' ? { title: d, assignee: '-' } : { title: d.title || d.content || d, assignee: d.assignee || '-' }))
+        : [];
+    } catch { decisions = []; }
+  }
+  const actionItems = (m.action_items || []).map((a) => ({
+    title: a.content,
+    assignee: a.assignee || '-',
+    deadline: formatDDay(a.due_date),
+    priority: a.priority || 'medium',
+  }));
+  return {
+    ...toListItem(m),
+    info: m.raw_content || '',
+    decisions,
+    actionItems,
+  };
+}
 
 export default function MeetingsPage() {
-  const [selected, setSelected] = useState(mockMeetings[0]);
+  const [meetings, setMeetings] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    listMeetings()
+      .then((res) => {
+        const list = (res.data || []).map(toListItem);
+        setMeetings(list);
+        if (list.length > 0) handleSelect(list[0]);
+      })
+      .catch((err) => console.warn('[MeetingsPage] 목록 로드 실패:', err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSelect = (m) => {
+    getMeeting(m.id)
+      .then((res) => setSelected(toDetail(res.data)))
+      .catch(() => setSelected(toListItem(m)));
+  };
 
   return (
     <div>
@@ -25,10 +77,16 @@ export default function MeetingsPage() {
         <div><h1 className="text-2xl font-bold">회의 관리</h1><p className="text-sm text-neutral-sub mt-1">회의록을 업로드하면 AI가 자동으로 분석합니다</p></div>
         <button className="btn-primary">+ 회의록 업로드</button>
       </header>
-      <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-5">
-        <MeetingList meetings={mockMeetings} selected={selected} onSelect={setSelected} />
-        <MeetingDetail meeting={selected} />
-      </div>
+      {loading ? (
+        <div className="text-center py-20 text-neutral-muted text-sm">회의 목록을 불러오는 중...</div>
+      ) : meetings.length === 0 ? (
+        <div className="text-center py-20 text-neutral-muted text-sm">등록된 회의가 없습니다</div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-5">
+          <MeetingList meetings={meetings} selected={selected} onSelect={handleSelect} />
+          <MeetingDetail meeting={selected} />
+        </div>
+      )}
     </div>
   );
 }

@@ -189,7 +189,7 @@ export default function Topbar() {
   };
 
   return (
-    <header className="h-14 bg-sidebar-bg border-b border-sidebar-border flex items-center px-6 gap-6 flex-shrink-0 z-20">
+    <header className="h-16 bg-sidebar-bg border-b border-sidebar-border flex items-center px-6 gap-6 flex-shrink-0 z-20">
       {/* 로고 */}
       <a href="/dashboard" className="flex items-center gap-2.5 flex-shrink-0">
         <div className="w-8 h-8 bg-accent-300 rounded-sm flex items-center justify-center text-base font-bold text-primary-900 font-display">W</div>

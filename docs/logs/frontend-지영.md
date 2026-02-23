@@ -436,10 +436,33 @@
 - `components/chat/ChatWindow.jsx` — 입력창 위에 선택 문서 칩 표시 (X로 해제)
 - `pages/ChatPage.jsx` — "문서 선택" 버튼 + 검색 가능한 문서 피커 모달 추가, `listDocuments()` API 연동
 
+#### 4) Topbar 높이 조정 + 챗봇 레이아웃 수정
+- Topbar `h-14` → `h-16`으로 높이 증가
+- ChatPage 높이 계산 수정 (`100vh-4rem-2rem`) — 대화목록/규정패널 열었을 때 상단 가려지는 버그 해결
+
+#### 5) 챗봇 좌측 아이콘 레일 추가
+- 헤더 우측 "대화 목록" 버튼 제거 → 좌측에 얇은 아이콘 레일(w-11) 배치
+- 햄버거(`Menu`) 아이콘으로 대화 목록 토글 (최상단)
+- `MessageSquarePlus` 아이콘으로 새 대화 생성
+
+#### 6) StreamingMessage 아이콘 통일
+- "AI" 텍스트 아이콘 → 요술봉(`Wand2`) 아이콘으로 변경 (MessageBubble과 동일)
+
+#### 7) MeetingsPage Mock → 실제 API 교체
+- `mockMeetings` 하드코딩 삭제
+- `listMeetings()` / `getMeeting(id)` 실제 API 호출로 교체
+- 백엔드 응답 필드를 컴포넌트 props로 변환 (`toListItem`, `toDetail`)
+- `decisions` JSON 문자열 파싱, `action_items` 필드명 매핑, D-day 포맷 변환
+- 로딩/빈 상태 UI 추가
+
+#### 8) Agent 표시 방식 변경 — iOS 스타일 Agent 바
+- 메시지 위 AgentIndicator 제거 (ChatPage 3곳)
+- 입력창 위에 4개 둥근 pill로 Agent 그룹 표시: `규정 판단` / `문서` / `일정` / `일반`
+- 활성 Agent 진한 색 하이라이트 + 스트리밍 중 아이콘 pulse 애니메이션
+
 ### 다음 할 일
+- 나머지 Mock → 실제 API 교체 (대시보드, 문서 생성)
 - 관리자 API 연동 (#29)
-- 나머지 Mock → 실제 API 교체 (대시보드, 채팅, 문서, 회의)
-- Topbar 반응형 대응 (모바일에서 메뉴 접기/햄버거)
 
 ---
 
