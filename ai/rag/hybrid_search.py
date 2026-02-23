@@ -33,13 +33,30 @@ except Exception:
     logger.warning("kiwipiepy를 사용할 수 없습니다. 공백 기반 토크나이징으로 대체합니다.")
 
 
+def _strip_suffixes(token: str) -> str:
+    """한국어 조사/어미 간이 제거 (kiwipiepy 없을 때 BM25 토큰 정규화)"""
+    _SUFFIXES = [
+        "에서는", "으로는", "에서", "으로", "에는", "까지",
+        "에게", "한다", "이다", "한다.",
+        "은", "는", "이", "가", "을", "를", "의", "에", "도",
+        "로", "와", "과", "며", "고",
+    ]
+    for suf in _SUFFIXES:
+        if token.endswith(suf) and len(token) > len(suf):
+            return token[: -len(suf)]
+    return token.rstrip(".,;:?!)")
+
+
 def tokenize(text: str) -> list[str]:
-    """한국어 토크나이저: kiwipiepy 형태소 분석 (fallback: 공백 분리)"""
+    """한국어 토크나이저: kiwipiepy 형태소 분석 (fallback: 공백 분리 + 접미사 제거)"""
     if not text:
         return []
     if _kiwi is not None:
         return [token.form for token in _kiwi.tokenize(text)]
-    return text.split()
+    # fallback: 공백 분리 → 접미사 제거 → 빈 토큰 제거
+    tokens = text.split()
+    stripped = [_strip_suffixes(t.strip("()[]{}「」")) for t in tokens]
+    return [t for t in stripped if t]
 
 
 class HybridSearcher:
@@ -129,15 +146,17 @@ class HybridSearcher:
         )
 
     def search(
-        self, query: str, user_id: int | None = None, top_k: int = 20
+        self, query: str, user_id: int | None = None, top_k: int = 20,
+        max_per_source: int = 3,
     ) -> list[dict]:
         """
-        BM25 (Top 15) + Vector (Top 15) → RRF 합산 정렬 → Top K
+        BM25 (Top 15) + Vector (Top 15) → RRF 합산 정렬 → 소스 다양성 적용 → Top K
 
         Args:
             query: 사용자 질문
             user_id: scope 필터용 사용자 ID (None이면 company 문서만)
             top_k: 최종 반환 수
+            max_per_source: 동일 출처 규정의 최대 포함 수 (교차 규정 검색 품질 향상)
 
         Returns:
             list of {"content", "source", "score", "doc_id"}
@@ -204,7 +223,30 @@ class HybridSearcher:
             rrf_scores.values(),
             key=lambda x: x["rrf_score"],
             reverse=True,
-        )[:top_k]
+        )
+
+        # 소스 다양성 적용: 동일 출처 max_per_source개 제한 → 교차 규정 결과 확보
+        diverse_results = []
+        source_count: dict[str, int] = {}
+        overflow = []  # max_per_source 초과분 (빈자리 채움용)
+
+        for doc in sorted_results:
+            src = doc["source"]
+            cnt = source_count.get(src, 0)
+            if cnt < max_per_source:
+                diverse_results.append(doc)
+                source_count[src] = cnt + 1
+                if len(diverse_results) >= top_k:
+                    break
+            else:
+                overflow.append(doc)
+
+        # top_k 미달이면 초과분에서 채움
+        if len(diverse_results) < top_k:
+            for doc in overflow:
+                diverse_results.append(doc)
+                if len(diverse_results) >= top_k:
+                    break
 
         return [
             {
@@ -216,5 +258,5 @@ class HybridSearcher:
                 "score": doc["rrf_score"],
                 "doc_id": doc["doc_id"],
             }
-            for doc in sorted_results
+            for doc in diverse_results
         ]
