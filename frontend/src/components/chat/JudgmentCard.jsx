@@ -7,11 +7,6 @@ export default function JudgmentCard({ result, resultIcon, summary, regulations 
 
   return (
     <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
-      {result && (
-        <div className={`px-4 py-3 border-b border-neutral-divider flex items-center gap-2 font-bold text-sm ${resultColor}`}>
-          <span className="text-[0.9375rem]">{resultIcon}</span>{result}
-        </div>
-      )}
       <div className="p-4">
         {summary && <p className="text-sm text-neutral-main leading-relaxed mb-3.5 whitespace-pre-wrap">{summary}</p>}
         {regulations.length > 0 && (

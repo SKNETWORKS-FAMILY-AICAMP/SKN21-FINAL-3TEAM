@@ -20,7 +20,7 @@ export default function ChatSessionSidebar({ isOpen }) {
   if (!isOpen) return null;
 
   return (
-    <div className="w-64 border-r border-neutral-divider bg-surface-card flex flex-col flex-shrink-0 h-full">
+    <div className="w-[320px] border-r border-neutral-divider bg-surface-card flex flex-col flex-shrink-0 h-full">
       <div className="px-4 py-3 border-b border-neutral-divider flex items-center justify-between">
         <span className="text-sm font-semibold text-neutral-main">대화 목록</span>
         <button

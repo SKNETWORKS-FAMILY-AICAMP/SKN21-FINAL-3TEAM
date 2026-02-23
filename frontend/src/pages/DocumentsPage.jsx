@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import FilterBar from '../components/common/FilterBar';
 import DocumentUpload from '../components/documents/DocumentUpload';
+import CustomSelect from '../components/common/CustomSelect';
 import DocumentList from '../components/documents/DocumentList';
 import DocumentDetail from '../components/documents/DocumentDetail';
 import { uploadDocument, listDocuments, getDocument, deleteDocument } from '../api/documents';
 
 
 export default function DocumentsPage() {
-  const [activeTab, setActiveTab] = useState('전체');
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchType, setSearchType] = useState('제목');
+  const [scopeFilter, setScopeFilter] = useState('전체');
   const [scope, setScope] = useState('company');
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -87,9 +88,14 @@ export default function DocumentsPage() {
   }));
 
   const filteredDocs = formattedDocs.filter((doc) => {
-    const matchTab = activeTab === '전체' || doc.category === activeTab;
-    const matchSearch = !searchQuery || doc.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchTab && matchSearch;
+    if (scopeFilter === '회사' && doc.scope !== 'company') return false;
+    if (scopeFilter === '팀' && doc.scope !== 'personal') return false;
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    if (searchType === '제목') return doc.name.toLowerCase().includes(q);
+    if (searchType === '제목+내용') return doc.name.toLowerCase().includes(q);
+    if (searchType === '날짜') return doc.date?.includes(q);
+    return true;
   });
 
   // 문서 선택 시 상세 정보 로드
@@ -131,16 +137,20 @@ export default function DocumentsPage() {
       <header className="flex justify-between items-center py-6 sticky top-0 bg-surface-main z-10">
         <div><h1 className="text-2xl font-bold">문서 관리</h1><p className="text-sm text-neutral-sub mt-1">회사 규정 및 문서를 관리합니다</p></div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-surface-card border border-neutral-border rounded-md px-4 py-2 min-w-[280px]"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-muted flex-shrink-0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="문서 검색..." className="border-none bg-transparent text-[0.8125rem] w-full outline-none" /></div>
+          <div className="flex items-center gap-2">
+            <CustomSelect
+              value={searchType}
+              onChange={setSearchType}
+              options={['제목', '제목+내용', '날짜']}
+              buttonClassName="py-2"
+            />
+            <div className="flex items-center gap-2 bg-surface-card border border-neutral-border rounded-md px-4 py-2 min-w-[280px]"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-muted flex-shrink-0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="문서 검색..." className="border-none bg-transparent text-[0.8125rem] w-full outline-none" /></div>
+          </div>
         </div>
       </header>
-      <FilterBar tabs={['전체', '규정', '회의록', '보고서']} activeTab={activeTab} onTabChange={setActiveTab}
-        filters={<><select className="px-3.5 py-2 rounded-sm border border-neutral-border bg-surface-card text-[0.8125rem]"><option>상태: 전체</option></select><select className="px-3.5 py-2 rounded-sm border border-neutral-border bg-surface-card text-[0.8125rem]"><option>구분: 전체</option></select></>}
-        actions={<button className="btn-primary">+ 문서 업로드</button>}
-      />
       <DocumentUpload onUpload={handleUpload} onScopeChange={setScope} />
       <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-5">
-        <DocumentList documents={filteredDocs} onSelect={handleSelectDoc} searchQuery={searchQuery} />
+        <DocumentList documents={filteredDocs} onSelect={handleSelectDoc} searchQuery={searchQuery} scopeFilter={scopeFilter} onScopeFilterChange={setScopeFilter} />
         <DocumentDetail
           doc={selectedDoc}
           documentDetail={documentDetail}
