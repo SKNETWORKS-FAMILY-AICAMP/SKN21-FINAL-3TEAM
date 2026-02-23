@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, MessageSquare, FilePlus, FileText,
-  Users2, Calendar, Settings, Bell, LogOut,
+  Users2, Calendar, Settings, LogOut,
   StickyNote, Plus, Trash2, ArrowLeft, Check,
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
@@ -220,14 +220,6 @@ export default function Topbar() {
       <div className="flex items-center gap-2 flex-shrink-0">
         <ThemeToggle />
         <MemoPanel />
-        <button
-          className="w-8 h-8 flex items-center justify-center rounded-md text-sidebar-text-muted hover:text-sidebar-text hover:bg-white/[0.06] relative transition"
-          title="알림"
-        >
-          <Bell size={16} />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-accent-300 rounded-full" />
-        </button>
-
         <div className="flex items-center gap-2 pl-3 border-l border-sidebar-border">
           <div className="w-7 h-7 rounded-full bg-accent-300 flex items-center justify-center text-xs font-bold text-primary-900 flex-shrink-0">
             {user?.name?.[0] || '?'}
