@@ -44,17 +44,26 @@ function exportChat(messages) {
   URL.revokeObjectURL(url);
 }
 
-const RESULT_MAP = { yes: '가능', no: '불가', conditional: '조건부 가능' };
-const RESULT_ICON = { yes: '✅', no: '❌', conditional: '⚠️' };
+const RESULT_MAP = { yes: '가능', no: '불가', conditional: '조건부 가능', no_regulation: 'No regulation' };
+const RESULT_ICON = { yes: '', no: '', conditional: '', no_regulation: '' };
 
-function renderCardMessage(msg, onSelectClarify, onSelectDoc) {
+function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], index = -1) {
   const { resultIntent, agentResponse, content } = msg;
   const data = agentResponse || {};
 
   switch (resultIntent) {
     case 'judgment': {
-      const resultLabel = RESULT_MAP[data.result] || data.result || '판단 완료';
-      const resultIcon = RESULT_ICON[data.result] || '📋';
+      // 사용자의 질문 내용 확인 (이전 메시지)
+      const userMsg = index > 0 ? messages[index - 1]?.content || '' : '';
+      // '규정', '알려줘', '설명'만 있는 경우는 정보 조회로 간주 (의문형/판단형 키워드가 없을 때)
+      const isJudgmentRequest = /가능|요건|조건|되나요|있나요|수 있|있습니|허용|금지|위반|처벌|준수/.test(userMsg);
+
+      // 'none'이나 판단 결과가 명확하지 않거나, 단순 정보 조회인 경우 배지 숨김
+      const isInformational = !data.result || data.result === 'none' || data.result === 'info' || (data.result === 'yes' && !isJudgmentRequest);
+
+      const resultLabel = isInformational ? null : (RESULT_MAP[data.result] || data.result || '판단 완료');
+      const resultIcon = isInformational ? null : (Object.prototype.hasOwnProperty.call(RESULT_ICON, data.result) ? RESULT_ICON[data.result] : '📋');
+
       const regType = data.result === 'no' ? 'deny' : data.result === 'conditional' ? 'conditional' : 'ref';
       const regulations = (data.regulations || []).map((r) => ({
         name: `${r.name || ''} ${r.article || ''}`.trim(),
@@ -65,7 +74,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc) {
         <>
           <JudgmentCard result={resultLabel} resultIcon={resultIcon} summary={data.reasoning || content} regulations={regulations} />
           {content && data.reasoning && content !== data.reasoning && (
-            <div className="mt-2 bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">
+            <div className="mt-2 bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap shadow-sm">
               {content}
             </div>
           )}
@@ -78,7 +87,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc) {
       return (
         <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
           <div className="px-4 py-3 border-b border-neutral-divider flex items-center gap-2 font-bold text-sm text-primary-700">
-            <span className="text-[0.9375rem]">📄</span>문서 검색 결과
+            문서 검색 결과
           </div>
           <div className="p-4">
             {content && <p className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5 whitespace-pre-wrap">{content}</p>}
@@ -380,11 +389,10 @@ export default function ChatPage() {
             <button
               onClick={() => setSessionSidebarOpen(!sessionSidebarOpen)}
               title={sessionSidebarOpen ? '대화 목록 닫기' : '대화 목록'}
-              className={`w-8 h-8 flex items-center justify-center rounded-md transition ${
-                sessionSidebarOpen
-                  ? 'text-primary-700 bg-primary-50'
-                  : 'text-neutral-sub hover:text-primary-700 hover:bg-primary-50'
-              }`}
+              className={`w-8 h-8 flex items-center justify-center rounded-md transition ${sessionSidebarOpen
+                ? 'text-primary-700 bg-primary-50'
+                : 'text-neutral-sub hover:text-primary-700 hover:bg-primary-50'
+                }`}
             >
               <Menu size={18} />
             </button>
@@ -421,21 +429,27 @@ export default function ChatPage() {
                 return <ErrorMessage key={i} message={msg.error} onRetry={handleRetry} />;
               }
 
-              // AI 완료 — agentResponse 카드 렌더링 (스트리밍 중이어도 result가 오면 카드 우선)
-              if (msg.agentResponse && msg.resultIntent) {
+              // 스트리밍 중인 AI 응답 (데이터가 미리 왔더라도 텍스트 출력을 우선으로 보여줌)
+              if (isLastAssistant) {
+                const intent = currentIntent || msg.resultIntent || msg.intent || 'general';
                 return (
-                  <MessageBubble key={i} type="bot" intent={msg.resultIntent || msg.intent}>
-                    {renderCardMessage(msg, handleSend, setDocViewDoc)}
+                  <MessageBubble key={i} type="bot" intent={intent}>
+                    <StreamingMessage
+                      text={msg.content}
+                      status={currentStatus}
+                      intent={intent}
+                      isInsideBubble
+                    />
                   </MessageBubble>
                 );
               }
 
-              // 스트리밍 중인 AI 응답
-              if (isLastAssistant) {
+              // AI 완료 — agentResponse 카드 렌더링
+              if (msg.agentResponse && msg.resultIntent) {
                 return (
-                  <div key={i}>
-                    <StreamingMessage text={msg.content} status={currentStatus} />
-                  </div>
+                  <MessageBubble key={i} type="bot" intent={msg.resultIntent || msg.intent}>
+                    {renderCardMessage(msg, handleSend, setDocViewDoc, messages, i)}
+                  </MessageBubble>
                 );
               }
 

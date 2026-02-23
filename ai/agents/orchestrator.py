@@ -110,13 +110,44 @@ async def safe_judgment_agent(state: AgentState) -> AgentState:
     _t = time.time()
     print(f"[Orchestrator] safe_judgment_agent 진입 | stream_mode={state.get('stream_mode')}")
     try:
-        # 스트리밍 모드면 chat.py에서 judgment_agent_stream으로 직접 처리
+        # 스트리밍 모드: RAG 검색 + 프롬프트 빌드 → chat.py에서 직접 스트리밍
         if state.get("stream_mode"):
+            from ai.agents.judgment_agent import (
+                _build_context_prompt,
+                _build_user_prompt,
+                _extract_judgment_history,
+            )
+            from ai.llm.prompts import JUDGMENT_STREAMING_SYSTEM_PROMPT
+            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+
+            user_input = state["user_input"]
+            user_id = state.get("user_id")
+            chat_history = state.get("chat_history", [])
+
+            # RAG 검색
+            _t_rag = time.time()
+            print("[Orchestrator] judgment 스트리밍: RAG 검색 시작 (top_k=10)...")
+            pipeline = get_qdrant_pipeline()
+            context = pipeline.retrieve(query=user_input, user_id=user_id, top_k=10)
+            print(f"[Orchestrator] judgment RAG 완료 ({time.time()-_t_rag:.2f}s) | {len(context)}개 문서")
+
+            # 프롬프트 빌드
+            judgment_history = _extract_judgment_history(chat_history)
+            context_text = _build_context_prompt(context)
+            user_prompt = _build_user_prompt(
+                user_input, context_text, chat_history, judgment_history
+            )
+
+            state["context"] = context
             state["agent_response"] = {
                 "type": "judgment",
                 "message": "",
                 "stream_pending": True,
+                "sys_prompt": JUDGMENT_STREAMING_SYSTEM_PROMPT,
+                "user_prompt": user_prompt,
+                "_rag_context": context,
             }
+            print(f"[Orchestrator] judgment stream_pending 반환 ({time.time()-_t:.2f}s)")
             return state
 
         from ai.agents.judgment_agent import judgment_agent

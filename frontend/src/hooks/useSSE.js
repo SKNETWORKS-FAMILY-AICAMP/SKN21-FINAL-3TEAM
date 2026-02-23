@@ -56,6 +56,8 @@ export default function useSSE() {
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+      let simulationInProgress = false
+      let simulationPromise = Promise.resolve()
 
       while (true) {
         const { done, value } = await reader.read()
@@ -63,9 +65,8 @@ export default function useSSE() {
 
         buffer += decoder.decode(value, { stream: true })
 
-        // SSE 형식: "data: {...}\n\n" 패턴 파싱
         const chunks = buffer.split('\n\n')
-        buffer = chunks.pop() // 마지막 불완전한 청크 보존
+        buffer = chunks.pop()
 
         for (const chunk of chunks) {
           const match = chunk.match(/^data:\s*(.+)/m)
@@ -90,9 +91,30 @@ export default function useSSE() {
                 setCurrentStatus(null)
                 appendToken(event.value)
                 break
-              case 'result':
+              case 'result': {
                 setLastAssistantResult(event.intent || currentIntentRef.current, event.data)
+
+                // 토큰이 오지 않은 경우(예: 판단 에이전트) reasoning을 시뮬레이션 스트리밍함
+                const lastMsg = useChatStore.getState().messages.at(-1)
+                if (event.data?.reasoning && lastMsg && (!lastMsg.content || lastMsg.content.trim() === '')) {
+                  simulationInProgress = true
+                  simulationPromise = new Promise((resolve) => {
+                    const text = event.data.reasoning
+                    let i = 0
+                    const interval = setInterval(() => {
+                      if (i < text.length) {
+                        appendToken(text[i])
+                        i++
+                      } else {
+                        clearInterval(interval)
+                        simulationInProgress = false
+                        resolve()
+                      }
+                    }, 20) // 자연스러운 스트리밍 속도 (20ms)
+                  })
+                }
                 break
+              }
               case 'done':
                 if (currentIntentRef.current) {
                   setLastAssistantIntent(currentIntentRef.current)
@@ -114,15 +136,20 @@ export default function useSSE() {
                 break
             }
           } catch {
-            // JSON 파싱 실패 시 무시
+            // JSON 파싱 실패
           }
         }
+      }
+
+      // 시뮬레이션이 진행 중이면 끝날 때까지 대기
+      if (simulationInProgress) {
+        await simulationPromise
       }
 
       setStreaming(false)
       setCurrentIntent(null)
       setCurrentStatus(null)
-      saveCurrentSession() // 스트리밍 완료 시 세션 저장
+      saveCurrentSession()
     } catch (err) {
       if (err.name === 'AbortError') return // 사용자가 중단
 

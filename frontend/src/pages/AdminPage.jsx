@@ -12,25 +12,46 @@ export default function AdminPage() {
   const [stats, setStats] = useState({ today_queries: 0, processed_meetings: 0, completed_action_items: 0, risk_alerts: 0 });
   const [queryLogs, setQueryLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const loadAll = async () => {
     setLoading(true);
-    try {
-      const [usersRes, regsRes, statsRes, logsRes] = await Promise.all([
-        listUsers().catch(() => ({ data: [] })),
-        listRegulations().catch(() => ({ data: [] })),
-        getSystemStats().catch(() => ({ data: {} })),
-        getQueryLogs().catch(() => ({ data: { items: [] } })),
-      ]);
-      setUsers(usersRes.data || []);
-      setRegulations(regsRes.data || []);
-      setStats(statsRes.data || {});
-      setQueryLogs(logsRes.data?.items || []);
-    } catch (e) {
-      console.error('Admin data load failed:', e);
-    } finally {
+    setError(null);
+    const results = await Promise.allSettled([
+      listUsers(),
+      listRegulations(),
+      getSystemStats(),
+      getQueryLogs(),
+    ]);
+
+    const [usersRes, regsRes, statsRes, logsRes] = results;
+
+    // 권한 오류 확인 (403이면 관리자 아님)
+    const firstError = results.find((r) => r.status === 'rejected')?.reason;
+    if (firstError?.response?.status === 403) {
+      setError('관리자 권한이 필요합니다. 관리자 계정으로 로그인해주세요.');
       setLoading(false);
+      return;
     }
+    if (firstError?.response?.status === 401) {
+      setError('로그인이 만료되었습니다. 다시 로그인해주세요.');
+      setLoading(false);
+      return;
+    }
+
+    setUsers(usersRes.status === 'fulfilled' ? (usersRes.value.data || []) : []);
+    setRegulations(regsRes.status === 'fulfilled' ? (regsRes.value.data || []) : []);
+    setStats(statsRes.status === 'fulfilled' ? (statsRes.value.data || {}) : {});
+    setQueryLogs(logsRes.status === 'fulfilled' ? (logsRes.value.data?.items || []) : []);
+
+    // 일부 실패 시 콘솔 로그
+    results.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        console.error(`Admin API call ${i} failed:`, r.reason);
+      }
+    });
+
+    setLoading(false);
   };
 
   useEffect(() => { loadAll(); }, []);
@@ -45,6 +66,11 @@ export default function AdminPage() {
       {loading ? (
         <div className="flex justify-center py-20">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500" />
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="text-error text-lg font-semibold mb-2">{error}</div>
+          <button className="btn-primary mt-4" onClick={loadAll}>다시 시도</button>
         </div>
       ) : (
         <>

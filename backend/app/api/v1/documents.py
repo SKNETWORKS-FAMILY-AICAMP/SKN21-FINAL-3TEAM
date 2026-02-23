@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Query, Body, HTTPExcep
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
+from app.schemas.document import DocumentGenerateResponse
 from app.services import document_service, parsing_service, template_service
 
 router = APIRouter()
@@ -64,7 +65,7 @@ async def upload_document(
     }
 
 
-@router.post("/generate")
+@router.post("/generate", response_model=DocumentGenerateResponse)
 async def generate_document(
     template_id: int | None = Body(None),
     template_type: str | None = Body(None),
@@ -74,12 +75,23 @@ async def generate_document(
 ):
     """
     템플릿 기반 문서 생성 (FR-DOC-008)
-    — AI 로직 필요, 팀원 C 구현 후 연동
+    Document Agent를 호출하여 문서를 생성하고 DB에 저장한다.
     """
-    # TODO: 팀원 D (API) + 팀원 C (생성 로직)
-    raise HTTPException(
-        status_code=501,
-        detail="문서 생성 기능은 AI Agent 연동 후 사용 가능합니다",
+    doc, agent_response = await document_service.generate_and_save(
+        db,
+        user_input=user_input,
+        user_id=user.id,
+        template_type=template_type,
+        template_id=template_id,
+    )
+    return DocumentGenerateResponse(
+        document_id=doc.id,
+        template_id=agent_response.get("template_id"),
+        template_type=agent_response.get("template_type", template_type or "report"),
+        template_name=agent_response.get("template_name", "문서"),
+        preview=agent_response.get("preview", ""),
+        download_url=f"/api/v1/documents/{doc.id}/download",
+        created_at=doc.created_at,
     )
 
 
@@ -94,10 +106,9 @@ async def search_with_highlight(
     키워드 검색 + 하이라이트 (FR-DOC-006)
     — RAG 연동 필요, 팀원 B 구현 후 연동
     """
-    # TODO: 팀원 D (API) + 팀원 B (RAG 검색)
     raise HTTPException(
         status_code=501,
-        detail="검색 기능은 RAG 연동 후 사용 가능합니다",
+        detail="키워드 하이라이트 검색은 RAG(Qdrant) 연동 대기 중입니다. 일반 검색은 GET /documents/?keyword= 를 사용하세요.",
     )
 
 
@@ -118,10 +129,9 @@ async def upload_template(
     커스텀 템플릿 업로드
     — AI 구조 추출 필요, 팀원 C 구현 후 연동
     """
-    # TODO: 팀원 D (API) + 팀원 C (구조 추출)
     raise HTTPException(
         status_code=501,
-        detail="커스텀 템플릿 업로드 기능은 AI Agent 연동 후 사용 가능합니다",
+        detail="커스텀 템플릿 업로드는 문서 구조 추출(from_parsed_structure) 구현 대기 중입니다.",
     )
 
 
@@ -210,10 +220,9 @@ async def download_document(
     생성된 문서 다운로드 - DOCX/PDF (FR-DOC-008)
     — 템플릿 렌더링 필요, 팀원 C 구현 후 연동
     """
-    # TODO: 팀원 D 구현
     raise HTTPException(
         status_code=501,
-        detail="문서 다운로드 기능은 AI Agent 연동 후 사용 가능합니다",
+        detail="문서 다운로드(DOCX/PDF 변환)는 to_docx/to_pdf 구현 대기 중입니다. 미리보기는 GET /documents/{id} 에서 content 필드로 확인 가능합니다.",
     )
 
 
