@@ -1,13 +1,12 @@
 import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from 'framer-motion';
-import { MessageSquare, FilePlus, FileText, Users2, Calendar } from 'lucide-react';
+import { MessageSquare, FilePlus, FileText, Calendar } from 'lucide-react';
 
 const features = [
     { id: 'chat', icon: MessageSquare, label: 'AI 챗봇', color: 'bg-primary-500', to: '/chat' },
     { id: 'doc-gen', icon: FilePlus, label: '문서 생성', color: 'bg-accent-500', to: '/document-generate' },
     { id: 'docs', icon: FileText, label: '문서 관리', color: 'bg-neutral-600', to: '/documents' },
-    { id: 'meetings', icon: Users2, label: '회의 관리', color: 'bg-success', to: '/meetings' },
     { id: 'schedules', icon: Calendar, label: '일정 관리', color: 'bg-indigo-500', to: '/schedules' },
 ];
 

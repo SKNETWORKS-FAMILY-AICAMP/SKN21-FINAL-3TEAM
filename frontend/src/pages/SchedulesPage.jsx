@@ -112,7 +112,7 @@ export default function SchedulesPage() {
               className="btn-outline"
               title="Google Calendar 동기화"
             >
-              {calendarLoading ? '🔄 동기화 중...' : '🔄 새로고침'}
+              {calendarLoading ? '동기화 중...' : '새로고침'}
             </button>
           )}
           <button

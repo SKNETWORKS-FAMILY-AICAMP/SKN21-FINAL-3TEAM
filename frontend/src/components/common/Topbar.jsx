@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, MessageSquare, FilePlus, FileText,
-  Users2, Calendar, Settings, LogOut,
+  Calendar, Settings, LogOut,
   StickyNote, Plus, Trash2, ArrowLeft, Check,
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
@@ -14,7 +14,6 @@ const navItems = [
   { to: '/chat', icon: MessageSquare, label: 'AI 챗봇' },
   { to: '/document-generate', icon: FilePlus, label: '문서 생성' },
   { to: '/documents', icon: FileText, label: '문서 관리' },
-  { to: '/meetings', icon: Users2, label: '회의 관리' },
   { to: '/schedules', icon: Calendar, label: '일정 관리' },
   { to: '/admin', icon: Settings, label: '관리자 설정' },
 ];
@@ -22,7 +21,7 @@ const navItems = [
 function MemoPanel() {
   const [open, setOpen] = useState(false);
   const panelRef = useRef(null);
-  const saveTimerRef = useRef(null);
+  const [draft, setDraft] = useState('');
   const [savedVisible, setSavedVisible] = useState(false);
 
   const memos = useUIStore((s) => s.memos);
@@ -46,23 +45,23 @@ function MemoPanel() {
     return () => document.removeEventListener('mousedown', handler);
   }, [open, selectMemo]);
 
-  // 메모 전환 시 저장 표시 초기화
+  // 메모 선택 시 draft 초기화
   useEffect(() => {
+    setDraft(activeMemo?.text || '');
     setSavedVisible(false);
   }, [activeMemoId]);
 
-  // 자동 저장 표시 숨기기
+  // 저장됨 표시 2초 후 숨기기
   useEffect(() => {
     if (!savedVisible) return;
     const t = setTimeout(() => setSavedVisible(false), 2000);
     return () => clearTimeout(t);
   }, [savedVisible]);
 
-  const handleChange = (e) => {
-    updateMemo(activeMemo.id, e.target.value);
-    setSavedVisible(false);
-    clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => setSavedVisible(true), 500);
+  const handleSave = () => {
+    if (!draft.trim()) return;
+    updateMemo(activeMemo.id, draft);
+    setSavedVisible(true);
   };
 
   const handleClose = () => {
@@ -159,15 +158,24 @@ function MemoPanel() {
             <div className="p-3">
               <textarea
                 autoFocus
-                value={activeMemo.text}
-                onChange={handleChange}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
                 placeholder="메모를 입력하세요..."
                 rows={8}
                 className="w-full px-2.5 py-2 text-xs rounded-md bg-white/[0.06] text-sidebar-text placeholder:text-sidebar-text-muted/50 border border-sidebar-border focus:border-accent-300 focus:outline-none resize-none"
               />
-              <div className={`flex items-center gap-1 mt-1 text-[0.625rem] text-accent-300 transition-opacity duration-300 ${savedVisible ? 'opacity-100' : 'opacity-0'}`}>
-                <Check size={10} />
-                자동 저장됨
+              <div className="flex items-center justify-between mt-2">
+                <div className={`flex items-center gap-1 text-[0.625rem] text-accent-300 transition-opacity duration-300 ${savedVisible ? 'opacity-100' : 'opacity-0'}`}>
+                  <Check size={10} />
+                  저장됨
+                </div>
+                <button
+                  onClick={handleSave}
+                  disabled={!draft.trim()}
+                  className="px-2.5 py-1 text-[0.625rem] font-semibold rounded bg-accent-500 text-white hover:bg-accent-600 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  저장
+                </button>
               </div>
             </div>
           )}
