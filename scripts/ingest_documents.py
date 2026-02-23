@@ -162,7 +162,7 @@ def ingest(
     return len(all_documents)
 
 
-def test_search(query: str, top_k: int = 5):
+def test_search(query: str, top_k: int = 10):
     """적재 후 검색 테스트"""
     from ai.rag.qdrant_pipeline import get_qdrant_pipeline
 
