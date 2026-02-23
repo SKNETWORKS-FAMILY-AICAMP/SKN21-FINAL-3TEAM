@@ -1,0 +1,30 @@
+{"text": "연차 규정에 따르면 연차 어떻게 사용하지?", "label": "doc_qa"}
+{"text": "내일 연차 써도 될까요?", "label": "judgment"}
+{"text": "출장비 지급 규정이 어떻게 되어있지?", "label": "doc_qa"}
+{"text": "출장 가는데 회사가 교통비 대줘?", "label": "judgment"}
+{"text": "급여 명세서에 뭐가 포함되어 있는지 알려줘.", "label": "doc_qa"}
+{"text": "이번 달 보너스 받을 수 있나?", "label": "judgment"}
+{"text": "보안 문서 보관 방법이 뭐라고 적혀있어?", "label": "doc_qa"}
+{"text": "사무실에서 개인 USB 사용해도 돼?", "label": "judgment"}
+{"text": "회의록에 어떤 내용이 들어있어?", "label": "doc_qa"}
+{"text": "우리가 그 회의에 참석해야 하나요?", "label": "judgment"}
+{"text": "프로젝트 마감일이 문서에 언제라고 되어있어?", "label": "doc_qa"}
+{"text": "이 프로젝트 연장 가능할까?", "label": "judgment"}
+{"text": "회사 이메일 정책에 대해 설명해줘.", "label": "doc_qa"}
+{"text": "개인 이메일을 업무에 사용해도 되는지?", "label": "judgment"}
+{"text": "복리후생 문서에 언급된 혜택이 뭐야?", "label": "doc_qa"}
+{"text": "이 혜택 신규 입사자도 받을 수 있는 건가?", "label": "judgment"}
+{"text": "업무 시간에 대한 규정이 어떻게 되는지 알 수 있을까?", "label": "doc_qa"}
+{"text": "오늘 좀 일찍 퇴근해도 될까요?", "label": "judgment"}
+{"text": "출장 보고서는 무엇을 포함해야 해?", "label": "doc_qa"}
+{"text": "출장 보고서를 제출 안 하면 문제가 되나요?", "label": "judgment"}
+{"text": "인사 기록에 내 직급이 어떻게 되어있어?", "label": "doc_qa"}
+{"text": "이번 분기에 승진할 가능성이 있어?", "label": "judgment"}
+{"text": "성과 평가 문서에 어떤 기준이 있지?", "label": "doc_qa"}
+{"text": "이번 평가는 작년보다 어려운가?", "label": "judgment"}
+{"text": "연말 파티 관련 안내 메일에 뭐라고 쓰여있어?", "label": "doc_qa"}
+{"text": "연말 파티에 가족 동반 가능한가요?", "label": "judgment"}
+{"text": "사내 교육 프로그램에 어떤 것들이 포함되어 있지?", "label": "doc_qa"}
+{"text": "내가 이번 교육 프로그램에 참여 가능한가?", "label": "judgment"}
+{"text": "사내 공모전 수상 기준이 뭐야?", "label": "doc_qa"}
+{"text": "내가 이 공모전에 나가도 되는지?", "label": "judgment"}

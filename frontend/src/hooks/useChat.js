@@ -11,12 +11,17 @@ export default function useChat() {
   const sendMessage = async (text) => {
     if (!text.trim() || useChatStore.getState().isStreaming) return
 
+    const { activeSessionId, selectedDocumentId } = useChatStore.getState()
+
     // addMessage 내부에서 activeSessionId 없을 때 세션 자동 생성함
     addMessage({ role: 'user', content: text })
     addMessage({ role: 'assistant', content: '' })
 
+    // 전송 후 선택 문서 자동 해제
+    useChatStore.getState().clearSelectedDocument()
+
     try {
-      await startStream(text, useChatStore.getState().activeSessionId)
+      await startStream(text, activeSessionId, selectedDocumentId)
     } catch (err) {
       // 401 → 로그인 페이지로 리다이렉트
       if (err.status === 401) {

@@ -1,0 +1,30 @@
+{"text": "연차 사용 규정 어디에 있어?", "label": "doc_search"}
+{"text": "연차 며칠 남았어?", "label": "doc_qa"}
+{"text": "보안 정책 전문 좀 보여줘", "label": "doc_search"}
+{"text": "보안 정책에 비밀번호 정책이 뭐야?", "label": "doc_qa"}
+{"text": "급여 명세서 어디서 찾을 수 있어?", "label": "doc_search"}
+{"text": "이번 달 급여 얼마야?", "label": "doc_qa"}
+{"text": "프로젝트 계획서 문서 어디 저장했어?", "label": "doc_search"}
+{"text": "이번 프로젝트 마감일 언제야?", "label": "doc_qa"}
+{"text": "회의록 전체 파일 좀 찾아줘", "label": "doc_search"}
+{"text": "지난 회의 결정사항 뭐였어?", "label": "doc_qa"}
+{"text": "출장 보고서 어디에 올렸어?", "label": "doc_search"}
+{"text": "출장비 지급 기준이 어떻게 돼?", "label": "doc_qa"}
+{"text": "회사 차량 이용 규정 책자 있어?", "label": "doc_search"}
+{"text": "회사 차량 이용할 수 있는 조건이 뭐야?", "label": "doc_qa"}
+{"text": "복리후생 관련 문서 찾아줄래?", "label": "doc_search"}
+{"text": "복리후생 혜택에 건강검진 포함돼?", "label": "doc_qa"}
+{"text": "신규 입사자 안내책자 어디 있어?", "label": "doc_search"}
+{"text": "신입사원 교육 기간이 어떻게 돼?", "label": "doc_qa"}
+{"text": "본사 주소가 적힌 문서 찾아줘", "label": "doc_search"}
+{"text": "본사 주소가 뭐야?", "label": "doc_qa"}
+{"text": "연말 정산 관련 문서 어디서 봐?", "label": "doc_search"}
+{"text": "연말 정산 언제까지야?", "label": "doc_qa"}
+{"text": "사내 행사 일정표 찾아줘", "label": "doc_search"}
+{"text": "다음 사내 행사 언제야?", "label": "doc_qa"}
+{"text": "회의실 예약 시스템 매뉴얼 있니?", "label": "doc_search"}
+{"text": "회의실 예약하려면 어떻게 해야 돼?", "label": "doc_qa"}
+{"text": "부서별 연락처 문서 어디에 있어?", "label": "doc_search"}
+{"text": "인사팀 전화번호 뭐야?", "label": "doc_qa"}
+{"text": "재택근무 규정 문서 찾아줘", "label": "doc_search"}
+{"text": "재택근무 신청하려면 어떻게 해야 돼?", "label": "doc_qa"}

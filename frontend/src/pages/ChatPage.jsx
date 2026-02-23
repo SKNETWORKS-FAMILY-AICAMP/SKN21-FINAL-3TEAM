@@ -12,6 +12,7 @@ import ScheduleCard from '../components/chat/ScheduleCard';
 import useChat from '../hooks/useChat';
 import useChatStore from '../store/chatStore';
 import { listRegulations } from '../api/regulations';
+import { listDocuments } from '../api/documents';
 
 function exportChat(messages) {
   if (messages.length === 0) return;
@@ -155,12 +156,19 @@ export default function ChatPage() {
   const createSession = useChatStore((s) => s.createSession);
   const pendingQuestion = useChatStore((s) => s.pendingQuestion);
   const clearPendingQuestion = useChatStore((s) => s.clearPendingQuestion);
+  const selectedDocumentId = useChatStore((s) => s.selectedDocumentId);
+  const selectedDocumentName = useChatStore((s) => s.selectedDocumentName);
+  const setSelectedDocument = useChatStore((s) => s.setSelectedDocument);
+  const clearSelectedDocument = useChatStore((s) => s.clearSelectedDocument);
   const [panelOpen, setPanelOpen] = useState(false);
   const [sessionSidebarOpen, setSessionSidebarOpen] = useState(false);
   const [lastError, setLastError] = useState(null);
   const [lastInput, setLastInput] = useState('');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [dbRegulations, setDbRegulations] = useState([]);
+  const [docPickerOpen, setDocPickerOpen] = useState(false);
+  const [docList, setDocList] = useState([]);
+  const [docSearch, setDocSearch] = useState('');
 
   const mountedRef = useRef(false);
 
@@ -185,6 +193,13 @@ export default function ChatPage() {
       .then((res) => setDbRegulations(res.data || []))
       .catch((err) => console.warn('[ChatPage] 규정 로드 실패:', err));
   }, []);
+
+  useEffect(() => {
+    if (!docPickerOpen) return;
+    listDocuments()
+      .then((res) => setDocList(res.data?.documents || res.data || []))
+      .catch((err) => console.warn('[ChatPage] 문서 로드 실패:', err));
+  }, [docPickerOpen]);
 
   const handleSend = (text) => {
     setLastError(null);
@@ -275,6 +290,17 @@ export default function ChatPage() {
             대화 목록
           </button>
           <button
+            onClick={() => setDocPickerOpen(true)}
+            className={`btn-outline text-xs ${selectedDocumentId ? 'bg-accent-50 border-accent-300 text-accent-700' : ''}`}
+            title="요약할 문서 선택"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            {selectedDocumentId ? '문서 선택됨' : '문서 선택'}
+          </button>
+          <button
             onClick={() => setPanelOpen(!panelOpen)}
             className={`btn-outline text-xs ${panelOpen ? 'bg-primary-50 border-primary-300' : ''}`}
           >
@@ -282,6 +308,54 @@ export default function ChatPage() {
           </button>
         </div>
       </header>
+
+      {/* 문서 선택 피커 */}
+      {docPickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { setDocPickerOpen(false); setDocSearch(''); }}>
+          <div className="bg-surface-card rounded-xl shadow-xl w-[28rem] max-w-[90vw] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-divider">
+              <h3 className="text-sm font-semibold text-neutral-main">요약할 문서 선택</h3>
+              <button onClick={() => { setDocPickerOpen(false); setDocSearch(''); }} className="text-neutral-muted hover:text-neutral-main transition">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-4 py-3 border-b border-neutral-divider">
+              <input
+                autoFocus
+                value={docSearch}
+                onChange={(e) => setDocSearch(e.target.value)}
+                placeholder="문서 검색..."
+                className="w-full px-3 py-2 text-sm border border-neutral-border rounded-md bg-surface-main outline-none focus:border-primary-300 text-neutral-main placeholder:text-neutral-muted"
+              />
+            </div>
+            <div className="max-h-64 overflow-y-auto py-1">
+              {docList.filter(d => !docSearch || d.title?.includes(docSearch) || d.original_filename?.includes(docSearch)).length === 0 ? (
+                <div className="py-8 text-center text-sm text-neutral-muted">
+                  {docList.length === 0 ? '등록된 문서가 없습니다' : '검색 결과 없음'}
+                </div>
+              ) : (
+                docList
+                  .filter(d => !docSearch || d.title?.includes(docSearch) || d.original_filename?.includes(docSearch))
+                  .map((doc) => (
+                    <button
+                      key={doc.id}
+                      onClick={() => { setSelectedDocument(doc.id, doc.title || doc.original_filename); setDocPickerOpen(false); setDocSearch(''); }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-hover transition text-sm ${selectedDocumentId === doc.id ? 'bg-accent-50 text-accent-700' : 'text-neutral-main'}`}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-neutral-muted">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                      </svg>
+                      <span className="truncate">{doc.title || doc.original_filename}</span>
+                    </button>
+                  ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 초기화 확인 다이얼로그 */}
       {showClearConfirm && (
@@ -303,7 +377,7 @@ export default function ChatPage() {
 
         {/* 챗 영역 */}
         <div className="flex-1 min-w-0">
-          <ChatWindow onSend={handleSend} messages={messages}>
+          <ChatWindow onSend={handleSend} messages={messages} selectedDocumentName={selectedDocumentName} onClearDocument={clearSelectedDocument}>
             {/* 메시지가 없을 때 — 추천 질문 */}
             {messages.length === 0 && (
               <SuggestedQuestions onSelect={handleSend} />

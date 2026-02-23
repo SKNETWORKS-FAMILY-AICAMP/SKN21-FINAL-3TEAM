@@ -1,0 +1,32 @@
+[
+  {
+    "epochs": 10,
+    "lr": 3e-05,
+    "batch_size": 16,
+    "seed": 42,
+    "val_f1": 0.9897,
+    "val_acc": 0.9895,
+    "train_time_sec": 69.5,
+    "model": "monologg/koelectra-base-v3-discriminator"
+  },
+  {
+    "epochs": 10,
+    "lr": 3e-05,
+    "batch_size": 16,
+    "seed": 123,
+    "val_f1": 0.9898,
+    "val_acc": 0.9895,
+    "train_time_sec": 71.8,
+    "model": "monologg/koelectra-base-v3-discriminator"
+  },
+  {
+    "epochs": 10,
+    "lr": 3e-05,
+    "batch_size": 16,
+    "seed": 456,
+    "val_f1": 0.9828,
+    "val_acc": 0.9825,
+    "train_time_sec": 67.9,
+    "model": "monologg/koelectra-base-v3-discriminator"
+  }
+]

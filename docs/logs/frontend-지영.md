@@ -267,10 +267,6 @@
 - 대체공휴일 데이터 추가 (`CalendarView.jsx`)
   - 2025~2027년 대체공휴일 전체 추가 
 
-### 다음 할 일
-- 나머지 Mock → 실제 API 교체
-- 관리자 API 연동 (#29)
-
 ---
 
 ## 2026-02-15 (일)
@@ -311,9 +307,6 @@
 #### 2) AI 챗봇 프로필 변경
 - `MessageBubble.jsx` — AI 프로필을 "AI" 텍스트 → accent-500 배경 + Brain 아이콘으로 변경
 
-### 다음 할 일
-- 나머지 Mock → 실제 API 교체
-- 관리자 API 연동 (#29)
 
 ---
 
@@ -389,17 +382,7 @@
 
 - **최종 흐름**: 회원가입 제출 → 성공 팝업 → "확인" 클릭 → 로그인 탭 (이메일·비밀번호 자동 입력)
 
-### 다음 할 일
-- 관리자 API 연동 (#29)
-- 나머지 Mock → 실제 API 교체 (대시보드, 채팅, 문서, 회의)
-
----
-
-## 2026-02-20 (금) — 오후
-
-### 한 일
-
-#### 1) 사이드바 접기/펼치기 기능 구현 (`Sidebar.jsx`, `Layout.jsx`)
+#### 2) 사이드바 접기/펼치기 기능 구현 (`Sidebar.jsx`, `Layout.jsx`)
 
 - **토글 버튼 추가**: 사이드바 상단 W 로고 아래에 햄버거 아이콘(`Menu`) 버튼 배치
   - 펼쳐진 상태에서 커서 올리면 → `메뉴 접기` 툴팁
@@ -412,11 +395,6 @@
 - **애니메이션**: `transition-[width] duration-300 ease-in-out` 부드러운 전환
 - **버튼 클리핑 버그 수정**: `aside`의 `overflow-y-auto`를 내부 `<div>`로 이동하여 절대 위치 버튼이 잘리지 않도록 수정
 
-#### 2) 대시보드 TodaySchedule 전체 보기 버튼 제거 (`TodaySchedule.jsx`)
-
-- 오늘 일정 섹션 우측 "전체 보기" 링크 제거
-- 마감 임박 섹션 우측 "전체 보기" 링크 제거
-
 #### 3) 사이드바 메모 기능 구현 (`Sidebar.jsx`, `uiStore.js`)
 
 - **다중 메모 지원**: 단일 textarea → 메모 리스트 방식으로 구현
@@ -428,9 +406,40 @@
 - **사이드바 접힌 상태**: StickyNote 아이콘 + 메모 개수 뱃지 표시
 - **자동 저장 표시**: 타이핑 멈추고 0.5초 후 `✓ 자동 저장됨` accent 색상 텍스트 페이드인 → 2초 후 페이드아웃
 
+---
+
+## 2026-02-23 (월)
+
+### 한 일
+
+#### 1) 네비게이션 사이드바 → Topbar 전환
+- **기존 Sidebar 제거**, 상단 Topbar 방식으로 네비게이션 변경
+- `components/common/Topbar.jsx` 신규 생성
+  - 로고 + 7개 메뉴 가로 나열 + 우측(테마토글, 메모, 알림, 유저, 로그아웃)
+- `Layout.jsx` 수정 — `flex-row` → `flex-col`, Sidebar → Topbar 교체
+- 메모 기능을 Topbar에 **플로팅 패널**로 이전
+  - StickyNote 아이콘 + 메모 개수 뱃지
+  - 패널 외부 클릭 시 닫힘
+- `NavPreviewPage.jsx` 생성 — Topbar/CommandPalette/TabBar 3종 비교 프리뷰 페이지 (`/nav-preview`)
+
+#### 2) 로컬 Docker 개발 환경 구성
+- `docker-compose.yml` 수정
+  - Qdrant 서비스 추가 (`qdrant/qdrant:latest`, 6333 포트)
+  - backend `environment`에 `DATABASE_URL`(로컬 DB), `QDRANT_HOST`, `QDRANT_PORT` 오버라이드 추가
+- `frontend/.env` 생성 — `BACKEND_URL=http://localhost:8000`
+
+#### 3) doc_summary 프론트엔드 연동 (6개 파일)
+- `api/chat.js` — `sendMessage`에 `documentId` 파라미터 추가
+- `store/chatStore.js` — `selectedDocumentId`, `selectedDocumentName`, `setSelectedDocument`, `clearSelectedDocument` 상태 추가
+- `hooks/useSSE.js` — `startStream`에 `documentId` 받아서 `body.document_id` 포함
+- `hooks/useChat.js` — `selectedDocumentId` 꺼내서 `startStream`에 전달, 전송 후 자동 해제
+- `components/chat/ChatWindow.jsx` — 입력창 위에 선택 문서 칩 표시 (X로 해제)
+- `pages/ChatPage.jsx` — "문서 선택" 버튼 + 검색 가능한 문서 피커 모달 추가, `listDocuments()` API 연동
+
 ### 다음 할 일
 - 관리자 API 연동 (#29)
 - 나머지 Mock → 실제 API 교체 (대시보드, 채팅, 문서, 회의)
+- Topbar 반응형 대응 (모바일에서 메뉴 접기/햄버거)
 
 ---
 
