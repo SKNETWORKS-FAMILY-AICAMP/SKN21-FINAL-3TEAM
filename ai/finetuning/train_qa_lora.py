@@ -150,7 +150,6 @@ def train():
         gradient_checkpointing=True,
         optim="paged_adamw_8bit",
         report_to="none",
-        max_seq_length=MAX_SEQ_LENGTH,
         dataset_text_field="text",
     )
 
