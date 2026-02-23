@@ -9,6 +9,7 @@ import { uploadDocument, listDocuments, getDocument, deleteDocument } from '../a
 export default function DocumentsPage() {
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [searchType, setSearchType] = useState('제목');
   const [scopeFilter, setScopeFilter] = useState('전체');
   const [scope, setScope] = useState('company');
@@ -144,7 +145,8 @@ export default function DocumentsPage() {
               options={['제목', '제목+내용', '날짜']}
               buttonClassName="py-2"
             />
-            <div className="flex items-center gap-2 bg-surface-card border border-neutral-border rounded-md px-4 py-2 min-w-[280px]"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-muted flex-shrink-0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="문서 검색..." className="border-none bg-transparent text-[0.8125rem] w-full outline-none" /></div>
+            <div className="flex items-center gap-2 bg-surface-card border border-neutral-border rounded-md px-4 py-2 min-w-[280px]"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-muted flex-shrink-0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && setSearchQuery(searchInput)} placeholder="문서 검색..." className="border-none bg-transparent text-[0.8125rem] w-full outline-none" /></div>
+            <button onClick={() => setSearchQuery(searchInput)} className="btn-primary py-2 px-4 text-sm">검색</button>
           </div>
         </div>
       </header>

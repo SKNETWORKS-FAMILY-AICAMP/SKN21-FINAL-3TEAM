@@ -436,29 +436,45 @@
 - `components/chat/ChatWindow.jsx` — 입력창 위에 선택 문서 칩 표시 (X로 해제)
 - `pages/ChatPage.jsx` — "문서 선택" 버튼 + 검색 가능한 문서 피커 모달 추가, `listDocuments()` API 연동
 
-#### 4) Topbar 높이 조정 + 챗봇 레이아웃 수정
-- Topbar `h-14` → `h-16`으로 높이 증가
-- ChatPage 높이 계산 수정 (`100vh-4rem-2rem`) — 대화목록/규정패널 열었을 때 상단 가려지는 버그 해결
-
 #### 5) 챗봇 좌측 아이콘 레일 추가
 - 헤더 우측 "대화 목록" 버튼 제거 → 좌측에 얇은 아이콘 레일(w-11) 배치
 - 햄버거(`Menu`) 아이콘으로 대화 목록 토글 (최상단)
 - `MessageSquarePlus` 아이콘으로 새 대화 생성
 
-#### 6) StreamingMessage 아이콘 통일
-- "AI" 텍스트 아이콘 → 요술봉(`Wand2`) 아이콘으로 변경 (MessageBubble과 동일)
-
-#### 7) MeetingsPage Mock → 실제 API 교체
-- `mockMeetings` 하드코딩 삭제
-- `listMeetings()` / `getMeeting(id)` 실제 API 호출로 교체
-- 백엔드 응답 필드를 컴포넌트 props로 변환 (`toListItem`, `toDetail`)
-- `decisions` JSON 문자열 파싱, `action_items` 필드명 매핑, D-day 포맷 변환
-- 로딩/빈 상태 UI 추가
-
-#### 8) Agent 표시 방식 변경 — iOS 스타일 Agent 바
+#### 6) Agent 표시 방식 변경 — iOS 스타일 Agent 바
 - 메시지 위 AgentIndicator 제거 (ChatPage 3곳)
 - 입력창 위에 4개 둥근 pill로 Agent 그룹 표시: `규정 판단` / `문서` / `일정` / `일반`
 - 활성 Agent 진한 색 하이라이트 + 스트리밍 중 아이콘 pulse 애니메이션
+
+#### 7) 상단바 및 챗봇 페이지 레이아웃 전면 개편 (`Layout.jsx`, `ChatPage.jsx`, `ChatWindow.jsx`)
+- 상하 패딩 30px 통일 (`py-[30px]`)
+- 하단 구분선(`border-b`) 제거
+- 수직 정렬 `items-end` → `items-center` 변경
+- 활성 메뉴 밑줄 위치 조정 (`pb-3` 추가)
+- `/chat` 경로 감지 → `Layout.jsx`에서 패딩/오버플로 조건 분기 (overflow 클리핑 문제 해결)
+- AgentBar(입력창 위 4개 Agent pill) 제거 → AI 답변 위 `AgentIndicator`로 대체 (`MessageBubble.jsx`)
+- `RegulationPanel` 우측 여백(`-mr-8`) 제거 (`RegulationPanel.jsx`)
+- `ChatSessionSidebar` 폭 `w-64` → `w-[320px]` (RegulationPanel과 통일)
+- 채팅 입력 영역 우측 패딩 분기: 패널 열림 `pr-[3px]`, 닫힘 `pr-32` (글씨 크기 조절 버튼 겹침 방지)
+
+#### 8) 문서 관리 페이지 UI 개선 (`DocumentsPage.jsx`, `DocumentList.jsx`, `DocumentUpload.jsx`, `ScopeSelector.jsx`)
+- `FilterBar` 전체 제거 (전체/규정/회의록/보고서 탭, 상태/구분 드롭다운)
+- 검색창 좌측에 검색 타입 선택 추가: 제목 / 제목+내용 / 날짜
+- 문서 업로드 영역 높이 `min-h-[280px]`, `flex flex-col items-center justify-center` 중앙 정렬
+- '개인 문서' → '팀 문서' 변경 (`ScopeSelector.jsx`)
+- 문서 목록 헤더에 scope 필터 추가: 전체 / 회사 / 팀
+
+#### 9) CustomSelect 커스텀 드롭다운 컴포넌트 신규 생성 (`components/common/CustomSelect.jsx`)
+- 브라우저 기본 select 대신 사이트 테마(blue-grey 팔레트)에 맞는 커스텀 드롭다운
+- ChevronDown 아이콘 회전 애니메이션, 외부 클릭 시 자동 닫힘
+- 선택 항목: `bg-primary-100`(진함), 호버: `bg-primary-50`(연함)
+- `buttonClassName` prop으로 컨텍스트별 높이 조정 가능
+- `whitespace-nowrap` 적용으로 텍스트 줄바꿈 방지
+- 검색 타입 선택 / 문서 목록 scope 필터 두 곳에 적용
+
+#### 10) 문서 생성 페이지 템플릿 축소 (`constants.js`, `TemplateSelector.jsx`)
+- 템플릿 5개 → 3개로 축소: 회의록 / 보고서 / 제안서 (채용 공고, 사용자 정의 제거)
+- `grid-cols-2` → `grid-cols-3`으로 한 줄에 3개 표시
 
 ### 다음 할 일
 - 나머지 Mock → 실제 API 교체 (대시보드, 문서 생성)
@@ -470,54 +486,53 @@
 
 ### 한 일
 
-#### 1) 대시보드 달력 오늘 날짜 원형 표시 (`CalendarWidget.jsx`)
-- 오늘 날짜 배경을 사각형에서 40px 원형 배지(`w-10 h-10 rounded-full bg-primary-700`)로 변경
-- 셀 패딩 `py-5` → `py-3.5` 조정으로 달력 전체 크기 유지
+#### 1) UI 디테일 개선
+- AIDock: '듀듀 챗봇' → 'AI 챗봇' 레이블 수정, 툴팁 폰트 `font-bold` → `font-medium`
+- ChatWindow: 전송 버튼 우측 여백 `pr-32` → `pr-4` (좌우 중앙 정렬)
+- SchedulesPage: 새로고침 버튼 🔄 이모지 제거
 
-#### 2) 상단바 디자인 조정 (`Topbar.jsx`)
-- 상하 패딩 30px 통일 (`py-[30px]`)
-- 하단 구분선(`border-b`) 제거
-- 수직 정렬 `items-end` → `items-center` 변경
-- 활성 메뉴 밑줄 위치 조정 (`pb-3` 추가)
+#### 2) 회의 관리 페이지 제거
+- `App.jsx` — import 및 `/meetings` 라우트 제거
+- `AIDock.jsx` — 회의 관리 아이콘 제거
+- `Topbar.jsx` — 네비게이션 메뉴에서 회의 관리 항목 제거
 
-#### 3) 챗봇 페이지 레이아웃 전면 개편 (`Layout.jsx`, `ChatPage.jsx`, `ChatWindow.jsx`)
-- `/chat` 경로 감지 → `Layout.jsx`에서 패딩/오버플로 조건 분기 (overflow 클리핑 문제 해결)
-- AgentBar(입력창 위 4개 Agent pill) 제거 → AI 답변 위 `AgentIndicator`로 대체 (`MessageBubble.jsx`)
-- `RegulationPanel` 우측 여백(`-mr-8`) 제거 (`RegulationPanel.jsx`)
-- `ChatSessionSidebar` 폭 `w-64` → `w-[320px]` (RegulationPanel과 통일)
-- 채팅 입력 영역 우측 패딩 분기: 패널 열림 `pr-[3px]`, 닫힘 `pr-32` (글씨 크기 조절 버튼 겹침 방지)
+#### 3) FontSizeControl 조건부 표시
+- `App.jsx` — `ConditionalFontSizeControl` 컴포넌트 추가
+- 로그인/회원가입 페이지에서만 글씨 크기 버튼 표시, 내부 페이지에서는 숨김
 
-#### 4) JudgmentCard 헤더 제거 (`JudgmentCard.jsx`)
-- ✅가능 / ❌불가 / ⚠️조건부 가능 헤더 바 제거, 카드 본문만 유지
+#### 4) 메모 기능 개선
+- 자동 저장 → **저장 버튼** 클릭 시에만 저장되도록 변경 (로컬 draft 상태 분리)
+- 빈 메모 저장 방지 (`draft.trim()` 비어있으면 버튼 비활성화)
+- 메모 개수 알림 뱃지 제거
+- 메모 목록 빈 상태 시 '새 메모 만들기' 버튼 제거 (우측 상단 + 버튼으로 통일)
 
-#### 5) 문서 클릭 시 오른쪽 패널 보기 기능 (`DocumentViewPanel.jsx`, `ChatPage.jsx`)
-- `doc_search` 결과의 출처 항목 클릭 시 오른쪽에 문서 내용 패널 표시
-- `DocumentViewPanel` 신규 생성 — 너비 `w-[55%]` (화면 절반 이상)
-- 패널 열림 시 채팅 영역 축소, X 버튼으로 닫기
-- 문서 패널 / 규정 패널 우측 슬롯 공유 (하나씩 표시)
+#### 5) 상단바 색상 개선
+- 네비 메뉴 비활성: `text-primary-500` → `text-primary-700`
+- 네비 메뉴 활성: `text-primary-700` → `text-primary-900 border-primary-700`
+- 메모/다크모드 버튼: `text-sidebar-text-muted` → `text-primary-700` (브랜드 색 통일)
 
-#### 6) 문서 관리 페이지 UI 개선 (`DocumentsPage.jsx`, `DocumentList.jsx`, `DocumentUpload.jsx`, `ScopeSelector.jsx`)
-- `FilterBar` 전체 제거 (전체/규정/회의록/보고서 탭, 상태/구분 드롭다운)
-- 검색창 좌측에 검색 타입 선택 추가: 제목 / 제목+내용 / 날짜
-- 문서 업로드 영역 높이 `min-h-[280px]`, `flex flex-col items-center justify-center` 중앙 정렬
-- '개인 문서' → '팀 문서' 변경 (`ScopeSelector.jsx`)
-- 문서 목록 헤더에 scope 필터 추가: 전체 / 회사 / 팀
+#### 6) 사용자 관리 팀 속성 추가 (`UserManagement.jsx`)
+- 테이블에 '팀' 컬럼 추가 (팀 있으면 파란 뱃지, 없으면 `-`)
+- 사용자 추가 모달에 팀 선택 드롭다운 추가 (PM팀/AI팀/Backend팀/Frontend팀)
 
-#### 7) CustomSelect 커스텀 드롭다운 컴포넌트 신규 생성 (`components/common/CustomSelect.jsx`)
-- 브라우저 기본 select 대신 사이트 테마(blue-grey 팔레트)에 맞는 커스텀 드롭다운
-- ChevronDown 아이콘 회전 애니메이션, 외부 클릭 시 자동 닫힘
-- 선택 항목: `bg-primary-100`(진함), 호버: `bg-primary-50`(연함)
-- `buttonClassName` prop으로 컨텍스트별 높이 조정 가능
-- `whitespace-nowrap` 적용으로 텍스트 줄바꿈 방지
-- 검색 타입 선택 / 문서 목록 scope 필터 두 곳에 적용
+#### 7) 문서 관리 검색 버튼 추가 (`DocumentsPage.jsx`)
+- 기존 입력 즉시 필터링 → 검색 버튼 클릭 또는 Enter 시 검색 실행
+- `searchInput`(로컬) / `searchQuery`(실제 필터) 분리
 
-#### 8) 문서 생성 페이지 템플릿 축소 (`constants.js`, `TemplateSelector.jsx`)
-- 템플릿 5개 → 3개로 축소: 회의록 / 보고서 / 제안서 (채용 공고, 사용자 정의 제거)
-- `grid-cols-2` → `grid-cols-3`으로 한 줄에 3개 표시
+#### 8) 비밀번호 변경 기능 추가 (`Topbar.jsx`, `api/auth.js`)
+- `api/auth.js` — `changePassword()` 함수 추가 (`POST /auth/change-password`)
+- 유저 드롭다운에 '비밀번호 변경' 버튼 추가
+- 모달: 현재 비밀번호 / 새 비밀번호 / 새 비밀번호 확인, 유효성 검사 포함
+
+#### 9) 일정 관리 캘린더 유형별 필터 버튼 (`CalendarView.jsx`)
+- 기존 '공휴일' 단일 토글 → **전체 + 회의/마감일/개인일정/공휴일** 개별 토글로 확장
+- `hiddenTypes` Set 상태로 유형별 on/off 관리, 커스텀 유형 자동 반영
+- 비활성 버튼 `opacity-40`으로 표시, SchedulesPage 범례 제거
 
 ### 다음 할 일
 - 나머지 Mock → 실제 API 교체 (대시보드, 문서 생성)
 - 관리자 API 연동 (#29)
+- 비밀번호 변경 백엔드 엔드포인트 구현 요청 (혜빈) — `POST /auth/change-password`
 
 ---
 

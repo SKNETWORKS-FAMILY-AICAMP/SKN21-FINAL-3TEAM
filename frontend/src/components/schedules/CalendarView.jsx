@@ -198,10 +198,11 @@ export default function CalendarView({ events = [] }) {
   const [currentMonth, setCurrentMonth] = useState(now.getMonth() + 1);
   const [view, setView] = useState('month');
   const [selectedDay, setSelectedDay] = useState(null);
-  const [showHolidays, setShowHolidays] = useState(true);
+  const [hiddenTypes, setHiddenTypes] = useState(new Set());
 
   const { customTypes } = useScheduleTypeStore();
   const allTypes = [...DEFAULT_TYPES, ...customTypes];
+  const allFilterTypes = [...allTypes, { id: 'holiday', label: '공휴일', color: '#C06060' }];
 
   // 타입 ID → 색상 맵
   const typeColorMap = {
@@ -214,8 +215,17 @@ export default function CalendarView({ events = [] }) {
     ...Object.fromEntries(allTypes.map((t) => [t.id, t.label])),
   };
 
-  const holidays = showHolidays ? getKoreanHolidays(currentYear) : [];
-  const mergedEvents = [...events, ...holidays];
+  const toggleType = (id) => {
+    setHiddenTypes((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const showAll = hiddenTypes.size === 0;
+
+  const holidays = getKoreanHolidays(currentYear);
+  const mergedEvents = [...events, ...holidays].filter((e) => !hiddenTypes.has(e.type));
 
   const todayDate = now.getDate();
   const todayYear = now.getFullYear();
@@ -290,17 +300,35 @@ export default function CalendarView({ events = [] }) {
           <button onClick={goToToday} className="text-[0.6875rem] px-2 py-1 rounded border border-neutral-divider text-neutral-muted hover:bg-primary-50 hover:text-primary-700 transition">오늘</button>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowHolidays(!showHolidays)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition ${
-              showHolidays
-                ? 'border-error bg-error-bg text-error'
-                : 'border-neutral-divider bg-surface-card text-neutral-muted hover:bg-surface-hover'
-            }`}
-          >
-            <span className={`w-2 h-2 rounded-full ${showHolidays ? 'bg-error' : 'bg-neutral-muted'}`} />
-            공휴일
-          </button>
+          <div className="flex items-center gap-1 flex-wrap">
+            <button
+              onClick={() => setHiddenTypes(new Set())}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium border transition ${
+                showAll
+                  ? 'border-primary-500 bg-primary-50 text-primary-700'
+                  : 'border-neutral-divider bg-surface-card text-neutral-main opacity-40'
+              }`}
+            >
+              전체
+            </button>
+            {allFilterTypes.map(({ id, label, color }) => {
+              const active = !hiddenTypes.has(id);
+              return (
+                <button
+                  key={id}
+                  onClick={() => toggleType(id)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition ${
+                    active
+                      ? 'border-neutral-border bg-surface-card text-neutral-main'
+                      : 'border-neutral-divider bg-surface-card text-neutral-main opacity-40'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: active ? color : '#9CA3AF' }} />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
           <div className="w-px h-4 bg-neutral-divider" />
           <div className="flex gap-1">
             {VIEW_BTNS.map(({ key, label }) => (
