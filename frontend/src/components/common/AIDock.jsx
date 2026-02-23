@@ -1,13 +1,12 @@
 import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from 'framer-motion';
-import { MessageSquare, FilePlus, FileText, Users2, Calendar } from 'lucide-react';
+import { MessageSquare, FilePlus, FileText, Calendar } from 'lucide-react';
 
 const features = [
-    { id: 'chat', icon: MessageSquare, label: '듀듀 챗봇', color: 'bg-primary-500', to: '/chat' },
+    { id: 'chat', icon: MessageSquare, label: 'AI 챗봇', color: 'bg-primary-500', to: '/chat' },
     { id: 'doc-gen', icon: FilePlus, label: '문서 생성', color: 'bg-accent-500', to: '/document-generate' },
     { id: 'docs', icon: FileText, label: '문서 관리', color: 'bg-neutral-600', to: '/documents' },
-    { id: 'meetings', icon: Users2, label: '회의 관리', color: 'bg-success', to: '/meetings' },
     { id: 'schedules', icon: Calendar, label: '일정 관리', color: 'bg-indigo-500', to: '/schedules' },
 ];
 
@@ -44,7 +43,7 @@ function DockIcon({ feature, mouseX }) {
                         initial={{ opacity: 0, y: 10, x: '-50%' }}
                         animate={{ opacity: 1, y: -45, x: '-50%' }}
                         exit={{ opacity: 0, y: 10, x: '-50%' }}
-                        className="absolute left-1/2 px-2.5 py-1.5 bg-white/90 backdrop-blur-sm text-neutral-900 text-[11px] font-bold rounded-lg shadow-sm border border-neutral-200 whitespace-nowrap pointer-events-none"
+                        className="absolute left-1/2 px-2.5 py-1.5 bg-white/90 backdrop-blur-sm text-neutral-900 text-[11px] font-medium rounded-lg shadow-sm border border-neutral-200 whitespace-nowrap pointer-events-none"
                     >
                         {feature.label}
                     </motion.div>

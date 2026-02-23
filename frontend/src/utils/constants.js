@@ -89,9 +89,7 @@ export const TEMPLATE_LABELS = {
 export const TEMPLATE_CATEGORIES = [
   { value: 'meeting_minutes', label: '회의록' },
   { value: 'report', label: '보고서' },
-  { value: 'jd', label: '채용 공고' },
   { value: 'proposal', label: '제안서' },
-  { value: 'custom', label: '사용자 정의' },
 ]
 
 // ── 파싱/상태 관련 ──
@@ -192,7 +190,7 @@ export const GOOGLE_SCOPES = {
 export const GOOGLE_SCOPE_LABELS = {
   calendar: 'Google Calendar',
   tasks: 'Google Tasks',
-  gmail_send: 'Gmail 발송',
+  gmail_send: 'Gmail',
   sheets: 'Google Sheets',
 }
 

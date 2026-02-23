@@ -112,7 +112,7 @@ export default function SchedulesPage() {
               className="btn-outline"
               title="Google Calendar 동기화"
             >
-              {calendarLoading ? '🔄 동기화 중...' : '🔄 새로고침'}
+              {calendarLoading ? '동기화 중...' : '새로고침'}
             </button>
           )}
           <button
@@ -170,18 +170,6 @@ export default function SchedulesPage() {
       {activeTab === 'calendar' && (
         <>
           {/* 범례 */}
-          <div className="flex flex-wrap gap-4 mb-5">
-            {[
-              ...DEFAULT_TYPES,
-              ...customTypes,
-              { id: 'holiday', label: '공휴일', color: '#C06060' },
-            ].map(({ id, label, color }) => (
-              <div key={id} className="flex items-center gap-1.5 text-xs text-neutral-sub">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-                {label}
-              </div>
-            ))}
-          </div>
 
           {/* 에러 메시지 */}
           {calendarError && (
