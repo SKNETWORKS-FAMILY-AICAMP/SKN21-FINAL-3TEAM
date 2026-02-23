@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import useAuthStore from './store/authStore';
 import useUIStore from './store/uiStore';
 import Layout from './components/common/Layout';
@@ -13,6 +13,12 @@ import SchedulesPage from './pages/SchedulesPage';
 import AdminPage from './pages/AdminPage';
 import DocumentGeneratePage from './pages/DocumentGeneratePage';
 import NavPreviewPage from './pages/NavPreviewPage';
+
+function ConditionalFontSizeControl() {
+  const { pathname } = useLocation();
+  const isAuthPage = pathname === '/login' || pathname === '/register';
+  return isAuthPage ? <FontSizeControl /> : null;
+}
 
 // DEV_BYPASS: true = 로그인 없이 개발 화면 확인 가능
 const DEV_BYPASS_AUTH = false;
@@ -46,7 +52,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <FontSizeControl />
+      <ConditionalFontSizeControl />
       <Routes>
         {/* 비로그인 전용 (로그인 상태면 대시보드로) */}
         <Route element={<PublicOnlyRoute />}>
