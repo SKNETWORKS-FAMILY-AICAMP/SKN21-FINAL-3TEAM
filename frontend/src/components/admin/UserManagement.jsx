@@ -5,11 +5,11 @@ import { createUser, updateUserPermissions, deleteUser } from '../../api/admin';
 export default function UserManagement({ users = [], onRefresh }) {
   const [showModal, setShowModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [form, setForm] = useState({ name: '', email: '', password: '', is_admin: false });
+  const [form, setForm] = useState({ name: '', email: '', password: '', team: '', is_admin: false });
   const [saving, setSaving] = useState(false);
 
   const openAdd = () => {
-    setForm({ name: '', email: '', password: '', is_admin: false });
+    setForm({ name: '', email: '', password: '', team: '', is_admin: false });
     setShowModal(true);
   };
 
@@ -71,17 +71,24 @@ export default function UserManagement({ users = [], onRefresh }) {
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead><tr>
-            {['이름', '이메일', '권한', '상태', '관리'].map((h) => (
+            {['이름', '이메일', '팀', '권한', '상태', '관리'].map((h) => (
               <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-neutral-sub border-b-2 border-neutral-divider bg-surface-hover">{h}</th>
             ))}
           </tr></thead>
           <tbody>
             {users.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-neutral-sub">등록된 사용자가 없습니다</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-neutral-sub">등록된 사용자가 없습니다</td></tr>
             ) : users.map((u) => (
               <tr key={u.id} className="hover:bg-surface-hover">
                 <td className="px-4 py-3 text-[0.8125rem] font-semibold border-b border-neutral-divider">{u.name}</td>
                 <td className="px-4 py-3 text-[0.8125rem] border-b border-neutral-divider">{u.email}</td>
+                <td className="px-4 py-3 text-[0.8125rem] border-b border-neutral-divider">
+                  {u.team ? (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary-50 text-primary-700 border border-primary-100">{u.team}</span>
+                  ) : (
+                    <span className="text-neutral-muted text-xs">-</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 border-b border-neutral-divider">
                   <button onClick={() => toggleAdmin(u)}>
                     <Badge variant={u.is_admin ? 'role-admin' : 'role-user'}>{u.is_admin ? '관리자' : '일반'}</Badge>
@@ -117,6 +124,16 @@ export default function UserManagement({ users = [], onRefresh }) {
               <div>
                 <label className="text-xs font-semibold text-neutral-sub block mb-1">비밀번호</label>
                 <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="비밀번호를 입력하세요" className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-neutral-sub block mb-1">팀</label>
+                <select value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })} className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 bg-surface-card text-neutral-main">
+                  <option value="">팀 선택 (선택사항)</option>
+                  <option value="PM팀">PM팀</option>
+                  <option value="AI팀">AI팀</option>
+                  <option value="Backend팀">Backend팀</option>
+                  <option value="Frontend팀">Frontend팀</option>
+                </select>
               </div>
               <div>
                 <label className="text-xs font-semibold text-neutral-sub block mb-1">권한</label>

@@ -16,6 +16,9 @@
     # 기존 데이터 삭제 후 재적재
     python scripts/ingest_documents.py data/regulations/ --force
 
+    # 매뉴얼 PDF (자동 감지 또는 명시)
+    python scripts/ingest_documents.py manual.pdf --doc-type manual
+
     # 적재 후 검색 테스트
     python scripts/ingest_documents.py data/regulations/ --test "연차 휴가 몇 일"
 
@@ -66,7 +69,7 @@ def collect_files(path: str) -> list[Path]:
     sys.exit(1)
 
 
-def parse_and_chunk(file_path: Path, scope: str, user_id: int | None) -> tuple[list[str], list[dict]]:
+def parse_and_chunk(file_path: Path, scope: str, user_id: int | None, doc_type: str = "auto") -> tuple[list[str], list[dict]]:
     """파일 파싱 + 청킹 → (documents, metadatas) 반환"""
     from ai.document_parser.parser import DocumentParser
 
@@ -76,11 +79,11 @@ def parse_and_chunk(file_path: Path, scope: str, user_id: int | None) -> tuple[l
     ext = file_path.suffix.lower()
 
     if ext == ".pdf":
-        # PDF: Docling 파싱 → 조항 단위 청킹
-        chunks = parser.parse_and_chunk(str(file_path))
+        # PDF: Docling 파싱 → 문서 유형별 청킹
+        chunks = parser.parse_and_chunk(str(file_path), doc_type=doc_type)
     else:
         # DOCX/TXT: 파싱 → 단락 단위 청킹
-        chunks = parser.parse_and_chunk(str(file_path))
+        chunks = parser.parse_and_chunk(str(file_path), doc_type=doc_type)
 
     documents = []
     metadatas = []
@@ -107,6 +110,7 @@ def ingest(
     user_id: int | None,
     force: bool,
     batch_size: int,
+    doc_type: str = "auto",
 ):
     """파일 목록을 파싱 → Qdrant에 적재"""
     from ai.rag.qdrant_pipeline import get_qdrant_pipeline, reset_qdrant_pipeline
@@ -124,7 +128,7 @@ def ingest(
         _t = time.time()
 
         try:
-            docs, metas = parse_and_chunk(file_path, scope, user_id)
+            docs, metas = parse_and_chunk(file_path, scope, user_id, doc_type=doc_type)
             all_documents.extend(docs)
             all_metadatas.extend(metas)
             elapsed = time.time() - _t
@@ -205,6 +209,9 @@ def main():
                         help="기존 데이터 삭제 후 재적재")
     parser.add_argument("--batch-size", type=int, default=50,
                         help="배치 크기 (기본: 50)")
+    parser.add_argument("--doc-type", default="auto",
+                        choices=["auto", "regulation", "manual"],
+                        help="PDF 문서 유형 (기본: auto → 자동 감지)")
     parser.add_argument("--test", type=str, default=None,
                         help="적재 후 검색 테스트 쿼리")
 
@@ -231,6 +238,7 @@ def main():
         user_id=args.user_id,
         force=args.force,
         batch_size=args.batch_size,
+        doc_type=args.doc_type,
     )
 
     if count == 0:
