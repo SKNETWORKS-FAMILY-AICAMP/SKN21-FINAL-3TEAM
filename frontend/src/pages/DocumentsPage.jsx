@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import DocumentUpload from '../components/documents/DocumentUpload';
 import CustomSelect from '../components/common/CustomSelect';
+import DatePicker from '../components/common/DatePicker';
 import DocumentList from '../components/documents/DocumentList';
 import DocumentDetail from '../components/documents/DocumentDetail';
 import { uploadDocument, listDocuments, getDocument, deleteDocument } from '../api/documents';
@@ -69,7 +70,6 @@ export default function DocumentsPage() {
     const keyword = searchInput.trim();
     setSearchQuery(keyword);
     if (!keyword) {
-      // 검색어 비우면 전체 목록 로드
       await loadDocuments();
       return;
     }
@@ -79,6 +79,26 @@ export default function DocumentsPage() {
     } finally {
       setSearching(false);
     }
+  };
+
+  // 달력에서 날짜 선택 시 자동 검색
+  const handleDateSelect = async (dateStr) => {
+    setSearchInput(dateStr);
+    setSearchQuery(dateStr);
+    setSearching(true);
+    try {
+      await loadDocuments(dateStr, 'date');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // 검색 타입 변경 시 입력값 초기화
+  const handleSearchTypeChange = (type) => {
+    setSearchType(type);
+    setSearchInput('');
+    setSearchQuery('');
+    loadDocuments();
   };
 
   // 파일 업로드 핸들러
@@ -176,12 +196,33 @@ export default function DocumentsPage() {
           <div className="flex items-center gap-2">
             <CustomSelect
               value={searchType}
-              onChange={setSearchType}
+              onChange={handleSearchTypeChange}
               options={['제목', '제목+내용', '날짜']}
               buttonClassName="py-2"
             />
-            <div className="flex items-center gap-2 bg-surface-card border border-neutral-border rounded-md px-4 py-2 min-w-[280px]"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-muted flex-shrink-0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder={SEARCH_PLACEHOLDERS[searchType] || '문서 검색...'} className="border-none bg-transparent text-[0.8125rem] w-full outline-none" /></div>
-            <button onClick={handleSearch} disabled={searching} className="btn-primary py-2 px-4 text-sm">{searching ? '검색중...' : '검색'}</button>
+            <div className="w-[280px]">
+              {searchType === '날짜' ? (
+                <DatePicker
+                  key="date-picker"
+                  value={searchInput}
+                  onChange={handleDateSelect}
+                  placeholder="날짜 선택..."
+                  autoOpen
+                />
+              ) : (
+                <div className="flex items-center gap-2 bg-surface-card border border-neutral-border rounded-md px-4 h-[38px]">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-muted flex-shrink-0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input type="text" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder={SEARCH_PLACEHOLDERS[searchType] || '문서 검색...'} className="border-none bg-transparent text-[0.8125rem] w-full outline-none" />
+                </div>
+              )}
+            </div>
+            <button
+              onClick={handleSearch}
+              disabled={searching || searchType === '날짜'}
+              className={`btn-primary !py-0 !rounded-md text-sm w-[68px] h-[38px] justify-center whitespace-nowrap flex-shrink-0 ${searchType === '날짜' ? 'invisible' : ''} ${searching ? 'opacity-70' : ''}`}
+            >
+              검색
+            </button>
           </div>
         </div>
       </header>
