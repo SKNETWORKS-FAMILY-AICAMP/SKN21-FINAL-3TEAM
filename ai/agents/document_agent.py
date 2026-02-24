@@ -69,6 +69,7 @@ async def document_agent(state: AgentState) -> AgentState:
             response_data = _handle_doc_summary(
                 user_input,
                 document_content=document_content,
+                user_id=user_id,
                 stream_mode=stream_mode,
             )
 
@@ -754,7 +755,7 @@ def _generate_proposal(user_input: str) -> Dict[str, Any]:
     }
 
 
-def _handle_doc_summary(user_input: str, document_content: str = None, stream_mode: bool = False) -> Dict[str, Any]:
+def _handle_doc_summary(user_input: str, document_content: str = None, user_id: int = None, stream_mode: bool = False) -> Dict[str, Any]:
     """문서 요약 처리"""
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_summary | content_len={len(document_content) if document_content else 0}, stream_mode={stream_mode}")
@@ -762,16 +763,23 @@ def _handle_doc_summary(user_input: str, document_content: str = None, stream_mo
     if document_content:
         print(f"[DocumentAgent] document_content 미리보기 (앞 300자):\n{document_content[:300]}")
     else:
-        print(f"[DocumentAgent] document_content가 None 또는 빈 문자열! user_input='{user_input}'")
+        print(f"[DocumentAgent] document_content 없음 → Qdrant 문서 목록 조회")
 
-    # 문서 내용이 없으면 (파일 업로드 없거나 파싱 실패) 안내 메시지 반환
-    # 주의: user_input을 document_content로 쓰면 LLM이 질문 자체를 요약해 환각이 발생함
+    # 문서 내용이 없으면 Qdrant에서 문서 목록 조회 후 doc_pick 반환
     if not document_content:
-        print("[DocumentAgent] document_content 없음 → 업로드 안내 메시지 반환")
+        print("[DocumentAgent] document_content 없음 → Qdrant 문서 목록 조회")
+        try:
+            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+            pipeline = get_qdrant_pipeline()
+            doc_list = pipeline.list_documents(source="documents", user_id=user_id)
+            print(f"[DocumentAgent] Qdrant 문서 목록 {len(doc_list)}개 조회됨")
+        except Exception as e:
+            print(f"[DocumentAgent] Qdrant 문서 목록 조회 실패: {e}")
+            doc_list = []
         return {
-            "type": "clarify",
-            "message": "요약할 문서를 찾지 못했습니다.\n\n화면의 **[📎 첨부 버튼]**을 눌러 요약할 문서(DOCX, PDF, TXT)를 업로드한 뒤 다시 요청해주세요.\n\n> 파일을 업로드했는데도 이 메시지가 뜬다면 서버 로그를 확인해주세요 (파싱 결과가 비어있을 수 있습니다).",
-            "answer": "요약할 문서를 업로드해주세요."
+            "type": "doc_pick",
+            "message": "요약할 문서를 선택해주세요:",
+            "documents": doc_list,
         }
 
     from ai.llm.prompts import DOC_SUMMARY_SYSTEM_PROMPT

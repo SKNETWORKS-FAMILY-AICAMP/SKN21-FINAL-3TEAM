@@ -252,6 +252,36 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       );
     }
 
+    case 'doc_pick': {
+      const documents = data.documents || [];
+      // 이 assistant 메시지 바로 앞의 user 메시지가 원본 쿼리
+      const originalQuery = index > 0 ? (messages[index - 1]?.content || '요약해줘') : '요약해줘';
+      return (
+        <div>
+          <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
+            {data.message || '요약할 문서를 선택해주세요:'}
+          </div>
+          {documents.length > 0 && (
+            <div className="mt-2 flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
+              {documents.map((doc, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    useChatStore.getState().setSelectedDocument(doc.document_id, doc.title);
+                    onSelectClarify?.(originalQuery);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm bg-surface-card border border-neutral-border rounded-xl hover:bg-primary-50 hover:border-primary-300 text-neutral-main hover:text-primary-700 transition text-left"
+                >
+                  <FileText size={14} className="flex-shrink-0 text-neutral-muted" />
+                  <span className="truncate">{doc.title}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     case 'clarify': {
       const candidates = data.candidates || [];
       return (
