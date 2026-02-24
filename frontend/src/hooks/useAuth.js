@@ -4,6 +4,7 @@
 import { useNavigate } from 'react-router-dom'   // 화면 이동을 시켜주는 내비게이터
 import useAuthStore from '../store/authStore'   // 로그인 정보를 저장하는 기억 장치 (Store)
 import * as authAPI from '../api/auth'          // 실제 서버에 로그인 요청을 보내는 통로 (API)
+import client from '../api/client'
 
 export default function useAuth() {
   const navigate = useNavigate()
@@ -12,8 +13,10 @@ export default function useAuth() {
   // 1: 로그인
   const login = async (email, password) => {   // 1. 서버에 이메일과 비밀번호를 보내서 확인 받아 (비동기 통신)
     const { data } = await authAPI.login(email, password)
-    setAuth({ name: data.user_name, email }, data.access_token)  // 2. 서버가 준 '이름'과 '통행증 (Token)'을 전역 저장소 (Zustand)에 저장해
-    navigate('/dashboard')  // 3. 로그인이 완료됐으니 '대시보드' 페이지로 유저를 이동시켜 
+    localStorage.setItem('access_token', data.access_token)
+    const { data: me } = await client.get('/auth/me')  // is_admin 포함 전체 유저 정보 로드
+    setAuth(me, data.access_token)
+    navigate('/dashboard')  // 3. 로그인이 완료됐으니 '대시보드' 페이지로 유저를 이동시켜
   }
 
   // 2: 회원가입
