@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useOutletContext } from 'react-router-dom';
 import useAuthStore from './store/authStore';
 import useUIStore from './store/uiStore';
 import Layout from './components/common/Layout';
@@ -28,6 +28,17 @@ function PrivateRoute() {
   if (DEV_BYPASS_AUTH) return <Outlet />;
   if (!initialized) return null;
   return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+}
+
+function AdminRoute() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const initialized = useAuthStore((s) => s.initialized);
+  const user = useAuthStore((s) => s.user);
+  const ctx = useOutletContext();
+  if (DEV_BYPASS_AUTH) return <Outlet context={ctx} />;
+  if (!initialized) return null;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return user?.is_admin ? <Outlet context={ctx} /> : <Navigate to="/dashboard" replace />;
 }
 
 function PublicOnlyRoute() {
@@ -67,7 +78,9 @@ export default function App() {
             <Route path="/document-generate" element={<DocumentGeneratePage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/schedules" element={<SchedulesPage />} />
-            <Route path="/admin" element={<AdminPage />} />
+            <Route element={<AdminRoute />}>
+              <Route path="/admin" element={<AdminPage />} />
+            </Route>
           </Route>
         </Route>
 

@@ -11,9 +11,13 @@ export default function useChat() {
   const sendMessage = async (text) => {
     if (!text.trim() || useChatStore.getState().isStreaming) return
 
+    // 활성 세션이 없으면 먼저 생성
+    if (!useChatStore.getState().activeSessionId) {
+      await useChatStore.getState().createSession()
+    }
+
     const { activeSessionId, selectedDocumentId } = useChatStore.getState()
 
-    // addMessage 내부에서 activeSessionId 없을 때 세션 자동 생성함
     addMessage({ role: 'user', content: text })
     addMessage({ role: 'assistant', content: '' })
 
