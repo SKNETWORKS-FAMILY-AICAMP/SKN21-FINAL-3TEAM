@@ -30,7 +30,7 @@ async function login(page) {
 async function goToChat(page) {
   await page.goto('/chat');
   // 채팅 입력창이 보일 때까지 대기
-  await page.locator('input[placeholder*="질문"]').waitFor({ state: 'visible', timeout: 10_000 });
+  await page.locator('textarea[placeholder*="질문"], input[placeholder*="질문"]').waitFor({ state: 'visible', timeout: 10_000 });
 }
 
 /** 로그인 + 채팅 페이지 이동 */
@@ -41,7 +41,7 @@ async function loginAndGoToChat(page) {
 
 /** 메시지 전송 */
 async function sendMessage(page, message) {
-  const input = page.locator('input[placeholder*="질문"]');
+  const input = page.locator('textarea[placeholder*="질문"], input[placeholder*="질문"]');
   await input.fill(message);
   await input.press('Enter');
 }
@@ -98,7 +98,7 @@ test.describe('챗봇 E2E 테스트', () => {
   test('채팅 페이지 입력창 표시', async ({ page }) => {
     await loginAndGoToChat(page);
 
-    const input = page.locator('input[placeholder*="질문"]');
+    const input = page.locator('textarea[placeholder*="질문"], input[placeholder*="질문"]');
     await expect(input).toBeVisible();
 
     // 추천 질문 영역이 보여야 함 (메시지 0개일 때)
