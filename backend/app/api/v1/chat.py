@@ -7,14 +7,17 @@ import logging
 import time
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+from sqlalchemy import select, delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.chat_log import ChatLog
+from app.models.chat_session import ChatSession
 
 logger = logging.getLogger(__name__)
 
@@ -472,3 +475,138 @@ async def chat(request: ChatRequest, user=Depends(get_current_user), db: AsyncSe
             confidence=0.0,
             response=f"오류가 발생했습니다: {e}",
         )
+
+
+# ── 채팅 세션 CRUD ──────────────────────────────────────────────
+
+
+class _RenameBody(BaseModel):
+    name: str
+
+
+@router.get("/sessions")
+async def list_sessions(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """현재 유저의 채팅 세션 목록 (최신순)"""
+    result = await db.execute(
+        select(ChatSession)
+        .where(ChatSession.user_id == user.id)
+        .order_by(ChatSession.updated_at.desc())
+    )
+    sessions = result.scalars().all()
+    return [
+        {
+            "session_id": s.session_id,
+            "name": s.name,
+            "created_at": s.created_at.isoformat(),
+            "updated_at": s.updated_at.isoformat(),
+        }
+        for s in sessions
+    ]
+
+
+@router.post("/sessions")
+async def create_session(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """새 채팅 세션 생성"""
+    session_id = str(uuid.uuid4())
+    session = ChatSession(session_id=session_id, user_id=user.id, name="새 대화")
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+    return {
+        "session_id": session.session_id,
+        "name": session.name,
+        "created_at": session.created_at.isoformat(),
+        "updated_at": session.updated_at.isoformat(),
+    }
+
+
+@router.get("/sessions/{session_id}/messages")
+async def get_session_messages(
+    session_id: str, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
+    """세션의 메시지 목록 (chat_logs에서 복원)"""
+    # 세션 소유권 확인
+    result = await db.execute(
+        select(ChatSession).where(
+            ChatSession.session_id == session_id,
+            ChatSession.user_id == user.id,
+        )
+    )
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="세션을 찾을 수 없습니다")
+
+    # chat_logs에서 메시지 복원
+    result = await db.execute(
+        select(ChatLog)
+        .where(ChatLog.session_id == session_id, ChatLog.user_id == user.id)
+        .order_by(ChatLog.created_at.asc())
+    )
+    logs = result.scalars().all()
+
+    messages = []
+    for log in logs:
+        messages.append({"role": "user", "content": log.user_message})
+        try:
+            agent_response = json.loads(log.agent_response) if log.agent_response else {}
+        except json.JSONDecodeError:
+            agent_response = {}
+        content = agent_response.get("message") or agent_response.get("answer") or ""
+        messages.append({
+            "role": "assistant",
+            "content": content,
+            "resultIntent": log.intent,
+            "agentResponse": agent_response,
+        })
+
+    return messages
+
+
+@router.patch("/sessions/{session_id}")
+async def rename_session(
+    session_id: str,
+    body: _RenameBody,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """세션 이름 변경"""
+    result = await db.execute(
+        select(ChatSession).where(
+            ChatSession.session_id == session_id,
+            ChatSession.user_id == user.id,
+        )
+    )
+    session = result.scalar_one_or_none()
+    if session is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="세션을 찾을 수 없습니다")
+
+    session.name = body.name[:100]
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/sessions/{session_id}")
+async def delete_session(
+    session_id: str,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """세션 + 해당 chat_logs 삭제"""
+    result = await db.execute(
+        select(ChatSession).where(
+            ChatSession.session_id == session_id,
+            ChatSession.user_id == user.id,
+        )
+    )
+    session = result.scalar_one_or_none()
+    if session is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="세션을 찾을 수 없습니다")
+
+    await db.execute(
+        sa_delete(ChatLog).where(
+            ChatLog.session_id == session_id,
+            ChatLog.user_id == user.id,
+        )
+    )
+    await db.delete(session)
+    await db.commit()
+    return {"ok": True}

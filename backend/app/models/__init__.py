@@ -11,6 +11,7 @@ from app.models.action_item import ActionItem
 from app.models.schedule import Schedule
 from app.models.judgment import Judgment
 from app.models.chat_log import ChatLog
+from app.models.chat_session import ChatSession
 from app.models.oauth_token import OAuthToken
 from app.models.google_sheet_tracker import GoogleSheetTracker
 
@@ -24,6 +25,7 @@ __all__ = [
     "Schedule",
     "Judgment",
     "ChatLog",
+    "ChatSession",
     "OAuthToken",
     "GoogleSheetTracker",
 ]

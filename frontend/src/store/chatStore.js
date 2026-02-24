@@ -1,25 +1,16 @@
 /**
  * 챗봇 상태 관리 (팀원 E 담당)
+ * - 세션 메타데이터: 서버(PostgreSQL) 저장
+ * - 메시지: 스트리밍 중 메모리 유지, 세션 전환 시 서버에서 로드
  */
 import { create } from 'zustand'
-
-const SESSIONS_KEY = 'chat_sessions'
-const ACTIVE_SESSION_KEY = 'chat_active_session'
-
-function loadSessions() {
-  try {
-    const raw = localStorage.getItem(SESSIONS_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch { return [] }
-}
-
-function saveSessions(sessions) {
-  localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions))
-}
-
-function saveActiveId(id) {
-  localStorage.setItem(ACTIVE_SESSION_KEY, id || '')
-}
+import {
+  listSessions,
+  createSessionAPI,
+  getSessionMessages,
+  renameSession,
+  deleteSessionAPI,
+} from '../api/chat'
 
 const useChatStore = create((set, get) => ({
   messages: [],
@@ -42,139 +33,118 @@ const useChatStore = create((set, get) => ({
   sessions: [],
   activeSessionId: null,
 
+  // 서버에서 세션 목록 로드 (로그인 후 / 페이지 진입 시)
+  fetchSessions: async () => {
+    try {
+      const sessions = await listSessions()
+      const { activeSessionId } = get()
+      set({ sessions })
+
+      // 활성 세션이 없으면 첫 번째 세션 메시지 로드
+      if (!activeSessionId && sessions.length > 0) {
+        await get().switchSession(sessions[0].session_id)
+      }
+    } catch (e) {
+      console.error('[ChatStore] 세션 목록 로드 실패:', e)
+    }
+  },
+
+  // fetchSessions의 alias (ChatPage에서 initSession() 호출)
   initSession: () => {
-    const sessions = loadSessions()
-    const savedId = localStorage.getItem(ACTIVE_SESSION_KEY)
-    const activeSession = sessions.find(s => s.id === savedId)
+    get().fetchSessions()
+  },
 
-    if (activeSession) {
-      const state = get()
-      // 이미 같은 세션이 활성화되어 메시지가 있으면 in-memory 메시지를 보존
-      if (state.activeSessionId === activeSession.id && state.messages.length > 0) {
-        set({ sessions })
-      } else {
-        set({ sessions, activeSessionId: activeSession.id, messages: activeSession.messages || [] })
+  // 새 세션 생성 (서버 + 상태)
+  createSession: async () => {
+    try {
+      const { activeSessionId, messages, sessions } = get()
+
+      // 현재 빈 세션이 있으면 목록에서 제거
+      let newSessions = sessions
+      if (activeSessionId && messages.length === 0) {
+        newSessions = sessions.filter((s) => s.session_id !== activeSessionId)
       }
-    } else {
-      set({ sessions, activeSessionId: null, messages: [] })
+
+      const session = await createSessionAPI()
+      newSessions = [session, ...newSessions]
+      set({
+        sessions: newSessions,
+        activeSessionId: session.session_id,
+        messages: [],
+        currentIntent: null,
+        currentStatus: null,
+      })
+    } catch (e) {
+      console.error('[ChatStore] 세션 생성 실패:', e)
     }
   },
 
-  createSession: () => {
-    const state = get()
-    let sessions = state.sessions
-
-    if (state.activeSessionId && state.messages.length === 0) {
-      // 현재 세션이 비어있으면 제거 (빈 세션 정리)
-      sessions = sessions.filter(s => s.id !== state.activeSessionId)
-      saveSessions(sessions)
-    } else if (state.activeSessionId && state.messages.length > 0) {
-      // 현재 대화 저장
-      sessions = sessions.map(s =>
-        s.id === state.activeSessionId ? { ...s, messages: state.messages, updatedAt: Date.now() } : s
-      )
-      saveSessions(sessions)
-    }
-
-    const id = `session-${Date.now()}`
-    const newSession = {
-      id,
-      name: '새 대화',
-      messages: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    }
-    const newSessions = [newSession, ...sessions]
-    saveSessions(newSessions)
-    saveActiveId(id)
-    set({ sessions: newSessions, activeSessionId: id, messages: [], currentIntent: null, currentStatus: null })
-  },
-
-  switchSession: (id) => {
-    const state = get()
-    // 현재 대화 저장
-    if (state.activeSessionId && state.messages.length > 0) {
-      const sessions = state.sessions.map(s =>
-        s.id === state.activeSessionId ? { ...s, messages: state.messages, updatedAt: Date.now() } : s
-      )
-      saveSessions(sessions)
-      set({ sessions })
-    }
-
-    const target = get().sessions.find(s => s.id === id)
-    if (target) {
-      saveActiveId(id)
-      set({ activeSessionId: id, messages: target.messages || [], currentIntent: null, currentStatus: null })
+  // 세션 전환 (서버에서 메시지 로드)
+  switchSession: async (sessionId) => {
+    try {
+      const messages = await getSessionMessages(sessionId)
+      set({ activeSessionId: sessionId, messages, currentIntent: null, currentStatus: null })
+    } catch (e) {
+      console.error('[ChatStore] 세션 전환 실패:', e)
+      set({ activeSessionId: sessionId, messages: [], currentIntent: null, currentStatus: null })
     }
   },
 
-  deleteSession: (id) => {
-    const state = get()
-    const sessions = state.sessions.filter(s => s.id !== id)
-    saveSessions(sessions)
+  // 세션 삭제 (서버 + 상태)
+  deleteSession: async (sessionId) => {
+    try {
+      await deleteSessionAPI(sessionId)
+      const { sessions, activeSessionId } = get()
+      const newSessions = sessions.filter((s) => s.session_id !== sessionId)
 
-    if (state.activeSessionId === id) {
-      const next = sessions[0]
-      if (next) {
-        saveActiveId(next.id)
-        set({ sessions, activeSessionId: next.id, messages: next.messages || [] })
+      if (activeSessionId === sessionId) {
+        if (newSessions.length > 0) {
+          set({ sessions: newSessions })
+          await get().switchSession(newSessions[0].session_id)
+        } else {
+          set({ sessions: newSessions, activeSessionId: null, messages: [] })
+        }
       } else {
-        saveActiveId(null)
-        set({ sessions, activeSessionId: null, messages: [] })
+        set({ sessions: newSessions })
       }
-    } else {
-      set({ sessions })
+    } catch (e) {
+      console.error('[ChatStore] 세션 삭제 실패:', e)
     }
   },
 
-  saveCurrentSession: () => {
-    const state = get()
-    if (!state.activeSessionId || state.messages.length === 0) return
+  // 스트리밍 완료 후 세션 이름 저장 (첫 메시지 기준)
+  saveCurrentSession: async () => {
+    const { activeSessionId, messages, sessions } = get()
+    if (!activeSessionId || messages.length === 0) return
 
-    // 첫 사용자 메시지를 세션 이름으로
-    const firstUserMsg = state.messages.find(m => m.role === 'user')
+    const session = sessions.find((s) => s.session_id === activeSessionId)
+    if (!session || session.name !== '새 대화') return  // 이미 이름 있으면 skip
+
+    const firstUserMsg = messages.find((m) => m.role === 'user')
     const name = firstUserMsg ? firstUserMsg.content.slice(0, 30) : '새 대화'
 
-    const sessions = state.sessions.map(s =>
-      s.id === state.activeSessionId
-        ? { ...s, messages: state.messages, name, updatedAt: Date.now() }
-        : s
-    )
-    saveSessions(sessions)
-    set({ sessions })
+    try {
+      await renameSession(activeSessionId, name)
+      const newSessions = sessions.map((s) =>
+        s.session_id === activeSessionId ? { ...s, name } : s
+      )
+      set({ sessions: newSessions })
+    } catch (e) {
+      console.error('[ChatStore] 세션 이름 저장 실패:', e)
+    }
   },
 
+  // 메시지 추가 (메모리 only — 서버 저장은 stream 엔드포인트가 담당)
   addMessage: (message) =>
-    set((state) => {
-      const newMessages = [...state.messages, message]
+    set((state) => ({
+      messages: [...state.messages, message],
+    })),
 
-      // 첫 메시지 시 세션 자동 생성
-      if (!state.activeSessionId && message.role === 'user') {
-        const id = `session-${Date.now()}`
-        const newSession = {
-          id,
-          name: message.content.slice(0, 30),
-          messages: newMessages,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        }
-        const sessions = [newSession, ...state.sessions]
-        saveSessions(sessions)
-        saveActiveId(id)
-        return { messages: newMessages, sessions, activeSessionId: id }
-      }
+  setStreaming: (isStreaming) => set({ isStreaming }),
 
-      return { messages: newMessages }
-    }),
+  setCurrentIntent: (intent) => set({ currentIntent: intent }),
 
-  setStreaming: (isStreaming) =>
-    set({ isStreaming }),
-
-  setCurrentIntent: (intent) =>
-    set({ currentIntent: intent }),
-
-  setCurrentStatus: (status) =>
-    set({ currentStatus: status }),
+  setCurrentStatus: (status) => set({ currentStatus: status }),
 
   appendToken: (token) =>
     set((state) => {
@@ -216,18 +186,24 @@ const useChatStore = create((set, get) => ({
       return { messages }
     }),
 
+  // 대화 초기화 (새 세션 생성)
   clearMessages: () => {
-    const state = get()
-    if (state.activeSessionId) {
-      const sessions = state.sessions.map(s =>
-        s.id === state.activeSessionId ? { ...s, messages: [], updatedAt: Date.now() } : s
-      )
-      saveSessions(sessions)
-      set({ messages: [], currentIntent: null, currentStatus: null, sessions })
-    } else {
-      set({ messages: [], currentIntent: null, currentStatus: null })
-    }
+    get().createSession()
   },
+
+  // 로그아웃 시 전체 상태 초기화
+  reset: () =>
+    set({
+      messages: [],
+      sessions: [],
+      activeSessionId: null,
+      isStreaming: false,
+      currentIntent: null,
+      currentStatus: null,
+      pendingQuestion: null,
+      selectedDocumentId: null,
+      selectedDocumentName: null,
+    }),
 }))
 
 export default useChatStore

@@ -1,13 +1,23 @@
 import useChatStore from '../../store/chatStore';
 
-function formatTime(ts) {
-  const d = new Date(ts);
+const KST = 'Asia/Seoul';
+
+function formatTime(isoStr) {
+  // 서버가 UTC naive datetime을 반환하므로 Z를 붙여 UTC로 명시
+  const utcStr = isoStr.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(isoStr) ? isoStr : isoStr + 'Z';
+  const d = new Date(utcStr);
   const now = new Date();
-  const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  // KST 기준 날짜 차이 계산
+  const toKSTMidnight = (dt) => {
+    const kst = new Date(dt.toLocaleString('en-US', { timeZone: KST }));
+    kst.setHours(0, 0, 0, 0);
+    return kst;
+  };
+  const diffDays = Math.round((toKSTMidnight(now) - toKSTMidnight(d)) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: KST });
   if (diffDays === 1) return '어제';
   if (diffDays < 7) return `${diffDays}일 전`;
-  return d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', timeZone: KST });
 }
 
 export default function ChatSessionSidebar({ isOpen }) {
@@ -39,26 +49,26 @@ export default function ChatSessionSidebar({ isOpen }) {
         ) : (
           sessions.map((session) => (
             <div
-              key={session.id}
-              onClick={() => switchSession(session.id)}
+              key={session.session_id}
+              onClick={() => switchSession(session.session_id)}
               className={`group flex items-center gap-2 px-4 py-3 cursor-pointer border-b border-neutral-divider transition ${
-                session.id === activeSessionId
+                session.session_id === activeSessionId
                   ? 'bg-primary-50 border-l-2 border-l-primary-700'
                   : 'hover:bg-surface-hover border-l-2 border-l-transparent'
               }`}
             >
               <div className="flex-1 min-w-0">
-                <div className={`text-sm truncate ${session.id === activeSessionId ? 'font-semibold text-primary-700' : 'text-neutral-main'}`}>
+                <div className={`text-sm truncate ${session.session_id === activeSessionId ? 'font-semibold text-primary-700' : 'text-neutral-main'}`}>
                   {session.name || '새 대화'}
                 </div>
                 <div className="text-[0.6875rem] text-neutral-muted mt-0.5">
-                  {session.messages?.length || 0}개 메시지 · {formatTime(session.updatedAt)}
+                  {formatTime(session.updated_at)}
                 </div>
               </div>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  deleteSession(session.id);
+                  deleteSession(session.session_id);
                 }}
                 className="opacity-0 group-hover:opacity-100 text-neutral-muted hover:text-error transition p-1"
                 title="삭제"
