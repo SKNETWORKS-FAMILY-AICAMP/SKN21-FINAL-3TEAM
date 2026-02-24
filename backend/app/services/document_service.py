@@ -1,7 +1,7 @@
 """
 문서 서비스 (팀원 C/D 공동 담당)
 - 파일 업로드, 텍스트 추출, 문서 CRUD
-- Qdrant 인덱싱 (업로드 시 자동), RAG 검색 (제목+내용)
+- Qdrant 인덱싱 (업로드 시 자동), RAG 검색 (내용)
 """
 import os
 import re
