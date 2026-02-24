@@ -590,7 +590,7 @@ async def clear_session_messages(
     user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """세션의 chat_logs만 삭제 (세션은 유지, 이름 초기화)"""
+    """세션 메시지 초기화 (화면에서만 비움 — chat_logs는 관리자 로그 보존을 위해 삭제하지 않음)"""
     result = await db.execute(
         select(ChatSession).where(
             ChatSession.session_id == session_id,
@@ -601,12 +601,6 @@ async def clear_session_messages(
     if session is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="세션을 찾을 수 없습니다")
 
-    await db.execute(
-        sa_delete(ChatLog).where(
-            ChatLog.session_id == session_id,
-            ChatLog.user_id == user.id,
-        )
-    )
     session.name = "새 대화"
     await db.commit()
     return {"ok": True}
@@ -618,7 +612,7 @@ async def delete_session(
     user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """세션 + 해당 chat_logs 삭제"""
+    """세션 삭제 (chat_logs는 관리자 로그 보존을 위해 삭제하지 않음)"""
     result = await db.execute(
         select(ChatSession).where(
             ChatSession.session_id == session_id,
@@ -629,12 +623,6 @@ async def delete_session(
     if session is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="세션을 찾을 수 없습니다")
 
-    await db.execute(
-        sa_delete(ChatLog).where(
-            ChatLog.session_id == session_id,
-            ChatLog.user_id == user.id,
-        )
-    )
     await db.delete(session)
     await db.commit()
     return {"ok": True}
