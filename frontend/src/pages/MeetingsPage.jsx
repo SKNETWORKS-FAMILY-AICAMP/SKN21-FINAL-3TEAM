@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import MeetingList from '../components/meetings/MeetingList';
 import MeetingDetail from '../components/meetings/MeetingDetail';
 import { listMeetings, getMeeting } from '../api/meetings';
@@ -105,6 +106,7 @@ function toDetail(m) {
 }
 
 export default function MeetingsPage() {
+  const { isScrolled } = useOutletContext();
   const [meetings, setMeetings] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -140,8 +142,11 @@ export default function MeetingsPage() {
 
   return (
     <div>
-      <header className="flex justify-between items-center py-6 sticky top-0 bg-surface-main z-10">
-        <div><h1 className="text-2xl font-bold">회의 관리</h1><p className="text-sm text-neutral-sub mt-1">회의록을 업로드하면 AI가 자동으로 분석합니다</p></div>
+      <header className={`flex justify-between items-center sticky top-0 bg-surface-main z-10 transition-all duration-300 ${isScrolled ? 'py-2.5' : 'py-6'}`}>
+        <div>
+          <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-2xl'}`}>회의 관리</h1>
+          <p className={`text-neutral-sub transition-all duration-300 overflow-hidden ${isScrolled ? 'text-xs mt-0 max-h-0 opacity-0' : 'text-sm mt-1 max-h-6 opacity-100'}`}>회의록을 업로드하면 AI가 자동으로 분석합니다</p>
+        </div>
         <button className="btn-primary">+ 회의록 업로드</button>
       </header>
       {loading ? (

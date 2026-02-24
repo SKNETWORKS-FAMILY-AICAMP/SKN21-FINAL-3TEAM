@@ -16,7 +16,11 @@ import json
 import logging
 import re
 import time
+import uuid
+from pathlib import Path
 from typing import Any, Dict, List
+
+GENERATED_DOCS_DIR = Path(__file__).resolve().parents[2] / "backend" / "generated_docs"
 
 from ai.agents.state import AgentState
 from ai.templates import get_system_template
@@ -348,6 +352,35 @@ def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
 ## Action Items
 {chr(10).join([f"- {ai.get('content')} ({ai.get('assignee')})" for ai in data.get('action_items', [])])}"""
 
+    # DOCX 파일 생성
+    doc_uuid = str(uuid.uuid4())
+    GENERATED_DOCS_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = str(GENERATED_DOCS_DIR / f"{doc_uuid}.docx")
+
+    attendees = data.get("attendees", [])
+    docx_data = {
+        "title": data.get("title", "회의록"),
+        "date": data.get("date", ""),
+        "time": data.get("time", ""),
+        "location": data.get("location", ""),
+        "meeting_type": data.get("meeting_type", "정기"),
+        "attendees": attendees,
+        "author": data.get("author", attendees[0] if attendees else ""),
+        "content": data.get("summary", ""),
+        "decisions": data.get("decisions", []),
+        "action_items": data.get("action_items", []),
+        "notes": data.get("notes", ""),
+    }
+
+    try:
+        from ai.skills.create_meeting_minutes import create_meeting_minutes
+        create_meeting_minutes(output_path, docx_data)
+        print(f"[DocumentAgent] DOCX 생성 완료: {output_path}")
+    except Exception as e:
+        print(f"[DocumentAgent] !!! DOCX 생성 실패: {e}")
+        import traceback
+        traceback.print_exc()
+
     return {
         "type": "doc_generate",
         "template_type": "meeting_minutes",
@@ -359,8 +392,9 @@ def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
         "risks": data.get("risks", []),
         "preview": preview,
         "data": data,
-        "document_id": 456, # Mock ID
-        "download_url": "/api/v1/documents/456/download",
+        "document_id": doc_uuid,
+        "docx_path": output_path,
+        "download_url": f"/api/v1/documents/{doc_uuid}/download",
     }
 
 

@@ -174,7 +174,7 @@ function MemoPanel() {
   );
 }
 
-export default function Topbar() {
+export default function Topbar({ isScrolled = false }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
@@ -226,14 +226,14 @@ export default function Topbar() {
 
   return (
     <>
-    <header className="h-[100px] bg-surface-main flex-shrink-0 z-20">
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center px-10 py-[30px]">
+    <header className={`bg-surface-main flex-shrink-0 z-20 transition-all duration-300 ease-in-out ${isScrolled ? 'h-[56px] shadow-sm' : 'h-[100px]'}`}>
+      <div className={`grid grid-cols-[1fr_auto_1fr] items-center px-10 transition-all duration-300 ease-in-out ${isScrolled ? 'py-2.5' : 'py-[30px]'}`}>
 
         {/* 좌측 - 로고 */}
         <div className="flex items-center">
-          <a href="/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-700 rounded-sm flex items-center justify-center text-lg font-bold text-white font-display">W</div>
-            <span className="font-display text-2xl font-bold text-primary-700 tracking-tight">WorkFlow</span>
+          <a href="/dashboard" className="flex items-center gap-2.5">
+            <div className={`bg-primary-700 rounded-sm flex items-center justify-center font-bold text-white font-display transition-all duration-300 ease-in-out ${isScrolled ? 'w-7 h-7 text-sm' : 'w-10 h-10 text-lg'}`}>W</div>
+            <span className={`font-display font-bold text-primary-700 tracking-tight transition-all duration-300 ease-in-out ${isScrolled ? 'text-xl' : 'text-2xl'}`}>WorkFlow</span>
           </a>
         </div>
 
@@ -244,7 +244,9 @@ export default function Topbar() {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `px-5 pb-3 text-base font-medium transition-all whitespace-nowrap border-b-2 ${isActive
+                `font-medium whitespace-nowrap border-b-2 transition-all duration-300 ease-in-out ${
+                  isScrolled ? 'px-4 pb-1.5 text-sm' : 'px-5 pb-3 text-base'
+                } ${isActive
                   ? 'text-primary-900 border-primary-700'
                   : 'text-primary-700 border-transparent hover:text-primary-900 hover:border-primary-700'
                 }`
@@ -265,10 +267,10 @@ export default function Topbar() {
               onClick={() => setUserMenuOpen((o) => !o)}
               className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-border/30 transition-all"
             >
-              <div className="w-7 h-7 rounded-full bg-accent-500 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+              <div className={`rounded-full bg-accent-500 flex items-center justify-center font-bold text-white flex-shrink-0 transition-all duration-300 ease-in-out ${isScrolled ? 'w-6 h-6 text-[10px]' : 'w-7 h-7 text-xs'}`}>
                 {user?.name?.[0] || '?'}
               </div>
-              <span className="text-sm font-medium text-neutral-sub">{user?.name || '사용자'}</span>
+              <span className={`font-medium text-neutral-sub transition-all duration-300 ease-in-out ${isScrolled ? 'text-xs' : 'text-sm'}`}>{user?.name || '사용자'}</span>
             </button>
 
             {userMenuOpen && (
