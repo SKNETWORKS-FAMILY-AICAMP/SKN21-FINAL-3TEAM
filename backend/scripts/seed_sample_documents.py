@@ -1303,8 +1303,44 @@ B2B SaaS 사업 확장을 위해 정보보호 관리체계(ISMS) 인증이 필�
 ]
 
 
+def chunk_text_like_parser(text: str, max_chunk: int = 400) -> list[str]:
+    """기존 DocumentParser의 TXT 청킹 로직 재사용
+
+    DocumentParser.parse_and_chunk (parser.py:120-134):
+      DOCX/TXT → 빈 줄(\\n\\n) 기준 단락 분할
+
+    ManualParser._flush_section (manual_parser.py:167-218):
+      400자 초과 시 단락 기준 서브 분할 + 소형 단락 병합
+    """
+    # 1단계: 빈 줄 기준 단락 분할 (parser.py 방식)
+    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+
+    if not paragraphs:
+        return [text.strip()] if text.strip() else []
+
+    # 2단계: ManualParser._flush_section 방식으로 병합/분할
+    chunks = []
+    current = ""
+
+    for para in paragraphs:
+        if not para:
+            continue
+
+        if current and len(current) + len(para) + 1 > max_chunk:
+            if len(current.strip()) >= 30:
+                chunks.append(current.strip())
+            current = para
+        else:
+            current = f"{current}\n{para}" if current else para
+
+    if current.strip() and len(current.strip()) >= 30:
+        chunks.append(current.strip())
+
+    return chunks if chunks else [text.strip()]
+
+
 def main():
-    """샘플 문서 30개를 Qdrant Cloud에 업로드"""
+    """샘플 문서 30개를 청킹하여 Qdrant Cloud에 업로드"""
     import os
     import requests
 
@@ -1316,7 +1352,7 @@ def main():
         return
 
     # 임베딩 모델 로드
-    print("[1/3] 임베딩 모델 로드...")
+    print("[1/4] 임베딩 모델 로드...")
     from ai.rag.embeddings import EmbeddingModel
     embed_model = EmbeddingModel()
     embed_model.load_model()
@@ -1326,87 +1362,62 @@ def main():
     store = QdrantVectorStore(url=url, api_key=key)
     store.initialize()
 
-    # 문서 모음
-    all_docs = []
-
-    for doc in MEETING_MINUTES:
-        all_docs.append({
-            "text": doc["content"],
-            "meta": {
-                "source": "documents",
-                "doc_type": "meeting_minutes",
-                "title": doc["title"],
-                "scope": "company",
-            },
-        })
-
-    for doc in REPORTS:
-        all_docs.append({
-            "text": doc["content"],
-            "meta": {
-                "source": "documents",
-                "doc_type": "report",
-                "title": doc["title"],
-                "scope": "company",
-            },
-        })
-
-    for doc in PROPOSALS:
-        all_docs.append({
-            "text": doc["content"],
-            "meta": {
-                "source": "documents",
-                "doc_type": "proposal",
-                "title": doc["title"],
-                "scope": "company",
-            },
-        })
-
-    # 기존 샘플 문서 삭제 (document_id 없는 source=documents 포인트)
-    print("  기존 샘플 문서 삭제 중...")
-    from qdrant_client.models import Filter, FieldCondition, MatchValue, IsNullCondition, PayloadField, FilterSelector
-    store.client.delete(
-        collection_name=store.collection_name,
-        points_selector=FilterSelector(
-            filter=Filter(
-                must=[FieldCondition(key="source", match=MatchValue(value="documents"))],
-                must_not=[FieldCondition(key="doc_type", match=MatchValue(value="meeting_minutes"))],
-            )
-        ),
-    )
-    # meeting_minutes 중 meeting_id 없는 것도 삭제 (이전 샘플)
+    # 기존 샘플 문서 전체 삭제 (document_id/meeting_id 없는 source=documents)
+    print("[2/4] 기존 샘플 문서 삭제...")
+    from qdrant_client.models import Filter, FieldCondition, MatchValue, FilterSelector
     all_points, _ = store.client.scroll(
         collection_name=store.collection_name,
         scroll_filter=Filter(
-            must=[
-                FieldCondition(key="source", match=MatchValue(value="documents")),
-                FieldCondition(key="doc_type", match=MatchValue(value="meeting_minutes")),
-            ],
+            must=[FieldCondition(key="source", match=MatchValue(value="documents"))],
         ),
-        limit=1000,
+        limit=5000,
         with_payload=True,
     )
-    sample_ids = [p.id for p in all_points if not p.payload.get("meeting_id") and not p.payload.get("document_id")]
+    sample_ids = [
+        p.id for p in all_points
+        if not p.payload.get("document_id") and not p.payload.get("meeting_id")
+    ]
     if sample_ids:
         store.client.delete(
             collection_name=store.collection_name,
             points_selector=sample_ids,
         )
-    print(f"  삭제 완료 (샘플 {len(sample_ids)}건 + general/report/proposal 전체)")
+    print(f"  삭제 완료: {len(sample_ids)}건")
 
-    print(f"[2/3] 문서 {len(all_docs)}개 임베딩 + 업로드...")
-    texts = [d["text"] for d in all_docs]
-    metas = [d["meta"] for d in all_docs]
+    # 문서 청킹 + 메타데이터 구성
+    print("[3/4] 문서 청킹 + 임베딩 + 업로드...")
+    doc_groups = [
+        (MEETING_MINUTES, "meeting_minutes"),
+        (REPORTS, "report"),
+        (PROPOSALS, "proposal"),
+    ]
 
-    # 배치 임베딩
-    embeddings = embed_model.encode(texts)
-    print(f"  임베딩 완료 ({len(embeddings)}개)")
+    all_chunks = []
+    all_metas = []
+
+    for docs, doc_type in doc_groups:
+        type_chunk_count = 0
+        for doc in docs:
+            chunks = chunk_text_like_parser(doc["content"])
+            for chunk in chunks:
+                all_chunks.append(chunk)
+                all_metas.append({
+                    "source": "documents",
+                    "doc_type": doc_type,
+                    "title": doc["title"],
+                    "scope": "company",
+                })
+            type_chunk_count += len(chunks)
+        print(f"  {doc_type}: {len(docs)}개 문서 → {type_chunk_count}개 청크")
+
+    print(f"  총 {len(all_chunks)}개 청크 임베딩 중...")
+    embeddings = embed_model.encode(all_chunks)
 
     # Qdrant 업로드
-    store.add_documents(documents=texts, embeddings=embeddings, metadatas=metas)
+    store.add_documents(documents=all_chunks, embeddings=embeddings, metadatas=all_metas)
 
     # 검증
-    print("\n[3/3] 검증...")
+    print("\n[4/4] 검증...")
     headers = {"api-key": key, "Content-Type": "application/json"}
 
     total = store.count()
@@ -1436,7 +1447,7 @@ def main():
         if cnt > 0:
             print(f"    source=documents & doc_type={dtype}: {cnt}건")
 
-    print("\n완료! 회의록 10개 + 보고서 10개 + 제안서 10개 업로드됨")
+    print(f"\n완료! 문서 30개 → {len(all_chunks)}개 청크로 업로드됨")
 
 
 if __name__ == "__main__":
