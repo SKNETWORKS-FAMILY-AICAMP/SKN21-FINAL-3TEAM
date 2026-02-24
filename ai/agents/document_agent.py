@@ -58,9 +58,10 @@ async def document_agent(state: AgentState) -> AgentState:
 
         elif intent == "doc_generate":
             # template_type 결정: ① state에서 프론트가 보낸 값 ② LLM 판단 ③ 키워드 fallback
+            document_content = state.get("document_content") or state.get("extracted_text")
             template_type = state.get("template_type") or _llm_detect_template_type(user_input)
             print(f"[DocumentAgent] → _handle_doc_generate 호출 | template={template_type}")
-            response_data = _handle_doc_generate(user_input, template_type)
+            response_data = _handle_doc_generate(user_input, template_type, document_content)
 
         elif intent == "doc_summary":
             print("[DocumentAgent] → _handle_doc_summary 호출")
@@ -324,10 +325,19 @@ def _handle_doc_search(query: str, context: List[str], user_id: int = None, stre
         "context": context,
     }
 
-def _handle_doc_generate(user_input: str, template_type: str) -> Dict[str, Any]:
+def _handle_doc_generate(user_input: str, template_type: str, document_content: str = None) -> Dict[str, Any]:
     """문서 생성 처리 (보고서/회의록/JD/제안서)"""
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_generate | template_type={template_type}")
+
+    if document_content:
+        user_input = f"{user_input}\n\n[첨부 문서 내용]\n{document_content}"
+
+    if len(user_input.strip()) < 20:
+        return {
+            "type": "clarify",
+            "message": "문서 생성을 위한 내용이 부족합니다.\n화면의 **[📎 첨부 버튼]**을 눌러 기준 문서를 업로드하시거나, 작성할 내용을 좀 더 자세히 입력해주세요."
+        }
 
     if template_type == "meeting_minutes":
         return _generate_meeting_minutes(user_input)
@@ -748,14 +758,20 @@ def _handle_doc_summary(user_input: str, document_content: str = None, stream_mo
     """문서 요약 처리"""
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_summary | content_len={len(document_content) if document_content else 0}, stream_mode={stream_mode}")
+    # DEBUG: document_content 앞부분 미리보기
+    if document_content:
+        print(f"[DocumentAgent] document_content 미리보기 (앞 300자):\n{document_content[:300]}")
+    else:
+        print(f"[DocumentAgent] document_content가 None 또는 빈 문자열! user_input='{user_input}'")
 
-    # 문서 내용이 없으면 안내 메시지
+    # 문서 내용이 없으면 (파일 업로드 없거나 파싱 실패) 안내 메시지 반환
+    # 주의: user_input을 document_content로 쓰면 LLM이 질문 자체를 요약해 환각이 발생함
     if not document_content:
-        print("[DocumentAgent] document_content 없음 → 안내 메시지")
+        print("[DocumentAgent] document_content 없음 → 업로드 안내 메시지 반환")
         return {
-            "type": "doc_summary",
-            "message": "요약할 문서를 선택해주세요. 문서관리 페이지에서 문서를 선택하거나, 챗봇에 파일을 업로드해주세요.",
-            "answer": "요약할 문서를 선택해주세요. 문서관리 페이지에서 문서를 선택하거나, 챗봇에 파일을 업로드해주세요.",
+            "type": "clarify",
+            "message": "요약할 문서를 찾지 못했습니다.\n\n화면의 **[📎 첨부 버튼]**을 눌러 요약할 문서(DOCX, PDF, TXT)를 업로드한 뒤 다시 요청해주세요.\n\n> 파일을 업로드했는데도 이 메시지가 뜬다면 서버 로그를 확인해주세요 (파싱 결과가 비어있을 수 있습니다).",
+            "answer": "요약할 문서를 업로드해주세요."
         }
 
     from ai.llm.prompts import DOC_SUMMARY_SYSTEM_PROMPT
