@@ -10,6 +10,7 @@ import {
   getSessionMessages,
   renameSession,
   deleteSessionAPI,
+  clearSessionMessagesAPI,
 } from '../api/chat'
 
 const useChatStore = create((set, get) => ({
@@ -186,9 +187,23 @@ const useChatStore = create((set, get) => ({
       return { messages }
     }),
 
-  // 대화 초기화 (새 세션 생성)
-  clearMessages: () => {
-    get().createSession()
+  // 대화 초기화 (현재 세션 메시지만 삭제, 세션 유지)
+  clearMessages: async () => {
+    const { activeSessionId } = get()
+    if (activeSessionId) {
+      try {
+        await clearSessionMessagesAPI(activeSessionId)
+      } catch (e) {
+        console.warn('[chatStore] clearMessages API 실패:', e)
+      }
+    }
+    set({ messages: [] })
+    // 세션 목록의 이름도 "새 대화"로 갱신
+    set((s) => ({
+      sessions: s.sessions.map((sess) =>
+        sess.session_id === activeSessionId ? { ...sess, name: '새 대화' } : sess
+      ),
+    }))
   },
 
   // 로그아웃 시 전체 상태 초기화

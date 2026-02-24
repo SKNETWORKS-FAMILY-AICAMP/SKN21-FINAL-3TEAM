@@ -28,3 +28,6 @@ export const renameSession = (sessionId, name) =>
 
 export const deleteSessionAPI = (sessionId) =>
   client.delete(`/chat/sessions/${sessionId}`).then((r) => r.data)
+
+export const clearSessionMessagesAPI = (sessionId) =>
+  client.delete(`/chat/sessions/${sessionId}/messages`).then((r) => r.data)
