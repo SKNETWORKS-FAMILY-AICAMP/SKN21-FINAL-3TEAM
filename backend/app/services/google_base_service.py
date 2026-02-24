@@ -3,7 +3,6 @@ Google API 공통 베이스 서비스 (팀원 D 담당)
 - OAuth 토큰 관리 (조회, 갱신, scope 검증)
 - 모든 Google 서비스(Calendar, Tasks, Gmail, Sheets)가 상속
 """
-import asyncio
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
@@ -81,9 +80,9 @@ class GoogleBaseService:
             )
 
     async def _refresh_token(self, db: AsyncSession, token: OAuthToken, creds: Credentials) -> None:
-        """만료된 토큰 갱신 (스레드에서 실행 — 블로킹 방지)"""
+        """만료된 토큰 갱신"""
         try:
-            await asyncio.to_thread(creds.refresh, Request())
+            creds.refresh(Request())
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
