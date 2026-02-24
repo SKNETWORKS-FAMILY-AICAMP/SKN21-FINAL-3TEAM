@@ -154,37 +154,36 @@ def _build_search_prompt(query: str, context: list) -> tuple:
     if intent_type == "summarize":
         sys_prompt = """당신은 문서 요약 전문가입니다.
 
-[중요 지시사항]
-- 반드시 핵심 내용만 2-3문장으로 간결하게 요약하세요
-- 불필요한 세부사항은 절대 포함하지 마세요
-- 가장 중요한 정보만 선택하세요
+    [중요 지시사항]
+    - 반드시 핵심 내용만 2-3문장으로 간결하게 요약하세요
+    - 불필요한 세부사항은 절대 포함하지 마세요
+    - 가장 중요한 정보만 선택하세요
 
-답변 시 Context에 포함된 정보만 사용하고, 추측하지 마세요."""
+    답변 시 Context에 포함된 정보만 사용하고, 추측하지 마세요."""
 
     elif intent_type == "find":
         sys_prompt = """당신은 문서 검색 전문가입니다.
 
-[중요 지시사항]
-- 관련 문서들을 목록으로 나열하세요
-- 각 문서의 핵심 내용을 한 줄로 요약하세요
-- "다음 문서들을 찾았습니다:" 형식으로 시작하세요
+    [중요 지시사항]
+    - 관련 문서들을 목록으로 나열하세요
+    - 각 문서의 핵심 내용을 한 줄로 요약하세요
+    - "다음 문서들을 찾았습니다:" 형식으로 시작하세요
 
-답변 시 Context에 포함된 정보만 사용하고, 추측하지 마세요."""
+    답변 시 Context에 포함된 정보만 사용하고, 추측하지 마세요."""
 
     else:  # explain
         sys_prompt = """당신은 문서 설명 전문가입니다.
 
-[중요 지시사항]
-- 관련 내용을 상세히 설명하세요 (5문장 이상)
-- 조건, 절차, 예외사항 등을 포함하세요
-- 이해하기 쉽게 구조화하여 설명하세요
+    [중요 지시사항]
+    - 관련 내용을 상세히 설명하세요 (5문장 이상)
+    - 조건, 절차, 예외사항 등을 포함하세요
+    - 이해하기 쉽게 구조화하여 설명하세요
 
-답변 시 Context에 포함된 정보만 사용하고, 추측하지 마세요."""
+    답변 시 Context에 포함된 정보만 사용하고, 추측하지 마세요."""
 
     user_prompt = f"Context:\n{json.dumps(context, ensure_ascii=False)}\n\nQuestion: {query}"
 
     return sys_prompt, user_prompt
-
 
 # ── Intent 핸들러 ──
 
@@ -265,9 +264,12 @@ def _handle_doc_generate(user_input: str, template_type: str) -> Dict[str, Any]:
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_generate | template_type={template_type}")
 
-    # 회의록 생성인 경우 전용 프롬프트
     if template_type == "meeting_minutes":
         return _generate_meeting_minutes(user_input)
+    if template_type == "report":
+        return _generate_report(user_input)
+    if template_type == "proposal":
+        return _generate_proposal(user_input)
 
     # 1. 템플릿 가져오기
     try:
@@ -319,16 +321,16 @@ def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
     sys_prompt = "당신은 회의록 작성 전문가입니다. 입력된 회의 내용을 분석하여 JSON 형식으로 출력하세요."
     user_prompt = f"""회의 내용: {user_input}
 
-출력 형식(JSON):
-{{
-    "title": "회의 제목",
-    "date": "YYYY-MM-DD",
-    "attendees": ["참석자1", "참석자2"],
-    "summary": "전체 요약",
-    "decisions": ["결정사항1", ...],
-    "action_items": [{{"content": "할일", "assignee": "담당자", "due_date": "기한"}}],
-    "risks": [{{"description": "리스크", "level": "상/중/하", "regulation": "관련 규정"}}]
-}}"""
+    출력 형식(JSON):
+    {{
+        "title": "회의 제목",
+        "date": "YYYY-MM-DD",
+        "attendees": ["참석자1", "참석자2"],
+        "summary": "회의에서 논의된 주요 내용을 파트별로 3~5문장으로 요약 (한 줄 요약 금지)",
+        "decisions": ["결정사항1", ...],
+        "action_items": [{{"content": "할일", "assignee": "담당자", "due_date": "기한"}}],
+        "risks": [{{"description": "리스크", "level": "상/중/하", "regulation": "관련 규정"}}]
+    }}"""
 
     print(f"[DocumentAgent] LLM 호출 (meeting_minutes, json_mode=True)...")
     generated_json_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
@@ -343,14 +345,14 @@ def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
     # 회의록 미리보기
     preview = f"""# {data.get('title', '회의록')}
 
-## 요약
-{data.get('summary', '')}
+    ## 요약
+    {data.get('summary', '')}
 
-## 결정사항
-{chr(10).join(['- ' + d for d in data.get('decisions', [])])}
+    ## 결정사항
+    {chr(10).join(['- ' + d for d in data.get('decisions', [])])}
 
-## Action Items
-{chr(10).join([f"- {ai.get('content')} ({ai.get('assignee')})" for ai in data.get('action_items', [])])}"""
+    ## Action Items
+    {chr(10).join([f"- {ai.get('content')} ({ai.get('assignee')})" for ai in data.get('action_items', [])])}"""
 
     # DOCX 파일 생성
     doc_uuid = str(uuid.uuid4())
@@ -390,6 +392,149 @@ def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
         "decisions": data.get("decisions", []),
         "action_items": data.get("action_items", []),
         "risks": data.get("risks", []),
+        "preview": preview,
+        "data": data,
+        "document_id": doc_uuid,
+        "docx_path": output_path,
+        "download_url": f"/api/v1/documents/{doc_uuid}/download",
+    }
+
+
+def _generate_report(user_input: str) -> Dict[str, Any]:
+    """업무보고서 생성"""
+    _t = time.time()
+    print(f"[DocumentAgent] _generate_report | input='{user_input[:80]}...'")
+
+    sys_prompt = "당신은 업무보고서 작성 전문가입니다. 입력된 내용을 분석하여 JSON 형식으로 출력하세요."
+    user_prompt = f"""업무 내용: {user_input}
+
+출력 형식(JSON):
+{{
+    "title": "보고서 제목",
+    "author": "작성자",
+    "date": "YYYY-MM-DD",
+    "department": "부서명",
+    "position": "직급",
+    "report_to": "보고 대상",
+    "report_type": "일일/주간/월간/수시 중 하나",
+    "overview": "보고 개요를 3~5문장으로 작성",
+    "main_content": "주요 내용을 항목별로 상세히 작성",
+    "tasks": [{{"item": "업무항목", "assignee": "담당자", "progress": "진행률(%)", "start_date": "시작일", "end_date": "완료예정일"}}],
+    "issues": "이슈 및 건의 사항",
+    "next_plan": "향후 계획"
+}}"""
+
+    generated_json_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
+    try:
+        data = json.loads(generated_json_str)
+        print(f"[DocumentAgent] JSON 파싱 성공 | keys={list(data.keys())}")
+    except Exception:
+        print(f"[DocumentAgent] !!! JSON 파싱 실패")
+        data = {"overview": "파싱 실패", "main_content": generated_json_str}
+
+    preview = f"""# {data.get('title', '업무보고서')}
+
+## 보고 개요
+{data.get('overview', '')}
+
+## 주요 내용
+{data.get('main_content', '')}
+
+## 향후 계획
+{data.get('next_plan', '')}"""
+
+    doc_uuid = str(uuid.uuid4())
+    GENERATED_DOCS_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = str(GENERATED_DOCS_DIR / f"{doc_uuid}.docx")
+
+    try:
+        from ai.skills.create_report import create_report
+        create_report(output_path, data)
+        print(f"[DocumentAgent] 업무보고서 DOCX 생성 완료: {output_path}")
+    except Exception as e:
+        print(f"[DocumentAgent] !!! 업무보고서 DOCX 생성 실패: {e}")
+        import traceback
+        traceback.print_exc()
+
+    return {
+        "type": "doc_generate",
+        "template_type": "report",
+        "template_name": "업무보고서",
+        "preview": preview,
+        "data": data,
+        "document_id": doc_uuid,
+        "docx_path": output_path,
+        "download_url": f"/api/v1/documents/{doc_uuid}/download",
+    }
+
+
+def _generate_proposal(user_input: str) -> Dict[str, Any]:
+    """제안서 생성"""
+    _t = time.time()
+    print(f"[DocumentAgent] _generate_proposal | input='{user_input[:80]}...'")
+
+    sys_prompt = "당신은 제안서 작성 전문가입니다. 입력된 내용을 분석하여 JSON 형식으로 출력하세요."
+    user_prompt = f"""제안 내용: {user_input}
+
+출력 형식(JSON):
+{{
+    "title": "제안서 제목",
+    "submit_date": "YYYY-MM-DD",
+    "submit_to": "제출처",
+    "company": "제안사",
+    "manager": "담당자",
+    "contact": "연락처",
+    "proposal_name": "제안명",
+    "background": "제안 배경을 2~3문장으로 작성",
+    "proposal_date": "YYYY-MM-DD",
+    "period": "제안 기간 (예: 2026년 3월 ~ 6월)",
+    "proposer": "제안사명",
+    "manager_contact": "담당자 / 연락처",
+    "purpose": "제안 목적 및 필요성을 3~5문장으로 작성",
+    "analysis": "현황 분석을 3~5문장으로 작성",
+    "content": "제안 내용을 항목별로 상세히 작성",
+    "schedule": [{{"item": "추진항목", "phase1": "1단계", "phase2": "2단계", "phase3": "3단계", "phase4": "4단계"}}],
+    "budget": [{{"item": "항목", "quantity": "수량", "unit_price": "단가", "amount": "금액"}}],
+    "budget_total": "합계 금액",
+    "expected_effect": "기대 효과를 3~5문장으로 작성"
+}}"""
+
+    generated_json_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
+    try:
+        data = json.loads(generated_json_str)
+        print(f"[DocumentAgent] JSON 파싱 성공 | keys={list(data.keys())}")
+    except Exception:
+        print(f"[DocumentAgent] !!! JSON 파싱 실패")
+        data = {"purpose": "파싱 실패", "content": generated_json_str}
+
+    preview = f"""# {data.get('title', '제안서')}
+
+## 제안 배경
+{data.get('background', '')}
+
+## 제안 내용
+{data.get('content', '')}
+
+## 기대 효과
+{data.get('expected_effect', '')}"""
+
+    doc_uuid = str(uuid.uuid4())
+    GENERATED_DOCS_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = str(GENERATED_DOCS_DIR / f"{doc_uuid}.docx")
+
+    try:
+        from ai.skills.create_proposal import create_proposal
+        create_proposal(output_path, data)
+        print(f"[DocumentAgent] 제안서 DOCX 생성 완료: {output_path}")
+    except Exception as e:
+        print(f"[DocumentAgent] !!! 제안서 DOCX 생성 실패: {e}")
+        import traceback
+        traceback.print_exc()
+
+    return {
+        "type": "doc_generate",
+        "template_type": "proposal",
+        "template_name": "제안서",
         "preview": preview,
         "data": data,
         "document_id": doc_uuid,
@@ -488,13 +633,13 @@ def _handle_doc_qa(query: str, context: list = None, user_id: int = None, stream
     if stream_mode:
         # 스트리밍용 프롬프트 (자연어 답변 → sources는 별도 전달)
         sys_prompt = """당신은 기업 문서 기반 질의응답 전문가입니다.
-주어진 문서 내용을 근거로 사용자의 질문에 정확하게 답변하세요.
+    주어진 문서 내용을 근거로 사용자의 질문에 정확하게 답변하세요.
 
-규칙:
-- 반드시 제공된 문서 내용만을 근거로 답변하세요.
-- 답변 근거가 되는 문서를 언급하세요.
-- 문서에서 답을 찾을 수 없으면 솔직히 답하세요.
-- 한국어로 답변하세요."""
+    규칙:
+    - 반드시 제공된 문서 내용만을 근거로 답변하세요.
+    - 답변 근거가 되는 문서를 언급하세요.
+    - 문서에서 답을 찾을 수 없으면 솔직히 답하세요.
+    - 한국어로 답변하세요."""
 
         user_prompt = f"Context:\n{json.dumps(context, ensure_ascii=False)}\n\nQuestion: {query}"
 
