@@ -55,6 +55,22 @@ class QdrantVectorStore:
         else:
             print(f"Collection '{self.collection_name}' already exists.")
 
+        # 페이로드 인덱스 생성 (필터 검색용, 이미 있으면 무시)
+        from qdrant_client.models import PayloadSchemaType
+        for field, schema in [
+            ("source", PayloadSchemaType.KEYWORD),
+            ("document_id", PayloadSchemaType.INTEGER),
+            ("scope", PayloadSchemaType.KEYWORD),
+        ]:
+            try:
+                self.client.create_payload_index(
+                    collection_name=self.collection_name,
+                    field_name=field,
+                    field_schema=schema,
+                )
+            except Exception:
+                pass  # 이미 존재하면 무시
+
         return self
 
     def add_documents(
