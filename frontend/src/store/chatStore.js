@@ -113,6 +113,23 @@ const useChatStore = create((set, get) => ({
     }
   },
 
+  // 사용자가 직접 세션 이름 변경
+  renameSessionById: async (sessionId, name) => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    try {
+      await renameSession(sessionId, trimmed)
+      const { sessions } = get()
+      set({
+        sessions: sessions.map((s) =>
+          s.session_id === sessionId ? { ...s, name: trimmed } : s
+        ),
+      })
+    } catch (e) {
+      console.error('[ChatStore] 세션 이름 변경 실패:', e)
+    }
+  },
+
   // 스트리밍 완료 후 세션 이름 저장 (첫 메시지 기준)
   saveCurrentSession: async () => {
     const { activeSessionId, messages, sessions } = get()

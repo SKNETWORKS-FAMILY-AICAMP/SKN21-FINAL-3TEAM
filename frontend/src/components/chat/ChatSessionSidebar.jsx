@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import useChatStore from '../../store/chatStore';
 
 const KST = 'Asia/Seoul';
@@ -26,6 +27,41 @@ export default function ChatSessionSidebar({ isOpen }) {
   const createSession = useChatStore((s) => s.createSession);
   const switchSession = useChatStore((s) => s.switchSession);
   const deleteSession = useChatStore((s) => s.deleteSession);
+  const renameSessionById = useChatStore((s) => s.renameSessionById);
+
+  const [editingId, setEditingId] = useState(null);
+  const [editingName, setEditingName] = useState('');
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (editingId && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingId]);
+
+  const startEdit = (e, session) => {
+    e.stopPropagation();
+    setEditingId(session.session_id);
+    setEditingName(session.name || '새 대화');
+  };
+
+  const commitEdit = () => {
+    if (editingId) {
+      renameSessionById(editingId, editingName);
+      setEditingId(null);
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingName('');
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') commitEdit();
+    if (e.key === 'Escape') cancelEdit();
+  };
 
   if (!isOpen) return null;
 
@@ -47,39 +83,75 @@ export default function ChatSessionSidebar({ isOpen }) {
             대화를 시작하면 자동으로 저장됩니다.
           </div>
         ) : (
-          sessions.map((session) => (
-            <div
-              key={session.session_id}
-              onClick={() => switchSession(session.session_id)}
-              className={`group flex items-center gap-2 px-4 py-3 cursor-pointer border-b border-neutral-divider transition ${
-                session.session_id === activeSessionId
-                  ? 'bg-primary-50 border-l-2 border-l-primary-700'
-                  : 'hover:bg-surface-hover border-l-2 border-l-transparent'
-              }`}
-            >
-              <div className="flex-1 min-w-0">
-                <div className={`text-sm truncate ${session.session_id === activeSessionId ? 'font-semibold text-primary-700' : 'text-neutral-main'}`}>
-                  {session.name || '새 대화'}
-                </div>
-                <div className="text-[0.6875rem] text-neutral-muted mt-0.5">
-                  {formatTime(session.updated_at)}
-                </div>
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteSession(session.session_id);
-                }}
-                className="opacity-0 group-hover:opacity-100 text-neutral-muted hover:text-error transition p-1"
-                title="삭제"
+          sessions.map((session) => {
+            const isActive = session.session_id === activeSessionId;
+            const isEditing = editingId === session.session_id;
+
+            return (
+              <div
+                key={session.session_id}
+                onClick={() => !isEditing && switchSession(session.session_id)}
+                className={`group flex items-center gap-2 px-4 py-3 cursor-pointer border-b border-neutral-divider transition ${
+                  isActive
+                    ? 'bg-primary-50 border-l-2 border-l-primary-700'
+                    : 'hover:bg-surface-hover border-l-2 border-l-transparent'
+                }`}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
-              </button>
-            </div>
-          ))
+                <div className="flex-1 min-w-0">
+                  {isEditing ? (
+                    <input
+                      ref={inputRef}
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      onBlur={commitEdit}
+                      onKeyDown={handleKeyDown}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full text-sm border border-primary-300 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-primary-500 bg-white text-neutral-main"
+                    />
+                  ) : (
+                    <>
+                      <div className={`text-sm truncate ${isActive ? 'font-semibold text-primary-700' : 'text-neutral-main'}`}>
+                        {session.name || '새 대화'}
+                      </div>
+                      <div className="text-[0.6875rem] text-neutral-muted mt-0.5">
+                        {formatTime(session.updated_at)}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {!isEditing && (
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition">
+                    {/* 이름 변경 버튼 */}
+                    <button
+                      onClick={(e) => startEdit(e, session)}
+                      className="text-neutral-muted hover:text-primary-700 transition p-1"
+                      title="이름 변경"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </button>
+                    {/* 삭제 버튼 */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteSession(session.session_id);
+                      }}
+                      className="text-neutral-muted hover:text-error transition p-1"
+                      title="삭제"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
     </div>
