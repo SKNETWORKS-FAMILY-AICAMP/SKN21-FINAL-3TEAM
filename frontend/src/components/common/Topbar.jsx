@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, MessageSquare, FilePlus, FileText,
   Calendar, Settings, LogOut, KeyRound,
-  StickyNote, Plus, Trash2, ArrowLeft, Check,
+  StickyNote, Plus, Trash2, ArrowLeft, Check, User
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useUIStore from '../../store/uiStore';
@@ -228,112 +228,118 @@ export default function Topbar({ isScrolled = false }) {
 
   return (
     <>
-    <header className={`bg-surface-main flex-shrink-0 z-20 transition-all duration-300 ease-in-out ${isScrolled ? 'h-[56px] shadow-sm' : 'h-[100px]'}`}>
-      <div className={`grid grid-cols-[1fr_auto_1fr] items-center px-10 transition-all duration-300 ease-in-out ${isScrolled ? 'py-2.5' : 'py-[30px]'}`}>
+      <header className={`bg-surface-main flex-shrink-0 z-20 transition-all duration-300 ease-in-out ${isScrolled ? 'h-[56px] shadow-sm' : 'h-[100px]'}`}>
+        <div className={`grid grid-cols-[1fr_auto_1fr] items-center px-10 transition-all duration-300 ease-in-out ${isScrolled ? 'py-2.5' : 'py-[30px]'}`}>
 
-        {/* 좌측 - 로고 */}
-        <div className="flex items-center">
-          <a href="/dashboard" className="flex items-center gap-2.5">
-            <div className={`bg-primary-700 rounded-sm flex items-center justify-center font-bold text-white font-display transition-all duration-300 ease-in-out ${isScrolled ? 'w-7 h-7 text-sm' : 'w-10 h-10 text-lg'}`}>W</div>
-            <span className={`font-display font-bold text-primary-700 tracking-tight transition-all duration-300 ease-in-out ${isScrolled ? 'text-xl' : 'text-2xl'}`}>WorkFlow</span>
-          </a>
-        </div>
-
-        {/* 중앙 - 네비게이션 */}
-        <nav className="flex items-center gap-0">
-          {getNavItems(user?.is_admin).map(item => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `font-medium whitespace-nowrap border-b-2 transition-all duration-300 ease-in-out ${
-                  isScrolled ? 'px-4 pb-1.5 text-sm' : 'px-5 pb-3 text-base'
-                } ${isActive
-                  ? 'text-primary-900 border-primary-700'
-                  : 'text-primary-700 border-transparent hover:text-primary-900 hover:border-primary-700'
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-
-        {/* 우측 - 유틸리티 */}
-        <div className="flex items-center justify-end gap-3">
-          <ThemeToggle />
-          <MemoPanel />
-
-          <div className="relative" ref={userMenuRef}>
-            <button
-              onClick={() => setUserMenuOpen((o) => !o)}
-              className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-border/30 transition-all"
-            >
-              <div className={`rounded-full bg-accent-500 flex items-center justify-center font-bold text-white flex-shrink-0 transition-all duration-300 ease-in-out ${isScrolled ? 'w-6 h-6 text-[10px]' : 'w-7 h-7 text-xs'}`}>
-                {user?.name?.[0] || '?'}
-              </div>
-              <span className={`font-medium text-neutral-sub transition-all duration-300 ease-in-out ${isScrolled ? 'text-xs' : 'text-sm'}`}>{user?.name || '사용자'}</span>
-            </button>
-
-            {userMenuOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-44 bg-surface-card border border-neutral-border rounded-md shadow-md z-50 overflow-hidden">
-                <div className="px-3 py-2.5 border-b border-neutral-divider">
-                  <div className="text-xs font-semibold text-neutral-main">{user?.name || '사용자'}</div>
-                  <div className="text-[0.625rem] text-neutral-muted mt-0.5">{user?.is_admin ? '관리자' : '일반 사용자'}</div>
-                </div>
-                <button
-                  onClick={openPwModal}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-neutral-sub hover:text-neutral-main hover:bg-neutral-divider transition-all"
-                >
-                  <KeyRound size={12} />
-                  비밀번호 변경
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-neutral-sub hover:text-error hover:bg-neutral-divider transition-all"
-                >
-                  <LogOut size={12} />
-                  로그아웃
-                </button>
-              </div>
-            )}
+          {/* 좌측 - 로고 */}
+          <div className="flex items-center">
+            <a href="/dashboard" className="flex items-center gap-2.5">
+              <div className={`bg-primary-700 rounded-sm flex items-center justify-center font-bold text-white font-display transition-all duration-300 ease-in-out ${isScrolled ? 'w-7 h-7 text-sm' : 'w-10 h-10 text-lg'}`}>W</div>
+              <span className={`font-display font-bold text-primary-700 tracking-tight transition-all duration-300 ease-in-out ${isScrolled ? 'text-xl' : 'text-2xl'}`}>WorkFlow</span>
+            </a>
           </div>
-        </div>
-      </div>
-    </header>
 
-    {pwModal && (
-      <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setPwModal(false)}>
-        <div className="bg-surface-card rounded-lg border border-neutral-border shadow-lg w-[380px] p-6" onClick={(e) => e.stopPropagation()}>
-          <h3 className="text-base font-bold mb-4">비밀번호 변경</h3>
-          <div className="space-y-3">
-            {[
-              { label: '현재 비밀번호', key: 'current', placeholder: '현재 비밀번호를 입력하세요' },
-              { label: '새 비밀번호', key: 'next', placeholder: '6자 이상 입력하세요' },
-              { label: '새 비밀번호 확인', key: 'confirm', placeholder: '새 비밀번호를 다시 입력하세요' },
-            ].map(({ label, key, placeholder }) => (
-              <div key={key}>
-                <label className="text-xs font-semibold text-neutral-sub block mb-1">{label}</label>
-                <input
-                  type="password"
-                  value={pwForm[key]}
-                  onChange={(e) => setPwForm({ ...pwForm, [key]: e.target.value })}
-                  placeholder={placeholder}
-                  className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                />
-              </div>
+          {/* 중앙 - 네비게이션 */}
+          <nav className="flex items-center gap-0">
+            {getNavItems(user?.is_admin).map(item => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `font-medium whitespace-nowrap border-b-2 transition-all duration-300 ease-in-out ${isScrolled ? 'px-4 pb-1.5 text-sm' : 'px-5 pb-3 text-base'
+                  } ${isActive
+                    ? 'text-primary-900 border-primary-700'
+                    : 'text-primary-700 border-transparent hover:text-primary-900 hover:border-primary-700'
+                  }`
+                }
+              >
+                {item.label}
+              </NavLink>
             ))}
-            {pwError && <p className="text-xs text-error">{pwError}</p>}
-          </div>
-          <div className="flex justify-end gap-2 mt-5">
-            <button className="btn-outline" onClick={() => setPwModal(false)}>취소</button>
-            <button className="btn-primary" onClick={handleChangePassword} disabled={pwSaving}>
-              {pwSaving ? '변경 중...' : '변경'}
-            </button>
+          </nav>
+
+          {/* 우측 - 유틸리티 */}
+          <div className="flex items-center justify-end gap-3">
+            <ThemeToggle />
+            <MemoPanel />
+
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setUserMenuOpen((o) => !o)}
+                className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-neutral-border/30 transition-all"
+              >
+                <div className={`rounded-full bg-accent-500 flex items-center justify-center font-bold text-white flex-shrink-0 transition-all duration-300 ease-in-out ${isScrolled ? 'w-6 h-6 text-[10px]' : 'w-7 h-7 text-xs'}`}>
+                  {user?.name?.[0] || '?'}
+                </div>
+                <span className={`font-medium text-neutral-sub transition-all duration-300 ease-in-out ${isScrolled ? 'text-xs' : 'text-sm'}`}>{user?.name || '사용자'}</span>
+              </button>
+
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-44 bg-surface-card border border-neutral-border rounded-md shadow-md z-50 overflow-hidden">
+                  <div className="px-3 py-2.5 border-b border-neutral-divider">
+                    <div className="text-xs font-semibold text-neutral-main">{user?.name || '사용자'}</div>
+                    <div className="text-[0.625rem] text-neutral-muted mt-0.5">{user?.is_admin ? '관리자' : '일반 사용자'}</div>
+                  </div>
+                  <button
+                    onClick={() => { navigate('/mypage'); setUserMenuOpen(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-neutral-sub hover:text-neutral-main hover:bg-neutral-divider transition-all"
+                  >
+                    <User size={12} />
+                    마이페이지
+                  </button>
+                  <button
+                    onClick={openPwModal}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-neutral-sub hover:text-neutral-main hover:bg-neutral-divider transition-all"
+                  >
+                    <KeyRound size={12} />
+                    비밀번호 변경
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-neutral-sub hover:text-error hover:bg-neutral-divider transition-all"
+                  >
+                    <LogOut size={12} />
+                    로그아웃
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    )}
+      </header>
+
+      {pwModal && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setPwModal(false)}>
+          <div className="bg-surface-card rounded-lg border border-neutral-border shadow-lg w-[380px] p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold mb-4">비밀번호 변경</h3>
+            <div className="space-y-3">
+              {[
+                { label: '현재 비밀번호', key: 'current', placeholder: '현재 비밀번호를 입력하세요' },
+                { label: '새 비밀번호', key: 'next', placeholder: '6자 이상 입력하세요' },
+                { label: '새 비밀번호 확인', key: 'confirm', placeholder: '새 비밀번호를 다시 입력하세요' },
+              ].map(({ label, key, placeholder }) => (
+                <div key={key}>
+                  <label className="text-xs font-semibold text-neutral-sub block mb-1">{label}</label>
+                  <input
+                    type="password"
+                    value={pwForm[key]}
+                    onChange={(e) => setPwForm({ ...pwForm, [key]: e.target.value })}
+                    placeholder={placeholder}
+                    className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
+                  />
+                </div>
+              ))}
+              {pwError && <p className="text-xs text-error">{pwError}</p>}
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <button className="btn-outline" onClick={() => setPwModal(false)}>취소</button>
+              <button className="btn-primary" onClick={handleChangePassword} disabled={pwSaving}>
+                {pwSaving ? '변경 중...' : '변경'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

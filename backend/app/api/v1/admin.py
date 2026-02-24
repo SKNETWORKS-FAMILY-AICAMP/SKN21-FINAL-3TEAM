@@ -145,20 +145,23 @@ async def update_user_permissions(
     user_id: int,
     is_admin: bool = Body(..., embed=True),
     is_active: bool = Body(..., embed=True),
+    team: str | None = Body(None, embed=True),
     admin: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """사용자 권한 변경 (관리자/활성화 여부)"""
+    """사용자 권한 및 팀 변경 (관리자 전용)"""
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다")
     user.is_admin = is_admin
     user.is_active = is_active
+    user.team = team
     return {
         "id": user.id,
         "email": user.email,
         "name": user.name,
+        "team": user.team,
         "is_admin": user.is_admin,
         "is_active": user.is_active,
     }
