@@ -7,6 +7,18 @@ import DocumentDetail from '../components/documents/DocumentDetail';
 import { uploadDocument, listDocuments, getDocument, deleteDocument } from '../api/documents';
 
 
+const SEARCH_TYPE_MAP = {
+  '제목': 'title',
+  '내용': 'content',
+  '날짜': 'date',
+};
+
+const SEARCH_PLACEHOLDERS = {
+  '제목': '문서 검색...',
+  '내용': '내용 키워드로 검색...',
+  '날짜': '예: 2026-02-24, 2026-02, 2월',
+};
+
 export default function DocumentsPage() {
   const { isScrolled } = useOutletContext();
   const [selectedDoc, setSelectedDoc] = useState(null);
@@ -17,6 +29,7 @@ export default function DocumentsPage() {
   const [scope, setScope] = useState('company');
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
   const [documentDetail, setDocumentDetail] = useState(null);
 
   // 문서 목록 로드
@@ -24,12 +37,17 @@ export default function DocumentsPage() {
     loadDocuments();
   }, []);
 
-  const loadDocuments = async () => {
+  const loadDocuments = async (keyword = null, currentSearchType = null) => {
     try {
-      const response = await listDocuments();
+      const params = {};
+      if (keyword) {
+        params.keyword = keyword;
+        params.search_type = currentSearchType || SEARCH_TYPE_MAP[searchType] || 'title';
+      }
+      const response = await listDocuments(params);
       setDocuments(response.data);
-      // 첫 번째 문서를 자동 선택
-      if (response.data.length > 0 && !selectedDoc) {
+      // 첫 번째 문서를 자동 선택 (초기 로드 시만)
+      if (response.data.length > 0 && !selectedDoc && !keyword) {
         const firstDoc = response.data[0];
         setSelectedDoc({
           id: firstDoc.id,
@@ -44,6 +62,22 @@ export default function DocumentsPage() {
       }
     } catch (error) {
       console.error('Failed to load documents:', error);
+    }
+  };
+
+  const handleSearch = async () => {
+    const keyword = searchInput.trim();
+    setSearchQuery(keyword);
+    if (!keyword) {
+      // 검색어 비우면 전체 목록 로드
+      await loadDocuments();
+      return;
+    }
+    setSearching(true);
+    try {
+      await loadDocuments(keyword, SEARCH_TYPE_MAP[searchType]);
+    } finally {
+      setSearching(false);
     }
   };
 
@@ -91,13 +125,9 @@ export default function DocumentsPage() {
   }));
 
   const filteredDocs = formattedDocs.filter((doc) => {
+    // 스코프 필터링만 클라이언트에서 처리 (검색은 서버에서 처리됨)
     if (scopeFilter === '회사' && doc.scope !== 'company') return false;
     if (scopeFilter === '팀' && doc.scope !== 'personal') return false;
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    if (searchType === '제목') return doc.name.toLowerCase().includes(q);
-    if (searchType === '제목+내용') return doc.name.toLowerCase().includes(q);
-    if (searchType === '날짜') return doc.date?.includes(q);
     return true;
   });
 
@@ -137,7 +167,7 @@ export default function DocumentsPage() {
 
   return (
     <div>
-      <header className={`flex justify-between items-center sticky top-0 bg-surface-main z-10 overflow-hidden transition-all duration-300 ${isScrolled ? 'h-[56px]' : 'h-[100px]'}`}>
+      <header className={`flex justify-between items-center sticky top-0 bg-surface-main z-10 transition-all duration-300 ${isScrolled ? 'h-[56px]' : 'h-[100px]'}`}>
         <div>
           <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-2xl'}`}>문서 관리</h1>
           <p className={`text-neutral-sub transition-all duration-300 overflow-hidden ${isScrolled ? 'text-xs mt-0 max-h-0 opacity-0' : 'text-sm mt-1 max-h-6 opacity-100'}`}>회사 규정 및 문서를 관리합니다</p>
@@ -147,11 +177,11 @@ export default function DocumentsPage() {
             <CustomSelect
               value={searchType}
               onChange={setSearchType}
-              options={['제목', '제목+내용', '날짜']}
+              options={['제목', '내용', '날짜']}
               buttonClassName="py-2"
             />
-            <div className="flex items-center gap-2 bg-surface-card border border-neutral-border rounded-md px-4 py-2 min-w-[280px]"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-muted flex-shrink-0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && setSearchQuery(searchInput)} placeholder="문서 검색..." className="border-none bg-transparent text-[0.8125rem] w-full outline-none" /></div>
-            <button onClick={() => setSearchQuery(searchInput)} className="btn-primary py-2 px-4 text-sm">검색</button>
+            <div className="flex items-center gap-2 bg-surface-card border border-neutral-border rounded-md px-4 py-2 min-w-[280px]"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-muted flex-shrink-0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder={SEARCH_PLACEHOLDERS[searchType] || '문서 검색...'} className="border-none bg-transparent text-[0.8125rem] w-full outline-none" /></div>
+            <button onClick={handleSearch} disabled={searching} className="btn-primary py-2 px-4 text-sm">{searching ? '검색중...' : '검색'}</button>
           </div>
         </div>
       </header>

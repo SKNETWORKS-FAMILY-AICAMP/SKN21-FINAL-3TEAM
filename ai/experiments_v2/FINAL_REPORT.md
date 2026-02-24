@@ -278,18 +278,18 @@ F1 소폭 하락이지만, **과신뢰 해소가 핵심 목적**:
 
 ## 8. 차트 목록
 
-| # | 파일명 | 용도 | 슬라이드 |
+| # | 파일명 | 용도 | 발표 슬라이드 |
 |---|--------|------|:--------:|
-| 1 | `class_distribution.png` | 8 intent 클래스 분포 | 3 |
-| 2 | `baseline_comparison.png` | 3모델 Baseline 비교 | 4 |
-| 3 | `f1_vs_speed.png` | F1 vs 추론 속도 scatter | 5 |
-| 4 | `speed_comparison.png` | 추론 속도 비교 바 | 5 |
-| 5 | `hp_heatmap_bs16.png` | HP 민감도 히트맵 | 6 |
-| 6 | `seed_stability.png` | Seed 안정성 에러바 | 6 |
-| 7 | `training_curves.png` | Training Loss curves | 6 |
-| 8 | `confusion_koelectra-base-v3-discriminator_adv.png` | Confusion Matrix (koelectra) | 7 |
-| 9 | `stage6_comparison.png` | Stage 4→6 보강+LS 비교 | 8 |
-| 10 | `scenario_test_accuracy.png` | 시나리오 유형별 정확도 | 9 |
+| 1 | `class_distribution.png` | 8 intent 클래스 분포 | 5 |
+| 2 | `baseline_comparison.png` | 3모델 Baseline 비교 | 6 |
+| 3 | `f1_vs_speed.png` | F1 vs 추론 속도 scatter | 6 |
+| 4 | `speed_comparison.png` | 추론 속도 비교 바 | 백업 |
+| 5 | `hp_heatmap_bs16.png` | HP 민감도 히트맵 | 백업 |
+| 6 | `seed_stability.png` | Seed 안정성 에러바 | 백업 |
+| 7 | `training_curves.png` | Training Loss curves | 백업 |
+| 8 | `confusion_koelectra-base-v3-discriminator_adv.png` | Confusion Matrix (koelectra) | 7 (백업) |
+| 9 | `stage6_comparison.png` | Stage 4→6 보강+LS 비교 | 7 |
+| 10 | `scenario_test_accuracy.png` | 시나리오 유형별 정확도 | 8 |
 
 ---
 

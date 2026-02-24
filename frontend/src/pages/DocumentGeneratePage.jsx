@@ -94,10 +94,36 @@ export default function DocumentGeneratePage() {
     if (!selectedTemplate) return;
     setLoading(true);
     try {
-      const response = await generateDocument({
-        template_type: selectedTemplate,
-        content: prompt,
-      });
+      let payload = { template_type: selectedTemplate };
+
+      if (isReport) {
+        payload = {
+          ...payload,
+          title: reportForm.title,
+          date: reportForm.date,
+          content: [
+            reportForm.author && `작성자: ${reportForm.author}`,
+            reportForm.department && `부서: ${reportForm.department}`,
+            reportForm.content,
+          ].filter(Boolean).join('\n'),
+        };
+      } else if (isProposal) {
+        payload = {
+          ...payload,
+          title: proposalForm.title,
+          date: proposalForm.date,
+          content: [
+            proposalForm.company && `제안사: ${proposalForm.company}`,
+            proposalForm.manager && `담당자: ${proposalForm.manager}`,
+            proposalForm.phone && `연락처: ${proposalForm.phone}`,
+            proposalForm.content,
+          ].filter(Boolean).join('\n'),
+        };
+      } else {
+        payload = { ...payload, content: prompt };
+      }
+
+      const response = await generateDocument(payload);
       const apiData = response.data;
 
       const fieldsMap = {

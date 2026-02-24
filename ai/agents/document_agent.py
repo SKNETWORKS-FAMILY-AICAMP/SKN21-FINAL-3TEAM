@@ -57,8 +57,8 @@ async def document_agent(state: AgentState) -> AgentState:
             response_data = _handle_doc_search(user_input, context, user_id, stream_mode=stream_mode)
 
         elif intent == "doc_generate":
-            # template_type 결정: ① state에서 프론트가 보낸 값 ② 키워드 감지
-            template_type = state.get("template_type") or _detect_template_type(user_input)
+            # template_type 결정: ① state에서 프론트가 보낸 값 ② LLM 판단 ③ 키워드 fallback
+            template_type = state.get("template_type") or _llm_detect_template_type(user_input)
             print(f"[DocumentAgent] → _handle_doc_generate 호출 | template={template_type}")
             response_data = _handle_doc_generate(user_input, template_type)
 
@@ -103,8 +103,33 @@ async def document_agent(state: AgentState) -> AgentState:
 
 # ── 헬퍼 ──
 
+def _to_readable_str(val) -> str:
+    """LLM이 반환한 값을 사람이 읽을 수 있는 문자열로 변환.
+
+    - str  → 그대로 반환
+    - dict → "- key: value" 형태로 줄 구성
+    - list → 각 항목을 "-" 로 시작하는 줄로 구성
+             항목이 dict이면 values만 추출하여 " / " 로 연결
+    """
+    if isinstance(val, str):
+        return val
+    if isinstance(val, dict):
+        return "\n".join(f"- {k}: {v}" for k, v in val.items() if v)
+    if isinstance(val, list):
+        lines = []
+        for item in val:
+            if isinstance(item, dict):
+                # dict 값들만 추출 (빈 값 제외) → "값1 / 값2" 형태
+                parts = [str(v) for v in item.values() if v]
+                lines.append("- " + " / ".join(parts) if parts else "")
+            else:
+                lines.append(f"- {item}")
+        return "\n".join(l for l in lines if l)
+    return str(val) if val else ""
+
+
 def _detect_template_type(user_input: str) -> str:
-    """사용자 입력에서 템플릿 타입을 키워드로 감지
+    """사용자 입력에서 템플릿 타입을 키워드로 감지 (LLM 판단 실패 시 fallback)
 
     Returns:
         "meeting_minutes" | "jd" | "proposal" | "report" (기본값)
@@ -118,6 +143,46 @@ def _detect_template_type(user_input: str) -> str:
     if re.search(r"제안서|proposal", input_lower):
         return "proposal"
     return "report"
+
+
+def _llm_detect_template_type(user_input: str) -> str:
+    """LLM을 사용해 사용자가 어떤 문서를 만들려는지 판단
+
+    단순 키워드 매칭으로는 오탐이 발생하는 경우(예: 제안서 내용에 '회의록' 언급)를
+    LLM이 문맥 전체를 보고 올바른 문서 종류를 선택하도록 한다.
+
+    Returns:
+        "meeting_minutes" | "report" | "proposal" | "jd"
+    """
+    sys_prompt = (
+        "당신은 문서 생성 요청을 분류하는 전문가입니다.\n"
+        "사용자의 요청을 읽고, 사용자가 실제로 만들고자 하는 문서 종류를 판단하세요.\n\n"
+        "선택 가능한 문서 종류:\n"
+        "- meeting_minutes : 회의록, 미팅 기록, 회의 내용 정리\n"
+        "- report          : 업무보고서, 업무 보고, 진행 상황 보고\n"
+        "- proposal        : 제안서, 기획서, 사업 제안, 도입 제안\n"
+        "- jd              : 채용 공고, JD, 직무 기술서, Job Description\n\n"
+        "반드시 아래 JSON 형식으로만 답변하세요:\n"
+        "{\"template_type\": \"<선택한 종류>\"}"
+    )
+    user_prompt = (
+        f"사용자 요청:\n{user_input}\n\n"
+        "위 요청에서 사용자가 만들려는 문서 종류를 판단해 JSON으로 반환하세요."
+    )
+
+    print(f"[DocumentAgent] _llm_detect_template_type LLM 호출...")
+    result_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
+    try:
+        result = json.loads(result_str)
+        template_type = result.get("template_type", "")
+        if template_type in ("meeting_minutes", "report", "proposal", "jd"):
+            print(f"[DocumentAgent] LLM 판단 template_type={template_type}")
+            return template_type
+        print(f"[DocumentAgent] LLM 반환값 비정상({template_type}) → regex fallback")
+    except Exception as e:
+        print(f"[DocumentAgent] LLM 템플릿 판단 실패({e}) → regex fallback")
+
+    return _detect_template_type(user_input)
 
 
 def _detect_search_intent(query: str) -> str:
@@ -318,19 +383,24 @@ def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
     _t = time.time()
     print(f"[DocumentAgent] _generate_meeting_minutes | input='{user_input[:80]}...'")
 
-    sys_prompt = "당신은 회의록 작성 전문가입니다. 입력된 회의 내용을 분석하여 JSON 형식으로 출력하세요."
-    user_prompt = f"""회의 내용: {user_input}
-
-    출력 형식(JSON):
-    {{
-        "title": "회의 제목",
-        "date": "YYYY-MM-DD",
-        "attendees": ["참석자1", "참석자2"],
-        "summary": "회의에서 논의된 주요 내용을 파트별로 3~5문장으로 요약 (한 줄 요약 금지)",
-        "decisions": ["결정사항1", ...],
-        "action_items": [{{"content": "할일", "assignee": "담당자", "due_date": "기한"}}],
-        "risks": [{{"description": "리스크", "level": "상/중/하", "regulation": "관련 규정"}}]
-    }}"""
+    sys_prompt = (
+        "당신은 회의록 작성 전문가입니다.\n"
+        "아래 [작성 지침]을 참고하여 입력된 회의 내용을 바탕으로 실제 회의록을 생성하세요.\n\n"
+        "[작성 지침]\n"
+        "- title: 회의 주제를 반영한 구체적인 제목\n"
+        "- date: 회의 날짜 (YYYY-MM-DD 형식, 없으면 오늘 날짜)\n"
+        "- attendees: 참석자 이름 배열 (없으면 빈 배열)\n"
+        "- summary: 회의에서 논의된 주요 내용을 파트별로 3~5문장으로 요약 (한 줄 요약 금지, 반드시 실제 내용으로 작성)\n"
+        "- decisions: 결정된 사항 목록 (배열, 없으면 빈 배열)\n"
+        "- action_items: 후속 조치 목록. 각 항목은 {content, assignee, due_date} 형태\n"
+        "- risks: 리스크 목록. 각 항목은 {description, level(상/중/하), regulation} 형태\n\n"
+        "반드시 JSON만 출력하세요. 설명 텍스트나 지침 문장을 값으로 출력하지 마세요."
+    )
+    user_prompt = (
+        f"다음 회의 내용을 바탕으로 회의록 JSON을 작성해주세요.\n\n"
+        f"[회의 내용]\n{user_input}\n\n"
+        f"출력 JSON 키: title, date, attendees, summary, decisions, action_items, risks"
+    )
 
     print(f"[DocumentAgent] LLM 호출 (meeting_minutes, json_mode=True)...")
     generated_json_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
@@ -341,6 +411,37 @@ def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
     except Exception:
         print(f"[DocumentAgent] !!! JSON 파싱 실패")
         data = {"summary": "파싱 실패", "content": generated_json_str}
+
+    # LLM이 문자열 필드를 dict/list로 반환하는 경우 사람이 읽을 수 있게 변환
+    for str_field in ("title", "summary"):
+        data[str_field] = _to_readable_str(data.get(str_field, ""))
+
+    # action_items 정규화: create_meeting_minutes.py 기대 키 → content, assignee, due_date
+    _CONTENT_KEYS  = ("content", "task", "item", "action", "할일", "내용", "업무", "name")
+    _ASSIGNEE_KEYS = ("assignee", "person", "담당자", "owner", "assigned_to")
+    _DUE_KEYS      = ("due_date", "deadline", "기한", "due", "end_date", "완료일")
+
+    def _first_val(d: dict, keys):
+        for k in keys:
+            if k in d and d[k]:
+                return str(d[k])
+        return ""
+
+    raw_ai = data.get("action_items", [])
+    if isinstance(raw_ai, dict):
+        raw_ai = list(raw_ai.values())
+    normalized_ai = []
+    for item in (raw_ai if isinstance(raw_ai, list) else []):
+        if isinstance(item, str):
+            normalized_ai.append({"content": item, "assignee": "", "due_date": ""})
+        elif isinstance(item, dict):
+            normalized_ai.append({
+                "content":  _first_val(item, _CONTENT_KEYS),
+                "assignee": _first_val(item, _ASSIGNEE_KEYS),
+                "due_date": _first_val(item, _DUE_KEYS),
+            })
+    data["action_items"] = normalized_ai
+    print(f"[DocumentAgent] action_items 정규화 완료: {len(normalized_ai)}개")
 
     # 회의록 미리보기
     preview = f"""# {data.get('title', '회의록')}
@@ -405,24 +506,32 @@ def _generate_report(user_input: str) -> Dict[str, Any]:
     _t = time.time()
     print(f"[DocumentAgent] _generate_report | input='{user_input[:80]}...'")
 
-    sys_prompt = "당신은 업무보고서 작성 전문가입니다. 입력된 내용을 분석하여 JSON 형식으로 출력하세요."
-    user_prompt = f"""업무 내용: {user_input}
-
-출력 형식(JSON):
-{{
-    "title": "보고서 제목",
-    "author": "작성자",
-    "date": "YYYY-MM-DD",
-    "department": "부서명",
-    "position": "직급",
-    "report_to": "보고 대상",
-    "report_type": "일일/주간/월간/수시 중 하나",
-    "overview": "보고 개요를 3~5문장으로 작성",
-    "main_content": "주요 내용을 항목별로 상세히 작성",
-    "tasks": [{{"item": "업무항목", "assignee": "담당자", "progress": "진행률(%)", "start_date": "시작일", "end_date": "완료예정일"}}],
-    "issues": "이슈 및 건의 사항",
-    "next_plan": "향후 계획"
-}}"""
+    sys_prompt = (
+        "당신은 업무보고서 작성 전문가입니다.\n"
+        "아래 [작성 지침]을 참고하여 사용자의 업무 내용을 바탕으로 실제 보고서 내용을 생성하세요.\n\n"
+        "[작성 지침]\n"
+        "- title: 업무 내용을 반영한 구체적인 보고서 제목\n"
+        "- author: 작성자 이름 (없으면 빈 문자열)\n"
+        "- date: 오늘 날짜 (YYYY-MM-DD 형식)\n"
+        "- department: 부서명 (없으면 빈 문자열)\n"
+        "- position: 직급 (없으면 빈 문자열)\n"
+        "- report_to: 보고 대상 (없으면 빈 문자열)\n"
+        "- report_type: '일일', '주간', '월간', '수시' 중 하나\n"
+        "- overview: 업무 내용을 요약한 보고 개요 (3~5문장, 반드시 실제 내용으로 작성)\n"
+        "- main_content: 업무 세부 내용을 항목별로 구체적으로 작성\n"
+        "- tasks: 진행 중인 업무 목록. 반드시 JSON 배열 형태이며 각 항목은 다음 키를 포함해야 함:\n"
+        "  { \"item\": \"업무항목명\", \"assignee\": \"담당자\", \"progress\": \"진행률(예:70%)\", \"start_date\": \"YYYY-MM-DD\", \"end_date\": \"YYYY-MM-DD\" }\n"
+        "  (담당자/날짜 정보가 없으면 빈 문자열로 채울 것)\n"
+        "- issues: 이슈 및 건의사항 (없으면 빈 문자열)\n"
+        "- next_plan: 향후 계획 (구체적으로 작성)\n\n"
+        "반드시 JSON만 출력하세요. 설명 텍스트나 지침 문장을 값으로 출력하지 마세요."
+    )
+    user_prompt = (
+        f"다음 업무 내용을 바탕으로 업무보고서 JSON을 작성해주세요.\n\n"
+        f"[업무 내용]\n{user_input}\n\n"
+        f"출력 JSON 키: title, author, date, department, position, report_to, report_type, "
+        f"overview, main_content, tasks, issues, next_plan"
+    )
 
     generated_json_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
     try:
@@ -432,16 +541,55 @@ def _generate_report(user_input: str) -> Dict[str, Any]:
         print(f"[DocumentAgent] !!! JSON 파싱 실패")
         data = {"overview": "파싱 실패", "main_content": generated_json_str}
 
+    # LLM이 문자열 필드를 dict/list로 반환하는 경우 사람이 읽을 수 있게 변환
+    for str_field in ("title", "overview", "main_content", "issues", "next_plan"):
+        data[str_field] = _to_readable_str(data.get(str_field, ""))
+
+    # tasks 정규화: 다양한 키 이름을 표준 키(item/assignee/progress/start_date/end_date)로 통일
+    _ITEM_KEYS     = ("item", "task", "업무항목", "업무", "내용", "task_name", "name")
+    _ASSIGNEE_KEYS = ("assignee", "person", "담당자", "owner", "assigned_to")
+    _PROGRESS_KEYS = ("progress", "진행률", "rate", "completion", "status")
+    _START_KEYS    = ("start_date", "start", "시작일", "started_at")
+    _END_KEYS      = ("end_date", "end", "완료예정일", "due_date", "deadline", "due")
+
+    def _first(d: dict, keys):
+        for k in keys:
+            if k in d and d[k]:
+                return str(d[k])
+        return ""
+
+    raw_tasks = data.get("tasks", [])
+    if isinstance(raw_tasks, dict):
+        raw_tasks = list(raw_tasks.values())
+    normalized_tasks = []
+    for t in (raw_tasks if isinstance(raw_tasks, list) else []):
+        if isinstance(t, str):
+            normalized_tasks.append({"item": t, "assignee": "", "progress": "", "start_date": "", "end_date": ""})
+        elif isinstance(t, dict):
+            normalized_tasks.append({
+                "item":       _first(t, _ITEM_KEYS),
+                "assignee":   _first(t, _ASSIGNEE_KEYS),
+                "progress":   _first(t, _PROGRESS_KEYS),
+                "start_date": _first(t, _START_KEYS),
+                "end_date":   _first(t, _END_KEYS),
+            })
+    data["tasks"] = normalized_tasks
+    print(f"[DocumentAgent] tasks 정규화 완료: {len(normalized_tasks)}개")
+
+    overview = data.get('overview', '')
+    main_content = data.get('main_content', '')
+    next_plan = data.get('next_plan', '')
+
     preview = f"""# {data.get('title', '업무보고서')}
 
 ## 보고 개요
-{data.get('overview', '')}
+{overview}
 
 ## 주요 내용
-{data.get('main_content', '')}
+{main_content}
 
 ## 향후 계획
-{data.get('next_plan', '')}"""
+{next_plan}"""
 
     doc_uuid = str(uuid.uuid4())
     GENERATED_DOCS_DIR.mkdir(parents=True, exist_ok=True)
@@ -473,31 +621,38 @@ def _generate_proposal(user_input: str) -> Dict[str, Any]:
     _t = time.time()
     print(f"[DocumentAgent] _generate_proposal | input='{user_input[:80]}...'")
 
-    sys_prompt = "당신은 제안서 작성 전문가입니다. 입력된 내용을 분석하여 JSON 형식으로 출력하세요."
-    user_prompt = f"""제안 내용: {user_input}
-
-출력 형식(JSON):
-{{
-    "title": "제안서 제목",
-    "submit_date": "YYYY-MM-DD",
-    "submit_to": "제출처",
-    "company": "제안사",
-    "manager": "담당자",
-    "contact": "연락처",
-    "proposal_name": "제안명",
-    "background": "제안 배경을 2~3문장으로 작성",
-    "proposal_date": "YYYY-MM-DD",
-    "period": "제안 기간 (예: 2026년 3월 ~ 6월)",
-    "proposer": "제안사명",
-    "manager_contact": "담당자 / 연락처",
-    "purpose": "제안 목적 및 필요성을 3~5문장으로 작성",
-    "analysis": "현황 분석을 3~5문장으로 작성",
-    "content": "제안 내용을 항목별로 상세히 작성",
-    "schedule": [{{"item": "추진항목", "phase1": "1단계", "phase2": "2단계", "phase3": "3단계", "phase4": "4단계"}}],
-    "budget": [{{"item": "항목", "quantity": "수량", "unit_price": "단가", "amount": "금액"}}],
-    "budget_total": "합계 금액",
-    "expected_effect": "기대 효과를 3~5문장으로 작성"
-}}"""
+    sys_prompt = (
+        "당신은 제안서 작성 전문가입니다.\n"
+        "아래 [작성 지침]을 참고하여 사용자의 제안 내용을 바탕으로 실제 제안서 내용을 생성하세요.\n\n"
+        "[작성 지침]\n"
+        "- title: 제안 내용을 반영한 구체적인 제안서 제목\n"
+        "- submit_date: 제출 날짜 (YYYY-MM-DD, 없으면 오늘 날짜)\n"
+        "- submit_to: 제출처 (없으면 빈 문자열)\n"
+        "- company: 제안사 이름 (없으면 빈 문자열)\n"
+        "- manager: 담당자 이름 (없으면 빈 문자열)\n"
+        "- contact: 연락처 (없으면 빈 문자열)\n"
+        "- proposal_name: 제안명 (title과 유사하게)\n"
+        "- background: 제안 배경을 2~3문장으로 실제 내용으로 작성\n"
+        "- proposal_date: 제안 날짜 (YYYY-MM-DD)\n"
+        "- period: 제안 기간 (예: 2026년 3월 ~ 6월)\n"
+        "- proposer: 제안사명\n"
+        "- manager_contact: 담당자 / 연락처\n"
+        "- purpose: 제안 목적 및 필요성을 3~5문장으로 실제 내용으로 작성\n"
+        "- analysis: 현황 분석을 3~5문장으로 실제 내용으로 작성\n"
+        "- content: 제안 내용을 항목별로 구체적으로 작성\n"
+        "- schedule: 추진 일정 배열. 각 항목은 {item, phase1, phase2, phase3, phase4} 형태\n"
+        "- budget: 예산 배열. 각 항목은 {item, quantity, unit_price, amount} 형태\n"
+        "- budget_total: 합계 금액\n"
+        "- expected_effect: 기대 효과를 3~5문장으로 실제 내용으로 작성\n\n"
+        "반드시 JSON만 출력하세요. 설명 텍스트나 지침 문장을 값으로 출력하지 마세요."
+    )
+    user_prompt = (
+        f"다음 제안 내용을 바탕으로 제안서 JSON을 작성해주세요.\n\n"
+        f"[제안 내용]\n{user_input}\n\n"
+        f"출력 JSON 키: title, submit_date, submit_to, company, manager, contact, proposal_name, "
+        f"background, proposal_date, period, proposer, manager_contact, purpose, analysis, "
+        f"content, schedule, budget, budget_total, expected_effect"
+    )
 
     generated_json_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
     try:
@@ -506,6 +661,52 @@ def _generate_proposal(user_input: str) -> Dict[str, Any]:
     except Exception:
         print(f"[DocumentAgent] !!! JSON 파싱 실패")
         data = {"purpose": "파싱 실패", "content": generated_json_str}
+
+    # LLM이 문자열 필드를 dict/list로 반환하는 경우 사람이 읽을 수 있게 변환
+    for str_field in ("title", "background", "purpose", "analysis", "content", "expected_effect"):
+        data[str_field] = _to_readable_str(data.get(str_field, ""))
+
+    # schedule 정규화: create_proposal.py 기대 키 → item, phase1, phase2, phase3, phase4
+    _SCH_ITEM_KEYS   = ("item", "task", "추진항목", "업무", "name", "내용")
+    _PHASE1_KEYS     = ("phase1", "1단계", "phase_1", "step1", "1차")
+    _PHASE2_KEYS     = ("phase2", "2단계", "phase_2", "step2", "2차")
+    _PHASE3_KEYS     = ("phase3", "3단계", "phase_3", "step3", "3차")
+    _PHASE4_KEYS     = ("phase4", "4단계", "phase_4", "step4", "4차")
+
+    def _fv(d, keys):
+        for k in keys:
+            if k in d and d[k]:
+                return str(d[k])
+        return ""
+
+    raw_sch = data.get("schedule", [])
+    if isinstance(raw_sch, dict):
+        raw_sch = list(raw_sch.values())
+    data["schedule"] = [
+        {"item": _fv(s, _SCH_ITEM_KEYS), "phase1": _fv(s, _PHASE1_KEYS),
+         "phase2": _fv(s, _PHASE2_KEYS), "phase3": _fv(s, _PHASE3_KEYS),
+         "phase4": _fv(s, _PHASE4_KEYS)}
+        if isinstance(s, dict) else {"item": str(s), "phase1": "", "phase2": "", "phase3": "", "phase4": ""}
+        for s in (raw_sch if isinstance(raw_sch, list) else [])
+    ]
+    print(f"[DocumentAgent] schedule 정규화 완료: {len(data['schedule'])}개")
+
+    # budget 정규화: create_proposal.py 기대 키 → item, quantity, unit_price, amount
+    _BUD_ITEM_KEYS  = ("item", "항목", "name", "내용", "task")
+    _QTY_KEYS       = ("quantity", "수량", "qty", "count")
+    _UPRICE_KEYS    = ("unit_price", "단가", "price", "unit_cost", "단위가격")
+    _AMOUNT_KEYS    = ("amount", "금액", "total", "합계", "비용", "cost")
+
+    raw_bud = data.get("budget", [])
+    if isinstance(raw_bud, dict):
+        raw_bud = list(raw_bud.values())
+    data["budget"] = [
+        {"item": _fv(b, _BUD_ITEM_KEYS), "quantity": _fv(b, _QTY_KEYS),
+         "unit_price": _fv(b, _UPRICE_KEYS), "amount": _fv(b, _AMOUNT_KEYS)}
+        if isinstance(b, dict) else {"item": str(b), "quantity": "", "unit_price": "", "amount": ""}
+        for b in (raw_bud if isinstance(raw_bud, list) else [])
+    ]
+    print(f"[DocumentAgent] budget 정규화 완료: {len(data['budget'])}개")
 
     preview = f"""# {data.get('title', '제안서')}
 

@@ -43,18 +43,23 @@
 사용자 질문
      │
      ▼
-[지용] Intent Classification (klue/bert-base)
+[지용] Intent Classification (klue/bert-base) — 8개 카테고리
      │
      ▼
 [지용] LangGraph Agent Orchestrator
      │ (조건부 라우팅)
-     ├── judgment      → [경은] RAG + Reranker + sLLM (LoRA v1) 또는 LLM API
-     │                        → 다중 규정 교차 판단 + confidence score
+     ├── judgment       → [경은] RAG + Reranker + sLLM (LoRA v1) 또는 LLM API
+     │                         → 다중 규정 교차 판단 + confidence score
      │
-     ├── doc_*         → [승언] 텍스트 추출 + sLLM (LoRA v2) 또는 LLM API
-     │                        → 요약 / 생성 / 리스크 감지 (동적 템플릿 필드 방식)
+     ├── doc_search     → [승언] RAG + 하이브리드검색 → 정리된 답변
+     ├── doc_generate   → [승언] 템플릿 기반 문서 생성 (회의록 DOCX)
+     ├── doc_summary    → [승언] 문서 요약 (스트리밍)
+     ├── doc_qa         → [승언] 문서 QA (citations + confidence)
      │
-     └── schedule_*    → [혜빈] 일정 CRUD + Google 서비스 통합 (Calendar+Tasks+Gmail+Meet+Sheets)
+     ├── schedule_add   → [혜빈] 일정 등록 + Google 서비스 통합 (Calendar+Tasks+Gmail+Meet+Sheets)
+     ├── schedule_view  → [혜빈] 일정 조회 + Google 서비스 연동
+     │
+     └── general        → 일반 질문 처리
      │
      ▼
 [지용] SSE 스트리밍 응답
@@ -84,9 +89,9 @@
 
 ---
 
-# 1단계: 설계 및 환경 세팅
+# 1단계: 설계 및 환경 세팅 ✅ (마일스톤 Close)
 
-> 이 단계가 끝나야 본격 개발이 시작됩니다
+> 이 단계가 끝나야 본격 개발이 시작됩니다 — **전원 완료**
 
 ---
 
@@ -98,13 +103,13 @@
 | #3 | **AgentState 필드 확정** | `ai/agents/state.py` 필드를 경은/승언/혜빈과 합의 | BLOCKER |
 
 **체크리스트:**
-- [ ] Chat API 스키마 (SSE 스트리밍 포함) 확정
-- [ ] Documents / Meetings / Schedules CRUD 스키마 확정
-- [ ] **문서 생성/다운로드 API 스키마 확정** (FR-DOC-008)
-- [ ] **파싱 상태 조회 API 스키마 확정** (NF-PRF-002)
-- [ ] Auth API 스키마 (혜빈과 협의) + **비밀번호 재설정 API**
-- [ ] AgentState 필드 + 각 Agent 응답 형식 확정 (doc_generate 응답 포함)
-- [ ] Docker + GitHub 세팅 완료 확인
+- [v] Chat API 스키마 (SSE 스트리밍 포함) 확정
+- [v] Documents / Meetings / Schedules CRUD 스키마 확정
+- [v] **문서 생성/다운로드 API 스키마 확정** (FR-DOC-008)
+- [v] **파싱 상태 조회 API 스키마 확정** (NF-PRF-002)
+- [v] Auth API 스키마 (혜빈과 협의) + **비밀번호 재설정 API**
+- [v] AgentState 필드 + 각 Agent 응답 형식 확정 (doc_generate 응답 포함)
+- [v] Docker + GitHub 세팅 완료 확인
 
 ---
 
@@ -115,11 +120,11 @@
 | #7 | **모델 3개 베이스라인 비교** | Qwen3 / Kanana / EXAONE 동일 테스트셋 비교 | BLOCKER |
 
 **체크리스트:**
-- [ ] 테스트 데이터셋 50~100개 준비
-- [ ] Qwen3-8B 벤치마크 (한국어, 규정해석, 판단형식, 속도)
-- [ ] Kanana-8B 벤치마크
-- [ ] EXAONE 3.5-7.8B 벤치마크
-- [ ] 비교 리포트 작성 → **베이스 모델 확정** (승언에게 공유)
+- [v] 테스트 데이터셋 50~100개 준비
+- [v] Qwen3-8B 벤치마크 (한국어, 규정해석, 판단형식, 속도)
+- [v] Kanana-8B 벤치마크
+- [v] EXAONE 3.5-7.8B 벤치마크
+- [v] 비교 리포트 작성 → **베이스 모델 확정** (승언에게 공유)
 
 ---
 
@@ -130,11 +135,11 @@
 | #15 | **Docling + PaddleOCR 테스트** | 실제 규정 PDF로 파싱 품질 확인 | 높음 |
 
 **체크리스트:**
-- [ ] Docling 설치 + 디지털 PDF 파싱 테스트
-- [ ] PaddleOCR 설치 + 스캔 문서 OCR 테스트
-- [ ] 실제 규정 문서로 품질 확인 (테이블, 조항 구조)
-- [ ] **문서 템플릿 구조 설계** (`ai/templates/` — 회의록/보고서/JD/제안서)
-- [ ] **텍스트 추출기 구현** (PDF/DOCX → 텍스트, PyMuPDF + python-docx)
+- [v] Docling 설치 + 디지털 PDF 파싱 테스트
+- [v] PaddleOCR 설치 + 스캔 문서 OCR 테스트
+- [v] 실제 규정 문서로 품질 확인 (테이블, 조항 구조)
+- [v] **문서 템플릿 구조 설계** (`ai/templates/` — 회의록/보고서/JD/제안서)
+- [v] **텍스트 추출기 구현** (PDF/DOCX → 텍스트, PyMuPDF + python-docx)
 
 ---
 
@@ -161,16 +166,16 @@
 | #24 | **Figma 디자인 + 디자인 시스템** | 7개 화면 디자인 | 높음 |
 
 **체크리스트:**
-- [ ] `cd frontend && npm install && npm run dev` 확인
-- [ ] 디자인 시스템 정의 (컬러: #FFFEF5, #3B82F6, #8B5CF6)
-- [ ] 7개 화면 Figma 디자인
-- [ ] 컴포넌트 디자인 (카드, 뱃지, 버튼, 인풋)
+- [v] `cd frontend && npm install && npm run dev` 확인
+- [v] 디자인 시스템 정의 (컬러: #FFFEF5, #3B82F6, #8B5CF6)
+- [v] 7개 화면 Figma 디자인
+- [v] 컴포넌트 디자인 (카드, 뱃지, 버튼, 인풋)
 
 ---
 
-# 2단계: 기반 개발 + LLM API 연동
+# 2단계: 기반 개발 + LLM API 연동 ✅ (마일스톤 Close)
 
-> 데이터 수집을 기다리지 않고 LLM API로 기능 먼저 구현
+> 데이터 수집을 기다리지 않고 LLM API로 기능 먼저 구현 — **전원 완료**
 
 ---
 
@@ -178,13 +183,13 @@
 
 | # | 이슈 | 할 일 |
 |---|------|-------|
-| #4 | **Intent 학습 데이터 구축** | 7개 카테고리 × 200문장, Claude/GPT-4 증강 |
+| #4 | **Intent 학습 데이터 구축** | 8개 카테고리 × 200문장, Claude/GPT-4 증강 |
 
 **체크리스트:**
-- [ ] 카테고리별 시드 문장 30개씩 직접 작성
-- [ ] Claude/GPT-4로 증강 → 카테고리별 200개
-- [ ] 품질 검증 (중복 제거, 라벨 정확성)
-- [ ] train/eval 분할 (85:15)
+- [v] 카테고리별 시드 문장 30개씩 직접 작성
+- [v] Claude/GPT-4로 증강 → 카테고리별 200개
+- [v] 품질 검증 (중복 제거, 라벨 정확성)
+- [v] train/eval 분할 (85:15)
 
 ---
 
@@ -196,11 +201,11 @@
 | #8 | **[B-2] RAG 파이프라인 구축** | Qdrant + BM25 + Vector + Reranker |
 
 **체크리스트:**
-- [ ] LLM API 공통 모듈 작성 (나중에 sLLM으로 교체 가능한 구조)
-- [ ] judgment_agent LLM API 연동 (규정 판단 + Q&A)
-- [ ] Qdrant 세팅 + 규정 문서 임베딩
-- [ ] BM25 + Vector 하이브리드 검색 구현
-- [ ] Reranker 연동
+- [v] LLM API 공통 모듈 작성 (나중에 sLLM으로 교체 가능한 구조)
+- [v] judgment_agent LLM API 연동 (규정 판단 + Q&A)
+- [v] Qdrant 세팅 + 규정 문서 임베딩
+- [v] BM25 + Vector 하이브리드 검색 구현
+- [v] Reranker 연동
 
 ---
 
@@ -211,13 +216,13 @@
 | #40 | **[C-7] document_agent LLM API 연동** | 문서 요약/생성/검색/리스크 감지 LLM 연동 |
 
 **체크리스트:**
-- [ ] document_agent LLM API 연동 (동적 템플릿 필드 방식)
-- [ ] 문서 요약: 텍스트 추출 → 필드 목록 삽입 → LLM → JSON 파싱
-- [ ] 문서 생성: 템플릿 필드 조회 → LLM → JSON 파싱 → Template 렌더링
-- [ ] 문서 검색: RAG 검색결과 + 질문 → LLM → 정리된 답변
-- [ ] 리스크 감지: 분석 내용 + 규정 → LLM → 위반 여부 판단
-- [ ] **Template 코드 수정** (REQUIRED_FIELDS를 데이터 스키마에 맞게)
-- [ ] 긴 문서 청크 분할 로직
+- [v] document_agent LLM API 연동 (동적 템플릿 필드 방식)
+- [v] 문서 요약: 텍스트 추출 → 필드 목록 삽입 → LLM → JSON 파싱
+- [v] 문서 생성: 템플릿 필드 조회 → LLM → JSON 파싱 → Template 렌더링
+- [v] 문서 검색: RAG 검색결과 + 질문 → LLM → 정리된 답변
+- [v] 리스크 감지: 분석 내용 + 규정 → LLM → 위반 여부 판단
+- [v] **Template 코드 수정** (REQUIRED_FIELDS를 데이터 스키마에 맞게)
+- [v] 긴 문서 청크 분할 로직
 
 ---
 
@@ -247,58 +252,66 @@
 | #26 | **로그인/회원가입 UI** | LoginForm, RegisterForm + Auth 연동 |
 
 **체크리스트:**
-- [ ] Layout / Sidebar / Header 완성
-- [ ] 대시보드: StatCard, RecentQueries, ActionItemList, ActivityTimeline, RiskAlert
-- [ ] **대시보드 추가: TopQueries (월/주/일), QuickSearch, AutoScanBadge**
-- [ ] LoginForm / RegisterForm / **PasswordReset**
-- [ ] Zustand authStore + useAuth 훅 연동
-- [ ] Mock 데이터로 UI 확인
+- [v] Layout / Sidebar / Header 완성
+- [v] 대시보드: StatCard, RecentQueries, ActionItemList, ActivityTimeline, RiskAlert
+- [v] **대시보드 추가: TopQueries (월/주/일), QuickSearch, AutoScanBadge**
+- [v] LoginForm / RegisterForm / **PasswordReset**
+- [v] Zustand authStore + useAuth 훅 연동
+- [v] Mock 데이터로 UI 확인
 
 ---
 
-# 3단계: Agent 개발 + 핵심 기능
+# 3단계: Agent 개발 + 핵심 기능 🔄 (진행중 — #67, #68 남음)
 
 ---
 
 ### 신지용
 
-| # | 이슈 | 할 일 |
-|---|------|-------|
-| #5 | **Intent 분류 모델 학습** | klue/bert-base 파인튜닝, 목표 F1 90%+ |
-| #6 | **LangGraph 오케스트레이터 + SSE** | StateGraph 빌드, 조건부 라우팅, 스트리밍 엔드포인트 |
+| # | 이슈 | 할 일 | 상태 |
+|---|------|-------|:----:|
+| #5 | **Intent 분류 모델 학습** | klue/bert-base 파인튜닝, 목표 F1 90%+ | ✅ |
+| #6 | **LangGraph 오케스트레이터 + SSE** | StateGraph 빌드, 조건부 라우팅, 스트리밍 엔드포인트 | ✅ |
+| #30 | **전체 파이프라인 E2E 테스트** | Playwright E2E — chatbot 플로우 + judgment 시나리오 7건 | ✅ |
+| #35 | **AgentState + Schedule Google 통합** | AgentState에 google_services_result 추가, 5개 서비스 통합 | ✅ |
+| #36 | **[Epic] Google Services 통합** | GoogleBaseService 상속, 통합 OAuth, 5개 서비스, 17개 API | ✅ |
 
 ---
 
 ### 윤경은
 
-| # | 이슈 | 할 일 |
-|---|------|-------|
-| #12 | **판단 Agent 구현** | 다중규정 교차판단, confidence, 조건부 판단, 이력 참조 |
+| # | 이슈 | 할 일 | 상태 |
+|---|------|-------|:----:|
+| #12 | **판단 Agent 구현** | 다중규정 교차판단, confidence, 조건부 판단, 이력 참조 | ✅ |
 
 ---
 
 ### 진승언
 
-| # | 이슈 | 할 일 |
-|---|------|-------|
-| #17 | **문서 Agent 구현** | 요약, **템플릿 기반 생성 (동적 필드 방식)**, 회의록 분석, 리스크 감지, **규정 위반 자동 스캔** |
+| # | 이슈 | 할 일 | 상태 |
+|---|------|-------|:----:|
+| #17 | **문서 Agent 구현** | doc_search, doc_generate(회의록), doc_summary, doc_qa 구현 | ✅ |
+| #67 | **[C-9] 문서 템플릿 기반 생성 완성** | 보고서/제안서 render() 구현, generate API 501 해제 | 🔄 진행중 |
 
 ---
 
 ### 안혜빈
 
-| # | 이슈 | 할 일 |
-|---|------|-------|
-| #21 | **Google Calendar 연동** | OAuth 플로우, Push/Pull, 토큰 자동 갱신 |
-| #33 | **Google Services 확장 (Tasks+Gmail+Meet+Sheets)** | GoogleBaseService, 4개 서비스 백엔드, 통합 OAuth, 17개 API |
+| # | 이슈 | 할 일 | 상태 |
+|---|------|-------|:----:|
+| #21 | **Google Calendar 연동** | OAuth 플로우, Push/Pull, 토큰 자동 갱신 | ✅ |
+| #22 | **일정 Agent API 구현** | schedule_agent 자연어 파싱 + Google Calendar 연동 | ✅ |
+| #23 | **관리자 API** | 7개 엔드포인트 (users, stats, logs, regulations CRUD 등) | ✅ |
+| #33 | **Google Services 확장 (Tasks+Gmail+Meet+Sheets)** | GoogleBaseService, 4개 서비스 백엔드, 통합 OAuth, 17개 API | ✅ |
 
 ---
 
 ### 문지영
 
-| # | 이슈 | 할 일 |
-|---|------|-------|
-| #27 | **챗봇 UI + SSE 스트리밍** | ChatWindow, 토큰 렌더링, 판단/문서/일정 카드, GenerateCard, MeetingSummaryCard, AgentIndicator, ErrorMessage, SuggestedQuestions, RegulationPanel |
+| # | 이슈 | 할 일 | 상태 |
+|---|------|-------|:----:|
+| #27 | **챗봇 UI + SSE 스트리밍** | ChatWindow, 토큰 렌더링, 판단/문서/일정 카드, GenerateCard 등 | ✅ |
+| #29 | **관리자 페이지 UI + API 연동** | 관리자 페이지 UI + 백엔드 통합 + 반응형 | ✅ |
+| #68 | **[E-8] 챗봇 문서 응답 카드 UI 개선** | doc_generate 카드, doc_qa citations/confidence 표시 | 📋 대기 |
 
 ---
 
@@ -332,7 +345,7 @@
 
 | 담당자 | 데이터 | 건수 |
 |--------|--------|:----:|
-| **지용** | Intent 분류 문장 (7개 카테고리) | 1,400 |
+| **지용** | Intent 분류 문장 (8개 카테고리) | 1,600 |
 | **경은** | 규정 해석 Q&A | 500 |
 | **승언** | 문서 요약 300건 + 문서 검색 답변 200건 | 500 |
 | **혜빈** | 문서 생성 200건 | 200 |
@@ -346,12 +359,12 @@
 
 ---
 
-| 담당 | # | 할 일 |
-|------|---|-------|
-| **지용** | #30 | 전체 파이프라인 E2E 연결 테스트 |
-| **경은** | #13 | 성능 평가 리포트 (판단 정확도, RAG MRR, 응답속도) |
-| **승언** | #18 | 성능 평가 리포트 (ROUGE-L, BERTScore, F1) |
-| **지영** | #29 | 관리자 UI + 전체 API 연동 + 반응형 |
+| 담당 | # | 할 일 | 상태 |
+|------|---|-------|:----:|
+| **지용** | #30 | 전체 파이프라인 E2E 연결 테스트 | ✅ |
+| **경은** | #13 | 성능 평가 리포트 (판단 정확도, RAG MRR, 응답속도) | 📋 대기 |
+| **승언** | #18 | 성능 평가 리포트 (ROUGE-L, BERTScore, F1) | 📋 대기 |
+| **지영** | #29 | 관리자 UI + 전체 API 연동 + 반응형 | ✅ |
 
 ---
 
@@ -552,7 +565,7 @@ chore:    설정/환경
 ## Google Services 확장 설계 (2026-02-09 추가)
 
 > PM 요청: Google Calendar 외 4개 Google 서비스 추가 연동
-> Intent 7개 유지, `schedule_add`/`schedule_view` 내부에서 자동 연동
+> Intent 8개, `schedule_add`/`schedule_view` 내부에서 자동 연동
 
 ### 추가 Google 서비스 (4개)
 
@@ -644,13 +657,20 @@ chore:    설정/환경
 
 > PM 요청: 문서 Agent 담당 전용 페이지 2개 신설
 
-### Intent 변경 사항
+### Intent 체계 (8개)
 
-| 기존 | 변경 후 | 비고 |
-|------|---------|------|
-| `doc_summary` | 삭제 | `doc_generate`에 통합 (요약 및 생성 = 한 흐름) |
-| `meeting_analysis` | `meeting_generate` | 분석→생성으로 목적 변경 |
-| (없음) | `general` | 일반 질문 처리 추가 |
+> ⚠️ 2026-02-24 정정: `doc_summary`는 삭제가 아닌 **독립 intent로 유지**, `doc_qa` 추가
+
+| Intent | 담당 | 설명 |
+|--------|------|------|
+| `judgment` | 경은 | 규정 판단 (RAG + confidence) |
+| `doc_search` | 승언 | 문서 검색 (RAG + 하이브리드검색) |
+| `doc_generate` | 승언 | 문서 생성 (템플릿 기반) |
+| `doc_summary` | 승언 | 문서 요약 (스트리밍) |
+| `doc_qa` | 승언 | 문서 QA (citations + confidence) |
+| `schedule_add` | 혜빈 | 일정 등록 + Google 서비스 |
+| `schedule_view` | 혜빈 | 일정 조회 + Google 서비스 |
+| `general` | - | 일반 질문 처리 |
 
 ### 신규 페이지 (지영 담당)
 

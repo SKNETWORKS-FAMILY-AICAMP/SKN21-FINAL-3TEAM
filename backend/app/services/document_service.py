@@ -1,14 +1,17 @@
 """
 문서 서비스 (팀원 C/D 공동 담당)
 - 파일 업로드, 텍스트 추출, 문서 CRUD
+- Qdrant 인덱싱 (업로드 시 자동), RAG 검색 (내용)
 """
 import os
+import re
 import uuid
 import logging
+from datetime import datetime, date, timedelta
 from pathlib import Path
 
 from fastapi import UploadFile, HTTPException
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, cast, Date
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document import Document
@@ -151,31 +154,97 @@ async def upload_and_parse(
 
     # 3. 텍스트 추출
     try:
-        with open('/tmp/upload_debug.log', 'a') as log:
-            log.write(f"\n[DEBUG] Starting extraction: {saved_path} (type: {file_type})\n")
-            log.flush()
-
         text = extract_text(saved_path, file_type)
-
-        with open('/tmp/upload_debug.log', 'a') as log:
-            log.write(f"[DEBUG] Extracted {len(text)} chars\n")
-            log.flush()
+        logger.info(f"텍스트 추출 완료: {len(text)}자, file={saved_path}")
 
         doc.content = text
         doc.status = "completed"
 
-        with open('/tmp/upload_debug.log', 'a') as log:
-            log.write("[DEBUG] Status set to completed\n")
-            log.flush()
+        # Qdrant에 인덱싱 (RAG 검색용)
+        try:
+            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+            pipeline = get_qdrant_pipeline()
+            pipeline.add_documents(
+                documents=[text],
+                metadatas=[{
+                    "source": "documents",
+                    "title": doc.title,
+                    "scope": doc.scope,
+                    "user_id": str(user_id),
+                    "document_id": doc.id,
+                }],
+            )
+            logger.info(f"문서 Qdrant 인덱싱 완료: document_id={doc.id}, title={doc.title}")
+        except Exception as qdrant_err:
+            logger.warning(f"Qdrant 인덱싱 실패 (문서는 정상 저장됨): {qdrant_err}")
+
     except Exception as e:
-        with open('/tmp/upload_debug.log', 'a') as log:
-            import traceback
-            log.write(f"[ERROR] Text extraction failed: {e}\n")
-            log.write(traceback.format_exc())
-            log.flush()
+        logger.error(f"텍스트 추출 실패: {e}", exc_info=True)
         doc.status = "failed"
 
     return doc
+
+
+def _parse_date_query(keyword: str) -> tuple[date | None, date | None]:
+    """날짜 검색 키워드를 파싱하여 (start_date, end_date) 반환.
+
+    지원 형식:
+    - 2026-02-24 / 2026.02.24 → 해당 일
+    - 2026-02 / 2026.02 → 해당 월 전체
+    - 2026 → 해당 연도 전체
+    - 2월 → 현재 연도 해당 월
+    """
+    keyword = keyword.strip()
+
+    # 2026-02-24 또는 2026.02.24
+    m = re.match(r"^(\d{4})[-./](\d{1,2})[-./](\d{1,2})$", keyword)
+    if m:
+        y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        try:
+            day = date(y, mo, d)
+            return day, day
+        except ValueError:
+            return None, None
+
+    # 2026-02 또는 2026.02
+    m = re.match(r"^(\d{4})[-./](\d{1,2})$", keyword)
+    if m:
+        y, mo = int(m.group(1)), int(m.group(2))
+        try:
+            start = date(y, mo, 1)
+            # 다음 달 1일 - 1일 = 이번 달 마지막 날
+            if mo == 12:
+                end = date(y, 12, 31)
+            else:
+                end = date(y, mo + 1, 1)
+                end = end - timedelta(days=1)
+            return start, end
+        except ValueError:
+            return None, None
+
+    # 2026
+    m = re.match(r"^(\d{4})$", keyword)
+    if m:
+        y = int(m.group(1))
+        return date(y, 1, 1), date(y, 12, 31)
+
+    # N월 (현재 연도)
+    m = re.match(r"^(\d{1,2})월$", keyword)
+    if m:
+        mo = int(m.group(1))
+        y = datetime.now().year
+        try:
+            start = date(y, mo, 1)
+            if mo == 12:
+                end = date(y, 12, 31)
+            else:
+                end = date(y, mo + 1, 1)
+                end = end - timedelta(days=1)
+            return start, end
+        except ValueError:
+            return None, None
+
+    return None, None
 
 
 async def list_documents(
@@ -183,8 +252,13 @@ async def list_documents(
     user_id: int,
     scope: str | None = None,
     keyword: str | None = None,
+    search_type: str = "title",
 ) -> list[Document]:
-    """문서 목록 조회 (scope, keyword 필터)"""
+    """문서 목록 조회 (scope, keyword, search_type 필터)
+
+    Args:
+        search_type: "title" (DB ILIKE), "content" (RAG), "date" (날짜 범위)
+    """
     stmt = select(Document)
 
     if scope:
@@ -199,7 +273,43 @@ async def list_documents(
         )
 
     if keyword:
-        stmt = stmt.where(Document.title.ilike(f"%{keyword}%"))
+        if search_type == "title":
+            stmt = stmt.where(Document.title.ilike(f"%{keyword}%"))
+
+        elif search_type == "content":
+            # RAG 검색으로 내용 매칭 document_id 추출
+            rag_doc_ids: list[int] = []
+            try:
+                from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+                pipeline = get_qdrant_pipeline()
+                rag_results = pipeline.retrieve(
+                    query=keyword, user_id=user_id, top_k=20,
+                    filter={"source": "documents"},
+                )
+                rag_doc_ids = [
+                    int(r["document_id"])
+                    for r in rag_results
+                    if r.get("document_id") is not None
+                ]
+            except Exception as e:
+                logger.warning(f"RAG 검색 실패: {e}")
+
+            if rag_doc_ids:
+                stmt = stmt.where(Document.id.in_(rag_doc_ids))
+            else:
+                # RAG 결과 없으면 빈 결과
+                stmt = stmt.where(Document.id < 0)
+
+        elif search_type == "date":
+            start_date, end_date = _parse_date_query(keyword)
+            if start_date and end_date:
+                stmt = stmt.where(
+                    cast(Document.created_at, Date) >= start_date,
+                    cast(Document.created_at, Date) <= end_date,
+                )
+            else:
+                # 파싱 실패 시 빈 결과
+                stmt = stmt.where(Document.id < 0)
 
     stmt = stmt.order_by(Document.created_at.desc())
     result = await db.execute(stmt)
@@ -229,6 +339,16 @@ async def delete_document(
     # 파일 삭제
     if doc.file_path and os.path.exists(doc.file_path):
         os.remove(doc.file_path)
+
+    # Qdrant에서 벡터 삭제
+    try:
+        from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+        pipeline = get_qdrant_pipeline()
+        pipeline.vector_store.delete_by_filter({"document_id": document_id})
+        pipeline.searcher.build_bm25_index()
+        logger.info(f"Qdrant 문서 삭제 완료: document_id={document_id}")
+    except Exception as e:
+        logger.warning(f"Qdrant 문서 삭제 실패 (DB 삭제는 진행): {e}")
 
     await db.delete(doc)
     return {"message": "문서가 삭제되었습니다", "document_id": document_id}

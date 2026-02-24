@@ -12,10 +12,11 @@ import DocumentViewPanel from '../components/chat/DocumentViewPanel';
 import ChatSessionSidebar from '../components/chat/ChatSessionSidebar';
 import JudgmentCard from '../components/chat/JudgmentCard';
 import ScheduleCard from '../components/chat/ScheduleCard';
+import GenerateCard from '../components/chat/GenerateCard';
 import useChat from '../hooks/useChat';
 import useChatStore from '../store/chatStore';
 import { listRegulations } from '../api/regulations';
-import { listDocuments } from '../api/documents';
+import { listDocuments, downloadDocument } from '../api/documents';
 
 function exportChat(messages) {
   if (messages.length === 0) return;
@@ -112,6 +113,53 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
             )}
           </div>
         </div>
+      );
+    }
+
+    case 'doc_generate': {
+      const docData = data.data || {};
+      const TEMPLATE_NAMES = { meeting_minutes: '회의록', report: '업무보고서', proposal: '제안서' };
+      const templateName = data.template_name || TEMPLATE_NAMES[data.template_type] || '문서';
+
+      const fieldsMap = {
+        meeting_minutes: [
+          { label: '날짜', value: String(docData.date || '') },
+          { label: '참석자', value: Array.isArray(docData.attendees) ? docData.attendees.join(', ') : String(docData.attendees || '') },
+          { label: '요약', value: String(data.summary || docData.summary || '') },
+        ],
+        report: [
+          { label: '보고 개요', value: typeof docData.overview === 'string' ? docData.overview : '' },
+          { label: '향후 계획', value: typeof docData.next_plan === 'string' ? docData.next_plan : '' },
+        ],
+        proposal: [
+          { label: '제안 배경', value: typeof docData.background === 'string' ? docData.background : '' },
+          { label: '기대 효과', value: typeof docData.expected_effect === 'string' ? docData.expected_effect : '' },
+        ],
+      };
+      const fields = (fieldsMap[data.template_type] || []).filter((f) => f.value);
+
+      const handleDocDownload = async () => {
+        if (!data.document_id) { alert('문서 ID가 없습니다.'); return; }
+        try {
+          const resp = await downloadDocument(data.document_id, 'docx');
+          const url = URL.createObjectURL(resp.data);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${templateName}.docx`;
+          a.click();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          alert('다운로드 실패: ' + (err.response?.data?.detail || err.message));
+        }
+      };
+
+      return (
+        <GenerateCard
+          title={String(docData.title || templateName)}
+          templateType={data.template_type}
+          fields={fields}
+          onDownload={handleDocDownload}
+        />
       );
     }
 

@@ -584,6 +584,34 @@ async def rename_session(
     return {"ok": True}
 
 
+@router.delete("/sessions/{session_id}/messages")
+async def clear_session_messages(
+    session_id: str,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """세션의 chat_logs만 삭제 (세션은 유지, 이름 초기화)"""
+    result = await db.execute(
+        select(ChatSession).where(
+            ChatSession.session_id == session_id,
+            ChatSession.user_id == user.id,
+        )
+    )
+    session = result.scalar_one_or_none()
+    if session is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="세션을 찾을 수 없습니다")
+
+    await db.execute(
+        sa_delete(ChatLog).where(
+            ChatLog.session_id == session_id,
+            ChatLog.user_id == user.id,
+        )
+    )
+    session.name = "새 대화"
+    await db.commit()
+    return {"ok": True}
+
+
 @router.delete("/sessions/{session_id}")
 async def delete_session(
     session_id: str,
