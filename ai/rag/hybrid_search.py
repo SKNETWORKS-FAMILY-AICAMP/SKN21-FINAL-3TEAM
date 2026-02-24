@@ -91,7 +91,8 @@ class HybridSearcher:
         self.bm25 = BM25Okapi(tokenized_corpus)
 
     def _bm25_search(
-        self, query: str, user_id: int | None = None, top_k: int = 15
+        self, query: str, user_id: int | None = None, top_k: int = 15,
+        filter: dict | None = None,
     ) -> list[dict]:
         """BM25 키워드 검색 → Top K (score 정규화 0~1, scope 필터 적용)"""
         if self.bm25 is None or not self._corpus_docs:
@@ -121,7 +122,16 @@ class HybridSearcher:
             if scope == "personal":
                 if user_id is None or str(meta.get("user_id")) != str(user_id):
                     continue
-            results.append({
+            # 메타데이터 필터 적용 (예: {"source": "regulations"})
+            if filter:
+                skip = False
+                for key, value in filter.items():
+                    if meta.get(key) != value:
+                        skip = True
+                        break
+                if skip:
+                    continue
+            result_item = {
                 "content": self._corpus_docs[idx],
                 "source": meta.get("source", ""),
                 "title": meta.get("title", ""),
@@ -129,7 +139,11 @@ class HybridSearcher:
                 "article": meta.get("article", ""),
                 "score": float(normalized_scores[idx]),
                 "doc_id": self._corpus_ids[idx],
-            })
+            }
+            # 추가 메타데이터 전파 (document_id 등)
+            if "document_id" in meta:
+                result_item["document_id"] = meta["document_id"]
+            results.append(result_item)
             if len(results) >= top_k:
                 break
         return results
@@ -147,7 +161,7 @@ class HybridSearcher:
 
     def search(
         self, query: str, user_id: int | None = None, top_k: int = 20,
-        max_per_source: int = 3,
+        max_per_source: int = 3, filter: dict | None = None,
     ) -> list[dict]:
         """
         BM25 (Top 15) + Vector (Top 15) → RRF 합산 정렬 → 소스 다양성 적용 → Top K
@@ -157,6 +171,7 @@ class HybridSearcher:
             user_id: scope 필터용 사용자 ID (None이면 company 문서만)
             top_k: 최종 반환 수
             max_per_source: 동일 출처 규정의 최대 포함 수 (교차 규정 검색 품질 향상)
+            filter: 메타데이터 필터 (예: {"source": "regulations"})
 
         Returns:
             list of {"content", "source", "score", "doc_id"}
@@ -178,11 +193,10 @@ class HybridSearcher:
         vector_query = refine_query_for_vector(query)
 
         # 1. BM25 검색 → Top 15 (scope 필터 포함, 키워드+동의어 확장 쿼리)
-        bm25_results = self._bm25_search(bm25_query, user_id=user_id, top_k=15)
+        bm25_results = self._bm25_search(bm25_query, user_id=user_id, top_k=15, filter=filter)
 
         # 2. Vector 검색 → Top 15 (원본 쿼리, 시멘틱 의미 보존)
-        # TODO: Qdrant 필터 형식 수정 필요 (현재는 필터 없이 검색)
-        vector_results = self._vector_search(vector_query, top_k=15, filter=None)
+        vector_results = self._vector_search(vector_query, top_k=15, filter=filter)
 
         # 3. RRF(Reciprocal Rank Fusion)로 합산
         rrf_scores: dict[str, dict] = {}
@@ -198,6 +212,7 @@ class HybridSearcher:
                     "title": doc.get("title", ""),
                     "chapter": doc.get("chapter", ""),
                     "article": doc.get("article", ""),
+                    "document_id": doc.get("document_id"),
                     "doc_id": doc_id,
                     "rrf_score": 0.0,
                 }
@@ -213,6 +228,7 @@ class HybridSearcher:
                     "title": doc.get("title", ""),
                     "chapter": doc.get("chapter", ""),
                     "article": doc.get("article", ""),
+                    "document_id": doc.get("document_id"),
                     "doc_id": doc_id,
                     "rrf_score": 0.0,
                 }
@@ -255,6 +271,7 @@ class HybridSearcher:
                 "title": doc.get("title", ""),
                 "chapter": doc.get("chapter", ""),
                 "article": doc.get("article", ""),
+                "document_id": doc.get("document_id"),
                 "score": doc["rrf_score"],
                 "doc_id": doc["doc_id"],
             }
