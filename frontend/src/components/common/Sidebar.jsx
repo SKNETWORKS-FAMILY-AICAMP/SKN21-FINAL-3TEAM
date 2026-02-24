@@ -5,7 +5,7 @@ import useUIStore from '../../store/uiStore';
 import ThemeToggle from './ThemeToggle';
 import { LayoutDashboard, MessageSquare, FilePlus, FileText, Users2, Calendar, Settings, Menu, LogOut, StickyNote, ChevronUp, ChevronDown, Plus, Trash2, ArrowLeft, Check } from 'lucide-react';
 
-const navItems = [
+const getNavItems = (isAdmin) => [
   {
     section: '메인', items: [
       { to: '/dashboard', icon: LayoutDashboard, label: '대시보드' },
@@ -23,11 +23,11 @@ const navItems = [
       { to: '/schedules', icon: Calendar, label: '일정 관리' },
     ]
   },
-  {
+  ...(isAdmin ? [{
     section: '시스템', items: [
       { to: '/admin', icon: Settings, label: '관리자 설정' },
     ]
-  },
+  }] : []),
 ];
 
 export default function Sidebar() {
@@ -101,7 +101,7 @@ export default function Sidebar() {
 
         {/* 네비게이션 */}
         <nav className="flex-1">
-          {navItems.map((section) => (
+          {getNavItems(user?.is_admin).map((section) => (
             <div key={section.section} className="mb-2">
               {/* 섹션 레이블: 접혔을 때 구분선으로 대체 */}
               {!collapsed ? (

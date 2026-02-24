@@ -10,13 +10,13 @@ import useUIStore from '../../store/uiStore';
 import ThemeToggle from './ThemeToggle';
 import { changePassword } from '../../api/auth';
 
-const navItems = [
+const getNavItems = (isAdmin) => [
   { to: '/dashboard', icon: LayoutDashboard, label: '대시보드' },
   { to: '/chat', icon: MessageSquare, label: 'AI 챗봇' },
   { to: '/document-generate', icon: FilePlus, label: '문서 생성' },
   { to: '/documents', icon: FileText, label: '문서 관리' },
   { to: '/schedules', icon: Calendar, label: '일정 관리' },
-  { to: '/admin', icon: Settings, label: '관리자 설정' },
+  ...(isAdmin ? [{ to: '/admin', icon: Settings, label: '관리자 설정' }] : []),
 ];
 
 function MemoPanel() {
@@ -239,7 +239,7 @@ export default function Topbar({ isScrolled = false }) {
 
         {/* 중앙 - 네비게이션 */}
         <nav className="flex items-center gap-0">
-          {navItems.map(item => (
+          {getNavItems(user?.is_admin).map(item => (
             <NavLink
               key={item.to}
               to={item.to}
