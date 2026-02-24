@@ -97,9 +97,6 @@ Stage 7: doc 경계 라벨 리뷰 + 시나리오 100개 확장
 
 3-seed 안정성: **0.9874 ± 0.0033**
 
-![HP 히트맵](results/hp_heatmap_bs16.png)
-![Seed 안정성](results/seed_stability.png)
-
 → Baseline(0.9825) → Best(0.9897): +0.72%p. **데이터 품질 > 하이퍼파라미터** 재확인.
 
 ### Stage 4: 최종 평가
@@ -113,7 +110,6 @@ Stage 7: doc 경계 라벨 리뷰 + 시나리오 100개 확장
 | 3 | distilkobert | 0.9645 | 0.7926 | 2.8ms | [0.940, 0.984] |
 
 ![F1 vs 추론 속도](results/f1_vs_speed.png)
-![Confusion Matrix - KoELECTRA](results/confusion_koelectra-base-v3-discriminator_adv.png)
 
 전처리 Ablation (Config A~E): **전부 동일** → 전처리 효과 없음
 McNemar 검정: 3쌍 모두 **n.s.** (koelectra-bert p>0.05)
@@ -184,7 +180,6 @@ F1 소폭 하락이지만, **과신뢰 해소가 핵심 목적**:
 > **schedule_view -4.8%p 하락 원인**: Label Smoothing으로 confidence 분포가 전체적으로 낮아지면서, schedule_view의 "조회" 패턴이 general("~알려줘")과 겹치는 경계에서 소폭 후퇴. 단, Adversarial 450개 중 schedule_view는 56개로 표본이 적어 1~2건 차이가 큰 %p 변동을 만듦. 실서비스 표준 입력에서는 영향 미미.
 
 ![Stage 6 비교](results/stage6_comparison.png)
-![Stage 6 Confusion Matrix](results/stage6_confusion_adv.png)
 
 ### Stage 7: doc 경계 라벨 리뷰 + 시나리오 확장
 
