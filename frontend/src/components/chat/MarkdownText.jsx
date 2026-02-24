@@ -2,10 +2,14 @@ import ReactMarkdown from 'react-markdown';
 
 export default function MarkdownText({ children }) {
   if (!children) return null;
+
+  // 백엔드로부터 넘어온 리터럴 \n 문자열을 실제 줄바꿈 문자로 치환
+  const processedText = typeof children === 'string' ? children.replace(/\\n/g, '\n') : children;
+
   return (
     <ReactMarkdown
       components={{
-        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+        p: ({ children }) => <p className="mb-2 last:mb-0 whitespace-pre-wrap">{children}</p>,
         strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
         em: ({ children }) => <em className="italic">{children}</em>,
         ul: ({ children }) => <ul className="list-disc pl-5 mb-2 last:mb-0 space-y-0.5">{children}</ul>,
@@ -18,7 +22,7 @@ export default function MarkdownText({ children }) {
         pre: ({ children }) => <pre className="bg-neutral-100 rounded-lg p-3 mb-2 last:mb-0 overflow-x-auto text-[0.8125rem]">{children}</pre>,
       }}
     >
-      {children}
+      {processedText}
     </ReactMarkdown>
   );
 }
