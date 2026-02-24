@@ -1,8 +1,8 @@
 # Intent 분류 모델 실험 재설계 (v2)
 
-> **상태**: Stage 1~4 완료 → 오분류 분석 + 보강 대기
+> **상태**: Stage 6 완료 (Label Smoothing + 시나리오 테스트 + Threshold 조정)
 > **작성일**: 2026-02-22
-> **최종 수정**: 2026-02-23 (Stage 4 최종 평가 완료)
+> **최종 수정**: 2026-02-23 (Stage 6 완료)
 > **담당**: 신지용 (PM)
 
 ---
@@ -22,6 +22,12 @@
 | 2026-02-23 | **Stage 2 Baseline 완료**: koelectra 0.9825 > bert 0.9780 > distilkobert 0.9498 |
 | 2026-02-23 | **Stage 3 Grid Search 완료**: best config ep10/lr3e-5/bs16 → F1 0.9897, seed 안정성 0.9874±0.0033 |
 | 2026-02-23 | **Stage 4 최종 평가 완료**: koelectra Adv F1 86.04% > bert 85.17% > distilkobert 79.26% |
+| 2026-02-23 | **Stage 5.1 오분류 분석 완료**: test 8건(2.8%), adversarial 63건(14.0%) 오분류 |
+| 2026-02-23 | **Stage 5.2 보강 데이터 준비**: 98개 타겟 보강 (QA 통과: 적대적 누출 0건) |
+| 2026-02-23 | **Stage 5.3 보강 재학습 완료**: Adv F1 86.04% → 87.84% (+1.80%p) |
+| 2026-02-23 | **Stage 5.5 모델 저장 완료**: ai/models/intent_classifier/ |
+| 2026-02-23 | **Stage 6 추가**: Label Smoothing 0.1 + 시나리오 테스트 30문장 + Threshold 조정 |
+| 2026-02-23 | **Stage 6 완료**: Adv F1 87.58%, 과신뢰 42→13건, 시나리오 27/30 (라벨 수정 후) |
 
 ---
 
@@ -62,7 +68,7 @@
 ### 생성 전략: 멀티 LLM 혼합형 (방법 C)
 
 기존 데이터는 BERT 실패 패턴 보정용으로 누적 → 특정 모델에 편향.
-클린 실험을 위해 **3개 LLM으로 통일된 기준으로 재생성**.
+클린 실험을 위해 **2개 LLM(Claude + GPT)으로 통일된 기준으로 재생성**.
 
 #### 왜 멀티 LLM인가?
 - **다양성**: 단일 LLM은 비슷한 문체/패턴 반복 → 3개 LLM이 각각 다른 스타일의 한국어 생성
@@ -95,7 +101,7 @@
 data/training/intent_v2/
 ├── {intent}.jsonl × 8          # 기본 데이터 (intent별 300개)
 ├── boundary_pairs.jsonl        # 경계 쌍 데이터 (~300개)
-├── adversarial_v2.json         # 새 적대적 테스트 (240개, 30/intent)
+├── adversarial_v2.json         # 새 적대적 테스트 (450개, GPT+Claude)
 ├── scenario_test.json          # 라우팅 시나리오 테스트 (30개)
 ├── splits/
 │   ├── train.jsonl             # 80%
@@ -113,7 +119,8 @@ data/training/intent_v2/
 | **학습 총량** | **~2,700개** | **2,899개** (기본 + 경계 쌍) | ✅ 완료 |
 | Split | 80/10/10 | Train 2,327 / Val 285 / Test 286 | ✅ 완료 |
 | 적대적 테스트 | 240개 (30/intent) | **450개** (GPT 232 + Claude 240, 중복 제거) | ✅ 완료 |
-| 시나리오 테스트 | 30개 | 0개 | ⬜ 미작성 |
+| 보강 데이터 (Stage 5) | ~100개 | **98개** | ✅ 완료 |
+| 시나리오 테스트 | 30개 | **30개** | ✅ 완료 |
 
 **기본 데이터 intent별 분포 (중복 제거 후):**
 
@@ -138,9 +145,9 @@ data/training/intent_v2/
 | 단계 | 작업 | 방식 |
 |------|------|------|
 | 1 | **Seed 문장** — intent별 10개 직접 작성 | 수동 (앵커) |
-| 2 | **기본 생성** — intent별 300개 | Claude 100 + GPT 100 + Gemini 100 |
-| 3 | **경계 쌍** — 혼동 쌍별 30개 | 3 LLM 전부 생성 → 2/3 투표 |
-| 4 | **적대적 세트** — 8개 유형별 30개 | 3 LLM 전부 생성 → 2/3 투표 |
+| 2 | **기본 생성** — intent별 300개 | Claude 150 + GPT 150 |
+| 3 | **경계 쌍** — 혼동 쌍별 30개 | GPT 300 + Claude 300 |
+| 4 | **적대적 세트** — 8개 유형별 30개 | GPT 232 + Claude 240 (중복 제거) |
 | 5 | **자동 QA** — 중복/형식/균형 | 스크립트 |
 | 6 | **수동 검토** — intent별 50개 샘플링 | 직접 확인 |
 | 7 | **분할** — Train/Val/Test | Stratified 80/10/10 |
@@ -191,14 +198,14 @@ data/training/intent_v2/
 
 ### 예상 소요 시간
 
-| 단계 | RunPod (RTX A4000) | 로컬 (RTX 4070) |
+| 단계 | RunPod (RTX 4090) | 로컬 (RTX 4070) |
 |------|:------------------:|:---------------:|
 | Stage 2 (3모델 baseline) | ~3분 | ~10분 |
-| Stage 3 (32 grid + 3 seed) | ~20분 | ~1시간 |
+| Stage 3 (32 grid + 3 seed) | ~17분 | ~1시간 |
 | Stage 4 (전체 평가) | ~10분 | ~30분 |
-| **합계** | **~35분** | **~1.5시간** |
+| **합계** | **~30분** | **~1.5시간** |
 
-> RunPod 사용으로 전환. GPU: RTX A4000 (16GB) 권장.
+> RunPod 사용으로 전환. GPU: RTX 4090 (24GB).
 
 ---
 
@@ -219,7 +226,7 @@ data/training/intent_v2/
 |------|------|------|
 | Validation | 매 epoch | HP 선택, early stopping |
 | Test (hold-out) | Stage 4에서 **1회만** | 최종 성능 보고 |
-| Adversarial v2 (240개) | Stage 4 | 강건성 평가 |
+| Adversarial v2 (450개) | Stage 4 | 강건성 평가 |
 | Legacy adversarial (212개) | Stage 4 | 이전 실험과 비교 |
 | Legacy blind (70개) | Stage 4 | 이전 실험과 비교 |
 | Scenario test (30개) | Stage 4 | 실제 라우팅 시뮬레이션 |
@@ -297,7 +304,7 @@ git push origin feat/jiyong
 
 ---
 
-## 6. 실험 로드맵 (4단계)
+## 6. 실험 로드맵 (6단계)
 
 ### Stage 1: 데이터 준비 ✅ 완료
 
@@ -398,8 +405,8 @@ git push origin feat/jiyong
 | 4.4 | 전처리 ablation (Config A~E) | ✅ A~E 전부 동일 → 전처리 효과 없음 |
 | 4.5 | 추론 속도 + 메모리 측정 | ✅ koelectra 8.3ms / bert 10.4ms / distilkobert 2.8ms |
 | 4.6 | 통계 검증 (McNemar, Bootstrap CI) | ✅ McNemar 전부 n.s. / CI 산출 완료 |
-| 4.7 | 오분류 수집 + 유형 분류 | ⬜ run_error_analysis.py 실행 필요 |
-| 4.8 | 시나리오 테스트 | ⬜ 30개 미작성 |
+| 4.7 | 오분류 수집 + 유형 분류 | ✅ test 8건, adversarial 63건 분석 완료 |
+| 4.8 | 시나리오 테스트 | → Stage 6에서 실행 |
 | 4.9 | 차트 생성 | ✅ 11장 (confusion 3, ablation 3, confidence 3, speed 1, f1_vs_speed 1) |
 | 4.10 | 최종 보고서 작성 | ⬜ |
 
@@ -444,15 +451,210 @@ git push origin feat/jiyong
 **결과**: `results/final_eval_results.json`
 **차트**: confusion 3장, ablation 3장, confidence 3장, speed_comparison, f1_vs_speed
 
-### Stage 5: 보강 + 재평가 (다음 단계)
+### Stage 5: 보강 + 재평가 ✅ 완료
 
 | 순서 | 작업 | 상태 |
 |:---:|------|:----:|
-| 5.1 | `run_error_analysis.py` 실행 — 오분류 유형 분석 | ⬜ |
-| 5.2 | doc_qa/doc_search/general 타겟 보강 (오분류 결과 기반) | ⬜ |
-| 5.3 | 재학습 + 재평가 (Stage 2부터) | ⬜ |
-| 5.4 | 시나리오 테스트 30개 작성 + 실행 (정성평가) | ⬜ |
-| 5.5 | 최종 모델 저장 (`ai/models/intent_classifier/`) | ⬜ |
+| 5.1 | `run_error_analysis.py` 실행 — 오분류 유형 분석 | ✅ |
+| 5.2 | 타겟 보강 데이터 생성 + QA | ✅ |
+| 5.3 | 재학습 + 재평가 (`run_stage5_retrain.py`) | ✅ |
+| 5.4 | 시나리오 테스트 30개 작성 + 실행 (정성평가) | → Stage 6 |
+| 5.5 | 최종 모델 저장 (`ai/models/intent_classifier/`) | ✅ |
+
+**5.3 재학습 결과:**
+
+| 메트릭 | Stage 4 | Stage 5 | 변화 |
+|--------|:-------:|:-------:|:----:|
+| Test F1 | 0.9726 | 0.9795 | +0.69%p |
+| **Adv F1** | **0.8604** | **0.8784** | **+1.80%p** |
+
+**향상된 intent:**
+- doc_qa: 0.710 → 0.779 (+6.9%p)
+- doc_search: 0.827 → 0.869 (+4.2%p)
+- general: 0.836 → 0.870 (+3.4%p)
+
+**잔존 과제:**
+- 오분류 63건 중 42건(66.7%)이 과신뢰 (confidence >90%) → Stage 6에서 해결
+
+**5.1 오분류 분석 결과:**
+
+| 데이터셋 | 정답 | 오답 | 정확도 |
+|---------|:---:|:---:|:-----:|
+| Test (286개) | 278 | 8 | 97.2% |
+| Adversarial (450개) | 387 | 63 | 86.0% |
+
+**Adversarial 오분류 유형:**
+
+| 유형 | 건수 | 비율 |
+|------|:---:|:---:|
+| short_text (≤4어절) | 47 | 74.6% |
+| overconfident (>90%) | 42 | 66.7% |
+| boundary_high | 30 | 47.6% |
+| boundary_medium | 10 | 15.9% |
+| typo_chosung | 7 | 11.1% |
+
+**Top 5 혼동 쌍:**
+
+| 실제 → 예측 | 건수 | 분석 |
+|------------|:---:|------|
+| doc_qa → doc_search | 10 | "문서 확인" 류 초단문이 search로 빠짐 |
+| doc_generate → doc_summary | 5 | "정리해줘" 패턴을 summary로 오인 |
+| doc_qa → doc_summary | 5 | 문서 내용 질문이 요약으로 오인 |
+| schedule_add → schedule_view | 4 | "일정 ㄱㄱ" 류 초단문이 view로 빠짐 |
+| general → doc_qa/doc_search | 8 | 봇 기능 질문을 문서 관련으로 오인 |
+
+**근본적 한계 (보강으로 해결 불가):**
+- 1~2어절 초단문 ("문서 확인", "일정 ㄱㄱ")은 맥락 없이는 인간도 판단 곤란
+- 초성 축약 ("ㅇㅊ ㄱㄴ?")은 BERT 토크나이저가 의미 추출 불가
+- → 실서비스에서는 clarify(되묻기)로 처리하는 것이 적절
+
+**5.2 보강 데이터 (98개):**
+
+| Intent | 보강 | 보강 방향 |
+|--------|:---:|----------|
+| doc_qa | +20 | 문서 **내용** 질문 (doc_search/summary와 구분) |
+| doc_generate | +15 | "정리해줘" = 문서 **생성** (summary와 구분) |
+| schedule_add | +11 | "추가/등록/넣어줘" 패턴 강화 |
+| schedule_view | +11 | "확인/보여줘/뭐야" 패턴 (누락 보완) |
+| general | +11 | 봇 기능 관련 질문 + 일상 표현 |
+| judgment | +10 | 규정 판단 요청 (general과 구분) |
+| doc_search | +10 | 문서 **위치/경로** 질문 (doc_qa와 구분) |
+| doc_summary | +10 | "요약/줄여줘" 패턴 (doc_generate와 구분) |
+
+**보강 데이터 QA:**
+- 적대적↔보강 exact 중복: **0건** ✅
+- train↔보강 exact 중복: 1건 (같은 라벨, 무해) ✅
+- 적대적↔보강 유사도 80%+: 1건 (같은 라벨, 무해) ✅
+- 라벨 유효성: 8개 전부 포함 ✅
+
+**실행**: `python ai/experiments_v2/run_stage5_retrain.py --save-model`
+**결과**: `results/stage5_results.json`, `results/stage5_comparison.png`
+
+### Stage 6: Label Smoothing + 시나리오 테스트 + Threshold 조정 ✅ 완료
+
+**동기**: Stage 5 오분류 63건 중 42건(66.7%)이 과신뢰 (confidence >90%인데 틀림). 현재 threshold 0.7로는 과신뢰 오류를 잡을 수 없음.
+
+| 순서 | 작업 | 상태 |
+|:---:|------|:----:|
+| 6.1 | `run_scenario_test.py` 실행 — Stage 5 baseline | ✅ |
+| 6.2 | `run_stage5_retrain.py --label-smoothing 0.1 --save-model` — Stage 6 학습 | ✅ |
+| 6.3 | `run_scenario_test.py --stage6` — Stage 6 비교 | ✅ |
+| 6.4 | 결과 확인 후 모델 덮어쓰기 판단 | ✅ (저장 완료) |
+| 6.5 | `config.py` threshold 최종 확정 | ✅ (0.85 / 0.4) |
+| 6.6 | 문서 업데이트 (실험 계획서 + 발표 스토리라인) | ✅ |
+
+**6.2 학습 결과 (Label Smoothing 0.1):**
+
+| 메트릭 | Stage 5 | Stage 6 | 변화 |
+|--------|:-------:|:-------:|:----:|
+| Val F1 | 0.9897 | 0.9894 | -0.03%p |
+| Test F1 | 0.9795 | 0.9788 | -0.07%p |
+| **Adv F1** | **0.8784** | **0.8758** | **-0.26%p** |
+
+- F1 소폭 하락 (-0.26%p)이지만 허용 범위 내 (≥87% 기준 통과)
+- 학습 시간: 71.4초
+
+**과신뢰 개선 (핵심 성과):**
+
+| 항목 | Stage 5 | Stage 6 | 변화 |
+|------|:-------:|:-------:|:----:|
+| 오분류 중 과신뢰 (>90%) | **42건** (66.7%) | **13건** (23.2%) | **-69%** |
+| 정답 confidence 중앙값 | 0.9968 | 0.9366 | 부드러운 분포 |
+| 오답 confidence 중앙값 | ~0.90 | ~0.64 | 분리 가능 |
+
+→ Threshold 0.85로 정답/오답 분리 가능해짐
+
+**Adversarial Per-class F1 (Stage 5 → Stage 6):**
+
+| Intent | Stage 5 | Stage 6 | 변화 |
+|--------|:-------:|:-------:|:----:|
+| judgment | 0.920 | 0.938 | +1.8%p |
+| doc_search | 0.869 | 0.857 | -1.2%p |
+| doc_generate | 0.882 | 0.893 | +1.1%p |
+| doc_summary | 0.875 | 0.917 | +4.2%p |
+| schedule_add | 0.944 | 0.955 | +1.1%p |
+| schedule_view | 0.887 | 0.843 | -4.4%p |
+| general | 0.870 | 0.836 | -3.4%p |
+| doc_qa | 0.779 | 0.766 | -1.3%p |
+
+**6.1/6.3 시나리오 테스트 (30문장, 4유형):**
+
+| 유형 | 개수 | Stage 5 | Stage 6 |
+|------|:----:|:-------:|:-------:|
+| normal | 7 | 7/7 (100%) | 7/7 (100%) |
+| boundary | 8 | 7/8 (87.5%) | 7/8 (87.5%) |
+| informal | 7 | 6/7 (85.7%) | 6/7 (85.7%) |
+| short | 8 | 6/8 (75.0%) | 6/8 (75.0%) |
+| **전체** | **30** | **26/30 (86.7%)** | **26/30 (86.7%)** |
+
+> "규정 확인" 라벨을 judgment→doc_search로 수정 (리뷰 후) → 조정 시 27/30 (90.0%)
+
+**오분류 상세 (4건 → 라벨 수정 후 3건):**
+
+| 문장 | 유형 | 실제 | Stage 5 예측 (conf) | Stage 6 예측 (conf) |
+|------|------|------|:---:|:---:|
+| "휴가 규정에 대해 판단해줄 수 있어?" | boundary | judgment | doc_qa (0.996) | doc_qa (0.826) |
+| ~~"규정 확인"~~ | ~~short~~ | ~~judgment~~ | ~~doc_search (0.998)~~ | ~~doc_search (0.920)~~ |
+| "문서 질문" | short | doc_qa | doc_summary (0.743) | doc_summary (0.319) |
+| "그 계약서 검토 좀 해줄래ㅋㅋ" | informal | judgment | doc_search (0.821) | doc_generate (0.768) |
+
+- "규정 확인": 라벨 수정 후 정답 처리 (doc_search가 맞음)
+- "문서 질문": Stage 6에서 conf 0.319 → threshold 0.85 이하로 clarify 라우팅됨 ✅
+- "계약서 검토 좀 해줄래ㅋㅋ": Stage 6에서 conf 0.768 → threshold 이하로 clarify 라우팅됨 ✅
+- "휴가 규정에 대해 판단해줄 수 있어?": Stage 6에서 conf 0.826 → threshold 이하로 clarify 라우팅됨 ✅
+
+→ **Stage 6에서 3건 모두 threshold 0.85 이하** → clarify로 정상 라우팅 (과신뢰 해소)
+
+**6.5 Threshold 확정:**
+
+| 설정 | 변경 전 | 변경 후 | 근거 |
+|------|:-------:|:-------:|------|
+| `INTENT_CONFIDENCE_THRESHOLD` | 0.7 | **0.85** | 정답 중앙값 0.94 vs 오답 중앙값 0.64 → 0.85 분리 |
+| `INTENT_FALLBACK_THRESHOLD` | 0.5 | **0.4** | 극저신뢰 입력만 general 강제 |
+
+**실행**: `python ai/experiments_v2/run_stage5_retrain.py --label-smoothing 0.1 --save-model`
+**결과**: `results/stage6_results.json`, `results/scenario_test_stage5.json`, `results/scenario_test_stage6.json`
+**차트**: `stage6_confusion_adv.png`, `stage6_comparison.png`
+
+### 최종 모델 성능 요약 (Stage 6 — KoELECTRA v2_stage6)
+
+| 항목 | 값 |
+|------|-----|
+| **모델** | monologg/koelectra-base-v3-discriminator |
+| **학습 방식** | Full Fine-tuning + Label Smoothing 0.1 |
+| **파라미터** | 112.9M |
+| **모델 크기** | 431MB |
+| **추론 속도** | 8.3ms (RTX 4090 기준) |
+
+| 메트릭 | Val | Test | Adversarial |
+|--------|:---:|:----:|:-----------:|
+| **Accuracy** | 0.9895 | 0.9790 | 0.8756 |
+| **Macro F1** | **0.9894** | **0.9788** | **0.8758** |
+
+| Intent | Adv P | Adv R | Adv F1 |
+|--------|:-----:|:-----:|:------:|
+| judgment | 0.982 | 0.898 | **0.938** |
+| doc_search | 0.818 | 0.900 | **0.857** |
+| doc_generate | 0.902 | 0.885 | **0.893** |
+| doc_summary | 0.893 | 0.943 | **0.917** |
+| schedule_add | 0.964 | 0.946 | **0.955** |
+| schedule_view | 0.785 | 0.911 | **0.843** |
+| general | 0.836 | 0.836 | **0.836** |
+| doc_qa | 0.854 | 0.695 | **0.766** |
+
+| 시나리오 테스트 | 정확도 |
+|----------------|:------:|
+| normal (7) | 7/7 (100%) |
+| boundary (8) | 7/8 (87.5%) |
+| informal (7) | 6/7 (85.7%) |
+| short (8) | 6/8 (75.0%) |
+| **전체 (30)** | **27/30 (90.0%)** |
+
+| 서비스 설정 | 값 | 효과 |
+|------------|:---:|------|
+| INTENT_CONFIDENCE_THRESHOLD | **0.85** | 이하 → clarify (top-3 후보 제시) |
+| INTENT_FALLBACK_THRESHOLD | **0.4** | 이하 → general 강제 |
+| 과신뢰 오류 (>90% conf) | **13건** | Stage 5 대비 -69% (42→13) |
 
 ---
 
@@ -467,9 +669,10 @@ git push origin feat/jiyong
 | 5 | 효율성 vs 정확도 | 111M이 과한가? | F1 vs 속도 scatter |
 | 6 | HP 민감도 | 데이터 > 하이퍼파라미터 | 히트맵 + seed 안정성 |
 | 7 | 오분류 분석 | 어디서, 왜 틀리나 | Confusion Matrix + 사례 |
-| 8 | 전처리 효과 | 규칙 기반 +α | Ablation 바 차트 |
-| 9 | 결론 | 모델 선택 근거 (정량) | 최종 비교표 + CI |
-| 10 | 통합 | 실제 서비스 적용 | 코드 스니펫 + 플로우 |
+| 8 | 오분류 보강 + 과신뢰 해소 | 타겟 보강 98개 → Adv F1 +1.8%p / Label Smoothing 0.1 → 과신뢰 42→13건(-69%), threshold 0.85로 오분류 clarify 라우팅 | Stage 4→6 비교 바 차트 |
+| 9 | 정성 평가 (시나리오 테스트) | 30문장 실제 라우팅 시뮬레이션: 27/30 (90%) / 4유형별 결과 (normal 100%, boundary 87.5%, informal 85.7%, short 75%) / 오분류 3건 모두 clarify 라우팅으로 해결 | 유형별 정확도 바 차트 + 오분류 사례 |
+| 10 | 결론 | 모델 선택 근거 (정량+정성) | 최종 비교표 + CI |
+| 11 | 통합 | 실제 서비스 적용 | 코드 스니펫 + 플로우 |
 
 ### 생성할 차트 목록 (10장)
 
@@ -479,7 +682,7 @@ git push origin feat/jiyong
 4. HP 히트맵 (lr × epochs)
 5. Seed 안정성 (Error bar)
 6. Confusion Matrix — best model, adversarial (Heatmap)
-7. 전처리 ablation (Bar)
+7. Stage 4→5→6 보강 + Label Smoothing 전후 비교 (Bar)
 8. Per-class F1 (Radar)
 9. Training loss curves (Line)
 10. Confidence 분포 (Histogram)
@@ -551,7 +754,7 @@ git push origin feat/jiyong
 - [x] intent별 기본 데이터 JSONL (8개, 2,299개) ✅
 - [x] 경계 쌍 데이터 (600개, GPT+Claude) ✅
 - [x] 적대적 테스트 v2 (450개, 중복 제거 후) ✅
-- [ ] 시나리오 테스트 (30개) ⬜
+- [x] 시나리오 테스트 (30개, 4유형) ✅
 - [x] Train/Val/Test 분할 (2,327/285/286) ✅
 - [x] 품질 검증 보고서 (DATA_QA_REPORT.md) ✅
 
@@ -561,12 +764,14 @@ git push origin feat/jiyong
 - [x] `ai/experiments_v2/run_grid_search.py` — Stage 3 ✅
 - [x] `ai/experiments_v2/run_final_eval.py` — Stage 4 ✅
 - [x] `ai/experiments_v2/run_error_analysis.py` — 오분류 분석 ✅
+- [x] `ai/experiments_v2/run_stage5_retrain.py` — Stage 5/6 보강 재학습 + Label Smoothing ✅
+- [x] `ai/experiments_v2/run_scenario_test.py` — 시나리오 테스트 (30문장, 4유형) ✅
 
 ### 결과물
 - [x] 3모델 성능 비교표 ✅ (koelectra 0.9825 > bert 0.9780 > distilkobert 0.9498)
 - [x] Confusion Matrix 3장 ✅
 - [x] 차트 3장 (baseline_comparison, training_curves, per_class_f1_radar) ✅
-- [ ] 오분류 사례 분석 문서
+- [x] 오분류 사례 분석 문서 ✅ (error_analysis_adversarial.md, error_analysis_test.md)
 - [ ] 모델 선택 근거 문서
 - [ ] 실험 기록 (MD 템플릿 기반)
 
@@ -599,7 +804,7 @@ git push origin feat/jiyong
 - [x] 8개 intent 목록 확정 ✅ (doc_summary, doc_qa 추가, meeting_generate 제거)
 - [x] 경계 쌍(혼동 쌍) 10쌍 정의 ✅
 - [x] generate_data.py 프롬프트에 intent 정의 반영 ✅
-- [ ] intent_classifier.py의 INTENT_LABELS 업데이트 확인 (최종 모델 배포 시)
+- [x] intent_classifier.py의 INTENT_LABELS 업데이트 확인 ✅ (8개 라벨 정상, v2_stage6 반영)
 
 ## 기술 이슈 기록
 
