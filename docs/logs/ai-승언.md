@@ -153,3 +153,47 @@
 3. 전체 E2E 동작 확인 (로그인 → 채팅 → RAG 검색)
 
 ---
+
+## 2026-02-24 (월)
+
+### 작업 내용
+
+#### 1. 문서 요약 (doc_summary) 환각 버그 수정
+- **원인 1**: `_extract_docx`가 `doc.paragraphs`만 순회, 테이블 내용 누락
+- **수정**: `doc.tables` 순회 추가 + 빈 단락 필터링 + 디버그 print 추가
+- **원인 2**: `_handle_doc_summary`에서 `document_content` 없을 때 `user_input` fallback 사용 → LLM이 짧은 쿼리를 문서로 인식해 환각 생성
+- **수정**: `user_input` fallback 완전 제거, 대신 `doc_pick` 마커 반환
+- **파일**: `backend/app/services/document_service.py`, `ai/agents/document_agent.py`
+
+#### 2. Intent 신뢰도 임계값 하향 조정
+- **문제**: confidence 0.8인 의도도 clarify UI 재질문 발생
+- **수정**: `INTENT_CONFIDENCE_THRESHOLD` 0.85 → 0.75
+- **파일**: `ai/agents/config.py`
+
+#### 3. doc_pick 기능 구현 (문서 선택 UI)
+- **기능**: 파일 업로드 없이 문서 요약 요청 시 Qdrant 문서 목록 리스트 표시, 선택 시 해당 문서 요약 진행
+- **구현**:
+  - `_handle_doc_summary`: `document_content` 없을 때 `get_qdrant_pipeline().list_documents()` 호출 → `doc_pick` 타입 반환
+  - `chat.py`: `doc_pick` 타입 수신 시 Qdrant 목록 그대로 사용 (DB 조회 제거)
+  - `ChatPage.jsx`: `doc_pick` case 추가 — 문서 버튼 클릭 시 `setSelectedDocument` + `onSelectClarify` 호출, `max-h-64 overflow-y-auto` 스크롤 적용
+- **파일**: `ai/agents/document_agent.py`, `backend/app/api/v1/chat.py`, `frontend/src/pages/ChatPage.jsx`
+
+#### 4. Qdrant `list_documents_by_source` 구현
+- offset 기반 페이지네이션으로 전체 포인트 수집
+- `document_id` 기준 중복 제거 (청크 → 고유 문서)
+- `scope="personal"` 문서는 본인 것만 포함 (`user_id` 필터)
+- **파일**: `ai/rag/qdrant_store.py`, `ai/rag/qdrant_pipeline.py`
+
+#### 5. Qdrant document_id=None 포인트 재인덱싱
+- **문제**: `seed_sample_documents.py`가 Qdrant 직접 저장 시 `document_id` 미포함 → `list_documents_by_source`에서 스킵됨
+- **원인 분석**: 86개 포인트 중 83개 `document_id=None`, 3개만 유효 (UI 업로드 경로만 `document_id` 포함)
+- **해결**: `ai/tests/reindex_documents.py` 스크립트 작성 및 실행 → 19개 문서 DB 신규 생성 + Qdrant 재인덱싱 완료 (document_id 22~40)
+- **파일**: `ai/tests/reindex_documents.py` (신규)
+
+### 다음 할 일
+
+1. **doc_pick 선택 후 요약 플로우 검증** — 선택한 문서가 실제로 요약되는지 E2E 확인
+2. **clarify 플로우 state 손실 문제 해결** — clarify 선택 시 원본 쿼리 및 `document_id` 유실 문제
+3. **doc_qa 검색 품질 개선** — Qdrant RAG 검색 결과 정확도 확인
+
+---

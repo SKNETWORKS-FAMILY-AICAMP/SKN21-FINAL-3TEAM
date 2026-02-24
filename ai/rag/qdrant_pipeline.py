@@ -116,6 +116,10 @@ class QdrantRAGPipeline:
 
         return search_results
 
+    def list_documents(self, source: str = "documents", user_id: int = None) -> list[dict]:
+        """source 필터로 저장된 문서 목록 반환 (title + document_id)"""
+        return self.vector_store.list_documents_by_source(source=source, user_id=user_id)
+
 
 def get_qdrant_pipeline() -> QdrantRAGPipeline:
     """Qdrant RAG 파이프라인 싱글턴 인스턴스 반환"""
