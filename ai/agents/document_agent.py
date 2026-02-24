@@ -266,7 +266,7 @@ def _handle_doc_search(query: str, context: List[str], user_id: int = None, stre
             _t_rag = time.time()
             print(f"[DocumentAgent] RAG 검색 수행: '{query[:50]}'")
             rag_pipeline = get_qdrant_pipeline()
-            search_results = rag_pipeline.retrieve(query, user_id=user_id, top_k=5)
+            search_results = rag_pipeline.retrieve(query, user_id=user_id, top_k=5, filter={"source": "documents"})
 
             # 검색된 문서의 content를 context로 사용
             context = [doc["content"] for doc in search_results]
@@ -803,7 +803,7 @@ def _handle_doc_qa(query: str, context: list = None, user_id: int = None, stream
             _t_rag = time.time()
             print(f"[DocumentAgent] RAG 검색 수행 (doc_qa): '{query[:50]}'")
             rag_pipeline = get_qdrant_pipeline()
-            search_results = rag_pipeline.retrieve(query, user_id=user_id, top_k=5)
+            search_results = rag_pipeline.retrieve(query, user_id=user_id, top_k=5, filter={"source": "documents"})
             context = [doc["content"] for doc in search_results]
             print(f"[DocumentAgent] RAG 검색 완료 ({time.time()-_t_rag:.2f}s): {len(context)}개 문서")
 
@@ -899,6 +899,7 @@ def _build_sources(search_results: list) -> list:
                 "source": doc.get("source", ""),
                 "score": doc.get("score", 0.0),
                 "content": doc.get("content", "")[:200] + "...",
+                "document_id": doc.get("document_id"),
             })
     return sources
 
