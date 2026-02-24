@@ -9,13 +9,13 @@ import { uploadDocument, listDocuments, getDocument, deleteDocument } from '../a
 
 const SEARCH_TYPE_MAP = {
   '제목': 'title',
-  '내용': 'content',
+  '제목+내용': 'title_content',
   '날짜': 'date',
 };
 
 const SEARCH_PLACEHOLDERS = {
-  '제목': '문서 검색...',
-  '내용': '내용 키워드로 검색...',
+  '제목': '문서 제목 검색...',
+  '제목+내용': '제목 또는 내용 키워드 검색...',
   '날짜': '예: 2026-02-24, 2026-02, 2월',
 };
 
@@ -177,7 +177,7 @@ export default function DocumentsPage() {
             <CustomSelect
               value={searchType}
               onChange={setSearchType}
-              options={['제목', '내용', '날짜']}
+              options={['제목', '제목+내용', '날짜']}
               buttonClassName="py-2"
             />
             <div className="flex items-center gap-2 bg-surface-card border border-neutral-border rounded-md px-4 py-2 min-w-[280px]"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-muted flex-shrink-0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder={SEARCH_PLACEHOLDERS[searchType] || '문서 검색...'} className="border-none bg-transparent text-[0.8125rem] w-full outline-none" /></div>
