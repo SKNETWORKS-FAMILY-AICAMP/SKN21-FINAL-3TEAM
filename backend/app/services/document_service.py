@@ -257,7 +257,7 @@ async def list_documents(
     """문서 목록 조회 (scope, keyword, search_type 필터)
 
     Args:
-        search_type: "title" (DB ILIKE), "content" (RAG), "date" (날짜 범위)
+        search_type: "title" (제목 ILIKE), "title_content" (제목+내용 ILIKE), "date" (날짜 범위)
     """
     stmt = select(Document)
 
@@ -276,33 +276,13 @@ async def list_documents(
         if search_type == "title":
             stmt = stmt.where(Document.title.ilike(f"%{keyword}%"))
 
-        elif search_type == "content":
-            # RAG 검색으로 내용 매칭 document_id 추출 (점수 기반 필터링)
-            rag_doc_ids: list[int] = []
-            try:
-                from ai.rag.qdrant_pipeline import get_qdrant_pipeline
-                pipeline = get_qdrant_pipeline()
-                rag_results = pipeline.retrieve(
-                    query=keyword, user_id=user_id, top_k=20,
-                    filter={"source": "documents"},
+        elif search_type == "title_content":
+            stmt = stmt.where(
+                or_(
+                    Document.title.ilike(f"%{keyword}%"),
+                    Document.content.ilike(f"%{keyword}%"),
                 )
-                # 최고 점수의 50% 미만인 결과는 제외 (관련도 낮은 문서 필터링)
-                if rag_results:
-                    max_score = max(r.get("score", 0) for r in rag_results)
-                    threshold = max_score * 0.5
-                    rag_doc_ids = [
-                        int(r["document_id"])
-                        for r in rag_results
-                        if r.get("document_id") is not None and r.get("score", 0) >= threshold
-                    ]
-            except Exception as e:
-                logger.warning(f"RAG 검색 실패: {e}")
-
-            if rag_doc_ids:
-                stmt = stmt.where(Document.id.in_(rag_doc_ids))
-            else:
-                # RAG 결과 없으면 빈 결과
-                stmt = stmt.where(Document.id < 0)
+            )
 
         elif search_type == "date":
             start_date, end_date = _parse_date_query(keyword)
