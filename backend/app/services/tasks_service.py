@@ -22,8 +22,25 @@ class GoogleTasksService(GoogleBaseService):
 
     required_scope = "tasks"
 
-    def _build_service(self, creds):
-        return build("tasks", "v1", credentials=creds, cache_discovery=False)
+    _TIMEOUT = 15.0  # Google API 타임아웃 (초)
+
+    async def _build_service_async(self, creds):
+        """Google Tasks 서비스 객체 생성 (블로킹 → 스레드)"""
+        try:
+            return await asyncio.wait_for(
+                asyncio.to_thread(build, "tasks", "v1", credentials=creds, cache_discovery=False),
+                timeout=self._TIMEOUT,
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Google API 연결 타임아웃. 잠시 후 다시 시도해주세요.",
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Google Tasks 서비스 초기화 실패: {type(e).__name__}: {e}",
+            )
 
     async def _get_or_create_tasklist(self, service) -> str:
         """WorkFlow Agent 전용 태스크 리스트 ID 반환 (없으면 생성) — 스레드에서 실행"""
@@ -36,7 +53,15 @@ class GoogleTasksService(GoogleBaseService):
             return new_list["id"]
 
         try:
-            return await asyncio.to_thread(_sync)
+            return await asyncio.wait_for(
+                asyncio.to_thread(_sync),
+                timeout=self._TIMEOUT,
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Google Tasks 타임아웃. 잠시 후 다시 시도해주세요.",
+            )
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
@@ -53,7 +78,7 @@ class GoogleTasksService(GoogleBaseService):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Action Item을 찾을 수 없습니다")
 
         creds = await self.get_credentials(db, user_id)
-        service = self._build_service(creds)
+        service = await self._build_service_async(creds)
         tasklist_id = await self._get_or_create_tasklist(service)
 
         task_body = {
@@ -127,7 +152,7 @@ class GoogleTasksService(GoogleBaseService):
 
         if item.google_task_id:
             creds = await self.get_credentials(db, user_id)
-            service = self._build_service(creds)
+            service = await self._build_service_async(creds)
             tasklist_id = await self._get_or_create_tasklist(service)
             await asyncio.to_thread(
                 lambda: service.tasks().update(
@@ -142,15 +167,23 @@ class GoogleTasksService(GoogleBaseService):
     async def pull_status(self, db: AsyncSession, user_id: int) -> dict:
         """Google Tasks 상태 → DB 반영 + 새 Task import"""
         creds = await self.get_credentials(db, user_id)
-        service = self._build_service(creds)
+        service = await self._build_service_async(creds)
         tasklist_id = await self._get_or_create_tasklist(service)
 
         try:
-            result = await asyncio.to_thread(
-                lambda: service.tasks().list(
-                    tasklist=tasklist_id, maxResults=100,
-                    showCompleted=True, showHidden=True,
-                ).execute()
+            result = await asyncio.wait_for(
+                asyncio.to_thread(
+                    lambda: service.tasks().list(
+                        tasklist=tasklist_id, maxResults=100,
+                        showCompleted=True, showHidden=True,
+                    ).execute()
+                ),
+                timeout=self._TIMEOUT,
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Google Tasks 목록 조회 타임아웃. 잠시 후 다시 시도해주세요.",
             )
         except Exception as e:
             raise HTTPException(
