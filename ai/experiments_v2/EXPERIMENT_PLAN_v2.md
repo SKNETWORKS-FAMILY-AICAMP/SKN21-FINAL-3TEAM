@@ -52,7 +52,7 @@
 |------|:--------:|---------|------|----------|
 | `klue/bert-base` | 111M | BERT (MLM) | **Baseline** | 한국어 NLU 표준, 이전 실험 챔피언 |
 | `monologg/koelectra-base-v3-discriminator` | 111M | ELECTRA (RTD) | **아키텍처 비교** | 동일 크기, 다른 사전학습 방식 |
-| `monologg/distilkobert` | 28M (3레이어) | DistilBERT | **경량 모델** | 4배 작고 빠름 → "111M이 과한가?" 질문에 답변 |
+| `monologg/distilkobert` | 28M (6레이어) | DistilBERT | **경량 모델** | 4배 작고 빠름 → "111M이 과한가?" 질문에 답변 |
 
 **발표 스토리**: "같은 파이프라인, 3가지 철학 — 어떤 것이 한국어 직장 챗봇에 최적인가?"
 - BERT: 표준 접근법
@@ -71,9 +71,9 @@
 클린 실험을 위해 **2개 LLM(Claude + GPT)으로 통일된 기준으로 재생성**.
 
 #### 왜 멀티 LLM인가?
-- **다양성**: 단일 LLM은 비슷한 문체/패턴 반복 → 3개 LLM이 각각 다른 스타일의 한국어 생성
+- **다양성**: 단일 LLM은 비슷한 문체/패턴 반복 → 2개 LLM이 각각 다른 스타일의 한국어 생성
 - **교차 검증**: 한 LLM이 생성한 데이터를 다른 LLM이 라벨 검증 → 편향 제거
-- **신뢰성**: 2/3 투표 통과 = 모델 독립적으로 올바른 라벨
+- **신뢰성**: Cross-validation 통과 = 모델 독립적으로 올바른 라벨
 
 #### 방법 C: 혼합형 전략 (수정: GPT + Claude 반반)
 
@@ -408,7 +408,7 @@ git push origin feat/jiyong
 | 4.7 | 오분류 수집 + 유형 분류 | ✅ test 8건, adversarial 63건 분석 완료 |
 | 4.8 | 시나리오 테스트 | → Stage 6에서 실행 |
 | 4.9 | 차트 생성 | ✅ 11장 (confusion 3, ablation 3, confidence 3, speed 1, f1_vs_speed 1) |
-| 4.10 | 최종 보고서 작성 | ⬜ |
+| 4.10 | 최종 보고서 작성 | ✅ `FINAL_REPORT.md` |
 
 **최종 결과:**
 
@@ -465,13 +465,13 @@ git push origin feat/jiyong
 
 | 메트릭 | Stage 4 | Stage 5 | 변화 |
 |--------|:-------:|:-------:|:----:|
-| Test F1 | 0.9726 | 0.9795 | +0.69%p |
+| Test F1 | 0.9726 | 0.9788 | +0.62%p |
 | **Adv F1** | **0.8604** | **0.8784** | **+1.80%p** |
 
-**향상된 intent:**
-- doc_qa: 0.710 → 0.779 (+6.9%p)
-- doc_search: 0.827 → 0.869 (+4.2%p)
-- general: 0.836 → 0.870 (+3.4%p)
+**향상된 intent (Adv F1):**
+- doc_qa: 0.710 → 0.789 (+7.9%p)
+- doc_search: 0.827 → 0.853 (+2.6%p)
+- general: 0.836 → 0.845 (+0.8%p)
 
 **잔존 과제:**
 - 오분류 63건 중 42건(66.7%)이 과신뢰 (confidence >90%) → Stage 6에서 해결
@@ -547,8 +547,8 @@ git push origin feat/jiyong
 
 | 메트릭 | Stage 5 | Stage 6 | 변화 |
 |--------|:-------:|:-------:|:----:|
-| Val F1 | 0.9897 | 0.9894 | -0.03%p |
-| Test F1 | 0.9795 | 0.9788 | -0.07%p |
+| Val F1 | 0.9894 | 0.9894 | 0.00%p |
+| Test F1 | 0.9788 | 0.9788 | 0.00%p |
 | **Adv F1** | **0.8784** | **0.8758** | **-0.26%p** |
 
 - F1 소폭 하락 (-0.26%p)이지만 허용 범위 내 (≥87% 기준 통과)
@@ -568,14 +568,14 @@ git push origin feat/jiyong
 
 | Intent | Stage 5 | Stage 6 | 변화 |
 |--------|:-------:|:-------:|:----:|
-| judgment | 0.920 | 0.938 | +1.8%p |
-| doc_search | 0.869 | 0.857 | -1.2%p |
-| doc_generate | 0.882 | 0.893 | +1.1%p |
-| doc_summary | 0.875 | 0.917 | +4.2%p |
-| schedule_add | 0.944 | 0.955 | +1.1%p |
-| schedule_view | 0.887 | 0.843 | -4.4%p |
-| general | 0.870 | 0.836 | -3.4%p |
-| doc_qa | 0.779 | 0.766 | -1.3%p |
+| judgment | 0.911 | 0.938 | +2.7%p |
+| doc_search | 0.853 | 0.857 | +0.4%p |
+| doc_generate | 0.869 | 0.893 | +2.5%p |
+| doc_summary | 0.917 | 0.917 | 0.0%p |
+| schedule_add | 0.953 | 0.955 | +0.2%p |
+| schedule_view | 0.891 | 0.843 | -4.8%p |
+| general | 0.845 | 0.836 | -0.8%p |
+| doc_qa | 0.789 | 0.766 | -2.3%p |
 
 **6.1/6.3 시나리오 테스트 (30문장, 4유형):**
 
@@ -624,7 +624,7 @@ git push origin feat/jiyong
 | **학습 방식** | Full Fine-tuning + Label Smoothing 0.1 |
 | **파라미터** | 112.9M |
 | **모델 크기** | 431MB |
-| **추론 속도** | 8.3ms (RTX 4090 기준) |
+| **추론 속도** | 7.9ms mean / 8.3ms p95 (RTX 4090 기준) |
 
 | 메트릭 | Val | Test | Adversarial |
 |--------|:---:|:----:|:-----------:|
@@ -658,34 +658,41 @@ git push origin feat/jiyong
 
 ---
 
-## 7. 발표 스토리라인
+## 7. 발표 스토리라인 (중간발표용, 10장 / ~12분)
 
-| 슬라이드 | 제목 | 핵심 내용 | 차트 |
-|:--------:|------|----------|------|
-| 1 | 문제 정의 | 8개 intent, 잘못된 라우팅 = 잘못된 답변 | 오케스트레이터 다이어그램 |
-| 2 | 접근 방식 | 3모델 비교: 표준 vs 아키텍처 vs 경량 | 모델 비교 테이블 |
-| 3 | 데이터 | ~2,700개, 멀티 LLM 생성 + 경계 쌍 + 적대적 | 클래스 분포 차트 |
-| 4 | Baseline 비교 | 동일 조건 3모델 성능 | 그룹 바 차트 |
-| 5 | 효율성 vs 정확도 | 111M이 과한가? | F1 vs 속도 scatter |
-| 6 | HP 민감도 | 데이터 > 하이퍼파라미터 | 히트맵 + seed 안정성 |
-| 7 | 오분류 분석 | 어디서, 왜 틀리나 | Confusion Matrix + 사례 |
-| 8 | 오분류 보강 + 과신뢰 해소 | 타겟 보강 98개 → Adv F1 +1.8%p / Label Smoothing 0.1 → 과신뢰 42→13건(-69%), threshold 0.85로 오분류 clarify 라우팅 | Stage 4→6 비교 바 차트 |
-| 9 | 정성 평가 (시나리오 테스트) | 30문장 실제 라우팅 시뮬레이션: 27/30 (90%) / 4유형별 결과 (normal 100%, boundary 87.5%, informal 85.7%, short 75%) / 오분류 3건 모두 clarify 라우팅으로 해결 | 유형별 정확도 바 차트 + 오분류 사례 |
-| 10 | 결론 | 모델 선택 근거 (정량+정성) | 최종 비교표 + CI |
-| 11 | 통합 | 실제 서비스 적용 | 코드 스니펫 + 플로우 |
+> 대본 상세: `docs/지용/중간발표_대본_v2.md`
 
-### 생성할 차트 목록 (10장)
+| 슬라이드 | 제목 | 핵심 내용 | 차트/시각자료 | 시간 |
+|:--------:|------|----------|-------------|:----:|
+| 1 | 프로젝트 소개 | 듀듀란? 대상 사용자, 핵심 기능 4가지 | 로고/컨셉 | 1분 |
+| 2 | 전체 아키텍처 | LangGraph 멀티에이전트, Intent Classifier 위치 강조 | 아키텍처 다이어그램 | 1분 |
+| 3 | 핵심 기능 시연 | 규정판단(E2E), 일정관리(Google), 문서관리, 부가기능 | 스크린샷/데모 | 2분 |
+| 4 | 팀 진행 현황 | 5명 역할별 완료 사항 + 구현율 + 블로커 | 진행률 테이블 | 1분 |
+| 5 | Intent: 문제 + 데이터 | 8 intent, sLLM 선택 근거, ~2,900개 멀티LLM 생성 | `class_distribution.png` | 1분 |
+| 6 | Intent: 모델 비교 + 선택 | 3모델 Baseline, KoELECTRA 선택 (F1+속도+강건성) | `baseline_comparison.png` + `f1_vs_speed.png` | 1.5분 |
+| 7 | Intent: 개선 + 최종 결과 | HP탐색→오분류→보강→Label Smoothing, Adv F1 87.58% | `stage6_comparison.png` | 1.5분 |
+| 8 | Intent: 실전 검증 | 30문장 4유형 시나리오, clarify 라우팅 | `scenario_test_accuracy.png` | 1분 |
+| 9 | 최종 모델 + 향후 계획 | 성능 요약 + 4~6단계 로드맵 | 요약 테이블 + 타임라인 | 1분 |
+| 10 | Q&A | 예상 질문 5개 준비 | — | — |
 
-1. Baseline 3모델 비교 (Grouped bar)
-2. F1 vs 추론속도 vs 모델크기 (Scatter + bubble)
-3. 추론 속도 비교 (Bar)
-4. HP 히트맵 (lr × epochs)
-5. Seed 안정성 (Error bar)
-6. Confusion Matrix — best model, adversarial (Heatmap)
-7. Stage 4→5→6 보강 + Label Smoothing 전후 비교 (Bar)
-8. Per-class F1 (Radar)
-9. Training loss curves (Line)
-10. Confidence 분포 (Histogram)
+### 발표에 사용하는 차트 (6장)
+
+| # | 파일명 | 슬라이드 |
+|---|--------|:--------:|
+| 1 | `class_distribution.png` | 5 |
+| 2 | `baseline_comparison.png` | 6 |
+| 3 | `f1_vs_speed.png` | 6 |
+| 4 | `stage6_comparison.png` | 7 |
+| 5 | `confusion_koelectra-base-v3-discriminator_adv.png` | 7 (백업) |
+| 6 | `scenario_test_accuracy.png` | 8 |
+
+### 백업 차트 (질문 대비)
+
+- HP 민감도: `hp_heatmap_bs16.png`, `seed_stability.png`
+- Confusion Matrix 3모델: `confusion_*_adv.png` (3장)
+- 오분류 유형: `error_types_adversarial.png`
+- Per-class 레이더: `per_class_f1_radar.png`
+- Training curves: `training_curves.png`
 
 ---
 
