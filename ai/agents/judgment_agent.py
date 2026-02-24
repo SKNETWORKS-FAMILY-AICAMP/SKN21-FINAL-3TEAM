@@ -540,13 +540,12 @@ async def judgment_agent(state: AgentState) -> AgentState:
     print(f"[JudgmentAgent] 진입 | user_input='{user_input[:80]}', user_id={user_id}")
 
     try:
-        # 1. RAG 검색 (다중 규정 교차 분석을 위해 top_k 확대, 규정 문서만 필터)
+        # 1. RAG 검색 (다중 규정 교차 분석을 위해 top_k 확대)
         _t_rag = time.time()
-        print("[JudgmentAgent] RAG 검색 시작 (top_k=10, source=regulations)...")
+        print("[JudgmentAgent] RAG 검색 시작 (top_k=10)...")
         pipeline = get_qdrant_pipeline()
         context = pipeline.retrieve(
             query=user_input, user_id=user_id, top_k=10,
-            filter={"source": "regulations"},
         )
         print(f"[JudgmentAgent] RAG 검색 완료 ({time.time()-_t_rag:.2f}s) | {len(context)}개 문서 검색됨")
 
@@ -671,11 +670,10 @@ async def judgment_agent_stream(state: AgentState) -> AsyncGenerator[str, None]:
     chat_history = state.get("chat_history", [])
 
     try:
-        # RAG 검색 (규정 문서만 필터)
+        # RAG 검색
         pipeline = get_qdrant_pipeline()
         context = pipeline.retrieve(
             query=user_input, user_id=user_id, top_k=10,
-            filter={"source": "regulations"},
         )
 
         # 판단 이력 추출
