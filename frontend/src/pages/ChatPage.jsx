@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { MessageSquarePlus, Menu } from 'lucide-react';
+import { MessageSquarePlus, Menu, CheckCircle, XCircle, AlertTriangle, HelpCircle, ShieldCheck, FileText } from 'lucide-react';
 import ChatWindow from '../components/chat/ChatWindow';
 import MessageBubble from '../components/chat/MessageBubble';
 import StreamingMessage from '../components/chat/StreamingMessage';
@@ -13,10 +13,12 @@ import ChatSessionSidebar from '../components/chat/ChatSessionSidebar';
 import JudgmentCard from '../components/chat/JudgmentCard';
 import ScheduleCard from '../components/chat/ScheduleCard';
 import GenerateCard from '../components/chat/GenerateCard';
+import MarkdownText from '../components/chat/MarkdownText';
+import SourceItem from '../components/chat/SourceItem';
 import useChat from '../hooks/useChat';
 import useChatStore from '../store/chatStore';
 import { listRegulations } from '../api/regulations';
-import { listDocuments, downloadDocument } from '../api/documents';
+import { listDocuments, downloadDocument, uploadDocument } from '../api/documents';
 
 function exportChat(messages) {
   if (messages.length === 0) return;
@@ -45,8 +47,13 @@ function exportChat(messages) {
   URL.revokeObjectURL(url);
 }
 
-const RESULT_MAP = { yes: '가능', no: '불가', conditional: '조건부 가능', no_regulation: 'No regulation' };
-const RESULT_ICON = { yes: '', no: '', conditional: '', no_regulation: '' };
+const RESULT_MAP = { yes: '가능', no: '불가', conditional: '조건부 가능', no_regulation: '규정 없음' };
+const RESULT_BADGE = {
+  yes: { icon: CheckCircle, bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', iconColor: 'text-green-500' },
+  no: { icon: XCircle, bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', iconColor: 'text-red-500' },
+  conditional: { icon: AlertTriangle, bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', iconColor: 'text-amber-500' },
+  no_regulation: { icon: HelpCircle, bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-600', iconColor: 'text-gray-400' },
+};
 
 function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], index = -1) {
   const { resultIntent, agentResponse, content } = msg;
@@ -63,7 +70,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       const isInformational = !data.result || data.result === 'none' || data.result === 'info' || (data.result === 'yes' && !isJudgmentRequest);
 
       const resultLabel = isInformational ? null : (RESULT_MAP[data.result] || data.result || '판단 완료');
-      const resultIcon = isInformational ? null : (Object.prototype.hasOwnProperty.call(RESULT_ICON, data.result) ? RESULT_ICON[data.result] : '📋');
+      const badge = isInformational ? null : (RESULT_BADGE[data.result] || null);
 
       const regType = data.result === 'no' ? 'deny' : data.result === 'conditional' ? 'conditional' : 'ref';
       const regulations = (data.regulations || []).map((r) => ({
@@ -73,10 +80,19 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       }));
       return (
         <>
-          <JudgmentCard result={resultLabel} resultIcon={resultIcon} summary={data.reasoning || content} regulations={regulations} />
+          {resultLabel && badge && (() => {
+            const Icon = badge.icon;
+            return (
+              <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-semibold mb-2 ${badge.bg} ${badge.border} ${badge.text}`}>
+                <Icon size={16} className={badge.iconColor} />
+                {resultLabel}
+              </div>
+            );
+          })()}
+          <JudgmentCard summary={data.reasoning || content} regulations={regulations} confidenceBreakdown={data.confidence_breakdown} warnings={data.warnings} confidence={data.confidence} />
           {content && data.reasoning && content !== data.reasoning && (
-            <div className="mt-2 bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap shadow-sm">
-              {content}
+            <div className="mt-2 bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed shadow-sm">
+              <MarkdownText>{content}</MarkdownText>
             </div>
           )}
         </>
@@ -91,23 +107,12 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
             문서 검색 결과
           </div>
           <div className="p-4">
-            {content && <p className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5 whitespace-pre-wrap">{content}</p>}
+            {content && <div className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5"><MarkdownText>{content}</MarkdownText></div>}
             {sources.length > 0 && (
               <div>
                 <div className="text-xs font-semibold text-neutral-sub mb-2">출처 ({sources.length}건)</div>
                 {sources.map((s, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => onSelectDoc?.(s)}
-                    className="w-full text-left px-3 py-2 bg-surface-hover rounded-lg mb-1.5 border-l-[3px] border-l-accent-300 hover:border-l-accent-500 hover:bg-accent-50 transition"
-                  >
-                    <div className="text-xs font-semibold text-neutral-main">
-                      {s.title || s.name || s.source || `출처 ${idx + 1}`}
-                      {s.page && <span className="text-neutral-muted font-normal ml-1">p.{s.page}</span>}
-                    </div>
-                    {s.content && <div className="text-[0.6875rem] text-neutral-sub mt-0.5">{s.content}</div>}
-                    <div className="mt-1.5 text-[0.6875rem] text-accent-600 font-medium">전체 보기 →</div>
-                  </button>
+                  <SourceItem key={idx} source={s} index={idx} onSelect={onSelectDoc} />
                 ))}
               </div>
             )}
@@ -181,6 +186,102 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       );
     }
 
+    case 'doc_qa': {
+      const sources = data.sources || [];
+      const citations = data.citations || [];
+      const qaConfidence = typeof data.confidence === 'number' ? data.confidence : null;
+      const confColor = qaConfidence >= 0.7 ? { bar: 'bg-green-500', text: 'text-green-600' } : qaConfidence >= 0.4 ? { bar: 'bg-yellow-500', text: 'text-yellow-600' } : { bar: 'bg-red-500', text: 'text-red-600' };
+      return (
+        <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
+          <div className="px-4 py-3 border-b border-neutral-divider flex items-center justify-between">
+            <div className="flex items-center gap-2 font-bold text-sm text-primary-700">문서 Q&A</div>
+            {qaConfidence !== null && (
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck size={14} className={confColor.text} />
+                <div className="w-16 h-2 bg-neutral-100 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full ${confColor.bar}`} style={{ width: `${Math.round(qaConfidence * 100)}%` }} />
+                </div>
+                <span className={`text-xs font-bold ${confColor.text}`}>{Math.round(qaConfidence * 100)}%</span>
+              </div>
+            )}
+          </div>
+          <div className="p-4">
+            {content && <div className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5"><MarkdownText>{content}</MarkdownText></div>}
+            {citations.length > 0 && (
+              <div className="mb-3">
+                <div className="text-xs font-semibold text-neutral-sub mb-2">인용 ({citations.length}건)</div>
+                {citations.map((c, idx) => {
+                  const rel = c.relevance || '';
+                  const relColor = rel === '높음' ? 'bg-green-100 text-green-700' : rel === '중간' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700';
+                  return (
+                    <div key={idx} className="px-3 py-2 bg-surface-hover rounded-lg mb-1.5 border-l-[3px] border-l-primary-300">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-neutral-main truncate">{c.source || `인용 ${idx + 1}`}</span>
+                        {rel && <span className={`text-[0.625rem] font-semibold px-1.5 py-0.5 rounded-full ${relColor}`}>{rel}</span>}
+                      </div>
+                      {c.content && <div className="text-[0.6875rem] text-neutral-sub mt-0.5">{c.content}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {sources.length > 0 && (
+              <div>
+                <div className="text-xs font-semibold text-neutral-sub mb-2">검색 출처 ({sources.length}건)</div>
+                {sources.map((s, idx) => (
+                  <SourceItem key={idx} source={s} index={idx} onSelect={onSelectDoc} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    case 'doc_summary': {
+      return (
+        <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
+          <div className="px-4 py-3 border-b border-neutral-divider flex items-center gap-2 font-bold text-sm text-primary-700">
+            <FileText size={16} />
+            문서 요약
+          </div>
+          <div className="p-4 text-[0.8125rem] text-neutral-main leading-[1.7]">
+            <MarkdownText>{content || data.answer || data.message}</MarkdownText>
+          </div>
+        </div>
+      );
+    }
+
+    case 'doc_pick': {
+      const documents = data.documents || [];
+      // 이 assistant 메시지 바로 앞의 user 메시지가 원본 쿼리
+      const originalQuery = index > 0 ? (messages[index - 1]?.content || '요약해줘') : '요약해줘';
+      return (
+        <div>
+          <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
+            {data.message || '요약할 문서를 선택해주세요:'}
+          </div>
+          {documents.length > 0 && (
+            <div className="mt-2 flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
+              {documents.map((doc, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    useChatStore.getState().setSelectedDocument(doc.document_id, doc.title);
+                    onSelectClarify?.(originalQuery);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm bg-surface-card border border-neutral-border rounded-xl hover:bg-primary-50 hover:border-primary-300 text-neutral-main hover:text-primary-700 transition text-left"
+                >
+                  <FileText size={14} className="flex-shrink-0 text-neutral-muted" />
+                  <span className="truncate">{doc.title}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     case 'clarify': {
       const candidates = data.candidates || [];
       return (
@@ -207,8 +308,8 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
 
     default:
       return (
-        <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">
-          {content}
+        <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
+          <MarkdownText>{content}</MarkdownText>
         </div>
       );
   }
@@ -268,9 +369,32 @@ export default function ChatPage() {
       .catch((err) => console.warn('[ChatPage] 문서 로드 실패:', err));
   }, [docPickerOpen]);
 
-  const handleSend = (text) => {
+  const handleSend = async (text, files = []) => {
+    const storeState = useChatStore.getState();
+    if (storeState.isStreaming) return; // 전송/업로드 중복 방지
+
     setLastError(null);
     setLastInput(text);
+
+    if (files && files.length > 0) {
+      const storeState = useChatStore.getState();
+      storeState.setStreaming(true);
+      storeState.setCurrentStatus('문서 업로드 및 문서 구조 분석 중...');
+      try {
+        const file = files[0];
+        const res = await uploadDocument(file, 'personal');
+        storeState.setSelectedDocument(res.data.id, res.data.title);
+      } catch (err) {
+        console.error('[ChatPage] 파일 업로드 실패:', err);
+        setLastError('파일 업로드에 실패했습니다. 다시 시도해주세요.');
+        storeState.setStreaming(false);
+        storeState.setCurrentStatus(null);
+        return;
+      }
+      storeState.setCurrentStatus(null);
+      storeState.setStreaming(false);
+    }
+
     sendMessage(text);
   };
 
@@ -504,8 +628,8 @@ export default function ChatPage() {
               // AI 완료 — 기본 텍스트 버블
               return (
                 <MessageBubble key={i} type="bot" intent={msg.intent}>
-                  <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">
-                    {msg.content}
+                  <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
+                    <MarkdownText>{msg.content}</MarkdownText>
                   </div>
                 </MessageBubble>
               );

@@ -55,6 +55,7 @@ async def main():
         documents.append(doc.content)
         metadatas.append({
             "source": "documents",
+            "doc_type": "general",
             "title": doc.title,
             "scope": doc.scope,
             "user_id": str(doc.uploaded_by),

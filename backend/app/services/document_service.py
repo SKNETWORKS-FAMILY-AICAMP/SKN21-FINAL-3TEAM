@@ -101,7 +101,33 @@ def _extract_docx(file_path: str) -> str:
         raise ImportError("python-docx is not installed. Please install it with: pip install python-docx")
 
     doc = DocxDocument(file_path)
-    return "\n".join(p.text for p in doc.paragraphs)
+    parts = []
+
+    # 문단 텍스트 추출 (빈 문단 제외)
+    para_texts = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+    parts.extend(para_texts)
+
+    # 테이블 텍스트 추출 (doc.paragraphs는 테이블 내부 텍스트를 포함하지 않음)
+    table_parts = []
+    for table in doc.tables:
+        for row in table.rows:
+            row_cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+            if row_cells:
+                table_parts.append(" | ".join(row_cells))
+    parts.extend(table_parts)
+
+    result = "\n".join(parts)
+
+    # DEBUG: python-docx 파싱 결과 출력
+    print(f"\n{'='*60}")
+    print(f"[DocxParser] DEBUG 파일: {file_path}")
+    print(f"[DocxParser] 전체 단락 수: {len(doc.paragraphs)}, 비어있지 않은 단락: {len(para_texts)}")
+    print(f"[DocxParser] 테이블 수: {len(doc.tables)}, 테이블 행 수: {len(table_parts)}")
+    print(f"[DocxParser] 추출된 텍스트 총 길이: {len(result)}자")
+    print(f"[DocxParser] 추출 내용 미리보기 (앞 500자):\n{result[:500]}")
+    print(f"{'='*60}\n")
+
+    return result
 
 
 def _extract_txt(file_path: str) -> str:
@@ -168,6 +194,7 @@ async def upload_and_parse(
                 documents=[text],
                 metadatas=[{
                     "source": "documents",
+                    "doc_type": "general",
                     "title": doc.title,
                     "scope": doc.scope,
                     "user_id": str(user_id),

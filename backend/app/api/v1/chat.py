@@ -86,8 +86,13 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                     result = await db.execute(select(Document).where(Document.id == request.document_id))
                     doc = result.scalar_one_or_none()
                     if doc:
-                        initial_state["document_content"] = doc.content
-                        print(f"[Chat] document_id={request.document_id} → content 로딩 ({len(doc.content) if doc.content else 0}자)")
+                        content_len = len(doc.content) if doc.content else 0
+                        print(f"[Chat] document_id={request.document_id} → content 로딩 ({content_len}자)")
+                        if not doc.content or not doc.content.strip():
+                            print(f"[Chat] ⚠️  WARNING: document_id={request.document_id} content가 비어있음! 파싱 실패 가능성 있음.")
+                        else:
+                            print(f"[Chat] document_content 앞 200자:\n{doc.content[:200]}")
+                        initial_state["document_content"] = doc.content or None
                 except Exception as doc_err:
                     print(f"[Chat] document_id 로딩 실패: {doc_err}")
 
@@ -341,6 +346,9 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             agent_response.pop("sys_prompt", None)
                             agent_response.pop("user_prompt", None)
                             final_state["agent_response"] = agent_response
+                        elif agent_response.get("type") == "doc_pick":
+                            # doc_pick: document_agent에서 Qdrant 목록 이미 채워서 옴 — 그대로 사용
+                            print(f"[Chat] doc_pick: 문서 {len(agent_response.get('documents', []))}개")
                         else:
                             yield f"data: {json.dumps({'type': 'status', 'value': 'document_agent 처리 완료'}, ensure_ascii=False)}\n\n"
 
@@ -373,7 +381,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             if not agent_response.get("stream_pending") and intent not in ("general", "doc_search", "doc_summary", "doc_qa", "judgment"):
                                 yield f"data: {json.dumps({'type': 'token', 'value': message}, ensure_ascii=False)}\n\n"
 
-                            yield f"data: {json.dumps({'type': 'result', 'intent': intent, 'data': agent_response}, ensure_ascii=False)}\n\n"
+                            yield f"data: {json.dumps({'type': 'result', 'intent': resp_type, 'data': agent_response}, ensure_ascii=False)}\n\n"
 
                     else:
                         # 기타 노드 완료 시 상태 업데이트

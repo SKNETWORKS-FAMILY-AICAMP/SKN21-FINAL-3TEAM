@@ -49,7 +49,10 @@ CHECKPOINT_DIR = Path(__file__).resolve().parent / "checkpoints"
 CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
 FINAL_MODEL_DIR = BASE_DIR / "ai" / "models" / "intent_classifier"
 
-AUGMENT_PATH = DATA_DIR / "augmentation_stage5.jsonl"
+AUGMENT_PATHS = [
+    DATA_DIR / "augmentation_stage5.jsonl",
+    DATA_DIR / "augmentation_stage7.jsonl",
+]
 
 # ── Intent 정의 ──
 INTENT_LABELS = [
@@ -318,16 +321,24 @@ def main():
     print(f"  원본 Train: {len(train_data)}")
 
     # 보강 데이터 추가
-    if not args.no_augment and AUGMENT_PATH.exists():
-        aug_data = load_jsonl(AUGMENT_PATH)
-        train_data = train_data + aug_data
+    if not args.no_augment:
+        total_aug = 0
+        for aug_path in AUGMENT_PATHS:
+            if aug_path.exists():
+                aug_data = load_jsonl(aug_path)
+                train_data = train_data + aug_data
+                total_aug += len(aug_data)
 
-        aug_counts = Counter(d["label"] for d in aug_data)
-        print(f"  보강 데이터: +{len(aug_data)}개")
-        for label, count in sorted(aug_counts.items(), key=lambda x: -x[1]):
-            print(f"    {label}: +{count}")
+                aug_counts = Counter(d["label"] for d in aug_data)
+                print(f"  보강 [{aug_path.name}]: +{len(aug_data)}개")
+                for label, count in sorted(aug_counts.items(), key=lambda x: -x[1]):
+                    print(f"    {label}: +{count}")
+        if total_aug == 0:
+            print("  보강 없음 (원본만)")
+        else:
+            print(f"  보강 합계: +{total_aug}개")
     else:
-        print("  보강 없음 (원본만)")
+        print("  보강 없음 (--no-augment)")
 
     print(f"  최종 Train: {len(train_data)}")
 

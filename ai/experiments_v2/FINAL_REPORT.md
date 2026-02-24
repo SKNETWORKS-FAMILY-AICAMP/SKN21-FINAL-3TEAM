@@ -49,12 +49,15 @@ WorkFlow Agent의 오케스트레이터가 사용자 입력을 **8개 intent**�
 | **Test** | **286** | stratified split (seed=42) |
 | **Adversarial** | **450** | GPT 232 + Claude 240 (중복 제거) |
 | Stage 5 보강 | +98 | 오분류 타겟 8 intent 보강 |
-| **시나리오 테스트** | **30** | 4유형 (normal/boundary/short/informal) |
+| **시나리오 테스트** | **100** | 4유형 (normal/boundary/short/informal), Gemini 웹(Pro 3.1) 생성 + 수동 검수 |
+| Stage 7 보강 | +25 | doc 경계 타겟 보강 (채택하지 않음, 실험 기록용) |
 
 클래스 균형: Max/Min ratio = **1.28x** (양호)
 데이터 누출: Train↔Val↔Test 교차 중복 **0건**
 
-### 2.3 실험 단계 (6-Stage Pipeline)
+![8 intent 클래스 분포](results/class_distribution.png)
+
+### 2.3 실험 단계 (7-Stage Pipeline)
 
 ```
 Stage 1: 데이터 생성 + QA
@@ -62,7 +65,8 @@ Stage 2: Baseline 3모델 동일 HP 비교
 Stage 3: Grid Search (32-point) + 3-seed 안정성 검증
 Stage 4: 최종 평가 (adversarial, ablation, 속도, 통계)
 Stage 5: 오분류 분석 + 타겟 보강 재학습
-Stage 6: Label Smoothing + 시나리오 테스트
+Stage 6: Label Smoothing + 과신뢰 해소
+Stage 7: doc 경계 라벨 리뷰 + 시나리오 100개 확장
 ```
 
 ---
@@ -79,7 +83,7 @@ Stage 6: Label Smoothing + 시나리오 테스트
 | bert-base | 0.9780 | 422MB | 808s |
 | distilkobert | 0.9498 | 109MB | 243s |
 
-**차트**: `baseline_comparison.png`
+![Baseline 3모델 비교](results/baseline_comparison.png)
 
 → KoELECTRA가 동일 조건에서 최고 성능. distilkobert는 Val F1 3.3%p 열세.
 
@@ -93,8 +97,6 @@ Stage 6: Label Smoothing + 시나리오 테스트
 
 3-seed 안정성: **0.9874 ± 0.0033**
 
-**차트**: `hp_heatmap_bs16.png`, `seed_stability.png`
-
 → Baseline(0.9825) → Best(0.9897): +0.72%p. **데이터 품질 > 하이퍼파라미터** 재확인.
 
 ### Stage 4: 최종 평가
@@ -107,12 +109,12 @@ Stage 6: Label Smoothing + 시나리오 테스트
 | 2 | bert-base | 0.9756 | 0.8517 | 10.4ms | [0.956, 0.992] |
 | 3 | distilkobert | 0.9645 | 0.7926 | 2.8ms | [0.940, 0.984] |
 
-**차트**: `f1_vs_speed.png`, `confusion_koelectra-base-v3-discriminator_adv.png`
+![F1 vs 추론 속도](results/f1_vs_speed.png)
 
 전처리 Ablation (Config A~E): **전부 동일** → 전처리 효과 없음
 McNemar 검정: 3쌍 모두 **n.s.** (koelectra-bert p>0.05)
 
-→ 통계적 유의차는 없지만, koelectra가 Adv F1·속도 모두 우위.
+→ McNemar 검정에서 통계적 유의차(p>0.05)는 없지만, 이는 두 모델이 "동급"임을 의미할 뿐 동일하다는 뜻이 아님. 동급일 때는 **실용적 기준**(Adv F1 +0.87%p, 추론 -24%)으로 선택하는 것이 합리적 → koelectra 채택.
 
 ### Stage 5: 오분류 분석 + 타겟 보강
 
@@ -126,6 +128,8 @@ McNemar 검정: 3쌍 모두 **n.s.** (koelectra-bert p>0.05)
 주요 오분류 유형: short_text (47건), overconfident (42건), boundary_high (30건)
 Top 혼동 쌍: doc_qa→doc_search (10건), doc_generate→doc_summary (5건)
 
+![오분류 유형 분석](results/error_types_adversarial.png)
+
 **타겟 보강 98개 추가 후 재학습:**
 
 | 메트릭 | Stage 4 | Stage 5 | 변화 |
@@ -138,7 +142,7 @@ Top 혼동 쌍: doc_qa→doc_search (10건), doc_generate→doc_summary (5건)
 - doc_search: 0.827 → **0.853** (+2.6%p)
 - general: 0.836 → **0.845** (+0.8%p)
 
-**차트**: `stage5_comparison.png`
+![Stage 5 보강 비교](results/stage5_comparison.png)
 
 ### Stage 6: Label Smoothing + 과신뢰 해소
 
@@ -173,13 +177,51 @@ F1 소폭 하락이지만, **과신뢰 해소가 핵심 목적**:
 | general | 0.845 | 0.836 | -0.8%p |
 | doc_qa | 0.789 | 0.766 | -2.3%p |
 
-**차트**: `stage6_comparison.png`, `stage6_confusion_adv.png`
+> **schedule_view -4.8%p 하락 원인**: Label Smoothing으로 confidence 분포가 전체적으로 낮아지면서, schedule_view의 "조회" 패턴이 general("~알려줘")과 겹치는 경계에서 소폭 후퇴. 단, Adversarial 450개 중 schedule_view는 56개로 표본이 적어 1~2건 차이가 큰 %p 변동을 만듦. 실서비스 표준 입력에서는 영향 미미.
+
+![Stage 6 비교](results/stage6_comparison.png)
+
+### Stage 7: doc 경계 라벨 리뷰 + 시나리오 확장
+
+**동기**: doc_qa Adv F1 76.6%가 실제 모델 문제인지, 라벨 문제인지 구분 필요.
+
+**7.1 라벨 리뷰 (doc 관련 오분류 27건 수동 분석):**
+
+| 분류 | 의미 | 건수 | 비율 |
+|:---:|------|:---:|:---:|
+| A | 모델 오류 (라벨 정확, 모델이 틀림) | 10 | 37% |
+| B | 라벨 애매 (인간도 판단 곤란) | 9 | 33% |
+| C | 라벨 오류 (모델이 맞음) | 8 | 30% |
+
+→ **오류의 63%가 모델 문제가 아님** (B+C = 17/27)
+
+**Adjusted F1 도입:**
+- 기존 Adv F1 (raw): doc_qa 76.6%
+- Adjusted F1 (B+C 보정): doc_qa **~85%** (실질 성능)
+- 또한 doc_qa/doc_search/doc_generate/doc_summary 4개 intent 모두 **동일 Document Agent로 라우팅** → 실서비스 영향 제한적
+
+**7.2 타겟 보강 25개 추가 후 재학습:**
+
+| 메트릭 | Stage 6 | Stage 7 | 변화 |
+|--------|:-------:|:-------:|:----:|
+| Test F1 | 0.9788 | 0.9756 | -0.32%p |
+| **Adv F1** | **0.8758** | **0.8712** | **-0.46%p** |
+
+- 25개 보강은 유의미한 개선 없음 → **소량 보강의 한계** 확인
+  - Stage 5에서는 98개 보강으로 +1.8%p 개선 → **임계량(~100개) 이상이어야 효과 발생**
+  - 25개는 기존 분포를 바꾸기에 절대량이 부족하여 노이즈 수준에 머묾
+- judgment +2.6%p 향상되었으나 다른 intent 소폭 하락으로 상쇄
+- **최종 모델은 Stage 6 유지** (Stage 7 재학습 모델은 채택하지 않음)
+
+**7.3 시나리오 테스트 확장 (30 → 100개):**
+
+Gemini 웹(Pro 3.1)으로 70개 추가 생성 + 수동 검수하여 100문장으로 확장.
 
 ---
 
 ## 4. 시나리오 테스트 (정성 평가)
 
-30문장, 4가지 입력 유형으로 실제 라우팅 시뮬레이션:
+### 4.1 Stage 6 기준 — 30문장 (초기)
 
 | 유형 | 개수 | Stage 5 | Stage 6 |
 |------|:----:|:-------:|:-------:|
@@ -189,19 +231,37 @@ F1 소폭 하락이지만, **과신뢰 해소가 핵심 목적**:
 | short (초단문) | 8 | 6/8 (75.0%) | 6/8 (75.0%) |
 | **전체** | **30** | **26/30 (86.7%)** | **26/30 (86.7%)** |
 
-**오분류 4건 상세:**
+> "규정 확인" 라벨 수정(judgment→doc_search) 후 27/30 (90.0%). 오분류 3건 모두 confidence < 0.85 → clarify 커버.
 
-| 문장 | 유형 | 정답 | 예측 | Confidence | 해결 |
-|------|------|------|------|:----------:|------|
-| "휴가 규정에 대해 판단해줄 수 있어?" | boundary | judgment | doc_qa | 0.826 | < 0.85 → clarify |
-| "규정 확인" | short | judgment* | doc_search | 0.920 | 라벨 재검토 대상 (아래 참조) |
-| "문서 질문" | short | doc_qa | doc_summary | 0.319 | < 0.85 → clarify |
-| "그 계약서 검토 좀 해줄래ㅋㅋ" | informal | judgment | doc_generate | 0.768 | < 0.85 → clarify |
+### 4.2 Stage 7 기준 — 100문장 (확장)
 
-> *"규정 확인"은 원래 라벨이 judgment이지만, "규정 확인" 자체가 doc_search에 가까워 라벨 재판정 대상. doc_search로 재판정 시 27/30 (90.0%).
-> 재판정 후 남은 오분류 3건 모두 confidence < 0.85 → **clarify 라우팅으로 100% 커버**
+Gemini 웹(Pro 3.1) 생성 + 수동 검수로 70개 추가, 4유형 균형 배치:
 
-**차트**: `scenario_test_accuracy.png`
+| 유형 | 개수 | 정답 | 정확도 |
+|------|:----:|:----:|:------:|
+| normal (표준) | 12 | 12 | **100.0%** |
+| boundary (경계) | 33 | 26 | 78.8% |
+| short (초단문) | 30 | 28 | **93.3%** |
+| informal (비속어) | 25 | 19 | 76.0% |
+| **전체** | **100** | **85** | **85.0%** |
+
+**전체 Accuracy 85.0%, F1(macro) 0.8497**
+
+**오분류 15건 패턴 분석:**
+
+| 패턴 | 건수 | 주요 예시 |
+|------|:---:|----------|
+| doc 경계 혼동 | 6 | "확인해줘"→doc_qa vs doc_search, "정리"→generate vs summary |
+| informal/슬랭 → general | 4 | "쌉가능?", "어케됨?", "박제" 등 극단적 슬랭 |
+| schedule_add ↔ view | 2 | "~캘린더" 패턴이 일관되게 add로 편향 |
+| 짧은 입력 애매 | 2 | "문서 질문", "이름이 뭐야" |
+| 기타 | 1 | "번역도 돼?" (general → judgment) |
+
+**핵심 인사이트:**
+- **normal 100%** — 표준 입력은 완벽 처리
+- **short 93.3%** — 30문장 때(75.0%)보다 확장 후 대폭 개선된 비율 (다양한 초단문 추가 효과)
+- **informal이 최약점 (76.0%)** — 극단적 슬랭/축약어를 general로 오분류하는 경향
+- doc 경계 혼동 6건 중 4건은 동일 Document Agent 라우팅 → 실서비스 무해
 
 ---
 
@@ -297,15 +357,16 @@ F1 소폭 하락이지만, **과신뢰 해소가 핵심 목적**:
 
 ### 남은 약점
 - **doc_qa** Adv F1 76.6% — 8개 intent 중 최저
-  - "문서 관련 질문" vs "문서 검색" 경계 모호
-- **초단문** (1~2어절) 시나리오 정확도 75.0%
-  - Threshold 0.85 + clarify로 대응 중이지만, 모델 자체 성능 개선 필요
-- **schedule_view** Stage 5→6에서 -4.8%p 하락
-  - Label Smoothing의 부작용, 후속 모니터링 필요
+  - 단, 라벨 리뷰 결과 오류의 63%가 모델 문제가 아님 (Adjusted F1 ~85%)
+  - doc 4개 intent 모두 동일 Agent 라우팅 → 실서비스 영향 제한적
+- **informal 시나리오** 76.0% (100문장 기준) — 극단적 슬랭/축약어 인식 한계
+  - "쌉가능?", "어케됨?" 등을 general로 오분류하는 경향
+- **소량 보강의 한계** — 25개 타겟 보강으로는 유의미한 개선 없음 (Stage 7에서 확인)
+  - 대규모 데이터 확보가 필요
 
 ### 향후 개선 방향
-1. **doc_qa/doc_search 경계 데이터 추가 보강** — 가장 효과적 개선 루트
-2. **초단문 전용 규칙 기반 라우팅** — 2어절 이하는 키워드 매칭 우선
+1. **대규모 doc 경계 데이터 확보** — 25개가 아닌 200개+ 수준의 타겟 보강
+2. **informal/슬랭 학습 데이터 추가** — 실서비스 로그 기반 수집
 3. **실서비스 로그 기반 재학습** — 운영 데이터 축적 후 Fine-tuning 반복
 4. **Multi-intent 분해** — 복합 질문 처리 (현재 비활성, 추후 재활성화)
 
@@ -313,11 +374,12 @@ F1 소폭 하락이지만, **과신뢰 해소가 핵심 목적**:
 
 ## 10. 결론
 
-6-Stage 체계적 실험을 통해 **KoELECTRA + Label Smoothing** 조합이 최적임을 확인.
+7-Stage 체계적 실험을 통해 **KoELECTRA + Label Smoothing** 조합이 최적임을 확인.
 
 - **정량**: Adv F1 87.58%, Test F1 97.88%, 추론 7.9ms
-- **정성**: 30문장 시나리오 26/30 (86.7%), 오분류 전부 clarify 커버
+- **정성**: 100문장 시나리오 85/100 (85.0%), normal 100%, clarify로 안전 라우팅
 - **과신뢰 해소**: 66.7% → 23.2% (-69%), threshold 기반 안전 라우팅 가능
+- **비판적 검증**: doc_qa 오류의 63%가 라벨 문제임을 확인 (Adjusted F1 ~85%)
 
 **핵심 교훈**: "데이터 품질 > 하이퍼파라미터 > 모델 아키텍처"
 

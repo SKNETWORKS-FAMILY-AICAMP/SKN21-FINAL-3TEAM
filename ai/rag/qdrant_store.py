@@ -59,6 +59,7 @@ class QdrantVectorStore:
         from qdrant_client.models import PayloadSchemaType
         for field, schema in [
             ("source", PayloadSchemaType.KEYWORD),
+            ("doc_type", PayloadSchemaType.KEYWORD),
             ("document_id", PayloadSchemaType.INTEGER),
             ("scope", PayloadSchemaType.KEYWORD),
         ]:
@@ -148,16 +149,24 @@ class QdrantVectorStore:
         # 필터 생성 (있으면)
         query_filter = None
         if filter:
-            conditions = []
+            must_conditions = []
+            must_not_conditions = []
             for key, value in filter.items():
-                conditions.append(
-                    FieldCondition(
-                        key=key,
-                        match=MatchValue(value=value),
+                if key.endswith("__nin"):
+                    # Not-In 필터: {"source__nin": ["documents", "meeting_minutes"]}
+                    actual_key = key[:-5]
+                    for v in value:
+                        must_not_conditions.append(
+                            FieldCondition(key=actual_key, match=MatchValue(value=v))
+                        )
+                else:
+                    must_conditions.append(
+                        FieldCondition(key=key, match=MatchValue(value=value))
                     )
-                )
-            if conditions:
-                query_filter = Filter(must=conditions)
+            query_filter = Filter(
+                must=must_conditions or None,
+                must_not=must_not_conditions or None,
+            )
 
         # 검색 (qdrant-client 최신 버전)
         results = self.client.query_points(
@@ -210,6 +219,58 @@ class QdrantVectorStore:
             "documents": documents,
             "metadatas": metadatas,
         }
+
+    def list_documents_by_source(self, source: str, user_id: int = None) -> list[dict]:
+        """source 필터로 Qdrant에 저장된 고유 문서 목록 전체 반환 (title + document_id)
+
+        Args:
+            source: 메타데이터 source 값 (예: "documents")
+            user_id: 사용자 ID — company 문서 + 해당 유저의 personal 문서 포함
+        Returns:
+            [{"document_id": int, "title": str}, ...]  (document_id 기준 중복 제거)
+        """
+        if self.client is None:
+            raise RuntimeError("QdrantVectorStore가 초기화되지 않았습니다.")
+
+        query_filter = Filter(
+            must=[FieldCondition(key="source", match=MatchValue(value=source))]
+        )
+
+        # offset 기반 페이지네이션으로 전체 포인트 수집
+        seen_ids = set()
+        result = []
+        offset = None
+
+        while True:
+            points, next_offset = self.client.scroll(
+                collection_name=self.collection_name,
+                scroll_filter=query_filter,
+                limit=100,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+
+            for point in points:
+                doc_id = point.payload.get("document_id")
+                title = point.payload.get("title", "제목 없음")
+                scope = point.payload.get("scope", "company")
+                uid = point.payload.get("user_id")
+
+                # scope 필터: company는 모두 노출, personal은 본인 것만
+                if scope == "personal":
+                    if user_id is None or str(uid) != str(user_id):
+                        continue
+
+                if doc_id and doc_id not in seen_ids:
+                    seen_ids.add(doc_id)
+                    result.append({"document_id": doc_id, "title": title})
+
+            if next_offset is None:
+                break
+            offset = next_offset
+
+        return result
 
     def delete_by_filter(self, filter_dict: dict):
         """메타데이터 필터 조건에 맞는 포인트 삭제"""

@@ -565,3 +565,78 @@ QA 결과:
 - 발표 차트 10장 정리 (누락 확인 + 최종 버전)
 - 최종 보고서 작성 (Stage 4.10)
 - 다른 팀원 작업 통합 (PM)
+
+---
+
+## 2026-02-24 (월)
+
+**문서 관리 페이지 검색 기능 개선:**
+
+1. EC2 서버에서 RRF 스코어 분포 분석 (3개 쿼리):
+   - 상위 클러스터(0.030~0.033) vs 하위 클러스터(0.014~0.016) 2군집 패턴 확인
+   - 기획서 문서(id 1,2,3)가 모든 쿼리에서 상위 클러스터에 출현 → 벡터 유사도 false positive
+
+2. RAG → DB ILIKE 전환 결정:
+   - 문서 관리 페이지에서 RAG(Qdrant hybrid BM25+Vector+RRF) 검색은 오버킬
+   - 문서 수가 적고(8~9개) RRF 스코어 압축으로 관련/무관 구분 불가
+   - **"제목+내용" 검색도 DB ILIKE로 변경** (사용자가 기대하는 건 정확한 키워드 매칭)
+
+3. 수정 파일 3개:
+   - `frontend/src/pages/DocumentsPage.jsx`: 드롭다운 "내용" → "제목+내용" 복원, SEARCH_TYPE_MAP/PLACEHOLDERS 업데이트
+   - `backend/app/api/v1/documents.py`: search_type regex에 `title_content` 추가
+   - `backend/app/services/document_service.py`: RAG content 검색 블록 제거 → `or_(title.ilike, content.ilike)` DB 검색으로 교체
+
+4. RAG 관련 코드(업로드 시 Qdrant 인덱싱, 삭제 시 Qdrant 정리)는 유지 — 챗봇(judgment agent)에서 계속 사용
+
+5. 테스트 문서(id=18, test_upload_search) DB+Qdrant에서 삭제
+
+6. 커밋 `d83930c` → feat/jiyong + develop 양쪽 push 완료
+
+**develop 최신 반영:**
+- develop pull → fast-forward merge (37파일, 승언/혜빈/지영 작업 대량 반영)
+  - 승언: document_agent 대폭 수정, 회의록/보고서/제안서 스킬 개선
+  - 혜빈: chat.py, documents.py, admin.py, auth.py, 유저 모델 필드 추가
+  - 지영: MyPage 신규, Topbar/ChatWindow/ChatSessionSidebar/DocumentViewPanel UI 개선
+
+**다음 할 일:**
+- 발표 차트 정리 + 최종 보고서
+- 팀원 작업 통합 테스트
+- E2E 테스트 확인
+
+---
+
+## 2026-02-24 (월) — 오후 세션
+
+**FINAL_REPORT.md 보완 (3건):**
+- schedule_view -4.8%p 하락 원인 분석 추가 (Label Smoothing + 소표본 영향)
+- Stage 5 vs 7 보강 차이 설명 추가 (임계량 ~100개 이상이어야 효과)
+- McNemar n.s. 해석 보강 ("동급일 때 실용적 기준으로 선택이 합리적")
+
+**중간발표 대본 스토리라인 개편:**
+- 슬라이드 5: 제목 "문제 정의"로 변경, 경계 데이터 600개 전략 설명 추가
+- 슬라이드 6: Adversarial F1 중심 테이블로 변경, Full Fine-tuning 학습 방식 설명 추가
+- 슬라이드 7: 4단계 나열 → "3가지 교훈" 스토리라인으로 전면 재구성
+- 슬라이드 8: 테이블 간소화, 핵심 메시지 한 문장으로
+- 슬라이드 9: "기억할 숫자 3개"로 시작, 향후 계획 우선순위 방식으로 변경
+
+**대본 진행상황 업데이트:**
+- Document Agent: 50% → 70% (LLM 연동 동작)
+- 전체 진행률: 65% → 75%
+- 향후 계획 1순위: Document Agent 완성 → sLLM 파인튜닝으로 변경
+- Q6: Document Agent 블로커 → LLM→sLLM 교체 시 성능 질문으로 변경
+
+**3개 문서 일치성 검토 + 수정:**
+- EXPERIMENT_PLAN ↔ FINAL_REPORT ↔ 대본 교차 대조
+- 불일치 3건 수정 (Plan: 속도 8.3ms→7.9ms 통일, 시나리오 30→100개, 슬라이드 제목 동기화)
+
+**FINAL_REPORT 이미지 정리:**
+- 차트 이미지 마크다운 삽입 (GitHub 모바일 열람용)
+- 시나리오 차트 위치 보정 (섹션 끝 → 결과 테이블 바로 아래)
+- 누락 차트 2개 추가 (class_distribution, error_types_adversarial)
+- 30문장 기준 시나리오 차트 제거 (100문장 데이터와 불일치)
+- 중복/과잉 차트 4장 제거 (hp_heatmap, seed_stability, confusion matrix 2장) → 10개→6개
+
+**다음 할 일:**
+- FINAL_REPORT.md 정독하며 실험 내용 공부
+- 발표 자료(PPT) 제작 (Gemini 활용)
+- 시연 시나리오 준비 (슬라이드 3, 2분→5분으로 확장 검토)
