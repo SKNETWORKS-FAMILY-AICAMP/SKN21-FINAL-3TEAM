@@ -4,11 +4,11 @@ import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from
 import { MessageSquare, FilePlus, FileText, Calendar, User } from 'lucide-react';
 
 const features = [
-    { id: 'chat', icon: MessageSquare, label: 'AI 챗봇', color: 'bg-primary-500', to: '/chat' },
-    { id: 'doc-gen', icon: FilePlus, label: '문서 생성', color: 'bg-accent-500', to: '/document-generate' },
-    { id: 'docs', icon: FileText, label: '문서 관리', color: 'bg-neutral-600', to: '/documents' },
-    { id: 'schedules', icon: Calendar, label: '일정 관리', color: 'bg-indigo-500', to: '/schedules' },
-    { id: 'mypage', icon: User, label: '마이페이지', color: 'bg-[#FF5a5a]', to: '/mypage' },
+    { id: 'chat', icon: MessageSquare, label: 'AI 챗봇', color: 'bg-[#89A681]', to: '/chat' },
+    { id: 'doc-gen', icon: FilePlus, label: '문서 생성', color: 'bg-[#7C98AB]', to: '/document-generate' },
+    { id: 'docs', icon: FileText, label: '문서 관리', color: 'bg-[#C08282]', to: '/documents' },
+    { id: 'schedules', icon: Calendar, label: '일정 관리', color: 'bg-[#C0A381]', to: '/schedules' },
+    { id: 'mypage', icon: User, label: '마이페이지', color: 'bg-[#A6C1BE]', to: '/mypage' },
 ];
 
 function DockIcon({ feature, mouseX }) {

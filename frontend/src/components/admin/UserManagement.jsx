@@ -5,19 +5,12 @@ import { createUser, updateUserPermissions, deleteUser } from '../../api/admin';
 export default function UserManagement({ users = [], onRefresh }) {
   const [showModal, setShowModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [editTarget, setEditTarget] = useState(null);
   const [form, setForm] = useState({ name: '', email: '', password: '', team: '', is_admin: false });
-  const [editForm, setEditForm] = useState({ team: '', is_admin: false, is_active: true });
   const [saving, setSaving] = useState(false);
 
   const openAdd = () => {
     setForm({ name: '', email: '', password: '', team: '', is_admin: false });
     setShowModal(true);
-  };
-
-  const openEdit = (user) => {
-    setEditTarget(user);
-    setEditForm({ team: user.team || '', is_admin: user.is_admin, is_active: user.is_active });
   };
 
   const handleSave = async () => {
@@ -29,20 +22,6 @@ export default function UserManagement({ users = [], onRefresh }) {
       onRefresh?.();
     } catch (e) {
       alert('사용자 추가 실패: ' + (e.response?.data?.detail || e.message));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleEdit = async () => {
-    if (!editTarget) return;
-    setSaving(true);
-    try {
-      await updateUserPermissions(editTarget.id, editForm);
-      setEditTarget(null);
-      onRefresh?.();
-    } catch (e) {
-      alert('수정 실패: ' + (e.response?.data?.detail || e.message));
     } finally {
       setSaving(false);
     }

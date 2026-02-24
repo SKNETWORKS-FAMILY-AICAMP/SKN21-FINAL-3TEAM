@@ -58,28 +58,23 @@ export default function MyPage() {
     return (
         <div className="max-w-6xl mx-auto py-8 px-4 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* 1. 프로필 헤더 */}
-            <section className="bg-surface-card rounded-2xl border border-neutral-divider shadow-sm overflow-hidden">
-                <div className="h-32 bg-gradient-to-r from-primary-600 to-accent-500" />
-                <div className="px-8 pb-8 flex flex-col md:flex-row items-end gap-6 -mt-12">
-                    <div className="w-24 h-24 rounded-2xl bg-white p-1 shadow-md">
-                        <div className="w-full h-full rounded-xl bg-accent-500 flex items-center justify-center text-3xl font-bold text-white">
-                            {user?.name?.[0] || '?'}
-                        </div>
-                    </div>
-                    <div className="flex-1 mb-2">
-                        <h1 className="text-2xl font-bold text-neutral-main">{user?.name || '사용자'}</h1>
-                        <div className="flex flex-wrap gap-4 mt-2 text-sm text-neutral-sub">
-                            <span className="flex items-center gap-1.5"><Mail size={14} /> {user?.email}</span>
-                            <span className="flex items-center gap-1.5"><Users size={14} /> {user?.team || '소속 팀 없음'}</span>
-                            <span className="px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 text-[10px] font-bold uppercase tracking-wider">
-                                {user?.is_admin ? 'Administrator' : 'General User'}
-                            </span>
-                        </div>
-                    </div>
-                    <button className="px-6 py-2.5 bg-neutral-main text-white rounded-xl text-sm font-semibold hover:bg-neutral-dark transition-all">
-                        프로필 수정
-                    </button>
+            <section className="bg-white rounded-2xl border border-neutral-divider shadow-sm p-8 flex flex-col md:flex-row items-center gap-8">
+                <div className="w-24 h-24 rounded-2xl bg-accent-500 flex items-center justify-center text-3xl font-bold text-white shadow-sm shrink-0">
+                    {user?.name?.[0] || '?'}
                 </div>
+                <div className="flex-1 text-center md:text-left">
+                    <h1 className="text-2xl font-bold text-neutral-main">{user?.name || '사용자'}</h1>
+                    <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-2 text-sm text-neutral-sub">
+                        <span className="flex items-center gap-1.5"><Mail size={14} /> {user?.email}</span>
+                        <span className="flex items-center gap-1.5"><Users size={14} /> {user?.team || '소속 팀 없음'}</span>
+                        <span className="px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 text-[10px] font-bold uppercase tracking-wider">
+                            {user?.is_admin ? 'Administrator' : 'General User'}
+                        </span>
+                    </div>
+                </div>
+                <button className="px-6 py-2.5 bg-neutral-main text-white rounded-xl text-sm font-semibold hover:bg-neutral-dark transition-all shrink-0">
+                    프로필 수정
+                </button>
             </section>
 
             {/* 메인 그리드 */}
@@ -248,19 +243,6 @@ export default function MyPage() {
                         </div>
                     </section>
 
-                    {/* 시스템 정보 */}
-                    <div className="bg-neutral-dark rounded-2xl p-6 text-white overflow-hidden relative">
-                        <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full blur-3xl" />
-                        <h3 className="text-sm font-bold mb-2">WorkFlow Pro</h3>
-                        <p className="text-[11px] text-white/60 mb-4 leading-relaxed">회원님은 현재 모든 기능을 제한 없이 사용할 수 있는 엔터프라이즈 플랜을 이용 중입니다.</p>
-                        <div className="flex items-center gap-2">
-                            <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                <div className="w-[85%] h-full bg-accent-400" />
-                            </div>
-                            <span className="text-[10px] font-bold">85%</span>
-                        </div>
-                        <div className="text-[9px] text-white/40 mt-1">저장 공간 사용량: 4.2GB / 5.0GB</div>
-                    </div>
                 </div>
             </div>
         </div>
