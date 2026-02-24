@@ -53,12 +53,17 @@ async def startup_db_migrate():
     import asyncio
     import os as _os
 
+    # main.py 위치 기준으로 alembic.ini 절대 경로 계산
+    # backend/app/main.py → parents[1] = backend/
+    _backend_dir = Path(__file__).resolve().parent.parent
+    _alembic_ini = str(_backend_dir / "alembic.ini")
+
     def _run():
         try:
             from alembic.config import Config
             from alembic import command as alembic_cmd
 
-            cfg = Config("alembic.ini")  # backend 디렉토리 기준
+            cfg = Config(_alembic_ini)
             db_url = _os.getenv("DATABASE_URL", "")
             if db_url:
                 cfg.set_main_option(
@@ -66,7 +71,7 @@ async def startup_db_migrate():
                     db_url.replace("postgresql+asyncpg://", "postgresql://"),
                 )
             alembic_cmd.upgrade(cfg, "head")
-            print("[Startup] DB 마이그레이션 완료")
+            print(f"[Startup] DB 마이그레이션 완료 ({_alembic_ini})")
         except Exception as _e:
             print(f"[Startup] DB 마이그레이션 실패 (무시하고 계속): {_e}")
 
