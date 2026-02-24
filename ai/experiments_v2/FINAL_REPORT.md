@@ -55,6 +55,8 @@ WorkFlow Agent의 오케스트레이터가 사용자 입력을 **8개 intent**�
 클래스 균형: Max/Min ratio = **1.28x** (양호)
 데이터 누출: Train↔Val↔Test 교차 중복 **0건**
 
+![8 intent 클래스 분포](results/class_distribution.png)
+
 ### 2.3 실험 단계 (7-Stage Pipeline)
 
 ```
@@ -129,6 +131,8 @@ McNemar 검정: 3쌍 모두 **n.s.** (koelectra-bert p>0.05)
 
 주요 오분류 유형: short_text (47건), overconfident (42건), boundary_high (30건)
 Top 혼동 쌍: doc_qa→doc_search (10건), doc_generate→doc_summary (5건)
+
+![오분류 유형 분석](results/error_types_adversarial.png)
 
 **타겟 보강 98개 추가 후 재학습:**
 
@@ -248,6 +252,8 @@ Gemini 웹(Pro 3.1) 생성 + 수동 검수로 70개 추가, 4유형 균형 배�
 
 **전체 Accuracy 85.0%, F1(macro) 0.8497**
 
+![시나리오 테스트 정확도](results/scenario_test_accuracy.png)
+
 **오분류 15건 패턴 분석:**
 
 | 패턴 | 건수 | 주요 예시 |
@@ -263,10 +269,6 @@ Gemini 웹(Pro 3.1) 생성 + 수동 검수로 70개 추가, 4유형 균형 배�
 - **short 93.3%** — 30문장 때(75.0%)보다 확장 후 대폭 개선된 비율 (다양한 초단문 추가 효과)
 - **informal이 최약점 (76.0%)** — 극단적 슬랭/축약어를 general로 오분류하는 경향
 - doc 경계 혼동 6건 중 4건은 동일 Document Agent 라우팅 → 실서비스 무해
-
----
-
-![시나리오 테스트 정확도](results/scenario_test_accuracy.png)
 
 ---
 
