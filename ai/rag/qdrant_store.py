@@ -59,6 +59,7 @@ class QdrantVectorStore:
         from qdrant_client.models import PayloadSchemaType
         for field, schema in [
             ("source", PayloadSchemaType.KEYWORD),
+            ("doc_type", PayloadSchemaType.KEYWORD),
             ("document_id", PayloadSchemaType.INTEGER),
             ("scope", PayloadSchemaType.KEYWORD),
         ]:

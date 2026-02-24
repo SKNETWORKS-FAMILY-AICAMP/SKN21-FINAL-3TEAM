@@ -168,6 +168,7 @@ async def upload_and_parse(
                 documents=[text],
                 metadatas=[{
                     "source": "documents",
+                    "doc_type": "general",
                     "title": doc.title,
                     "scope": doc.scope,
                     "user_id": str(user_id),
