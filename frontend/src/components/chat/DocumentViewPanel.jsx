@@ -1,9 +1,10 @@
-import { FileText, X, Copy, ExternalLink, Hash, Bookmark } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { FileText, X, Copy, ExternalLink, Hash, Bookmark, ChevronDown, ShieldCheck } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useState } from 'react';
 
 export default function DocumentViewPanel({ doc, onClose }) {
   const [copied, setCopied] = useState(false);
+  const [scoreOpen, setScoreOpen] = useState(false);
 
   if (!doc) return null;
 
@@ -109,6 +110,53 @@ export default function DocumentViewPanel({ doc, onClose }) {
             )}
           </div>
         </div>
+
+        {/* 검색 정확도 접이식 */}
+        {typeof doc.score === 'number' && (() => {
+          const pct = Math.round(doc.score * 100);
+          const color = doc.score >= 0.7
+            ? { bar: 'bg-green-500', text: 'text-green-600', bg: 'bg-green-50', label: '높음' }
+            : doc.score >= 0.4
+              ? { bar: 'bg-yellow-500', text: 'text-yellow-600', bg: 'bg-yellow-50', label: '보통' }
+              : { bar: 'bg-red-500', text: 'text-red-600', bg: 'bg-red-50', label: '낮음' };
+          return (
+            <div className="mt-6 border border-neutral-divider rounded-xl overflow-hidden">
+              <button
+                onClick={() => setScoreOpen(!scoreOpen)}
+                className="w-full flex items-center gap-2.5 px-5 py-3 hover:bg-surface-hover transition text-left"
+              >
+                <ShieldCheck size={16} className={color.text} />
+                <span className="text-xs font-semibold text-neutral-main">검색 정확도</span>
+                <div className="flex items-center gap-2 ml-auto mr-2">
+                  <div className="w-24 h-2 bg-neutral-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${color.bar} transition-all duration-300`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className={`text-xs font-bold ${color.text}`}>{pct}%</span>
+                </div>
+                <ChevronDown size={14} className={`text-neutral-muted transition-transform duration-200 ${scoreOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {scoreOpen && (
+                <div className="px-5 pb-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.625rem] font-semibold ${color.bg} ${color.text}`}>
+                      {color.label}
+                    </div>
+                    <span className="text-[0.6875rem] text-neutral-sub">
+                      RAG 벡터 검색 유사도 점수
+                    </span>
+                  </div>
+                  <div className="text-[0.6875rem] text-neutral-sub leading-relaxed">
+                    {doc.score >= 0.7
+                      ? '이 문서는 질문과 높은 연관성을 가지고 있습니다. 검색 결과의 신뢰도가 높습니다.'
+                      : doc.score >= 0.4
+                        ? '이 문서는 질문과 일부 연관성이 있습니다. 내용을 직접 확인하는 것을 권장합니다.'
+                        : '이 문서는 질문과의 연관성이 낮습니다. 다른 출처도 함께 참고해 주세요.'}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Footer info */}
         <div className="mt-8 pt-6 border-t border-neutral-divider flex items-center justify-between text-[11px] text-neutral-muted">

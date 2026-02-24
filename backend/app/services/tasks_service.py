@@ -3,6 +3,8 @@ Google Tasks 서비스 (팀원 D 담당)
 - Action Item → Google Tasks 동기화
 - 완료/미완료 상태 양방향 동기화
 """
+import logging
+from datetime import datetime
 from typing import Optional
 
 from fastapi import HTTPException, status
@@ -13,6 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.action_item import ActionItem
 from app.services.google_base_service import GoogleBaseService
 
+logger = logging.getLogger(__name__)
+
 TASKLIST_TITLE = "WorkFlow Agent"
 
 
@@ -22,9 +26,9 @@ class GoogleTasksService(GoogleBaseService):
     required_scope = "tasks"
 
     def _build_service(self, creds):
-        return build("tasks", "v1", credentials=creds)
+        return build("tasks", "v1", credentials=creds, cache_discovery=False)
 
-    async def _get_or_create_tasklist(self, service) -> str:
+    def _get_or_create_tasklist(self, service) -> str:
         """WorkFlow Agent 전용 태스크 리스트 ID 반환 (없으면 생성)"""
         result = service.tasklists().list(maxResults=100).execute()
         for tl in result.get("items", []):
@@ -44,7 +48,7 @@ class GoogleTasksService(GoogleBaseService):
 
         creds = await self.get_credentials(db, user_id)
         service = self._build_service(creds)
-        tasklist_id = await self._get_or_create_tasklist(service)
+        tasklist_id = self._get_or_create_tasklist(service)
 
         task_body = {
             "title": item.content,
@@ -114,7 +118,7 @@ class GoogleTasksService(GoogleBaseService):
         if item.google_task_id:
             creds = await self.get_credentials(db, user_id)
             service = self._build_service(creds)
-            tasklist_id = await self._get_or_create_tasklist(service)
+            tasklist_id = self._get_or_create_tasklist(service)
             service.tasks().update(
                 tasklist=tasklist_id,
                 task=item.google_task_id,
@@ -127,14 +131,14 @@ class GoogleTasksService(GoogleBaseService):
         """Google Tasks 상태 → DB 반영 + 새 Task import"""
         creds = await self.get_credentials(db, user_id)
         service = self._build_service(creds)
-        tasklist_id = await self._get_or_create_tasklist(service)
+        tasklist_id = self._get_or_create_tasklist(service)
 
         result = service.tasks().list(
             tasklist=tasklist_id, maxResults=100,
             showCompleted=True, showHidden=True,
         ).execute()
         google_tasks = {t["id"]: t for t in result.get("items", [])}
-        print(f"[pull] Google Tasks: {len(google_tasks)}개")
+        logger.info(f"[pull] Google Tasks: {len(google_tasks)}개")
 
         db_result = await db.execute(
             select(ActionItem).where(ActionItem.google_task_id.isnot(None))
@@ -151,7 +155,7 @@ class GoogleTasksService(GoogleBaseService):
                 if item.status != new_status:
                     item.status = new_status
                     updated += 1
-                    print(f"[pull] 상태변경: {item.content} → {new_status}")
+                    logger.info(f"[pull] 상태변경: {item.content} → {new_status}")
 
         # 2) Google에서 새로 추가된 Task → DB import
         imported = 0
@@ -159,7 +163,6 @@ class GoogleTasksService(GoogleBaseService):
             if task_id not in existing_ids:
                 due_date = None
                 if gt.get("due"):
-                    from datetime import datetime
                     try:
                         due_date = datetime.fromisoformat(gt["due"].replace("Z", "+00:00"))
                     except (ValueError, AttributeError):
@@ -175,7 +178,7 @@ class GoogleTasksService(GoogleBaseService):
                 )
                 db.add(new_item)
                 imported += 1
-                print(f"[pull] 새 Task import: {gt.get('title')}")
+                logger.info(f"[pull] 새 Task import: {gt.get('title')}")
 
         await db.flush()
         return {"updated_count": updated, "imported_count": imported}
