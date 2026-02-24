@@ -95,22 +95,23 @@ class QdrantRAGPipeline:
         # 전체 저장 완료 후 BM25 인덱스 한 번만 재구축
         self.searcher.build_bm25_index()
 
-    def retrieve(self, query: str, user_id: int | None = None, top_k: int = 5) -> list[dict]:
+    def retrieve(self, query: str, user_id: int | None = None, top_k: int = 5, filter: dict | None = None) -> list[dict]:
         """하이브리드 검색 (BM25 + Vector → RRF 합산)
 
         Args:
             query: 사용자 질문
             user_id: 사용자 ID (scope 필터용)
             top_k: 최종 반환 문서 수
+            filter: 메타데이터 필터 (예: {"source": "regulations"})
 
         Returns:
             list of {"content": str, "source": str, "score": float, ...}
         """
         _t = time.time()
-        print(f"[RAGPipeline] retrieve 시작 | query='{query[:50]}', top_k={top_k}")
+        print(f"[RAGPipeline] retrieve 시작 | query='{query[:50]}', top_k={top_k}, filter={filter}")
 
         # Hybrid Search (BM25 + Vector) → RRF 합산 → Top K
-        search_results = self.searcher.search(query=query, user_id=user_id, top_k=top_k)
+        search_results = self.searcher.search(query=query, user_id=user_id, top_k=top_k, filter=filter)
         print(f"[RAGPipeline] retrieve 완료 ({time.time()-_t:.2f}s) | {len(search_results)}개 문서 검색됨")
 
         return search_results

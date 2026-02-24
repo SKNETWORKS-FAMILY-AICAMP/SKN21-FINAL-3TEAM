@@ -35,12 +35,13 @@ router = APIRouter()
 async def list_documents(
     scope: str | None = Query(None, regex="^(company|personal)$"),
     keyword: str | None = None,
+    search_type: str = Query("title", regex="^(title|title_content|date)$"),
     user=Depends(get_current_user),
     db=Depends(get_db),
 ):
-    """문서 목록 조회 (scope 필터 지원)"""
+    """문서 목록 조회 (scope + search_type 필터 지원)"""
     docs = await document_service.list_documents(
-        db, user_id=user.id, scope=scope, keyword=keyword
+        db, user_id=user.id, scope=scope, keyword=keyword, search_type=search_type
     )
     return [
         {
