@@ -5,6 +5,7 @@ import RegisterForm from '../components/auth/RegisterForm';
 import PasswordReset from '../components/auth/PasswordReset';
 import useAuth from '../hooks/useAuth';
 import useAuthStore from '../store/authStore';
+import client from '../api/client';
 
 export default function LoginPage() {
   const [tab, setTab] = useState('login'); // 'login' | 'register' | 'reset'
@@ -24,8 +25,12 @@ export default function LoginPage() {
     const googleError = searchParams.get('error');
 
     if (token) {
-      setAuth({ name: userName || '' }, token);
-      navigate('/dashboard', { replace: true });
+      (async () => {
+        localStorage.setItem('access_token', token);
+        const { data: me } = await client.get('/auth/me').catch(() => ({ data: { name: userName || '' } }));
+        setAuth(me, token);
+        navigate('/dashboard', { replace: true });
+      })();
     } else if (googleError) {
       setError('Google 로그인에 실패했습니다. 다시 시도해주세요.');
     }

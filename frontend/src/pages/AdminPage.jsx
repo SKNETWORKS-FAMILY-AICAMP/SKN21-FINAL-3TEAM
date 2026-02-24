@@ -58,7 +58,7 @@ export default function AdminPage() {
 
   return (
     <div>
-      <header className={`sticky top-0 bg-surface-main z-10 transition-all duration-300 ${isScrolled ? 'py-2.5' : 'py-6'}`}>
+      <header className={`sticky top-0 bg-surface-main z-10 flex flex-col justify-center overflow-hidden transition-all duration-300 ${isScrolled ? 'h-[56px]' : 'h-[100px]'}`}>
         <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-2xl'}`}>관리자 설정</h1>
         <p className={`text-neutral-sub transition-all duration-300 overflow-hidden ${isScrolled ? 'text-xs mt-0 max-h-0 opacity-0' : 'text-sm mt-1 max-h-6 opacity-100'}`}>시스템 설정 및 사용자를 관리합니다</p>
       </header>

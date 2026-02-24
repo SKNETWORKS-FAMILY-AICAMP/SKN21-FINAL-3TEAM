@@ -142,7 +142,7 @@ export default function MeetingsPage() {
 
   return (
     <div>
-      <header className={`flex justify-between items-center sticky top-0 bg-surface-main z-10 transition-all duration-300 ${isScrolled ? 'py-2.5' : 'py-6'}`}>
+      <header className={`flex justify-between items-center sticky top-0 bg-surface-main z-10 overflow-hidden transition-all duration-300 ${isScrolled ? 'h-[56px]' : 'h-[100px]'}`}>
         <div>
           <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-2xl'}`}>회의 관리</h1>
           <p className={`text-neutral-sub transition-all duration-300 overflow-hidden ${isScrolled ? 'text-xs mt-0 max-h-0 opacity-0' : 'text-sm mt-1 max-h-6 opacity-100'}`}>회의록을 업로드하면 AI가 자동으로 분석합니다</p>

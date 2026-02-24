@@ -5,12 +5,25 @@
 - 문서 생성 (템플릿 ID 기반)
 - 회사/개인 문서 구분 (scope)
 """
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, UploadFile, File, Query, Body, HTTPException
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
-from app.schemas.document import DocumentGenerateResponse
 from app.services import document_service, parsing_service, template_service
+
+GENERATED_DOCS_DIR = Path(__file__).resolve().parents[4] / "backend" / "generated_docs"
+
+
+class GenerateDocumentRequest(BaseModel):
+    template_type: str
+    title: str = ""
+    date: str = ""
+    attendees: list[str] = []
+    content: str = ""
 
 router = APIRouter()
 
@@ -65,34 +78,83 @@ async def upload_document(
     }
 
 
-@router.post("/generate", response_model=DocumentGenerateResponse)
+@router.post("/generate")
 async def generate_document(
-    template_id: int | None = Body(None),
-    template_type: str | None = Body(None),
-    user_input: str = Body(..., description="사용자 입력 (내용/지시사항)"),
+    request: GenerateDocumentRequest,
     user=Depends(get_current_user),
     db=Depends(get_db),
 ):
     """
     템플릿 기반 문서 생성 (FR-DOC-008)
-    Document Agent를 호출하여 문서를 생성하고 DB에 저장한다.
+    현재 지원: meeting_minutes, report, proposal
     """
-    doc, agent_response = await document_service.generate_and_save(
-        db,
-        user_input=user_input,
-        user_id=user.id,
-        template_type=template_type,
-        template_id=template_id,
-    )
-    return DocumentGenerateResponse(
-        document_id=doc.id,
-        template_id=agent_response.get("template_id"),
-        template_type=agent_response.get("template_type", template_type or "report"),
-        template_name=agent_response.get("template_name", "문서"),
-        preview=agent_response.get("preview", ""),
-        download_url=f"/api/v1/documents/{doc.id}/download",
-        created_at=doc.created_at,
-    )
+    try:
+        from ai.agents.document_agent import (
+            _generate_meeting_minutes,
+            _generate_report,
+            _generate_proposal,
+        )
+
+        user_input = (
+            f"제목: {request.title}\n"
+            f"날짜: {request.date}\n"
+            f"참석자: {', '.join(request.attendees)}\n"
+            f"내용: {request.content}"
+        )
+
+        if request.template_type == "meeting_minutes":
+            result = _generate_meeting_minutes(user_input)
+            return {
+                "document_id": result["document_id"],
+                "template_type": "meeting_minutes",
+                "preview": result["preview"],
+                "download_url": f"/api/v1/documents/{result['document_id']}/download",
+                "title": result.get("data", {}).get("title", request.title),
+                "date": result.get("data", {}).get("date", request.date),
+                "attendees": result.get("data", {}).get("attendees", request.attendees),
+                "summary": result.get("summary", ""),
+                "decisions": result.get("decisions", []),
+                "action_items": result.get("action_items", []),
+            }
+
+        if request.template_type == "report":
+            result = _generate_report(user_input)
+            return {
+                "document_id": result["document_id"],
+                "template_type": "report",
+                "preview": result["preview"],
+                "download_url": f"/api/v1/documents/{result['document_id']}/download",
+                "title": result.get("data", {}).get("title", request.title),
+                "overview": result.get("data", {}).get("overview", ""),
+                "main_content": result.get("data", {}).get("main_content", ""),
+                "tasks": result.get("data", {}).get("tasks", []),
+                "next_plan": result.get("data", {}).get("next_plan", ""),
+            }
+
+        if request.template_type == "proposal":
+            result = _generate_proposal(user_input)
+            return {
+                "document_id": result["document_id"],
+                "template_type": "proposal",
+                "preview": result["preview"],
+                "download_url": f"/api/v1/documents/{result['document_id']}/download",
+                "title": result.get("data", {}).get("title", request.title),
+                "background": result.get("data", {}).get("background", ""),
+                "content": result.get("data", {}).get("content", ""),
+                "expected_effect": result.get("data", {}).get("expected_effect", ""),
+                "schedule": result.get("data", {}).get("schedule", []),
+                "budget": result.get("data", {}).get("budget", []),
+            }
+
+        raise HTTPException(
+            status_code=400,
+            detail=f"지원하지 않는 템플릿 타입입니다: {request.template_type}",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"문서 생성 중 오류 발생: {str(e)}")
 
 
 @router.get("/search/highlight")
@@ -211,18 +273,22 @@ async def delete_document(
 
 @router.get("/{document_id}/download")
 async def download_document(
-    document_id: int,
+    document_id: str,
     format: str = Query("docx", regex="^(docx|pdf)$"),
     user=Depends(get_current_user),
     db=Depends(get_db),
 ):
     """
-    생성된 문서 다운로드 - DOCX/PDF (FR-DOC-008)
-    — 템플릿 렌더링 필요, 팀원 C 구현 후 연동
+    생성된 문서 다운로드 - DOCX (FR-DOC-008)
+    document_id: AI 생성 문서의 UUID
     """
-    raise HTTPException(
-        status_code=501,
-        detail="문서 다운로드(DOCX/PDF 변환)는 to_docx/to_pdf 구현 대기 중입니다. 미리보기는 GET /documents/{id} 에서 content 필드로 확인 가능합니다.",
+    file_path = GENERATED_DOCS_DIR / f"{document_id}.docx"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
+    return FileResponse(
+        path=str(file_path),
+        filename="회의록.docx",
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     )
 
 
