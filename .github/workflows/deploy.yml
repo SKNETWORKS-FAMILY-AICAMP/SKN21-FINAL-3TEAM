@@ -21,5 +21,6 @@ jobs:
             git pull origin develop
             source .venv/bin/activate
             pip install -r requirements.txt
+            cd backend && PYTHONPATH=$(pwd) alembic upgrade head && cd ..
             sudo systemctl restart workflow-agent
             echo "배포 완료"

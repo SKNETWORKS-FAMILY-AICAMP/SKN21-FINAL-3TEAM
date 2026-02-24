@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useUIStore from '../../store/uiStore';
+import useChatStore from '../../store/chatStore';
 import ThemeToggle from './ThemeToggle';
 import { changePassword } from '../../api/auth';
 
@@ -186,6 +187,7 @@ export default function Topbar({ isScrolled = false }) {
   const [pwSaving, setPwSaving] = useState(false);
 
   const handleLogout = () => {
+    useChatStore.getState().reset();
     logout();
     navigate('/login');
   };
