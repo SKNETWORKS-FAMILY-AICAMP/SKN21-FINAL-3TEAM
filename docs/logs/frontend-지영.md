@@ -544,6 +544,43 @@
 
 ---
 
+## 2026-02-25 (화)
+
+### 한 일
+
+#### 1) 대시보드 Mock 데이터 → 실제 API 연동 (`DashboardPage.jsx`)
+
+- Mock 데이터 4개(`mockActivities`, `mockActions`, `mockMeetings`, `mockDocs`, `calEvents`) 전부 삭제
+- `useDashboardData()` 커스텀 훅 신규 작성
+  - `listSchedules()` → 오늘 일정 필터링 + 마감 임박(D-7 이내) 산출 + 캘린더 날짜별 점 표시
+  - `listDocuments()` → 최근 문서 5개
+  - `listSessions()` → 최근 채팅 세션
+- 3개 API를 `Promise.allSettled`로 병렬 호출 (하나 실패해도 나머지 정상 표시)
+- `GreetingBanner` 카운트(`meetingCount`, `actionCount`)를 실제 데이터에서 산출
+- 위젯 props를 WIDGET_REGISTRY 외부에서 주입하는 방식으로 리팩토링
+- 로딩 상태 표시 추가 ("데이터를 불러오는 중...")
+
+#### 2) RecentDocs 위젯 개선 (`RecentDocs.jsx`)
+
+- 빈 상태 메시지 추가 ("업로드된 문서가 없습니다.")
+- Badge variant에 실제 API 상태값(`완료`, `처리중`) 대응 추가
+
+#### 3) ActivityTimeline 위젯 개선 (`ActivityTimeline.jsx`)
+
+- 빈 상태 메시지 추가 ("최근 활동이 없습니다.")
+
+#### 4) 누락 패키지 설치
+
+- `react-markdown` — develop merge로 추가된 `MarkdownText.jsx`에서 필요, 빌드 에러 해소
+
+### 다음 할 일
+- vite 프록시 설정 로컬/EC2 분리 (.env.local)
+- 판단 Agent 스트리밍 디버깅
+- 문서 생성 AI 연동 (501 엔드포인트 해소)
+- 관리자 API 연동 (#29)
+
+---
+
 ## 현재 구현 현황 요약
 
 | 항목 | 상태 | 비고 |
@@ -564,7 +601,7 @@
 | 파일 드래그&드롭 | ✅ 완료 | 채팅 파일 첨부, 검증(형식/크기), FileChip |
 | 대화 세션 관리 | ✅ 완료 | localStorage 세션 목록, 자동 생성/전환/삭제 |
 | 사이드바 메모 | ✅ 완료 | 다중 메모 리스트, localStorage 저장, 자동 저장 표시 |
-| **백엔드 실제 연동** | 🔄 진행중 | 일정 관리 완료, 나머지 페이지 교체 필요 |
+| **백엔드 실제 연동** | 🔄 진행중 | 일정 관리 + 대시보드 완료, 문서 생성/관리자 교체 필요 |
 
 ### 파일 현황
 - **페이지**: 10개 전체 구현
