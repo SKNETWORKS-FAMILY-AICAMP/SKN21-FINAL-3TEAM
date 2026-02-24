@@ -58,6 +58,23 @@ function saveMemos(memos) {
   localStorage.setItem(MEMOS_KEY, JSON.stringify(memos))
 }
 
+// ── 개인화 설정 ──
+const SETTINGS_KEY = 'user-settings'
+const DEFAULT_SETTINGS = {
+  aiStyle: 'detailed', // 'concise' | 'detailed'
+  notifications: true,
+}
+function loadSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY))
+    if (saved) return { ...DEFAULT_SETTINGS, ...saved }
+  } catch { /* ignore */ }
+  return DEFAULT_SETTINGS
+}
+function saveSettings(s) {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s))
+}
+
 const useUIStore = create((set) => ({
   sidebarOpen: true,
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
@@ -156,6 +173,14 @@ const useUIStore = create((set) => ({
     saveDashboard(DEFAULT_DASHBOARD)
     return set({ dashboard: DEFAULT_DASHBOARD })
   },
+
+  // ── 개인화 설정 ──
+  settings: loadSettings(),
+  updateSettings: (next) => set((state) => {
+    const updated = { ...state.settings, ...next }
+    saveSettings(updated)
+    return { settings: updated }
+  }),
 }))
 
 export default useUIStore

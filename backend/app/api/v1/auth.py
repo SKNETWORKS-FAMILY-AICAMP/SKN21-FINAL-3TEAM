@@ -97,6 +97,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "id": current_user.id,
         "email": current_user.email,
         "name": current_user.name,
+        "team": current_user.team,
         "is_admin": current_user.is_admin,
     }
 
