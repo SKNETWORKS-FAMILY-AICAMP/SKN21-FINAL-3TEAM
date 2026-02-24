@@ -15,6 +15,25 @@ from app.models.action_item import ActionItem
 from app.services.google_base_service import GoogleBaseService
 
 TASKLIST_TITLE = "WorkFlow Agent"
+_TIMEOUT = 15.0  # Google API 호출 타임아웃 (초)
+
+
+async def _google_call(fn, error_msg: str):
+    """Google API 동기 호출을 스레드 + 타임아웃으로 실행"""
+    try:
+        return await asyncio.wait_for(asyncio.to_thread(fn), timeout=_TIMEOUT)
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=f"{error_msg} — 타임아웃. 잠시 후 다시 시도해주세요.",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"{error_msg}: {type(e).__name__}: {e}",
+        )
 
 
 class GoogleTasksService(GoogleBaseService):
@@ -22,28 +41,14 @@ class GoogleTasksService(GoogleBaseService):
 
     required_scope = "tasks"
 
-    _TIMEOUT = 15.0  # Google API 타임아웃 (초)
-
     async def _build_service_async(self, creds):
-        """Google Tasks 서비스 객체 생성 (블로킹 → 스레드)"""
-        try:
-            return await asyncio.wait_for(
-                asyncio.to_thread(build, "tasks", "v1", credentials=creds, cache_discovery=False),
-                timeout=self._TIMEOUT,
-            )
-        except asyncio.TimeoutError:
-            raise HTTPException(
-                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                detail="Google API 연결 타임아웃. 잠시 후 다시 시도해주세요.",
-            )
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Google Tasks 서비스 초기화 실패: {type(e).__name__}: {e}",
-            )
+        return await _google_call(
+            lambda: build("tasks", "v1", credentials=creds, cache_discovery=False),
+            "Google Tasks 서비스 초기화 실패",
+        )
 
     async def _get_or_create_tasklist(self, service) -> str:
-        """WorkFlow Agent 전용 태스크 리스트 ID 반환 (없으면 생성) — 스레드에서 실행"""
+        """WorkFlow Agent 전용 태스크 리스트 ID 반환 (없으면 생성)"""
         def _sync():
             result = service.tasklists().list(maxResults=100).execute()
             for tl in result.get("items", []):
@@ -52,21 +57,7 @@ class GoogleTasksService(GoogleBaseService):
             new_list = service.tasklists().insert(body={"title": TASKLIST_TITLE}).execute()
             return new_list["id"]
 
-        try:
-            return await asyncio.wait_for(
-                asyncio.to_thread(_sync),
-                timeout=self._TIMEOUT,
-            )
-        except asyncio.TimeoutError:
-            raise HTTPException(
-                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                detail="Google Tasks 타임아웃. 잠시 후 다시 시도해주세요.",
-            )
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Google Tasks 태스크 리스트 조회 실패: {type(e).__name__}: {e}",
-            )
+        return await _google_call(_sync, "Google Tasks 리스트 조회 실패")
 
     async def sync_action_item(self, db: AsyncSession, user_id: int, action_item_id: int) -> dict:
         """단일 Action Item → Google Task 동기화"""
@@ -91,14 +82,16 @@ class GoogleTasksService(GoogleBaseService):
 
         if item.google_task_id:
             task_body["id"] = item.google_task_id
-            task = await asyncio.to_thread(
+            task = await _google_call(
                 lambda: service.tasks().update(
                     tasklist=tasklist_id, task=item.google_task_id, body=task_body
-                ).execute()
+                ).execute(),
+                "Google Task 업데이트 실패",
             )
         else:
-            task = await asyncio.to_thread(
-                lambda: service.tasks().insert(tasklist=tasklist_id, body=task_body).execute()
+            task = await _google_call(
+                lambda: service.tasks().insert(tasklist=tasklist_id, body=task_body).execute(),
+                "Google Task 생성 실패",
             )
             item.google_task_id = task["id"]
 
@@ -154,12 +147,13 @@ class GoogleTasksService(GoogleBaseService):
             creds = await self.get_credentials(db, user_id)
             service = await self._build_service_async(creds)
             tasklist_id = await self._get_or_create_tasklist(service)
-            await asyncio.to_thread(
+            await _google_call(
                 lambda: service.tasks().update(
                     tasklist=tasklist_id,
                     task=item.google_task_id,
                     body={"id": item.google_task_id, "status": "completed" if completed else "needsAction"},
-                ).execute()
+                ).execute(),
+                "Google Task 상태 변경 실패",
             )
 
         return {"task_id": item.google_task_id, "status": item.status}
@@ -170,26 +164,13 @@ class GoogleTasksService(GoogleBaseService):
         service = await self._build_service_async(creds)
         tasklist_id = await self._get_or_create_tasklist(service)
 
-        try:
-            result = await asyncio.wait_for(
-                asyncio.to_thread(
-                    lambda: service.tasks().list(
-                        tasklist=tasklist_id, maxResults=100,
-                        showCompleted=True, showHidden=True,
-                    ).execute()
-                ),
-                timeout=self._TIMEOUT,
-            )
-        except asyncio.TimeoutError:
-            raise HTTPException(
-                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                detail="Google Tasks 목록 조회 타임아웃. 잠시 후 다시 시도해주세요.",
-            )
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Google Tasks 목록 조회 실패: {type(e).__name__}: {e}",
-            )
+        result = await _google_call(
+            lambda: service.tasks().list(
+                tasklist=tasklist_id, maxResults=100,
+                showCompleted=True, showHidden=True,
+            ).execute(),
+            "Google Tasks 목록 조회 실패",
+        )
         google_tasks = {t["id"]: t for t in result.get("items", [])}
         print(f"[pull] Google Tasks: {len(google_tasks)}개")
 
