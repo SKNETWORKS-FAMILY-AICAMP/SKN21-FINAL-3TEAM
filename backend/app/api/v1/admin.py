@@ -199,6 +199,7 @@ async def create_regulation(
             documents=[reg_content],
             metadatas=[{
                 "source": "regulations",
+                "doc_type": reg_category or "general",
                 "title": reg_title,
                 "article_number": reg_article,
                 "category": reg_category,
@@ -250,6 +251,7 @@ async def update_regulation(
             documents=[reg_content],
             metadatas=[{
                 "source": "regulations",
+                "doc_type": reg_category or "general",
                 "title": reg_title,
                 "article_number": reg_article,
                 "category": reg_category,

@@ -94,25 +94,26 @@ def _chunk_by_articles(full_text: str) -> Tuple[List[str], List[Dict[str, Any]],
             for idx, sub in enumerate(sub_chunks):
                 if len(sub.strip()) < 10: continue
                 
-                sub_source = f"{source} ({idx+1}/{len(sub_chunks)})" if len(sub_chunks) > 1 else source
                 chunks.append(sub.strip())
                 chunk_metas.append({
-                    "source": sub_source,
+                    "source": "regulations",
+                    "doc_type": category,
                     "scope": "company",
                     "title": title,
                     "chapter": current_chapter,
                     "article": current_article_num,
-                    "category": category
+                    "category": category,
                 })
         else:
             chunks.append(text)
             chunk_metas.append({
-                "source": source,
+                "source": "regulations",
+                "doc_type": category,
                 "scope": "company",
                 "title": title,
                 "chapter": current_chapter,
                 "article": current_article_num,
-                "category": category
+                "category": category,
             })
 
         current_lines = []
