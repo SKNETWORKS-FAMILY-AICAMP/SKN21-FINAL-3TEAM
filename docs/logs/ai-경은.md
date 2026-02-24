@@ -606,3 +606,72 @@ MakerBot METHOD 매뉴얼처럼 `1장 소개`, `## 안전 경고 기호`, `**무
 - 기존 규정 PDF 회귀 테스트 (기존과 동일하게 조항 청킹 되는지 확인)
 - RunPod에서 `train_v1_judgment.py` 실제 학습 실행 (A100 40GB)
 - 5단계 성능 평가 (#13) — 파인튜닝 전/후 비교
+
+---
+
+## 2026-02-24 (화) — 프론트엔드 Confidence/문서 카드 UI 구현
+
+### 1. 판단 카드 Confidence Breakdown & Warnings UI (`JudgmentCard.jsx`)
+
+- **접이식 신뢰도 분석 섹션** 구현 (JudgmentCard 하단)
+  - 헤더: ShieldCheck 아이콘 + "신뢰도 분석" + progress bar + 퍼센트 + ChevronDown 토글
+  - 구성 요소: LLM 판단(×0.6), RAG 검색(×0.25), 규정 커버리지(×0.15) 각각 progress bar
+  - 감점 합산 표시 (conflict + hallucination + article penalty)
+  - warnings 배열 → AlertTriangle 아이콘 + 노란색 경고 리스트
+  - `confidence_breakdown`이 없으면 섹션 자체 숨김
+  - 색상: >=0.7 초록, >=0.4 노랑, <0.4 빨강
+
+### 2. 판단 결과 배지 (`ChatPage.jsx`)
+
+- 판단 카드 위에 결과 배지(pill) 표시: 가능(초록 CheckCircle), 불가(빨강 XCircle), 조건부 가능(노랑 AlertTriangle), 규정 없음(회색 HelpCircle)
+- 단순 정보 조회(isInformational)일 때 배지 숨김
+
+### 3. 마크다운 렌더링 (`MarkdownText.jsx` 신규)
+
+- `react-markdown` 패키지 설치 및 공통 컴포넌트 생성
+- `**bold**`, `*italic*`, 리스트, 코드블록 등 마크다운 렌더링
+- 적용: 일반 질문 답변, 판단 카드 summary, doc_search content, 기본 텍스트 버블 (4곳)
+
+### 4. 문서 Agent 카드 UI 개선 (#68)
+
+**`SourceItem.jsx` (신규)** — 출처 항목 공통 컴포넌트:
+- 제목 + 페이지 + 내용 미리보기
+- 우측에 RAG relevance score progress bar + 퍼센트 표시
+- 색상: >=70% 초록, >=40% 노랑, <40% 빨강
+
+**`doc_search` 카드 개선:**
+- 기존 출처 목록을 SourceItem으로 교체 → 각 출처에 검색 정확도(score) 표시
+- content에 MarkdownText 적용
+
+**`doc_qa` 카드 (신규):**
+- 헤더: "문서 Q&A" + 우측 confidence 점수 (ShieldCheck + bar + %)
+- 본문: 마크다운 답변
+- 인용(citations): 출처명 + relevance 배지 (높음/중간/낮음 색상 구분)
+- 검색 출처(sources): SourceItem으로 score bar 표시
+
+**`doc_summary` 카드 (신규):**
+- 헤더: FileText 아이콘 + "문서 요약"
+- 본문: MarkdownText 렌더링 (기존 default case에서 전용 카드로 승격)
+
+### 5. 문서 상세 보기 검색 정확도 (`DocumentViewPanel.jsx`)
+
+- 하단에 접이식 "검색 정확도" 섹션 추가
+- 헤더: ShieldCheck 아이콘 + progress bar + 퍼센트 + ChevronDown 토글
+- 펼침 시: 정확도 등급 배지(높음/보통/낮음) + "RAG 벡터 검색 유사도 점수" 설명 + 안내 문구
+- `doc.score` 없으면 섹션 숨김
+
+### 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `frontend/src/components/chat/JudgmentCard.jsx` | 수정 — confidence breakdown 접이식 UI |
+| `frontend/src/components/chat/MarkdownText.jsx` | 신규 — react-markdown 공통 컴포넌트 |
+| `frontend/src/components/chat/SourceItem.jsx` | 신규 — 출처 + score bar 공통 컴포넌트 |
+| `frontend/src/components/chat/DocumentViewPanel.jsx` | 수정 — 검색 정확도 접이식 추가 |
+| `frontend/src/pages/ChatPage.jsx` | 수정 — 결과 배지, doc_qa/doc_summary 카드, MarkdownText 적용 |
+| `frontend/package.json` | 수정 — react-markdown 의존성 추가 |
+
+**다음 할 일:**
+- RunPod에서 `train_v1_judgment.py` 실제 학습 실행 (A100 40GB)
+- 5단계 성능 평가 (#13) — 파인튜닝 전/후 비교
+- 다양한 문서 형식(DOCX, 스캔 PDF) 파싱 테스트
