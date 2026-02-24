@@ -210,7 +210,7 @@ def create_report(output_path: str = "tests/업무보고서_생성.docx", data: 
             style_value_cell(t3.rows[r].cells[c])
         set_row_height(t3.rows[r], 1.0)
 
-    doc.add_paragraph()
+    doc.add_page_break()
 
     # ── 표4: 이슈 및 건의 사항 ──
     t4 = doc.add_table(rows=2, cols=1)
@@ -268,9 +268,17 @@ def create_report(output_path: str = "tests/업무보고서_생성.docx", data: 
         _inject(t1.rows[1].cells[0], data.get("overview", ""))
         _inject(t2.rows[1].cells[0], data.get("main_content", ""))
 
-        tasks = data.get("tasks", [])
+        tasks_raw = data.get("tasks", [])
+        if isinstance(tasks_raw, dict):
+            tasks = list(tasks_raw.values())
+        elif isinstance(tasks_raw, list):
+            tasks = tasks_raw
+        else:
+            tasks = []
         for r in range(2, 6):
             task = tasks[r - 2] if r - 2 < len(tasks) else {}
+            if not isinstance(task, dict):
+                task = {}
             _inject(t3.rows[r].cells[1], task.get("item", ""))
             _inject(t3.rows[r].cells[2], task.get("assignee", ""))
             _inject(t3.rows[r].cells[3], task.get("progress", ""))
