@@ -1,13 +1,23 @@
 import useChatStore from '../../store/chatStore';
 
+const KST = 'Asia/Seoul';
+
 function formatTime(isoStr) {
-  const d = new Date(isoStr);
+  // 서버가 UTC naive datetime을 반환하므로 Z를 붙여 UTC로 명시
+  const utcStr = isoStr.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(isoStr) ? isoStr : isoStr + 'Z';
+  const d = new Date(utcStr);
   const now = new Date();
-  const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  // KST 기준 날짜 차이 계산
+  const toKSTMidnight = (dt) => {
+    const kst = new Date(dt.toLocaleString('en-US', { timeZone: KST }));
+    kst.setHours(0, 0, 0, 0);
+    return kst;
+  };
+  const diffDays = Math.round((toKSTMidnight(now) - toKSTMidnight(d)) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: KST });
   if (diffDays === 1) return '어제';
   if (diffDays < 7) return `${diffDays}일 전`;
-  return d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', timeZone: KST });
 }
 
 export default function ChatSessionSidebar({ isOpen }) {
