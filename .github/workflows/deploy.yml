@@ -21,6 +21,18 @@ jobs:
             git pull origin develop
             source .venv/bin/activate
             pip install -r requirements.txt
-            cd backend && PYTHONPATH=$(pwd) alembic upgrade head && cd ..
+            python3 -c "
+            from dotenv import load_dotenv
+            import os, sys
+            sys.path.insert(0, 'backend')
+            load_dotenv('.env')
+            from alembic.config import Config
+            from alembic import command
+            cfg = Config('backend/alembic.ini')
+            db_url = os.getenv('DATABASE_URL', '').replace('postgresql+asyncpg://', 'postgresql://')
+            if db_url: cfg.set_main_option('sqlalchemy.url', db_url)
+            command.upgrade(cfg, 'head')
+            print('Migration complete')
+            "
             sudo systemctl restart workflow-agent
             echo "배포 완료"

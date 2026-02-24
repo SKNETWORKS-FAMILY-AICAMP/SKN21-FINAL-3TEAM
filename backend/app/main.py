@@ -48,6 +48,33 @@ app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.on_event("startup")
+async def startup_db_migrate():
+    """서버 시작 시 DB 마이그레이션 자동 실행"""
+    import asyncio
+    import os as _os
+
+    def _run():
+        try:
+            from alembic.config import Config
+            from alembic import command as alembic_cmd
+
+            cfg = Config("alembic.ini")  # backend 디렉토리 기준
+            db_url = _os.getenv("DATABASE_URL", "")
+            if db_url:
+                cfg.set_main_option(
+                    "sqlalchemy.url",
+                    db_url.replace("postgresql+asyncpg://", "postgresql://"),
+                )
+            alembic_cmd.upgrade(cfg, "head")
+            print("[Startup] DB 마이그레이션 완료")
+        except Exception as _e:
+            print(f"[Startup] DB 마이그레이션 실패 (무시하고 계속): {_e}")
+
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, _run)
+
+
+@app.on_event("startup")
 async def startup_preload():
     """서버 시작 시 모델 pre-loading (첫 요청 지연 방지)"""
     import time
