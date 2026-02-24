@@ -48,35 +48,18 @@ app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.on_event("startup")
-async def startup_db_migrate():
-    """서버 시작 시 DB 마이그레이션 자동 실행"""
-    import asyncio
-    import os as _os
+async def startup_ensure_tables():
+    """서버 시작 시 누락된 테이블 자동 생성 (create_all은 기존 테이블 건드리지 않음)"""
+    try:
+        from app.db.session import engine
+        import app.models  # noqa: F401 — 모든 모델 import (Alembic과 동일)
+        from app.db.base import Base
 
-    # main.py 위치 기준으로 alembic.ini 절대 경로 계산
-    # backend/app/main.py → parents[1] = backend/
-    _backend_dir = Path(__file__).resolve().parent.parent
-    _alembic_ini = str(_backend_dir / "alembic.ini")
-
-    def _run():
-        try:
-            from alembic.config import Config
-            from alembic import command as alembic_cmd
-
-            cfg = Config(_alembic_ini)
-            db_url = _os.getenv("DATABASE_URL", "")
-            if db_url:
-                cfg.set_main_option(
-                    "sqlalchemy.url",
-                    db_url.replace("postgresql+asyncpg://", "postgresql://"),
-                )
-            alembic_cmd.upgrade(cfg, "head")
-            print(f"[Startup] DB 마이그레이션 완료 ({_alembic_ini})")
-        except Exception as _e:
-            print(f"[Startup] DB 마이그레이션 실패 (무시하고 계속): {_e}")
-
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, _run)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print("[Startup] DB 테이블 확인/생성 완료")
+    except Exception as _e:
+        print(f"[Startup] DB 테이블 생성 실패 (무시하고 계속): {_e}")
 
 
 @app.on_event("startup")
