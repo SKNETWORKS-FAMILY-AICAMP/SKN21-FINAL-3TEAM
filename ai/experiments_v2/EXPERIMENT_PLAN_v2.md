@@ -570,7 +570,7 @@ git push origin feat/jiyong
 |--------|:-------:|:-------:|:----:|
 | judgment | 0.911 | 0.938 | +2.7%p |
 | doc_search | 0.853 | 0.857 | +0.4%p |
-| doc_generate | 0.869 | 0.893 | +2.5%p |
+| doc_generate | 0.869 | 0.893 | +2.4%p |
 | doc_summary | 0.917 | 0.917 | 0.0%p |
 | schedule_add | 0.953 | 0.955 | +0.2%p |
 | schedule_view | 0.891 | 0.843 | -4.8%p |
