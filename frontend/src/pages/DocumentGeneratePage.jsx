@@ -81,13 +81,40 @@ export default function DocumentGeneratePage() {
     setPrompt('');
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!selectedTemplate) return;
     setLoading(true);
-    setTimeout(() => {
-      setResult(mockResults[selectedTemplate] || mockResults.report);
+    try {
+      const response = await generateDocument({
+        template_type: selectedTemplate,
+        content: prompt,
+      });
+      const apiData = response.data;
+
+      const fieldsMap = {
+        report: [
+          { label: '보고 개요', value: apiData.overview },
+          { label: '주요 내용', value: apiData.main_content },
+          { label: '향후 계획', value: apiData.next_plan },
+        ],
+        proposal: [
+          { label: '제안 배경', value: apiData.background },
+          { label: '제안 내용', value: apiData.content },
+          { label: '기대 효과', value: apiData.expected_effect },
+        ],
+      };
+
+      setResult({
+        title: apiData.title,
+        templateType: selectedTemplate,
+        fields: fieldsMap[selectedTemplate] || [{ label: '내용', value: apiData.preview }],
+        document_id: apiData.document_id,
+      });
+    } catch (err) {
+      alert('문서 생성 실패: ' + (err.response?.data?.detail || err.message));
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
   const handleMeetingSubmit = async (formData) => {
@@ -122,16 +149,23 @@ export default function DocumentGeneratePage() {
   };
 
   const handleDownload = async (format) => {
-    if (!meetingResult?.document_id) {
-      alert('먼저 회의록을 생성해주세요.');
+    const documentId = meetingResult?.document_id || result?.document_id;
+    if (!documentId) {
+      alert('먼저 문서를 생성해주세요.');
       return;
     }
+    const filenameMap = {
+      meeting_minutes: '회의록',
+      report: '업무보고서',
+      proposal: '제안서',
+    };
+    const filename = filenameMap[selectedTemplate] || '문서';
     try {
-      const response = await downloadDocument(meetingResult.document_id, format);
+      const response = await downloadDocument(documentId, format);
       const url = URL.createObjectURL(response.data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `회의록.${format}`;
+      a.download = `${filename}.${format}`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
