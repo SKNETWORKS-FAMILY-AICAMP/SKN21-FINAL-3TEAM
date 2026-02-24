@@ -199,10 +199,12 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                 stream=True,
                             )
 
-                            # document_agent와 동일: 토큰 즉시 전송, ```json 이후만 숨김
+                            # 토큰 즉시 전송, ```json 이후만 숨김 (버퍼링으로 ``` 누출 방지)
+                            _JSON_PREFIXES = ("`", "``", "```", "```j", "```js", "```jso", "```json")
                             full_response = ""
                             in_json_block = False
                             token_count = 0
+                            pending_tokens = []
 
                             async for chunk in j_stream:
                                 delta = chunk.choices[0].delta
@@ -210,14 +212,24 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                     token = delta.content
                                     full_response += token
 
-                                    # ```json 감지: 이후 토큰은 전송하지 않음
-                                    if not in_json_block:
-                                        if "```json" in full_response:
-                                            in_json_block = True
-                                            print(f"[Chat] judgment ```json 마커 감지 (토큰 {token_count}개 전송됨)")
-                                        else:
+                                    if in_json_block:
+                                        continue
+
+                                    if "```json" in full_response:
+                                        in_json_block = True
+                                        pending_tokens.clear()
+                                        print(f"[Chat] judgment ```json 마커 감지 (토큰 {token_count}개 전송됨)")
+                                    elif full_response.rstrip().endswith(_JSON_PREFIXES):
+                                        # 백틱이 쌓이는 중 — ```json 될 수 있으므로 버퍼에 보관
+                                        pending_tokens.append(token)
+                                    else:
+                                        # 안전 — 버퍼 flush 후 전송
+                                        for pt in pending_tokens:
                                             token_count += 1
-                                            yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
+                                            yield f"data: {json.dumps({'type': 'token', 'value': pt}, ensure_ascii=False)}\n\n"
+                                        pending_tokens.clear()
+                                        token_count += 1
+                                        yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
 
                             print(f"[Chat] judgment 스트리밍 완료. 전송 토큰: {token_count}개, 전체: {len(full_response)}자")
 
