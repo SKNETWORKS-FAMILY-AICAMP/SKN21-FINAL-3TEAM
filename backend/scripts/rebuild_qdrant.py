@@ -2,12 +2,11 @@
 Qdrant 데이터 전체 재정립 스크립트
 
 컬렉션 삭제 후 data/regulations/ 파일 + DB 문서/회의록을 새 메타데이터 구조로 재업로드.
+원본과 동일한 세밀한 조문 기반 청킹 적용.
 
 새 메타데이터 구조:
   - source: "documents" | "regulations" (2개 고정)
   - doc_type: 세부 분류 (확장 자유)
-    - documents → "general" / "meeting_minutes" / ...
-    - regulations → "HR" / "IT" / "governance" 등
 
 사용법:
     cd backend
@@ -37,117 +36,149 @@ FILE_DOC_TYPE = {
     "윤리강령": "governance",
 }
 
+# 파싱용 정규식
+RE_CHAPTER = re.compile(r"^(제\s*\d+\s*장)\s*(.*)")
+RE_ARTICLE = re.compile(r"^(제\s*\d+\s*조(?:의\d+)?)\s*(?:\(([^)]+)\))?\s*(.*)")
+RE_APPENDIX = re.compile(r"^(부\s*칙|별\s*표|부록)")
+RE_TOC_LINE = re.compile(r"^제\s*\d+\s*[조장절]\s")
+
 
 def _classify_doc_type(filename: str) -> str:
-    """파일명에서 doc_type 추출"""
     for key, dtype in FILE_DOC_TYPE.items():
         if key in filename:
             return dtype
     return "general"
 
 
-def _chunk_text(text: str, title: str, doc_type: str, reg_name: str) -> tuple[list[str], list[dict]]:
-    """규정 텍스트를 조문 단위로 청크 분할"""
+def _split_by_bullets(text: str) -> list[str]:
+    """● 불릿 기준으로 분할, 각 서브청크 200~400자 목표"""
+    parts = re.split(r"(?=●)", text)
+    if len(parts) <= 1:
+        parts = re.split(r"(?<=다\.)\s*\n|(?<=한다\.)\s*\n|(?<=된다\.)\s*\n", text)
+
+    result = []
+    current = ""
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+        if len(current) + len(part) > 400 and current:
+            result.append(current)
+            current = part
+        else:
+            current = current + "\n" + part if current else part
+    if current.strip():
+        result.append(current)
+    return result if result else [text]
+
+
+def _chunk_by_articles(full_text: str, doc_type: str, reg_name: str) -> tuple[list[str], list[dict]]:
+    """원본과 동일한 세밀한 조문 기반 청킹 (test_e2e_judgment.py 로직)"""
+    lines = full_text.split("\n")
     chunks = []
-    metas = []
+    chunk_metas = []
 
-    # 조문 패턴으로 분할
-    re_article = re.compile(r"^(제\s*\d+\s*조(?:의\d+)?)\s*(?:\(([^)]+)\))?\s*(.*)", re.MULTILINE)
-    re_chapter = re.compile(r"^(제\s*\d+\s*장)\s*(.*)", re.MULTILINE)
-
-    # 조문별 분할
-    articles = re_article.split(text)
-
-    # 조문이 없으면 전체를 하나의 청크로
-    if len(articles) <= 1:
-        for i in range(0, len(text), 500):
-            chunk = text[i:i+500].strip()
-            if len(chunk) < 20:
-                continue
-            chunks.append(chunk)
-            metas.append({
-                "source": "regulations",
-                "doc_type": doc_type,
-                "title": title,
-                "chapter": "",
-                "article": "",
-                "category": doc_type,
-                "scope": "company",
-            })
-        return chunks, metas
-
-    # 간단한 청크: 줄 기반으로 분할
     current_chapter = ""
     current_article = ""
     current_article_title = ""
     current_lines = []
+    in_toc = False
 
-    def flush():
+    def _flush():
         nonlocal current_lines
         if not current_lines:
             return
-        text_block = "\n".join(current_lines).strip()
-        if len(text_block) < 20:
+
+        text = "\n".join(current_lines).strip()
+        if len(text) < 30:
             current_lines = []
             return
 
-        # 긴 텍스트는 분할
-        if len(text_block) > 500:
-            for i in range(0, len(text_block), 450):
-                sub = text_block[i:i+450].strip()
-                if len(sub) < 20:
+        # 목차 감지
+        non_empty = [l for l in current_lines if l.strip()]
+        if non_empty:
+            toc_ratio = sum(1 for l in non_empty if RE_TOC_LINE.match(l.strip())) / len(non_empty)
+            if toc_ratio > 0.5 and len(non_empty) > 3:
+                current_lines = []
+                return
+
+        title = current_article_title or current_chapter or reg_name
+
+        # 긴 청크는 불릿 기준으로 서브 분할
+        if len(text) > 400:
+            sub_chunks = _split_by_bullets(text)
+            for sub in sub_chunks:
+                if len(sub.strip()) < 20:
                     continue
-                chunks.append(sub)
-                metas.append({
+                chunks.append(sub.strip())
+                chunk_metas.append({
                     "source": "regulations",
                     "doc_type": doc_type,
-                    "title": current_article_title or title,
+                    "scope": "company",
+                    "title": title,
                     "chapter": current_chapter,
                     "article": current_article,
                     "category": doc_type,
-                    "scope": "company",
                 })
         else:
-            chunks.append(text_block)
-            metas.append({
+            chunks.append(text)
+            chunk_metas.append({
                 "source": "regulations",
                 "doc_type": doc_type,
-                "title": current_article_title or title,
+                "scope": "company",
+                "title": title,
                 "chapter": current_chapter,
                 "article": current_article,
                 "category": doc_type,
-                "scope": "company",
             })
+
         current_lines = []
 
-    for line in text.split("\n"):
+    for line in lines:
         stripped = line.strip()
         if not stripped:
             continue
 
+        # 표지 감지
+        if "듀듀 테크놀로지" in stripped or "Duedue Technology" in stripped:
+            in_toc = True
+            continue
+        if in_toc and ("목 차" in stripped or "목차" in stripped):
+            continue
+
+        # 부록/부칙
+        if RE_APPENDIX.match(stripped):
+            _flush()
+            current_article = stripped[:20]
+            current_article_title = stripped[:20]
+            current_lines = [stripped]
+            continue
+
         # 장 헤더
-        m_ch = re_chapter.match(stripped)
+        m_ch = RE_CHAPTER.match(stripped)
         if m_ch:
-            flush()
+            _flush()
             current_chapter = f"{m_ch.group(1)} {m_ch.group(2)}".strip()
+            in_toc = False
             current_lines = [stripped]
             current_article = ""
             current_article_title = ""
             continue
 
-        # 조문 헤더
-        m_art = re_article.match(stripped)
+        # 조 헤더
+        m_art = RE_ARTICLE.match(stripped)
         if m_art:
-            flush()
-            current_article = m_art.group(1).strip()
-            current_article_title = m_art.group(2).strip() if m_art.group(2) else ""
+            _flush()
+            current_article = m_art.group(1)
+            current_article_title = m_art.group(2) or ""
+            in_toc = False
             current_lines = [stripped]
             continue
 
         current_lines.append(stripped)
 
-    flush()
-    return chunks, metas
+    _flush()
+    return chunks, chunk_metas
 
 
 def ingest_regulations(pipeline) -> int:
@@ -160,34 +191,31 @@ def ingest_regulations(pipeline) -> int:
     all_chunks = []
     all_metas = []
 
-    # 1. TXT 파일들
+    # 1. TXT 파일들 (조문 기반 세밀한 청킹)
     for txt_file in sorted(reg_dir.glob("*.txt")):
         text = txt_file.read_text(encoding="utf-8")
-        reg_name = txt_file.stem  # e.g. "급여규정_NC-HR-2026-002"
+        reg_name = txt_file.stem
         doc_type = _classify_doc_type(reg_name)
-        title = reg_name.split("_")[0]  # "급여규정"
 
-        chunks, metas = _chunk_text(text, title, doc_type, reg_name)
+        chunks, metas = _chunk_by_articles(text, doc_type, reg_name)
         all_chunks.extend(chunks)
         all_metas.extend(metas)
         print(f"    {txt_file.name}: {len(chunks)}개 청크 (doc_type={doc_type})")
 
-    # 2. PDF 파일 (dudu_tech_regulations.pdf)
+    # 2. PDF 파일 (동일한 조문 기반 청킹)
     pdf_file = reg_dir / "dudu_tech_regulations.pdf"
     if pdf_file.exists():
         try:
-            from ai.document_parser.regulation_parser import parse_regulation_pdf
-            chunks, chunk_metas, _ = parse_regulation_pdf(str(pdf_file))
+            import fitz
+            doc = fitz.open(str(pdf_file))
+            full_text = ""
+            for page in doc:
+                full_text += page.get_text()
+            doc.close()
 
-            # chunk_metas의 source를 "regulations"로 통일 (regulation_parser가 이미 수정됨)
-            for meta in chunk_metas:
-                meta["source"] = "regulations"
-                meta["doc_type"] = "IT"
-                if "category" not in meta:
-                    meta["category"] = "IT"
-
+            chunks, metas = _chunk_by_articles(full_text, "IT", "듀듀테크 사내규정")
             all_chunks.extend(chunks)
-            all_metas.extend(chunk_metas)
+            all_metas.extend(metas)
             print(f"    {pdf_file.name}: {len(chunks)}개 청크 (doc_type=IT)")
         except Exception as e:
             print(f"    {pdf_file.name}: 파싱 실패 - {e}")
@@ -290,8 +318,8 @@ async def main():
     # 3. 데이터 인덱싱
     print("\n[3/4] 데이터 인덱싱...")
 
-    # 3-1. 규정 (파일 기반)
-    print("  [규정] data/regulations/ 파일 로드...")
+    # 3-1. 규정 (파일 기반, 세밀한 조문 청킹)
+    print("  [규정] data/regulations/ 파일 로드 (조문 기반 세밀한 청킹)...")
     reg_count = ingest_regulations(pipeline)
     print(f"  → 규정 총 {reg_count}개 청크 인덱싱 완료")
 
@@ -319,7 +347,6 @@ async def main():
         cnt = r.json()["result"]["count"]
         print(f"  source={src}: {cnt}건")
 
-    # doc_type별 카운트
     for dtype in ["HR", "IT", "governance", "general", "meeting_minutes"]:
         r = requests.post(
             f"{url}/collections/documents/points/count",

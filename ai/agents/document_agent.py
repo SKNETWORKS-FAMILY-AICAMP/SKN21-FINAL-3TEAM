@@ -58,9 +58,10 @@ async def document_agent(state: AgentState) -> AgentState:
 
         elif intent == "doc_generate":
             # template_type 결정: ① state에서 프론트가 보낸 값 ② LLM 판단 ③ 키워드 fallback
+            document_content = state.get("document_content") or state.get("extracted_text")
             template_type = state.get("template_type") or _llm_detect_template_type(user_input)
             print(f"[DocumentAgent] → _handle_doc_generate 호출 | template={template_type}")
-            response_data = _handle_doc_generate(user_input, template_type)
+            response_data = _handle_doc_generate(user_input, template_type, document_content)
 
         elif intent == "doc_summary":
             print("[DocumentAgent] → _handle_doc_summary 호출")
@@ -68,6 +69,7 @@ async def document_agent(state: AgentState) -> AgentState:
             response_data = _handle_doc_summary(
                 user_input,
                 document_content=document_content,
+                user_id=user_id,
                 stream_mode=stream_mode,
             )
 
@@ -324,10 +326,19 @@ def _handle_doc_search(query: str, context: List[str], user_id: int = None, stre
         "context": context,
     }
 
-def _handle_doc_generate(user_input: str, template_type: str) -> Dict[str, Any]:
+def _handle_doc_generate(user_input: str, template_type: str, document_content: str = None) -> Dict[str, Any]:
     """문서 생성 처리 (보고서/회의록/JD/제안서)"""
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_generate | template_type={template_type}")
+
+    if document_content:
+        user_input = f"{user_input}\n\n[첨부 문서 내용]\n{document_content}"
+
+    if len(user_input.strip()) < 20:
+        return {
+            "type": "clarify",
+            "message": "문서 생성을 위한 내용이 부족합니다.\n화면의 **[📎 첨부 버튼]**을 눌러 기준 문서를 업로드하시거나, 작성할 내용을 좀 더 자세히 입력해주세요."
+        }
 
     if template_type == "meeting_minutes":
         return _generate_meeting_minutes(user_input)
@@ -744,18 +755,31 @@ def _generate_proposal(user_input: str) -> Dict[str, Any]:
     }
 
 
-def _handle_doc_summary(user_input: str, document_content: str = None, stream_mode: bool = False) -> Dict[str, Any]:
+def _handle_doc_summary(user_input: str, document_content: str = None, user_id: int = None, stream_mode: bool = False) -> Dict[str, Any]:
     """문서 요약 처리"""
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_summary | content_len={len(document_content) if document_content else 0}, stream_mode={stream_mode}")
+    # DEBUG: document_content 앞부분 미리보기
+    if document_content:
+        print(f"[DocumentAgent] document_content 미리보기 (앞 300자):\n{document_content[:300]}")
+    else:
+        print(f"[DocumentAgent] document_content 없음 → Qdrant 문서 목록 조회")
 
-    # 문서 내용이 없으면 안내 메시지
+    # 문서 내용이 없으면 Qdrant에서 문서 목록 조회 후 doc_pick 반환
     if not document_content:
-        print("[DocumentAgent] document_content 없음 → 안내 메시지")
+        print("[DocumentAgent] document_content 없음 → Qdrant 문서 목록 조회")
+        try:
+            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+            pipeline = get_qdrant_pipeline()
+            doc_list = pipeline.list_documents(source="documents", user_id=user_id)
+            print(f"[DocumentAgent] Qdrant 문서 목록 {len(doc_list)}개 조회됨")
+        except Exception as e:
+            print(f"[DocumentAgent] Qdrant 문서 목록 조회 실패: {e}")
+            doc_list = []
         return {
-            "type": "doc_summary",
-            "message": "요약할 문서를 선택해주세요. 문서관리 페이지에서 문서를 선택하거나, 챗봇에 파일을 업로드해주세요.",
-            "answer": "요약할 문서를 선택해주세요. 문서관리 페이지에서 문서를 선택하거나, 챗봇에 파일을 업로드해주세요.",
+            "type": "doc_pick",
+            "message": "요약할 문서를 선택해주세요:",
+            "documents": doc_list,
         }
 
     from ai.llm.prompts import DOC_SUMMARY_SYSTEM_PROMPT

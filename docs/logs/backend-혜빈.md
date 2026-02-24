@@ -416,3 +416,56 @@
 ### 다음 할 일
 - 판단 Agent 스트리밍 디버깅 (백엔드 터미널 로그로 토큰 전송 여부 확인)
 - AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
+
+---
+
+## 2026-02-24 (세션 10)
+
+### 한 일
+
+**KST 시간 표시 수정 push**
+- 이전 세션에서 커밋한 `ChatSessionSidebar.jsx` KST 시간 표시 수정을 `develop` + `feat/backend-혜빈` 양쪽에 push
+
+**채팅 초기화 버그 수정**
+- 증상: 채팅 초기화 버튼 누르면 현재 채팅이 초기화되지 않고 새 채팅이 생성됨
+- 원인: `chatStore.clearMessages()`가 `createSession()`을 호출
+- 수정:
+  - `backend/app/api/v1/chat.py`: `DELETE /sessions/{id}/messages` 엔드포인트 추가
+  - `frontend/src/api/chat.js`: `clearSessionMessagesAPI()` 함수 추가
+  - `frontend/src/store/chatStore.js`: `clearMessages`가 현재 세션 메시지만 초기화하도록 변경
+
+**사용자 팀(부서) 기능 추가**
+- 6개 부서: 개발, QA기획, UI/UX, 영업, 마케팅, CS
+- `backend/app/models/user.py`: `team` 컬럼 + `TEAMS` 상수 추가
+- `backend/app/schemas/auth.py`: `RegisterRequest`, `RegisterResponse`에 `team` 필드 추가
+- `backend/app/api/v1/auth.py`: 회원가입 시 `team` 저장
+- `backend/app/main.py`: startup에서 `ALTER TABLE ADD COLUMN IF NOT EXISTS` + 기존 사용자 랜덤 배정
+- `backend/app/api/v1/admin.py`: `UserCreate` 스키마에 team 추가, 사용자 목록/생성에 team 포함
+- `frontend/src/components/auth/RegisterForm.jsx`: 팀 선택 드롭다운 추가 (필수)
+- `frontend/src/pages/LoginPage.jsx`: `handleRegister`에 team 전달
+- `frontend/src/hooks/useAuth.js`: `register()`에 team 파라미터 추가
+- `frontend/src/api/auth.js`: team 파라미터 추가
+- `frontend/src/components/admin/UserManagement.jsx`: 6개 부서 옵션으로 변경
+
+**채팅 로그 보존 (관리자용)**
+- 증상: 사용자가 채팅 삭제하면 관리자 페이지 > 최근 질의 로그에서도 삭제됨
+- 원인: `delete_session`, `clear_session_messages`에서 `ChatLog`도 같이 삭제
+- 수정: `chat.py`에서 `ChatLog` 삭제 코드 제거 — `ChatSession`만 삭제, `ChatLog`는 관리자 로그용으로 보존
+- 테스트 완료: 사용자 채팅 삭제 후에도 관리자 페이지에서 로그 확인 가능
+
+**관리자 권한/부서 저장 위치 확인**
+- PostgreSQL `users` 테이블의 `is_admin`, `is_active`, `team` 컬럼에 저장
+
+**Google Tasks Pull/Push 500 에러 디버깅 (진행 중)**
+- 이전 세션(9)에서 `asyncio.to_thread` + `_google_call` 패턴 적용했으나 500 에러
+- Calendar은 정상 동작 (동기 호출 패턴) — Tasks만 500
+- 시도 1: `tasks_service.py`를 Calendar과 동일한 동기 `.execute()` 패턴으로 복원 → 여전히 500
+- 시도 2: `google_base_service.py`의 `_refresh_token`에서 `asyncio.to_thread` 제거 → 여전히 500
+- 시도 3: `tasks.py` 엔드포인트에 에러 디테일 try-except 추가 (500 원인 확인용) → response body 비어있음
+- **여전히 500 에러 — 원인 미파악**
+- 다음 단계: 브라우저 Console에서 `fetch()`로 직접 호출하여 에러 상세 확인 예정
+
+### 다음 할 일
+- Google Tasks 500 에러 원인 확인 (Console fetch 테스트 결과 확인)
+- 판단 Agent 스트리밍 디버깅
+- AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)

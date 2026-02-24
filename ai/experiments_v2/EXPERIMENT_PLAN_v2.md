@@ -1,8 +1,8 @@
 # Intent 분류 모델 실험 재설계 (v2)
 
-> **상태**: Stage 6 완료 (Label Smoothing + 시나리오 테스트 + Threshold 조정)
+> **상태**: Stage 7 완료 (라벨 리뷰 + 시나리오 100개 확장)
 > **작성일**: 2026-02-22
-> **최종 수정**: 2026-02-23 (Stage 6 완료)
+> **최종 수정**: 2026-02-24 (Stage 7 완료)
 > **담당**: 신지용 (PM)
 
 ---
@@ -28,6 +28,7 @@
 | 2026-02-23 | **Stage 5.5 모델 저장 완료**: ai/models/intent_classifier/ |
 | 2026-02-23 | **Stage 6 추가**: Label Smoothing 0.1 + 시나리오 테스트 30문장 + Threshold 조정 |
 | 2026-02-23 | **Stage 6 완료**: Adv F1 87.58%, 과신뢰 42→13건, 시나리오 27/30 (라벨 수정 후) |
+| 2026-02-24 | **Stage 7**: doc 경계 라벨 리뷰 (A/B/C 분석), 보강 25개 재학습 (채택 안함), 시나리오 30→100개 확장 |
 
 ---
 
@@ -102,7 +103,7 @@ data/training/intent_v2/
 ├── {intent}.jsonl × 8          # 기본 데이터 (intent별 300개)
 ├── boundary_pairs.jsonl        # 경계 쌍 데이터 (~300개)
 ├── adversarial_v2.json         # 새 적대적 테스트 (450개, GPT+Claude)
-├── scenario_test.json          # 라우팅 시나리오 테스트 (30개)
+├── scenario_test.json          # 라우팅 시나리오 테스트 (100개, Gemini 웹 생성 + 수동 검수)
 ├── splits/
 │   ├── train.jsonl             # 80%
 │   ├── val.jsonl               # 10%
@@ -120,7 +121,8 @@ data/training/intent_v2/
 | Split | 80/10/10 | Train 2,327 / Val 285 / Test 286 | ✅ 완료 |
 | 적대적 테스트 | 240개 (30/intent) | **450개** (GPT 232 + Claude 240, 중복 제거) | ✅ 완료 |
 | 보강 데이터 (Stage 5) | ~100개 | **98개** | ✅ 완료 |
-| 시나리오 테스트 | 30개 | **30개** | ✅ 완료 |
+| 시나리오 테스트 | 30개 | **100개** (Gemini 웹(Pro 3.1) 생성 + 수동 검수) | ✅ 완료 |
+| 보강 데이터 (Stage 7) | ~25개 | **25개** (doc 경계 타겟, 채택 안함) | ✅ 완료 |
 
 **기본 데이터 intent별 분포 (중복 제거 후):**
 
@@ -229,7 +231,7 @@ data/training/intent_v2/
 | Adversarial v2 (450개) | Stage 4 | 강건성 평가 |
 | Legacy adversarial (212개) | Stage 4 | 이전 실험과 비교 |
 | Legacy blind (70개) | Stage 4 | 이전 실험과 비교 |
-| Scenario test (30개) | Stage 4 | 실제 라우팅 시뮬레이션 |
+| Scenario test (100개) | Stage 7 | 실제 라우팅 시뮬레이션 (Gemini 웹(Pro 3.1) + 수동 검수) |
 
 ### 통계 검증
 - 3-seed 평균 ± 표준편차
@@ -237,7 +239,7 @@ data/training/intent_v2/
 - McNemar's Test (모델 간 쌍별 비교)
 
 ### 정성 평가
-- "하루 시나리오" 테스트: 30개 문장으로 실제 업무 흐름 시뮬레이션
+- "하루 시나리오" 테스트: 100개 문장으로 실제 업무 흐름 시뮬레이션 (Gemini 웹(Pro 3.1) 생성 + 수동 검수)
 - 오분류 유형 분류: 경계 혼동 / 초단문 / 오타 / 과신뢰 / 맥락의존
 
 ### 속도/리소스
@@ -414,7 +416,7 @@ git push origin feat/jiyong
 
 | 순위 | 모델 | Test F1 | **Adv F1** | 속도 | 파라미터 | Bootstrap 95% CI |
 |:---:|------|:------:|:--------:|:----:|:------:|:----------------:|
-| 1 | **koelectra-v3** | 0.9726 | **0.8604** | **8.3ms** | 112.9M | [0.952, 0.990] |
+| 1 | **koelectra-v3** | 0.9726 | **0.8604** | **7.9ms** | 112.9M | [0.952, 0.990] |
 | 2 | bert-base | 0.9756 | 0.8517 | 10.4ms | 110.6M | [0.956, 0.992] |
 | 3 | distilkobert | 0.9645 | 0.7926 | **2.8ms** | **28.4M** | [0.940, 0.984] |
 
@@ -616,6 +618,51 @@ git push origin feat/jiyong
 **결과**: `results/stage6_results.json`, `results/scenario_test_stage5.json`, `results/scenario_test_stage6.json`
 **차트**: `stage6_confusion_adv.png`, `stage6_comparison.png`
 
+### Stage 7: doc 경계 라벨 리뷰 + 시나리오 확장 ✅ 완료
+
+**동기**: doc_qa Adv F1 76.6%가 최약점이지만, 실제로 모델 문제인지 라벨 문제인지 구분 필요. 시나리오 테스트 30개는 통계적으로 약함.
+
+| 순서 | 작업 | 상태 |
+|:---:|------|:----:|
+| 7.1 | doc 관련 오분류 27건 라벨 리뷰 (A/B/C 분류) | ✅ |
+| 7.2 | 모델 오류(A) 타겟 보강 25개 + 재학습 | ✅ (채택 안함) |
+| 7.3 | 시나리오 테스트 30 → 100개 확장 (Gemini 웹(Pro 3.1) + 수동 검수) | ✅ |
+
+**7.1 라벨 리뷰 결과:**
+
+| 분류 | 의미 | 건수 | 비율 |
+|:---:|------|:---:|:---:|
+| A | 모델 오류 (라벨 정확, 모델이 틀림) | 10 | 37% |
+| B | 라벨 애매 (인간도 판단 곤란) | 9 | 33% |
+| C | 라벨 오류 (모델이 맞음) | 8 | 30% |
+
+→ 오류의 63%가 모델 문제가 아님. Adjusted F1 ~85%.
+
+**7.2 보강 재학습 (채택하지 않음):**
+
+| 메트릭 | Stage 6 | Stage 7 | 변화 |
+|--------|:-------:|:-------:|:----:|
+| Test F1 | 0.9788 | 0.9756 | -0.32%p |
+| Adv F1 | 0.8758 | 0.8712 | -0.46%p |
+
+→ 25개 소량 보강은 노이즈로 작용. **최종 모델은 Stage 6 유지.**
+
+**7.3 시나리오 확장 (100문장):**
+
+| 유형 | 개수 | 정답 | 정확도 |
+|------|:----:|:----:|:------:|
+| normal | 12 | 12 | 100.0% |
+| boundary | 33 | 26 | 78.8% |
+| short | 30 | 28 | 93.3% |
+| informal | 25 | 19 | 76.0% |
+| **전체** | **100** | **85** | **85.0%** |
+
+오분류 15건: doc 경계 혼동 6, informal/슬랭 4, schedule add↔view 2, 짧은 입력 2, 기타 1
+
+**실행**: `python ai/experiments_v2/run_stage5_retrain.py --label-smoothing 0.1 --save-model` (Stage 7 보강 포함)
+**시나리오**: `python ai/experiments_v2/run_scenario_test.py --stage6`
+**결과**: `results/scenario_test_stage6.json`
+
 ### 최종 모델 성능 요약 (Stage 6 — KoELECTRA v2_stage6)
 
 | 항목 | 값 |
@@ -642,13 +689,13 @@ git push origin feat/jiyong
 | general | 0.836 | 0.836 | **0.836** |
 | doc_qa | 0.854 | 0.695 | **0.766** |
 
-| 시나리오 테스트 | 정확도 |
-|----------------|:------:|
-| normal (7) | 7/7 (100%) |
-| boundary (8) | 7/8 (87.5%) |
-| informal (7) | 6/7 (85.7%) |
-| short (8) | 6/8 (75.0%) |
-| **전체 (30)** | **27/30 (90.0%)** |
+| 시나리오 테스트 (100문장) | 정확도 |
+|--------------------------|:------:|
+| normal (12) | 12/12 (100%) |
+| boundary (33) | 26/33 (78.8%) |
+| short (30) | 28/30 (93.3%) |
+| informal (25) | 19/25 (76.0%) |
+| **전체 (100)** | **85/100 (85.0%)** |
 
 | 서비스 설정 | 값 | 효과 |
 |------------|:---:|------|
@@ -668,11 +715,11 @@ git push origin feat/jiyong
 | 2 | 전체 아키텍처 | LangGraph 멀티에이전트, Intent Classifier 위치 강조 | 아키텍처 다이어그램 | 1분 |
 | 3 | 핵심 기능 시연 | 규정판단(E2E), 일정관리(Google), 문서관리, 부가기능 | 스크린샷/데모 | 2분 |
 | 4 | 팀 진행 현황 | 5명 역할별 완료 사항 + 구현율 + 블로커 | 진행률 테이블 | 1분 |
-| 5 | Intent: 문제 + 데이터 | 8 intent, sLLM 선택 근거, ~2,900개 멀티LLM 생성 | `class_distribution.png` | 1분 |
-| 6 | Intent: 모델 비교 + 선택 | 3모델 Baseline, KoELECTRA 선택 (F1+속도+강건성) | `baseline_comparison.png` + `f1_vs_speed.png` | 1.5분 |
-| 7 | Intent: 개선 + 최종 결과 | HP탐색→오분류→보강→Label Smoothing, Adv F1 87.58% | `stage6_comparison.png` | 1.5분 |
-| 8 | Intent: 실전 검증 | 30문장 4유형 시나리오, clarify 라우팅 | `scenario_test_accuracy.png` | 1분 |
-| 9 | 최종 모델 + 향후 계획 | 성능 요약 + 4~6단계 로드맵 | 요약 테이블 + 타임라인 | 1분 |
+| 5 | Intent: 문제 정의 | 8 intent, sLLM 선택 근거, ~2,900개 멀티LLM 생성 | `class_distribution.png` | 1분 |
+| 6 | Intent: 모델 비교 + 선택 | 3모델 Adversarial F1 비교, KoELECTRA 선택 (RTD 아키텍처 우위) | `baseline_comparison.png` + `f1_vs_speed.png` | 1.5분 |
+| 7 | Intent: 개선 과정 — 3가지 교훈 | 데이터>HP, 과신뢰 해소(-69%), 라벨 리뷰 | `stage6_comparison.png` | 1.5분 |
+| 8 | Intent: 실전 검증 | 100문장 4유형 시나리오, normal 100%, clarify 라우팅 | `scenario_test_accuracy.png` | 1분 |
+| 9 | 정리 + 향후 계획 | 기억할 숫자 3개 + 우선순위별 로드맵 | 요약 테이블 | 1분 |
 | 10 | Q&A | 예상 질문 5개 준비 | — | — |
 
 ### 발표에 사용하는 차트 (6장)

@@ -164,7 +164,7 @@ class GoogleTasksService(GoogleBaseService):
                 due_date = None
                 if gt.get("due"):
                     try:
-                        due_date = datetime.fromisoformat(gt["due"].replace("Z", "+00:00"))
+                        due_date = datetime.fromisoformat(gt["due"].replace("Z", "+00:00")).replace(tzinfo=None)
                     except (ValueError, AttributeError):
                         pass
 
