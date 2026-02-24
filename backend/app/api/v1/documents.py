@@ -18,6 +18,17 @@ from app.services import document_service, parsing_service, template_service
 GENERATED_DOCS_DIR = Path(__file__).resolve().parents[4] / "backend" / "generated_docs"
 
 
+def _to_str(v) -> str:
+    """LLM이 string 대신 list/dict를 반환하는 경우 문자열로 변환"""
+    if v is None:
+        return ""
+    if isinstance(v, str):
+        return v
+    if isinstance(v, list):
+        return "\n".join(str(item) for item in v)
+    return str(v)
+
+
 class GenerateDocumentRequest(BaseModel):
     template_type: str
     title: str = ""
@@ -124,11 +135,11 @@ async def generate_document(
                 "template_type": "report",
                 "preview": result["preview"],
                 "download_url": f"/api/v1/documents/{result['document_id']}/download",
-                "title": result.get("data", {}).get("title", request.title),
-                "overview": result.get("data", {}).get("overview", ""),
-                "main_content": result.get("data", {}).get("main_content", ""),
+                "title": _to_str(result.get("data", {}).get("title", request.title)),
+                "overview": _to_str(result.get("data", {}).get("overview", "")),
+                "main_content": _to_str(result.get("data", {}).get("main_content", "")),
                 "tasks": result.get("data", {}).get("tasks", []),
-                "next_plan": result.get("data", {}).get("next_plan", ""),
+                "next_plan": _to_str(result.get("data", {}).get("next_plan", "")),
             }
 
         if request.template_type == "proposal":
@@ -138,10 +149,10 @@ async def generate_document(
                 "template_type": "proposal",
                 "preview": result["preview"],
                 "download_url": f"/api/v1/documents/{result['document_id']}/download",
-                "title": result.get("data", {}).get("title", request.title),
-                "background": result.get("data", {}).get("background", ""),
-                "content": result.get("data", {}).get("content", ""),
-                "expected_effect": result.get("data", {}).get("expected_effect", ""),
+                "title": _to_str(result.get("data", {}).get("title", request.title)),
+                "background": _to_str(result.get("data", {}).get("background", "")),
+                "content": _to_str(result.get("data", {}).get("content", "")),
+                "expected_effect": _to_str(result.get("data", {}).get("expected_effect", "")),
                 "schedule": result.get("data", {}).get("schedule", []),
                 "budget": result.get("data", {}).get("budget", []),
             }

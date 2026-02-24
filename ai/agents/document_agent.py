@@ -57,8 +57,8 @@ async def document_agent(state: AgentState) -> AgentState:
             response_data = _handle_doc_search(user_input, context, user_id, stream_mode=stream_mode)
 
         elif intent == "doc_generate":
-            # template_type 결정: ① state에서 프론트가 보낸 값 ② 키워드 감지
-            template_type = state.get("template_type") or _detect_template_type(user_input)
+            # template_type 결정: ① state에서 프론트가 보낸 값 ② LLM 판단 ③ 키워드 fallback
+            template_type = state.get("template_type") or _llm_detect_template_type(user_input)
             print(f"[DocumentAgent] → _handle_doc_generate 호출 | template={template_type}")
             response_data = _handle_doc_generate(user_input, template_type)
 
@@ -104,7 +104,7 @@ async def document_agent(state: AgentState) -> AgentState:
 # ── 헬퍼 ──
 
 def _detect_template_type(user_input: str) -> str:
-    """사용자 입력에서 템플릿 타입을 키워드로 감지
+    """사용자 입력에서 템플릿 타입을 키워드로 감지 (LLM 판단 실패 시 fallback)
 
     Returns:
         "meeting_minutes" | "jd" | "proposal" | "report" (기본값)
@@ -118,6 +118,46 @@ def _detect_template_type(user_input: str) -> str:
     if re.search(r"제안서|proposal", input_lower):
         return "proposal"
     return "report"
+
+
+def _llm_detect_template_type(user_input: str) -> str:
+    """LLM을 사용해 사용자가 어떤 문서를 만들려는지 판단
+
+    단순 키워드 매칭으로는 오탐이 발생하는 경우(예: 제안서 내용에 '회의록' 언급)를
+    LLM이 문맥 전체를 보고 올바른 문서 종류를 선택하도록 한다.
+
+    Returns:
+        "meeting_minutes" | "report" | "proposal" | "jd"
+    """
+    sys_prompt = (
+        "당신은 문서 생성 요청을 분류하는 전문가입니다.\n"
+        "사용자의 요청을 읽고, 사용자가 실제로 만들고자 하는 문서 종류를 판단하세요.\n\n"
+        "선택 가능한 문서 종류:\n"
+        "- meeting_minutes : 회의록, 미팅 기록, 회의 내용 정리\n"
+        "- report          : 업무보고서, 업무 보고, 진행 상황 보고\n"
+        "- proposal        : 제안서, 기획서, 사업 제안, 도입 제안\n"
+        "- jd              : 채용 공고, JD, 직무 기술서, Job Description\n\n"
+        "반드시 아래 JSON 형식으로만 답변하세요:\n"
+        "{\"template_type\": \"<선택한 종류>\"}"
+    )
+    user_prompt = (
+        f"사용자 요청:\n{user_input}\n\n"
+        "위 요청에서 사용자가 만들려는 문서 종류를 판단해 JSON으로 반환하세요."
+    )
+
+    print(f"[DocumentAgent] _llm_detect_template_type LLM 호출...")
+    result_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
+    try:
+        result = json.loads(result_str)
+        template_type = result.get("template_type", "")
+        if template_type in ("meeting_minutes", "report", "proposal", "jd"):
+            print(f"[DocumentAgent] LLM 판단 template_type={template_type}")
+            return template_type
+        print(f"[DocumentAgent] LLM 반환값 비정상({template_type}) → regex fallback")
+    except Exception as e:
+        print(f"[DocumentAgent] LLM 템플릿 판단 실패({e}) → regex fallback")
+
+    return _detect_template_type(user_input)
 
 
 def _detect_search_intent(query: str) -> str:

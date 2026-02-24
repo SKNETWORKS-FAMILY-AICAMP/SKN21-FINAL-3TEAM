@@ -347,20 +347,36 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
         _inject(t3.rows[1].cells[0], data.get("analysis", ""))
         _inject(t4.rows[1].cells[0], data.get("content", ""))
 
-        # 추진 일정
-        schedule = data.get("schedule", [])
+        # 추진 일정 (LLM이 list 또는 dict로 반환할 수 있으므로 정규화)
+        schedule_raw = data.get("schedule", [])
+        if isinstance(schedule_raw, dict):
+            schedule = list(schedule_raw.values())
+        elif isinstance(schedule_raw, list):
+            schedule = schedule_raw
+        else:
+            schedule = []
         for r in range(2, 6):
             item = schedule[r - 2] if r - 2 < len(schedule) else {}
+            if not isinstance(item, dict):
+                item = {}
             _inject(t5.rows[r].cells[1], item.get("item", ""))
             _inject(t5.rows[r].cells[2], item.get("phase1", ""))
             _inject(t5.rows[r].cells[3], item.get("phase2", ""))
             _inject(t5.rows[r].cells[4], item.get("phase3", ""))
             _inject(t5.rows[r].cells[5], item.get("phase4", ""))
 
-        # 소요 예산
-        budget = data.get("budget", [])
+        # 소요 예산 (동일하게 정규화)
+        budget_raw = data.get("budget", [])
+        if isinstance(budget_raw, dict):
+            budget = list(budget_raw.values())
+        elif isinstance(budget_raw, list):
+            budget = budget_raw
+        else:
+            budget = []
         for r in range(2, 5):
             item = budget[r - 2] if r - 2 < len(budget) else {}
+            if not isinstance(item, dict):
+                item = {}
             _inject(t6.rows[r].cells[1], item.get("item", ""))
             _inject(t6.rows[r].cells[2], item.get("quantity", ""))
             _inject(t6.rows[r].cells[3], item.get("unit_price", ""))
