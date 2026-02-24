@@ -32,6 +32,7 @@ export default function DocumentsPage() {
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [documentDetail, setDocumentDetail] = useState(null);
+  const [datePickerKey, setDatePickerKey] = useState(0);
 
   // 문서 목록 로드
   useEffect(() => {
@@ -98,6 +99,7 @@ export default function DocumentsPage() {
     setSearchType(type);
     setSearchInput('');
     setSearchQuery('');
+    if (type === '날짜') setDatePickerKey((k) => k + 1);
     loadDocuments();
   };
 
@@ -203,7 +205,7 @@ export default function DocumentsPage() {
             <div className="w-[280px]">
               {searchType === '날짜' ? (
                 <DatePicker
-                  key="date-picker"
+                  key={datePickerKey}
                   value={searchInput}
                   onChange={handleDateSelect}
                   placeholder="날짜 선택..."

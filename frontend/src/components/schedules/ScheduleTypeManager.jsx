@@ -3,31 +3,31 @@ import useScheduleTypeStore, { DEFAULT_TYPES } from '../../store/scheduleTypeSto
 
 // 디자인 시스템과 동일한 톤다운 계열 (채도 낮고 차분한 색상)
 const PRESET_COLORS = [
-  '#3D5164', // 딥 슬레이트
-  '#6E87A0', // 뮤트 블루 (primary)
-  '#5B8FA0', // 뮤트 틸
-  '#5B9A6F', // 뮤트 세이지 (success)
-  '#8A9A5B', // 뮤트 올리브
-  '#C49A3C', // 뮤트 앰버 (warning)
-  '#C07850', // 뮤트 테라코타
-  '#C06060', // 뮤트 레드 (error)
-  '#A05878', // 뮤트 로즈
-  '#7870A0', // 뮤트 라벤더
-  '#8B7D6E', // 다크 토프 (accent)
-  '#A89580', // 웜 베이지 (accent)
+  '#7C98AB', // 뮤트 블루 (AIDock: 문서생성)
+  '#89A681', // 세이지 그린 (AIDock: AI챗봇)
+  '#A6C1BE', // 뮤트 틸 (AIDock: 마이페이지)
+  '#C08282', // 뮤트 레드 (AIDock: 문서관리)
+  '#C0A381', // 뮤트 오렌지 (AIDock: 일정관리)
+  '#C4A86C', // 뮤트 앰버
+  '#B08898', // 뮤트 로즈
+  '#A08BAC', // 뮤트 라벤더
+  '#A4A882', // 뮤트 올리브
+  '#7EA8A4', // 스틸 틸
+  '#A0947C', // 웜 토프
+  '#9BAA8A', // 모스 그린
 ];
 
 export default function ScheduleTypeManager({ onClose }) {
   const { customTypes, addType, removeType } = useScheduleTypeStore();
   const [newLabel, setNewLabel] = useState('');
-  const [newColor, setNewColor] = useState('#6E87A0');
+  const [newColor, setNewColor] = useState('#7C98AB');
 
   const handleAdd = () => {
     const trimmed = newLabel.trim();
     if (!trimmed) return;
     addType(trimmed, newColor);
     setNewLabel('');
-    setNewColor('#6E87A0');
+    setNewColor('#7C98AB');
   };
 
   return (
