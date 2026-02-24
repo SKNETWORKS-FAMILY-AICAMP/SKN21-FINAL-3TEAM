@@ -64,11 +64,10 @@ function AgentBar({ activeIntent, isStreaming }) {
         return (
           <div
             key={agent.key}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300 select-none ${
-              isActive
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300 select-none ${isActive
                 ? 'bg-primary-700 text-white shadow-md scale-105'
                 : 'bg-surface-hover text-neutral-sub'
-            }`}
+              }`}
           >
             <Icon size={14} className={isActive && isStreaming ? 'animate-pulse' : ''} />
             {agent.label}
@@ -167,7 +166,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       finalText = finalText ? `${finalText}\n${attachText}` : attachText;
     }
 
-    onSend?.(finalText);
+    onSend?.(finalText, files);
     setInput('');
     setFiles([]);
     setFileError(null);
@@ -271,7 +270,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
           />
         </div>
         <button onClick={handleSend} className="w-11 h-11 rounded-md bg-primary-700 flex-shrink-0 flex items-center justify-center transition hover:bg-primary-900">
-          <svg width="18" height="18" viewBox="0 0 18 18"><path d="M2 9L16 2L12 16L9 10L2 9Z" fill="white"/></svg>
+          <svg width="18" height="18" viewBox="0 0 18 18"><path d="M2 9L16 2L12 16L9 10L2 9Z" fill="white" /></svg>
         </button>
       </div>
     </div>

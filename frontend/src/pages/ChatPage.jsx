@@ -18,7 +18,7 @@ import SourceItem from '../components/chat/SourceItem';
 import useChat from '../hooks/useChat';
 import useChatStore from '../store/chatStore';
 import { listRegulations } from '../api/regulations';
-import { listDocuments, downloadDocument } from '../api/documents';
+import { listDocuments, downloadDocument, uploadDocument } from '../api/documents';
 
 function exportChat(messages) {
   if (messages.length === 0) return;
@@ -49,10 +49,10 @@ function exportChat(messages) {
 
 const RESULT_MAP = { yes: '가능', no: '불가', conditional: '조건부 가능', no_regulation: '규정 없음' };
 const RESULT_BADGE = {
-  yes:            { icon: CheckCircle,    bg: 'bg-green-50',  border: 'border-green-200', text: 'text-green-700',  iconColor: 'text-green-500' },
-  no:             { icon: XCircle,        bg: 'bg-red-50',    border: 'border-red-200',   text: 'text-red-700',    iconColor: 'text-red-500' },
-  conditional:    { icon: AlertTriangle,  bg: 'bg-amber-50',  border: 'border-amber-200', text: 'text-amber-700',  iconColor: 'text-amber-500' },
-  no_regulation:  { icon: HelpCircle,     bg: 'bg-gray-50',   border: 'border-gray-200',  text: 'text-gray-600',   iconColor: 'text-gray-400' },
+  yes: { icon: CheckCircle, bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', iconColor: 'text-green-500' },
+  no: { icon: XCircle, bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', iconColor: 'text-red-500' },
+  conditional: { icon: AlertTriangle, bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', iconColor: 'text-amber-500' },
+  no_regulation: { icon: HelpCircle, bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-600', iconColor: 'text-gray-400' },
 };
 
 function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], index = -1) {
@@ -339,9 +339,32 @@ export default function ChatPage() {
       .catch((err) => console.warn('[ChatPage] 문서 로드 실패:', err));
   }, [docPickerOpen]);
 
-  const handleSend = (text) => {
+  const handleSend = async (text, files = []) => {
+    const storeState = useChatStore.getState();
+    if (storeState.isStreaming) return; // 전송/업로드 중복 방지
+
     setLastError(null);
     setLastInput(text);
+
+    if (files && files.length > 0) {
+      const storeState = useChatStore.getState();
+      storeState.setStreaming(true);
+      storeState.setCurrentStatus('문서 업로드 및 문서 구조 분석 중...');
+      try {
+        const file = files[0];
+        const res = await uploadDocument(file, 'personal');
+        storeState.setSelectedDocument(res.data.id, res.data.title);
+      } catch (err) {
+        console.error('[ChatPage] 파일 업로드 실패:', err);
+        setLastError('파일 업로드에 실패했습니다. 다시 시도해주세요.');
+        storeState.setStreaming(false);
+        storeState.setCurrentStatus(null);
+        return;
+      }
+      storeState.setCurrentStatus(null);
+      storeState.setStreaming(false);
+    }
+
     sendMessage(text);
   };
 
