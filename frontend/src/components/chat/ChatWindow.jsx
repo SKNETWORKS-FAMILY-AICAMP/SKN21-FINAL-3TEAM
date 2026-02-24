@@ -251,10 +251,23 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
               e.target.value = '';
             }}
           />
-          <input
-            type="text" value={input} onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="질문을 입력하세요..." className="border-none bg-transparent text-sm text-neutral-main w-full outline-none"
+          <textarea
+            value={input} onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            placeholder="질문을 입력하세요..." rows={1}
+            className="border-none bg-transparent text-sm text-neutral-main w-full outline-none resize-none overflow-hidden leading-5"
+            style={{ maxHeight: '120px', overflowY: input.split('\n').length > 6 ? 'auto' : 'hidden' }}
+            ref={(el) => {
+              if (el) {
+                el.style.height = 'auto';
+                el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+              }
+            }}
           />
         </div>
         <button onClick={handleSend} className="w-11 h-11 rounded-md bg-primary-700 flex-shrink-0 flex items-center justify-center transition hover:bg-primary-900">
