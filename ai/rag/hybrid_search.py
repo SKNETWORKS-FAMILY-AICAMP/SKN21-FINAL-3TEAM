@@ -122,11 +122,17 @@ class HybridSearcher:
             if scope == "personal":
                 if user_id is None or str(meta.get("user_id")) != str(user_id):
                     continue
-            # 메타데이터 필터 적용 (예: {"source": "regulations"})
+            # 메타데이터 필터 적용 (예: {"source": "documents"} 또는 {"source__nin": [...]})
             if filter:
                 skip = False
                 for key, value in filter.items():
-                    if meta.get(key) != value:
+                    if key.endswith("__nin"):
+                        # Not-In 필터: 해당 값 목록에 포함되면 제외
+                        actual_key = key[:-5]
+                        if meta.get(actual_key) in value:
+                            skip = True
+                            break
+                    elif meta.get(key) != value:
                         skip = True
                         break
                 if skip:

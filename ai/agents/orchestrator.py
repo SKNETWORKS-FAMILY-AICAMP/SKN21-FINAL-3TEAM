@@ -128,7 +128,7 @@ async def safe_judgment_agent(state: AgentState) -> AgentState:
             _t_rag = time.time()
             print("[Orchestrator] judgment 스트리밍: RAG 검색 시작 (top_k=10)...")
             pipeline = get_qdrant_pipeline()
-            context = pipeline.retrieve(query=user_input, user_id=user_id, top_k=10, filter={"source": "regulations"})
+            context = pipeline.retrieve(query=user_input, user_id=user_id, top_k=10, filter={"source__nin": ["documents", "meeting_minutes"]})
             print(f"[Orchestrator] judgment RAG 완료 ({time.time()-_t_rag:.2f}s) | {len(context)}개 문서")
 
             # 프롬프트 빌드

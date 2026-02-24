@@ -545,7 +545,8 @@ async def judgment_agent(state: AgentState) -> AgentState:
         print("[JudgmentAgent] RAG 검색 시작 (top_k=10)...")
         pipeline = get_qdrant_pipeline()
         context = pipeline.retrieve(
-            query=user_input, user_id=user_id, top_k=10, filter={"source": "regulations"},
+            query=user_input, user_id=user_id, top_k=10,
+            filter={"source__nin": ["documents", "meeting_minutes"]},
         )
         print(f"[JudgmentAgent] RAG 검색 완료 ({time.time()-_t_rag:.2f}s) | {len(context)}개 문서 검색됨")
 
@@ -673,7 +674,8 @@ async def judgment_agent_stream(state: AgentState) -> AsyncGenerator[str, None]:
         # RAG 검색
         pipeline = get_qdrant_pipeline()
         context = pipeline.retrieve(
-            query=user_input, user_id=user_id, top_k=10, filter={"source": "regulations"},
+            query=user_input, user_id=user_id, top_k=10,
+            filter={"source__nin": ["documents", "meeting_minutes"]},
         )
 
         # 판단 이력 추출

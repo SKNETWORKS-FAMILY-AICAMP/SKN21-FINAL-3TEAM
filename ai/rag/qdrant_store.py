@@ -148,16 +148,24 @@ class QdrantVectorStore:
         # 필터 생성 (있으면)
         query_filter = None
         if filter:
-            conditions = []
+            must_conditions = []
+            must_not_conditions = []
             for key, value in filter.items():
-                conditions.append(
-                    FieldCondition(
-                        key=key,
-                        match=MatchValue(value=value),
+                if key.endswith("__nin"):
+                    # Not-In 필터: {"source__nin": ["documents", "meeting_minutes"]}
+                    actual_key = key[:-5]
+                    for v in value:
+                        must_not_conditions.append(
+                            FieldCondition(key=actual_key, match=MatchValue(value=v))
+                        )
+                else:
+                    must_conditions.append(
+                        FieldCondition(key=key, match=MatchValue(value=value))
                     )
-                )
-            if conditions:
-                query_filter = Filter(must=conditions)
+            query_filter = Filter(
+                must=must_conditions or None,
+                must_not=must_not_conditions or None,
+            )
 
         # 검색 (qdrant-client 최신 버전)
         results = self.client.query_points(
