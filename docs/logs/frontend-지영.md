@@ -533,12 +533,7 @@
   - 회의내용 textarea 자동 높이 조절 (`onInput` + `scrollHeight`)
   - 최대 130px에서 크기 고정 후 스크롤 (`max-h-[130px]`, `overflow-y-auto`)
 
-#### 2) 일정 타입 색상 팔레트 변경 (`ScheduleTypeManager.jsx`)
-
-- 프리셋 색상 12개를 AIDock 디자인 시스템에 맞는 톤다운 팔레트로 교체
-- 기본 선택 색상 `#6E87A0` → `#7C98AB`으로 변경
-
-#### 3) 문서 관리 날짜 검색 버그 수정 (`DocumentsPage.jsx`)
+#### 2) 문서 관리 날짜 검색 버그 수정 (`DocumentsPage.jsx`)
 
 - DatePicker `key`를 고정 문자열 → 동적 `datePickerKey`로 변경
 - 검색 타입을 '날짜'로 전환할 때 key 갱신하여 DatePicker 상태 리셋 (이전 날짜가 남아있던 버그 해결)
