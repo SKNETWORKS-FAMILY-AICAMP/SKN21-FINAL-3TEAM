@@ -35,7 +35,7 @@ router = APIRouter()
 async def list_documents(
     scope: str | None = Query(None, regex="^(company|personal)$"),
     keyword: str | None = None,
-    search_type: str = Query("title", regex="^(title|title_content|date)$"),
+    search_type: str = Query("title", regex="^(title|content|date)$"),
     user=Depends(get_current_user),
     db=Depends(get_db),
 ):
