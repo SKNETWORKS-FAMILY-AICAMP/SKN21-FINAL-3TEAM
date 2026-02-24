@@ -19,6 +19,9 @@ export default function ActivityTimeline({ activities = [] }) {
         </div>
       </div>
       <div className="card-body space-y-2">
+        {activities.length === 0 && (
+          <p className="text-sm text-neutral-muted py-2">최근 활동이 없습니다.</p>
+        )}
         {activities.map((a, i) => (
           <Link key={i} to={a.to || '#'} className="flex items-center gap-3 px-3 py-3 rounded-sm border border-neutral-border transition hover:bg-surface-hover">
             <div className={`w-9 h-9 rounded-sm flex items-center justify-center flex-shrink-0 ${iconStyles[a.type] || 'bg-primary-50 text-primary-700'}`}>{(() => { const Icon = a.icon; return Icon ? <Icon size={18} /> : null; })()}</div>

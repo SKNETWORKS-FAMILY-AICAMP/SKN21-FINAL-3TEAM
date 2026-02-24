@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Plus, Pencil, Check, RotateCcw } from 'lucide-react';
 import GreetingBanner from '../components/dashboard/GreetingBanner';
 import TodaySchedule from '../components/dashboard/TodaySchedule';
@@ -7,48 +7,205 @@ import ActivityTimeline from '../components/dashboard/ActivityTimeline';
 import CalendarWidget from '../components/dashboard/CalendarWidget';
 import RecentDocs from '../components/dashboard/RecentDocs';
 import useUIStore from '../store/uiStore';
-import { FileText, HelpCircle, Calendar, CalendarClock } from 'lucide-react';
+import { FileText, HelpCircle, CalendarClock } from 'lucide-react';
+import { listSchedules } from '../api/schedules';
+import { listDocuments } from '../api/documents';
+import { listSessions } from '../api/chat';
 
-// ── mock 데이터 ──
-const mockActivities = [
-  { type: 'doc', icon: FileText, title: '정보보안 지침 v2.3 업로드', description: '새 문서가 업로드되어 파싱 완료되었습니다.', time: '5분 전', to: '/documents' },
-  { type: 'query', icon: HelpCircle, title: '질의응답: "외부 반출 승인 절차"', description: 'AI가 Yes/No 판단과 근거를 제공했습니다.', time: '12분 전', to: '/chat' },
-  { type: 'meeting', icon: Calendar, title: '보안점검 회의록 분석 완료', description: '5개 결정사항, 8개 Action Item 추출됨', time: '1시간 전', to: '/meetings' },
-  { type: 'schedule', icon: CalendarClock, title: '일정 변경: 인사규정 검토회의', description: '2월 7일 → 2월 10일로 변경되었습니다.', time: '2시간 전', to: '/schedules' },
-];
+// ── 날짜 유틸 ──
+function isToday(dateStr) {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+}
 
-const mockActions = [
-  { title: '정보보안 교육 계획서 제출', assignee: '김정보', deadline: 'D-1', priority: 'high' },
-  { title: '개인정보 접근 권한 검토', assignee: '이개발', deadline: 'D-3', priority: 'medium' },
-  { title: '신규 입사자 보안 서약서 수집', assignee: '박인사', deadline: 'D-7', priority: 'low' },
-];
+function formatTime12(dateStr) {
+  if (!dateStr) return { time: '', period: '' };
+  const d = new Date(dateStr);
+  let h = d.getHours();
+  const m = d.getMinutes();
+  const period = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return { time: `${h}:${String(m).padStart(2, '0')}`, period };
+}
 
-const mockMeetings = [
-  { time: '10:00', period: 'AM', title: '보안점검 정기회의', location: '회의실 A', attendees: 5 },
-  { time: '2:00', period: 'PM', title: '인사규정 개정 검토', location: '온라인', attendees: 8 },
-];
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  if (diff < 60000) return '방금 전';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}분 전`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}시간 전`;
+  const d = new Date(dateStr);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
 
-const mockDocs = [
-  { name: '정보보안 지침 v2.3', version: 'v2.3', date: '2026-02-05', status: '적용중' },
-  { name: '인사규정 매뉴얼', version: 'v1.8', date: '2026-01-28', status: '개정중' },
-];
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const target = new Date(dateStr);
+  const now = new Date();
+  target.setHours(0, 0, 0, 0);
+  now.setHours(0, 0, 0, 0);
+  return Math.ceil((target - now) / 86400000);
+}
 
-const calEvents = { 3: 'meeting', 6: 'deadline', 10: 'meeting' };
+// ── 대시보드 데이터 훅 ──
+function useDashboardData() {
+  const [schedules, setSchedules] = useState([]);
+  const [docs, setDocs] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-// ── 위젯 레지스트리 ──
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchAll() {
+      const results = await Promise.allSettled([
+        listSchedules().then(r => r.data),
+        listDocuments().then(r => r.data),
+        listSessions(),
+      ]);
+      if (cancelled) return;
+      if (results[0].status === 'fulfilled') setSchedules(results[0].value || []);
+      if (results[1].status === 'fulfilled') setDocs(results[1].value || []);
+      if (results[2].status === 'fulfilled') setSessions(results[2].value || []);
+      setLoading(false);
+    }
+    fetchAll();
+    return () => { cancelled = true; };
+  }, []);
+
+  // 오늘 일정 → TodaySchedule meetings
+  const todayMeetings = schedules
+    .filter(s => isToday(s.start_time))
+    .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+    .map(s => {
+      const { time, period } = formatTime12(s.start_time);
+      return {
+        time,
+        period,
+        title: s.title,
+        location: s.google_meet_link ? '온라인 (Meet)' : s.description || '-',
+        attendees: 0,
+        scheduleType: s.schedule_type,
+      };
+    });
+
+  // 마감 임박 (7일 이내 deadline 일정)
+  const upcomingActions = schedules
+    .filter(s => {
+      if (s.schedule_type === 'meeting' && isToday(s.start_time)) return false;
+      const d = daysUntil(s.end_time || s.start_time);
+      return d !== null && d >= 0 && d <= 7;
+    })
+    .sort((a, b) => new Date(a.end_time || a.start_time) - new Date(b.end_time || b.start_time))
+    .slice(0, 5)
+    .map(s => {
+      const d = daysUntil(s.end_time || s.start_time);
+      return {
+        title: s.title,
+        assignee: '',
+        deadline: d === 0 ? 'D-Day' : `D-${d}`,
+        priority: d <= 1 ? 'high' : d <= 3 ? 'medium' : 'low',
+      };
+    });
+
+  // 최근 문서 (최신 5개)
+  const recentDocs = (Array.isArray(docs) ? docs : [])
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 5)
+    .map(d => ({
+      name: d.title || d.file_name || '제목 없음',
+      version: d.file_type || '',
+      date: d.created_at ? new Date(d.created_at).toLocaleDateString('ko-KR') : '',
+      status: d.status === 'completed' ? '완료' : d.status === 'processing' ? '처리중' : '업로드됨',
+    }));
+
+  // 캘린더 이벤트 맵 (day → type)
+  const calEvents = {};
+  schedules.forEach(s => {
+    const d = new Date(s.start_time);
+    const now = new Date();
+    if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) {
+      const day = d.getDate();
+      calEvents[day] = s.schedule_type === 'meeting' ? 'meeting' : 'deadline';
+    }
+  });
+
+  // 최근 활동 타임라인 (문서 + 채팅 세션 + 일정 조합, 최신 6개)
+  const activities = [];
+
+  (Array.isArray(docs) ? docs : []).slice(0, 3).forEach(d => {
+    activities.push({
+      type: 'doc',
+      icon: FileText,
+      title: `${d.title || d.file_name || '문서'} 업로드`,
+      description: `${d.file_type || ''} 문서가 업로드되었습니다.`,
+      time: timeAgo(d.created_at),
+      to: '/documents',
+      _ts: new Date(d.created_at || 0).getTime(),
+    });
+  });
+
+  (Array.isArray(sessions) ? sessions : []).slice(0, 3).forEach(s => {
+    activities.push({
+      type: 'query',
+      icon: HelpCircle,
+      title: `대화: "${s.name || '새 대화'}"`,
+      description: `AI 대화 세션`,
+      time: timeAgo(s.updated_at || s.created_at),
+      to: '/chat',
+      _ts: new Date(s.updated_at || s.created_at || 0).getTime(),
+    });
+  });
+
+  schedules.slice(0, 3).forEach(s => {
+    activities.push({
+      type: 'schedule',
+      icon: CalendarClock,
+      title: `일정: ${s.title}`,
+      description: s.description || `${s.schedule_type} 일정`,
+      time: timeAgo(s.created_at),
+      to: '/schedules',
+      _ts: new Date(s.created_at || 0).getTime(),
+    });
+  });
+
+  activities.sort((a, b) => b._ts - a._ts);
+  const recentActivities = activities.slice(0, 6);
+
+  // GreetingBanner 카운트
+  const meetingCount = todayMeetings.length;
+  const actionCount = upcomingActions.length;
+
+  return {
+    loading,
+    todayMeetings,
+    upcomingActions,
+    recentDocs,
+    calEvents,
+    recentActivities,
+    meetingCount,
+    actionCount,
+  };
+}
+
+// ── 위젯 레지스트리 (props는 DashboardPage에서 주입) ──
 const WIDGET_REGISTRY = {
-  TodaySchedule: { component: TodaySchedule, label: '오늘 일정', props: { meetings: mockMeetings, actions: mockActions } },
-  ActivityTimeline: { component: ActivityTimeline, label: '최근 활동', props: { activities: mockActivities } },
-  AIChatWidget: { component: AIChatWidget, label: 'AI 어시스턴트', props: {} },
-  CalendarWidget: { component: CalendarWidget, label: '캘린더', props: { events: calEvents } },
-  RecentDocs: { component: RecentDocs, label: '최근 문서', props: { docs: mockDocs } },
+  TodaySchedule: { component: TodaySchedule, label: '오늘 일정' },
+  ActivityTimeline: { component: ActivityTimeline, label: '최근 활동' },
+  AIChatWidget: { component: AIChatWidget, label: 'AI 어시스턴트' },
+  CalendarWidget: { component: CalendarWidget, label: '캘린더' },
+  RecentDocs: { component: RecentDocs, label: '최근 문서' },
 };
 
 // ── 위젯 카드 ──
-function WidgetItem({ id, col, editMode, onHide, isDragging, isDropTarget, onDragStart, onDragEnd, onDragOver, onDrop }) {
+function WidgetItem({ id, col, editMode, onHide, isDragging, isDropTarget, onDragStart, onDragEnd, onDragOver, onDrop, widgetProps }) {
   const entry = WIDGET_REGISTRY[id];
   if (!entry) return null;
-  const { component: Comp, props } = entry;
+  const { component: Comp } = entry;
+  const props = widgetProps[id] || {};
 
   if (!editMode) return <Comp {...props} />;
 
@@ -79,12 +236,12 @@ function WidgetItem({ id, col, editMode, onHide, isDragging, isDropTarget, onDra
 }
 
 // ── 컬럼 ──
-function WidgetColumn({ col, items, editMode, onHide, dragId, dropTarget, onDragStart, onDragEnd, onDragOver, onDrop, onColumnDragOver, onColumnDrop }) {
+function WidgetColumn({ col, items, editMode, onHide, dragId, dropTarget, onDragStart, onDragEnd, onDragOver, onDrop, onColumnDragOver, onColumnDrop, widgetProps }) {
   if (!editMode) {
     return (
       <div className="space-y-5">
         {items.map(id => (
-          <WidgetItem key={id} id={id} editMode={false} onHide={onHide} />
+          <WidgetItem key={id} id={id} editMode={false} onHide={onHide} widgetProps={widgetProps} />
         ))}
       </div>
     );
@@ -111,6 +268,7 @@ function WidgetColumn({ col, items, editMode, onHide, dragId, dropTarget, onDrag
           onDragEnd={onDragEnd}
           onDragOver={onDragOver}
           onDrop={onDrop}
+          widgetProps={widgetProps}
         />
       ))}
     </div>
@@ -141,9 +299,28 @@ export default function DashboardPage() {
   } = useUIStore();
 
   const { leftColumn, rightColumn, hidden } = dashboard;
+  const {
+    loading,
+    todayMeetings,
+    upcomingActions,
+    recentDocs,
+    calEvents,
+    recentActivities,
+    meetingCount,
+    actionCount,
+  } = useDashboardData();
+
+  // 위젯별 props 매핑
+  const widgetProps = {
+    TodaySchedule: { meetings: todayMeetings, actions: upcomingActions },
+    ActivityTimeline: { activities: recentActivities },
+    AIChatWidget: {},
+    CalendarWidget: { events: calEvents },
+    RecentDocs: { docs: recentDocs },
+  };
 
   const [dragId, setDragId] = useState(null);
-  const [dropTarget, setDropTarget] = useState(null); // { id, col } | { col, end: true }
+  const [dropTarget, setDropTarget] = useState(null);
 
   const handleDragStart = (id) => setDragId(id);
   const handleDragEnd = () => { setDragId(null); setDropTarget(null); };
@@ -164,11 +341,15 @@ export default function DashboardPage() {
 
   return (
     <div className="py-6">
-      <GreetingBanner meetingCount={2} actionCount={2} riskCount={0} />
+      <GreetingBanner meetingCount={meetingCount} actionCount={actionCount} riskCount={0} />
+
+      {loading && (
+        <div className="mt-5 text-center text-sm text-neutral-muted py-8">데이터를 불러오는 중...</div>
+      )}
 
       <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-5">
-        <WidgetColumn col="leftColumn" items={leftColumn} editMode={editMode} onHide={hideWidget} {...dragProps} />
-        <WidgetColumn col="rightColumn" items={rightColumn} editMode={editMode} onHide={hideWidget} {...dragProps} />
+        <WidgetColumn col="leftColumn" items={leftColumn} editMode={editMode} onHide={hideWidget} {...dragProps} widgetProps={widgetProps} />
+        <WidgetColumn col="rightColumn" items={rightColumn} editMode={editMode} onHide={hideWidget} {...dragProps} widgetProps={widgetProps} />
       </div>
 
       {/* 숨긴 위젯 영역 */}

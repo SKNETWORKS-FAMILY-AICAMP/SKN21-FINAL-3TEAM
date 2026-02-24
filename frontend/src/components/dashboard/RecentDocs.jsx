@@ -10,6 +10,9 @@ export default function RecentDocs({ docs = [] }) {
         <Link to="/documents" className="btn-primary text-xs">+ 업로드</Link>
       </div>
       <div className="card-body space-y-2">
+        {docs.length === 0 && (
+          <p className="text-sm text-neutral-muted py-2">업로드된 문서가 없습니다.</p>
+        )}
         {docs.map((d, i) => (
           <Link key={i} to="/documents" className="flex items-center gap-3 p-3 rounded-sm border border-neutral-border transition hover:bg-surface-hover">
             <div className="w-9 h-9 bg-primary-50 rounded-sm flex items-center justify-center flex-shrink-0 text-primary-700"><FileText size={18} /></div>
@@ -19,7 +22,10 @@ export default function RecentDocs({ docs = [] }) {
                 <span>{d.version}</span><span>{d.date}</span>
               </div>
             </div>
-            <Badge variant={d.status === '적용중' ? 'status-active' : 'status-revising'}>{d.status}</Badge>
+            <Badge variant={
+              d.status === '적용중' || d.status === '완료' ? 'status-active' :
+              d.status === '처리중' ? 'status-in-progress' : 'status-revising'
+            }>{d.status}</Badge>
           </Link>
         ))}
       </div>
