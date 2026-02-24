@@ -277,7 +277,7 @@ async def list_documents(
             stmt = stmt.where(Document.title.ilike(f"%{keyword}%"))
 
         elif search_type == "content":
-            # RAG 검색으로 내용 매칭 document_id 추출
+            # RAG 검색으로 내용 매칭 document_id 추출 (점수 기반 필터링)
             rag_doc_ids: list[int] = []
             try:
                 from ai.rag.qdrant_pipeline import get_qdrant_pipeline
@@ -286,11 +286,15 @@ async def list_documents(
                     query=keyword, user_id=user_id, top_k=20,
                     filter={"source": "documents"},
                 )
-                rag_doc_ids = [
-                    int(r["document_id"])
-                    for r in rag_results
-                    if r.get("document_id") is not None
-                ]
+                # 최고 점수의 50% 미만인 결과는 제외 (관련도 낮은 문서 필터링)
+                if rag_results:
+                    max_score = max(r.get("score", 0) for r in rag_results)
+                    threshold = max_score * 0.5
+                    rag_doc_ids = [
+                        int(r["document_id"])
+                        for r in rag_results
+                        if r.get("document_id") is not None and r.get("score", 0) >= threshold
+                    ]
             except Exception as e:
                 logger.warning(f"RAG 검색 실패: {e}")
 
