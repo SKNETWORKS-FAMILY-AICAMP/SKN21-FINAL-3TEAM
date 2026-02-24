@@ -485,6 +485,42 @@
 
 ---
 
+## 2026-02-24 (화) — 오후
+
+### 한 일
+
+#### 1) 관리자 페이지 UI 개선 (`AdminPage.jsx`, `SystemStats.jsx`)
+
+- 최근 질의 로그 · 인기 질의 카드 가로 사이즈 고정 (`overflow-hidden`, `min-w-0`) — 질의가 길어져도 카드가 늘어나지 않음
+- '처리된 회의' 요약 카드 제거, 3열 그리드로 조정
+
+#### 2) 대화 목록 세션 이름 변경 기능 (`ChatSessionSidebar.jsx`, `chatStore.js`)
+
+- hover 시 연필 아이콘 표시 → 클릭하면 인라인 input 전환
+- **Enter** 또는 blur → 저장, **Esc** → 취소
+- `chatStore.js`에 `renameSessionById` 액션 추가 (API 호출 + 상태 업데이트)
+
+#### 3) 문서 관리 날짜 달력 검색 (`DocumentsPage.jsx`, `components/common/DatePicker.jsx`)
+
+- 검색 타입 '날짜' 선택 시 텍스트 input 대신 달력 팝업 표시
+- `DatePicker.jsx` 신규 생성 — 외부 라이브러리 없이 순수 React+Tailwind로 구현
+  - 월/연도 네비게이션, 일/토 색상 구분, 오늘 선택 버튼
+  - 날짜 선택 즉시 자동 검색, `right-0` 정렬로 화면 잘림 방지
+  - 검색 타입 '날짜' 선택 시 달력 자동 오픈 (`autoOpen` prop)
+
+#### 4) 검색 UI 크기 안정화 (`DocumentsPage.jsx`)
+
+- 검색칸 너비 `w-[280px]` 고정 — 검색 타입 전환/검색 실행 시 크기 변동 없음
+- 검색 버튼: 너비 `w-[68px]` · 높이 `h-[38px]` · `!py-0` · `!rounded-md` 고정
+- 날짜 선택 시 검색 버튼 `invisible` 처리로 레이아웃 유지
+- 검색칸 · 검색 버튼 높이(`h-[38px]`) · 모서리(`rounded-md`) 통일
+
+### 다음 할 일
+- 나머지 Mock → 실제 API 교체 (대시보드, 문서 생성)
+- 관리자 API 연동 (#29)
+
+---
+
 ## 2026-02-24 (화)
 
 ### 한 일
