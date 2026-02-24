@@ -57,7 +57,7 @@ async def main():
             "source": "documents",
             "title": doc.title,
             "scope": doc.scope,
-            "uploaded_by": doc.uploaded_by,
+            "user_id": str(doc.uploaded_by),
             "document_id": doc.id,
         })
 
