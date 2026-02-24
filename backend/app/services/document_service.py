@@ -273,7 +273,7 @@ async def list_documents(
     """문서 목록 조회 (scope, keyword, search_type 필터)
 
     Args:
-        search_type: "title" (DB ILIKE), "title_content" (RAG + DB), "date" (날짜 범위)
+        search_type: "title" (DB ILIKE), "content" (RAG), "date" (날짜 범위)
     """
     stmt = select(Document)
 
@@ -292,8 +292,8 @@ async def list_documents(
         if search_type == "title":
             stmt = stmt.where(Document.title.ilike(f"%{keyword}%"))
 
-        elif search_type == "title_content":
-            # RAG 검색으로 내용 매칭 document_id 추출 + 제목 ILIKE 병합
+        elif search_type == "content":
+            # RAG 검색으로 내용 매칭 document_id 추출
             rag_doc_ids: list[int] = []
             try:
                 from ai.rag.qdrant_pipeline import get_qdrant_pipeline
@@ -308,18 +308,13 @@ async def list_documents(
                     if r.get("document_id") is not None
                 ]
             except Exception as e:
-                logger.warning(f"RAG 검색 실패, 제목 검색으로 fallback: {e}")
+                logger.warning(f"RAG 검색 실패: {e}")
 
             if rag_doc_ids:
-                stmt = stmt.where(
-                    or_(
-                        Document.id.in_(rag_doc_ids),
-                        Document.title.ilike(f"%{keyword}%"),
-                    )
-                )
+                stmt = stmt.where(Document.id.in_(rag_doc_ids))
             else:
-                # RAG 결과 없으면 제목 검색으로 fallback
-                stmt = stmt.where(Document.title.ilike(f"%{keyword}%"))
+                # RAG 결과 없으면 빈 결과
+                stmt = stmt.where(Document.id < 0)
 
         elif search_type == "date":
             start_date, end_date = _parse_date_query(keyword)
