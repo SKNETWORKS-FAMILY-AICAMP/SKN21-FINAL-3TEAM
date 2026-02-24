@@ -13,7 +13,6 @@ from pydantic import BaseModel
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
-from app.schemas.document import DocumentGenerateResponse
 from app.services import document_service, parsing_service, template_service
 
 GENERATED_DOCS_DIR = Path(__file__).resolve().parents[4] / "backend" / "generated_docs"
@@ -79,7 +78,7 @@ async def upload_document(
     }
 
 
-@router.post("/generate", response_model=DocumentGenerateResponse)
+@router.post("/generate")
 async def generate_document(
     request: GenerateDocumentRequest,
     user=Depends(get_current_user),
@@ -87,18 +86,23 @@ async def generate_document(
 ):
     """
     템플릿 기반 문서 생성 (FR-DOC-008)
-    현재 지원: meeting_minutes
+    현재 지원: meeting_minutes, report, proposal
     """
-    if request.template_type == "meeting_minutes":
-        try:
-            from ai.agents.document_agent import _generate_meeting_minutes
+    try:
+        from ai.agents.document_agent import (
+            _generate_meeting_minutes,
+            _generate_report,
+            _generate_proposal,
+        )
 
-            user_input = (
-                f"회의 제목: {request.title}\n"
-                f"날짜: {request.date}\n"
-                f"참석자: {', '.join(request.attendees)}\n"
-                f"회의 내용: {request.content}"
-            )
+        user_input = (
+            f"제목: {request.title}\n"
+            f"날짜: {request.date}\n"
+            f"참석자: {', '.join(request.attendees)}\n"
+            f"내용: {request.content}"
+        )
+
+        if request.template_type == "meeting_minutes":
             result = _generate_meeting_minutes(user_input)
             return {
                 "document_id": result["document_id"],
@@ -112,13 +116,45 @@ async def generate_document(
                 "decisions": result.get("decisions", []),
                 "action_items": result.get("action_items", []),
             }
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"문서 생성 중 오류 발생: {str(e)}")
 
-    raise HTTPException(
-        status_code=400,
-        detail=f"지원하지 않는 템플릿 타입입니다: {request.template_type}",
-    )
+        if request.template_type == "report":
+            result = _generate_report(user_input)
+            return {
+                "document_id": result["document_id"],
+                "template_type": "report",
+                "preview": result["preview"],
+                "download_url": f"/api/v1/documents/{result['document_id']}/download",
+                "title": result.get("data", {}).get("title", request.title),
+                "overview": result.get("data", {}).get("overview", ""),
+                "main_content": result.get("data", {}).get("main_content", ""),
+                "tasks": result.get("data", {}).get("tasks", []),
+                "next_plan": result.get("data", {}).get("next_plan", ""),
+            }
+
+        if request.template_type == "proposal":
+            result = _generate_proposal(user_input)
+            return {
+                "document_id": result["document_id"],
+                "template_type": "proposal",
+                "preview": result["preview"],
+                "download_url": f"/api/v1/documents/{result['document_id']}/download",
+                "title": result.get("data", {}).get("title", request.title),
+                "background": result.get("data", {}).get("background", ""),
+                "content": result.get("data", {}).get("content", ""),
+                "expected_effect": result.get("data", {}).get("expected_effect", ""),
+                "schedule": result.get("data", {}).get("schedule", []),
+                "budget": result.get("data", {}).get("budget", []),
+            }
+
+        raise HTTPException(
+            status_code=400,
+            detail=f"지원하지 않는 템플릿 타입입니다: {request.template_type}",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"문서 생성 중 오류 발생: {str(e)}")
 
 
 @router.get("/search/highlight")

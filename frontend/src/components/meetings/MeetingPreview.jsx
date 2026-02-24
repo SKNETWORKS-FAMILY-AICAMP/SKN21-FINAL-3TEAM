@@ -32,9 +32,6 @@ export default function MeetingPreview({ data, onDownload, loading }) {
           <button onClick={() => onDownload?.('docx')} disabled={loading} className="btn-primary text-xs disabled:opacity-50">
             DOCX 다운로드
           </button>
-          <button onClick={() => onDownload?.('pdf')} disabled={loading} className="btn-outline text-xs disabled:opacity-50">
-            PDF 다운로드
-          </button>
         </div>
       </div>
       <div ref={printRef} className="card-body">
