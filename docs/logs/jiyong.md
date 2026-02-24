@@ -565,3 +565,40 @@ QA 결과:
 - 발표 차트 10장 정리 (누락 확인 + 최종 버전)
 - 최종 보고서 작성 (Stage 4.10)
 - 다른 팀원 작업 통합 (PM)
+
+---
+
+## 2026-02-24 (월)
+
+**문서 관리 페이지 검색 기능 개선:**
+
+1. EC2 서버에서 RRF 스코어 분포 분석 (3개 쿼리):
+   - 상위 클러스터(0.030~0.033) vs 하위 클러스터(0.014~0.016) 2군집 패턴 확인
+   - 기획서 문서(id 1,2,3)가 모든 쿼리에서 상위 클러스터에 출현 → 벡터 유사도 false positive
+
+2. RAG → DB ILIKE 전환 결정:
+   - 문서 관리 페이지에서 RAG(Qdrant hybrid BM25+Vector+RRF) 검색은 오버킬
+   - 문서 수가 적고(8~9개) RRF 스코어 압축으로 관련/무관 구분 불가
+   - **"제목+내용" 검색도 DB ILIKE로 변경** (사용자가 기대하는 건 정확한 키워드 매칭)
+
+3. 수정 파일 3개:
+   - `frontend/src/pages/DocumentsPage.jsx`: 드롭다운 "내용" → "제목+내용" 복원, SEARCH_TYPE_MAP/PLACEHOLDERS 업데이트
+   - `backend/app/api/v1/documents.py`: search_type regex에 `title_content` 추가
+   - `backend/app/services/document_service.py`: RAG content 검색 블록 제거 → `or_(title.ilike, content.ilike)` DB 검색으로 교체
+
+4. RAG 관련 코드(업로드 시 Qdrant 인덱싱, 삭제 시 Qdrant 정리)는 유지 — 챗봇(judgment agent)에서 계속 사용
+
+5. 테스트 문서(id=18, test_upload_search) DB+Qdrant에서 삭제
+
+6. 커밋 `d83930c` → feat/jiyong + develop 양쪽 push 완료
+
+**develop 최신 반영:**
+- develop pull → fast-forward merge (37파일, 승언/혜빈/지영 작업 대량 반영)
+  - 승언: document_agent 대폭 수정, 회의록/보고서/제안서 스킬 개선
+  - 혜빈: chat.py, documents.py, admin.py, auth.py, 유저 모델 필드 추가
+  - 지영: MyPage 신규, Topbar/ChatWindow/ChatSessionSidebar/DocumentViewPanel UI 개선
+
+**다음 할 일:**
+- 발표 차트 정리 + 최종 보고서
+- 팀원 작업 통합 테스트
+- E2E 테스트 확인
