@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import useAuthStore from '../../store/authStore';
 
 export default function MeetingInput({ onSubmit, loading }) {
+  const user = useAuthStore((s) => s.user);
   const [form, setForm] = useState({
     title: '',
     date: new Date().toISOString().split('T')[0],
+    author: user?.name ?? '',
     attendees: '',
     content: '',
   });
@@ -46,14 +49,25 @@ export default function MeetingInput({ onSubmit, loading }) {
           </div>
         </div>
 
-        <div>
-          <label className="block text-[0.8125rem] font-semibold mb-1.5">참석자 (쉼표로 구분)</label>
-          <input
-            value={form.attendees}
-            onChange={update('attendees')}
-            placeholder="예: 김정보, 이개발, 박인사"
-            className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-          />
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[0.8125rem] font-semibold mb-1.5">참석자 (쉼표로 구분)</label>
+            <input
+              value={form.attendees}
+              onChange={update('attendees')}
+              placeholder="예: 김정보, 이개발, 박인사"
+              className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
+            />
+          </div>
+          <div>
+            <label className="block text-[0.8125rem] font-semibold mb-1.5">작성자</label>
+            <input
+              value={form.author}
+              onChange={update('author')}
+              placeholder="예: 김정보"
+              className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
+            />
+          </div>
         </div>
 
         <div>
@@ -62,8 +76,9 @@ export default function MeetingInput({ onSubmit, loading }) {
             value={form.content}
             onChange={update('content')}
             placeholder="회의에서 논의된 내용을 입력하세요. 음성 녹취 텍스트를 붙여넣어도 됩니다."
-            rows={10}
-            className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 resize-y"
+            rows={4}
+            onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 130) + 'px'; }}
+            className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[130px]"
           />
         </div>
 

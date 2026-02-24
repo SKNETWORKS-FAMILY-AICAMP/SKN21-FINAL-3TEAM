@@ -87,8 +87,19 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
   const bottomRef = useRef(null);
   const fileInputRef = useRef(null);
   const dragCounterRef = useRef(0);
+  const mountedRef = useRef(false);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => {
+    if (!mountedRef.current) {
+      // 초기 마운트: instant scroll (smooth는 500ms+ 동안 이벤트를 발생시켜 topbar 오작동 유발)
+      mountedRef.current = true;
+      const container = bottomRef.current?.closest('[data-main-scroll]');
+      if (container) container.scrollTop = container.scrollHeight;
+    } else {
+      // 이후 메시지 추가: smooth scroll
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   const addFiles = useCallback((fileList) => {
     setFileError(null);
