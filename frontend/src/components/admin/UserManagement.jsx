@@ -129,10 +129,9 @@ export default function UserManagement({ users = [], onRefresh }) {
                 <label className="text-xs font-semibold text-neutral-sub block mb-1">팀</label>
                 <select value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })} className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 bg-surface-card text-neutral-main">
                   <option value="">팀 선택 (선택사항)</option>
-                  <option value="PM팀">PM팀</option>
-                  <option value="AI팀">AI팀</option>
-                  <option value="Backend팀">Backend팀</option>
-                  <option value="Frontend팀">Frontend팀</option>
+                  {['개발', 'QA기획', 'UI/UX', '영업', '마케팅', 'CS'].map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
                 </select>
               </div>
               <div>

@@ -49,7 +49,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleRegister = async ({ name, email, password, confirmPassword }) => {
+  const handleRegister = async ({ name, email, password, confirmPassword, team }) => {
     if (password !== confirmPassword) {
       setError('비밀번호가 일치하지 않습니다.');
       return;
@@ -61,7 +61,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await register(email, password, name);
+      await register(email, password, name, team);
       setRegisteredCredentials({ email, password });
       setShowRegisterSuccess(true);
     } catch (err) {

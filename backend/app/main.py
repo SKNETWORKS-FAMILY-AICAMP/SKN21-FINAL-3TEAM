@@ -63,6 +63,30 @@ async def startup_ensure_tables():
 
 
 @app.on_event("startup")
+async def startup_migrate_team_column():
+    """users.team 컬럼 추가 및 기존 사용자 랜덤 팀 배정"""
+    try:
+        from app.db.session import engine
+        from sqlalchemy import text
+
+        async with engine.begin() as conn:
+            # 컬럼 없으면 추가 (PostgreSQL IF NOT EXISTS)
+            await conn.execute(text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS team VARCHAR(50)"
+            ))
+            # team이 NULL인 기존 사용자에게 랜덤 배정
+            await conn.execute(text(
+                "UPDATE users SET team = "
+                "(ARRAY['개발','QA기획','UI/UX','영업','마케팅','CS'])"
+                "[floor(random() * 6 + 1)::int] "
+                "WHERE team IS NULL"
+            ))
+        print("[Startup] users.team 컬럼 추가 및 랜덤 배정 완료")
+    except Exception as _e:
+        print(f"[Startup] users.team 처리 실패 (무시하고 계속): {_e}")
+
+
+@app.on_event("startup")
 async def startup_preload():
     """서버 시작 시 모델 pre-loading (첫 요청 지연 방지)"""
     import time

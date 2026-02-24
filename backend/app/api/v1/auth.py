@@ -54,12 +54,13 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
         email=request.email,
         hashed_password=hash_password(request.password),
         name=request.name,
+        team=request.team,
     )
     db.add(user)
     await db.flush()
     await db.refresh(user)
 
-    return RegisterResponse(id=user.id, email=user.email, name=user.name)
+    return RegisterResponse(id=user.id, email=user.email, name=user.name, team=user.team)
 
 
 @router.post("/login", response_model=LoginResponse)
