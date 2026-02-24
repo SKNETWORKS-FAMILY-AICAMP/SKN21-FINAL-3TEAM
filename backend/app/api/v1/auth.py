@@ -22,6 +22,7 @@ from app.schemas.auth import (
     PasswordResetRequest,
     PasswordResetConfirm,
     PasswordResetResponse,
+    ChangePasswordRequest,
 )
 from app.config import get_settings
 from app.db.session import get_db
@@ -97,6 +98,32 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "name": current_user.name,
         "is_admin": current_user.is_admin,
     }
+
+
+# ── 비밀번호 변경 (로그인 상태에서) ──
+
+
+@router.post("/change-password")
+async def change_password(
+    request: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """비밀번호 변경 — 현재 비밀번호 확인 후 새 비밀번호로 변경"""
+    if not verify_password(request.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="현재 비밀번호가 올바르지 않습니다",
+        )
+    if len(request.new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="새 비밀번호는 6자 이상이어야 합니다",
+        )
+
+    current_user.hashed_password = hash_password(request.new_password)
+    await db.commit()
+    return {"message": "비밀번호가 변경되었습니다"}
 
 
 # ── 비밀번호 재설정 ──
