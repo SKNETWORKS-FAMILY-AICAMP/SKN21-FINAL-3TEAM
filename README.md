@@ -57,10 +57,10 @@
                                           ┌─── Orchestrator (LangGraph) ───┐
                                           │                                │
                                           │  [classify_intent]             │
-                                          │   BERT → Solar LLM → Embedding │
+                                          │   KoELECTRA → Solar → Embedding │
                                           │   (3단계 fallback)              │
                                           │         │                      │
-                                          │   confidence < 0.7?            │
+                                          │   confidence < 0.85?           │
                                           │    ├─ Yes → clarify (top-3)    │
                                           │    └─ No  → Agent 라우팅        │
                                           │         │                      │
@@ -88,7 +88,7 @@
 ```
 ┌─ Judgment Agent (경은) ─────────────────────────────────────────────────────┐
 │                                                                             │
-│  user_input ──→ RAG 하이브리드 검색 (규정문서, top_k=7) ──→ LLM 판단 (JSON)  │
+│  user_input ──→ RAG 하이브리드 검색 (규정문서, top_k=10) ──→ LLM 판단 (JSON) │
 │                    │                                          │             │
 │                    │  Qdrant + BM25                            │             │
 │                    │  bge-reranker                             ▼             │
@@ -111,11 +111,11 @@
 │  doc_summary ──→ 문서 로드(document_id) ──→ LLM 회사 요약 포맷 생성          │
 │                  → { title, core_summary, key_points, keywords }            │
 │                                                                             │
-│  doc_search ──→ query(+필터) ──→ RAG 하이브리드 검색 (전체문서)               │
+│  doc_search ──→ query(+필터) ──→ RAG 하이브리드 검색 (업로드 문서)            │
 │                  챗봇: 질문→쿼리 변환 후 추천 / 페이지: 키워드/필터 탐색       │
 │                  → { results[], message }                                    │
 │                                                                             │
-│  doc_qa ──→ RAG 검색 (비규정 문서) ──→ LLM 답변 + 인용 (주 사용처: 챗봇)     │
+│  doc_qa ──→ RAG 검색 (업로드 문서) ──→ LLM 답변 + 인용 (주 사용처: 챗봇)     │
 │                  → { answer, citations[] }                                   │
 └─────────────────────────────────────────────────────────────────────────────┘
 
@@ -154,7 +154,7 @@ general        → General Response  (일반 대화)
 ╔══════════════════════════════════════════════════════════════════════════╗
 ║  Frontend — 지영                                                        ║
 ║                                                                        ║
-║  React (Vite) + Zustand + TanStack Query + Tailwind + shadcn/ui       ║
+║  React 18 (Vite) + Zustand + TanStack Query + Tailwind + Lucide      ║
 ║                                                                        ║
 ║  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐          ║
 ║  │ 대시보드    │ │  AI 챗봇   │ │ 회의록생성  │ │  문서생성   │          ║
@@ -202,12 +202,13 @@ general        → General Response  (일반 대화)
 ║  │  /api/v1/tasks/*     ─── Google Tasks ──────── [혜빈]  │          ║
 ║  │  /api/v1/gmail/*     ─── Gmail 발송 ────────── [혜빈]  │          ║
 ║  │  /api/v1/sheets/*    ─── Google Sheets ─────── [혜빈]  │          ║
+║  │  /api/v1/regulations ─── 규정 목록 (공개) ──── [혜빈]  │          ║
 ║  │  /api/v1/admin/*     ─── 통계 + 로그 + 권한 ─── [혜빈]  │          ║
 ║  └──────────────────────────────────────────────────────────┘          ║
 ║                                                                        ║
 ║  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐        ║
 ║  │ JWT 인증/권한    │  │ PostgreSQL      │  │ Redis           │        ║
-║  │ [혜빈]          │  │ 11 tables[혜빈] │  │ Cache + Queue   │        ║
+║  │ [혜빈]          │  │ 12 tables[혜빈] │  │ Cache           │        ║
 ║  └─────────────────┘  └─────────────────┘  └─────────────────┘        ║
 ║                                                                        ║
 ║  Services [혜빈]                                                       ║
@@ -231,7 +232,7 @@ general        → General Response  (일반 대화)
 ║  AI Engine                                                             ║
 ║                                                                        ║
 ║  ┌──────────────────────────────────────────────────────┐              ║
-║  │  Intent Classifier (klue/bert-base)        [지용]    │              ║
+║  │  Intent Classifier (koelectra-base-v3)     [지용]    │              ║
 ║  │  8개: judgment, doc_search, doc_generate,            │              ║
 ║  │       doc_summary, doc_qa, schedule_*, general        │              ║
 ║  └──────────┬───────────────────────────────────────────┘              ║
@@ -261,10 +262,10 @@ general        → General Response  (일반 대화)
 ║  │ BM25 (Top 15)   │  │              │                                ║
 ║  │   + Vector Search│  │              │                                ║
 ║  │   (Qdrant)    │  │              │                                ║
-║  │ → 합산 (Top 20) │  │              │                                ║
-║  │ → Reranker      │  │              │                                ║
-║  │   (bge-v2-m3)   │  │              │                                ║
-║  │ → Top 5 전달    │  │              │                                ║
+║  │ → RRF 합산      │  │              │                                ║
+║  │   (Top 20)      │  │              │                                ║
+║  │ → source 필터   │  │              │                                ║
+║  │ → Top K 전달    │  │              │                                ║
 ║  └──────┬───────────┘  │              │                                ║
 ║         │              │              │                                ║
 ║         ▼              ▼              │                                ║
@@ -315,15 +316,30 @@ general        → General Response  (일반 대화)
 
 ### RAG 검색 대상
 
-| Agent/기능 | RAG | 검색 대상 | 비고 |
-|-----------|-----|----------|------|
-| Judgment | O | 규정/규칙 문서 | 문서 카테고리 필터 |
-| doc_search | O | 모든 문서 | 필터 없음 |
-| doc_qa | O | 비규정 업무 문서 | 문서 카테고리 필터 |
-| doc_generate | X | - | 사용자 입력 기반 생성 |
-| doc_summary | X | - | 대상 문서가 명시적으로 주어짐 |
-| Schedule | X | - | |
-| General | X | - | |
+| Agent/기능 | RAG | 검색 대상 | Qdrant Filter | 비고 |
+|-----------|-----|----------|---------------|------|
+| Judgment | O | 사내 규정 | `source="regulations"` | 규정만 검색 |
+| doc_search | O | 업로드 문서 | `source="documents"` | 업로드 문서만 검색 |
+| doc_qa | O | 업로드 문서 | `source="documents"` | 업로드 문서만 검색 |
+| doc_generate | X | - | - | 사용자 입력 기반 생성 |
+| doc_summary | X | - | - | 대상 문서가 명시적으로 주어짐 |
+| Schedule | X | - | - | |
+| General | X | - | - | |
+
+### Qdrant 메타데이터 구조
+
+```
+source (2개 고정)         doc_type (확장 자유)
+├── "regulations"         ├── "HR"              (급여, 교육, 복리후생, 출장, 징계)
+│                         ├── "IT"              (정보보안, 개발 가이드라인)
+│                         └── "governance"       (윤리강령)
+└── "documents"           ├── "general"          (업로드 문서)
+                          └── "meeting_minutes"  (회의록)
+```
+
+- **source**: Agent 라우팅용 (judgment → regulations, doc_search/doc_qa → documents)
+- **doc_type**: 세부 분류용 (향후 필터링·통계에 활용)
+- 재정립 스크립트: `python -m scripts.rebuild_qdrant` (backend 디렉토리에서 실행)
 
 ### Agent 처리 흐름 (예: 규정 판단)
 
@@ -333,7 +349,7 @@ general        → General Response  (일반 대화)
          ▼
 ┌─────────────────────────────────────┐
 │ 1. Intent Classification   [지용]   │
-│    klue/bert-base                   │
+│    koelectra-base-v3                │
 │    → intent: "judgment"             │
 │    → confidence: 0.92               │
 └────────────┬────────────────────────┘
@@ -351,8 +367,8 @@ general        → General Response  (일반 대화)
 │ 3. RAG Pipeline            [경은]   │
 │    1) BM25 검색 (Top 15)            │
 │    2) Vector 검색 (Top 15)          │
-│    3) 합산 (Top 20)                 │
-│    4) Reranker (Top 5)              │
+│    3) RRF 합산 (Top 20)             │
+│    4) source 필터 (regulations)     │
 │    → 정보보안 규정 3.2조            │
 │    → 개발 가이드라인 5.1조          │
 │    → 인사 규정 2.3조                │
@@ -388,7 +404,7 @@ general        → General Response  (일반 대화)
 └─────────────────────────────────────┘
 ```
 
-### DB ERD (11 테이블) — [혜빈]
+### DB ERD (12 테이블) — [혜빈]
 
 ```
 ┌──────────┐     ┌──────────────┐     ┌──────────────┐
@@ -415,9 +431,9 @@ general        → General Response  (일반 대화)
      │           │  judgments   │  (판단 이력)
      │           └──────────────┘
      │
-     ├──────────▶┌──────────────┐
-     │           │  chat_logs   │
-     │           └──────────────┘
+     ├──────────▶┌──────────────┐     ┌──────────────┐
+     │           │ chat_sessions│────▶│  chat_logs   │
+     │           └──────────────┘     └──────────────┘
      │
      ├──────────▶┌──────────────┐
      │           │ oauth_tokens │  (Google OAuth + scopes)
@@ -438,15 +454,15 @@ general        → General Response  (일반 대화)
 | 구분 | 기술 | 용도 |
 |------|------|------|
 | Agent Framework | **LangGraph** | StateGraph 기반 Agent 오케스트레이션 |
-| LLM API (현재) | **GPT-4 / Claude** | 기능 구현 단계에서 사용, 추후 sLLM 교체 |
+| LLM API (현재) | **GPT-4o-mini / Claude** | 기능 구현 단계에서 사용, 추후 sLLM 교체 |
 | Base sLLM (추후) | **Kanana-1.5-8B** | 벤치마크 선정 (종합 0.652) |
 | Fine-tuning (추후) | **LoRA (PEFT)** + QLoRA 4-bit | 판단 v1 (1,500개) + 문서 v2 (1,700개) |
 | 모델 서빙 | **vLLM** | OpenAI 호환 API + LoRA 핫스왑 + 스트리밍 |
 | Vector DB | **Qdrant** | 문서 임베딩 저장 + 유사도 검색 |
-| Embedding | **jhgan/ko-sbert-nli** | 한국어 문장 임베딩 |
-| Reranker | **BAAI/bge-reranker-v2-m3** | 검색 결과 재정렬 (Top 5) |
+| Embedding | **jhgan/ko-sbert-nli** | 한국어 문장 임베딩 (768차원) |
+| Reranker | **BAAI/bge-reranker-v2-m3** | 구현 완료, 현재 비활성 (성능 최적화 후 적용 예정) |
 | 키워드 검색 | **BM25 (rank_bm25)** | Hybrid Search의 키워드 매칭 |
-| Intent 분류 | **klue/bert-base** | 8개 카테고리: judgment, doc_search, doc_generate, doc_summary, doc_qa, schedule_add, schedule_view, general |
+| Intent 분류 | **koelectra-base-v3** | 8개 카테고리: judgment, doc_search, doc_generate, doc_summary, doc_qa, schedule_add, schedule_view, general |
 | 문서 파싱 | **Docling + PaddleOCR** | PDF 구조화 + 스캔 OCR |
 
 ### Backend
@@ -454,23 +470,24 @@ general        → General Response  (일반 대화)
 | 구분 | 기술 |
 |------|------|
 | Framework | FastAPI + SSE (StreamingResponse) |
-| Database | PostgreSQL (11 tables) |
+| Database | PostgreSQL (12 tables) |
 | ORM | SQLAlchemy + Alembic |
 | 인증 | JWT (PyJWT) + Google OAuth 2.0 |
-| Task Queue | Celery + Redis |
+| 캐시 | Redis |
 | 암호화 | AES-256 (cryptography) |
 
 ### Frontend
 
 | 구분 | 기술 |
 |------|------|
-| Framework | React (Vite) |
+| Framework | React 18 (Vite) |
 | 상태관리 | Zustand + TanStack Query |
 | 스트리밍 | EventSource (SSE) |
-| 스타일 | Tailwind CSS + shadcn/ui |
+| 스타일 | Tailwind CSS + Lucide Icons |
 | 캘린더 | FullCalendar |
 | 애니메이션 | framer-motion |
 | 차트 | Recharts |
+| E2E 테스트 | Playwright |
 
 ### Infra
 
@@ -496,7 +513,7 @@ general        → General Response  (일반 대화)
 
 | 구분 | 건수 | 모델 |
 |------|------|------|
-| 원본 학습 데이터 | 1,405개 (7개 JSONL) | klue/bert-base |
+| 원본 학습 데이터 | 1,405개 (8개 JSONL) | koelectra-base-v3 |
 | 증강 데이터 | 463개 (13개 증강 파일) | — |
 | **학습 합계** | **1,868개** | — |
 | Adversarial 테스트셋 | 120개 | Eval F1 98.2%, Adv F1 90.2% |
@@ -511,54 +528,63 @@ general        → General Response  (일반 대화)
 SKN21-FINAL-3TEAM/
 │
 ├── backend/                     # FastAPI 백엔드 (혜빈)
-│   └── app/
-│       ├── main.py              # 앱 진입점
-│       ├── config.py            # 환경변수
-│       ├── api/v1/              # REST API 엔드포인트
-│       │   ├── chat.py          # 챗봇 + SSE 스트리밍
-│       │   ├── auth.py          # JWT + 비밀번호 재설정
-│       │   ├── documents.py     # 문서 CRUD + 생성/다운로드
-│       │   ├── meetings.py      # 회의 관리
-│       │   ├── schedules.py     # 일정 CRUD
-│       │   ├── calendar.py      # Google Calendar + Meet
-│       │   ├── google_connect.py # 통합 OAuth
-│       │   ├── tasks.py         # Google Tasks API
-│       │   ├── gmail.py         # Gmail 발송 API
-│       │   ├── sheets.py        # Google Sheets API
-│       │   └── admin.py         # 관리자 + 통계 + 로그
-│       ├── models/              # ORM 모델 (11개 테이블)
-│       ├── schemas/             # Pydantic 스키마
-│       └── services/            # 비즈니스 로직
-│           ├── template_service.py   # 문서 생성/다운로드
-│           ├── statistics_service.py # 통계/로그
-│           ├── parsing_service.py    # 파싱 상태 관리
-│           ├── google_base_service.py # Google API 공통 베이스
-│           ├── calendar_service.py   # Calendar + Meet 연동
-│           ├── tasks_service.py      # Google Tasks 동기화
-│           ├── gmail_service.py      # 알림/초대 메일 발송
-│           ├── sheets_service.py     # Sheets 추적 시트
-│           └── schedule_service.py   # 4개 서비스 오케스트레이션
+│   ├── app/
+│   │   ├── main.py              # 앱 진입점
+│   │   ├── config.py            # 환경변수
+│   │   ├── api/v1/              # REST API 엔드포인트
+│   │   │   ├── chat.py          # 챗봇 + SSE 스트리밍
+│   │   │   ├── auth.py          # JWT + 비밀번호 재설정 + Google 소셜 로그인
+│   │   │   ├── documents.py     # 문서 CRUD + 생성/다운로드
+│   │   │   ├── meetings.py      # 회의 관리
+│   │   │   ├── schedules.py     # 일정 CRUD
+│   │   │   ├── calendar.py      # Google Calendar + Meet
+│   │   │   ├── google_connect.py # 통합 OAuth
+│   │   │   ├── tasks.py         # Google Tasks API
+│   │   │   ├── gmail.py         # Gmail 발송 API
+│   │   │   ├── sheets.py        # Google Sheets API
+│   │   │   ├── regulations.py   # 규정 목록 조회 (공개)
+│   │   │   └── admin.py         # 관리자 + 통계 + 로그 + 규정 CRUD
+│   │   ├── models/              # ORM 모델 (12개 테이블)
+│   │   ├── schemas/             # Pydantic 스키마
+│   │   └── services/            # 비즈니스 로직
+│   │       ├── document_service.py   # 문서 업로드/파싱 + Qdrant 인덱싱
+│   │       ├── meeting_service.py    # 회의 CRUD + AI 분석
+│   │       ├── template_service.py   # 문서 생성/다운로드
+│   │       ├── statistics_service.py # 통계/로그
+│   │       ├── parsing_service.py    # 파싱 상태 관리
+│   │       ├── google_base_service.py # Google API 공통 베이스
+│   │       ├── calendar_service.py   # Calendar + Meet 연동
+│   │       ├── tasks_service.py      # Google Tasks 동기화
+│   │       ├── gmail_service.py      # 알림/초대 메일 발송
+│   │       ├── sheets_service.py     # Sheets 추적 시트
+│   │       └── schedule_service.py   # 4개 서비스 오케스트레이션
+│   └── scripts/                 # 유틸리티 스크립트
+│       ├── rebuild_qdrant.py    # Qdrant 전체 재정립
+│       ├── migrate_docs_to_qdrant.py # 기존 문서 마이그레이션
+│       └── seed_sample_documents.py  # 샘플 데이터 시딩
 │
 ├── ai/                          # AI/ML 모듈
-│   ├── agents/                  # LangGraph Agent (지용/경은/승언)
+│   ├── agents/                  # LangGraph Agent (지용/경은/승언/혜빈)
 │   │   ├── state.py             # AgentState 공유 상태
-│   │   ├── config.py            # 분류 임계값 설정
+│   │   ├── config.py            # 분류 임계값 설정 (0.85 / 0.4)
 │   │   ├── orchestrator.py      # StateGraph 오케스트레이터
-│   │   ├── intent_classifier.py # Intent 분류 (klue/bert-base)
+│   │   ├── intent_classifier.py # Intent 분류 (koelectra-base-v3)
+│   │   ├── preprocessing.py     # 한국어 전처리 (kiwipiepy)
 │   │   ├── judgment_agent.py    # 판단 Agent (경은)
 │   │   ├── document_agent.py    # 문서 Agent (승언)
 │   │   └── schedule_agent.py    # 일정 Agent (혜빈)
 │   ├── llm/                     # LLM 공통 모듈 (경은)
-│   │   ├── base.py              # BaseLLMProvider 인터페이스
-│   │   ├── factory.py           # LLM 팩토리
+│   │   ├── base.py              # BaseLLM 인터페이스
+│   │   ├── factory.py           # LLM 팩토리 (openai/anthropic/vllm)
 │   │   ├── openai_provider.py   # OpenAI (GPT)
 │   │   ├── anthropic_provider.py # Anthropic (Claude)
 │   │   └── prompts.py           # 프롬프트 관리
 │   ├── rag/                     # RAG 파이프라인 (경은)
-│   │   ├── hybrid_search.py     # BM25 + Vector
+│   │   ├── hybrid_search.py     # BM25 + Vector (RRF 합산)
 │   │   ├── reranker.py          # bge-reranker-v2-m3
-│   │   ├── vectorstore.py       # Qdrant
-│   │   ├── qdrant_pipeline.py   # Qdrant 파이프라인
+│   │   ├── embeddings.py        # ko-sbert-nli 임베딩
+│   │   ├── query_refiner.py     # 쿼리 정제
+│   │   ├── qdrant_pipeline.py   # Qdrant 파이프라인 (싱글톤)
 │   │   └── qdrant_store.py      # Qdrant 벡터스토어
 │   ├── templates/               # 문서 템플릿 (승언)
 │   │   ├── base.py              # BaseTemplate
@@ -566,25 +592,33 @@ SKN21-FINAL-3TEAM/
 │   │   ├── report.py            # 보고서
 │   │   ├── jd.py                # 채용 공고
 │   │   └── proposal.py          # 제안서
-│   ├── tests/                   # AI 테스트
-│   ├── experiments/             # ML 실험 (전처리, 학습, 평가)
-│   ├── finetuning/              # LoRA 학습 (경은/승언)
 │   ├── document_parser/         # 문서 파싱 (승언)
-│   └── serving/vllm_client.py   # vLLM 클라이언트
+│   │   ├── docling_parser.py    # Docling (디지털 PDF)
+│   │   ├── ocr_parser.py        # PaddleOCR (스캔 문서)
+│   │   ├── docx_parser.py       # DOCX 파싱
+│   │   └── regulation_parser.py # 규정 파싱 (조문 기반 청킹)
+│   ├── skills/                  # 문서 생성 스킬
+│   ├── serving/vllm_client.py   # vLLM 클라이언트
+│   ├── finetuning/              # LoRA 학습 (경은/승언)
+│   ├── models/                  # 학습된 모델 체크포인트
+│   ├── tests/                   # AI 테스트
+│   └── experiments/             # ML 실험 (전처리, 학습, 평가)
 │
 ├── frontend/                    # React 프론트엔드 (지영)
-│   └── src/
-│       ├── components/
-│       │   ├── chat/            # 챗봇 UI + 응답 카드
-│       │   ├── dashboard/       # 대시보드 위젯
-│       │   ├── documents/       # 문서 관리
-│       │   ├── meetings/        # 회의 관리
-│       │   ├── schedules/       # 일정 (FullCalendar)
-│       │   ├── auth/            # 로그인/회원가입
-│       │   └── admin/           # 관리자
-│       ├── hooks/               # useAuth, useSSE, useChat
-│       ├── store/               # Zustand (auth, chat, ui, google)
-│       └── pages/               # 페이지 라우팅
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── chat/            # 챗봇 UI + 응답 카드 (15개 컴포넌트)
+│   │   │   ├── common/          # 공통 UI (Sidebar, Header, Layout, ThemeToggle 등)
+│   │   │   ├── dashboard/       # 대시보드 위젯 (14개)
+│   │   │   ├── documents/       # 문서 관리
+│   │   │   ├── meetings/        # 회의 관리
+│   │   │   ├── schedules/       # 일정 (FullCalendar + Google 연동)
+│   │   │   ├── auth/            # 로그인/회원가입
+│   │   │   └── admin/           # 관리자 (사용자/규정/통계)
+│   │   ├── hooks/               # useAuth, useSSE, useChat, useGoogleServices
+│   │   ├── store/               # Zustand (auth, chat, ui, google, scheduleType)
+│   │   └── pages/               # 11개 페이지
+│   └── e2e/                     # Playwright E2E 테스트
 │
 ├── data/                        # 학습/평가 데이터
 │   ├── training/
@@ -656,14 +690,15 @@ docs: API 스키마 문서 업데이트 #2
 
 ```bash
 # 1. 환경변수 설정
-cp .env.example .env
+# .env 파일을 프로젝트 루트에 생성 (OPENAI_API_KEY, DATABASE_URL, QDRANT_URL 등)
 
 # 2. Docker로 실행
 cd docker && docker-compose up -d
 
 # 3. 또는 로컬 개발
 # Backend
-cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload
+pip install -r requirements.txt   # 루트의 requirements.txt
+cd backend && uvicorn app.main:app --reload
 
 # Frontend
 cd frontend && npm install && npm run dev
