@@ -62,8 +62,8 @@ export default function SystemStats({ queryLogs = [] }) {
   }));
 
   return (
-    <div className="space-y-5">
-      <div className="card">
+    <div className="space-y-5 overflow-hidden">
+      <div className="card overflow-hidden">
         <div className="card-header">
           <div className="card-title">인기 질의</div>
           <div className="flex gap-1">
@@ -93,7 +93,7 @@ export default function SystemStats({ queryLogs = [] }) {
         </div>
       </div>
 
-      <div className="card">
+      <div className="card overflow-hidden">
         <div className="card-header"><div className="card-title">최근 질의 로그</div></div>
         <div className="card-body">
           {queryLogs.length === 0 ? (

@@ -38,6 +38,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     name: str
     password: str
+    team: str | None = None
     is_admin: bool = False
 
 router = APIRouter()
@@ -56,6 +57,7 @@ async def list_users(
             "id": u.id,
             "email": u.email,
             "name": u.name,
+            "team": u.team,
             "is_admin": u.is_admin,
             "is_active": u.is_active,
             "created_at": u.created_at.isoformat() if u.created_at else None,
@@ -316,6 +318,7 @@ async def create_user(
         email=data.email,
         name=data.name,
         hashed_password=hash_password(data.password),
+        team=data.team,
         is_admin=data.is_admin,
     )
     db.add(user)
@@ -324,6 +327,7 @@ async def create_user(
         "id": user.id,
         "email": user.email,
         "name": user.name,
+        "team": user.team,
         "is_admin": user.is_admin,
         "is_active": user.is_active,
     }

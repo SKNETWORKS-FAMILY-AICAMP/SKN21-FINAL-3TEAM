@@ -4,11 +4,11 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
-# ── 색상 상수 ──
-_BLUE_HEADER = "2E75B6"   # 섹션 헤더 배경 (파란색)
-_BLUE_LIGHT  = "BDD7EE"   # 라벨 셀 배경 (연한 파란색)
-_BLUE_ALT    = "EBF3FB"   # 테이블 짝수 행 배경
-_NAVY_RGB    = RGBColor(0x1F, 0x3B, 0x6C)   # 제목 글자색 (네이비)
+# ── 모던 프리미엄 다크 슬레이트 테마 ──
+_BLUE_HEADER = "1E293B"   # 섹션 헤더 배경 (다크 네이비/슬레이트)
+_BLUE_LIGHT  = "F1F5F9"   # 라벨 셀 배경 (밝고 연한 그레이 블루)
+_BLUE_ALT    = "F8FAFC"   # 테이블 짝수 행 배경 (백색에 가까운 블루)
+_NAVY_RGB    = RGBColor(0x1E, 0x29, 0x3B)   # 메인 폰트 색상
 _WHITE_RGB   = RGBColor(0xFF, 0xFF, 0xFF)   # 섹션 헤더 글자색
 
 
@@ -210,7 +210,7 @@ def create_report(output_path: str = "tests/업무보고서_생성.docx", data: 
             style_value_cell(t3.rows[r].cells[c])
         set_row_height(t3.rows[r], 1.0)
 
-    doc.add_paragraph()
+    doc.add_page_break()
 
     # ── 표4: 이슈 및 건의 사항 ──
     t4 = doc.add_table(rows=2, cols=1)
@@ -268,9 +268,17 @@ def create_report(output_path: str = "tests/업무보고서_생성.docx", data: 
         _inject(t1.rows[1].cells[0], data.get("overview", ""))
         _inject(t2.rows[1].cells[0], data.get("main_content", ""))
 
-        tasks = data.get("tasks", [])
+        tasks_raw = data.get("tasks", [])
+        if isinstance(tasks_raw, dict):
+            tasks = list(tasks_raw.values())
+        elif isinstance(tasks_raw, list):
+            tasks = tasks_raw
+        else:
+            tasks = []
         for r in range(2, 6):
             task = tasks[r - 2] if r - 2 < len(tasks) else {}
+            if not isinstance(task, dict):
+                task = {}
             _inject(t3.rows[r].cells[1], task.get("item", ""))
             _inject(t3.rows[r].cells[2], task.get("assignee", ""))
             _inject(t3.rows[r].cells[3], task.get("progress", ""))

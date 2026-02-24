@@ -27,6 +27,8 @@ outputs/
 # Test artifacts
 test-results/
 tests/screenshots/
+frontend/e2e/results/
+frontend/playwright-report/
 
 # ChromaDB
 chroma_db/

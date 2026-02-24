@@ -20,8 +20,8 @@ export default function useAuth() {
   }
 
   // 2: 회원가입
-  const register = async (email, password, name) => {  // 1. 서버에 새 유저 정보를 등록해달라고 요청해
-    await authAPI.register(email, password, name)
+  const register = async (email, password, name, team) => {  // 1. 서버에 새 유저 정보를 등록해달라고 요청해
+    await authAPI.register(email, password, name, team)
     // 이동은 호출부(LoginPage)에서 팝업 확인 후 처리
   }
 

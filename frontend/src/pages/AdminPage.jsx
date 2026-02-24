@@ -74,11 +74,10 @@ export default function AdminPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             {[
               { l: '전체 사용자', v: users.length },
               { l: '오늘 질의 수', v: stats.today_queries || 0 },
-              { l: '처리된 회의', v: stats.processed_meetings || 0 },
               { l: '등록된 규정', v: regulations.length },
             ].map(({ l, v }) => (
               <div key={l} className="card p-5">
@@ -88,11 +87,13 @@ export default function AdminPage() {
             ))}
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-5">
-            <div className="space-y-5">
+            <div className="space-y-5 min-w-0">
               <UserManagement users={users} onRefresh={loadAll} />
               <RegulationManagement regulations={regulations} onRefresh={loadAll} />
             </div>
-            <SystemStats queryLogs={queryLogs} />
+            <div className="min-w-0">
+              <SystemStats queryLogs={queryLogs} />
+            </div>
           </div>
         </>
       )}

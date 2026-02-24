@@ -113,11 +113,10 @@ export default function Layout() {
       <main
         ref={mainRef}
         onScrollCapture={handleScroll}
-        className={`flex-1 min-h-0 ${
-          isChatPage
+        className={`flex-1 min-h-0 ${isChatPage
             ? 'overflow-hidden flex flex-col'
             : 'overflow-y-auto px-8 pb-20'
-        }`}
+          }`}
       >
         <AnimatePresence mode="wait">
           <motion.div
@@ -133,7 +132,7 @@ export default function Layout() {
           </motion.div>
         </AnimatePresence>
       </main>
-      <AIDock />
+      {!isChatPage && <AIDock />}
     </div>
   );
 }

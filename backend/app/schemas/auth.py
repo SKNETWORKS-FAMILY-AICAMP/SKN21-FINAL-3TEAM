@@ -19,12 +19,14 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     name: str
+    team: str | None = None
 
 
 class RegisterResponse(BaseModel):
     id: int
     email: str
     name: str
+    team: str | None = None
 
 
 class TokenRefreshRequest(BaseModel):
