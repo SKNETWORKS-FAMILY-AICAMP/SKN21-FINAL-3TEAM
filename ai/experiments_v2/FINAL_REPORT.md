@@ -252,8 +252,6 @@ Gemini 웹(Pro 3.1) 생성 + 수동 검수로 70개 추가, 4유형 균형 배�
 
 **전체 Accuracy 85.0%, F1(macro) 0.8497**
 
-![시나리오 테스트 정확도](results/scenario_test_accuracy.png)
-
 **오분류 15건 패턴 분석:**
 
 | 패턴 | 건수 | 주요 예시 |
