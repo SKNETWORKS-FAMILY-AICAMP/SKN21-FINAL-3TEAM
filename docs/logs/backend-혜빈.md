@@ -363,6 +363,40 @@
 
 ---
 
+## 2026-02-20 (세션 8.5)
+
+### 한 일
+
+**관리자 규정 CRUD + 사용자 추가/삭제 API 구현 (#29)**
+- `backend/app/api/v1/admin.py`에 5개 엔드포인트 추가:
+  - `POST /admin/regulations` — 규정 추가
+  - `PUT /admin/regulations/{id}` — 규정 수정
+  - `DELETE /admin/regulations/{id}` — 규정 삭제
+  - `POST /admin/users` — 사용자 추가
+  - `DELETE /admin/users/{id}` — 사용자 삭제 (본인 삭제 방지)
+
+**관리자 페이지 프론트엔드 API 연동 (#29)**
+- `AdminPage.jsx`: mock 데이터 제거 → 실제 API 호출 (useEffect + Promise.all)
+- `UserManagement.jsx`: 사용자 추가/삭제/권한변경 API 연동
+- `RegulationManagement.jsx`: 규정 추가/수정/삭제 API 연동
+- `SystemStats.jsx`: 인기 질의 (기간별) + 질의 로그 실제 데이터 표시
+- `frontend/src/api/admin.js`: 누락 API 함수 추가 (CRUD 전체)
+
+**채팅 로그 저장 구현**
+- `backend/app/api/v1/chat.py`: 스트리밍/비스트리밍 양쪽에 `chat_logs` 테이블 저장 로직 추가
+- `statistics_service.py`: 타임스탬프 UTC 표시(Z) 추가로 시간차 문제 해결
+
+**403 응답 버그 수정**
+- `frontend/src/api/client.js`: 인터셉터에서 401만 토큰 제거 (403은 유지)
+- 새로고침/권한 없음 시 로그아웃되는 버그 수정
+- `backend/run.sh` 실행 스크립트 추가
+
+### 다음 할 일
+- 판단 Agent 스트리밍 디버깅
+- AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
+
+---
+
 ## 2026-02-23 (세션 9)
 
 ### 한 일

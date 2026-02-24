@@ -20,10 +20,13 @@ class MeetingMinutesTemplate(BaseTemplate):
 
     # 회의록 필수 필드
     REQUIRED_FIELDS = [
-        "title",        # 회의명
-        "date",         # 일시
+        "title",        # 회의 제목
+        "date",         # 회의 날짜
+        "time",         # 회의 시간 (예: "14:00~15:30")
+        "location",     # 회의 장소
+        "meeting_type", # 회의 유형 ("정기" | "비정기" | "긴급")
         "attendees",    # 참석자
-        "agenda",       # 안건
+        "author",       # 작성자
         "content",      # 회의 내용 (사용자 입력 또는 sLLM 생성)
     ]
 
@@ -31,13 +34,12 @@ class MeetingMinutesTemplate(BaseTemplate):
     TEMPLATE = """# {title}
 
 ## 회의 정보
-- **일시**: {date}
+- **날짜**: {date}
+- **시간**: {time}
 - **장소**: {location}
+- **유형**: {meeting_type}
 - **참석자**: {attendees}
 - **작성자**: {author}
-
-## 안건
-{agenda}
 
 ## 회의 내용
 {content}
@@ -46,11 +48,11 @@ class MeetingMinutesTemplate(BaseTemplate):
 {decisions}
 
 ## Action Items
-| 담당자 | 내용 | 기한 | 상태 |
-|--------|------|------|------|
+| No. | 내용 | 담당자 | 기한 | 상태 |
+|-----|------|--------|------|------|
 {action_items}
 
-## 비고
+## 비고 / 다음 회의 일정
 {notes}
 """
 
@@ -61,15 +63,22 @@ class MeetingMinutesTemplate(BaseTemplate):
         Args:
             data: {
                 "title": "2026 Q1 개발 스프린트 회의",
-                "date": "2026-02-10 14:00",
+                "date": "2026-02-10",
+                "time": "14:00~15:30",
                 "location": "회의실 A",
+                "meeting_type": "정기",
                 "attendees": ["김철수", "이영희"],
                 "author": "김철수",
-                "agenda": "스프린트 회고 및 다음 스프린트 계획",
                 "content": "...(sLLM이 생성한 상세 내용)...",
                 "decisions": ["결정사항1", "결정사항2"],
                 "action_items": [
-                    {"assignee": "이영희", "content": "API 문서 작성", "due_date": "2026-02-15"}
+                    {
+                        "no": 1,
+                        "assignee": "이영희",
+                        "content": "API 문서 작성",
+                        "due_date": "2026-02-15",
+                        "status": "진행중"
+                    }
                 ],
                 "notes": ""
             }
