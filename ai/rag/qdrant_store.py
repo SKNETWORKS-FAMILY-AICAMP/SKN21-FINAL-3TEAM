@@ -272,6 +272,39 @@ class QdrantVectorStore:
 
         return result
 
+    def get_chunks_by_document_id(self, document_id: int) -> list[str]:
+        """document_id로 Qdrant 청크 전체 수집 (순서대로 content 반환)
+
+        Args:
+            document_id: DB Document.id 값
+        Returns:
+            청크 content 리스트 (삽입 순서대로)
+        """
+        if self.client is None:
+            raise RuntimeError("QdrantVectorStore가 초기화되지 않았습니다.")
+
+        query_filter = Filter(
+            must=[FieldCondition(key="document_id", match=MatchValue(value=document_id))]
+        )
+
+        all_points = []
+        offset = None
+        while True:
+            points, next_offset = self.client.scroll(
+                collection_name=self.collection_name,
+                scroll_filter=query_filter,
+                limit=100,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+            all_points.extend(points)
+            if next_offset is None:
+                break
+            offset = next_offset
+
+        return [p.payload.get("content", "") for p in all_points if p.payload.get("content")]
+
     def delete_by_filter(self, filter_dict: dict):
         """메타데이터 필터 조건에 맞는 포인트 삭제"""
         if self.client is None:

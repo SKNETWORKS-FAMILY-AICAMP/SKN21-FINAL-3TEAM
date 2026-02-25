@@ -139,6 +139,12 @@
   40% { transform: scale(1); }
 }
 
+/* 규정 패널 알림 glow 효과 */
+@keyframes reg-glow {
+  0%, 100% { box-shadow: 0 0 4px rgba(86, 114, 138, 0.3); }
+  50% { box-shadow: 0 0 12px rgba(86, 114, 138, 0.6), 0 0 24px rgba(86, 114, 138, 0.2); }
+}
+
 /* ── Print styles ── */
 @media print {
   body * {

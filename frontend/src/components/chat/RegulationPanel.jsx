@@ -103,7 +103,7 @@ export default function RegulationPanel({ regulations = [], isOpen, onClose, sea
                   <KeywordHighlight text={reg.content} keyword={searchQuery} />
                 </p>
               )}
-              {reg.relevance && (
+              {typeof reg.relevance === 'number' && !isNaN(reg.relevance) && (
                 <div className="mt-2 flex items-center gap-1 text-[0.6875rem] text-neutral-muted">
                   <span>관련도</span>
                   <div className="flex-1 h-1.5 bg-neutral-divider rounded-full overflow-hidden">

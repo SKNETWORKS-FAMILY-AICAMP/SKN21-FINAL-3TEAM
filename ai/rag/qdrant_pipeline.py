@@ -120,6 +120,11 @@ class QdrantRAGPipeline:
         """source 필터로 저장된 문서 목록 반환 (title + document_id)"""
         return self.vector_store.list_documents_by_source(source=source, user_id=user_id)
 
+    def get_document_content(self, document_id: int) -> str:
+        """document_id로 Qdrant 청크 전체 합산 → 전체 content 반환 (DB 없을 때 fallback용)"""
+        chunks = self.vector_store.get_chunks_by_document_id(document_id)
+        return "\n\n".join(chunks) if chunks else ""
+
 
 def get_qdrant_pipeline() -> QdrantRAGPipeline:
     """Qdrant RAG 파이프라인 싱글턴 인스턴스 반환"""

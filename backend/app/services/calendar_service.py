@@ -168,6 +168,7 @@ class GoogleCalendarService(GoogleBaseService):
 
         return {"calendar_id": calendar_id, "name": name}
 
+
     async def delete_event(self, db: AsyncSession, user_id: int, event_id: str, calendar_id: str = "primary") -> None:
         """Google Calendar 이벤트 삭제 (지정 캘린더 실패 시 전체 캘린더 탐색)"""
         creds = await self.get_credentials(db, user_id)

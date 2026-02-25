@@ -49,6 +49,7 @@ async def create_calendar(
     return await calendar_service.create_calendar(db, current_user.id, name, color)
 
 
+
 @router.delete("/events/{event_id}", status_code=204)
 async def delete_google_event(
     event_id: str,
