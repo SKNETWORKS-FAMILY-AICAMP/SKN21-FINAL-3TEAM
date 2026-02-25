@@ -97,118 +97,54 @@
 
 ### 각 Agent 워크플로우
 
-```mermaid
-flowchart LR
-  %% --- styles (slide-friendly) ---
-  classDef agent fill:#F3F7FF,stroke:#3B82F6,stroke-width:1px,color:#0F172A;
-  classDef step fill:#FFFFFF,stroke:#94A3B8,stroke-width:1px,color:#0F172A;
-  classDef shared fill:#FFF7ED,stroke:#F97316,stroke-width:1px,color:#7C2D12;
-  classDef output fill:#ECFDF5,stroke:#10B981,stroke-width:1px,color:#064E3B;
-  classDef validate fill:#FDF2F8,stroke:#EC4899,stroke-width:1px,color:#831843;
+```
+┌─ Judgment Agent ─────────────────────────────────────────────────────┐
+│                                                                             │
+│  user_input ──→ RAG 하이브리드 검색 (규정문서, top_k=10) ──→ LLM 판단 (JSON) │
+│                    │                                          │             │
+│                    │  Qdrant + BM25                            │             │
+│                    │  bge-reranker                             ▼             │
+│                                                   3중 보조장치 검증           │
+│                                                   ├─ 환각 탐지 (인용 cross-check)
+│                                                   ├─ 조항 존재 검증          │
+│                                                   └─ confidence 보정        │
+│                                                          │                  │
+│                                                          ▼                  │
+│  Output: { result: yes/no/conditional, confidence, reasoning, regulations } │
+└─────────────────────────────────────────────────────────────────────────────┘
 
-  U[사용자 입력]:::step --> R{Intent 분기}:::step
+┌─ Document Agent ─────────────────────────────────────────────────────┐
+│                                                                             │
+│  intent에 따라 4가지 분기 (챗봇/페이지 공용):                                  │
+│                                                                             │
+│  doc_generate ──→ 템플릿 로드(template_id) ──→ LLM 초안 생성 (JSON)          │
+│                  → { data, preview, additional_fields }                      │
+│                                                                             │
+│  doc_summary ──→ 문서 로드(document_id) ──→ LLM 회사 요약 포맷 생성          │
+│                  → { title, core_summary, key_points, keywords }            │
+│                                                                             │
+│  doc_search ──→ query(+필터) ──→ RAG 하이브리드 검색 (업로드 문서)            │
+│                  챗봇: 질문→쿼리 변환 후 추천 / 페이지: 키워드/필터 탐색       │
+│                  → { results[], message }                                    │
+│                                                                             │
+│  doc_qa ──→ RAG 검색 (업로드 문서) ──→ LLM 답변 + 인용 (주 사용처: 챗봇)     │
+│                  → { answer, citations[] }                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
 
-  %% --- Judgment Agent ---
-  subgraph J[Judgment Agent]
-    direction LR
-    J1[Hybrid RAG<br/>규정문서 · top_k=10]:::step --> J2[LLM 판단<br/>JSON]:::step --> J3[3중 검증]:::validate --> J4[Output JSON<br/>result · confidence<br/>reasoning · regulations]:::output
-    J3 --> J3a[환각 탐지<br/>인용 교차검증]:::validate
-    J3 --> J3b[조항 존재 검증]:::validate
-    J3 --> J3c[confidence 보정]:::validate
-  end
+┌─ Schedule Agent ─────────────────────────────────────────────────────┐
+│                                                                             │
+│  schedule_add ──→ LLM 파싱 (자연어→구조화) ──→ Google Calendar API 등록      │
+│                  → { schedule{title,start,end}, google_services{event_id} }  │
+│                                                                             │
+│  schedule_view ──→ LLM 기간 추출 ──→ Google Calendar API 조회               │
+│                  → { schedules[], message }                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
 
-  %% --- Document Agent (4 intents) ---
-  subgraph D[Document Agent]
-    direction LR
-    D0{doc_* intent}:::step
-    D0 --> Dg[생성<br/>doc_generate]:::step --> DgO[data · preview<br/>additional_fields]:::output
-    D0 --> Ds[요약<br/>doc_summary]:::step --> DsO[title · core_summary<br/>key_points · keywords]:::output
-    D0 --> Dse[검색<br/>doc_search]:::step --> DseO["results[] · message"]:::output
-    D0 --> Dqa[QA<br/>doc_qa]:::step --> DqaO["answer · citations[]"]:::output
-  end
-
-  %% --- Schedule Agent ---
-  subgraph S[Schedule Agent]
-    direction LR
-    Sa[추가<br/>schedule_add]:::step --> Sa1[LLM 파싱<br/>자연어→구조화]:::step --> Sa2[Google Calendar API<br/>등록]:::step --> SaO["schedule(title,start,end)<br/>google_services(event_id)"]:::output
-    Sv[조회<br/>schedule_view]:::step --> Sv1[LLM 기간 추출]:::step --> Sv2[Google Calendar API<br/>조회]:::step --> SvO["schedules[] · message"]:::output
-  end
-
-  %% --- General Response ---
-  subgraph G[General Response]
-    direction LR
-    G1[LLM 일반 응답]:::step --> GO[message]:::output
-  end
-
-  %% --- routing (single-direction) ---
-  R --> J1
-  R --> D0
-  R --> Sa
-  R --> Sv
-  R --> G1
-
-  %% --- shared components (central/bottom) ---
-  subgraph C[Shared Components]
-    direction LR
-    subgraph C_R[Retrieval]
-      direction LR
-      RET[Retriever<br/>Hybrid RAG]:::shared
-      VDB[Vector DB<br/>Qdrant]:::shared
-      BM25[BM25 Index]:::shared
-      RR[Reranker<br/>bge-reranker]:::shared
-    end
-
-    subgraph C_L[LLM]
-      direction LR
-      LLM[LLM]:::shared
-    end
-
-    subgraph C_S[Stores]
-      direction LR
-      TPL[Template Store]:::shared
-      DOC["Document Store<br/>(업로드)"]:::shared
-    end
-
-    subgraph C_X[External API]
-      direction LR
-      GCAL[Google Calendar API]:::shared
-    end
-  end
-
-  %% --- group box styling (subgraph) ---
-  style J fill:#F3F7FF,stroke:#3B82F6,stroke-width:1px,color:#0F172A
-  style D fill:#F3F7FF,stroke:#3B82F6,stroke-width:1px,color:#0F172A
-  style S fill:#F3F7FF,stroke:#3B82F6,stroke-width:1px,color:#0F172A
-  style G fill:#F3F7FF,stroke:#3B82F6,stroke-width:1px,color:#0F172A
-
-  style C fill:#FFF7ED,stroke:#F97316,stroke-width:1px,color:#7C2D12
-  style C_R fill:#FFF7ED,stroke:#F97316,stroke-width:1px,color:#7C2D12
-  style C_L fill:#FFF7ED,stroke:#F97316,stroke-width:1px,color:#7C2D12
-  style C_S fill:#FFF7ED,stroke:#F97316,stroke-width:1px,color:#7C2D12
-  style C_X fill:#FFF7ED,stroke:#F97316,stroke-width:1px,color:#7C2D12
-
-  %% --- usage links (dashed to reduce clutter) ---
-  J1 -.uses.-> RET
-  RET -.-> VDB
-  RET -.-> BM25
-  RET -.-> RR
-  J2 -.uses.-> LLM
-
-  Dg -.uses.-> TPL
-  Ds -.uses.-> DOC
-  Dse -.uses.-> RET
-  Dqa -.uses.-> RET
-  Dg -.uses.-> LLM
-  Ds -.uses.-> LLM
-  Dse -.uses.-> LLM
-  Dqa -.uses.-> LLM
-
-  Sa1 -.uses.-> LLM
-  Sv1 -.uses.-> LLM
-  Sa2 -.uses.-> GCAL
-  Sv2 -.uses.-> GCAL
-
-  G1 -.uses.-> LLM
+┌─ General Response ──────────────────────────────────────────────────────────┐
+│                                                                             │
+│  user_input ──→ LLM 일반 응답 (업무 관련 친절 답변)                           │
+│                  → { message }                                               │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Intent 분류 체계 (8개)
