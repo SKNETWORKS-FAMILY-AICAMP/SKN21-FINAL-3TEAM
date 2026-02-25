@@ -24,7 +24,7 @@ export default function DocumentList({ documents = [], onSelect, searchQuery = '
             options={['전체', '회사', '팀']}
           />
         </div>
-        <span className="text-xs text-neutral-muted">총 {documents.length}개 문서</span>
+        <span className="text-xs text-neutral-muted" data-testid="doc-count">총 {documents.length}개 문서</span>
       </div>
       <div className="overflow-x-auto">
         <DataTable columns={columns} data={documents} onRowClick={onSelect} />

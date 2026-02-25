@@ -1,78 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-
-// ─── 설정 ───────────────────────────────────────────────
-const LOGIN_EMAIL = 'jiyong1110@naver.com';
-const LOGIN_PW = 'tlswldyd1!';
-const SSE_WAIT = 20_000; // SSE 응답 최대 대기(ms)
-
-// ─── 헬퍼 ───────────────────────────────────────────────
-
-/** 로그인 수행 */
-async function login(page) {
-  await page.goto('/');
-  // 이미 로그인 상태면 스킵
-  if (!page.url().includes('/login') && !page.url().endsWith('/')) {
-    return;
-  }
-
-  const emailInput = page.locator('input[type="email"]');
-  if (await emailInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await emailInput.fill(LOGIN_EMAIL);
-    await page.locator('input[type="password"]').fill(LOGIN_PW);
-    await page.locator('button[type="submit"]').click();
-    // 대시보드로 이동될 때까지 대기
-    await page.waitForURL('**/dashboard', { timeout: 15_000 });
-  }
-}
-
-/** 채팅 페이지 이동 */
-async function goToChat(page) {
-  await page.goto('/chat');
-  // 채팅 입력창이 보일 때까지 대기
-  await page.locator('textarea[placeholder*="질문"], input[placeholder*="질문"]').waitFor({ state: 'visible', timeout: 10_000 });
-}
-
-/** 로그인 + 채팅 페이지 이동 */
-async function loginAndGoToChat(page) {
-  await login(page);
-  await goToChat(page);
-}
-
-/** 메시지 전송 */
-async function sendMessage(page, message) {
-  const input = page.locator('textarea[placeholder*="질문"], input[placeholder*="질문"]');
-  await input.fill(message);
-  await input.press('Enter');
-}
-
-/**
- * AI 응답이 완료될 때까지 대기
- * - assistant 메시지 버블이 생기고, 내용이 안정될 때까지 폴링
- */
-async function waitForBotResponse(page, timeoutMs = SSE_WAIT) {
-  // 먼저 봇 버블이 하나 이상 나타나길 기다림
-  const botBubbles = page.locator('[class*="items-start"]').filter({ hasText: /.+/ });
-  await botBubbles.first().waitFor({ state: 'visible', timeout: timeoutMs }).catch(() => {});
-
-  // 내용이 안정화될 때까지 폴링
-  const start = Date.now();
-  let prevText = '';
-  let stableCount = 0;
-
-  while (Date.now() - start < timeoutMs) {
-    await page.waitForTimeout(1500);
-    const allText = await page.locator('main, [data-main-scroll]').first().textContent().catch(() => '');
-    if (allText === prevText && allText.length > 0) {
-      stableCount++;
-      if (stableCount >= 2) break; // 3초간 변화 없으면 완료
-    } else {
-      stableCount = 0;
-    }
-    prevText = allText;
-  }
-  return prevText;
-}
+import { login, goToChat, loginAndGoToChat, sendMessage, waitForBotResponse } from './helpers.js';
 
 // ─── 테스트 ─────────────────────────────────────────────
 
@@ -86,8 +14,8 @@ test.describe('챗봇 E2E 테스트', () => {
     await page.goto('/');
     const emailInput = page.locator('input[type="email"]');
     await emailInput.waitFor({ state: 'visible', timeout: 10_000 });
-    await emailInput.fill(LOGIN_EMAIL);
-    await page.locator('input[type="password"]').fill(LOGIN_PW);
+    await emailInput.fill('jiyong1110@naver.com');
+    await page.locator('input[type="password"]').fill('tlswldyd1!');
     await page.locator('button[type="submit"]').click();
 
     await page.waitForURL('**/dashboard', { timeout: 15_000 });
@@ -98,7 +26,7 @@ test.describe('챗봇 E2E 테스트', () => {
   test('채팅 페이지 입력창 표시', async ({ page }) => {
     await loginAndGoToChat(page);
 
-    const input = page.locator('textarea[placeholder*="질문"], input[placeholder*="질문"]');
+    const input = page.locator('[data-testid="chat-input"]');
     await expect(input).toBeVisible();
 
     // 추천 질문 영역이 보여야 함 (메시지 0개일 때)
@@ -120,7 +48,6 @@ test.describe('챗봇 E2E 테스트', () => {
     const hasAgent = await agentBar.first().isVisible({ timeout: 5000 }).catch(() => false);
     console.log('[E2E] 규정 판단 Agent 활성:', hasAgent);
 
-    // 응답에 관련 내용이 있는지
     expect(response.length).toBeGreaterThan(20);
   });
 
@@ -165,7 +92,6 @@ test.describe('챗봇 E2E 테스트', () => {
     const response = await waitForBotResponse(page, 30_000);
     console.log('[E2E] schedule_view 응답 길이:', response.length);
 
-    // 일정 에이전트 바 표시 확인
     const scheduleAgent = page.locator('text=일정');
     const hasSchedule = await scheduleAgent.first().isVisible({ timeout: 5000 }).catch(() => false);
     console.log('[E2E] 일정 Agent 활성:', hasSchedule);

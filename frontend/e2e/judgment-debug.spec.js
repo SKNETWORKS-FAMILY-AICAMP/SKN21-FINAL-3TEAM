@@ -1,59 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-
-const LOGIN_EMAIL = 'jiyong1110@naver.com';
-const LOGIN_PW = 'tlswldyd1!';
-
-async function loginAndGoToChat(page) {
-  await page.goto('/');
-  const emailInput = page.locator('input[type="email"]');
-  if (await emailInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await emailInput.fill(LOGIN_EMAIL);
-    await page.locator('input[type="password"]').fill(LOGIN_PW);
-    await page.locator('button[type="submit"]').click();
-    await page.waitForURL('**/dashboard', { timeout: 15_000 });
-  }
-  await page.goto('/chat');
-  await page.locator('input[placeholder*="질문"]').waitFor({ state: 'visible', timeout: 10_000 });
-}
-
-async function sendAndCapture(page, message, label) {
-  const input = page.locator('input[placeholder*="질문"]');
-  await input.fill(message);
-  await input.press('Enter');
-
-  const start = Date.now();
-  let prevText = '';
-  let stableCount = 0;
-
-  while (Date.now() - start < 60_000) {
-    await page.waitForTimeout(2000);
-    const allText = await page.locator('[data-main-scroll]').first().textContent().catch(() => '');
-    if (allText === prevText && allText.length > 0) {
-      stableCount++;
-      if (stableCount >= 2) break;
-    } else {
-      stableCount = 0;
-    }
-    prevText = allText;
-  }
-
-  const botMessages = page.locator('[class*="items-start"]');
-  const count = await botMessages.count();
-  let botText = '';
-  if (count > 0) {
-    botText = await botMessages.last().textContent().catch(() => '');
-  }
-
-  console.log(`\n${'='.repeat(70)}`);
-  console.log(`[${label}] 질문: "${message}"`);
-  console.log(`${'─'.repeat(70)}`);
-  console.log(`[${label}] 응답 (${botText.length}자):`);
-  console.log(botText);
-  console.log(`${'='.repeat(70)}`);
-
-  return botText;
-}
+import { loginAndGoToChat, sendAndCapture } from './helpers.js';
 
 test.describe('Judgment Agent 디버그 테스트', () => {
   test.setTimeout(600_000);
@@ -76,7 +23,7 @@ test.describe('Judgment Agent 디버그 테스트', () => {
 
       // 매 질문마다 새 세션
       await loginAndGoToChat(page);
-      const response = await sendAndCapture(page, q.msg, q.label);
+      const response = await sendAndCapture(page, q.msg, q.label, 60_000);
       await page.screenshot({ path: `e2e/results/judgment_${String(i + 1).padStart(2, '0')}_${q.label}.png`, fullPage: true });
 
       // 검증
