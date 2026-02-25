@@ -146,8 +146,9 @@ class GoogleTasksService(GoogleBaseService):
         items = db_result.scalars().all()
         existing_ids = {item.google_task_id for item in items}
 
-        # 1) 기존 아이템 상태 동기화
+        # 1) 기존 아이템 상태 동기화 + Google에서 삭제된 항목 제거
         updated = 0
+        deleted = 0
         for item in items:
             gt = google_tasks.get(item.google_task_id)
             if gt:
@@ -156,6 +157,11 @@ class GoogleTasksService(GoogleBaseService):
                     item.status = new_status
                     updated += 1
                     logger.info(f"[pull] 상태변경: {item.content} → {new_status}")
+            else:
+                # Google에서 삭제된 Task → DB에서도 삭제
+                logger.info(f"[pull] Google에서 삭제됨, DB 삭제: {item.content}")
+                await db.delete(item)
+                deleted += 1
 
         # 2) Google에서 새로 추가된 Task → DB import
         imported = 0
@@ -181,4 +187,4 @@ class GoogleTasksService(GoogleBaseService):
                 logger.info(f"[pull] 새 Task import: {gt.get('title')}")
 
         await db.flush()
-        return {"updated_count": updated, "imported_count": imported}
+        return {"updated_count": updated, "imported_count": imported, "deleted_count": deleted}
