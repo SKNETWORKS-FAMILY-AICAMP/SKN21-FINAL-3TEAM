@@ -544,7 +544,7 @@
 
 ---
 
-## 2026-02-25 (화)
+## 2026-02-25 (수)
 
 ### 한 일
 
@@ -565,13 +565,22 @@
 - 빈 상태 메시지 추가 ("업로드된 문서가 없습니다.")
 - Badge variant에 실제 API 상태값(`완료`, `처리중`) 대응 추가
 
-#### 3) ActivityTimeline 위젯 개선 (`ActivityTimeline.jsx`)
+#### 3) 일정 삭제 기능 구현 (PR #75)
 
-- 빈 상태 메시지 추가 ("최근 활동이 없습니다.")
+> 일정 관리 페이지 날짜 팝업에서 일정을 삭제할 수 있는 기능 추가
 
-#### 4) 누락 패키지 설치
-
-- `react-markdown` — develop merge로 추가된 `MarkdownText.jsx`에서 필요, 빌드 에러 해소
+- **`CalendarView.jsx`** — `DayDetailPopup` 각 일정 우측에 Trash2 쓰레기통 버튼 추가
+  - Google Calendar 이벤트(`event_id` 있는 항목)에만 버튼 표시 (공휴일 제외)
+  - 클릭 시 스피너 표시 → 삭제 완료 즉시 목록에서 제거
+  - hover 시 빨간색 전환
+- **`SchedulesPage.jsx`** — 이벤트 매핑에 `id: event.event_id`, `calendarId: event.calendar_id` 추가
+  - 기존 `event.id` → `event.event_id` 필드명 수정 (버튼 미표시 버그 원인)
+- **`api/google.js`** — `deleteCalendarEvent(eventId, calendarId)` 추가
+- **`googleStore.js`** — `deleteCalendarEvent` 액션 추가 (삭제 후 스토어에서 즉시 제거)
+- **`backend/app/api/v1/calendar.py`** — `DELETE /calendar/events/{event_id}` 엔드포인트 추가
+- **`backend/app/services/calendar_service.py`** — `delete_event()` 메서드 추가
+  - 전달받은 `calendar_id`로 1차 시도 → 실패 시 전체 캘린더 순회 탐색 (Not Found 완전 해결)
+  - sub-캘린더(Family 등) 이벤트도 정상 삭제 가능
 
 ### 다음 할 일
 - vite 프록시 설정 로컬/EC2 분리 (.env.local)
