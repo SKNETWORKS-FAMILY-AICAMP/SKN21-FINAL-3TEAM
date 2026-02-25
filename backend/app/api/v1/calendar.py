@@ -37,6 +37,16 @@ async def sync_to_google(
     return result
 
 
+@router.delete("/calendars", status_code=204)
+async def delete_calendar(
+    calendar_id: str = Query(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Google Calendar 삭제"""
+    await calendar_service.delete_calendar(db, current_user.id, calendar_id)
+
+
 @router.post("/calendars", status_code=201)
 async def create_calendar(
     body: dict,
