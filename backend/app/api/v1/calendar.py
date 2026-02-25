@@ -37,6 +37,19 @@ async def sync_to_google(
     return result
 
 
+@router.post("/calendars", status_code=201)
+async def create_calendar(
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """새 Google Calendar 생성"""
+    name = body.get("name", "새 유형")
+    color = body.get("color", "#7C98AB")
+    return await calendar_service.create_calendar(db, current_user.id, name, color)
+
+
+
 @router.delete("/events/{event_id}", status_code=204)
 async def delete_google_event(
     event_id: str,

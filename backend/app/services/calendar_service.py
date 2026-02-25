@@ -33,9 +33,13 @@ class GoogleCalendarService(GoogleBaseService):
             "description": event_data.get("description", ""),
             "start": {"dateTime": event_data["start_time"], "timeZone": "Asia/Seoul"},
             "end": {"dateTime": event_data.get("end_time", event_data["start_time"]), "timeZone": "Asia/Seoul"},
+            "extendedProperties": {
+                "private": {"workflow_type": event_data.get("event_type", "google")}
+            },
         }
 
-        result = service.events().insert(calendarId="primary", body=event).execute()
+        calendar_id = event_data.get("calendar_id", "primary")
+        result = service.events().insert(calendarId=calendar_id, body=event).execute()
         return {
             "event_id": result["id"],
             "html_link": result.get("htmlLink"),
@@ -57,6 +61,9 @@ class GoogleCalendarService(GoogleBaseService):
             "description": event_data.get("description", ""),
             "start": {"dateTime": event_data["start_time"], "timeZone": "Asia/Seoul"},
             "end": {"dateTime": event_data.get("end_time", event_data["start_time"]), "timeZone": "Asia/Seoul"},
+            "extendedProperties": {
+                "private": {"workflow_type": event_data.get("event_type", "google")}
+            },
             "conferenceData": {
                 "createRequest": {
                     "requestId": str(uuid.uuid4()),
@@ -68,9 +75,10 @@ class GoogleCalendarService(GoogleBaseService):
         if attendee_emails:
             event["attendees"] = [{"email": e} for e in attendee_emails]
 
+        calendar_id = event_data.get("calendar_id", "primary")
         result = (
             service.events()
-            .insert(calendarId="primary", body=event, conferenceDataVersion=1)
+            .insert(calendarId=calendar_id, body=event, conferenceDataVersion=1)
             .execute()
         )
 
@@ -122,9 +130,15 @@ class GoogleCalendarService(GoogleBaseService):
                     result = service.events().list(**params).execute()
                     items = result.get("items", [])
                     for item in items:
+                        event_type = (
+                            item.get("extendedProperties", {})
+                            .get("private", {})
+                            .get("workflow_type", "google")
+                        )
                         events.append({
                             "event_id": item["id"],
                             "calendar_id": cal_id,
+                            "event_type": event_type,
                             "title": item.get("summary", ""),
                             "start": item["start"].get("dateTime", item["start"].get("date")),
                             "end": item["end"].get("dateTime", item["end"].get("date")),
@@ -137,6 +151,23 @@ class GoogleCalendarService(GoogleBaseService):
         except Exception:
             raise
         return events
+
+    async def create_calendar(self, db: AsyncSession, user_id: int, name: str, color: str) -> dict:
+        """새 Google Calendar 생성 + 색상 설정"""
+        creds = await self.get_credentials(db, user_id)
+        service = self._build_service(creds)
+
+        created = service.calendars().insert(body={"summary": name}).execute()
+        calendar_id = created["id"]
+
+        # 캘린더 목록에 색상 지정
+        service.calendarList().patch(
+            calendarId=calendar_id,
+            body={"backgroundColor": color, "foregroundColor": "#ffffff"},
+        ).execute()
+
+        return {"calendar_id": calendar_id, "name": name}
+
 
     async def delete_event(self, db: AsyncSession, user_id: int, event_id: str, calendar_id: str = "primary") -> None:
         """Google Calendar 이벤트 삭제 (지정 캘린더 실패 시 전체 캘린더 탐색)"""
