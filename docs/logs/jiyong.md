@@ -640,3 +640,32 @@ QA 결과:
 - FINAL_REPORT.md 정독하며 실험 내용 공부
 - 발표 자료(PPT) 제작 (Gemini 활용)
 - 시연 시나리오 준비 (슬라이드 3, 2분→5분으로 확장 검토)
+
+---
+
+## 2026-02-25 (화)
+
+**중간발표 문서 준비:**
+- 중간발표 시나리오 v3 작성 + README 현행화 (`66da39f`)
+- 중간발표 보조 자료 추가: FINAL_REPORT 보기용 + 실험 요약 PDF (`506a9da`)
+- 실험간단요약 PDF → intent실험요약.md로 교체 (`c3d25ca`)
+- intent실험요약을 스토리라인 형식으로 개선 (`368be83`)
+
+**README 대폭 개선 (중간발표용):**
+- 파인튜닝 데이터 현황 미정으로 수정 (`96d00ac`)
+- 아키텍처/기능구현 섹션에서 담당자 이름 제거 (`378b343`)
+- 현재 배포 상태 반영: Backend CI/CD + Frontend 로컬 (`b9fd301`)
+- 중간발표용 보강: 핵심 성과 + 실험 이미지 + 수치 보정 (`7fed8a5`)
+- Agent 워크플로우 다이어그램 원본 ASCII art 복원 (`9055c7f`)
+- README/CLAUDE.md 실제 프로젝트 구조와 불일치 수정 (`efcbc91`)
+
+**코드 수정:**
+- Intent confidence threshold 0.75→0.85 수정 + 4주차 산출물 추가 (`b8460e6`)
+- E2E Playwright 셀렉터 수정 + 8개 인텐트 전체 커버리지 달성 (`90184b7`)
+  - 기존 셀렉터가 UI 변경으로 깨진 부분 수정
+  - 8개 인텐트(judgment, doc_search, doc_generate, doc_summary, doc_qa, schedule_add, schedule_view, general) 전체 테스트 통과
+
+**다음 할 일:**
+- 중간발표 (발표 자료 최종 점검)
+- 시연 시나리오 리허설
+- 팀원 작업 통합 테스트
