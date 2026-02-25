@@ -622,7 +622,6 @@
   - Google 연결 + calendarId 있는 유형만 API 호출
   - API 실패해도 앱 내 유형은 정상 삭제 (graceful fallback)
   - Google 미연결 또는 calendarId 없는 유형은 로컬만 삭제
-
 ### 다음 할 일
 - vite 프록시 설정 로컬/EC2 분리 (.env.local)
 - 판단 Agent 스트리밍 디버깅
