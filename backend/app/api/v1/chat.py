@@ -93,6 +93,20 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         else:
                             print(f"[Chat] document_content 앞 200자:\n{doc.content[:200]}")
                         initial_state["document_content"] = doc.content or None
+                    else:
+                        # DB에 없으면 Qdrant 청크 합산 fallback (로컬 reindex로 생긴 ID가 AWS RDS에 없을 때)
+                        print(f"[Chat] document_id={request.document_id} DB에 없음 → Qdrant fallback 시도")
+                        try:
+                            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+                            pipeline = get_qdrant_pipeline()
+                            content = pipeline.get_document_content(request.document_id)
+                            if content:
+                                print(f"[Chat] Qdrant fallback 성공 ({len(content)}자)")
+                                initial_state["document_content"] = content
+                            else:
+                                print(f"[Chat] Qdrant fallback 실패: content 없음")
+                        except Exception as qdrant_err:
+                            print(f"[Chat] Qdrant fallback 실패: {qdrant_err}")
                 except Exception as doc_err:
                     print(f"[Chat] document_id 로딩 실패: {doc_err}")
 
