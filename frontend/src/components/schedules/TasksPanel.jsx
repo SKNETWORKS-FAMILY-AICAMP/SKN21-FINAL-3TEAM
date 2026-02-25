@@ -1,54 +1,48 @@
 import { useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import useGoogleServices from '../../hooks/useGoogleServices';
 import { TASK_STATUS_LABELS } from '../../utils/constants';
 
 export default function TasksPanel() {
-  const { tasks, tasksLoading, tasksError, updateTask, syncTasks, pullTasks, hasScope } = useGoogleServices();
+  const { tasks, tasksLoading, tasksError, updateTask, pullTasks, hasScope } = useGoogleServices();
   const [filter, setFilter] = useState('all');
 
   if (!hasScope('tasks')) {
     return (
       <div className="card">
-        <div className="card-header"><span className="card-title">Google Tasks</span></div>
+        <div className="card-header"><span className="card-title">Tasks</span></div>
         <div className="card-body text-center py-8">
-          <p className="text-sm text-neutral-muted">Google Tasks가 연결되지 않았습니다</p>
+          <p className="text-sm text-neutral-muted">Tasks가 연결되지 않았습니다</p>
           <p className="text-xs text-neutral-muted mt-1">Google 서비스 연결에서 Tasks를 활성화하세요</p>
         </div>
       </div>
     );
   }
 
-  const filtered = filter === 'all'
-    ? tasks
+  const filtered = (filter === 'all'
+    ? [...tasks].sort((a, b) => a.completed - b.completed)
     : filter === 'pending'
       ? tasks.filter((t) => !t.completed)
-      : tasks.filter((t) => t.completed);
+      : tasks.filter((t) => t.completed));
 
   return (
     <div className="card">
       <div className="card-header">
         <div className="flex items-center gap-2">
-          <span className="card-title">Google Tasks</span>
+          <span className="card-title">Tasks</span>
           <span className="text-[0.6875rem] px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 font-medium">
             {tasks.filter((t) => !t.completed).length}개 미완료
           </span>
         </div>
-        <div className="flex gap-1.5">
-          <button
-            onClick={() => syncTasks()}
-            disabled={tasksLoading}
-            className="text-xs px-2.5 py-1.5 rounded-md border border-neutral-border text-neutral-sub hover:bg-primary-50 hover:text-primary-700 transition"
-          >
-            {tasksLoading ? '동기화 중...' : 'Push'}
-          </button>
-          <button
-            onClick={() => pullTasks()}
-            disabled={tasksLoading}
-            className="text-xs px-2.5 py-1.5 rounded-md border border-neutral-border text-neutral-sub hover:bg-primary-50 hover:text-primary-700 transition"
-          >
-            Pull
-          </button>
-        </div>
+        <button
+          onClick={() => pullTasks()}
+          disabled={tasksLoading}
+          className="btn-outline flex items-center gap-1.5"
+          title="새로고침"
+        >
+          <RefreshCw size={14} className={tasksLoading ? 'animate-spin' : ''} />
+          {tasksLoading ? '동기화 중...' : '새로고침'}
+        </button>
       </div>
 
       <div className="px-5 pt-2 flex gap-1">

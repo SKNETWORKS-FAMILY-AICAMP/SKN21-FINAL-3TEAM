@@ -14,6 +14,15 @@ export default function SchedulesPage() {
   const { isScrolled } = useOutletContext();
   const { connected, calendarEvents, calendarLoading, calendarError, fetchCalendarEvents, hasScope, syncEventToGoogle, createEventWithMeet, deleteCalendarEvent } = useGoogleServices();
   const { customTypes } = useScheduleTypeStore();
+  const allTypes = [...DEFAULT_TYPES, ...customTypes];
+
+  // calendarId → typeId 역매핑 (커스텀 유형이 Google Calendar에 연동된 경우)
+  const calendarIdToType = useMemo(() => {
+    const map = {};
+    allTypes.forEach((t) => { if (t.calendarId) map[t.calendarId] = t.id; });
+    return map;
+  }, [allTypes]);
+
   const [showForm, setShowForm] = useState(false);
   const [showTypeManager, setShowTypeManager] = useState(false);
   const [activeTab, setActiveTab] = useState('calendar');
@@ -44,7 +53,7 @@ export default function SchedulesPage() {
         calendarId: event.calendar_id,
         month: start.getMonth() + 1,
         day: start.getDate(),
-        type: 'google',
+        type: event.event_type || calendarIdToType[event.calendar_id] || 'google',
         label: event.title || '제목 없음',
         time: timeStr,
         meetLink: event.meet_link,
@@ -65,12 +74,15 @@ export default function SchedulesPage() {
           ? new Date(`${data.date}T23:59:59`)
           : new Date(`${data.date}T${data.end_time}:00`);
 
+        const selectedType = allTypes.find((t) => t.id === data.type);
         const eventData = {
           title: data.title,
           description: data.description || '',
           start_time: startDateTime,
           end_time: endDateTime,
           attendee_emails: data.attendee_emails || [],
+          event_type: data.type || 'google',
+          calendar_id: selectedType?.calendarId || 'primary',
         };
 
         if (data.include_meet) {
@@ -108,28 +120,30 @@ export default function SchedulesPage() {
           <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-2xl'}`}>일정 관리</h1>
           <p className={`text-neutral-sub transition-all duration-300 overflow-hidden ${isScrolled ? 'text-xs mt-0 max-h-0 opacity-0' : 'text-sm mt-1 max-h-6 opacity-100'}`}>Action Item과 회의 일정을 통합 관리합니다</p>
         </div>
-        <div className="flex items-center gap-3">
-          {connected && hasScope('calendar') && (
+        {activeTab === 'calendar' && (
+          <div className="flex items-center gap-3">
+            {connected && hasScope('calendar') && (
+              <button
+                onClick={() => fetchCalendarEvents()}
+                disabled={calendarLoading}
+                className="btn-outline"
+                title="Google Calendar 동기화"
+              >
+                {calendarLoading ? '동기화 중...' : '새로고침'}
+              </button>
+            )}
             <button
-              onClick={() => fetchCalendarEvents()}
-              disabled={calendarLoading}
+              onClick={() => setShowTypeManager(true)}
               className="btn-outline"
-              title="Google Calendar 동기화"
+              title="일정 유형 관리"
             >
-              {calendarLoading ? '동기화 중...' : '새로고침'}
+              유형 관리
             </button>
-          )}
-          <button
-            onClick={() => setShowTypeManager(true)}
-            className="btn-outline"
-            title="일정 유형 관리"
-          >
-            유형 관리
-          </button>
-          <button onClick={() => setShowForm(!showForm)} className="btn-primary">
-            {showForm ? '취소' : '+ 일정 추가'}
-          </button>
-        </div>
+            <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+              {showForm ? '취소' : '+ 일정 추가'}
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Google 서비스 연결 */}

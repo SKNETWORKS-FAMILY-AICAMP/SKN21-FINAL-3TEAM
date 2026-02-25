@@ -20,9 +20,9 @@ function loadCustomTypes() {
 const useScheduleTypeStore = create((set, get) => ({
   customTypes: loadCustomTypes(),
 
-  addType: (label, color) => {
+  addType: (label, color, calendarId = null) => {
     const id = `custom_${Date.now()}`;
-    const updated = [...get().customTypes, { id, label, color, isDefault: false }];
+    const updated = [...get().customTypes, { id, label, color, calendarId, isDefault: false }];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     set({ customTypes: updated });
   },
