@@ -86,7 +86,7 @@
 ### 각 Agent 워크플로우
 
 ```
-┌─ Judgment Agent (경은) ─────────────────────────────────────────────────────┐
+┌─ Judgment Agent ─────────────────────────────────────────────────────┐
 │                                                                             │
 │  user_input ──→ RAG 하이브리드 검색 (규정문서, top_k=10) ──→ LLM 판단 (JSON) │
 │                    │                                          │             │
@@ -101,7 +101,7 @@
 │  Output: { result: yes/no/conditional, confidence, reasoning, regulations } │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-┌─ Document Agent (승언) ─────────────────────────────────────────────────────┐
+┌─ Document Agent ─────────────────────────────────────────────────────┐
 │                                                                             │
 │  intent에 따라 4가지 분기 (챗봇/페이지 공용):                                  │
 │                                                                             │
@@ -119,7 +119,7 @@
 │                  → { answer, citations[] }                                   │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-┌─ Schedule Agent (혜빈) ─────────────────────────────────────────────────────┐
+┌─ Schedule Agent ─────────────────────────────────────────────────────┐
 │                                                                             │
 │  schedule_add ──→ LLM 파싱 (자연어→구조화) ──→ Google Calendar API 등록      │
 │                  → { schedule{title,start,end}, google_services{event_id} }  │
@@ -148,11 +148,11 @@ schedule_view  → Schedule Agent    (일정 조회)
 general        → General Response  (일반 대화)
 ```
 
-### 전체 구조 (담당자 표시)
+### 전체 구조
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════╗
-║  Frontend — 지영                                                        ║
+║  Frontend                                                        ║
 ║                                                                        ║
 ║  React 18 (Vite) + Zustand + TanStack Query + Tailwind + Lucide      ║
 ║                                                                        ║
@@ -188,36 +188,36 @@ general        → General Response  (일반 대화)
 ╚═══════════════════════════╤════════════════════════════════════════════╝
                             │ REST API + SSE Stream
 ╔═══════════════════════════╧════════════════════════════════════════════╗
-║  Backend API — 혜빈 (+ 지용: chat/stream SSE)                          ║
+║  Backend API                          ║
 ║                                                                        ║
 ║  FastAPI                                                               ║
 ║  ┌──────────────────────────────────────────────────────────┐          ║
-║  │  /api/v1/chat/stream ─── SSE 스트리밍 ──────── [지용]    │          ║
-║  │  /api/v1/auth/*      ─── JWT + 비밀번호 재설정 ─ [혜빈]  │          ║
-║  │  /api/v1/documents/* ─── CRUD + 생성/다운로드 ── [혜빈]  │          ║
-║  │  /api/v1/meetings/*  ─── 회의 관리 ───────────── [혜빈]  │          ║
-║  │  /api/v1/schedules/* ─── 일정 CRUD ──────────── [혜빈]  │          ║
-║  │  /api/v1/calendar/*  ─── Google Calendar+Meet ─ [혜빈]  │          ║
-║  │  /api/v1/google/*    ─── 통합 OAuth ────────── [혜빈]  │          ║
-║  │  /api/v1/tasks/*     ─── Google Tasks ──────── [혜빈]  │          ║
-║  │  /api/v1/gmail/*     ─── Gmail 발송 ────────── [혜빈]  │          ║
-║  │  /api/v1/sheets/*    ─── Google Sheets ─────── [혜빈]  │          ║
-║  │  /api/v1/regulations ─── 규정 목록 (공개) ──── [혜빈]  │          ║
-║  │  /api/v1/admin/*     ─── 통계 + 로그 + 권한 ─── [혜빈]  │          ║
+║  │  /api/v1/chat/stream ─── SSE 스트리밍 ────────            │          ║
+║  │  /api/v1/auth/*      ─── JWT + 비밀번호 재설정 ─          │          ║
+║  │  /api/v1/documents/* ─── CRUD + 생성/다운로드 ──          │          ║
+║  │  /api/v1/meetings/*  ─── 회의 관리 ─────────────          │          ║
+║  │  /api/v1/schedules/* ─── 일정 CRUD ────────────          │          ║
+║  │  /api/v1/calendar/*  ─── Google Calendar+Meet ─          │          ║
+║  │  /api/v1/google/*    ─── 통합 OAuth ──────────          │          ║
+║  │  /api/v1/tasks/*     ─── Google Tasks ────────          │          ║
+║  │  /api/v1/gmail/*     ─── Gmail 발송 ──────────          │          ║
+║  │  /api/v1/sheets/*    ─── Google Sheets ───────          │          ║
+║  │  /api/v1/regulations ─── 규정 목록 (공개) ────          │          ║
+║  │  /api/v1/admin/*     ─── 통계 + 로그 + 권한 ───          │          ║
 ║  └──────────────────────────────────────────────────────────┘          ║
 ║                                                                        ║
 ║  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐        ║
 ║  │ JWT 인증/권한    │  │ PostgreSQL      │  │ Redis           │        ║
-║  │ [혜빈]          │  │ 12 tables[혜빈] │  │ Cache           │        ║
+║  │                  │  │ 12 tables │  │ Cache           │        ║
 ║  └─────────────────┘  └─────────────────┘  └─────────────────┘        ║
 ║                                                                        ║
-║  Services [혜빈]                                                       ║
+║  Services                                                       ║
 ║  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐        ║
 ║  │ template_service│  │ statistics_svc  │  │ parsing_service │        ║
 ║  │ 문서 생성/다운   │  │ Top 질의/로그    │  │ 파싱 상태 관리  │        ║
 ║  └─────────────────┘  └─────────────────┘  └─────────────────┘        ║
 ║                                                                        ║
-║  Google Services [혜빈] — GoogleBaseService 상속 구조                   ║
+║  Google Services — GoogleBaseService 상속 구조                   ║
 ║  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐  ║
 ║  │ calendar_svc │ │ tasks_svc    │ │ gmail_svc    │ │ sheets_svc   │  ║
 ║  │ +Meet 링크   │ │ Action Item  │ │ 알림/초대    │ │ 추적 시트    │  ║
@@ -232,20 +232,20 @@ general        → General Response  (일반 대화)
 ║  AI Engine                                                             ║
 ║                                                                        ║
 ║  ┌──────────────────────────────────────────────────────┐              ║
-║  │  Intent Classifier (koelectra-base-v3)     [지용]    │              ║
+║  │  Intent Classifier (koelectra-base-v3)                │              ║
 ║  │  8개: judgment, doc_search, doc_generate,            │              ║
 ║  │       doc_summary, doc_qa, schedule_*, general        │              ║
 ║  └──────────┬───────────────────────────────────────────┘              ║
 ║             │                                                          ║
 ║  ┌──────────▼───────────────────────────────────────────┐              ║
-║  │  LangGraph Orchestrator (StateGraph)       [지용]    │              ║
+║  │  LangGraph Orchestrator (StateGraph)                  │              ║
 ║  │  단일질문 분류 → 조건부 라우팅 + SSE 스트리밍          │              ║
 ║  └──────┬──────────────┬──────────────┬─────────────────┘              ║
 ║         │              │              │                                ║
 ║         ▼              ▼              ▼                                ║
 ║  ┌──────────────┐┌──────────────┐┌──────────────┐                     ║
 ║  │ 판단 Agent   ││ 문서 Agent   ││ 일정 Agent   │                     ║
-║  │    [경은]    ││    [승언]    ││    [혜빈]    │                     ║
+║  │               ││               ││               │                     ║
 ║  │              ││              ││              │                     ║
 ║  │ · 다중규정   ││ · 문서검색   ││ · CRUD       │                     ║
 ║  │   교차판단   ││ · 문서생성   ││ · 우선순위   │                     ║
@@ -257,7 +257,7 @@ general        → General Response  (일반 대화)
 ║         ▼              │              │                                ║
 ║  ┌──────────────────┐  │              │                                ║
 ║  │ RAG Pipeline     │  │              │                                ║
-║  │ [경은]           │  │              │                                ║
+║  │                   │  │              │                                ║
 ║  │                  │  │              │                                ║
 ║  │ BM25 (Top 15)   │  │              │                                ║
 ║  │   + Vector Search│  │              │                                ║
@@ -270,16 +270,16 @@ general        → General Response  (일반 대화)
 ║         │              │              │                                ║
 ║         ▼              ▼              │                                ║
 ║  ┌─────────────────────────────────┐  │                                ║
-║  │ LLM 모듈 [경은] #39             │  │                                ║
+║  │ LLM 모듈 #39             │  │                                ║
 ║  │                                 │  │                                ║
 ║  │  현재: GPT/Claude API           │  │                                ║
 ║  │  ──────────────────────────     │  │                                ║
 ║  │  추후(4단계): vLLM + LoRA      │  │                                ║
 ║  │  ┌───────────┐  ┌───────────┐  │  │                                ║
 ║  │  │ LoRA v1   │  │ LoRA v2   │  │  │                                ║
-║  │  │ 판단 특화  │  │ 문서 특화  │  │  │                                ║
-║  │  │ 1,500개   │  │ 1,700개   │  │  │                                ║
-║  │  │ [경은]    │  │ [승언]    │  │  │                                ║
+║  │  │ (미정)    │  │ (미정)    │  │  │                                ║
+║  │  │ (미정)    │  │ (미정)    │  │  │                                ║
+║  │  │            │  │            │  │  │                                ║
 ║  │  └───────────┘  └───────────┘  │  │                                ║
 ║  │                                 │  │                                ║
 ║  │  Base: Kanana-1.5-8B            │  │                                ║
@@ -287,7 +287,7 @@ general        → General Response  (일반 대화)
 ║  └─────────────────────────────────┘  │                                ║
 ║                                       │                                ║
 ║  ┌────────────────────────────────┐   │                                ║
-║  │ Document Parser [승언]         │   │                                ║
+║  │ Document Parser                 │   │                                ║
 ║  │                                │   │                                ║
 ║  │ Docling (디지털 PDF 구조화)    │   │                                ║
 ║  │ PaddleOCR (스캔/이미지 OCR)    │   │                                ║
@@ -295,7 +295,7 @@ general        → General Response  (일반 대화)
 ║  └────────────────────────────────┘   │                                ║
 ║                                       │                                ║
 ║  ┌────────────────────────────────┐   │                                ║
-║  │ Template Engine [승언]         │   │                                ║
+║  │ Template Engine                 │   │                                ║
 ║  │                                │   │                                ║
 ║  │ 회의록 / 보고서 / JD / 제안서  │   │                                ║
 ║  │ render() → to_docx() / to_pdf()│   │                                ║
@@ -303,13 +303,13 @@ general        → General Response  (일반 대화)
 ╚═══════════════════════════╤═══════════╧════════════════════════════════╝
                             │
 ╔═══════════════════════════╧════════════════════════════════════════════╗
-║  External Services                                                     ║
+║  External Services                                             ║
 ║                                                                        ║
 ║  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐        ║
 ║  │ Google OAuth 2.0│  │ Google APIs     │  │ RunPod (A100)   │        ║
-║  │ (통합 scope)    │  │ Calendar+Tasks  │  │ GPU 학습 [경은] │        ║
-║  │ [혜빈]          │  │ Gmail+Sheets    │  │                 │        ║
-║  │                 │  │ +Meet [혜빈]    │  │                 │        ║
+║  │ (통합 scope)    │  │ Calendar+Tasks  │  │ GPU 학습│        ║
+║  │                  │  │ Gmail+Sheets    │  │                 │        ║
+║  │                 │  │ +Meet   │  │                 │        ║
 ║  └─────────────────┘  └─────────────────┘  └─────────────────┘        ║
 ╚════════════════════════════════════════════════════════════════════════╝
 ```
@@ -348,7 +348,7 @@ source (2개 고정)         doc_type (확장 자유)
          │
          ▼
 ┌─────────────────────────────────────┐
-│ 1. Intent Classification   [지용]   │
+│ 1. Intent Classification             │
 │    koelectra-base-v3                │
 │    → intent: "judgment"             │
 │    → confidence: 0.92               │
@@ -356,7 +356,7 @@ source (2개 고정)         doc_type (확장 자유)
              │
              ▼
 ┌─────────────────────────────────────┐
-│ 2. LangGraph Orchestrator  [지용]   │
+│ 2. LangGraph Orchestrator            │
 │    AgentState에 intent 저장         │
 │    → 조건부 엣지: judgment          │
 │    → SSE: "판단 Agent 호출 중..."    │
@@ -364,7 +364,7 @@ source (2개 고정)         doc_type (확장 자유)
              │
              ▼
 ┌─────────────────────────────────────┐
-│ 3. RAG Pipeline            [경은]   │
+│ 3. RAG Pipeline                      │
 │    1) BM25 검색 (Top 15)            │
 │    2) Vector 검색 (Top 15)          │
 │    3) RRF 합산 (Top 20)             │
@@ -376,7 +376,7 @@ source (2개 고정)         doc_type (확장 자유)
              │
              ▼
 ┌─────────────────────────────────────┐
-│ 4. 판단 Agent + LLM        [경은]   │
+│ 4. 판단 Agent + LLM                  │
 │    현재: GPT/Claude API             │
 │    추후: LoRA v1 (판단 특화)        │
 │    다중 규정 교차 판단:              │
@@ -388,14 +388,14 @@ source (2개 고정)         doc_type (확장 자유)
              │
              ▼
 ┌─────────────────────────────────────┐
-│ 5. SSE 스트리밍 응답       [지용]   │
+│ 5. SSE 스트리밍 응답                 │
 │    → type: "token" (실시간 전송)    │
 │    → type: "done"  (완료 신호)      │
 └────────────┬────────────────────────┘
              │
              ▼
 ┌─────────────────────────────────────┐
-│ 6. 카드 UI 렌더링          [지영]   │
+│ 6. 카드 UI 렌더링                    │
 │    JudgmentCard: 판단 결과 표시     │
 │    → 결과 뱃지 (조건부 가능)        │
 │    → 근거 조항 목록                  │
@@ -404,7 +404,7 @@ source (2개 고정)         doc_type (확장 자유)
 └─────────────────────────────────────┘
 ```
 
-### DB ERD (12 테이블) — [혜빈]
+### DB ERD (12 테이블)
 
 ```
 ┌──────────┐     ┌──────────────┐     ┌──────────────┐
@@ -456,7 +456,7 @@ source (2개 고정)         doc_type (확장 자유)
 | Agent Framework | **LangGraph** | StateGraph 기반 Agent 오케스트레이션 |
 | LLM API (현재) | **GPT-4o-mini / Claude Sonnet 4** | 기능 구현 단계에서 사용, 추후 sLLM 교체 |
 | Base sLLM (추후) | **Kanana-1.5-8B** | 벤치마크 선정 (종합 0.652) |
-| Fine-tuning (추후) | **LoRA (PEFT)** + QLoRA 4-bit | 판단 v1 (1,500개) + 문서 v2 (1,700개) |
+| Fine-tuning (추후) | **LoRA (PEFT)** + QLoRA 4-bit | 대상 및 데이터 미정 (기능 확정 후 결정) |
 | 모델 서빙 | **vLLM** | OpenAI 호환 API + LoRA 핫스왑 + 스트리밍 |
 | Vector DB | **Qdrant** | 문서 임베딩 저장 + 유사도 검색 |
 | Embedding | **jhgan/ko-sbert-nli** | 한국어 문장 임베딩 (768차원) |
@@ -534,7 +534,7 @@ source (2개 고정)         doc_type (확장 자유)
 ```
 SKN21-FINAL-3TEAM/
 │
-├── backend/                     # FastAPI 백엔드 (혜빈)
+├── backend/                     # FastAPI 백엔드
 │   ├── app/
 │   │   ├── main.py              # 앱 진입점
 │   │   ├── config.py            # 환경변수
@@ -573,37 +573,37 @@ SKN21-FINAL-3TEAM/
 │       └── seed_sample_documents.py  # 샘플 데이터 시딩
 │
 ├── ai/                          # AI/ML 모듈
-│   ├── agents/                  # LangGraph Agent (지용/경은/승언/혜빈)
+│   ├── agents/                  # LangGraph Agent
 │   │   ├── state.py             # AgentState 공유 상태
 │   │   ├── config.py            # 분류 임계값 설정 (0.85 / 0.4)
 │   │   ├── orchestrator.py      # StateGraph 오케스트레이터
 │   │   ├── intent_classifier.py # Intent 분류 (koelectra-base-v3)
 │   │   ├── preprocessing.py     # 한국어 전처리 (kiwipiepy)
-│   │   ├── judgment_agent.py    # 판단 Agent (경은)
-│   │   ├── document_agent.py    # 문서 Agent (승언)
-│   │   ├── schedule_agent.py    # 일정 Agent (혜빈)
+│   │   ├── judgment_agent.py    # 판단 Agent
+│   │   ├── document_agent.py    # 문서 Agent
+│   │   ├── schedule_agent.py    # 일정 Agent
 │   │   ├── train_intent.py      # Intent 모델 학습
 │   │   └── test_intent.py       # Intent 테스트
-│   ├── llm/                     # LLM 공통 모듈 (경은)
+│   ├── llm/                     # LLM 공통 모듈
 │   │   ├── base.py              # BaseLLM 인터페이스
 │   │   ├── factory.py           # LLM 팩토리 (openai/anthropic/vllm)
 │   │   ├── openai_provider.py   # OpenAI (GPT)
 │   │   ├── anthropic_provider.py # Anthropic (Claude)
 │   │   └── prompts.py           # 프롬프트 관리
-│   ├── rag/                     # RAG 파이프라인 (경은)
+│   ├── rag/                     # RAG 파이프라인
 │   │   ├── hybrid_search.py     # BM25 + Vector (RRF 합산)
 │   │   ├── reranker.py          # bge-reranker-v2-m3
 │   │   ├── embeddings.py        # ko-sbert-nli 임베딩
 │   │   ├── query_refiner.py     # 쿼리 정제
 │   │   ├── qdrant_pipeline.py   # Qdrant 파이프라인 (싱글톤)
 │   │   └── qdrant_store.py      # Qdrant 벡터스토어
-│   ├── templates/               # 문서 템플릿 (승언)
+│   ├── templates/               # 문서 템플릿
 │   │   ├── base.py              # BaseTemplate
 │   │   ├── meeting_minutes.py   # 회의록
 │   │   ├── report.py            # 보고서
 │   │   ├── jd.py                # 채용 공고
 │   │   └── proposal.py          # 제안서
-│   ├── document_parser/         # 문서 파싱 (승언)
+│   ├── document_parser/         # 문서 파싱
 │   │   ├── docling_parser.py    # Docling (디지털 PDF)
 │   │   ├── ocr_parser.py        # PaddleOCR (스캔 문서)
 │   │   ├── docx_parser.py       # DOCX 파싱
@@ -612,13 +612,13 @@ SKN21-FINAL-3TEAM/
 │   │   └── regulation_parser.py # 규정 파싱 (조문 기반 청킹)
 │   ├── skills/                  # 문서 생성 스킬 (회의록, 보고서, 제안서)
 │   ├── serving/vllm_client.py   # vLLM 클라이언트
-│   ├── finetuning/              # LoRA 학습 (경은/승언)
+│   ├── finetuning/              # LoRA 학습
 │   ├── models/                  # 학습된 모델 체크포인트
 │   ├── tests/                   # AI 테스트
 │   ├── experiments/             # ML 실험 v1 (BERT, QA 비교)
 │   └── experiments_v2/          # ML 실험 v2 (6단계 실험 파이프라인)
 │
-├── frontend/                    # React 프론트엔드 (지영)
+├── frontend/                    # React 프론트엔드
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── chat/            # 챗봇 UI + 응답 카드 (15개 컴포넌트)
