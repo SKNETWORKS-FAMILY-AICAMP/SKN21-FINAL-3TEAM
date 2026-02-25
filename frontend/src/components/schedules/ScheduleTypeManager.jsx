@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import useScheduleTypeStore, { DEFAULT_TYPES } from '../../store/scheduleTypeStore';
 import useGoogleServices from '../../hooks/useGoogleServices';
-import { createGoogleCalendar } from '../../api/google';
+import { createGoogleCalendar, deleteGoogleCalendar } from '../../api/google';
 
 // 디자인 시스템과 동일한 톤다운 계열 (채도 낮고 차분한 색상)
 const PRESET_COLORS = [
@@ -94,7 +94,12 @@ export default function ScheduleTypeManager({ onClose }) {
                   />
                   <span className="text-sm text-neutral-main">{t.label}</span>
                   <button
-                    onClick={() => removeType(t.id)}
+                    onClick={async () => {
+                      if (t.calendarId && connected && hasScope('calendar')) {
+                        try { await deleteGoogleCalendar(t.calendarId); } catch { /* 실패해도 로컬 삭제 진행 */ }
+                      }
+                      removeType(t.id);
+                    }}
                     className="ml-auto text-neutral-muted hover:text-error text-xs px-1.5 py-0.5 rounded hover:bg-error-bg transition"
                   >삭제</button>
                 </div>
@@ -122,7 +127,7 @@ export default function ScheduleTypeManager({ onClose }) {
                 className="px-4 py-2.5 text-white text-sm font-semibold rounded-r-sm border disabled:opacity-40 disabled:cursor-not-allowed transition whitespace-nowrap"
                 style={{ backgroundColor: newColor, borderColor: newColor }}
               >
-                {adding ? '추가 중...' : '+ 추가'}
+                {adding ? '추가 중' : '+ 추가'}
               </button>
             </div>
 

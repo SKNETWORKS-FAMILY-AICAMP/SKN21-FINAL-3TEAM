@@ -82,3 +82,6 @@ export const deleteCalendarEvent = (eventId, calendarId = 'primary') =>
 
 export const createGoogleCalendar = (name, color) =>
   client.post('/calendar/calendars', { name, color })
+
+export const deleteGoogleCalendar = (calendarId) =>
+  client.delete('/calendar/calendars', { params: { calendar_id: calendarId } })
