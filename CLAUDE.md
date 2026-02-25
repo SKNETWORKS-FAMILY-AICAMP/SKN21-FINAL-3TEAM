@@ -127,22 +127,25 @@ chore:    설정/환경
 
 ```
 backend/app/          — FastAPI 백엔드 (혜빈)
-  api/v1/             — REST API (chat, auth, documents, meetings, schedules, google, admin)
-  models/             — ORM 모델 (11개 테이블)
+  api/v1/             — REST API (chat, auth, documents, meetings, schedules, calendar, google_connect, tasks, gmail, sheets, regulations, admin)
+  models/             — ORM 모델 (12개 테이블)
   services/           — 비즈니스 로직 (Google Services 포함)
   schemas/            — Pydantic 스키마
 
 ai/                   — AI/ML 모듈
   agents/             — LangGraph Agent (지용: orchestrator, 경은: judgment, 승언: document, 혜빈: schedule)
+  llm/                — LLM 공통 모듈 (factory, openai/anthropic/vllm provider, prompts)
   rag/                — RAG 파이프라인 (경은: hybrid_search, reranker, vectorstore)
   templates/          — 문서 템플릿 (승언: 회의록, 보고서, JD, 제안서)
+  document_parser/    — 문서 파싱 (Docling, PaddleOCR, DOCX)
+  skills/             — 문서 생성 스킬 (회의록, 보고서, 제안서)
   finetuning/         — LoRA 학습 (4단계)
   serving/            — vLLM 클라이언트 (4단계)
 
 frontend/src/         — React 프론트엔드 (지영)
   components/         — UI 컴포넌트 (chat, dashboard, documents, meetings, schedules, auth, admin)
-  pages/              — 10개 페이지 (MeetingMinutesPage, DocumentGeneratePage 포함)
-  store/              — Zustand (auth, chat, ui, google)
+  pages/              — 11개 페이지 (MeetingMinutesPage, DocumentGeneratePage 포함)
+  store/              — Zustand (auth, chat, ui, google, scheduleType)
   hooks/              — useAuth, useSSE, useChat, useGoogleServices
 ```
 
