@@ -37,6 +37,76 @@ class GoogleTasksService(GoogleBaseService):
         new_list = service.tasklists().insert(body={"title": TASKLIST_TITLE}).execute()
         return new_list["id"]
 
+    async def create_task(self, db: AsyncSession, user_id: int, title: str, assignee: str = None, due_date=None, priority: str = "medium") -> dict:
+        """Task 생성 → DB 저장 + Google Tasks 동기화(연결 시)"""
+        item = ActionItem(
+            meeting_id=None,
+            content=title,
+            assignee=assignee,
+            due_date=due_date,
+            priority=priority,
+            status="pending",
+        )
+        db.add(item)
+        await db.flush()
+
+        # Google Tasks 동기화 시도 (연결되어 있으면)
+        google_task_id = None
+        try:
+            creds = await self.get_credentials(db, user_id)
+            service = self._build_service(creds)
+            tasklist_id = self._get_or_create_tasklist(service)
+
+            task_body = {
+                "title": title,
+                "notes": f"담당: {assignee or '미지정'} | 우선순위: {priority}",
+                "status": "needsAction",
+            }
+            if due_date:
+                task_body["due"] = due_date.strftime("%Y-%m-%dT00:00:00.000Z")
+
+            task = service.tasks().insert(tasklist=tasklist_id, body=task_body).execute()
+            item.google_task_id = task["id"]
+            google_task_id = task["id"]
+        except Exception as e:
+            logger.info(f"[create_task] Google 동기화 스킵: {e}")
+
+        await db.flush()
+        return {
+            "action_item_id": item.id,
+            "title": item.content,
+            "assignee": item.assignee,
+            "deadline": item.due_date.strftime("%Y-%m-%d") if item.due_date else None,
+            "priority": item.priority,
+            "status": "needsAction",
+            "completed": False,
+            "synced": google_task_id is not None,
+            "id": google_task_id or str(item.id),
+        }
+
+    async def delete_task(self, db: AsyncSession, user_id: int, action_item_id: int) -> dict:
+        """Task 삭제 → Google Tasks 삭제(연결 시) + DB 삭제"""
+        result = await db.execute(
+            select(ActionItem).where(ActionItem.id == action_item_id)
+        )
+        item = result.scalar_one_or_none()
+        if item is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Action Item을 찾을 수 없습니다")
+
+        # Google Tasks에서 삭제 시도
+        if item.google_task_id:
+            try:
+                creds = await self.get_credentials(db, user_id)
+                service = self._build_service(creds)
+                tasklist_id = self._get_or_create_tasklist(service)
+                service.tasks().delete(tasklist=tasklist_id, task=item.google_task_id).execute()
+            except Exception as e:
+                logger.info(f"[delete_task] Google 삭제 스킵: {e}")
+
+        await db.delete(item)
+        await db.flush()
+        return {"deleted": True, "action_item_id": action_item_id}
+
     async def sync_action_item(self, db: AsyncSession, user_id: int, action_item_id: int) -> dict:
         """단일 Action Item → Google Task 동기화"""
         result = await db.execute(

@@ -22,6 +22,12 @@ export const syncTask = (actionItemId) =>
 export const syncAllTasks = (meetingId = null) =>
   client.post('/tasks/sync-all', { meeting_id: meetingId })
 
+export const createTask = (data) =>
+  client.post('/tasks/create', data)
+
+export const deleteTask = (actionItemId) =>
+  client.delete(`/tasks/${actionItemId}`)
+
 export const listTasks = () =>
   client.get('/tasks/')
 

@@ -101,6 +101,29 @@ const useGoogleStore = create((set, get) => ({
     }
   },
 
+  createTask: async (data) => {
+    try {
+      const { data: newTask } = await googleApi.createTask(data)
+      set((state) => ({ tasks: [newTask, ...state.tasks] }))
+      return newTask
+    } catch (err) {
+      set({ tasksError: err.response?.data?.detail || 'Task 생성 실패' })
+      throw err
+    }
+  },
+
+  deleteTask: async (actionItemId) => {
+    try {
+      await googleApi.deleteTask(actionItemId)
+      set((state) => ({
+        tasks: state.tasks.filter((t) => t.action_item_id !== actionItemId),
+      }))
+    } catch (err) {
+      set({ tasksError: err.response?.data?.detail || 'Task 삭제 실패' })
+      throw err
+    }
+  },
+
   updateTask: async (actionItemId, completed) => {
     try {
       await googleApi.updateTaskStatus(actionItemId, completed)
