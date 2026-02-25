@@ -28,9 +28,9 @@
 
 ```
 1단계  설계 · 환경 세팅                                    ✅ 완료
-2단계  LLM API(GPT/Claude)로 전체 기능 먼저 구현            ✅ 대부분 완료
-3단계  Agent 개발 — LLM API 기반으로 실제 동작 확인          ← 지금 여기
-4단계  확정된 input/output에 맞춰 데이터 수집 → LoRA 파인튜닝
+2단계  LLM API(GPT/Claude)로 전체 기능 먼저 구현            ✅ 완료
+3단계  Agent 개발 — LLM API 기반으로 실제 동작 확인          ✅ 대부분 완료
+4단계  확정된 input/output에 맞춰 데이터 수집 → LoRA 파인튜닝  ← 다음 단계
 5단계  sLLM(vLLM) 교체 — 모델만 갈아끼우면 됨
 6단계  통합 테스트 → 배포
 ```
@@ -57,8 +57,8 @@
                                           ┌─── Orchestrator (LangGraph) ───┐
                                           │                                │
                                           │  [classify_intent]             │
-                                          │   KoELECTRA → Solar → Embedding │
-                                          │   (3단계 fallback)              │
+                                          │   koelectra-base-v3 파인튜닝    │
+                                          │   (Adv F1 87.84%, 7.9ms)       │
                                           │         │                      │
                                           │   confidence < 0.85?           │
                                           │    ├─ Yes → clarify (top-3)    │
@@ -454,7 +454,7 @@ source (2개 고정)         doc_type (확장 자유)
 | 구분 | 기술 | 용도 |
 |------|------|------|
 | Agent Framework | **LangGraph** | StateGraph 기반 Agent 오케스트레이션 |
-| LLM API (현재) | **GPT-4o-mini / Claude** | 기능 구현 단계에서 사용, 추후 sLLM 교체 |
+| LLM API (현재) | **GPT-4o-mini / Claude Sonnet 4** | 기능 구현 단계에서 사용, 추후 sLLM 교체 |
 | Base sLLM (추후) | **Kanana-1.5-8B** | 벤치마크 선정 (종합 0.652) |
 | Fine-tuning (추후) | **LoRA (PEFT)** + QLoRA 4-bit | 판단 v1 (1,500개) + 문서 v2 (1,700개) |
 | 모델 서빙 | **vLLM** | OpenAI 호환 API + LoRA 핫스왑 + 스트리밍 |
@@ -462,7 +462,7 @@ source (2개 고정)         doc_type (확장 자유)
 | Embedding | **jhgan/ko-sbert-nli** | 한국어 문장 임베딩 (768차원) |
 | Reranker | **BAAI/bge-reranker-v2-m3** | 구현 완료, 현재 비활성 (성능 최적화 후 적용 예정) |
 | 키워드 검색 | **BM25 (rank_bm25)** | Hybrid Search의 키워드 매칭 |
-| Intent 분류 | **koelectra-base-v3** | 8개 카테고리: judgment, doc_search, doc_generate, doc_summary, doc_qa, schedule_add, schedule_view, general |
+| Intent 분류 | **koelectra-base-v3** (파인튜닝) | 8개 카테고리, Adversarial F1 87.84%, 추론 7.9ms |
 | 문서 파싱 | **Docling + PaddleOCR** | PDF 구조화 + 스캔 OCR |
 
 ### Backend
@@ -509,16 +509,22 @@ source (2개 고정)         doc_type (확장 자유)
 | **LoRA v1** (판단) | 판단 1,000 + Q&A 500 | **1,500개** | 경은 |
 | **LoRA v2** (문서) | 회의록 800 + 검색 200 + 요약 300 + 생성 200 + 리스크 200 | **1,700개** | 승언 |
 
-### Intent 분류 데이터 (완료)
+### Intent 분류 데이터 (v2 실험 완료)
 
-| 구분 | 건수 | 모델 |
+| 구분 | 건수 | 비고 |
 |------|------|------|
-| 원본 학습 데이터 | 1,405개 (8개 JSONL) | koelectra-base-v3 |
-| 증강 데이터 | 463개 (13개 증강 파일) | — |
-| **학습 합계** | **1,868개** | — |
-| Adversarial 테스트셋 | 120개 | Eval F1 98.2%, Adv F1 90.2% |
+| 기본 데이터 (GPT-4o + Claude) | 2,299개 | 8개 intent × 2 LLM |
+| 경계 쌍 데이터 | 600개 | 10쌍 × 30개 × 2 LLM |
+| 타겟 보강 데이터 | 98개 | 오분류 패턴 기반 |
+| **학습 합계 (Train)** | **2,425개** | Val 285 / Test 286 |
+| Adversarial 테스트셋 | 450개 | 6단계 실험 완료 |
 
-> 검증용 15% 별도 분리 / Claude·GPT-4 초안 → 사람 검증
+**최종 모델**: koelectra-base-v3 (Label Smoothing 0.1)
+- Test F1: **97.88%** / Adversarial F1: **87.84%**
+- 과신뢰 오분류 69% 감소 (Stage 6 Label Smoothing 적용)
+- 추론 속도: 7.9ms (GPU)
+
+> 6단계 실험: Baseline → Grid Search → 최종 평가 → 오분류 분석 → 보강 재학습 → Label Smoothing
 
 ---
 
@@ -558,6 +564,8 @@ SKN21-FINAL-3TEAM/
 │   │       ├── gmail_service.py      # 알림/초대 메일 발송
 │   │       ├── sheets_service.py     # Sheets 추적 시트
 │   │       └── schedule_service.py   # 4개 서비스 오케스트레이션
+│   ├── alembic/                 # DB 마이그레이션 (Alembic, 3개 버전)
+│   ├── create_tables.py         # DB 테이블 생성 스크립트
 │   └── scripts/                 # 유틸리티 스크립트
 │       ├── rebuild_qdrant.py    # Qdrant 전체 재정립
 │       ├── migrate_docs_to_qdrant.py # 기존 문서 마이그레이션
@@ -572,7 +580,9 @@ SKN21-FINAL-3TEAM/
 │   │   ├── preprocessing.py     # 한국어 전처리 (kiwipiepy)
 │   │   ├── judgment_agent.py    # 판단 Agent (경은)
 │   │   ├── document_agent.py    # 문서 Agent (승언)
-│   │   └── schedule_agent.py    # 일정 Agent (혜빈)
+│   │   ├── schedule_agent.py    # 일정 Agent (혜빈)
+│   │   ├── train_intent.py      # Intent 모델 학습
+│   │   └── test_intent.py       # Intent 테스트
 │   ├── llm/                     # LLM 공통 모듈 (경은)
 │   │   ├── base.py              # BaseLLM 인터페이스
 │   │   ├── factory.py           # LLM 팩토리 (openai/anthropic/vllm)
@@ -596,13 +606,16 @@ SKN21-FINAL-3TEAM/
 │   │   ├── docling_parser.py    # Docling (디지털 PDF)
 │   │   ├── ocr_parser.py        # PaddleOCR (스캔 문서)
 │   │   ├── docx_parser.py       # DOCX 파싱
+│   │   ├── parser.py             # 파서 오케스트레이터
+│   │   ├── manual_parser.py     # 수동 파싱 지원
 │   │   └── regulation_parser.py # 규정 파싱 (조문 기반 청킹)
-│   ├── skills/                  # 문서 생성 스킬
+│   ├── skills/                  # 문서 생성 스킬 (회의록, 보고서, 제안서)
 │   ├── serving/vllm_client.py   # vLLM 클라이언트
 │   ├── finetuning/              # LoRA 학습 (경은/승언)
 │   ├── models/                  # 학습된 모델 체크포인트
 │   ├── tests/                   # AI 테스트
-│   └── experiments/             # ML 실험 (전처리, 학습, 평가)
+│   ├── experiments/             # ML 실험 v1 (BERT, QA 비교)
+│   └── experiments_v2/          # ML 실험 v2 (6단계 실험 파이프라인)
 │
 ├── frontend/                    # React 프론트엔드 (지영)
 │   ├── src/
@@ -615,22 +628,28 @@ SKN21-FINAL-3TEAM/
 │   │   │   ├── schedules/       # 일정 (FullCalendar + Google 연동)
 │   │   │   ├── auth/            # 로그인/회원가입
 │   │   │   └── admin/           # 관리자 (사용자/규정/통계)
+│   │   ├── api/                 # API 클라이언트 모듈 (9개: chat, auth, documents 등)
 │   │   ├── hooks/               # useAuth, useSSE, useChat, useGoogleServices
 │   │   ├── store/               # Zustand (auth, chat, ui, google, scheduleType)
-│   │   └── pages/               # 11개 페이지
+│   │   └── pages/               # 12개 페이지 (대시보드, 챗봇, 회의록, 문서생성, 문서관리, 일정, 마이페이지, 관리자 등)
 │   └── e2e/                     # Playwright E2E 테스트
 │
 ├── data/                        # 학습/평가 데이터
 │   ├── training/
-│   │   ├── intent/              # Intent 데이터 (원본 1,405 + 증강 463)
+│   │   ├── intent/              # Intent 데이터 v1 (원본 1,405 + 증강 463)
+│   │   ├── intent_v2/           # Intent 데이터 v2 (GPT-4o + Claude, 2,425 train)
 │   │   ├── v1_judgment/         # 판단 데이터 (1,500개)
 │   │   └── v2_document/         # 문서 데이터 (1,700개)
 │   ├── evaluation/              # 벤치마크 리포트 + 결과
-│   └── regulations/             # 규정 원본 문서
+│   ├── proceedings/             # 회의록 샘플 데이터 (8개 JSON)
+│   └── regulations/             # 규정 원본 문서 (7개 규정 + PDF)
 │
 ├── docs/                        # 기획/설계 문서
 │   ├── agent/architecture.md    # 아키텍처 설계
 │   ├── TASK_BOARD.md            # 작업 보드 (일일 참고)
+│   ├── logs/                    # 팀원별 작업 로그 (5명)
+│   ├── 복합질문_설계서.md        # 복합 질문 처리 설계
+│   ├── 프로젝트_구조_학습가이드.md # 프로젝트 구조 가이드
 │   └── 역할분배_기술스택_v5_final.md # 기술 참고서
 │
 └── .github/workflows/ci.yml    # CI 파이프라인
@@ -713,6 +732,9 @@ cd frontend && npm install && npm run dev
 | `docs/agent/architecture.md` | 아키텍처 설계 (Agent 워크플로우, RAG 대상, 파인튜닝 전략) |
 | `docs/TASK_BOARD.md` | 일일 작업 참고 (체크리스트, 이슈 매핑) |
 | `docs/역할분배_기술스택_v5_final.md` | 기술 결정 배경, 멘토 피드백, 아키텍처 상세 |
+| `docs/복합질문_설계서.md` | 복합 질문 처리 설계 (Smart Hybrid 아키텍처) |
+| `docs/프로젝트_구조_학습가이드.md` | 프로젝트 구조 및 팀원별 가이드 |
+| `docs/logs/` | 팀원별 작업 로그 (세션 기록) |
 | Swagger UI (`/docs`) | API 스펙 확인 (서버 실행 후) |
 
 ---
