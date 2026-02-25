@@ -1,23 +1,7 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
-
-const EMAIL = 'jiyong1110@naver.com';
-const PASSWORD = 'tlswldyd1!';
-
-// 로그인 헬퍼 (chatbot.spec.js 패턴 동일)
-async function login(page) {
-  await page.goto('/');
-  if (!page.url().includes('/login') && !page.url().endsWith('/')) return;
-
-  const emailInput = page.locator('input[type="email"]');
-  if (await emailInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await emailInput.fill(EMAIL);
-    await page.locator('input[type="password"]').fill(PASSWORD);
-    await page.locator('button[type="submit"]').click();
-    await page.waitForURL('**/dashboard', { timeout: 15000 });
-  }
-}
+import { login } from './helpers.js';
 
 test.describe('문서 관리 페이지 테스트', () => {
 
@@ -31,8 +15,8 @@ test.describe('문서 관리 페이지 테스트', () => {
 
     // 페이지 제목
     await expect(page.locator('h1:has-text("문서 관리")')).toBeVisible();
-    // 검색 입력창
-    await expect(page.locator('input[placeholder="문서 검색..."]')).toBeVisible();
+    // 검색 입력창 — placeholder가 동적이므로 "검색" 포함 여부로 매칭
+    await expect(page.locator('input[placeholder*="검색"]')).toBeVisible();
     // 검색 버튼
     await expect(page.locator('button:has-text("검색")')).toBeVisible();
     // 문서 목록 영역
@@ -49,7 +33,7 @@ test.describe('문서 관리 페이지 테스트', () => {
     await page.waitForTimeout(2000);
 
     // 업로드 전 문서 수 확인
-    const beforeText = await page.locator('text=/총 \\d+개 문서/').textContent();
+    const beforeText = await page.locator('[data-testid="doc-count"]').textContent();
     console.log('업로드 전:', beforeText);
 
     // 테스트용 txt 파일 생성
@@ -70,7 +54,7 @@ test.describe('문서 관리 페이지 테스트', () => {
     await page.waitForTimeout(8000);
 
     // 업로드 후 문서 수 확인
-    const afterText = await page.locator('text=/총 \\d+개 문서/').textContent();
+    const afterText = await page.locator('[data-testid="doc-count"]').textContent();
     console.log('업로드 후:', afterText);
 
     await page.screenshot({ path: 'e2e/results/docs_02_after_upload.png' });
@@ -84,13 +68,13 @@ test.describe('문서 관리 페이지 테스트', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(3000);
 
-    // 총 N개 문서 텍스트 확인
-    const countText = await page.locator('text=/총 \\d+개 문서/').textContent();
+    // doc-count testid로 확인
+    const countEl = page.locator('[data-testid="doc-count"]');
+    await expect(countEl).toBeVisible();
+    const countText = await countEl.textContent();
     console.log('문서 수:', countText);
 
     await page.screenshot({ path: 'e2e/results/docs_03_document_list.png' });
-
-    await expect(page.locator('text=/총 \\d+개 문서/')).toBeVisible();
   });
 
   test('4. 문서 검색 기능 테스트 (제목 검색)', async ({ page }) => {
@@ -99,17 +83,17 @@ test.describe('문서 관리 페이지 테스트', () => {
     await page.waitForTimeout(3000);
 
     // 현재 문서 수
-    const beforeText = await page.locator('text=/총 \\d+개 문서/').textContent();
+    const beforeText = await page.locator('[data-testid="doc-count"]').textContent();
     const beforeCount = parseInt(beforeText.match(/\d+/)?.[0] || '0');
     console.log('검색 전:', beforeText);
 
     // 없는 키워드로 검색 → 0개 되어야 함
-    const searchInput = page.locator('input[placeholder="문서 검색..."]');
+    const searchInput = page.locator('input[placeholder*="검색"]');
     await searchInput.fill('ZZZZNOTEXIST999');
     await page.locator('button:has-text("검색")').click();
     await page.waitForTimeout(1000);
 
-    const noResultText = await page.locator('text=/총 \\d+개 문서/').textContent();
+    const noResultText = await page.locator('[data-testid="doc-count"]').textContent();
     const noResultCount = parseInt(noResultText.match(/\d+/)?.[0] || '0');
     console.log('없는 키워드 검색:', noResultText);
 
@@ -122,7 +106,7 @@ test.describe('문서 관리 페이지 테스트', () => {
     await page.locator('button:has-text("검색")').click();
     await page.waitForTimeout(1000);
 
-    const resetText = await page.locator('text=/총 \\d+개 문서/').textContent();
+    const resetText = await page.locator('[data-testid="doc-count"]').textContent();
     const resetCount = parseInt(resetText.match(/\d+/)?.[0] || '0');
     console.log('검색 초기화:', resetText);
 
@@ -136,7 +120,7 @@ test.describe('문서 관리 페이지 테스트', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(3000);
 
-    const totalText = await page.locator('text=/총 \\d+개 문서/').textContent();
+    const totalText = await page.locator('[data-testid="doc-count"]').textContent();
     console.log('전체:', totalText);
     await page.screenshot({ path: 'e2e/results/docs_06_scope_all.png' });
 
@@ -151,12 +135,12 @@ test.describe('문서 관리 페이지 테스트', () => {
       await scopeButtons.first().click();
       await page.waitForTimeout(500);
 
-      // "회사" 옵션 선택
-      const companyOption = page.locator('li:has-text("회사"), [role="option"]:has-text("회사"), div:has-text("회사")').last();
-      if (await companyOption.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await companyOption.click();
+      // "회사" 옵션 선택 — CustomSelect는 button으로 렌더
+      const companyOption = page.locator('button:has-text("회사")');
+      if (await companyOption.first().isVisible({ timeout: 2000 }).catch(() => false)) {
+        await companyOption.first().click();
         await page.waitForTimeout(1000);
-        const companyText = await page.locator('text=/총 \\d+개 문서/').textContent();
+        const companyText = await page.locator('[data-testid="doc-count"]').textContent();
         console.log('회사 필터:', companyText);
         await page.screenshot({ path: 'e2e/results/docs_07_scope_company.png' });
       }

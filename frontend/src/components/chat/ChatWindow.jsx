@@ -251,6 +251,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
             }}
           />
           <textarea
+            data-testid="chat-input"
             value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {

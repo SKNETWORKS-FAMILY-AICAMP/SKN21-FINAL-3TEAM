@@ -1,62 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-
-// ─── 설정 ───────────────────────────────────────────────
-const LOGIN_EMAIL = 'jiyong1110@naver.com';
-const LOGIN_PW = 'tlswldyd1!';
-const SSE_WAIT = 40_000;
-
-// ─── 헬퍼 ───────────────────────────────────────────────
-
-async function login(page) {
-  await page.goto('/');
-  const emailInput = page.locator('input[type="email"]');
-  if (await emailInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await emailInput.fill(LOGIN_EMAIL);
-    await page.locator('input[type="password"]').fill(LOGIN_PW);
-    await page.locator('button[type="submit"]').click();
-    await page.waitForURL('**/dashboard', { timeout: 15_000 });
-  }
-}
-
-async function goToChat(page) {
-  await page.goto('/chat');
-  await page.locator('textarea[placeholder*="질문"], input[placeholder*="질문"]')
-    .waitFor({ state: 'visible', timeout: 10_000 });
-}
-
-async function loginAndGoToChat(page) {
-  await login(page);
-  await goToChat(page);
-}
-
-async function sendMessage(page, message) {
-  const input = page.locator('textarea[placeholder*="질문"], input[placeholder*="질문"]');
-  await input.fill(message);
-  await input.press('Enter');
-}
-
-async function waitForBotResponse(page, timeoutMs = SSE_WAIT) {
-  const botBubbles = page.locator('[class*="items-start"]').filter({ hasText: /.+/ });
-  await botBubbles.first().waitFor({ state: 'visible', timeout: timeoutMs }).catch(() => {});
-
-  const start = Date.now();
-  let prevText = '';
-  let stableCount = 0;
-
-  while (Date.now() - start < timeoutMs) {
-    await page.waitForTimeout(1500);
-    const allText = await page.locator('main, [data-main-scroll]').first().textContent().catch(() => '');
-    if (allText === prevText && allText.length > 0) {
-      stableCount++;
-      if (stableCount >= 2) break;
-    } else {
-      stableCount = 0;
-    }
-    prevText = allText;
-  }
-  return prevText;
-}
+import { loginAndGoToChat, sendMessage, waitForBotResponse, SSE_WAIT } from './helpers.js';
 
 // ─── doc_search 테스트 ─────────────────────────────────
 
@@ -74,10 +18,8 @@ test.describe('doc_search — 문서 검색 E2E 테스트', () => {
     console.log('[E2E] 회의록 검색 응답 길이:', response.length);
     console.log('[E2E] 응답 미리보기:', response.substring(0, 300));
 
-    // 응답이 충분히 길어야 함
     expect(response.length).toBeGreaterThan(50);
 
-    // 스크린샷
     await page.screenshot({ path: 'e2e/results/doc_search_01_meeting.png', fullPage: true });
   });
 

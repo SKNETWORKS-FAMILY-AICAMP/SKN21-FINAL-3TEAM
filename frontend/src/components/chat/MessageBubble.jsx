@@ -56,7 +56,7 @@ export default function MessageBubble({ type = 'user', children, intent }) {
 
   if (type === 'user') {
     return (
-      <div className="flex justify-end mb-4 group">
+      <div className="flex justify-end mb-4 group" data-testid="user-message">
         <div className="flex items-start gap-1 max-w-[70%]">
           <CopyButton text={plainText} />
           <div className="bg-primary-700 text-white rounded-2xl rounded-br-sm px-4 py-3 text-sm leading-relaxed">
@@ -68,7 +68,7 @@ export default function MessageBubble({ type = 'user', children, intent }) {
   }
 
   return (
-    <div className="flex gap-2.5 mb-5 group">
+    <div className="flex gap-2.5 mb-5 group" data-testid="bot-message">
       <div className="w-8 h-8 rounded-[10px] bg-accent-500 flex-shrink-0 flex items-center justify-center text-white"><Wand2 size={18} /></div>
       <div className="max-w-[70%]">
         {intent && <AgentIndicator intent={intent} />}
