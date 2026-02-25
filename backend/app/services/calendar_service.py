@@ -160,11 +160,15 @@ class GoogleCalendarService(GoogleBaseService):
         created = service.calendars().insert(body={"summary": name}).execute()
         calendar_id = created["id"]
 
-        # 캘린더 목록에 색상 지정
-        service.calendarList().patch(
-            calendarId=calendar_id,
-            body={"backgroundColor": color, "foregroundColor": "#ffffff"},
-        ).execute()
+        # 캘린더 목록에 색상 지정 (실패해도 캘린더는 생성됨)
+        try:
+            service.calendarList().patch(
+                calendarId=calendar_id,
+                colorRgbFormat=True,
+                body={"backgroundColor": color, "foregroundColor": "#ffffff"},
+            ).execute()
+        except Exception as e:
+            logger.warning(f"캘린더 색상 설정 실패 (best-effort): {e}")
 
         return {"calendar_id": calendar_id, "name": name}
 

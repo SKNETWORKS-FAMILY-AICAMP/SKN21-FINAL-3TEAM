@@ -613,6 +613,15 @@
 
 - 유형 추가 중 "추가 중..." → "추가 중" (말줄임표 제거로 버튼 잘림 현상 해결)
 
+#### 8) 일정 유형 삭제 시 Google Calendar 연동 (PR #77)
+
+- **`backend/app/services/calendar_service.py`** — `delete_calendar(calendar_id)` 메서드 추가
+- **`backend/app/api/v1/calendar.py`** — `DELETE /calendar/calendars?calendar_id=xxx` 엔드포인트 추가
+- **`frontend/src/api/google.js`** — `deleteGoogleCalendar(calendarId)` 추가
+- **`frontend/src/components/schedules/ScheduleTypeManager.jsx`** — 삭제 버튼 클릭 시 Google Calendar도 함께 삭제
+  - Google 연결 + calendarId 있는 유형만 API 호출
+  - API 실패해도 앱 내 유형은 정상 삭제 (graceful fallback)
+  - Google 미연결 또는 calendarId 없는 유형은 로컬만 삭제
 ### 다음 할 일
 - vite 프록시 설정 로컬/EC2 분리 (.env.local)
 - 판단 Agent 스트리밍 디버깅
