@@ -4,6 +4,17 @@
 
 **팀원**: 신지용(PM) | 윤경은(AI서브) | 진승언(AI리드) | 안혜빈(Backend) | 문지영(Frontend)
 
+### 핵심 성과
+
+| 영역 | 성과 |
+|------|------|
+| **Intent 분류** | KoELECTRA 파인튜닝 — Test F1 97.88%, Adversarial F1 87.58%, 추론 7.9ms |
+| **RAG 파이프라인** | BM25 + Vector(Qdrant) + RRF 하이브리드 검색 구현 |
+| **Google 4종 연동** | Calendar + Tasks + Gmail + Sheets 통합 OAuth |
+| **Backend** | 12 테이블 DB + JWT 인증 + SSE 실시간 스트리밍 |
+| **Frontend** | 12 페이지 + 챗봇 카드 UI + FullCalendar 일정 관리 |
+| **실험** | 7단계 체계적 실험 (32-point Grid Search → Label Smoothing → 시나리오 검증) |
+
 ---
 
 ## 프로젝트 개요
@@ -27,11 +38,12 @@
 ## 개발 전략: LLM API 먼저 → sLLM은 나중에
 
 ```
-1단계  설계 · 환경 세팅                                    ✅ 완료
-2단계  LLM API(GPT/Claude)로 전체 기능 먼저 구현            ✅ 완료
-3단계  Agent 개발 — LLM API 기반으로 실제 동작 확인          ✅ 대부분 완료
-4단계  확정된 input/output에 맞춰 데이터 수집 → LoRA 파인튜닝  ← 다음 단계
-5단계  sLLM(vLLM) 교체 — 모델만 갈아끼우면 됨
+1단계  설계 · 환경 세팅                                          ✅ 완료
+2단계  LLM API(GPT/Claude)로 전체 기능 먼저 구현                  ✅ 완료
+3단계  Agent 개발 — LLM API 기반으로 실제 동작 확인                ✅ 대부분 완료
+4단계  Intent 파인튜닝 (단일질문 분류)                             ✅ 완료 (v2 7단계 실험)
+       Agent 파인튜닝 (판단/문서 특화)                              ← 중간발표 후 진행
+5단계  복합질문 강화 + sLLM(vLLM) 교체                             ← 예정
 6단계  통합 테스트 → 배포
 ```
 
@@ -58,7 +70,7 @@
                                           │                                │
                                           │  [classify_intent]             │
                                           │   koelectra-base-v3 파인튜닝    │
-                                          │   (Adv F1 87.84%, 7.9ms)       │
+                                          │   (Adv F1 87.58%, 7.9ms)       │
                                           │         │                      │
                                           │   confidence < 0.85?           │
                                           │    ├─ Yes → clarify (top-3)    │
@@ -274,11 +286,11 @@ general        → General Response  (일반 대화)
 ║  │                                 │  │                                ║
 ║  │  현재: GPT/Claude API           │  │                                ║
 ║  │  ──────────────────────────     │  │                                ║
-║  │  추후(4단계): vLLM + LoRA      │  │                                ║
+║  │  추후: vLLM + LoRA             │  │                                ║
 ║  │  ┌───────────┐  ┌───────────┐  │  │                                ║
 ║  │  │ LoRA v1   │  │ LoRA v2   │  │  │                                ║
-║  │  │ (미정)    │  │ (미정)    │  │  │                                ║
-║  │  │ (미정)    │  │ (미정)    │  │  │                                ║
+║  │  │ 판단 특화 │  │ 문서 특화 │  │  │                                ║
+║  │  │ (예정)    │  │ (예정)    │  │  │                                ║
 ║  │  │            │  │            │  │  │                                ║
 ║  │  └───────────┘  └───────────┘  │  │                                ║
 ║  │                                 │  │                                ║
@@ -351,7 +363,7 @@ source (2개 고정)         doc_type (확장 자유)
 │ 1. Intent Classification             │
 │    koelectra-base-v3                │
 │    → intent: "judgment"             │
-│    → confidence: 0.92               │
+│    → confidence: 0.95               │
 └────────────┬────────────────────────┘
              │
              ▼
@@ -455,14 +467,14 @@ source (2개 고정)         doc_type (확장 자유)
 |------|------|------|
 | Agent Framework | **LangGraph** | StateGraph 기반 Agent 오케스트레이션 |
 | LLM API (현재) | **GPT-4o-mini / Claude Sonnet 4** | 기능 구현 단계에서 사용, 추후 sLLM 교체 |
-| Base sLLM (추후) | **Kanana-1.5-8B** | 벤치마크 선정 (종합 0.652) |
-| Fine-tuning (추후) | **LoRA (PEFT)** + QLoRA 4-bit | 대상 및 데이터 미정 (기능 확정 후 결정) |
+| Base sLLM (예정) | **Kanana-1.5-8B** | 벤치마크 선정 완료 (종합 0.652) |
+| Fine-tuning (예정) | **LoRA (PEFT)** + QLoRA 4-bit | 판단/문서 Agent 특화 (LLM API 기능 확정 후 진행) |
 | 모델 서빙 | **vLLM** | OpenAI 호환 API + LoRA 핫스왑 + 스트리밍 |
 | Vector DB | **Qdrant** | 문서 임베딩 저장 + 유사도 검색 |
 | Embedding | **jhgan/ko-sbert-nli** | 한국어 문장 임베딩 (768차원) |
 | Reranker | **BAAI/bge-reranker-v2-m3** | 구현 완료, 현재 비활성 (성능 최적화 후 적용 예정) |
 | 키워드 검색 | **BM25 (rank_bm25)** | Hybrid Search의 키워드 매칭 |
-| Intent 분류 | **koelectra-base-v3** (파인튜닝) | 8개 카테고리, Adversarial F1 87.84%, 추론 7.9ms |
+| Intent 분류 | **koelectra-base-v3** (파인튜닝) | 8개 카테고리, Adversarial F1 87.58%, 추론 7.9ms |
 | 문서 파싱 | **Docling + PaddleOCR** | PDF 구조화 + 스캔 OCR |
 
 ### Backend
@@ -502,15 +514,13 @@ source (2개 고정)         doc_type (확장 자유)
 
 ---
 
-## 파인튜닝 데이터 (4단계에서 진행)
+## 파인튜닝 현황
 
-> LLM API로 기능을 완성한 뒤, 확정된 input/output 형태에 맞춰 데이터 수집 → sLLM 교체
+### Intent 분류 — 완료
 
-> **현재 상태**: 파인튜닝 대상 및 데이터 구성은 미정. LLM API 기반 기능 완성 후 확정 예정.
->
-> - 어떤 Agent(판단/문서/일정)를 파인튜닝할지 검토 중
-> - 데이터 수집은 기능 확정 후 시작 예정
-> - Base 모델 후보: Kanana-1.5-8B (벤치마크 종합 0.652)
+> 7단계 체계적 실험을 통해 KoELECTRA + Label Smoothing 조합 확정. 현재 단일질문 분류에 적용 중이며, 복합질문 강화는 중간발표 후 진행 예정.
+
+
 
 ### Intent 분류 데이터 (v2 실험 완료)
 
@@ -520,14 +530,38 @@ source (2개 고정)         doc_type (확장 자유)
 | 경계 쌍 데이터 | 600개 | 10쌍 × 30개 × 2 LLM |
 | 타겟 보강 데이터 | 98개 | 오분류 패턴 기반 |
 | **학습 합계 (Train)** | **2,425개** | Val 285 / Test 286 |
-| Adversarial 테스트셋 | 450개 | 6단계 실험 완료 |
+| Adversarial 테스트셋 | 450개 | 7단계 실험 완료 |
 
 **최종 모델**: koelectra-base-v3 (Label Smoothing 0.1)
-- Test F1: **97.88%** / Adversarial F1: **87.84%**
+- Test F1: **97.88%** / Adversarial F1: **87.58%**
 - 과신뢰 오분류 69% 감소 (Stage 6 Label Smoothing 적용)
 - 추론 속도: 7.9ms (GPU)
+- 현재 적용: 단일질문 분류 / 복합질문 강화: 중간발표 후 진행
 
 > 6단계 실험: Baseline → Grid Search → 최종 평가 → 오분류 분석 → 보강 재학습 → Label Smoothing
+
+#### 3모델 Baseline 비교
+
+![Baseline Comparison](ai/experiments_v2/results/baseline_comparison.png)
+
+#### Label Smoothing 적용 효과 (Stage 5 vs Stage 6)
+
+![Stage 6 Comparison](ai/experiments_v2/results/stage6_comparison.png)
+
+#### 시나리오 테스트 (유형별 정확도)
+
+![Scenario Test](ai/experiments_v2/results/scenario_test_accuracy.png)
+
+### Agent 파인튜닝 — 중간발표 후 진행 예정
+
+> LLM API로 기능을 완성한 뒤, 확정된 input/output 형태에 맞춰 데이터 수집 → sLLM 교체
+
+| 대상 | 방식 | 상태 |
+|------|------|------|
+| LoRA v1 — 판단 Agent 특화 | 규정 판단 input/output 기반 학습 | LLM API 기능 확정 후 진행 |
+| LoRA v2 — 문서 Agent 특화 | 문서 생성/요약 input/output 기반 학습 | LLM API 기능 확정 후 진행 |
+| Base 모델 | Kanana-1.5-8B (벤치마크 종합 0.652) | 선정 완료 |
+| 서빙 | vLLM (OpenAI 호환 API + LoRA 핫스왑) | 구조 설계 완료 |
 
 ---
 
