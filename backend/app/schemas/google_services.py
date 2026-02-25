@@ -4,7 +4,7 @@ Google 서비스 통합 스키마
 """
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from datetime import date, datetime
 
 
 # ── Google OAuth ──
@@ -34,6 +34,14 @@ class GoogleDisconnectResponse(BaseModel):
 
 
 # ── Google Tasks ──
+
+class TaskCreateRequest(BaseModel):
+    """Task 생성 요청"""
+    title: str
+    assignee: Optional[str] = None
+    due_date: Optional[date] = None
+    priority: str = "medium"  # high/medium/low
+
 
 class TaskSyncRequest(BaseModel):
     """단일 Task 동기화 요청"""

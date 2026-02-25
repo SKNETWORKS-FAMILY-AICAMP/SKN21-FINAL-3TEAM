@@ -12,6 +12,7 @@ from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.google_services import (
+    TaskCreateRequest,
     TaskSyncRequest,
     TaskSyncAllRequest,
     TaskSyncResponse,
@@ -22,6 +23,45 @@ from app.services.tasks_service import GoogleTasksService
 logger = logging.getLogger(__name__)
 router = APIRouter()
 tasks_service = GoogleTasksService()
+
+
+@router.post("/create")
+async def create_task(
+    request: TaskCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Task 생성"""
+    try:
+        result = await tasks_service.create_task(
+            db, current_user.id,
+            title=request.title,
+            assignee=request.assignee,
+            due_date=request.due_date,
+            priority=request.priority,
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[Tasks create] {type(e).__name__}: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Task 생성 오류: {type(e).__name__}: {e}")
+
+
+@router.delete("/{action_item_id}")
+async def delete_task(
+    action_item_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Task 삭제"""
+    try:
+        return await tasks_service.delete_task(db, current_user.id, action_item_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[Tasks delete] {type(e).__name__}: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Task 삭제 오류: {type(e).__name__}: {e}")
 
 
 @router.post("/sync", response_model=TaskSyncResponse)
