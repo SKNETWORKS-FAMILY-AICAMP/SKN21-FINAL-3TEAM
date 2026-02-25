@@ -12,7 +12,7 @@
 | **RAG 파이프라인** | BM25 + Vector(Qdrant) + RRF 하이브리드 검색 구현 |
 | **Google 4종 연동** | Calendar + Tasks + Gmail + Sheets 통합 OAuth |
 | **Backend** | 12 테이블 DB + JWT 인증 + SSE 실시간 스트리밍 |
-| **Frontend** | 12 페이지 + 챗봇 카드 UI + FullCalendar 일정 관리 |
+| **Frontend** | 11 페이지 + 챗봇 카드 UI + FullCalendar 일정 관리 |
 | **실험** | 7단계 체계적 실험 (32-point Grid Search → Label Smoothing → 시나리오 검증) |
 
 ---
@@ -586,10 +586,12 @@ SKN21-FINAL-3TEAM/
 │   │   │   ├── gmail.py         # Gmail 발송 API
 │   │   │   ├── sheets.py        # Google Sheets API
 │   │   │   ├── regulations.py   # 규정 목록 조회 (공개)
-│   │   │   └── admin.py         # 관리자 + 통계 + 로그 + 규정 CRUD
+│   │   │   ├── admin.py         # 관리자 + 통계 + 로그 + 규정 CRUD
+│   │   │   └── router.py        # API 라우터 통합
 │   │   ├── models/              # ORM 모델 (12개 테이블)
 │   │   ├── schemas/             # Pydantic 스키마
 │   │   └── services/            # 비즈니스 로직
+│   │       ├── chat_service.py       # 챗봇 세션/대화 관리
 │   │       ├── document_service.py   # 문서 업로드/파싱 + Qdrant 인덱싱
 │   │       ├── meeting_service.py    # 회의 CRUD + AI 분석
 │   │       ├── template_service.py   # 문서 생성/다운로드
@@ -632,7 +634,10 @@ SKN21-FINAL-3TEAM/
 │   │   ├── embeddings.py        # ko-sbert-nli 임베딩
 │   │   ├── query_refiner.py     # 쿼리 정제
 │   │   ├── qdrant_pipeline.py   # Qdrant 파이프라인 (싱글톤)
-│   │   └── qdrant_store.py      # Qdrant 벡터스토어
+│   │   ├── qdrant_store.py      # Qdrant 벡터스토어
+│   │   ├── pipeline.py          # RAG 파이프라인 통합
+│   │   ├── vectorstore.py       # 벡터스토어 인터페이스
+│   │   └── inspect_sources.py   # 소스 검사 유틸리티
 │   ├── templates/               # 문서 템플릿
 │   │   ├── base.py              # BaseTemplate
 │   │   ├── meeting_minutes.py   # 회의록
@@ -657,7 +662,7 @@ SKN21-FINAL-3TEAM/
 ├── frontend/                    # React 프론트엔드
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── chat/            # 챗봇 UI + 응답 카드 (15개 컴포넌트)
+│   │   │   ├── chat/            # 챗봇 UI + 응답 카드 (17개 컴포넌트)
 │   │   │   ├── common/          # 공통 UI (Sidebar, Header, Layout, ThemeToggle 등)
 │   │   │   ├── dashboard/       # 대시보드 위젯 (14개)
 │   │   │   ├── documents/       # 문서 관리
@@ -668,7 +673,7 @@ SKN21-FINAL-3TEAM/
 │   │   ├── api/                 # API 클라이언트 모듈 (9개: chat, auth, documents 등)
 │   │   ├── hooks/               # useAuth, useSSE, useChat, useGoogleServices
 │   │   ├── store/               # Zustand (auth, chat, ui, google, scheduleType)
-│   │   └── pages/               # 12개 페이지 (대시보드, 챗봇, 회의록, 문서생성, 문서관리, 일정, 마이페이지, 관리자 등)
+│   │   └── pages/               # 11개 페이지 (대시보드, 챗봇, 회의록, 문서생성, 문서관리, 일정, 마이페이지, 관리자 등)
 │   └── e2e/                     # Playwright E2E 테스트
 │
 ├── data/                        # 학습/평가 데이터
@@ -689,7 +694,15 @@ SKN21-FINAL-3TEAM/
 │   ├── 프로젝트_구조_학습가이드.md # 프로젝트 구조 가이드
 │   └── 역할분배_기술스택_v5_final.md # 기술 참고서
 │
-└── .github/workflows/ci.yml    # CI 파이프라인
+├── docker/                     # Docker 설정
+│   ├── docker-compose.yml      # 컴포즈 설정
+│   ├── Dockerfile.backend      # 백엔드 이미지
+│   ├── Dockerfile.frontend     # 프론트엔드 이미지
+│   └── Dockerfile.vllm         # vLLM 서빙 이미지
+│
+├── .github/workflows/
+│   ├── ci.yml                  # CI 파이프라인
+│   └── deploy.yml              # 배포 파이프라인
 ```
 
 ---
