@@ -48,6 +48,15 @@ function exportChat(messages) {
 }
 
 const RESULT_MAP = { yes: '가능', no: '불가', conditional: '조건부 가능', no_regulation: '규정 없음' };
+
+// LLM 응답 텍스트에서 raw enum 값을 한국어로 치환
+function cleanResultText(text) {
+  if (!text) return text;
+  return text
+    .replace(/[""\u201C\u201D]no_regulation[""\u201C\u201D]/g, '"규정 없음"')
+    .replace(/\bno_regulation\b/g, '규정 없음');
+}
+
 const RESULT_BADGE = {
   yes: { icon: CheckCircle, bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', iconColor: 'text-green-500' },
   no: { icon: XCircle, bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', iconColor: 'text-red-500' },
@@ -89,10 +98,10 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
               </div>
             );
           })()}
-          <JudgmentCard summary={data.reasoning || content} regulations={regulations} confidenceBreakdown={data.confidence_breakdown} warnings={data.warnings} confidence={data.confidence} />
+          <JudgmentCard summary={cleanResultText(data.reasoning || content)} regulations={regulations} confidenceBreakdown={data.confidence_breakdown} warnings={data.warnings} confidence={data.confidence} />
           {content && data.reasoning && content !== data.reasoning && (
             <div className="mt-2 bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed shadow-sm">
-              <MarkdownText>{content}</MarkdownText>
+              <MarkdownText>{cleanResultText(content)}</MarkdownText>
             </div>
           )}
         </>
@@ -337,8 +346,10 @@ export default function ChatPage() {
   const [docPickerOpen, setDocPickerOpen] = useState(false);
   const [docList, setDocList] = useState([]);
   const [docSearch, setDocSearch] = useState('');
+  const [hasNewRegulations, setHasNewRegulations] = useState(false);
 
   const mountedRef = useRef(false);
+  const lastSeenJudgmentIdxRef = useRef(-1);
 
   useEffect(() => {
     if (mountedRef.current) return;
@@ -422,22 +433,41 @@ export default function ChatPage() {
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i];
       if (msg.resultIntent === 'judgment' && msg.agentResponse?.regulations) {
+        const confidence = msg.agentResponse.confidence;
         return msg.agentResponse.regulations.map((r) => {
           const articleKey = (r.article || r.name || '').match(/제\d+조/)?.[0];
           const dbReg = articleKey
             ? dbRegulations.find((db) => db.article_number === articleKey)
             : null;
+          const rawRelevance = r.relevance ?? r.score ?? null;
+          const relevance = typeof rawRelevance === 'number' && !isNaN(rawRelevance)
+            ? rawRelevance
+            : (typeof confidence === 'number' && !isNaN(confidence) ? confidence : null);
           return {
             name: r.name || dbReg?.title || '',
             article: r.article || dbReg?.article_number || '',
             content: dbReg?.content || r.content || '',
-            relevance: r.relevance || r.score || null,
+            relevance,
           };
         });
       }
     }
     return [];
   }, [messages, dbRegulations]);
+
+  // 판단 agent 응답으로 새 규정이 들어오면 알림 활성화
+  useEffect(() => {
+    let latestIdx = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].resultIntent === 'judgment' && messages[i].agentResponse?.regulations?.length > 0) {
+        latestIdx = i;
+        break;
+      }
+    }
+    if (latestIdx > -1 && latestIdx !== lastSeenJudgmentIdxRef.current && !panelOpen) {
+      setHasNewRegulations(true);
+    }
+  }, [messages, panelOpen]);
 
   return (
     <div className="flex flex-col h-full">
@@ -484,10 +514,29 @@ export default function ChatPage() {
             {selectedDocumentId ? '문서 선택됨' : '문서 선택'}
           </button>
           <button
-            onClick={() => setPanelOpen(!panelOpen)}
-            className={`btn-outline text-xs ${panelOpen ? 'bg-primary-50 border-primary-300' : ''}`}
+            onClick={() => {
+              const opening = !panelOpen;
+              setPanelOpen(opening);
+              if (opening) {
+                setHasNewRegulations(false);
+                for (let i = messages.length - 1; i >= 0; i--) {
+                  if (messages[i].resultIntent === 'judgment' && messages[i].agentResponse?.regulations?.length > 0) {
+                    lastSeenJudgmentIdxRef.current = i;
+                    break;
+                  }
+                }
+              }
+            }}
+            className={`btn-outline text-xs relative ${panelOpen ? 'bg-primary-50 border-primary-300' : ''} ${hasNewRegulations && !panelOpen ? 'border-primary-400 bg-primary-50 text-primary-700 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : ''}`}
+            style={hasNewRegulations && !panelOpen ? { animation: 'reg-glow 1.5s ease-in-out infinite' } : undefined}
           >
             규정 패널
+            {hasNewRegulations && !panelOpen && (
+              <span className="absolute -top-1.5 -right-1.5 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary-500"></span>
+              </span>
+            )}
           </button>
         </div>
       </header>
@@ -607,7 +656,7 @@ export default function ChatPage() {
                 return (
                   <MessageBubble key={i} type="bot" intent={intent}>
                     <StreamingMessage
-                      text={msg.content}
+                      text={intent === 'judgment' ? cleanResultText(msg.content) : msg.content}
                       status={currentStatus}
                       intent={intent}
                       isInsideBubble
