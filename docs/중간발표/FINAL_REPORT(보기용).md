@@ -55,7 +55,7 @@ WorkFlow Agent의 오케스트레이터가 사용자 입력을 **8개 intent**�
 클래스 균형: Max/Min ratio = **1.28x** (양호)
 데이터 누출: Train↔Val↔Test 교차 중복 **0건**
 
-![8 intent 클래스 분포](results/class_distribution.png)
+![8 intent 클래스 분포](../../ai/experiments_v2/results/class_distribution.png)
 
 ### 2.3 실험 단계 (7-Stage Pipeline)
 
@@ -83,7 +83,7 @@ Stage 7: doc 경계 라벨 리뷰 + 시나리오 100개 확장
 | bert-base | 0.9780 | 422MB | 808s |
 | distilkobert | 0.9498 | 109MB | 243s |
 
-![Baseline 3모델 비교](results/baseline_comparison.png)
+![Baseline 3모델 비교](../../ai/experiments_v2/results/baseline_comparison.png)
 
 → KoELECTRA가 동일 조건에서 최고 성능. distilkobert는 Val F1 3.3%p 열세.
 
@@ -109,7 +109,7 @@ Stage 7: doc 경계 라벨 리뷰 + 시나리오 100개 확장
 | 2 | bert-base | 0.9756 | 0.8517 | 10.4ms | [0.956, 0.992] |
 | 3 | distilkobert | 0.9645 | 0.7926 | 2.8ms | [0.940, 0.984] |
 
-![F1 vs 추론 속도](results/f1_vs_speed.png)
+![F1 vs 추론 속도](../../ai/experiments_v2/results/f1_vs_speed.png)
 
 전처리 Ablation (Config A~E): **전부 동일** → 전처리 효과 없음
 McNemar 검정: 3쌍 모두 **n.s.** (koelectra-bert p>0.05)
@@ -128,7 +128,7 @@ McNemar 검정: 3쌍 모두 **n.s.** (koelectra-bert p>0.05)
 주요 오분류 유형: short_text (47건), overconfident (42건), boundary_high (30건)
 Top 혼동 쌍: doc_qa→doc_search (10건), doc_generate→doc_summary (5건)
 
-![오분류 유형 분석](results/error_types_adversarial.png)
+![오분류 유형 분석](../../ai/experiments_v2/results/error_types_adversarial.png)
 
 **타겟 보강 98개 추가 후 재학습:**
 
@@ -142,7 +142,7 @@ Top 혼동 쌍: doc_qa→doc_search (10건), doc_generate→doc_summary (5건)
 - doc_search: 0.827 → **0.853** (+2.6%p)
 - general: 0.836 → **0.845** (+0.8%p)
 
-![Stage 5 보강 비교](results/stage5_comparison.png)
+![Stage 5 보강 비교](../../ai/experiments_v2/results/stage5_comparison.png)
 
 ### Stage 6: Label Smoothing + 과신뢰 해소
 
@@ -179,7 +179,7 @@ F1 소폭 하락이지만, **과신뢰 해소가 핵심 목적**:
 
 > **schedule_view -4.8%p 하락 원인**: Label Smoothing으로 confidence 분포가 전체적으로 낮아지면서, schedule_view의 "조회" 패턴이 general("~알려줘")과 겹치는 경계에서 소폭 후퇴. 단, Adversarial 450개 중 schedule_view는 56개로 표본이 적어 1~2건 차이가 큰 %p 변동을 만듦. 실서비스 표준 입력에서는 영향 미미.
 
-![Stage 6 비교](results/stage6_comparison.png)
+![Stage 6 비교](../../ai/experiments_v2/results/stage6_comparison.png)
 
 ### Stage 7: doc 경계 라벨 리뷰 + 시나리오 확장
 
