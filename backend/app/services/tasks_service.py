@@ -135,19 +135,28 @@ class GoogleTasksService(GoogleBaseService):
 
         result = service.tasks().list(
             tasklist=tasklist_id, maxResults=100,
-            showCompleted=True, showHidden=True,
+            showCompleted=True, showHidden=False,
         ).execute()
-        google_tasks = {t["id"]: t for t in result.get("items", [])}
-        logger.info(f"[pull] Google Tasks: {len(google_tasks)}개")
+        all_google_items = result.get("items", [])
+
+        # 삭제된 항목 필터링 (deleted 플래그가 있을 수 있음)
+        deleted_ids = {t["id"] for t in all_google_items if t.get("deleted", False)}
+        google_tasks = {
+            t["id"]: t for t in all_google_items
+            if not t.get("deleted", False)
+        }
+        logger.info(f"[pull] Google Tasks 전체: {len(all_google_items)}개, 활성: {len(google_tasks)}개")
 
         db_result = await db.execute(
             select(ActionItem).where(ActionItem.google_task_id.isnot(None))
         )
         items = db_result.scalars().all()
         existing_ids = {item.google_task_id for item in items}
+        logger.info(f"[pull] DB ActionItems (google_task_id 있음): {len(items)}개")
 
-        # 1) 기존 아이템 상태 동기화
+        # 1) 기존 아이템 상태 동기화 + Google에서 삭제된 항목 제거
         updated = 0
+        deleted = 0
         for item in items:
             gt = google_tasks.get(item.google_task_id)
             if gt:
@@ -156,6 +165,11 @@ class GoogleTasksService(GoogleBaseService):
                     item.status = new_status
                     updated += 1
                     logger.info(f"[pull] 상태변경: {item.content} → {new_status}")
+            else:
+                # Google에서 삭제됐거나 존재하지 않는 Task → DB에서도 삭제
+                logger.info(f"[pull] Google에서 삭제됨, DB 삭제: {item.content} (google_task_id={item.google_task_id})")
+                await db.delete(item)
+                deleted += 1
 
         # 2) Google에서 새로 추가된 Task → DB import
         imported = 0
@@ -181,4 +195,15 @@ class GoogleTasksService(GoogleBaseService):
                 logger.info(f"[pull] 새 Task import: {gt.get('title')}")
 
         await db.flush()
-        return {"updated_count": updated, "imported_count": imported}
+        return {
+            "updated_count": updated,
+            "imported_count": imported,
+            "deleted_count": deleted,
+            "debug": {
+                "google_total": len(all_google_items),
+                "google_active": len(google_tasks),
+                "google_deleted": len(deleted_ids),
+                "db_synced_items": len(items),
+                "db_google_task_ids": [item.google_task_id for item in items],
+            },
+        }

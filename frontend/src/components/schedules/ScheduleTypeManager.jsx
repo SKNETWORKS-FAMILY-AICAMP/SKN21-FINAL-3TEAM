@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import useScheduleTypeStore, { DEFAULT_TYPES } from '../../store/scheduleTypeStore';
+import useGoogleServices from '../../hooks/useGoogleServices';
+import { createGoogleCalendar, deleteGoogleCalendar } from '../../api/google';
 
 // 디자인 시스템과 동일한 톤다운 계열 (채도 낮고 차분한 색상)
 const PRESET_COLORS = [
@@ -19,15 +21,32 @@ const PRESET_COLORS = [
 
 export default function ScheduleTypeManager({ onClose }) {
   const { customTypes, addType, removeType } = useScheduleTypeStore();
+  const { connected, hasScope } = useGoogleServices();
   const [newLabel, setNewLabel] = useState('');
   const [newColor, setNewColor] = useState('#7C98AB');
+  const [adding, setAdding] = useState(false);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const trimmed = newLabel.trim();
     if (!trimmed) return;
-    addType(trimmed, newColor);
-    setNewLabel('');
-    setNewColor('#7C98AB');
+    setAdding(true);
+    try {
+      let calendarId = null;
+      if (connected && hasScope('calendar')) {
+        const { data } = await createGoogleCalendar(trimmed, newColor);
+        calendarId = data.calendar_id;
+      }
+      addType(trimmed, newColor, calendarId);
+      setNewLabel('');
+      setNewColor('#7C98AB');
+    } catch {
+      // Google 캘린더 생성 실패해도 로컬 유형은 추가
+      addType(trimmed, newColor, null);
+      setNewLabel('');
+      setNewColor('#7C98AB');
+    } finally {
+      setAdding(false);
+    }
   };
 
   return (
@@ -75,7 +94,12 @@ export default function ScheduleTypeManager({ onClose }) {
                   />
                   <span className="text-sm text-neutral-main">{t.label}</span>
                   <button
-                    onClick={() => removeType(t.id)}
+                    onClick={async () => {
+                      if (t.calendarId && connected && hasScope('calendar')) {
+                        try { await deleteGoogleCalendar(t.calendarId); } catch { /* 실패해도 로컬 삭제 진행 */ }
+                      }
+                      removeType(t.id);
+                    }}
                     className="ml-auto text-neutral-muted hover:text-error text-xs px-1.5 py-0.5 rounded hover:bg-error-bg transition"
                   >삭제</button>
                 </div>
@@ -99,11 +123,11 @@ export default function ScheduleTypeManager({ onClose }) {
               />
               <button
                 onClick={handleAdd}
-                disabled={!newLabel.trim()}
+                disabled={!newLabel.trim() || adding}
                 className="px-4 py-2.5 text-white text-sm font-semibold rounded-r-sm border disabled:opacity-40 disabled:cursor-not-allowed transition whitespace-nowrap"
                 style={{ backgroundColor: newColor, borderColor: newColor }}
               >
-                + 추가
+                {adding ? '추가 중' : '+ 추가'}
               </button>
             </div>
 

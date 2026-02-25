@@ -544,7 +544,7 @@
 
 ---
 
-## 2026-02-25 (화)
+## 2026-02-25 (수)
 
 ### 한 일
 
@@ -565,13 +565,53 @@
 - 빈 상태 메시지 추가 ("업로드된 문서가 없습니다.")
 - Badge variant에 실제 API 상태값(`완료`, `처리중`) 대응 추가
 
-#### 3) ActivityTimeline 위젯 개선 (`ActivityTimeline.jsx`)
+#### 3) 일정 삭제 기능 구현 (PR #75)
 
-- 빈 상태 메시지 추가 ("최근 활동이 없습니다.")
+> 일정 관리 페이지 날짜 팝업에서 일정을 삭제할 수 있는 기능 추가
 
-#### 4) 누락 패키지 설치
+- **`CalendarView.jsx`** — `DayDetailPopup` 각 일정 우측에 Trash2 쓰레기통 버튼 추가
+  - Google Calendar 이벤트(`event_id` 있는 항목)에만 버튼 표시 (공휴일 제외)
+  - 클릭 시 스피너 표시 → 삭제 완료 즉시 목록에서 제거
+  - hover 시 빨간색 전환
+- **`SchedulesPage.jsx`** — 이벤트 매핑에 `id: event.event_id`, `calendarId: event.calendar_id` 추가
+  - 기존 `event.id` → `event.event_id` 필드명 수정 (버튼 미표시 버그 원인)
+- **`api/google.js`** — `deleteCalendarEvent(eventId, calendarId)` 추가
+- **`googleStore.js`** — `deleteCalendarEvent` 액션 추가 (삭제 후 스토어에서 즉시 제거)
+- **`backend/app/api/v1/calendar.py`** — `DELETE /calendar/events/{event_id}` 엔드포인트 추가
+- **`backend/app/services/calendar_service.py`** — `delete_event()` 메서드 추가
+  - 전달받은 `calendar_id`로 1차 시도 → 실패 시 전체 캘린더 순회 탐색 (Not Found 완전 해결)
+  - sub-캘린더(Family 등) 이벤트도 정상 삭제 가능
 
-- `react-markdown` — develop merge로 추가된 `MarkdownText.jsx`에서 필요, 빌드 에러 해소
+#### 4) Tasks 탭 UI 개선 (PR #76, `TasksPanel.jsx`, `SchedulesPage.jsx`)
+
+- **Push/Pull 버튼 → 새로고침 버튼 하나로 통합** — RefreshCw 아이콘 + 로딩 중 스피너 회전
+- **헤더 "Google Tasks" → "Tasks"** 로 변경 (미연결 안내 메시지 포함)
+- **탭 전환 시 헤더 버튼 숨김** — Tasks/Sheets 탭에서 새로고침·유형 관리·일정 추가 버튼 미표시
+- **전체 탭 정렬** — 미완료 항목이 완료 항목보다 상단에 표시 (`sort((a,b) => a.completed - b.completed)`)
+
+#### 5) 일정 유형 → Google Calendar 연동 (PR #76)
+
+> 앱에서 커스텀 유형 추가 시 Google Calendar에 동일한 이름의 캘린더 자동 생성
+
+- **`backend/app/services/calendar_service.py`** — `create_calendar(name, color)` 메서드 추가
+  - `calendars().insert()` 로 캘린더 생성 → `calendarList().patch()` 로 색상 지정
+  - `push_event` / `create_event_with_meet` — `event_data.calendar_id` 지원 (지정 캘린더에 이벤트 저장)
+- **`backend/app/api/v1/calendar.py`** — `POST /calendar/calendars` 엔드포인트 추가
+- **`frontend/src/api/google.js`** — `createGoogleCalendar(name, color)` 추가
+- **`frontend/src/store/scheduleTypeStore.js`** — `addType(label, color, calendarId)` — calendarId 저장
+- **`frontend/src/components/schedules/ScheduleTypeManager.jsx`** — 유형 추가 시 Google 연결되어 있으면 캘린더 자동 생성, 실패 시 로컬만 저장 (graceful fallback)
+- **`frontend/src/pages/SchedulesPage.jsx`** — 이벤트 생성 시 type의 calendarId 조회 후 전달, pull 시 `calendarId → typeId` 역매핑 추가
+
+#### 6) 일정 유형 표시 버그 수정
+
+- 등록 유형(회의/마감일 등)이 항상 "개인 일정"으로 표시되는 버그 수정
+- 원인: Google Calendar에 type 개념 없어 pull 시 type 정보 소실
+- 수정: `extendedProperties.private.workflow_type`에 유형 저장 → pull 시 복원
+- 우선순위: extendedProperties → calendarId 역매핑 → 기본값('google')
+
+#### 7) ScheduleTypeManager 버튼 텍스트 수정
+
+- 유형 추가 중 "추가 중..." → "추가 중" (말줄임표 제거로 버튼 잘림 현상 해결)
 
 ### 다음 할 일
 - vite 프록시 설정 로컬/EC2 분리 (.env.local)
