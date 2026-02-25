@@ -124,6 +124,7 @@ class GoogleCalendarService(GoogleBaseService):
                     for item in items:
                         events.append({
                             "event_id": item["id"],
+                            "calendar_id": cal_id,
                             "title": item.get("summary", ""),
                             "start": item["start"].get("dateTime", item["start"].get("date")),
                             "end": item["end"].get("dateTime", item["end"].get("date")),
@@ -136,3 +137,32 @@ class GoogleCalendarService(GoogleBaseService):
         except Exception:
             raise
         return events
+
+    async def delete_event(self, db: AsyncSession, user_id: int, event_id: str, calendar_id: str = "primary") -> None:
+        """Google Calendar 이벤트 삭제 (지정 캘린더 실패 시 전체 캘린더 탐색)"""
+        creds = await self.get_credentials(db, user_id)
+        service = self._build_service(creds)
+
+        # 1차 시도: 전달받은 calendar_id로 삭제
+        try:
+            service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+            return
+        except Exception:
+            pass
+
+        # 2차 시도: 전체 캘린더 순회
+        try:
+            calendar_list = service.calendarList().list().execute()
+            for cal in calendar_list.get("items", []):
+                cal_id = cal["id"]
+                if cal_id == calendar_id:
+                    continue  # 이미 시도한 캘린더 건너뜀
+                try:
+                    service.events().delete(calendarId=cal_id, eventId=event_id).execute()
+                    return
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+        raise ValueError(f"이벤트를 찾을 수 없습니다: {event_id}")
