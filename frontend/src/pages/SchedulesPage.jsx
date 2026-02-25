@@ -12,7 +12,7 @@ import useScheduleTypeStore, { DEFAULT_TYPES } from '../store/scheduleTypeStore'
 
 export default function SchedulesPage() {
   const { isScrolled } = useOutletContext();
-  const { connected, calendarEvents, calendarLoading, calendarError, fetchCalendarEvents, hasScope, syncEventToGoogle, createEventWithMeet } = useGoogleServices();
+  const { connected, calendarEvents, calendarLoading, calendarError, fetchCalendarEvents, hasScope, syncEventToGoogle, createEventWithMeet, deleteCalendarEvent } = useGoogleServices();
   const { customTypes } = useScheduleTypeStore();
   const [showForm, setShowForm] = useState(false);
   const [showTypeManager, setShowTypeManager] = useState(false);
@@ -40,6 +40,8 @@ export default function SchedulesPage() {
         : null;
 
       return {
+        id: event.event_id,
+        calendarId: event.calendar_id,
         month: start.getMonth() + 1,
         day: start.getDate(),
         type: 'google',
@@ -186,7 +188,7 @@ export default function SchedulesPage() {
             </div>
           ) : (
             <>
-              <CalendarView events={events} />
+              <CalendarView events={events} onDeleteEvent={deleteCalendarEvent} />
               {!connected && (
                 <div className="mt-5 p-4 bg-warning-bg border border-warning rounded-md text-center">
                   <p className="text-sm text-warning font-medium">

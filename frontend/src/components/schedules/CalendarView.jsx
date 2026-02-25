@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { Trash2 } from 'lucide-react';
 import MeetLinkBadge from './MeetLinkBadge';
 import useScheduleTypeStore, { DEFAULT_TYPES } from '../../store/scheduleTypeStore';
 
@@ -83,8 +84,9 @@ function getKoreanHolidays(year) {
   return [...fixed, ...lunar].map((h) => ({ ...h, type: 'holiday' }));
 }
 
-function DayDetailPopup({ day, month, year, events, typeColorMap, typeLabelMap, onClose }) {
+function DayDetailPopup({ day, month, year, events, typeColorMap, typeLabelMap, onClose, onDeleteEvent }) {
   const ref = useRef(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     const handleClick = (e) => {
@@ -93,6 +95,17 @@ function DayDetailPopup({ day, month, year, events, typeColorMap, typeLabelMap, 
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [onClose]);
+
+  const handleDelete = async (eventId, calendarId) => {
+    setDeletingId(eventId);
+    try {
+      await onDeleteEvent(eventId, calendarId);
+    } catch {
+      // 삭제 실패 시 버튼 원복
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
@@ -112,6 +125,7 @@ function DayDetailPopup({ day, month, year, events, typeColorMap, typeLabelMap, 
               {events.map((e, i) => {
                 const dotColor = typeColorMap[e.type] || '#9CA3AF';
                 const typeLabel = typeLabelMap[e.type] || e.type;
+                const isDeleting = deletingId === e.id;
                 return (
                   <li key={i} className="flex gap-3 items-start">
                     <span
@@ -126,6 +140,20 @@ function DayDetailPopup({ day, month, year, events, typeColorMap, typeLabelMap, 
                       </div>
                       {e.meetLink && <div className="mt-1"><MeetLinkBadge meetLink={e.meetLink} /></div>}
                     </div>
+                    {e.id && onDeleteEvent && (
+                      <button
+                        onClick={() => handleDelete(e.id, e.calendarId)}
+                        disabled={isDeleting}
+                        className="shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-error-bg text-neutral-muted hover:text-error transition disabled:opacity-40"
+                        aria-label="일정 삭제"
+                        title="일정 삭제"
+                      >
+                        {isDeleting
+                          ? <span className="w-3.5 h-3.5 border-2 border-error border-t-transparent rounded-full animate-spin" />
+                          : <Trash2 size={14} />
+                        }
+                      </button>
+                    )}
                   </li>
                 );
               })}
@@ -192,7 +220,7 @@ function YearView({ year, events, todayYear, todayMonth, todayDate, onMonthClick
   );
 }
 
-export default function CalendarView({ events = [] }) {
+export default function CalendarView({ events = [], onDeleteEvent }) {
   const now = new Date();
   const [currentYear, setCurrentYear] = useState(now.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(now.getMonth() + 1);
@@ -410,6 +438,7 @@ export default function CalendarView({ events = [] }) {
           typeColorMap={typeColorMap}
           typeLabelMap={typeLabelMap}
           onClose={() => setSelectedDay(null)}
+          onDeleteEvent={onDeleteEvent}
         />
       )}
     </div>

@@ -76,3 +76,6 @@ export const createEventWithMeet = (data) =>
 
 export const syncEventToGoogle = (eventData) =>
   client.post('/calendar/sync', eventData)
+
+export const deleteCalendarEvent = (eventId, calendarId = 'primary') =>
+  client.delete(`/calendar/events/${eventId}`, { params: { calendar_id: calendarId } })
