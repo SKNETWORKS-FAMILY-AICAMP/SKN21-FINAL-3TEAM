@@ -135,7 +135,7 @@ class GoogleTasksService(GoogleBaseService):
 
         result = service.tasks().list(
             tasklist=tasklist_id, maxResults=100,
-            showCompleted=True, showHidden=False,
+            showCompleted=True, showHidden=True,
         ).execute()
         all_google_items = result.get("items", [])
 
