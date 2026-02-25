@@ -57,42 +57,64 @@
 
 ### 전체 파이프라인
 
-```
-사용자 입력 (챗봇 / 회의록 페이지 / 문서 페이지)
-       │
-       ▼
- Frontend (React) ── POST /api/v1/chat/stream ──→ Backend (FastAPI)
-                                                       │
-                                                  JWT 인증 → AgentState 초기화
-                                                       │
-                                                       ▼
-                                          ┌─── Orchestrator (LangGraph) ───┐
-                                          │                                │
-                                          │  [classify_intent]             │
-                                          │   koelectra-base-v3 파인튜닝    │
-                                          │   (Adv F1 87.58%, 7.9ms)       │
-                                          │         │                      │
-                                          │   confidence < 0.85?           │
-                                          │    ├─ Yes → clarify (top-3)    │
-                                          │    └─ No  → Agent 라우팅        │
-                                          │         │                      │
-                                          │    ┌────┼────┬──────┐         │
-                                          │    ▼    ▼    ▼      ▼         │
-                                          │  Judge Doc  Sched  General    │
-                                          │    │    │    │      │         │
-                                          │    └────┴────┴──────┘         │
-                                          │         │                      │
-                                          │  [format_response]             │
-                                          └─────────┼──────────────────────┘
-                                                    │
-                                                    ▼
-                                          chat_logs DB 저장
-                                                    │
-       ┌────────────────────────────────────────────┘
-       │  SSE (text/event-stream)
-       ▼
- Frontend 렌더링
-  intent → 처리중 표시 / token → 스트리밍 / result → 최종 응답 / done → 종료
+```mermaid
+flowchart TD
+
+    %% =========================
+    %% 1. USER → FRONTEND
+    %% =========================
+    U["👤 User"] --> F["💻 Frontend (React)"]
+    F -->|POST /api/v1/chat/stream| B["⚙️ Backend (FastAPI)"]
+
+    %% =========================
+    %% 2. AUTH & ORCHESTRATOR
+    %% =========================
+    B --> A["🔐 JWT Auth & AgentState Init"]
+    A --> I["🎯 Intent Classifier<br/>(koelectra-base-v3)"]
+
+    I -->|confidence ≥ 0.85| O["🧠 LangGraph Orchestrator"]
+    I -->|confidence ↓ 0.85| C["❓ Clarification Node"]
+    C --> O
+
+    %% =========================
+    %% 3. AGENT ROUTING
+    %% =========================
+    O -->|judgment| J["⚖️ Judgment Agent"]
+    O -->|document_*| D["📄 Document Agent"]
+    O -->|schedule_*| S["📅 Schedule Agent"]
+    O -->|general| G["💬 General Agent"]
+
+    %% =========================
+    %% 4. RAG (Conditional)
+    %% =========================
+    J --> R1["🔎 RAG Pipeline"]
+    D -->|doc_search / doc_qa| R1
+
+    R1 --> HS["Hybrid Search<br/>BM25 + Vector(Qdrant) + RRF"]
+    HS --> L
+
+    %% =========================
+    %% 5. LLM LAYER
+    %% =========================
+    J --> L["🤖 LLM Module"]
+    D -->|generate / summary| L
+    S --> L
+    G --> L
+
+    L -->|Current| API["GPT / Claude API"]
+    L -->|Future| VLLM["vLLM + LoRA (sLLM)"]
+
+    %% =========================
+    %% 6. EXTERNAL SERVICES
+    %% =========================
+    S --> GS["Google Services<br/>(Calendar / Tasks / Gmail / Sheets)"]
+
+    %% =========================
+    %% 7. RESPONSE FLOW
+    %% =========================
+    L --> FMT["📝 Response Formatter"]
+    FMT --> DB["💾 PostgreSQL (chat_logs)"]
+    DB -->|SSE Streaming| F
 ```
 
 ### 각 Agent 워크플로우
