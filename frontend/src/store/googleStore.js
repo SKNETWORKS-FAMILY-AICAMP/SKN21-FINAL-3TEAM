@@ -199,6 +199,18 @@ const useGoogleStore = create((set, get) => ({
       set({ calendarError: err.response?.data?.detail || '이벤트 동기화 실패' })
     }
   },
+
+  deleteCalendarEvent: async (eventId, calendarId = 'primary') => {
+    try {
+      await googleApi.deleteCalendarEvent(eventId, calendarId)
+      set((state) => ({
+        calendarEvents: state.calendarEvents.filter((e) => e.event_id !== eventId),
+      }))
+    } catch (err) {
+      set({ calendarError: err.response?.data?.detail || '이벤트 삭제 실패' })
+      throw err
+    }
+  },
 }))
 
 export default useGoogleStore

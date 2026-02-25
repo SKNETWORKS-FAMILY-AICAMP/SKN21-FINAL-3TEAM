@@ -1,7 +1,7 @@
 """
 Google Calendar 연동 API (팀원 D 담당)
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -35,6 +35,20 @@ async def sync_to_google(
     """앱 일정 → Google Calendar 동기화 (Push)"""
     result = await calendar_service.push_event(db, current_user.id, event_data)
     return result
+
+
+@router.delete("/events/{event_id}", status_code=204)
+async def delete_google_event(
+    event_id: str,
+    calendar_id: str = Query("primary"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Google Calendar 이벤트 삭제"""
+    try:
+        await calendar_service.delete_event(db, current_user.id, event_id, calendar_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.post("/event-with-meet", response_model=EventWithMeetResponse)
