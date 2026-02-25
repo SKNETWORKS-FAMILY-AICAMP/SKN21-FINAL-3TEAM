@@ -498,6 +498,8 @@ source (2개 고정)         doc_type (확장 자유)
 | Container | Docker + Docker Compose |
 | CI/CD | GitHub Actions |
 
+> **현재 배포 상태**: Backend만 AWS EC2에 CI/CD(GitHub Actions) 배포 중. Frontend는 로컬에서 Backend API에 연결하여 개발 중.
+
 ---
 
 ## 파인튜닝 데이터 (4단계에서 진행)
