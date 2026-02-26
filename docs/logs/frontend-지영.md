@@ -1,3 +1,4 @@
+
 # 작업 로그 — 문지영 (Frontend)
 
 ## 2026-02-09 (일)
@@ -627,6 +628,22 @@
 - 판단 Agent 스트리밍 디버깅
 - 문서 생성 AI 연동 (501 엔드포인트 해소)
 - 관리자 API 연동 (#29)
+
+---
+
+## 2026-02-26 (목)
+
+### 한 일
+
+#### 1) README.md Agent 워크플로우 Mermaid 다이어그램으로 교체
+- 각 Agent 워크플로우 섹션의 ASCII art → Mermaid `graph TD` 형식으로 전환
+  - Judgment Agent, Document Agent, Schedule Agent, General Response 4개 서브그래프 구성
+  - 전체 구조도 (`전체 구조 2`) 섹션도 Mermaid로 변환
+
+### 다음 할 일
+- 나머지 Mock → 실제 API 교체 (문서 생성)
+- 관리자 API 연동 (#29)
+- 판단 Agent 스트리밍 디버깅
 
 ---
 

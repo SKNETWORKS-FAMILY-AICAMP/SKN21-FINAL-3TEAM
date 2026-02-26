@@ -119,54 +119,47 @@ flowchart TD
 
 ### 각 Agent 워크플로우
 
-```
-┌─ Judgment Agent ─────────────────────────────────────────────────────┐
-│                                                                             │
-│  user_input ──→ RAG 하이브리드 검색 (규정문서, top_k=10) ──→ LLM 판단 (JSON) │
-│                    │                                          │             │
-│                    │  Qdrant + BM25                            │             │
-│                    │  bge-reranker                             ▼             │
-│                                                   3중 보조장치 검증           │
-│                                                   ├─ 환각 탐지 (인용 cross-check)
-│                                                   ├─ 조항 존재 검증          │
-│                                                   └─ confidence 보정        │
-│                                                          │                  │
-│                                                          ▼                  │
-│  Output: { result: yes/no/conditional, confidence, reasoning, regulations } │
-└─────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    %% Judgment Agent Section
+    subgraph "1. Judgment Agent (규정 판단)"
+        J1[사용자 질문 입력] --> J2[RAG 하이브리드 검색<br/>규정 문서/top_k=10]
+        J2 --> J3[LLM 판단 및 JSON 생성]
+        J3 --> J4{3중 보조장치 검증}
+        J4 --> J4a[환각 탐지]
+        J4 --> J4b[조항 존재 검증]
+        J4 --> J4c[Confidence 보정]
+        J4a & J4b & J4c --> J5[판단 결과 출력]
+    end
 
-┌─ Document Agent ─────────────────────────────────────────────────────┐
-│                                                                             │
-│  intent에 따라 4가지 분기 (챗봇/페이지 공용):                                  │
-│                                                                             │
-│  doc_generate ──→ 템플릿 로드(template_id) ──→ LLM 초안 생성 (JSON)          │
-│                  → { data, preview, additional_fields }                      │
-│                                                                             │
-│  doc_summary ──→ 문서 로드(document_id) ──→ LLM 회사 요약 포맷 생성          │
-│                  → { title, core_summary, key_points, keywords }            │
-│                                                                             │
-│  doc_search ──→ query(+필터) ──→ RAG 하이브리드 검색 (업로드 문서)            │
-│                  챗봇: 질문→쿼리 변환 후 추천 / 페이지: 키워드/필터 탐색       │
-│                  → { results[], message }                                    │
-│                                                                             │
-│  doc_qa ──→ RAG 검색 (업로드 문서) ──→ LLM 답변 + 인용 (주 사용처: 챗봇)     │
-│                  → { answer, citations[] }                                   │
-└─────────────────────────────────────────────────────────────────────────────┘
+    %% Document Agent Section
+    subgraph "2. Document Agent (문서 처리)"
+        D1[문서 관련 의도 파악] --> D2{기능 분기}
+        D2 -- 생성 --> D3a[템플릿 로드 및 초안 생성]
+        D2 -- 요약 --> D3b[회사 요약 포맷 생성]
+        D2 -- 검색 --> D3c[업로드 문서 RAG 검색]
+        D2 -- QA --> D3d[답변 및 인용 추출]
+        D3a & D3b & D3c & D3d --> D4[문서 작업 결과 출력]
+    end
 
-┌─ Schedule Agent ─────────────────────────────────────────────────────┐
-│                                                                             │
-│  schedule_add ──→ LLM 파싱 (자연어→구조화) ──→ Google Calendar API 등록      │
-│                  → { schedule{title,start,end}, google_services{event_id} }  │
-│                                                                             │
-│  schedule_view ──→ LLM 기간 추출 ──→ Google Calendar API 조회               │
-│                  → { schedules[], message }                                  │
-└─────────────────────────────────────────────────────────────────────────────┘
+    %% Schedule Agent Section
+    subgraph "3. Schedule Agent (일정 관리)"
+        S1[일정 관련 입력] --> S2{작업 선택}
+        S2 -- 등록 --> S3a[자연어 파싱 및 API 등록]
+        S2 -- 조회 --> S3b[기간 추출 및 API 조회]
+        S3a & S3b --> S4[일정 처리 결과 출력]
+    end
 
-┌─ General Response ──────────────────────────────────────────────────────────┐
-│                                                                             │
-│  user_input ──→ LLM 일반 응답 (업무 관련 친절 답변)                           │
-│                  → { message }                                               │
-└─────────────────────────────────────────────────────────────────────────────┘
+    %% General Response Section
+    subgraph "4. General Response (일반 업무)"
+        G1[일반 업무 문의] --> G2[LLM 기반 친절 응답 생성]
+        G2 --> G3[응답 메시지 출력]
+    end
+
+    %% 연결 (수직 흐름 강조)
+    J5 -.-> D1
+    D4 -.-> S1
+    S4 -.-> G1
 ```
 
 ### Intent 분류 체계 (8개)
@@ -180,172 +173,144 @@ doc_qa         → Document Agent    (문서 QA)
 schedule_add   → Schedule Agent    (일정 추가)
 schedule_view  → Schedule Agent    (일정 조회)
 general        → General Response  (일반 대화)
+
+### 전체 구조 2
+
+```mermaid
+graph TD
+    %% 1. Frontend Layer
+    subgraph Frontend ["Frontend (React 18, Vite, Zustand, TanStack Query)"]
+        FE_UI[UI Components: Dashboard, AI Chatbot, Minutes, Document, Schedule]
+        FE_State[State Management: Zustand, TanStack Query]
+        FE_Comm[Communication: REST API, SSE Stream]
+        
+        FE_UI --> FE_State
+        FE_State --> FE_Comm
+    end
+
+    %% 2. Backend Layer
+    subgraph Backend ["Backend API (FastAPI)"]
+        BE_Router["API Endpoints (/api/v1/*)"]
+        BE_Auth[Auth: JWT, OAuth 2.0]
+        
+        subgraph BE_Data ["Data Storage"]
+            DB[(PostgreSQL: 12 Tables)]
+            Cache[(Redis: Cache)]
+        end
+        
+        subgraph BE_Svc ["Internal Services"]
+            Svc_Tmpl[template_service]
+            Svc_Stat[statistics_svc]
+            Svc_Pars[parsing_svc]
+            Svc_Sched[schedule_service: Google Orchestration]
+        end
+        
+        BE_Router --> BE_Auth
+        BE_Router --> BE_Svc
+        BE_Svc --> BE_Data
+    end
+
+    %% 3. AI Engine Layer
+    subgraph AI_Engine ["AI Engine"]
+        AI_Intent["Intent Classifier (koelectra-base-v3)"]
+        AI_Graph["LangGraph Orchestrator (StateGraph)"]
+        
+        subgraph AI_Agents ["AI Agents"]
+            Agent_J[Judgment Agent: 규정 판단]
+            Agent_D[Document Agent: 문서 처리]
+            Agent_S[Schedule Agent: 일정 관리]
+        end
+        
+        subgraph AI_Infra ["AI Infrastructure"]
+            AI_RAG["RAG Pipeline (BM25 + Qdrant + RRF)"]
+            AI_LLM["LLM: Kanana-1.5-8B (GPT/Claude/vLLM)"]
+            AI_Parser["Doc Parser: Docling, PaddleOCR"]
+        end
+        
+        AI_Intent --> AI_Graph
+        AI_Graph --> Agent_J & Agent_D & Agent_S
+        Agent_J & Agent_D --> AI_RAG
+        AI_RAG --> AI_LLM
+        Agent_D --> AI_Parser
+    end
+
+    %% 4. External Services
+    subgraph External ["External Services"]
+        Ext_Google["Google APIs (Calendar, Tasks, Gmail, Sheets, Meet)"]
+        Ext_Auth["Google OAuth 2.0"]
+        Ext_GPU["RunPod: A100 GPU Training"]
+    end
+
+    %% Cross-Layer Connections
+    FE_Comm <==> BE_Router
+    BE_Router <==> AI_Intent
+    BE_Svc <==> Ext_Google
+    BE_Auth <==> Ext_Auth
+    AI_LLM --- Ext_GPU
 ```
 
-### 전체 구조
+### 전체 구조 2
 
-```
-╔══════════════════════════════════════════════════════════════════════════╗
-║  Frontend                                                        ║
-║                                                                        ║
-║  React 18 (Vite) + Zustand + TanStack Query + Tailwind + Lucide      ║
-║                                                                        ║
-║  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐          ║
-║  │ 대시보드    │ │  AI 챗봇   │ │ 회의록생성  │ │  문서생성   │          ║
-║  │            │ │            │ │            │ │            │          ║
-║  │ StatCard   │ │ ChatWindow │ │ MeetInput  │ │ TemplSel   │          ║
-║  │ TopQueries │ │ Streaming  │ │ MeetPreview│ │ TemplUpload│          ║
-║  │ RiskAlert  │ │ JudgmentCd │ │            │ │ DocPreview │          ║
-║  │ QuickSearch│ │ GenerateCd │ │            │ │            │          ║
-║  │ AutoScan   │ │ MeetingSumm│ │            │ │            │          ║
-║  │ Timeline   │ │ ErrorMsg   │ │            │ │            │          ║
-║  │            │ │ SuggestQ   │ │            │ │            │          ║
-║  │            │ │ RegPanel   │ │            │ │            │          ║
-║  │            │ │ AgentIndic │ │            │ │            │          ║
-║  └────────────┘ └────────────┘ └────────────┘ └────────────┘          ║
-║                                                                        ║
-║  ┌────────────┐ ┌────────────┐                                        ║
-║  │  문서관리   │ │  일정관리   │                                        ║
-║  │ DocList    │ │ FullCal    │                                        ║
-║  │ Upload     │ │ GoogleSync │                                        ║
-║  │ Highlight  │ │ EventForm  │                                        ║
-║  │ Parsing    │ │            │                                        ║
-║  │ ScopeSelect│ │            │                                        ║
-║  └────────────┘ └────────────┘                                        ║
-║                                                                        ║
-║  ┌────────────┐ ┌────────────┐ ┌────────────┐                         ║
-║  │  로그인     │ │  관리자     │ │  SSE 수신   │                         ║
-║  │ LoginForm  │ │ UserMgmt   │ │ EventSource│                         ║
-║  │ Register   │ │ QueryLogs  │ │ useSSE hook│                         ║
-║  │ PwdReset   │ │ Statistics │ │            │                         ║
-║  └────────────┘ └────────────┘ └────────────┘                         ║
-╚═══════════════════════════╤════════════════════════════════════════════╝
-                            │ REST API + SSE Stream
-╔═══════════════════════════╧════════════════════════════════════════════╗
-║  Backend API                          ║
-║                                                                        ║
-║  FastAPI                                                               ║
-║  ┌──────────────────────────────────────────────────────────┐          ║
-║  │  /api/v1/chat/stream ─── SSE 스트리밍 ────────            │          ║
-║  │  /api/v1/auth/*      ─── JWT + 비밀번호 재설정 ─          │          ║
-║  │  /api/v1/documents/* ─── CRUD + 생성/다운로드 ──          │          ║
-║  │  /api/v1/meetings/*  ─── 회의 관리 ─────────────          │          ║
-║  │  /api/v1/schedules/* ─── 일정 CRUD ────────────          │          ║
-║  │  /api/v1/calendar/*  ─── Google Calendar+Meet ─          │          ║
-║  │  /api/v1/google/*    ─── 통합 OAuth ──────────          │          ║
-║  │  /api/v1/tasks/*     ─── Google Tasks ────────          │          ║
-║  │  /api/v1/gmail/*     ─── Gmail 발송 ──────────          │          ║
-║  │  /api/v1/sheets/*    ─── Google Sheets ───────          │          ║
-║  │  /api/v1/regulations ─── 규정 목록 (공개) ────          │          ║
-║  │  /api/v1/admin/*     ─── 통계 + 로그 + 권한 ───          │          ║
-║  └──────────────────────────────────────────────────────────┘          ║
-║                                                                        ║
-║  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐        ║
-║  │ JWT 인증/권한    │  │ PostgreSQL      │  │ Redis           │        ║
-║  │                  │  │ 12 tables │  │ Cache           │        ║
-║  └─────────────────┘  └─────────────────┘  └─────────────────┘        ║
-║                                                                        ║
-║  Services                                                       ║
-║  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐        ║
-║  │ template_service│  │ statistics_svc  │  │ parsing_service │        ║
-║  │ 문서 생성/다운   │  │ Top 질의/로그    │  │ 파싱 상태 관리  │        ║
-║  └─────────────────┘  └─────────────────┘  └─────────────────┘        ║
-║                                                                        ║
-║  Google Services — GoogleBaseService 상속 구조                   ║
-║  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐  ║
-║  │ calendar_svc │ │ tasks_svc    │ │ gmail_svc    │ │ sheets_svc   │  ║
-║  │ +Meet 링크   │ │ Action Item  │ │ 알림/초대    │ │ 추적 시트    │  ║
-║  │              │ │ ↔ Task 동기화│ │ 메일 발송    │ │ 생성/동기화  │  ║
-║  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘  ║
-║  ┌──────────────────────────────────────────────────────────────┐      ║
-║  │ schedule_service — 4개 Google 서비스 오케스트레이션 통합      │      ║
-║  └──────────────────────────────────────────────────────────────┘      ║
-╚═══════════════════════════╤════════════════════════════════════════════╝
-                            │
-╔═══════════════════════════╧════════════════════════════════════════════╗
-║  AI Engine                                                             ║
-║                                                                        ║
-║  ┌──────────────────────────────────────────────────────┐              ║
-║  │  Intent Classifier (koelectra-base-v3)                │              ║
-║  │  8개: judgment, doc_search, doc_generate,            │              ║
-║  │       doc_summary, doc_qa, schedule_*, general        │              ║
-║  └──────────┬───────────────────────────────────────────┘              ║
-║             │                                                          ║
-║  ┌──────────▼───────────────────────────────────────────┐              ║
-║  │  LangGraph Orchestrator (StateGraph)                  │              ║
-║  │  단일질문 분류 → 조건부 라우팅 + SSE 스트리밍          │              ║
-║  └──────┬──────────────┬──────────────┬─────────────────┘              ║
-║         │              │              │                                ║
-║         ▼              ▼              ▼                                ║
-║  ┌──────────────┐┌──────────────┐┌──────────────┐                     ║
-║  │ 판단 Agent   ││ 문서 Agent   ││ 일정 Agent   │                     ║
-║  │               ││               ││               │                     ║
-║  │              ││              ││              │                     ║
-║  │ · 다중규정   ││ · 문서검색   ││ · CRUD       │                     ║
-║  │   교차판단   ││ · 문서생성   ││ · 우선순위   │                     ║
-║  │ · confidence ││ · 문서요약   ││ · 담당자배정 │                     ║
-║  │ · 조건부판단 ││ · 문서QA     ││ · Google 통합│                     ║
-║  │ · 이력참조   ││ · 템플릿관리 ││              │                     ║
-║  └──────┬───────┘└──────┬───────┘└──────┬───────┘                     ║
-║         │              │              │                                ║
-║         ▼              │              │                                ║
-║  ┌──────────────────┐  │              │                                ║
-║  │ RAG Pipeline     │  │              │                                ║
-║  │                   │  │              │                                ║
-║  │                  │  │              │                                ║
-║  │ BM25 (Top 15)   │  │              │                                ║
-║  │   + Vector Search│  │              │                                ║
-║  │   (Qdrant)    │  │              │                                ║
-║  │ → RRF 합산      │  │              │                                ║
-║  │   (Top 20)      │  │              │                                ║
-║  │ → source 필터   │  │              │                                ║
-║  │ → Top K 전달    │  │              │                                ║
-║  └──────┬───────────┘  │              │                                ║
-║         │              │              │                                ║
-║         ▼              ▼              │                                ║
-║  ┌─────────────────────────────────┐  │                                ║
-║  │ LLM 모듈 #39             │  │                                ║
-║  │                                 │  │                                ║
-║  │  현재: GPT/Claude API           │  │                                ║
-║  │  ──────────────────────────     │  │                                ║
-║  │  추후: vLLM + LoRA             │  │                                ║
-║  │  ┌───────────┐  ┌───────────┐  │  │                                ║
-║  │  │ LoRA v1   │  │ LoRA v2   │  │  │                                ║
-║  │  │ 판단 특화 │  │ 문서 특화 │  │  │                                ║
-║  │  │ (예정)    │  │ (예정)    │  │  │                                ║
-║  │  │            │  │            │  │  │                                ║
-║  │  └───────────┘  └───────────┘  │  │                                ║
-║  │                                 │  │                                ║
-║  │  Base: Kanana-1.5-8B            │  │                                ║
-║  │        (벤치마크 선정, 종합 0.652)│  │                               ║
-║  └─────────────────────────────────┘  │                                ║
-║                                       │                                ║
-║  ┌────────────────────────────────┐   │                                ║
-║  │ Document Parser                 │   │                                ║
-║  │                                │   │                                ║
-║  │ Docling (디지털 PDF 구조화)    │   │                                ║
-║  │ PaddleOCR (스캔/이미지 OCR)    │   │                                ║
-║  │ python-docx (DOCX 파싱)        │   │                                ║
-║  └────────────────────────────────┘   │                                ║
-║                                       │                                ║
-║  ┌────────────────────────────────┐   │                                ║
-║  │ Template Engine                 │   │                                ║
-║  │                                │   │                                ║
-║  │ 회의록 / 보고서 / JD / 제안서  │   │                                ║
-║  │ render() → to_docx() / to_pdf()│   │                                ║
-║  └────────────────────────────────┘   │                                ║
-╚═══════════════════════════╤═══════════╧════════════════════════════════╝
-                            │
-╔═══════════════════════════╧════════════════════════════════════════════╗
-║  External Services                                             ║
-║                                                                        ║
-║  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐        ║
-║  │ Google OAuth 2.0│  │ Google APIs     │  │ RunPod (A100)   │        ║
-║  │ (통합 scope)    │  │ Calendar+Tasks  │  │ GPU 학습│        ║
-║  │                  │  │ Gmail+Sheets    │  │                 │        ║
-║  │                 │  │ +Meet   │  │                 │        ║
-║  └─────────────────┘  └─────────────────┘  └─────────────────┘        ║
-╚════════════════════════════════════════════════════════════════════════╝
+```mermaid
+graph TD
+    %% Global Styling
+    classDef layer fill:#f9f9f9,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5;
+    classDef component fill:#fff,stroke:#444,stroke-width:1px;
+    classDef ai fill:#e1f5fe,stroke:#01579b,stroke-width:1px;
+
+    %% 1. 클라이언트 계층 (Client Layer)
+    subgraph Layer1 [1. Client Layer: UI/UX]
+        direction LR
+        FE[React 18 / Vite] --- FE_ST[Zustand / TanStack Query]
+        FE_ST --- FE_IO[SSE Stream / REST]
+    end
+    class Layer1 layer
+
+    %% 2. 애플리케이션 계층 (Application Layer)
+    subgraph Layer2 [2. Application Layer: API & Logic]
+        BE_API[FastAPI Endpoints]
+        BE_Svc[Service Orchestrator<br/>Google / Template / Statistics]
+        BE_DB[(PostgreSQL / Redis)]
+        
+        BE_API --> BE_Svc
+        BE_Svc --> BE_DB
+    end
+    class Layer2 layer
+
+    %% 3. 지능형 엔진 계층 (Intelligence Layer)
+    subgraph Layer3 [3. Intelligence Layer: AI Engine]
+        direction TB
+        AI_IC[Intent Classifier<br/>koelectra-base-v3]
+        AI_Orch[LangGraph Orchestrator<br/>State Management]
+        
+        subgraph Agents [Specialized Agents]
+            direction LR
+            A1[Judgment]
+            A2[Document]
+            A3[Schedule]
+        end
+        
+        AI_IC --> AI_Orch
+        AI_Orch --> Agents
+    end
+    class Layer3 layer
+    class AI_IC,AI_Orch,A1,A2,A3 ai
+
+    %% 4. 인프라 및 외부 서비스 (Resource Layer)
+    subgraph Layer4 [4. Resource Layer: Data & Model]
+        direction LR
+        RAG[RAG Pipeline<br/>Qdrant / BM25]
+        LLM[Kanana-1.5-8B<br/>GPT / Claude]
+        EXT[Google Workspace / RunPod]
+    end
+    class Layer4 layer
+
+    %% Cross-Layer Flow
+    Layer1 ==> Layer2
+    Layer2 ==> AI_IC
+    Agents ==> RAG
+    RAG ==> LLM
+    BE_Svc <==> EXT
 ```
 
 ### RAG 검색 대상
@@ -377,106 +342,188 @@ source (2개 고정)         doc_type (확장 자유)
 
 ### Agent 처리 흐름 (예: 규정 판단)
 
-```
-사용자: "인턴에게 AWS 콘솔 접근 권한을 줘도 되나요?"
-         │
-         ▼
-┌─────────────────────────────────────┐
-│ 1. Intent Classification             │
-│    koelectra-base-v3                │
-│    → intent: "judgment"             │
-│    → confidence: 0.95               │
-└────────────┬────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────┐
-│ 2. LangGraph Orchestrator            │
-│    AgentState에 intent 저장         │
-│    → 조건부 엣지: judgment          │
-│    → SSE: "판단 Agent 호출 중..."    │
-└────────────┬────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────┐
-│ 3. RAG Pipeline                      │
-│    1) BM25 검색 (Top 15)            │
-│    2) Vector 검색 (Top 15)          │
-│    3) RRF 합산 (Top 20)             │
-│    4) source 필터 (regulations)     │
-│    → 정보보안 규정 3.2조            │
-│    → 개발 가이드라인 5.1조          │
-│    → 인사 규정 2.3조                │
-└────────────┬────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────┐
-│ 4. 판단 Agent + LLM                  │
-│    현재: GPT/Claude API             │
-│    추후: LoRA v1 (판단 특화)        │
-│    다중 규정 교차 판단:              │
-│    → 종합: 조건부 가능               │
-│    → 근거: 3개 조항                  │
-│    → 대안: 테스트 환경 한정          │
-│    → confidence: 0.85                │
-└────────────┬────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────┐
-│ 5. SSE 스트리밍 응답                 │
-│    → type: "token" (실시간 전송)    │
-│    → type: "done"  (완료 신호)      │
-└────────────┬────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────┐
-│ 6. 카드 UI 렌더링                    │
-│    JudgmentCard: 판단 결과 표시     │
-│    → 결과 뱃지 (조건부 가능)        │
-│    → 근거 조항 목록                  │
-│    → confidence 게이지               │
-│    → 대안 제시                       │
-└─────────────────────────────────────┘
+```mermaid
+graph TD
+    %% 사용자 입력
+    User([사용자: 인턴에게 AWS 콘솔 접근 권한을 줘도 되나요?]) --> Intent
+
+    %% 1. Intent Classification
+    subgraph Step1 [1. Intent Classification]
+        Intent[koelectra-base-v3]
+        Intent --> Intent_Out[intent: judgment / conf: 0.95]
+    end
+
+    %% 2. Orchestrator
+    subgraph Step2 [2. LangGraph Orchestrator]
+        Orch[StateGraph: AgentState 저장]
+        Orch --> Edge{조건부 엣지: judgment}
+        Orch -.-> SSE1[SSE: 판단 Agent 호출 중...]
+    end
+
+    %% 3. RAG Pipeline
+    subgraph Step3 [3. RAG Pipeline]
+        RAG_Search[BM25 + Vector Search]
+        RAG_Rank[RRF 합산 Top 20]
+        RAG_Filter[Source 필터: Regulations]
+        
+        RAG_Search --> RAG_Rank --> RAG_Filter
+        RAG_Filter --> RAG_Docs[정보보안 3.2조 / 개발 가이드 5.1조 / 인사 2.3조]
+    end
+
+    %% 4. Agent Analysis
+    subgraph Step4 [4. Judgment Agent + LLM]
+        LLM[GPT/Claude or LoRA v1]
+        LLM_Proc[다중 규정 교차 판단]
+        
+        LLM --> LLM_Proc
+        LLM_Proc --> LLM_Res[종합: 조건부 가능 / 근거: 3개 조항 / 대안: 테스트 환경 한정 / conf: 0.85]
+    end
+
+    %% 5. Streaming
+    subgraph Step5 [5. SSE Streaming]
+        Stream[SSE 스트리밍 응답]
+        Stream --> S_Token[type: token 실시간]
+        Stream --> S_Done[type: done 완료]
+    end
+
+    %% 6. UI Rendering
+    subgraph Step6 [6. UI Rendering]
+        UI[JudgmentCard 렌더링]
+        UI --> UI_Badge[결과 뱃지 / 근거 조항 목록]
+        UI --> UI_Detail[Confidence 게이지 / 대안 제시]
+    end
+
+    %% 전체 흐름 연결
+    Intent_Out --> Orch
+    Edge --> RAG_Search
+    RAG_Docs --> LLM
+    LLM_Res --> Stream
+    S_Done --> UI
 ```
 
 ### DB ERD (12 테이블)
 
-```
-┌──────────┐     ┌──────────────┐     ┌──────────────┐
-│  users   │────▶│  documents   │     │ regulations  │
-│          │     │ (scope:      │     │              │
-│          │     │  company/    │     │              │
-│          │     │  personal)   │     │              │
-└────┬─────┘     └──────────────┘     └──────────────┘
-     │
-     ├──────────▶┌──────────────────┐
-     │           │ document_templates│  (커스텀/시스템 템플릿)
-     │           │ parsed_structure  │
-     │           └──────────────────┘
-     │
-     ├──────────▶┌──────────────┐     ┌──────────────┐
-     │           │  meetings    │────▶│ action_items │
-     │           └──────────────┘     └──────┬───────┘
-     │                                        │
-     ├──────────▶┌──────────────┐◀────────────┘
-     │           │  schedules   │
-     │           └──────────────┘
-     │
-     ├──────────▶┌──────────────┐
-     │           │  judgments   │  (판단 이력)
-     │           └──────────────┘
-     │
-     ├──────────▶┌──────────────┐     ┌──────────────┐
-     │           │ chat_sessions│────▶│  chat_logs   │
-     │           └──────────────┘     └──────────────┘
-     │
-     ├──────────▶┌──────────────┐
-     │           │ oauth_tokens │  (Google OAuth + scopes)
-     │           └──────────────┘
-     │
-     └──────────▶┌────────────────────┐
-                 │ google_sheet_      │
-                 │ trackers           │  (스프레드시트 추적)
-                 └────────────────────┘
+```mermaid
+erDiagram
+    %% 1. 인증 및 사용자
+    USER ||--o{ GOOGLE_AUTH : "has"
+    USER ||--o{ DOCUMENT : "uploads"
+    USER ||--o{ CHAT_SESSION : "starts"
+    USER ||--o{ MEETING : "organizes"
+    USER ||--o{ SCHEDULE : "manages"
+    USER ||--o{ STATS_LOG : "generates"
+
+    USER {
+        uuid id PK
+        string email UK
+        string password_hash
+        string name
+        string role "admin/user"
+        datetime created_at
+    }
+
+    GOOGLE_AUTH {
+        uuid id PK
+        uuid user_id FK
+        string access_token
+        string refresh_token
+        datetime expires_at
+    }
+
+    %% 2. 문서 및 파싱
+    DOCUMENT ||--o| PARSING_TASK : "triggers"
+    DOCUMENT {
+        uuid id PK
+        uuid user_id FK
+        string title
+        string file_path
+        string file_type
+        int size
+        datetime created_at
+    }
+
+    PARSING_TASK {
+        uuid id PK
+        uuid doc_id FK
+        string status "pending/processing/done/error"
+        string error_msg
+        datetime updated_at
+    }
+
+    %% 3. AI 채팅 및 판단
+    CHAT_SESSION ||--o{ CHAT_MESSAGE : "contains"
+    CHAT_SESSION {
+        uuid id PK
+        uuid user_id FK
+        string title
+        datetime created_at
+    }
+
+    CHAT_MESSAGE {
+        uuid id PK
+        uuid session_id FK
+        string role "user/assistant"
+        text content
+        string intent "judgment/doc_qa/etc"
+        jsonb metadata "confidence/regulations"
+        datetime created_at
+    }
+
+    %% 4. 규정 및 템플릿 (Global/Static)
+    REGULATION {
+        uuid id PK
+        string category "security/hr/etc"
+        string title
+        text content
+        string version
+    }
+
+    TEMPLATE {
+        uuid id PK
+        string name
+        string category "meeting/report/jd"
+        text content_structure
+        datetime updated_at
+    }
+
+    %% 5. 회의 및 일정
+    MEETING ||--o| MEETING_SUMMARY : "results_in"
+    MEETING {
+        uuid id PK
+        uuid user_id FK
+        string title
+        datetime meeting_date
+        string location
+        string google_event_id
+    }
+
+    MEETING_SUMMARY {
+        uuid id PK
+        uuid meeting_id FK
+        text core_summary
+        jsonb key_points
+        string doc_url
+    }
+
+    SCHEDULE {
+        uuid id PK
+        uuid user_id FK
+        string title
+        datetime start_time
+        datetime end_time
+        string google_event_id
+        boolean is_synced
+    }
+
+    %% 6. 관리 및 통계
+    STATS_LOG {
+        uuid id PK
+        uuid user_id FK
+        string query_text
+        float response_time
+        int tokens_used
+        datetime created_at
+    }
 ```
 
 ---
