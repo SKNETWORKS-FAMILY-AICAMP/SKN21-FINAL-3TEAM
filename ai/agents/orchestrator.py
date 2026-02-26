@@ -282,7 +282,10 @@ def route_by_intent(state: AgentState) -> str:
     # schedule followup 감지 (confidence 체크보다 우선 — 이전 대화 맥락 기반)
     user_input = state.get("user_input", "")
     chat_history = state.get("chat_history", [])
-    if _is_schedule_followup(user_input, chat_history):
+    print(f"[Orchestrator] followup 체크: chat_history={len(chat_history)}개, input='{user_input[:50]}'")
+    is_followup = _is_schedule_followup(user_input, chat_history)
+    print(f"[Orchestrator] _is_schedule_followup 결과: {is_followup}")
+    if is_followup:
         state["intent"] = "schedule_followup"
         print(f"[Orchestrator] 라우팅: schedule_followup 감지 → schedule_agent")
         return "schedule_agent"

@@ -101,9 +101,13 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             "agentResponse": ar,
                         })
                     initial_state["chat_history"] = chat_history
-                    print(f"[Chat] chat_history 로드: {len(chat_history)}개 메시지 (session={request.session_id})")
+                    # 디버그: agentResponse type 목록 출력
+                    ar_types = [m.get("agentResponse", {}).get("type", "?") for m in chat_history if m.get("role") == "assistant"]
+                    print(f"[Chat] chat_history 로드: {len(chat_history)}개 메시지 (session={request.session_id}), agent types={ar_types}")
                 except Exception as hist_err:
+                    import traceback
                     print(f"[Chat] chat_history 로드 실패: {hist_err}")
+                    traceback.print_exc()
 
             # document_id가 있으면 DB에서 문서 내용 로딩
             if request.document_id:
