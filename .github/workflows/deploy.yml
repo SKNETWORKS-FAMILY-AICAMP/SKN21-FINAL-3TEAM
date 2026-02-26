@@ -1,0 +1,38 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: EC2 SSH 접속 후 배포
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            cd /home/ubuntu/SKN21-FINAL-3TEAM
+            git pull origin develop
+            source .venv/bin/activate
+            pip install -r requirements.txt
+            python3 -c "
+            from dotenv import load_dotenv
+            import os, sys
+            sys.path.insert(0, 'backend')
+            load_dotenv('.env')
+            from alembic.config import Config
+            from alembic import command
+            cfg = Config('backend/alembic.ini')
+            db_url = os.getenv('DATABASE_URL', '').replace('postgresql+asyncpg://', 'postgresql://')
+            if db_url: cfg.set_main_option('sqlalchemy.url', db_url)
+            command.upgrade(cfg, 'head')
+            print('Migration complete')
+            "
+            sudo systemctl restart workflow-agent
+            echo "배포 완료"

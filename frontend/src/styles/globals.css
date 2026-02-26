@@ -4,6 +4,90 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Light mode (default) ── */
+:root {
+  --color-primary-900: #3D5164;
+  --color-primary-700: #56728A;
+  --color-primary-500: #6E87A0;
+  --color-primary-300: #8FA3B4;
+  --color-primary-100: #C8D5E2;
+  --color-primary-50: #E8EEF3;
+
+  --color-accent-700: #8B7D6E;
+  --color-accent-500: #A89580;
+  --color-accent-300: #C4B49A;
+  --color-accent-100: #EDE5D0;
+  --color-accent-50: #F7F3EB;
+
+  --color-surface-main: #F5F2EC;
+  --color-surface-sub: #EDE5D0;
+  --color-surface-card: #FFFFFF;
+  --color-surface-hover: #FAFAF6;
+
+  --color-neutral-main: #2C3340;
+  --color-neutral-sub: #6B7280;
+  --color-neutral-muted: #9CA3AF;
+  --color-neutral-border: #DDD8CE;
+  --color-neutral-divider: #EDE9E0;
+
+  --color-success: #5B9A6F;
+  --color-success-bg: #E8F4EC;
+  --color-warning: #C49A3C;
+  --color-warning-bg: #F5EDD0;
+  --color-error: #C06060;
+  --color-error-bg: #F5E0E0;
+  --color-info: #6E87A0;
+  --color-info-bg: #E8EEF3;
+
+  --color-sidebar-bg: #56728A;
+  --color-sidebar-active: #6E87A0;
+  --color-sidebar-border: #6E87A0;
+  --color-sidebar-text: #FFFFFF;
+  --color-sidebar-text-muted: #C8D5E2;
+}
+
+/* ── Dark mode ── */
+.dark {
+  --color-primary-900: #A8C4DA;
+  --color-primary-700: #7FA3C0;
+  --color-primary-500: #5E86A5;
+  --color-primary-300: #4A6E8A;
+  --color-primary-100: #344D63;
+  --color-primary-50: #283D50;
+
+  --color-accent-700: #D4C4AA;
+  --color-accent-500: #B8A888;
+  --color-accent-300: #9A8A6E;
+  --color-accent-100: #4A4238;
+  --color-accent-50: #3A332C;
+
+  --color-surface-main: #262A32;
+  --color-surface-sub: #2E3240;
+  --color-surface-card: #30343E;
+  --color-surface-hover: #383C48;
+
+  --color-neutral-main: #E8EAEE;
+  --color-neutral-sub: #A8B0BC;
+  --color-neutral-muted: #78828F;
+  --color-neutral-border: #484C58;
+  --color-neutral-divider: #3C4050;
+
+  --color-success: #6DB87F;
+  --color-success-bg: #243528;
+  --color-warning: #D4AA4C;
+  --color-warning-bg: #383018;
+  --color-error: #D07070;
+  --color-error-bg: #3A2222;
+  --color-info: #7FA3C0;
+  --color-info-bg: #283D50;
+
+  --color-sidebar-bg: #22262E;
+  --color-sidebar-active: #383C48;
+  --color-sidebar-border: #484C58;
+  --color-sidebar-text: #E8EAEE;
+  --color-sidebar-text-muted: #7A8490;
+}
+
 @layer base {
   body {
     @apply bg-surface-main text-neutral-main font-sans antialiased;
@@ -46,8 +130,44 @@
 ::-webkit-scrollbar-thumb { @apply bg-primary-100 rounded-full; }
 ::-webkit-scrollbar-thumb:hover { @apply bg-primary-300; }
 
+.dark ::-webkit-scrollbar-thumb { background: #3A3E48; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #4A4E58; }
+
 /* Typing animation */
 @keyframes bounce {
   0%, 80%, 100% { transform: scale(0); }
   40% { transform: scale(1); }
+}
+
+/* 규정 패널 알림 glow 효과 */
+@keyframes reg-glow {
+  0%, 100% { box-shadow: 0 0 4px rgba(86, 114, 138, 0.3); }
+  50% { box-shadow: 0 0 12px rgba(86, 114, 138, 0.6), 0 0 24px rgba(86, 114, 138, 0.2); }
+}
+
+/* ── Print styles ── */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible !important;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 20mm;
+    background: white !important;
+    color: #2C3340 !important;
+  }
+  .print-area .no-print {
+    display: none !important;
+  }
+  @page {
+    margin: 15mm;
+    size: A4;
+  }
 }

@@ -1,52 +1,174 @@
 import { useState } from 'react';
+import { RefreshCw, Plus, X } from 'lucide-react';
 import useGoogleServices from '../../hooks/useGoogleServices';
 import { TASK_STATUS_LABELS } from '../../utils/constants';
 
+function TaskCreateModal({ onClose, onSubmit, submitting }) {
+  const [formData, setFormData] = useState({ title: '', assignee: '', due_date: '', priority: 'medium' });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!formData.title.trim()) return;
+    onSubmit({
+      title: formData.title.trim(),
+      assignee: formData.assignee.trim() || null,
+      due_date: formData.due_date || null,
+      priority: formData.priority,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div
+        className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-base font-semibold text-neutral-main">새 Task 추가</h3>
+          <button onClick={onClose} className="text-neutral-muted hover:text-neutral-main p-1 rounded">
+            <X size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-neutral-muted mb-1">제목 *</label>
+            <input
+              type="text"
+              placeholder="할 일을 입력하세요"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="input w-full"
+              autoFocus
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-neutral-muted mb-1">담당자</label>
+            <input
+              type="text"
+              placeholder="담당자 이름"
+              value={formData.assignee}
+              onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
+              className="input w-full"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-neutral-muted mb-1">마감일</label>
+              <input
+                type="date"
+                value={formData.due_date}
+                onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                className="input w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-neutral-muted mb-1">우선순위</label>
+              <select
+                value={formData.priority}
+                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                className="input w-full"
+              >
+                <option value="high">높음</option>
+                <option value="medium">보통</option>
+                <option value="low">낮음</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={onClose} className="btn-outline text-sm">
+              취소
+            </button>
+            <button type="submit" disabled={submitting} className="btn-primary text-sm">
+              {submitting ? '생성 중...' : '등록'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function TasksPanel() {
-  const { tasks, tasksLoading, tasksError, updateTask, syncTasks, pullTasks, hasScope } = useGoogleServices();
+  const { tasks, tasksLoading, tasksError, updateTask, pullTasks, hasScope, createTask, deleteTask } = useGoogleServices();
   const [filter, setFilter] = useState('all');
+  const [showModal, setShowModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   if (!hasScope('tasks')) {
     return (
       <div className="card">
-        <div className="card-header"><span className="card-title">Google Tasks</span></div>
+        <div className="card-header"><span className="card-title">Tasks</span></div>
         <div className="card-body text-center py-8">
-          <p className="text-sm text-neutral-muted">Google Tasks가 연결되지 않았습니다</p>
+          <p className="text-sm text-neutral-muted">Tasks가 연결되지 않았습니다</p>
           <p className="text-xs text-neutral-muted mt-1">Google 서비스 연결에서 Tasks를 활성화하세요</p>
         </div>
       </div>
     );
   }
 
-  const filtered = filter === 'all'
-    ? tasks
+  const filtered = (filter === 'all'
+    ? [...tasks].sort((a, b) => a.completed - b.completed)
     : filter === 'pending'
       ? tasks.filter((t) => !t.completed)
-      : tasks.filter((t) => t.completed);
+      : tasks.filter((t) => t.completed));
+
+  const handleCreate = async (data) => {
+    setSubmitting(true);
+    try {
+      await createTask(data);
+      setShowModal(false);
+    } catch {
+      // error is set in store
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (actionItemId) => {
+    if (!window.confirm('이 Task를 삭제하시겠습니까?')) return;
+    try {
+      await deleteTask(actionItemId);
+    } catch {
+      // error is set in store
+    }
+  };
 
   return (
     <div className="card">
+      {showModal && (
+        <TaskCreateModal
+          onClose={() => setShowModal(false)}
+          onSubmit={handleCreate}
+          submitting={submitting}
+        />
+      )}
+
       <div className="card-header">
         <div className="flex items-center gap-2">
-          <span className="card-title">Google Tasks</span>
+          <span className="card-title">Tasks</span>
           <span className="text-[0.6875rem] px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 font-medium">
             {tasks.filter((t) => !t.completed).length}개 미완료
           </span>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => syncTasks()}
-            disabled={tasksLoading}
-            className="text-xs px-2.5 py-1.5 rounded-md border border-neutral-border text-neutral-sub hover:bg-primary-50 hover:text-primary-700 transition"
+            onClick={() => setShowModal(true)}
+            className="btn-outline flex items-center gap-1.5"
           >
-            {tasksLoading ? '동기화 중...' : 'Push'}
+            <Plus size={14} />
+            추가
           </button>
           <button
             onClick={() => pullTasks()}
             disabled={tasksLoading}
-            className="text-xs px-2.5 py-1.5 rounded-md border border-neutral-border text-neutral-sub hover:bg-primary-50 hover:text-primary-700 transition"
+            className="btn-outline flex items-center gap-1.5"
+            title="새로고침"
           >
-            Pull
+            <RefreshCw size={14} className={tasksLoading ? 'animate-spin' : ''} />
+            {tasksLoading ? '동기화 중...' : '새로고침'}
           </button>
         </div>
       </div>
@@ -103,6 +225,13 @@ export default function TasksPanel() {
                 }`}>
                   {TASK_STATUS_LABELS[task.status] || (task.completed ? '완료' : '미완료')}
                 </span>
+                <button
+                  onClick={() => handleDelete(task.action_item_id)}
+                  className="text-neutral-muted hover:text-error transition p-1 rounded"
+                  title="삭제"
+                >
+                  <X size={14} />
+                </button>
               </li>
             ))}
           </ul>

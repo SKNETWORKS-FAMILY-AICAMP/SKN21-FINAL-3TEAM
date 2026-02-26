@@ -1,13 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
+import { Trash2 } from 'lucide-react';
 import MeetLinkBadge from './MeetLinkBadge';
+import useScheduleTypeStore, { DEFAULT_TYPES } from '../../store/scheduleTypeStore';
 
-const TYPE_LABELS = { meeting: '회의', deadline: '마감일', google: '개인 일정', holiday: '공휴일' };
-const TYPE_DOT = { meeting: 'bg-primary-500', deadline: 'bg-error', google: 'bg-success', holiday: 'bg-red-400' };
-const typeStyles = {
+// hex 색상을 rgba로 변환 (커스텀 유형 배경에 사용)
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// 기본 유형의 Tailwind 스타일 (기존 디자인 유지)
+const DEFAULT_TYPE_STYLES = {
   meeting: 'bg-primary-50 text-primary-700',
   deadline: 'bg-error-bg text-error',
   google: 'bg-success-bg text-success',
-  holiday: 'bg-red-50 text-red-500',
+  holiday: 'bg-error-bg text-error',
 };
 
 // 한국 공휴일 (고정 공휴일 + 연도별 음력 공휴일)
@@ -30,28 +39,44 @@ function getKoreanHolidays(year) {
       { month: 1, day: 28, label: '설날 연휴' },
       { month: 1, day: 29, label: '설날' },
       { month: 1, day: 30, label: '설날 연휴' },
+      { month: 3, day: 3, label: '삼일절 대체공휴일' },
       { month: 5, day: 5, label: '부처님오신날' },
+      { month: 5, day: 6, label: '어린이날 대체공휴일' },
       { month: 10, day: 5, label: '추석 연휴' },
       { month: 10, day: 6, label: '추석' },
       { month: 10, day: 7, label: '추석 연휴' },
+      { month: 10, day: 8, label: '추석 대체공휴일' },
     ],
     2026: [
       { month: 2, day: 16, label: '설날 연휴' },
       { month: 2, day: 17, label: '설날' },
       { month: 2, day: 18, label: '설날 연휴' },
+      { month: 3, day: 2, label: '삼일절 대체공휴일' },
       { month: 5, day: 24, label: '부처님오신날' },
+      { month: 5, day: 25, label: '부처님오신날 대체공휴일' },
+      { month: 6, day: 8, label: '현충일 대체공휴일' },
+      { month: 8, day: 17, label: '광복절 대체공휴일' },
       { month: 9, day: 24, label: '추석 연휴' },
       { month: 9, day: 25, label: '추석' },
       { month: 9, day: 26, label: '추석 연휴' },
+      { month: 9, day: 28, label: '추석 대체공휴일' },
+      { month: 10, day: 5, label: '개천절 대체공휴일' },
     ],
     2027: [
       { month: 2, day: 6, label: '설날 연휴' },
       { month: 2, day: 7, label: '설날' },
       { month: 2, day: 8, label: '설날 연휴' },
+      { month: 2, day: 9, label: '설날 대체공휴일' },
       { month: 5, day: 13, label: '부처님오신날' },
+      { month: 6, day: 7, label: '현충일 대체공휴일' },
+      { month: 8, day: 16, label: '광복절 대체공휴일' },
+      { month: 10, day: 4, label: '개천절 대체공휴일' },
+      { month: 10, day: 11, label: '한글날 대체공휴일' },
       { month: 10, day: 14, label: '추석 연휴' },
       { month: 10, day: 15, label: '추석' },
       { month: 10, day: 16, label: '추석 연휴' },
+      { month: 10, day: 18, label: '추석 대체공휴일' },
+      { month: 12, day: 27, label: '크리스마스 대체공휴일' },
     ],
   };
 
@@ -59,8 +84,9 @@ function getKoreanHolidays(year) {
   return [...fixed, ...lunar].map((h) => ({ ...h, type: 'holiday' }));
 }
 
-function DayDetailPopup({ day, month, year, events, onClose }) {
+function DayDetailPopup({ day, month, year, events, typeColorMap, typeLabelMap, onClose, onDeleteEvent }) {
   const ref = useRef(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     const handleClick = (e) => {
@@ -69,6 +95,17 @@ function DayDetailPopup({ day, month, year, events, onClose }) {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [onClose]);
+
+  const handleDelete = async (eventId, calendarId) => {
+    setDeletingId(eventId);
+    try {
+      await onDeleteEvent(eventId, calendarId);
+    } catch {
+      // 삭제 실패 시 버튼 원복
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
@@ -85,19 +122,41 @@ function DayDetailPopup({ day, month, year, events, onClose }) {
             <p className="text-sm text-neutral-muted text-center py-6">등록된 일정이 없습니다</p>
           ) : (
             <ul className="space-y-2.5">
-              {events.map((e, i) => (
-                <li key={i} className="flex gap-3 items-start">
-                  <span className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${TYPE_DOT[e.type] || 'bg-neutral-muted'}`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-neutral-main">{e.label}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[0.6875rem] text-neutral-muted">{TYPE_LABELS[e.type] || e.type}</span>
-                      {e.time && <span className="text-[0.6875rem] text-neutral-sub font-medium">{e.time}</span>}
+              {events.map((e, i) => {
+                const dotColor = typeColorMap[e.type] || '#9CA3AF';
+                const typeLabel = typeLabelMap[e.type] || e.type;
+                const isDeleting = deletingId === e.id;
+                return (
+                  <li key={i} className="flex gap-3 items-start">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0"
+                      style={{ backgroundColor: dotColor }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-neutral-main">{e.label}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[0.6875rem] text-neutral-muted">{typeLabel}</span>
+                        {e.time && <span className="text-[0.6875rem] text-neutral-sub font-medium">{e.time}</span>}
+                      </div>
+                      {e.meetLink && <div className="mt-1"><MeetLinkBadge meetLink={e.meetLink} /></div>}
                     </div>
-                    {e.meetLink && <div className="mt-1"><MeetLinkBadge meetLink={e.meetLink} /></div>}
-                  </div>
-                </li>
-              ))}
+                    {e.id && onDeleteEvent && (
+                      <button
+                        onClick={() => handleDelete(e.id, e.calendarId)}
+                        disabled={isDeleting}
+                        className="shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-error-bg text-neutral-muted hover:text-error transition disabled:opacity-40"
+                        aria-label="일정 삭제"
+                        title="일정 삭제"
+                      >
+                        {isDeleting
+                          ? <span className="w-3.5 h-3.5 border-2 border-error border-t-transparent rounded-full animate-spin" />
+                          : <Trash2 size={14} />
+                        }
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -131,8 +190,10 @@ function YearView({ year, events, todayYear, todayMonth, todayDate, onMonthClick
           >
             <div className="text-sm font-bold text-neutral-main mb-2 text-center">{name}</div>
             <div className="grid grid-cols-7 gap-px">
-              {dayNamesShort.map((d) => (
-                <div key={d} className="text-[0.625rem] text-neutral-muted text-center pb-1">{d}</div>
+              {dayNamesShort.map((d, idx) => (
+                <div key={d} className={`text-[0.625rem] text-center pb-1 ${
+                  idx === 0 ? 'text-red-500' : idx === 6 ? 'text-blue-500' : 'text-neutral-muted'
+                }`}>{d}</div>
               ))}
               {cells.map((d, i) => {
                 const isToday = d && year === todayYear && month === todayMonth && d === todayDate;
@@ -143,9 +204,9 @@ function YearView({ year, events, todayYear, todayMonth, todayDate, onMonthClick
                     {d ? (
                       <span className={`text-[0.6875rem] w-6 h-6 flex items-center justify-center rounded-full
                         ${isToday ? 'bg-primary-700 text-white font-bold' : ''}
-                        ${isHoliday && !isToday ? 'bg-red-50 text-red-500 font-semibold' : ''}
+                        ${isHoliday && !isToday ? 'bg-error-bg text-error font-semibold' : ''}
                         ${hasEvent && !isToday && !isHoliday ? 'bg-primary-50 text-primary-700 font-semibold' : ''}
-                        ${!isToday && !hasEvent && !isHoliday ? 'text-neutral-sub' : ''}
+                        ${!isToday && !hasEvent && !isHoliday ? (i % 7 === 0 ? 'text-red-500' : i % 7 === 6 ? 'text-blue-500' : 'text-neutral-sub') : ''}
                       `}>{d}</span>
                     ) : null}
                   </div>
@@ -159,16 +220,40 @@ function YearView({ year, events, todayYear, todayMonth, todayDate, onMonthClick
   );
 }
 
-export default function CalendarView({ events = [] }) {
+export default function CalendarView({ events = [], onDeleteEvent }) {
   const now = new Date();
   const [currentYear, setCurrentYear] = useState(now.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(now.getMonth() + 1);
   const [view, setView] = useState('month');
   const [selectedDay, setSelectedDay] = useState(null);
-  const [showHolidays, setShowHolidays] = useState(true);
+  const [hiddenTypes, setHiddenTypes] = useState(new Set());
 
-  const holidays = showHolidays ? getKoreanHolidays(currentYear) : [];
-  const mergedEvents = [...events, ...holidays];
+  const { customTypes } = useScheduleTypeStore();
+  const allTypes = [...DEFAULT_TYPES, ...customTypes];
+  const allFilterTypes = [...allTypes, { id: 'holiday', label: '공휴일', color: '#C06060' }];
+
+  // 타입 ID → 색상 맵
+  const typeColorMap = {
+    holiday: '#C06060',
+    ...Object.fromEntries(allTypes.map((t) => [t.id, t.color])),
+  };
+  // 타입 ID → 라벨 맵
+  const typeLabelMap = {
+    holiday: '공휴일',
+    ...Object.fromEntries(allTypes.map((t) => [t.id, t.label])),
+  };
+
+  const toggleType = (id) => {
+    setHiddenTypes((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const showAll = hiddenTypes.size === 0;
+
+  const holidays = getKoreanHolidays(currentYear);
+  const mergedEvents = [...events, ...holidays].filter((e) => !hiddenTypes.has(e.type));
 
   const todayDate = now.getDate();
   const todayYear = now.getFullYear();
@@ -243,17 +328,35 @@ export default function CalendarView({ events = [] }) {
           <button onClick={goToToday} className="text-[0.6875rem] px-2 py-1 rounded border border-neutral-divider text-neutral-muted hover:bg-primary-50 hover:text-primary-700 transition">오늘</button>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowHolidays(!showHolidays)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition ${
-              showHolidays
-                ? 'border-red-300 bg-red-50 text-red-500'
-                : 'border-neutral-divider bg-surface-card text-neutral-muted hover:bg-surface-hover'
-            }`}
-          >
-            <span className={`w-2 h-2 rounded-full ${showHolidays ? 'bg-red-400' : 'bg-neutral-muted'}`} />
-            공휴일
-          </button>
+          <div className="flex items-center gap-1 flex-wrap">
+            <button
+              onClick={() => setHiddenTypes(new Set())}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium border transition ${
+                showAll
+                  ? 'border-primary-500 bg-primary-50 text-primary-700'
+                  : 'border-neutral-divider bg-surface-card text-neutral-main opacity-40'
+              }`}
+            >
+              전체
+            </button>
+            {allFilterTypes.map(({ id, label, color }) => {
+              const active = !hiddenTypes.has(id);
+              return (
+                <button
+                  key={id}
+                  onClick={() => toggleType(id)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition ${
+                    active
+                      ? 'border-neutral-border bg-surface-card text-neutral-main'
+                      : 'border-neutral-divider bg-surface-card text-neutral-main opacity-40'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: active ? color : '#9CA3AF' }} />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
           <div className="w-px h-4 bg-neutral-divider" />
           <div className="flex gap-1">
             {VIEW_BTNS.map(({ key, label }) => (
@@ -278,12 +381,15 @@ export default function CalendarView({ events = [] }) {
           />
         ) : (
         <div className="grid grid-cols-7 gap-1">
-          {dayNames.map((d) => (
-            <div key={d} className="text-[0.6875rem] font-semibold text-neutral-muted py-2 text-center">{d}</div>
+          {dayNames.map((d, idx) => (
+            <div key={d} className={`text-[0.6875rem] font-semibold py-2 text-center ${
+              idx === 0 ? 'text-red-500' : idx === 6 ? 'text-blue-500' : 'text-neutral-muted'
+            }`}>{d}</div>
           ))}
           {displayDays.map((d, i) => {
             const dayEvents = mergedEvents.filter((e) => e.day === d.day && e.month === currentMonth && !d.other);
             const isToday = !d.other && d.day === todayDate && currentYear === todayYear && currentMonth === todayMonth;
+            const isHoliday = dayEvents.some((e) => e.type === 'holiday');
             return (
               <div
                 key={i}
@@ -292,14 +398,29 @@ export default function CalendarView({ events = [] }) {
                   isToday ? 'border-primary-700 border-2' : ''
                 } ${selectedDay === d.day && !d.other ? 'ring-2 ring-primary-500' : ''}`}
               >
-                <div className={`font-semibold mb-1 ${d.other ? 'text-neutral-muted' : 'text-neutral-main'}`}>{d.day}</div>
-                {dayEvents.map((e, j) => (
-                  <div key={j} className="mb-0.5">
-                    <div className={`text-[0.625rem] px-1.5 py-0.5 rounded font-medium truncate ${typeStyles[e.type] || ''}`}>
-                      {e.label}
+                <div className={`font-semibold mb-1 ${
+                  d.other ? 'text-neutral-muted'
+                  : (i % 7 === 0 || isHoliday) ? 'text-red-500'
+                  : i % 7 === 6 ? 'text-blue-500'
+                  : 'text-neutral-main'
+                }`}>{d.day}</div>
+                {dayEvents.map((e, j) => {
+                  const builtInStyle = DEFAULT_TYPE_STYLES[e.type];
+                  const color = typeColorMap[e.type];
+                  return (
+                    <div key={j} className="mb-0.5">
+                      <div
+                        className={`text-[0.625rem] px-1.5 py-0.5 rounded font-medium truncate ${builtInStyle || ''}`}
+                        style={!builtInStyle && color ? {
+                          backgroundColor: hexToRgba(color, 0.15),
+                          color,
+                        } : {}}
+                      >
+                        {e.label}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             );
           })}
@@ -314,7 +435,10 @@ export default function CalendarView({ events = [] }) {
           month={currentMonth}
           year={currentYear}
           events={selectedEvents}
+          typeColorMap={typeColorMap}
+          typeLabelMap={typeLabelMap}
           onClose={() => setSelectedDay(null)}
+          onDeleteEvent={onDeleteEvent}
         />
       )}
     </div>

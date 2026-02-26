@@ -6,46 +6,57 @@ UI_UX.pdf: "[추가] 파싱 진행 상태 표시 ('파싱 중...' → '파싱 �
 
 파싱 상태 플로우:
   uploading → parsing → completed (또는 failed)
+
+현재: 동기 처리이므로 upload_and_parse()에서 바로 completed/failed로 전환됨.
+이 서비스는 프론트엔드 폴링용 상태 조회를 담당한다.
 """
+from fastapi import HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.document import Document
 
 
-class ParsingService:
-    """문서 파싱 상태 관리"""
+STATUS_UPLOADING = "uploading"
+STATUS_PARSING = "parsing"
+STATUS_COMPLETED = "completed"
+STATUS_FAILED = "failed"
 
-    # 파싱 상태 종류
-    STATUS_UPLOADING = "uploading"
-    STATUS_PARSING = "parsing"
-    STATUS_COMPLETED = "completed"
-    STATUS_FAILED = "failed"
 
-    async def start_parsing(self, document_id: int) -> dict:
-        """
-        문서 파싱 시작 (비동기)
+async def get_parsing_status(db: AsyncSession, document_id: int) -> dict:
+    """
+    파싱 상태 조회 (프론트에서 폴링)
 
-        Args:
-            document_id: 업로드된 문서 ID
+    Returns:
+        {
+            "document_id": 123,
+            "status": "completed",
+            "progress": 100,
+            "detected_template": None
+        }
+    """
+    result = await db.execute(select(Document).where(Document.id == document_id))
+    doc = result.scalar_one_or_none()
 
-        Returns:
-            {"document_id": 123, "status": "parsing", "detected_template": "meeting_minutes"}
-        """
-        # TODO: 팀원 D 구현
-        # 1. 상태를 'parsing'으로 변경
-        # 2. Celery 태스크로 파싱 비동기 실행
-        # 3. 회의록 자동 감지 (FR-DOC-002)
-        # 4. 파싱 완료 시 상태를 'completed'로 변경
-        raise NotImplementedError
+    if doc is None:
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
 
-    async def get_parsing_status(self, document_id: int) -> dict:
-        """
-        파싱 상태 조회 (프론트에서 폴링)
+    status = doc.status
+    # processing → 매핑
+    if status == "processing":
+        status = STATUS_PARSING
 
-        Returns:
-            {
-                "document_id": 123,
-                "status": "completed",
-                "detected_template": "meeting_minutes",
-                "progress": 100
-            }
-        """
-        # TODO: 팀원 D 구현
-        raise NotImplementedError
+    progress_map = {
+        STATUS_UPLOADING: 0,
+        STATUS_PARSING: 50,
+        STATUS_COMPLETED: 100,
+        STATUS_FAILED: 0,
+        "processing": 50,
+    }
+
+    return {
+        "document_id": doc.id,
+        "status": status,
+        "progress": progress_map.get(status, 0),
+        "detected_template": None,
+    }

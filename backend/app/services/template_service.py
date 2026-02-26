@@ -12,121 +12,162 @@
 
 요구사항: FR-DOC-008
 """
+from datetime import datetime
+
+from fastapi import HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.document_template import DocumentTemplate
 
 
-class TemplateService:
-    """문서 템플릿 서비스"""
+# 시스템 기본 제공 템플릿 종류
+SYSTEM_TEMPLATE_TYPES = {
+    "meeting_minutes": "회의록",
+    "report": "보고서",
+    "jd": "채용 공고",
+    "proposal": "제안서",
+}
 
-    # 시스템 기본 제공 템플릿 종류
-    SYSTEM_TEMPLATE_TYPES = {
-        "meeting_minutes": "회의록",
-        "report": "보고서",
-        "jd": "채용 공고",
-        "proposal": "제안서",
+
+def _build_system_templates() -> list[dict]:
+    """시스템 기본 4종 템플릿을 dict 형태로 반환"""
+    now = datetime.utcnow()
+    templates = []
+    for idx, (category, name) in enumerate(SYSTEM_TEMPLATE_TYPES.items(), start=-4):
+        templates.append({
+            "id": idx,  # 음수 ID로 시스템 템플릿 구분
+            "name": name,
+            "description": f"시스템 기본 {name} 템플릿",
+            "category": category,
+            "is_system": True,
+            "scope": "company",
+            "file_type": None,
+            "status": "ready",
+            "created_at": now,
+        })
+    return templates
+
+
+async def list_templates(
+    db: AsyncSession,
+    user_id: int,
+    category: str | None = None,
+    scope: str | None = None,
+) -> list[dict]:
+    """
+    템플릿 목록 조회: 시스템 기본 4종 + DB 커스텀 템플릿
+    """
+    # 시스템 템플릿
+    system = _build_system_templates()
+    if category:
+        system = [t for t in system if t["category"] == category]
+
+    # DB 커스텀 템플릿
+    stmt = select(DocumentTemplate).where(DocumentTemplate.is_system == False)  # noqa: E712
+    if category:
+        stmt = stmt.where(DocumentTemplate.category == category)
+    if scope:
+        stmt = stmt.where(DocumentTemplate.scope == scope)
+    stmt = stmt.order_by(DocumentTemplate.created_at.desc())
+
+    result = await db.execute(stmt)
+    custom = result.scalars().all()
+
+    custom_dicts = [
+        {
+            "id": t.id,
+            "name": t.name,
+            "description": t.description,
+            "category": t.category,
+            "is_system": t.is_system,
+            "scope": t.scope,
+            "file_type": t.file_type,
+            "status": t.status,
+            "created_at": t.created_at,
+        }
+        for t in custom
+    ]
+
+    return system + custom_dicts
+
+
+async def get_template(db: AsyncSession, template_id: int) -> dict:
+    """템플릿 상세 조회"""
+    # 시스템 템플릿 (음수 ID)
+    if template_id < 0:
+        system = _build_system_templates()
+        for t in system:
+            if t["id"] == template_id:
+                return {**t, "parsed_structure": None, "file_path": None, "uploaded_by": None}
+        raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다")
+
+    result = await db.execute(
+        select(DocumentTemplate).where(DocumentTemplate.id == template_id)
+    )
+    tmpl = result.scalar_one_or_none()
+    if tmpl is None:
+        raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다")
+
+    return {
+        "id": tmpl.id,
+        "name": tmpl.name,
+        "description": tmpl.description,
+        "category": tmpl.category,
+        "is_system": tmpl.is_system,
+        "scope": tmpl.scope,
+        "file_type": tmpl.file_type,
+        "status": tmpl.status,
+        "created_at": tmpl.created_at,
+        "parsed_structure": tmpl.parsed_structure,
+        "file_path": tmpl.file_path,
+        "uploaded_by": tmpl.uploaded_by,
     }
 
-    async def generate_document(
-        self,
-        user_input: str,
-        user_id: int,
-        template_id: int = None,
-        template_type: str = None,
-    ) -> dict:
-        """
-        사용자 입력으로 문서 생성
 
-        Args:
-            user_input: 사용자가 입력한 내용/지시사항
-            user_id: 사용자 ID
-            template_id: DB 템플릿 ID (커스텀 또는 시스템)
-            template_type: 시스템 템플릿 직접 지정 (template_id 없을 때)
+async def delete_template(
+    db: AsyncSession,
+    template_id: int,
+    user_id: int,
+) -> dict:
+    """템플릿 삭제 (커스텀만 가능, 시스템 기본 템플릿은 삭제 불가)"""
+    if template_id < 0:
+        raise HTTPException(status_code=403, detail="시스템 기본 템플릿은 삭제할 수 없습니다")
 
-        Returns:
-            {
-                "preview": "렌더링된 마크다운 텍스트",
-                "template_type": "meeting_minutes",
-                "template_name": "회의록",
-                "document_id": 123,
-                "download_url": "/api/v1/documents/123/download"
-            }
-        """
-        # TODO: 팀원 D (API) + 팀원 C (생성 로직) 협업
-        # 1. template_id → document_templates 테이블에서 로드
-        #    OR template_type → SYSTEM_TEMPLATES에서 클래스 로드
-        # 2. 시스템 템플릿: ai/templates/ 클래스의 render() 사용
-        #    커스텀 템플릿: parsed_structure + render_from_structure() 사용
-        # 3. sLLM으로 user_input 기반 데이터 생성
-        # 4. 템플릿 렌더링
-        # 5. DB에 생성된 문서 저장
-        # 6. 미리보기 텍스트 반환
-        raise NotImplementedError
+    result = await db.execute(
+        select(DocumentTemplate).where(DocumentTemplate.id == template_id)
+    )
+    tmpl = result.scalar_one_or_none()
+    if tmpl is None:
+        raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다")
 
-    async def download_document(
-        self, document_id: int, format: str = "docx"
-    ) -> bytes:
-        """
-        생성된 문서를 DOCX/PDF로 다운로드
+    if tmpl.is_system:
+        raise HTTPException(status_code=403, detail="시스템 기본 템플릿은 삭제할 수 없습니다")
 
-        Args:
-            document_id: 문서 ID
-            format: 'docx' 또는 'pdf'
+    await db.delete(tmpl)
+    return {"message": "템플릿이 삭제되었습니다", "template_id": template_id}
 
-        Returns:
-            파일 바이너리 데이터
-        """
-        # TODO: 팀원 D 구현
-        # 1. DB에서 문서 조회
-        # 2. 템플릿의 to_docx() 또는 to_pdf() 호출
-        # 3. 바이너리 반환
-        raise NotImplementedError
 
-    async def upload_template(
-        self,
-        file_path: str,
-        file_type: str,
-        name: str,
-        description: str,
-        category: str,
-        scope: str,
-        user_id: int,
-    ) -> dict:
-        """
-        커스텀 템플릿 업로드 및 구조 추출
+# ── AI 의존 기능 (팀원 C와 협업 필요) ──
 
-        Args:
-            file_path: 저장된 파일 경로
-            file_type: 파일 타입 (docx, pdf)
-            name: 템플릿 이름
-            description: 설명
-            category: 카테고리
-            scope: company | personal
-            user_id: 업로드한 사용자 ID
 
-        Returns:
-            {
-                "template_id": 42,
-                "status": "processing",
-                "name": "커스텀 보고서"
-            }
-        """
-        # TODO: 팀원 D (저장) + 팀원 C (구조 추출)
-        # 1. document_templates 테이블에 레코드 생성 (status: processing)
-        # 2. 비동기로 AI 구조 추출 시작
-        # 3. parsed_structure 저장 → status: ready
-        raise NotImplementedError
+async def generate_document(
+    db: AsyncSession,
+    user_input: str,
+    user_id: int,
+    template_id: int | None = None,
+    template_type: str | None = None,
+) -> dict:
+    """문서 생성 — AI 로직 필요 (팀원 C 구현 후 연동)"""
+    # TODO: 팀원 C (생성 로직) 구현 후 연동
+    raise NotImplementedError("문서 생성 기능은 AI Agent 연동 후 사용 가능합니다")
 
-    async def detect_template(self, text: str) -> str:
-        """
-        업로드된 문서에서 템플릿 종류 자동 감지
 
-        요구사항: FR-DOC-002 (회의록 자동 인식)
-
-        Args:
-            text: 업로드된 문서 텍스트
-
-        Returns:
-            감지된 템플릿 종류 ('meeting_minutes' | 'report' | 'unknown')
-        """
-        # TODO: 팀원 C 구현
-        # 키워드 기반 감지: "회의", "참석자", "안건" → meeting_minutes
-        raise NotImplementedError
+async def download_document(
+    db: AsyncSession,
+    document_id: int,
+    format: str = "docx",
+) -> bytes:
+    """문서 다운로드 — 템플릿 렌더링 필요 (팀원 C 구현 후 연동)"""
+    # TODO: 팀원 C (렌더링) 구현 후 연동
+    raise NotImplementedError("문서 다운로드 기능은 AI Agent 연동 후 사용 가능합니다")

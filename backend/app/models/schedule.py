@@ -1,7 +1,7 @@
 """
 일정 모델 (팀원 D 담당)
 """
-from sqlalchemy import String, Integer, ForeignKey
+from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 from typing import Optional

@@ -19,16 +19,26 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     name: str
+    team: str | None = None
 
 
 class RegisterResponse(BaseModel):
     id: int
     email: str
     name: str
+    team: str | None = None
 
 
 class TokenRefreshRequest(BaseModel):
     refresh_token: str
+
+
+# ── 비밀번호 변경 ──
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 
 # ── 비밀번호 재설정 ──

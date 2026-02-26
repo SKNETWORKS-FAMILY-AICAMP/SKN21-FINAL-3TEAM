@@ -1,0 +1,150 @@
+{"text": "일정 알려줘", "label": "schedule_view"}
+{"text": "스케줄 확인", "label": "schedule_view"}
+{"text": "오늘 뭐 있어?", "label": "schedule_view"}
+{"text": "내일 일정?", "label": "schedule_view"}
+{"text": "이번주 일정", "label": "schedule_view"}
+{"text": "회의 언제야?", "label": "schedule_view"}
+{"text": "미팅 시간 알려줘", "label": "schedule_view"}
+{"text": "남은 일정 뭐야", "label": "schedule_view"}
+{"text": "캘린더 보여줘", "label": "schedule_view"}
+{"text": "약속 있어?", "label": "schedule_view"}
+{"text": "다음주 일정", "label": "schedule_view"}
+{"text": "스케줄 보여줘", "label": "schedule_view"}
+{"text": "일정 목록", "label": "schedule_view"}
+{"text": "내일 뭐야", "label": "schedule_view"}
+{"text": "이번달 일정", "label": "schedule_view"}
+{"text": "회의 있나?", "label": "schedule_view"}
+{"text": "오전 일정", "label": "schedule_view"}
+{"text": "오후 약속 뭐야", "label": "schedule_view"}
+{"text": "이번주 일정 보여줘", "label": "schedule_view"}
+{"text": "내일 오전이랑 오후에 잡혀있는 미팅 전부 알려줘", "label": "schedule_view"}
+{"text": "다음주 스케줄 중에 빈 시간대가 어디 있는지 보여줘", "label": "schedule_view"}
+{"text": "오늘 남은 일정이 뭐가 있는지 시간순으로 정리해서 알려줘", "label": "schedule_view"}
+{"text": "3월 전체 일정 중에서 고객사 관련 미팅만 따로 보여줘", "label": "schedule_view"}
+{"text": "이번달 회의 일정을 주별로 정리해서 캘린더로 보여줘", "label": "schedule_view"}
+{"text": "금요일에 뭐 있지?", "label": "schedule_view"}
+{"text": "다음주에 미팅 없이 온전히 비어있는 오후 시간대가 있는지 확인해줘", "label": "schedule_view"}
+{"text": "이번주 목요일에 잡혀있는 모든 일정을 시간대별로 보여줘", "label": "schedule_view"}
+{"text": "오후에 예정되어 있던 약속이 아직 유효한지 확인해 주세요", "label": "schedule_view"}
+{"text": "내일 오후에 미팅 있어?", "label": "schedule_view"}
+{"text": "이번주 화요일 스케줄 보여줘", "label": "schedule_view"}
+{"text": "다음주 월요일 일정 알려줘", "label": "schedule_view"}
+{"text": "오늘 회의가 총 몇 건이고 각각 몇 시에 시작하는지 알려줘", "label": "schedule_view"}
+{"text": "3월 5일에 잡혀있는 일정 전부 확인하고 빈 시간도 알려줘", "label": "schedule_view"}
+{"text": "금요일 오후에 잡혀있는 스케줄 목록을 시간순으로 보여줘", "label": "schedule_view"}
+{"text": "이번주에 아직 남아있는 미팅이 몇 개인지 날짜별로 정리해줘", "label": "schedule_view"}
+{"text": "목요일에 외부 미팅이나 내부 회의가 뭐 잡혀있는지 보여줘", "label": "schedule_view"}
+{"text": "다음달 일정 전체 보여줘", "label": "schedule_view"}
+{"text": "수요일 오전에 1시간 이상 연속으로 빈 시간이 있는지 확인해", "label": "schedule_view"}
+{"text": "이번주 회의 목록 보여줘", "label": "schedule_view"}
+{"text": "내일 몇 개 미팅 있어?", "label": "schedule_view"}
+{"text": "이번달 남은 일정 확인해줘", "label": "schedule_view"}
+{"text": "다음주 금요일에 뭐 있지?", "label": "schedule_view"}
+{"text": "오늘 저녁 약속 있었나?", "label": "schedule_view"}
+{"text": "화요일 3시에 뭐 있어?", "label": "schedule_view"}
+{"text": "3월 둘째 주 일정 알려줘", "label": "schedule_view"}
+{"text": "이번주 출장 일정 있어?", "label": "schedule_view"}
+{"text": "다음주 화요일 오후 비어있어?", "label": "schedule_view"}
+{"text": "월요일부터 금요일까지 일정 보여줘", "label": "schedule_view"}
+{"text": "오늘 면접 일정 있어?", "label": "schedule_view"}
+{"text": "이번주 수요일 오전 스케줄 알려줘", "label": "schedule_view"}
+{"text": "다음주에 회식 잡혀있어?", "label": "schedule_view"}
+{"text": "3월 말 일정 확인해줘", "label": "schedule_view"}
+{"text": "내일 팀미팅 시간 알려줘", "label": "schedule_view"}
+{"text": "이번달 워크숍 언제야?", "label": "schedule_view"}
+{"text": "다음주 빈 날 있어?", "label": "schedule_view"}
+{"text": "목요일 4시에 뭐 잡혀있어?", "label": "schedule_view"}
+{"text": "이번주 세미나 일정 보여줘", "label": "schedule_view"}
+{"text": "금요일 저녁에 뭐 있나?", "label": "schedule_view"}
+{"text": "3월 중에 고객 미팅 잡혀있는 날 알려줘", "label": "schedule_view"}
+{"text": "다음주 데모 발표 일정이 어떻게 되나?", "label": "schedule_view"}
+{"text": "이번달에 신입사원 교육이나 직무 교육 관련 일정이 잡혀있으면 알려줘", "label": "schedule_view"}
+{"text": "내일 오전 9시부터 12시 사이에 일정이 비어있는지 확인해줘", "label": "schedule_view"}
+{"text": "수요일 오후 2시부터 5시까지 비어있어?", "label": "schedule_view"}
+{"text": "이번주 일정을 확인해 주세요", "label": "schedule_view"}
+{"text": "내일 오후에 미팅이 있는지 알려 주세요", "label": "schedule_view"}
+{"text": "다음주 월요일 스케줄을 보여 주시겠어요?", "label": "schedule_view"}
+{"text": "3월 전체 일정을 확인하고 싶습니다", "label": "schedule_view"}
+{"text": "이번달 남은 기간 동안 잡혀있는 회의 일정을 날짜별로 정리해서 알려 주세요", "label": "schedule_view"}
+{"text": "금요일 오후에 빈 시간이 있는지 확인해 주세요", "label": "schedule_view"}
+{"text": "다음주 화요일 일정을 보여 주실 수 있나요?", "label": "schedule_view"}
+{"text": "오늘 남은 일정이 있는지 알려 주세요", "label": "schedule_view"}
+{"text": "수요일에 어떤 미팅이 잡혀 있나요?", "label": "schedule_view"}
+{"text": "다음달에 출장 일정이 편성되어 있는지 확인하고 날짜와 목적지도 알려 주세요", "label": "schedule_view"}
+{"text": "3월 15일 일정을 보여 주시겠어요?", "label": "schedule_view"}
+{"text": "이번주 금요일에 약속이 있는지 알려 주세요", "label": "schedule_view"}
+{"text": "다음주 전체 미팅 목록을 확인하고 싶습니다", "label": "schedule_view"}
+{"text": "오늘 오전에 회의가 몇 개 있는지 알려 주세요", "label": "schedule_view"}
+{"text": "이번달 면접 일정을 보여 주세요", "label": "schedule_view"}
+{"text": "4월 첫째 주 일정을 확인해 주세요", "label": "schedule_view"}
+{"text": "내일 오전 스케줄이 어떻게 되는지 알려 주세요", "label": "schedule_view"}
+{"text": "목요일 저녁에 팀 회식이 잡혀 있는지 알려 주세요", "label": "schedule_view"}
+{"text": "다음주 데모 일정이 언제인지 확인해 주세요", "label": "schedule_view"}
+{"text": "3월 셋째 주 캘린더를 보여 주시겠어요?", "label": "schedule_view"}
+{"text": "이번달 마지막 주 일정을 알려 주세요", "label": "schedule_view"}
+{"text": "금주 일정 현황을 확인하여 주시기 바랍니다", "label": "schedule_view"}
+{"text": "차주 월요일의 회의 일정을 조회하여 주십시오", "label": "schedule_view"}
+{"text": "3월 전체 캘린더를 열람하고자 합니다", "label": "schedule_view"}
+{"text": "이번 달 부서 회의 일정을 조회하여 주십시오", "label": "schedule_view"}
+{"text": "금주 남은 회의 일정과 참석자 명단을 함께 조회하여 주시기 바랍니다", "label": "schedule_view"}
+{"text": "다음 분기에 예정된 주요 일정을 월별로 구분하여 확인하여 주십시오", "label": "schedule_view"}
+{"text": "차주 수요일의 미팅 스케줄을 확인하여 주십시오", "label": "schedule_view"}
+{"text": "금주 목요일의 면접 일정을 확인하여 주십시오", "label": "schedule_view"}
+{"text": "ㅇㅂㅈ 일정 보여줘", "label": "schedule_view"}
+{"text": "담주 스케쥴 확인좀", "label": "schedule_view"}
+{"text": "ㄴㅇ 미팅 몇시야?", "label": "schedule_view"}
+{"text": "이번주 뭐있지", "label": "schedule_view"}
+{"text": "금욜 일정 확인", "label": "schedule_view"}
+{"text": "담주 월욜 뭐잡혀있어?", "label": "schedule_view"}
+{"text": "오늘 회의있음?", "label": "schedule_view"}
+{"text": "ㅇㅂ달 전체일정 보여줘", "label": "schedule_view"}
+{"text": "목욜 오후 비어있어?", "label": "schedule_view"}
+{"text": "담주 빈시간 알려줘", "label": "schedule_view"}
+{"text": "수욜에 면접있나", "label": "schedule_view"}
+{"text": "이번주 남은거 알려줘", "label": "schedule_view"}
+{"text": "ㄴㅇ 오전 일정 뭐야?", "label": "schedule_view"}
+{"text": "금욜 저녁 약속있었나", "label": "schedule_view"}
+{"text": "담달 출장일정 있어?", "label": "schedule_view"}
+{"text": "화욜 3시 뭐있어?", "label": "schedule_view"}
+{"text": "담주 데모일정 알려줘", "label": "schedule_view"}
+{"text": "모레 스케쥴 뭐야", "label": "schedule_view"}
+{"text": "이번달 워크샵 있나?", "label": "schedule_view"}
+{"text": "담주 세미나 언제인지 알려줘", "label": "schedule_view"}
+{"text": "이번주 전체 일정을 한눈에 볼 수 있게 보여줘", "label": "schedule_view"}
+{"text": "다음주 월요일부터 금요일까지 미팅이 몇 개나 잡혀있는지 알려줘", "label": "schedule_view"}
+{"text": "3월 15일에 회의가 있는지 확인하고 시간도 같이 알려줘", "label": "schedule_view"}
+{"text": "이번달 남은 기간 중에 하루 종일 비어있는 날이 있는지 확인해줘", "label": "schedule_view"}
+{"text": "다음주에 고객사 미팅이 잡혀있는지 확인하고 날짜랑 시간을 알려줘", "label": "schedule_view"}
+{"text": "4월 첫째 주에 출장 일정이 편성되어 있는지 조회하여 주시기 바랍니다", "label": "schedule_view"}
+{"text": "이번주 수요일 오후에 빈 시간이 2시간 이상 있는지 확인해줘", "label": "schedule_view"}
+{"text": "다음달 전체 캘린더를 보여주고 주요 일정을 표시해줘", "label": "schedule_view"}
+{"text": "이번주에 정기 스탠드업 미팅이 잘 잡혀있는지 확인해줘", "label": "schedule_view"}
+{"text": "3월 마지막 주에 프로젝트 마감 관련 회의가 있는지 확인하고 싶습니다", "label": "schedule_view"}
+{"text": "다음주 목요일 오전에 면접이 몇 건 잡혀있는지 알려 주세요", "label": "schedule_view"}
+{"text": "이번달 팀 회식이나 팀빌딩 일정이 있는지 확인해줘", "label": "schedule_view"}
+{"text": "금요일 오후 3시 이후로 미팅 없는 시간대가 있는지 확인해줘", "label": "schedule_view"}
+{"text": "다음주 화요일에 세미나가 잡혀있다고 들었는데 시간 확인해줘", "label": "schedule_view"}
+{"text": "이번 분기 남은 기간 동안 예정된 워크숍과 교육 일정을 모두 조회하여 주십시오", "label": "schedule_view"}
+{"text": "3월 10일부터 20일 사이에 잡혀있는 모든 미팅 일정을 시간순으로 보여줘", "label": "schedule_view"}
+{"text": "다음주에 하루 종일 비어있는 날이 있으면 알려줘", "label": "schedule_view"}
+{"text": "이번주 매일 오전 10시에 스탠드업 미팅이 잘 들어가 있는지 확인해줘", "label": "schedule_view"}
+{"text": "4월에 연차나 휴가로 블록된 날짜가 있는지 캘린더에서 확인해 주시기 바랍니다", "label": "schedule_view"}
+{"text": "이번주 월요일에 잡혀있는 일정이 총 몇 건인지 알려줘", "label": "schedule_view"}
+{"text": "차주 전체 일정을 확인할 수 있도록 요일별로 조회하여 주시기 바랍니다", "label": "schedule_view"}
+{"text": "다음달 둘째 주에 예정된 교육이나 세미나 일정이 있는지 조회하여 주십시오", "label": "schedule_view"}
+{"text": "이번주 수요일 오후에 빈 시간대를 알려 주시고 가능한 미팅 시간을 추천해 주세요", "label": "schedule_view"}
+{"text": "3월 28일 오전에 미팅이 있는지 확인하고 없으면 빈 시간을 알려 주세요", "label": "schedule_view"}
+{"text": "다음주 전체 스케줄을 요일별로 정리해서 보여 주시기 바랍니다", "label": "schedule_view"}
+{"text": "이번달 정기 회의 시간을 확인해 주시고 변동 사항이 있는지도 알려 주세요", "label": "schedule_view"}
+{"text": "4월 셋째 주에 예정된 교육이나 워크숍 일정이 있는지 확인하여 주십시오", "label": "schedule_view"}
+{"text": "내일 오후 2시에서 5시 사이에 잡혀있는 일정이 있으면 모두 보여줘", "label": "schedule_view"}
+{"text": "금일 오후 일정 현황을 확인하고 남은 미팅 건수를 알려 주시기 바랍니다", "label": "schedule_view"}
+{"text": "이번 주 금요일까지의 캘린더를 시간순으로 정렬하여 조회하여 주십시오", "label": "schedule_view"}
+{"text": "3월 하순 일정 현황을 조회하고 빈 시간대도 같이 표시하여 주시기 바랍니다", "label": "schedule_view"}
+{"text": "이번 달 정기 회의와 임시 회의를 구분하여 조회하여 주시기 바랍니다", "label": "schedule_view"}
+{"text": "차주 금요일 오후의 일정 현황을 확인하고 빈 시간이 있는지 알려 주십시오", "label": "schedule_view"}
+{"text": "4월 둘째 주의 교육 일정이 편성되어 있는지 상세히 조회하여 주시기 바랍니다", "label": "schedule_view"}
+{"text": "다음 달 전체 캘린더를 열람할 수 있도록 주요 일정 위주로 조회하여 주십시오", "label": "schedule_view"}
+{"text": "금주 화요일부터 목요일까지의 미팅 일정을 시간순으로 확인하여 주시기 바랍니다", "label": "schedule_view"}
+{"text": "이번 분기 남은 워크숍 및 세미나 일정을 일자별로 조회하여 주십시오", "label": "schedule_view"}
+{"text": "담주 전체일정 쭉 보여줘 요일별로 정리해서", "label": "schedule_view"}

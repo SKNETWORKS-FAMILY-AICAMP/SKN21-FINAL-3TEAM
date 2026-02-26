@@ -21,7 +21,14 @@ outputs/
 *.pth
 *.bin
 *.safetensors
+*.safetensors.*
 *.gguf
+
+# Test artifacts
+test-results/
+tests/screenshots/
+frontend/e2e/results/
+frontend/playwright-report/
 
 # ChromaDB
 chroma_db/
@@ -49,11 +56,24 @@ nul
 logs/
 !docs/logs/
 
+# Uploads (runtime files)
+backend/uploads/
+
+# AI 생성 문서 (임시 파일)
+backend/generated_docs/*.docx
+backend/generated_docs/*.pdf
+
 # Secrets
 credentials.json
 token.json
 *.pem
 *.key
 
+# Local Docker overrides
+docker/Dockerfile.backend
+
 # claude setting
 .claude
+.ruff_cache/
+
+docs/mentoring/2026-02-15-멘토링-대본.md

@@ -1,0 +1,147 @@
+{"text": "이 데이터로 보고서 만들어줘", "label": "doc_generate"}
+{"text": "연차 보고서 작성해줄래", "label": "doc_generate"}
+{"text": "간단한 출장 보고서 써줘", "label": "doc_generate"}
+{"text": "보안 관련 회의록 만들어줘", "label": "doc_generate"}
+{"text": "인사평가서 작성해줘", "label": "doc_generate"}
+{"text": "급여 명세서 작성해 달라", "label": "doc_generate"}
+{"text": "복리후생 안내문 써줘", "label": "doc_generate"}
+{"text": "프로젝트 개요서 만들어줘", "label": "doc_generate"}
+{"text": "다음 회의록 작성해줘", "label": "doc_generate"}
+{"text": "출장 결과 보고서 만들어줘", "label": "doc_generate"}
+{"text": "보안 점검 보고서 작성해 줘", "label": "doc_generate"}
+{"text": "인사 평가표 작성해줘", "label": "doc_generate"}
+{"text": "급여 인상 제안서 써 주세요", "label": "doc_generate"}
+{"text": "복리후생 평가서 작성해줘", "label": "doc_generate"}
+{"text": "프로젝트 진행 보고서 만들어줘", "label": "doc_generate"}
+{"text": "회의록 작성 부탁해", "label": "doc_generate"}
+{"text": "출장 계획서 작성해줘", "label": "doc_generate"}
+{"text": "보안 프로토콜 제안서 만들어주세요", "label": "doc_generate"}
+{"text": "인사 관리 문서 작성해줘", "label": "doc_generate"}
+{"text": "급여 보고서 작성해줘", "label": "doc_generate"}
+{"text": "복리후생 보고서 만들어줘", "label": "doc_generate"}
+{"text": "프로젝트 제안서 작성해 줘", "label": "doc_generate"}
+{"text": "회의 결과 정리해서 문서로 만들자", "label": "doc_generate"}
+{"text": "출장 보고서 부탁", "label": "doc_generate"}
+{"text": "보안 정책 문서 작성해줘", "label": "doc_generate"}
+{"text": "인사 관련 서류 만들어줘", "label": "doc_generate"}
+{"text": "급여 관련 문서 작성해줘", "label": "doc_generate"}
+{"text": "복리후생 제안서 써줘", "label": "doc_generate"}
+{"text": "프로젝트 발표자료 작성해줘", "label": "doc_generate"}
+{"text": "다른 회의록 작성 부탁해", "label": "doc_generate"}
+{"text": "출장 계획 문서로 만들어 줘", "label": "doc_generate"}
+{"text": "보안 점검 문서 만들어줘", "label": "doc_generate"}
+{"text": "인사평가 자료 작성해 줘", "label": "doc_generate"}
+{"text": "급여관련 제안서 써줘", "label": "doc_generate"}
+{"text": "복리후생 평가 보고서 작성해줘", "label": "doc_generate"}
+{"text": "프로젝트 계획서 만들어 줘", "label": "doc_generate"}
+{"text": "회의 결과 문서로 만들어줘", "label": "doc_generate"}
+{"text": "출장 결과 문서 작성해줘", "label": "doc_generate"}
+{"text": "보안 점검 제안서 작성해줘", "label": "doc_generate"}
+{"text": "인사평가 보고서 써줘", "label": "doc_generate"}
+{"text": "급여 인상 신청서 작성해줘", "label": "doc_generate"}
+{"text": "복리후생 개선안 작성해줘", "label": "doc_generate"}
+{"text": "프로젝트 발표 문서 작성해줘", "label": "doc_generate"}
+{"text": "회의록 작업해줘", "label": "doc_generate"}
+{"text": "출장 계획서 써줘", "label": "doc_generate"}
+{"text": "보안 정책 제안서 작성해줘", "label": "doc_generate"}
+{"text": "인사 관련 계획서 만들어줘", "label": "doc_generate"}
+{"text": "급여 명세서 작성해줘", "label": "doc_generate"}
+{"text": "복리후생 자료 작성해줘", "label": "doc_generate"}
+{"text": "프로젝트 문서화 해줘", "label": "doc_generate"}
+{"text": "회의록 작성해봐", "label": "doc_generate"}
+{"text": "출장 결과 보고서 작성해줘", "label": "doc_generate"}
+{"text": "보안 관련 문서 작성해줘", "label": "doc_generate"}
+{"text": "인사 관리 제안서 만들어줘", "label": "doc_generate"}
+{"text": "급여 보고서 써줘", "label": "doc_generate"}
+{"text": "복리후생 제안서 작성해줘", "label": "doc_generate"}
+{"text": "프로젝트 계획 문서 작성해줘", "label": "doc_generate"}
+{"text": "회의 내용 문서로 만들어줘", "label": "doc_generate"}
+{"text": "출장 계획 보고서 만들어줘", "label": "doc_generate"}
+{"text": "보안 보고서 작성해줘", "label": "doc_generate"}
+{"text": "인사평가 문서 작성해줘", "label": "doc_generate"}
+{"text": "급여 관련 서류 만들어줘", "label": "doc_generate"}
+{"text": "복리후생 안내문 작성해줘", "label": "doc_generate"}
+{"text": "프로젝트 제안서 만들어줘", "label": "doc_generate"}
+{"text": "회의 결과 문서 작성해줘", "label": "doc_generate"}
+{"text": "출장 관련 문서 작성해줘", "label": "doc_generate"}
+{"text": "보안 관련 제안서 작성해줘", "label": "doc_generate"}
+{"text": "인사 관리 문서 작성해줘", "label": "doc_generate"}
+{"text": "급여 인상 보고서 작성해줘", "label": "doc_generate"}
+{"text": "복리후생 개선 계획서 작성해줘", "label": "doc_generate"}
+{"text": "프로젝트 발표 자료 작성해줘", "label": "doc_generate"}
+{"text": "회의록 작업 부탁해", "label": "doc_generate"}
+{"text": "출장 계획 문서 작성해줘", "label": "doc_generate"}
+{"text": "보안 계획서 작성해줘", "label": "doc_generate"}
+{"text": "인사평가 제안서 작성해줘", "label": "doc_generate"}
+{"text": "급여 관련 자료 작성해줘", "label": "doc_generate"}
+{"text": "복리후생 보고서 작성해줘", "label": "doc_generate"}
+{"text": "프로젝트 문서 작성해줘", "label": "doc_generate"}
+{"text": "회의록 만들어줘", "label": "doc_generate"}
+{"text": "출장 결과 문서 작성해줘", "label": "doc_generate"}
+{"text": "보안 점검 문서 작성해줘", "label": "doc_generate"}
+{"text": "인사 관리 계획서 작성해줘", "label": "doc_generate"}
+{"text": "급여 명세서 만들어줘", "label": "doc_generate"}
+{"text": "복리후생 제안서 작성해줘", "label": "doc_generate"}
+{"text": "프로젝트 진행 자료 작성해줘", "label": "doc_generate"}
+{"text": "회의록 작성을 부탁드려요", "label": "doc_generate"}
+{"text": "출장 계획 보고서를 작성해 주세요", "label": "doc_generate"}
+{"text": "보안 관련 정책 문서를 작성해 주세요", "label": "doc_generate"}
+{"text": "인사평가에 필요한 문서를 만들어주세요", "label": "doc_generate"}
+{"text": "급여 관련 문서를 작성해 주세요", "label": "doc_generate"}
+{"text": "복리후생 안내문을 작성해 주세요", "label": "doc_generate"}
+{"text": "프로젝트 제안서를 작성해 주세요", "label": "doc_generate"}
+{"text": "회의 결과를 문서로 정리해 주세요", "label": "doc_generate"}
+{"text": "출장 결과 보고서를 작성해 주세요", "label": "doc_generate"}
+{"text": "보안 점검 계획서를 작성해 주세요", "label": "doc_generate"}
+{"text": "인사 관리 관련 문서를 작성해 주세요", "label": "doc_generate"}
+{"text": "급여 인상에 대한 보고서를 작성해 주세요", "label": "doc_generate"}
+{"text": "복리후생 개선안에 관한 문서를 작성해 주세요", "label": "doc_generate"}
+{"text": "프로젝트 발표 자료를 작성해 주세요", "label": "doc_generate"}
+{"text": "회의록을 작성해 주세요", "label": "doc_generate"}
+{"text": "출장 계획 문서를 작성해 주세요", "label": "doc_generate"}
+{"text": "보안 정책 제안서를 작성해 주세요", "label": "doc_generate"}
+{"text": "인사 관련 계획서를 작성해 주세요", "label": "doc_generate"}
+{"text": "급여 명세서를 작성해 주세요", "label": "doc_generate"}
+{"text": "복리후생 제안서를 작성해 주세요", "label": "doc_generate"}
+{"text": "프로젝트 진행 문서를 작성해 주세요", "label": "doc_generate"}
+{"text": "회의록을 꼭 작성해 주세요", "label": "doc_generate"}
+{"text": "출장 결과 문서를 작성해 주세요", "label": "doc_generate"}
+{"text": "보안 점검 제안서를 작성해 주세요", "label": "doc_generate"}
+{"text": "인사 관리 제안서를 작성해 주세요", "label": "doc_generate"}
+{"text": "급여 관련 서류를 작성해 주세요", "label": "doc_generate"}
+{"text": "복리후생 안내문을 작성해 주세요", "label": "doc_generate"}
+{"text": "프로젝트 제안서를 작성해 주세요", "label": "doc_generate"}
+{"text": "회의 결과를 문서로 정리해 주세요", "label": "doc_generate"}
+{"text": "출장 관련 문서를 작성해 주세요", "label": "doc_generate"}
+{"text": "보안 관련 제안서를 작성해 주세요", "label": "doc_generate"}
+{"text": "인사 관리 문서를 작성해 주세요", "label": "doc_generate"}
+{"text": "급여 인상 보고서를 작성해 주세요", "label": "doc_generate"}
+{"text": "복리후생 개선 계획서를 작성해 주세요", "label": "doc_generate"}
+{"text": "프로젝트 발표 자료를 작성해 주세요", "label": "doc_generate"}
+{"text": "회의록 작성을 부탁드려요", "label": "doc_generate"}
+{"text": "출장 계획 문서를 작성해 주세요", "label": "doc_generate"}
+{"text": "보안 계획서를 작성해 주세요", "label": "doc_generate"}
+{"text": "인사평가 제안서를 작성해 주세요", "label": "doc_generate"}
+{"text": "급여 관련 자료를 작성해 주세요", "label": "doc_generate"}
+{"text": "복리후생 보고서를 작성해 주세요", "label": "doc_generate"}
+{"text": "프로젝트 문서를 작성해 주세요", "label": "doc_generate"}
+{"text": "회의록을 꼭 작성해 주세요", "label": "doc_generate"}
+{"text": "출장 결과 문서를 작성해 주세요", "label": "doc_generate"}
+{"text": "보안 점검 문서를 작성해 주세요", "label": "doc_generate"}
+{"text": "인사 관리 관련 문서를 작성해 주세요", "label": "doc_generate"}
+{"text": "급여 명세서를 만들어 주세요", "label": "doc_generate"}
+{"text": "복리후생 제안서를 작성해 주세요", "label": "doc_generate"}
+{"text": "프로젝트 진행 자료를 작성해 주세요", "label": "doc_generate"}
+{"text": "회의록 작성을 부탁드려요", "label": "doc_generate"}
+{"text": "출장 계획 보고서를 작성해 주세요", "label": "doc_generate"}
+{"text": "보안 관련 정책 문서를 작성해 주세요", "label": "doc_generate"}
+{"text": "인사평가에 필요한 문서를 만들어 주세요", "label": "doc_generate"}
+{"text": "급여 관련 문서를 작성해 주세요", "label": "doc_generate"}
+{"text": "복리후생 안내문을 작성해 주세요", "label": "doc_generate"}
+{"text": "프로젝트 제안서를 작성해 주세요", "label": "doc_generate"}
+{"text": "회의 결과를 문서로 정리해 주세요", "label": "doc_generate"}
+{"text": "출장 결과 보고서를 작성해 주세요", "label": "doc_generate"}
+{"text": "보안 점검 계획서를 작성해 주세요", "label": "doc_generate"}
+{"text": "인사 관리 관련 문서를 작성해 주세요", "label": "doc_generate"}
+{"text": "급여 인상에 대한 보고서를 작성해 주세요", "label": "doc_generate"}
+{"text": "복리후생 개선안에 관한 문서를 작성해 주세요", "label": "doc_generate"}

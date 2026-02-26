@@ -3,6 +3,7 @@
 환경변수 기반 설정 관리
 """
 from pathlib import Path
+from typing import Optional
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -31,10 +32,22 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/google/callback"
+    GOOGLE_LOGIN_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
 
-    # vLLM (팀원 B)
+    # LLM API (현재: OpenAI, 추후: vLLM 전환 시 BASE_URL만 변경)
+    LLM_PROVIDER: str = "openai"
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    LLM_BASE_URL: Optional[str] = None
+    ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_MODEL: str = "claude-sonnet-4-20250514"
+
+    # vLLM (팀원 B — 4단계에서 LLM_BASE_URL로 전환)
     VLLM_BASE_URL: str = "http://localhost:8080/v1"
     VLLM_MODEL_NAME: str = "Qwen/Qwen3-8B"
+
+    # Upload (팀원 D)
+    UPLOAD_DIR: str = "./uploads"
 
     # ChromaDB (팀원 B)
     CHROMA_PERSIST_DIR: str = "./chroma_db"

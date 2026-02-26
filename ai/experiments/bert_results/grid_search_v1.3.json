@@ -1,0 +1,56 @@
+{
+  "grid_results": [
+    {
+      "config": {
+        "epochs": 3,
+        "lr": 2e-05
+      },
+      "eval_f1": 0.9754,
+      "eval_acc": 0.9755
+    },
+    {
+      "config": {
+        "epochs": 5,
+        "lr": 1e-05
+      },
+      "eval_f1": 0.9653,
+      "eval_acc": 0.965
+    },
+    {
+      "config": {
+        "epochs": 5,
+        "lr": 2e-05
+      },
+      "eval_f1": 0.9754,
+      "eval_acc": 0.9755
+    },
+    {
+      "config": {
+        "epochs": 5,
+        "lr": 5e-05
+      },
+      "eval_f1": 0.9791,
+      "eval_acc": 0.979
+    },
+    {
+      "config": {
+        "epochs": 7,
+        "lr": 2e-05
+      },
+      "eval_f1": 0.9754,
+      "eval_acc": 0.9755
+    },
+    {
+      "config": {
+        "epochs": 10,
+        "lr": 2e-05
+      },
+      "eval_f1": 0.9826,
+      "eval_acc": 0.9825
+    }
+  ],
+  "best_config": {
+    "epochs": 10,
+    "lr": 2e-05
+  }
+}

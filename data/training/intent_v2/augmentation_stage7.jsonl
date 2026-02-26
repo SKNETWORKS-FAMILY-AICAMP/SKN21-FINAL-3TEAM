@@ -1,0 +1,25 @@
+{"text": "보고서에 나온 매출 증가율이 몇 퍼센트야?", "label": "doc_qa"}
+{"text": "이 문서에서 결론이 뭐라고 되어있어?", "label": "doc_qa"}
+{"text": "계약서 3조 내용이 뭐야?", "label": "doc_qa"}
+{"text": "제안서에 적힌 예산 항목 확인해줘", "label": "doc_qa"}
+{"text": "이 파일에 적힌 담당자가 누구야?", "label": "doc_qa"}
+{"text": "보고서 내용 중에 리스크 부분 알려줘", "label": "doc_qa"}
+{"text": "문서에 적힌 마감일이 언제야?", "label": "doc_qa"}
+{"text": "이 자료에서 핵심 수치 확인 좀", "label": "doc_qa"}
+{"text": "그 파일 어디에 저장되어있어?", "label": "doc_search"}
+{"text": "연차 신청서 양식 파일 어디 있어?", "label": "doc_search"}
+{"text": "지난달 회의록 파일 좀 찾아줘", "label": "doc_search"}
+{"text": "인사팀에서 공유한 문서 목록 보여줘", "label": "doc_search"}
+{"text": "출장 보고서 양식이 어디 있는지 알려줘", "label": "doc_search"}
+{"text": "오늘 논의한 내용으로 회의록 새로 작성해줘", "label": "doc_generate"}
+{"text": "이 데이터 가지고 보고서 하나 만들어줘", "label": "doc_generate"}
+{"text": "프로젝트 현황을 문서로 정리해서 새로 만들어줘", "label": "doc_generate"}
+{"text": "팀 성과를 보고서 양식으로 작성해줘", "label": "doc_generate"}
+{"text": "미팅 내용 바탕으로 제안서 만들어줘", "label": "doc_generate"}
+{"text": "발표 자료로 정리해서 문서 작성해줘", "label": "doc_generate"}
+{"text": "이번 분기 실적 보고서 새로 작성해줘", "label": "doc_generate"}
+{"text": "이 보고서 핵심만 3줄로 줄여줘", "label": "doc_summary"}
+{"text": "너무 길어서 반 페이지로 요약해줘", "label": "doc_summary"}
+{"text": "이 문서 주요 포인트만 뽑아줘", "label": "doc_summary"}
+{"text": "긴 거 읽기 싫으니까 짧게 요약해줘", "label": "doc_summary"}
+{"text": "핵심 내용만 간단히 요약 정리해줘", "label": "doc_summary"}

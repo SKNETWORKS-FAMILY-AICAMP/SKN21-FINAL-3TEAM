@@ -17,13 +17,12 @@ client.interceptors.request.use((config) => {
   return config
 })
 
-// 응답 인터셉터: 401 → 로그인 페이지 리다이렉트
+// 응답 인터셉터: 401(토큰 만료/무효)만 토큰 제거, 403(권한 없음)은 유지
 client.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('access_token')
-      window.location.href = '/login'
     }
     return Promise.reject(error)
   }

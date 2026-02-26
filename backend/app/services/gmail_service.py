@@ -80,10 +80,17 @@ class GmailService(GoogleBaseService):
         meet_link: Optional[str] = None,
     ) -> dict:
         """회의 초대 메일 발송 (Meet 링크 포함)"""
+        # ISO 형식 → 읽기 좋은 한국어 시간 포맷
+        try:
+            parsed = datetime.fromisoformat(meeting_time.replace("Z", ""))
+            formatted_time = parsed.strftime("%Y년 %m월 %d일 %H:%M")
+        except (ValueError, AttributeError):
+            formatted_time = meeting_time
+
         meet_section = f'<p><a href="{meet_link}">Google Meet 참여</a></p>' if meet_link else ""
         html = f"""
         <h3>회의 초대: {meeting_title}</h3>
-        <p><strong>일시:</strong> {meeting_time}</p>
+        <p><strong>일시:</strong> {formatted_time}</p>
         {meet_section}
         <p style="color:gray;font-size:12px;">WorkFlow Agent에서 자동 발송된 메일입니다.</p>
         """

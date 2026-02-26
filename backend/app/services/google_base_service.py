@@ -3,7 +3,6 @@ Google API 공통 베이스 서비스 (팀원 D 담당)
 - OAuth 토큰 관리 (조회, 갱신, scope 검증)
 - 모든 Google 서비스(Calendar, Tasks, Gmail, Sheets)가 상속
 """
-import json
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
@@ -82,7 +81,13 @@ class GoogleBaseService:
 
     async def _refresh_token(self, db: AsyncSession, token: OAuthToken, creds: Credentials) -> None:
         """만료된 토큰 갱신"""
-        creds.refresh(Request())
+        try:
+            creds.refresh(Request())
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Google 토큰 갱신 실패. 다시 연결해주세요. ({type(e).__name__})",
+            )
         token.access_token = encrypt_data(creds.token)
         if creds.expiry:
             token.expires_at = creds.expiry.replace(tzinfo=None)

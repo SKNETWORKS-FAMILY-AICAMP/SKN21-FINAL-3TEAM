@@ -5,15 +5,18 @@ import RegisterForm from '../components/auth/RegisterForm';
 import PasswordReset from '../components/auth/PasswordReset';
 import useAuth from '../hooks/useAuth';
 import useAuthStore from '../store/authStore';
+import client from '../api/client';
 
 export default function LoginPage() {
   const [tab, setTab] = useState('login'); // 'login' | 'register' | 'reset'
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showRegisterSuccess, setShowRegisterSuccess] = useState(false);
+  const [registeredCredentials, setRegisteredCredentials] = useState({ email: '', password: '' });
   const { login, register } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const setAuth = useAuthStore((s) => s.setAuth);
+  const setAuth = useAuthStore((s) => s.setAuth); // Google 로그인 콜백용
 
   // Google 소셜 로그인 콜백 처리: URL에 token이 있으면 저장 후 대시보드 이동
   useEffect(() => {
@@ -22,8 +25,12 @@ export default function LoginPage() {
     const googleError = searchParams.get('error');
 
     if (token) {
-      setAuth({ name: userName || '' }, token);
-      navigate('/dashboard', { replace: true });
+      (async () => {
+        localStorage.setItem('access_token', token);
+        const { data: me } = await client.get('/auth/me').catch(() => ({ data: { name: userName || '' } }));
+        setAuth(me, token);
+        navigate('/dashboard', { replace: true });
+      })();
     } else if (googleError) {
       setError('Google 로그인에 실패했습니다. 다시 시도해주세요.');
     }
@@ -42,7 +49,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleRegister = async ({ name, email, password, confirmPassword }) => {
+  const handleRegister = async ({ name, email, password, confirmPassword, team }) => {
     if (password !== confirmPassword) {
       setError('비밀번호가 일치하지 않습니다.');
       return;
@@ -54,13 +61,20 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await register(email, password, name);
+      await register(email, password, name, team);
+      setRegisteredCredentials({ email, password });
+      setShowRegisterSuccess(true);
     } catch (err) {
       const msg = err.response?.data?.detail || '회원가입에 실패했습니다. 다시 시도해주세요.';
       setError(msg);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRegisterSuccessConfirm = () => {
+    setShowRegisterSuccess(false);
+    switchTab('login');
   };
 
   const handleGoogleLogin = () => {
@@ -74,9 +88,29 @@ export default function LoginPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-surface-main">
+      {/* 회원가입 성공 팝업 */}
+      {showRegisterSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-surface-card rounded-lg border border-neutral-border shadow-xl p-8 w-80 max-w-[90vw] text-center">
+            <div className="w-14 h-14 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary-700">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-primary-900 mb-2">회원가입 완료!</h3>
+            <p className="text-sm text-neutral-sub mb-6">환영합니다!<br />로그인 화면으로 이동합니다.</p>
+            <button
+              onClick={handleRegisterSuccessConfirm}
+              className="w-full py-2.5 rounded-sm bg-primary-700 text-white text-sm font-semibold hover:bg-primary-900 transition"
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
       <div className="bg-surface-card rounded-lg border border-neutral-border p-10 w-[28rem] max-w-[90vw] shadow-md">
         <div className="flex items-center gap-3 justify-center mb-8">
-          <div className="w-11 h-11 bg-accent-300 rounded-sm flex items-center justify-center text-[1.375rem]">📋</div>
+          <div className="w-11 h-11 bg-accent-300 rounded-sm flex items-center justify-center text-[1.375rem] font-bold text-primary-900">W</div>
           <span className="font-display text-[1.375rem] font-bold text-primary-700">WorkFlow Agent</span>
         </div>
 
@@ -91,7 +125,7 @@ export default function LoginPage() {
             </div>
 
             {tab === 'login'
-              ? <LoginForm onSubmit={handleLogin} onGoogleLogin={handleGoogleLogin} error={error} loading={loading} />
+              ? <LoginForm onSubmit={handleLogin} onGoogleLogin={handleGoogleLogin} error={error} loading={loading} defaultEmail={registeredCredentials.email} defaultPassword={registeredCredentials.password} />
               : <RegisterForm onSubmit={handleRegister} error={error} loading={loading} />
             }
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Trophy } from 'lucide-react';
 
 const PERIOD_TABS = ['월간', '주간', '일간'];
 
@@ -10,6 +11,13 @@ const intentColor = {
   일반: '#9CA3AF',
 };
 
+const intentBorderColor = {
+  판단: 'border-primary-300',
+  문서: 'border-accent-300',
+  일정: 'border-success',
+  일반: 'border-neutral-border',
+};
+
 export default function TopQueries({ data = {} }) {
   const [period, setPeriod] = useState(PERIOD_TABS[0]);
 
@@ -18,7 +26,7 @@ export default function TopQueries({ data = {} }) {
   return (
     <div className="card">
       <div className="card-header">
-        <div className="card-title"><span>🏆</span>Top 질의 응답</div>
+        <div className="card-title"><Trophy size={16} className="text-accent-500" />Top 질의 응답</div>
         <div className="flex gap-1">
           {PERIOD_TABS.map((t) => (
             <button
@@ -39,7 +47,7 @@ export default function TopQueries({ data = {} }) {
           <Link
             key={i}
             to="/chat"
-            className="flex items-center gap-3 p-3 rounded-sm border border-neutral-divider transition hover:border-primary-300 hover:bg-surface-hover"
+            className="flex items-center gap-3 p-3 rounded-sm border border-neutral-border transition hover:bg-surface-hover"
           >
             <div className="w-7 h-7 rounded-full bg-primary-50 flex items-center justify-center text-[0.75rem] font-bold text-primary-700 flex-shrink-0">
               {i + 1}

@@ -22,6 +22,12 @@ export const syncTask = (actionItemId) =>
 export const syncAllTasks = (meetingId = null) =>
   client.post('/tasks/sync-all', { meeting_id: meetingId })
 
+export const createTask = (data) =>
+  client.post('/tasks/create', data)
+
+export const deleteTask = (actionItemId) =>
+  client.delete(`/tasks/${actionItemId}`)
+
 export const listTasks = () =>
   client.get('/tasks/')
 
@@ -64,5 +70,24 @@ export const getSheetUrl = (meetingId) =>
 
 // ── Calendar + Meet ──
 
+export const listCalendarEvents = (timeMin = null, timeMax = null) => {
+  const params = {}
+  if (timeMin) params.time_min = timeMin
+  if (timeMax) params.time_max = timeMax
+  return client.get('/calendar/events', { params })
+}
+
 export const createEventWithMeet = (data) =>
   client.post('/calendar/event-with-meet', data)
+
+export const syncEventToGoogle = (eventData) =>
+  client.post('/calendar/sync', eventData)
+
+export const deleteCalendarEvent = (eventId, calendarId = 'primary') =>
+  client.delete(`/calendar/events/${eventId}`, { params: { calendar_id: calendarId } })
+
+export const createGoogleCalendar = (name, color) =>
+  client.post('/calendar/calendars', { name, color })
+
+export const deleteGoogleCalendar = (calendarId) =>
+  client.delete('/calendar/calendars', { params: { calendar_id: calendarId } })

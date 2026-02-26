@@ -1,0 +1,16 @@
+{
+  "base_model": "monologg/koelectra-base-v3-discriminator",
+  "experiment": "v2_stage6",
+  "intents": [
+    "judgment",
+    "doc_search",
+    "doc_generate",
+    "doc_summary",
+    "schedule_add",
+    "schedule_view",
+    "general",
+    "doc_qa"
+  ],
+  "augmented": true,
+  "label_smoothing": 0.1
+}

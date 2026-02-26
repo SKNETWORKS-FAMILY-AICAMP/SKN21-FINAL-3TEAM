@@ -5,6 +5,7 @@
 - Google OAuth 2.0 소셜 로그인
 """
 import secrets
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
 import httpx
@@ -21,12 +22,15 @@ from app.schemas.auth import (
     PasswordResetRequest,
     PasswordResetConfirm,
     PasswordResetResponse,
+    ChangePasswordRequest,
 )
 from app.config import get_settings
 from app.db.session import get_db
+from app.models.oauth_token import OAuthToken
 from app.models.user import User
-from app.core.security import hash_password, verify_password, create_access_token, verify_token
+from app.core.security import hash_password, verify_password, create_access_token, encrypt_data
 from app.api.deps import get_current_user
+from app.services.google_base_service import GOOGLE_SCOPES
 
 settings = get_settings()
 router = APIRouter()
@@ -50,12 +54,13 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
         email=request.email,
         hashed_password=hash_password(request.password),
         name=request.name,
+        team=request.team,
     )
     db.add(user)
     await db.flush()
     await db.refresh(user)
 
-    return RegisterResponse(id=user.id, email=user.email, name=user.name)
+    return RegisterResponse(id=user.id, email=user.email, name=user.name, team=user.team)
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -92,8 +97,35 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "id": current_user.id,
         "email": current_user.email,
         "name": current_user.name,
+        "team": current_user.team,
         "is_admin": current_user.is_admin,
     }
+
+
+# ── 비밀번호 변경 (로그인 상태에서) ──
+
+
+@router.post("/change-password")
+async def change_password(
+    request: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """비밀번호 변경 — 현재 비밀번호 확인 후 새 비밀번호로 변경"""
+    if not verify_password(request.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="현재 비밀번호가 올바르지 않습니다",
+        )
+    if len(request.new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="새 비밀번호는 6자 이상이어야 합니다",
+        )
+
+    current_user.hashed_password = hash_password(request.new_password)
+    await db.commit()
+    return {"message": "비밀번호가 변경되었습니다"}
 
 
 # ── 비밀번호 재설정 ──
@@ -157,19 +189,21 @@ async def confirm_password_reset(
 
 # ── Google 소셜 로그인 ──
 
-GOOGLE_LOGIN_REDIRECT_URI = "http://localhost:8000/api/v1/auth/google/callback"
+
 
 
 @router.get("/google")
 async def google_login():
-    """Google 소셜 로그인 — Google 동의 화면으로 리다이렉트"""
+    """Google 소셜 로그인 — Google 동의 화면으로 리다이렉트 (서비스 스코프 포함)"""
+    # 로그인 기본 스코프 + 서비스 스코프(calendar, tasks, gmail, sheets)를 한번에 요청
+    scope_parts = ["openid", "email", "profile"] + list(GOOGLE_SCOPES.values())
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
-        "redirect_uri": GOOGLE_LOGIN_REDIRECT_URI,
+        "redirect_uri": settings.GOOGLE_LOGIN_REDIRECT_URI,
         "response_type": "code",
-        "scope": "openid email profile",
-        "access_type": "online",
-        "prompt": "select_account",
+        "scope": " ".join(scope_parts),
+        "access_type": "offline",
+        "prompt": "consent",
     }
     return RedirectResponse(url=f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}")
 
@@ -188,7 +222,7 @@ async def google_login_callback(
                 "code": code,
                 "client_id": settings.GOOGLE_CLIENT_ID,
                 "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                "redirect_uri": GOOGLE_LOGIN_REDIRECT_URI,
+                "redirect_uri": settings.GOOGLE_LOGIN_REDIRECT_URI,
                 "grant_type": "authorization_code",
             },
         )
@@ -231,7 +265,47 @@ async def google_login_callback(
     if not user.is_active:
         return RedirectResponse(url=f"{settings.FRONTEND_URL}/login?error=inactive_account")
 
-    # 4. JWT 발급 → 프론트엔드로 리다이렉트 (토큰을 URL에 포함)
+    # 4. OAuthToken 저장 (Google 서비스 자동 연동)
+    google_access_token = token_data.get("access_token")
+    google_refresh_token = token_data.get("refresh_token")
+
+    expires_at = None
+    if "expires_in" in token_data:
+        expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
+            seconds=token_data["expires_in"]
+        )
+
+    all_scope_keys = sorted(GOOGLE_SCOPES.keys())  # calendar, gmail_send, sheets, tasks
+    scopes_str = ",".join(all_scope_keys)
+
+    result_token = await db.execute(
+        select(OAuthToken).where(OAuthToken.user_id == user.id)
+    )
+    existing_token = result_token.scalar_one_or_none()
+
+    if existing_token:
+        existing_token.access_token = encrypt_data(google_access_token)
+        if google_refresh_token:
+            existing_token.refresh_token = encrypt_data(google_refresh_token)
+        existing_token.expires_at = expires_at
+        # 기존 스코프와 병합
+        existing_scopes = set(existing_token.scopes.split(",")) if existing_token.scopes else set()
+        merged_scopes = existing_scopes | set(all_scope_keys)
+        existing_token.scopes = ",".join(sorted(merged_scopes))
+    else:
+        oauth_token = OAuthToken(
+            user_id=user.id,
+            provider="google",
+            access_token=encrypt_data(google_access_token),
+            refresh_token=encrypt_data(google_refresh_token) if google_refresh_token else None,
+            expires_at=expires_at,
+            scopes=scopes_str,
+        )
+        db.add(oauth_token)
+
+    await db.flush()
+
+    # 5. JWT 발급 → 프론트엔드로 리다이렉트 (토큰을 URL에 포함)
     jwt_token = create_access_token(data={"sub": str(user.id)})
     return RedirectResponse(
         url=f"{settings.FRONTEND_URL}/login?token={jwt_token}&user_name={name}"

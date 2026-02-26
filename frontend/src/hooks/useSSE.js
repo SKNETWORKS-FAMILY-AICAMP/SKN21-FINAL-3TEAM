@@ -6,57 +6,174 @@
  *   - status: Agent 호출 상태
  *   - token: LLM 응답 토큰
  *   - done: 완료
+ *   - error: 에러
  *
- * 현재: Mock 모드 (백엔드 없이 동작)
- * TODO: 백엔드 연결 시 EventSource 또는 fetch + ReadableStream으로 교체
+ * 동작 방식:
+ *   1) fetch + ReadableStream으로 POST /api/v1/chat/stream 호출
+ *   2) 네트워크 에러 시 UI에 에러 메시지 표시
  */
 import { useCallback, useRef } from 'react'
 import useChatStore from '../store/chatStore'
-import { MOCK_RESPONSES } from '../utils/mockData'
 
 export default function useSSE() {
-  // 1. 상태 및 도구 준비 
+  const abortRef = useRef(null)
   const timerRef = useRef(null)
-  const { setStreaming, setCurrentIntent, setCurrentStatus, appendToken } = useChatStore()
+  const currentIntentRef = useRef(null)
+  const {
+    setStreaming, setCurrentIntent, setCurrentStatus, appendToken, saveCurrentSession,
+    setLastAssistantResult, setLastAssistantError, setLastAssistantIntent,
+  } = useChatStore()
 
-  // 2. 스트리밍 시작 로직. 사용자가 메시지를 보내면 실행되는 핵심 함수.
-  const startStream = useCallback((message) => {
+  // 실제 SSE 스트리밍
+  const startStream = useCallback(async (message, sessionId, documentId) => {
     setStreaming(true)
+    currentIntentRef.current = null
+    const token = localStorage.getItem('access_token')
+    const controller = new AbortController()
+    abortRef.current = controller
 
-    // ① 답변찾기 (Matching) : 메시지 키워드로 mock 응답 매칭
-    const mock = findMockResponse(message)
+    try {
+      const body = { message }
+      if (sessionId) body.session_id = sessionId
+      if (documentId) body.document_id = documentId
 
-    // ② 1단계: 생각하는 척하기 (의도 분석) (300ms 후)
-    const intentTimer = setTimeout(() => {
-      setCurrentIntent(mock.intent)
-      setCurrentStatus(mock.status)
-    }, 300)
+      const res = await fetch('/api/v1/chat/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      })
 
-    // ③ 2단계: 한 글자씩 타이핑 (토큰 스트리밍) (800ms 후 시작, 글자당 30ms)
-    const tokens = mock.content.split('')
-    let index = 0
+      if (!res.ok) {
+        const err = new Error(`HTTP ${res.status}`)
+        err.status = res.status
+        throw err
+      }
 
-    const streamTimer = setTimeout(() => {
-      setCurrentStatus(null)
-      timerRef.current = setInterval(() => {
-        if (index < tokens.length) {
-          appendToken(tokens[index])
-          index++
-        } else {
-          clearInterval(timerRef.current)
-          timerRef.current = null
-          setStreaming(false)
-          setCurrentIntent(null)
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let simulationInProgress = false
+      let simulationPromise = Promise.resolve()
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        const chunks = buffer.split('\n\n')
+        buffer = chunks.pop()
+
+        for (const chunk of chunks) {
+          const match = chunk.match(/^data:\s*(.+)/m)
+          if (!match) continue
+
+          try {
+            const event = JSON.parse(match[1])
+
+            switch (event.type) {
+              case 'intent':
+                currentIntentRef.current = event.intent || event.agent_type
+                setCurrentIntent(currentIntentRef.current)
+                break
+              case 'intent_update':
+                currentIntentRef.current = event.intent
+                setCurrentIntent(event.intent)
+                break
+              case 'status':
+                setCurrentStatus(event.value)
+                break
+              case 'token':
+                setCurrentStatus(null)
+                appendToken(event.value)
+                break
+              case 'result': {
+                setLastAssistantResult(event.intent || currentIntentRef.current, event.data)
+
+                // 토큰이 오지 않은 경우(예: 판단 에이전트) reasoning을 시뮬레이션 스트리밍함
+                const lastMsg = useChatStore.getState().messages.at(-1)
+                if (event.data?.reasoning && lastMsg && (!lastMsg.content || lastMsg.content.trim() === '')) {
+                  simulationInProgress = true
+                  simulationPromise = new Promise((resolve) => {
+                    const text = event.data.reasoning
+                    let i = 0
+                    const interval = setInterval(() => {
+                      if (i < text.length) {
+                        appendToken(text[i])
+                        i++
+                      } else {
+                        clearInterval(interval)
+                        simulationInProgress = false
+                        resolve()
+                      }
+                    }, 20) // 자연스러운 스트리밍 속도 (20ms)
+                  })
+                }
+                break
+              }
+              case 'done':
+                if (currentIntentRef.current) {
+                  setLastAssistantIntent(currentIntentRef.current)
+                }
+                break
+              case 'error':
+                console.error('[SSE] 서버 에러:', event.message || event.value)
+                setLastAssistantError(event.message || event.value || '서버 오류가 발생했습니다')
+                break
+              case 'multi_intent':
+                setCurrentStatus(`복합 질문 분석: ${event.data?.total || ''}개 하위 질문`)
+                break
+              case 'sub_query_done':
+                setCurrentStatus(`처리 중 ${event.data?.step || ''}/${event.data?.total || ''}`)
+                break
+              case 'clarify_candidates':
+                setLastAssistantResult('clarify', event.data)
+                if (event.data?.message) appendToken(event.data.message)
+                break
+            }
+          } catch {
+            // JSON 파싱 실패
+          }
         }
-      }, 30)
-    }, 800)
+      }
 
-    // cleanup용으로 타이머 ID 저장
-    timerRef.current = { intentTimer, streamTimer }
-  }, [setStreaming, setCurrentIntent, setCurrentStatus, appendToken])
+      // 시뮬레이션이 진행 중이면 끝날 때까지 대기
+      if (simulationInProgress) {
+        await simulationPromise
+      }
 
-  // 3. 스트리밍 중단 로직 (stopStream)
+      setStreaming(false)
+      setCurrentIntent(null)
+      setCurrentStatus(null)
+      saveCurrentSession()
+    } catch (err) {
+      if (err.name === 'AbortError') return // 사용자가 중단
+
+      setStreaming(false)
+      setCurrentStatus(null)
+
+      if (err.status === 401) {
+        throw err
+      }
+
+      // 에러를 메시지에 기록 → UI에 표시
+      setLastAssistantError(err.message || '서버 연결에 실패했습니다')
+    }
+  }, [setStreaming, setCurrentIntent, setCurrentStatus, appendToken, setLastAssistantResult, setLastAssistantError, setLastAssistantIntent])
+
+  // 스트리밍 중단
   const stopStream = useCallback(() => {
+    // 실제 SSE 중단
+    if (abortRef.current) {
+      abortRef.current.abort()
+      abortRef.current = null
+    }
+
+    // Mock 타이머 정리
     if (timerRef.current) {
       if (timerRef.current.intentTimer) {
         clearTimeout(timerRef.current.intentTimer)
@@ -66,20 +183,11 @@ export default function useSSE() {
       }
       timerRef.current = null
     }
+
     setStreaming(false)
     setCurrentIntent(null)
     setCurrentStatus(null)
   }, [setStreaming, setCurrentIntent, setCurrentStatus])
 
   return { startStream, stopStream }
-}
-
-function findMockResponse(message) {
-  const msg = message.toLowerCase()
-  for (const mock of MOCK_RESPONSES) {
-    if (mock.keywords.some((kw) => msg.includes(kw))) {
-      return mock
-    }
-  }
-  return MOCK_RESPONSES[MOCK_RESPONSES.length - 1] // fallback: 일반 응답
 }

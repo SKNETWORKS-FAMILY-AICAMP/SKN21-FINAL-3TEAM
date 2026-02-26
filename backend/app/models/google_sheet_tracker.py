@@ -2,7 +2,7 @@
 Google Sheets 추적 모델
 - 회의별 Action Item 추적 스프레드시트 정보 저장
 """
-from sqlalchemy import String, Integer, ForeignKey
+from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from typing import Optional
 

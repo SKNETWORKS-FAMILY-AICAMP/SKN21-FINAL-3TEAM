@@ -1,0 +1,18 @@
+{
+  "klue/roberta-base": {
+    "best_config": {
+      "epochs": 3,
+      "lr": 5e-05,
+      "batch_size": 32,
+      "warmup_ratio": 0.1
+    },
+    "best_result": {
+      "eval_f1": 0.9822,
+      "eval_acc": 0.9825,
+      "adv_acc": 0.8962,
+      "adv_f1": 0.899,
+      "train_time": 16.3,
+      "infer_ms": 8.09
+    }
+  }
+}

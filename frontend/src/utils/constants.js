@@ -2,12 +2,13 @@
  * 상수 정의 (팀원 E 담당)
  */
 
-// Intent 타입 (7개)
+// Intent 타입 (8개)
 export const INTENT_TYPES = {
   JUDGMENT: 'judgment',
   DOC_SEARCH: 'doc_search',
   DOC_GENERATE: 'doc_generate',
-  MEETING_GENERATE: 'meeting_generate',
+  DOC_SUMMARY: 'doc_summary',
+  DOC_QA: 'doc_qa',
   SCHEDULE_ADD: 'schedule_add',
   SCHEDULE_VIEW: 'schedule_view',
   GENERAL: 'general',
@@ -18,21 +19,23 @@ export const INTENT_LABELS = {
   judgment: '규정 판단',
   doc_search: '문서 검색',
   doc_generate: '문서 생성',
-  meeting_generate: '회의록 생성',
+  doc_summary: '문서 요약',
+  doc_qa: '문서 QA',
   schedule_add: '일정 추가',
   schedule_view: '일정 조회',
   general: '일반 질문',
 }
 
-// Intent별 아이콘
+// Intent별 아이콘 이름 (Lucide 매핑용)
 export const INTENT_ICONS = {
-  judgment: '⚖️',
-  doc_search: '🔍',
-  doc_generate: '📄',
-  meeting_generate: '📋',
-  schedule_add: '📅',
-  schedule_view: '📅',
-  general: '💬',
+  judgment: 'Scale',
+  doc_search: 'Search',
+  doc_generate: 'FileText',
+  doc_summary: 'FileSearch',
+  doc_qa: 'HelpCircle',
+  schedule_add: 'CalendarPlus',
+  schedule_view: 'CalendarDays',
+  general: 'MessageCircle',
 }
 
 // 판단 결과 타입
@@ -86,9 +89,7 @@ export const TEMPLATE_LABELS = {
 export const TEMPLATE_CATEGORIES = [
   { value: 'meeting_minutes', label: '회의록' },
   { value: 'report', label: '보고서' },
-  { value: 'jd', label: '채용 공고' },
   { value: 'proposal', label: '제안서' },
-  { value: 'custom', label: '사용자 정의' },
 ]
 
 // ── 파싱/상태 관련 ──
@@ -141,13 +142,30 @@ export const REGULATION_STATUS_COLORS = {
   deprecated: '#6B7280',
 }
 
-// 추천 질문
+// 추천 질문 카테고리
+export const SUGGESTED_QUESTION_CATEGORIES = [
+  { key: 'all', label: '전체', icon: 'Sparkles' },
+  { key: 'regulation', label: '규정', icon: 'Scale' },
+  { key: 'document', label: '문서', icon: 'FileText' },
+  { key: 'schedule', label: '일정', icon: 'CalendarDays' },
+  { key: 'general', label: '일반', icon: 'MessageCircle' },
+]
+
+// 추천 질문 (카테고리 포함)
 export const SUGGESTED_QUESTIONS = [
-  { text: '재택근무 규정 알려줘', intent: 'judgment' },
-  { text: '회의록 만들어줘', intent: 'meeting_generate' },
-  { text: '보고서 만들어줘', intent: 'doc_generate' },
-  { text: '오늘 일정 알려줘', intent: 'schedule_view' },
-  { text: '신입 온보딩 가이드 있어?', intent: 'doc_search' },
+  { text: '재택근무 규정 알려줘', intent: 'judgment', category: 'regulation' },
+  { text: '연차 사용 기준이 어떻게 돼?', intent: 'judgment', category: 'regulation' },
+  { text: '인턴도 법인카드 쓸 수 있어?', intent: 'judgment', category: 'regulation' },
+  { text: '회의록 만들어줘', intent: 'doc_generate', category: 'document' },
+  { text: '보고서 만들어줘', intent: 'doc_generate', category: 'document' },
+  { text: '이 문서 요약해줘', intent: 'doc_summary', category: 'document' },
+  { text: '지난 회의 결정사항이 뭐야?', intent: 'doc_qa', category: 'document' },
+  { text: '신입 온보딩 가이드 있어?', intent: 'doc_search', category: 'document' },
+  { text: '오늘 일정 알려줘', intent: 'schedule_view', category: 'schedule' },
+  { text: '내일 오후 2시에 회의 잡아줘', intent: 'schedule_add', category: 'schedule' },
+  { text: '이번 주 미팅 일정 보여줘', intent: 'schedule_view', category: 'schedule' },
+  { text: '우리 회사 복지 제도 알려줘', intent: 'general', category: 'general' },
+  { text: '부서 연락처 알려줘', intent: 'general', category: 'general' },
 ]
 
 // 알림 설정 (Phase 2)
@@ -172,7 +190,7 @@ export const GOOGLE_SCOPES = {
 export const GOOGLE_SCOPE_LABELS = {
   calendar: 'Google Calendar',
   tasks: 'Google Tasks',
-  gmail_send: 'Gmail 발송',
+  gmail_send: 'Gmail',
   sheets: 'Google Sheets',
 }
 

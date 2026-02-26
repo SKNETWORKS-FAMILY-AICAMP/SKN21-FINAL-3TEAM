@@ -1,0 +1,86 @@
+{
+  "test_set": "blind_test",
+  "n_samples": 70,
+  "results": [
+    {
+      "mode": "전처리 없음",
+      "accuracy": 0.9286,
+      "f1_macro": 0.9284,
+      "avg_confidence": 0.9812,
+      "errors": 5,
+      "time_ms_per_sentence": 14.93,
+      "error_details": [
+        {
+          "text": "인센티브 지급 기준 좀 알려줘",
+          "label": "judgment",
+          "predicted": "doc_search",
+          "confidence": 0.9882
+        },
+        {
+          "text": "지난번 고객사 미팅 자료 공유해줘",
+          "label": "doc_search",
+          "predicted": "meeting_generate",
+          "confidence": 0.9874
+        },
+        {
+          "text": "사무실 이전 공지문 어디에 올라왔어?",
+          "label": "doc_search",
+          "predicted": "general",
+          "confidence": 0.6724
+        },
+        {
+          "text": "남은 공휴일이 언제야?",
+          "label": "schedule_view",
+          "predicted": "general",
+          "confidence": 0.9897
+        },
+        {
+          "text": "이거 다 하면 퇴근해도 돼?",
+          "label": "general",
+          "predicted": "judgment",
+          "confidence": 0.9743
+        }
+      ]
+    },
+    {
+      "mode": "전처리 적용",
+      "accuracy": 0.9286,
+      "f1_macro": 0.9284,
+      "avg_confidence": 0.9812,
+      "errors": 5,
+      "time_ms_per_sentence": 14.04,
+      "error_details": [
+        {
+          "text": "인센티브 지급 기준 좀 알려줘",
+          "label": "judgment",
+          "predicted": "doc_search",
+          "confidence": 0.9882
+        },
+        {
+          "text": "지난번 고객사 미팅 자료 공유해줘",
+          "label": "doc_search",
+          "predicted": "meeting_generate",
+          "confidence": 0.9874
+        },
+        {
+          "text": "사무실 이전 공지문 어디에 올라왔어?",
+          "label": "doc_search",
+          "predicted": "general",
+          "confidence": 0.6724
+        },
+        {
+          "text": "남은 공휴일이 언제야?",
+          "label": "schedule_view",
+          "predicted": "general",
+          "confidence": 0.9897
+        },
+        {
+          "text": "이거 다 하면 퇴근해도 돼?",
+          "label": "general",
+          "predicted": "judgment",
+          "confidence": 0.9743
+        }
+      ]
+    }
+  ]
+}

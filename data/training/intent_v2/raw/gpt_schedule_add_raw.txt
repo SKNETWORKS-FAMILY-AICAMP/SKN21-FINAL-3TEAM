@@ -1,0 +1,149 @@
+{"text": "오늘 저녁 회식 추가", "label": "schedule_add"}
+{"text": "다음주 월요일 연차 일정 잡아줘", "label": "schedule_add"}
+{"text": "금요일에 출장 계획 넣어", "label": "schedule_add"}
+{"text": "내일 보안 교육 일정 추가해", "label": "schedule_add"}
+{"text": "3월 초에 인사평가 미팅 잡아줘", "label": "schedule_add"}
+{"text": "이번 달 급여 리뷰 일정 등록", "label": "schedule_add"}
+{"text": "연말 워크숍 일정 넣어줘", "label": "schedule_add"}
+{"text": "다음주 프로젝트 킥오프 넣어줘", "label": "schedule_add"}
+{"text": "금요일 점심에 팀 브레인스토밍", "label": "schedule_add"}
+{"text": "3월 15일에 클라이언트와 미팅", "label": "schedule_add"}
+{"text": "이달 말에 분기 보고회 일정 설정해줘", "label": "schedule_add"}
+{"text": "내일 아침 회의 추가", "label": "schedule_add"}
+{"text": "다음주 목요일 연차 잡아줘", "label": "schedule_add"}
+{"text": "다음달 월말에 팀 전체 회의 추가해", "label": "schedule_add"}
+{"text": "3월 초에 컨퍼런스 등록해줘", "label": "schedule_add"}
+{"text": "이번주 금요일 동료들과 점심", "label": "schedule_add"}
+{"text": "다음주 금요일 1:1 면담 일정", "label": "schedule_add"}
+{"text": "이번주 수요일 리더십 트레이닝", "label": "schedule_add"}
+{"text": "연휴 전에 프로젝트 데드라인 회의", "label": "schedule_add"}
+{"text": "내일 오후에 팀 빌딩 이벤트", "label": "schedule_add"}
+{"text": "매주 수요일 아침 스크럼 미팅", "label": "schedule_add"}
+{"text": "다음주 화요일 기획 회의 잡아", "label": "schedule_add"}
+{"text": "4월 초에 보안 워크숍 일정 추가해", "label": "schedule_add"}
+{"text": "3월 20일에 클라이언트 미팅", "label": "schedule_add"}
+{"text": "내일 점심에 사업 발전 회의", "label": "schedule_add"}
+{"text": "다음주 금요일에 급여 협상", "label": "schedule_add"}
+{"text": "3월 말에 회계 감사 일정", "label": "schedule_add"}
+{"text": "이번주 목요일에 부서 회식", "label": "schedule_add"}
+{"text": "다음주 화요일 오후에 프로젝트 미팅", "label": "schedule_add"}
+{"text": "4월 1일에 신입사원 오리엔테이션", "label": "schedule_add"}
+{"text": "이번주 금요일에 스터디 그룹", "label": "schedule_add"}
+{"text": "내일 오후 두 시 회의 잡아줘", "label": "schedule_add"}
+{"text": "다음주 월요일 9시 팀 미팅 넣어", "label": "schedule_add"}
+{"text": "금요일 오전 일정 추가해줘", "label": "schedule_add"}
+{"text": "이번주 목요일 보안 검토", "label": "schedule_add"}
+{"text": "다음주 금요일에 연차", "label": "schedule_add"}
+{"text": "내일 오후 3시 면담 추가", "label": "schedule_add"}
+{"text": "지난달 프로젝트 회고 일정 등록", "label": "schedule_add"}
+{"text": "3월 10일에 출장 일정 잡아줘", "label": "schedule_add"}
+{"text": "내일 아침 스탠드업 미팅", "label": "schedule_add"}
+{"text": "다음주 수요일 점심에 워크숍", "label": "schedule_add"}
+{"text": "이번주 수요일 오후에 사내 교육", "label": "schedule_add"}
+{"text": "다음주 금요일에 팀 회고", "label": "schedule_add"}
+{"text": "다음달 초에 인사 인터뷰", "label": "schedule_add"}
+{"text": "3월 18일에 급여 검토", "label": "schedule_add"}
+{"text": "이번주 금요일에 사내 발표회", "label": "schedule_add"}
+{"text": "내일 오전에 경영 회의", "label": "schedule_add"}
+{"text": "다음달 5일에 팀 연차", "label": "schedule_add"}
+{"text": "이번주 월요일에 프로젝트 정기 회의", "label": "schedule_add"}
+{"text": "3월 25일에 보안 점검 추가", "label": "schedule_add"}
+{"text": "다음주 화요일 오후에 클라이언트 방문", "label": "schedule_add"}
+{"text": "내일 오후 4시 브리핑 추가", "label": "schedule_add"}
+{"text": "3월 10일에 고객 미팅 일정 등록해줘", "label": "schedule_add"}
+{"text": "매주 월요일 아침 팀 미팅 추가", "label": "schedule_add"}
+{"text": "다음주 수요일 오전에 교육 세션", "label": "schedule_add"}
+{"text": "내일 오후 네 시 미팅 잡아", "label": "schedule_add"}
+{"text": "이번주 목요일 점심에 동료들과 모임", "label": "schedule_add"}
+{"text": "다음주 금요일에 연차 계획", "label": "schedule_add"}
+{"text": "3월 15일에 컨퍼런스 콜 추가", "label": "schedule_add"}
+{"text": "이번주 수요일 오후에 프로젝트 브리핑", "label": "schedule_add"}
+{"text": "다음주 목요일 워크샵 일정 잡아줘", "label": "schedule_add"}
+{"text": "다음주 화요일 오후에 보안 회의", "label": "schedule_add"}
+{"text": "내일 저녁 팀 모임 추가", "label": "schedule_add"}
+{"text": "3월 28일에 인사 평가 회의", "label": "schedule_add"}
+{"text": "이번주 금요일 오후에 캠페인 미팅", "label": "schedule_add"}
+{"text": "다음주 월요일 아침에 팀 스탠드업", "label": "schedule_add"}
+{"text": "내일 오전에 보안 트레이닝", "label": "schedule_add"}
+{"text": "이번주 수요일 밤에 동료들과 저녁", "label": "schedule_add"}
+{"text": "다음주 금요일 오후에 클라이언트 피드백", "label": "schedule_add"}
+{"text": "3월 20일에 복리후생 설명회", "label": "schedule_add"}
+{"text": "다음주 화요일 오후에 프로젝트 리뷰", "label": "schedule_add"}
+{"text": "내일 점심에 급여 협상", "label": "schedule_add"}
+{"text": "3월 초에 팀 빌딩 일정 등록", "label": "schedule_add"}
+{"text": "이번주 목요일 오후에 클라이언트 미팅", "label": "schedule_add"}
+{"text": "다음주 수요일 아침에 브레인스토밍", "label": "schedule_add"}
+{"text": "내일 저녁에 워크숍 등록해", "label": "schedule_add"}
+{"text": "3월 5일에 팀 전체 회의", "label": "schedule_add"}
+{"text": "이번주 금요일 오후에 피드백 세션", "label": "schedule_add"}
+{"text": "다음주 화요일 오후에 보안 점검", "label": "schedule_add"}
+{"text": "내일 아침에 인사 인터뷰", "label": "schedule_add"}
+{"text": "다음주 금요일 저녁에 팀 모임", "label": "schedule_add"}
+{"text": "3월 15일에 고객과 저녁", "label": "schedule_add"}
+{"text": "이번주 수요일 오후에 캠페인 회의", "label": "schedule_add"}
+{"text": "다음주 목요일 오후에 컨설팅 미팅", "label": "schedule_add"}
+{"text": "다음주 화요일 저녁부터 연차", "label": "schedule_add"}
+{"text": "3월 28일에 프로젝트 데모", "label": "schedule_add"}
+{"text": "이번주 금요일 저녁 팀 회식", "label": "schedule_add"}
+{"text": "다음주 월요일 오후에 인사 리뷰", "label": "schedule_add"}
+{"text": "내일 아침에 급여 검토", "label": "schedule_add"}
+{"text": "이번주 수요일 오전에 브리핑", "label": "schedule_add"}
+{"text": "다음주 화요일 점심에 평가 회의", "label": "schedule_add"}
+{"text": "내일 저녁에 동료들과 저녁", "label": "schedule_add"}
+{"text": "3월 10일 팀 회의 추가", "label": "schedule_add"}
+{"text": "이번주 목요일 오후에 고객 방문", "label": "schedule_add"}
+{"text": "다음주 수요일 점심에 프로젝트 회의", "label": "schedule_add"}
+{"text": "내일 오후에 보안 교육", "label": "schedule_add"}
+{"text": "다음주 금요일 저녁에 인사 모임", "label": "schedule_add"}
+{"text": "3월 20일에 경영진 회의", "label": "schedule_add"}
+{"text": "이번주 월요일 저녁에 팀 미팅", "label": "schedule_add"}
+{"text": "다음주 화요일 아침에 컨퍼런스", "label": "schedule_add"}
+{"text": "내일 저녁에 동료들과 만남", "label": "schedule_add"}
+{"text": "3월 5일에 프로젝트 미팅", "label": "schedule_add"}
+{"text": "이번주 금요일 아침에 보안 브리핑", "label": "schedule_add"}
+{"text": "다음주 목요일 저녁에 고객 회식", "label": "schedule_add"}
+{"text": "다음주 화요일 아침에 인사 평가", "label": "schedule_add"}
+{"text": "내일 오후에 급여 협상", "label": "schedule_add"}
+{"text": "3월 28일 프로젝트 회고", "label": "schedule_add"}
+{"text": "이번주 목요일 오후에 동료들과 점심", "label": "schedule_add"}
+{"text": "다음주 수요일 아침에 보안 훈련", "label": "schedule_add"}
+{"text": "내일 저녁에 팀 빌딩", "label": "schedule_add"}
+{"text": "3월 15일에 프로젝트 킥오프", "label": "schedule_add"}
+{"text": "이번주 금요일 오후에 팀 피드백", "label": "schedule_add"}
+{"text": "다음주 화요일 저녁에 보안 인터뷰", "label": "schedule_add"}
+{"text": "내일 아침에 복리후생 설명회", "label": "schedule_add"}
+{"text": "다음주 금요일 점심에 급여 검토", "label": "schedule_add"}
+{"text": "3월 20일에 클라이언트 리셉션", "label": "schedule_add"}
+{"text": "이번주 목요일 오후에 프로젝트 업데이트", "label": "schedule_add"}
+{"text": "다음주 화요일 저녁에 팀 디너", "label": "schedule_add"}
+{"text": "내일 저녁에 캠페인 회의", "label": "schedule_add"}
+{"text": "3월 5일에 고객 미팅 추가", "label": "schedule_add"}
+{"text": "이번주 금요일 오후에 보안 세미나", "label": "schedule_add"}
+{"text": "다음주 목요일 저녁에 인사 모임", "label": "schedule_add"}
+{"text": "다음주 월요일 아침에 급여 협상", "label": "schedule_add"}
+{"text": "내일 오후에 프로젝트 피드백", "label": "schedule_add"}
+{"text": "3월 28일에 팀 회고", "label": "schedule_add"}
+{"text": "이번주 수요일 저녁에 동료들과 만남", "label": "schedule_add"}
+{"text": "다음주 화요일 아침에 프로젝트 회의", "label": "schedule_add"}
+{"text": "내일 아침에 팀 정기 회의", "label": "schedule_add"}
+{"text": "3월 10일에 보안 인터뷰", "label": "schedule_add"}
+{"text": "이번주 목요일 저녁에 저녁 회식", "label": "schedule_add"}
+{"text": "다음주 수요일 아침에 인사 회의", "label": "schedule_add"}
+{"text": "내일 저녁에 고객 방문", "label": "schedule_add"}
+{"text": "3월 15일에 경영 회의", "label": "schedule_add"}
+{"text": "이번주 금요일 오후에 동료와 점심", "label": "schedule_add"}
+{"text": "다음주 화요일 저녁에 보안 교육", "label": "schedule_add"}
+{"text": "내일 아침에 급여 검토", "label": "schedule_add"}
+{"text": "다음주 금요일 오후에 워크숍", "label": "schedule_add"}
+{"text": "3월 20일에 팀 프로젝트 일정", "label": "schedule_add"}
+{"text": "이번주 월요일 저녁에 인사 모임", "label": "schedule_add"}
+{"text": "다음주 화요일 아침에 급여 협상", "label": "schedule_add"}
+{"text": "내일 오후에 프로젝트 회의", "label": "schedule_add"}
+{"text": "3월 28일에 클라이언트 미팅", "label": "schedule_add"}
+{"text": "이번주 목요일 저녁에 보안 점검", "label": "schedule_add"}
+{"text": "다음주 화요일 저녁에 인사 리뷰", "label": "schedule_add"}
+{"text": "내일 아침에 동료들과 점심", "label": "schedule_add"}
+{"text": "3월 5일에 프로젝트 킥오프", "label": "schedule_add"}
+{"text": "이번주 금요일 오후에 보안 인터뷰", "label": "schedule_add"}
+{"text": "다음주 목요일 저녁에 프로젝트 피드백", "label": "schedule_add"}
+{"text": "다음주 월요일 아침에 클라이언트 회의", "label": "schedule_add"}

@@ -36,6 +36,10 @@ const useGoogleStore = create((set, get) => ({
   sheetsLoading: false,
   sheetsError: null,
 
+  calendarEvents: [],
+  calendarLoading: false,
+  calendarError: null,
+
   // ── OAuth 상태 조회 ──
   fetchStatus: async () => {
     set({ loading: true, error: null })
@@ -94,6 +98,29 @@ const useGoogleStore = create((set, get) => ({
       set({ tasks: data.tasks || data || [], tasksLoading: false })
     } catch (err) {
       set({ tasksLoading: false, tasksError: err.response?.data?.detail || 'Tasks 조회 실패' })
+    }
+  },
+
+  createTask: async (data) => {
+    try {
+      const { data: newTask } = await googleApi.createTask(data)
+      set((state) => ({ tasks: [newTask, ...state.tasks] }))
+      return newTask
+    } catch (err) {
+      set({ tasksError: err.response?.data?.detail || 'Task 생성 실패' })
+      throw err
+    }
+  },
+
+  deleteTask: async (actionItemId) => {
+    try {
+      await googleApi.deleteTask(actionItemId)
+      set((state) => ({
+        tasks: state.tasks.filter((t) => t.action_item_id !== actionItemId),
+      }))
+    } catch (err) {
+      set({ tasksError: err.response?.data?.detail || 'Task 삭제 실패' })
+      throw err
     }
   },
 
@@ -160,6 +187,51 @@ const useGoogleStore = create((set, get) => ({
       await googleApi.syncSheet(spreadsheetId, meetingId)
     } catch (err) {
       set({ sheetsError: err.response?.data?.detail || 'Sheets 동기화 실패' })
+    }
+  },
+
+  // ── Google Calendar ──
+  fetchCalendarEvents: async (timeMin = null, timeMax = null) => {
+    set({ calendarLoading: true, calendarError: null })
+    try {
+      const response = await googleApi.listCalendarEvents(timeMin, timeMax)
+      const events = response.data.events || response.data || []
+      set({ calendarEvents: events, calendarLoading: false })
+    } catch (err) {
+      set({ calendarLoading: false, calendarError: err.response?.data?.detail || 'Calendar 조회 실패' })
+    }
+  },
+
+  createEventWithMeet: async (eventData) => {
+    set({ calendarLoading: true, calendarError: null })
+    try {
+      const { data } = await googleApi.createEventWithMeet(eventData)
+      await get().fetchCalendarEvents()
+      return data
+    } catch (err) {
+      set({ calendarLoading: false, calendarError: err.response?.data?.detail || '이벤트 생성 실패' })
+      throw err
+    }
+  },
+
+  syncEventToGoogle: async (eventData) => {
+    try {
+      await googleApi.syncEventToGoogle(eventData)
+      await get().fetchCalendarEvents()
+    } catch (err) {
+      set({ calendarError: err.response?.data?.detail || '이벤트 동기화 실패' })
+    }
+  },
+
+  deleteCalendarEvent: async (eventId, calendarId = 'primary') => {
+    try {
+      await googleApi.deleteCalendarEvent(eventId, calendarId)
+      set((state) => ({
+        calendarEvents: state.calendarEvents.filter((e) => e.event_id !== eventId),
+      }))
+    } catch (err) {
+      set({ calendarError: err.response?.data?.detail || '이벤트 삭제 실패' })
+      throw err
     }
   },
 }))

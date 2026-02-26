@@ -3,6 +3,7 @@
  */
 import { create } from 'zustand'
 import client from '../api/client'
+import useChatStore from './chatStore'
 
 const useAuthStore = create((set, get) => ({
   user: null,
@@ -17,6 +18,7 @@ const useAuthStore = create((set, get) => ({
 
   logout: () => {
     localStorage.removeItem('access_token')
+    useChatStore.getState().reset()
     set({ user: null, token: null, isAuthenticated: false })
   },
 

@@ -1,90 +1,160 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import useGoogleServices from '../hooks/useGoogleServices';
+import { sendMeetingInvite } from '../api/google';
 import GoogleServicesConnect from '../components/schedules/GoogleServicesConnect';
 import CalendarView from '../components/schedules/CalendarView';
 import ScheduleForm from '../components/schedules/ScheduleForm';
+import ScheduleTypeManager from '../components/schedules/ScheduleTypeManager';
 import TasksPanel from '../components/schedules/TasksPanel';
 import SheetsDashboard from '../components/schedules/SheetsDashboard';
-import EmailReminderButton from '../components/schedules/EmailReminderButton';
-import ActionItemList from '../components/dashboard/ActionItemList';
-
-const mockEvents = [
-  // ── 2월 ──
-  { month: 2, day: 3, type: 'meeting', label: '보안점검 정기회의', time: '10:00~11:00' },
-  { month: 2, day: 5, type: 'meeting', label: '프로젝트 킥오프', time: '14:00~15:30', meetLink: 'https://meet.google.com/abc-defg-hij' },
-  { month: 2, day: 8, type: 'deadline', label: '권한검토 완료 마감' },
-  { month: 2, day: 10, type: 'meeting', label: '인사규정 검토 회의', time: '09:30~10:30' },
-  { month: 2, day: 13, type: 'meeting', label: '주간 스프린트 리뷰', time: '11:00~12:00', meetLink: 'https://meet.google.com/xyz-abcd-efg' },
-  { month: 2, day: 18, type: 'google', label: '영화 <휴민트> 관람', time: '19:00~21:30' },
-  { month: 2, day: 20, type: 'deadline', label: 'API 스키마 확정 마감' },
-  { month: 2, day: 24, type: 'meeting', label: '중간 발표 리허설', time: '13:00~14:30' },
-  { month: 2, day: 27, type: 'google', label: '팀 회식', time: '18:30~21:00' },
-
-  // ── 1월 ──
-  { month: 1, day: 6, type: 'meeting', label: '프로젝트 기획 회의', time: '10:00~11:30' },
-  { month: 1, day: 15, type: 'google', label: '멘토링 세션', time: '16:00~17:00' },
-  { month: 1, day: 22, type: 'deadline', label: '환경 세팅 완료 마감' },
-
-  // ── 3월 ──
-  { month: 3, day: 3, type: 'meeting', label: '3단계 Agent 개발 킥오프', time: '10:00~11:30', meetLink: 'https://meet.google.com/mar-kick-off' },
-  { month: 3, day: 14, type: 'deadline', label: 'Google Services 연동 완료' },
-  { month: 3, day: 24, type: 'meeting', label: '최종 발표 리허설', time: '13:00~15:00', meetLink: 'https://meet.google.com/final-prep' },
-  { month: 3, day: 26, type: 'google', label: '팀 회식', time: '18:30~21:00' },
-  { month: 3, day: 28, type: 'deadline', label: '배포 준비 완료 마감' },
-];
-
-const mockActions = [
-  { title: '정보보안 교육 계획서 제출', assignee: '김정보', deadline: 'D-1 · 2026-02-06', priority: 'high' },
-  { title: '개인정보 접근 권한 검토', assignee: '이개발', deadline: 'D-3 · 2026-02-08', priority: 'medium' },
-  { title: '신규 입사자 보안 서약서 수집', assignee: '박인사', deadline: 'D-7 · 2026-02-12', priority: 'low' },
-];
+import useScheduleTypeStore, { DEFAULT_TYPES } from '../store/scheduleTypeStore';
 
 export default function SchedulesPage() {
-  const [showForm, setShowForm] = useState(false);
-  const [activeTab, setActiveTab] = useState('calendar');
-  const [events, setEvents] = useState(() => {
-    const saved = localStorage.getItem('dudu_schedules');
-    return saved ? [...mockEvents, ...JSON.parse(saved)] : mockEvents;
-  });
+  const { isScrolled } = useOutletContext();
+  const { connected, calendarEvents, calendarLoading, calendarError, fetchCalendarEvents, hasScope, syncEventToGoogle, createEventWithMeet, deleteCalendarEvent } = useGoogleServices();
+  const { customTypes } = useScheduleTypeStore();
+  const allTypes = [...DEFAULT_TYPES, ...customTypes];
 
-  const handleAddSchedule = (data) => {
-    if (!data.date || !data.title) return;
-    const d = new Date(data.date);
-    const newEvent = {
-      month: d.getMonth() + 1,
-      day: d.getDate(),
-      type: data.type || 'meeting',
-      label: data.title,
-      time: `${data.start_time}~${data.end_time}`,
-      date: data.date,
-    };
-    setEvents((prev) => {
-      const updated = [...prev, newEvent];
-      // mock 제외하고 사용자 추가분만 저장
-      const userEvents = updated.filter((e) => e.date);
-      localStorage.setItem('dudu_schedules', JSON.stringify(userEvents));
-      return updated;
+  // calendarId → typeId 역매핑 (커스텀 유형이 Google Calendar에 연동된 경우)
+  const calendarIdToType = useMemo(() => {
+    const map = {};
+    allTypes.forEach((t) => { if (t.calendarId) map[t.calendarId] = t.id; });
+    return map;
+  }, [allTypes]);
+
+  const [showForm, setShowForm] = useState(false);
+  const [showTypeManager, setShowTypeManager] = useState(false);
+  const [activeTab, setActiveTab] = useState('calendar');
+
+  // Google Calendar 연결 시 이벤트 자동 로드 (백엔드 기본값: ±3개월)
+  useEffect(() => {
+    if (connected && hasScope('calendar')) {
+      fetchCalendarEvents();
+    }
+  }, [connected, hasScope, fetchCalendarEvents]);
+
+
+  // Google Calendar 이벤트를 CalendarView 형식으로 변환
+  const events = useMemo(() => {
+    if (!calendarEvents || calendarEvents.length === 0) return [];
+
+    return calendarEvents.map(event => {
+      const start = new Date(event.start);
+      const end = new Date(event.end);
+
+      const hasTime = event.start.includes('T');
+      const timeStr = hasTime
+        ? `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
+        : null;
+
+      return {
+        id: event.event_id,
+        calendarId: event.calendar_id,
+        month: start.getMonth() + 1,
+        day: start.getDate(),
+        type: event.event_type || calendarIdToType[event.calendar_id] || 'google',
+        label: event.title || '제목 없음',
+        time: timeStr,
+        meetLink: event.meet_link,
+      };
     });
+  }, [calendarEvents]);
+
+  const handleAddSchedule = async (data) => {
+    if (!data.date || !data.title) return;
+
+    if (connected && hasScope('calendar')) {
+      try {
+        // 종일 이벤트: 날짜만 사용 (시간 없이)
+        const startDateTime = data.allDay
+          ? new Date(`${data.date}T00:00:00`)
+          : new Date(`${data.date}T${data.start_time}:00`);
+        const endDateTime = data.allDay
+          ? new Date(`${data.date}T23:59:59`)
+          : new Date(`${data.date}T${data.end_time}:00`);
+
+        const selectedType = allTypes.find((t) => t.id === data.type);
+        const eventData = {
+          title: data.title,
+          description: data.description || '',
+          start_time: startDateTime,
+          end_time: endDateTime,
+          attendee_emails: data.attendee_emails || [],
+          event_type: data.type || 'google',
+          calendar_id: selectedType?.calendarId || 'primary',
+        };
+
+        if (data.include_meet) {
+          const result = await createEventWithMeet(eventData);
+
+          // Meet 생성 후 참석자에게 회의 초대 메일 자동 발송
+          if (result?.meet_link && data.attendee_emails?.length > 0 && hasScope('gmail_send')) {
+            try {
+              await sendMeetingInvite({
+                recipient_emails: data.attendee_emails,
+                meeting_title: data.title,
+                meeting_time: data.allDay
+                  ? `${data.date}T00:00:00`
+                  : `${data.date}T${data.start_time}:00`,
+                meet_link: result.meet_link,
+              });
+            } catch (emailErr) {
+              console.error('회의 초대 메일 발송 실패:', emailErr);
+            }
+          }
+        } else {
+          await syncEventToGoogle(eventData);
+        }
+      } catch (error) {
+        console.error('일정 추가 실패:', error);
+      }
+    }
+
     setShowForm(false);
   };
 
   return (
     <div>
       {/* 헤더 */}
-      <header className="flex justify-between items-center py-6 sticky top-0 bg-surface-main z-10">
+      <header className={`flex justify-between items-center sticky top-0 bg-surface-main z-10 overflow-hidden transition-all duration-300 ${isScrolled ? 'h-[56px]' : 'h-[100px]'}`}>
         <div>
-          <h1 className="text-2xl font-bold">일정 관리</h1>
-          <p className="text-sm text-neutral-sub mt-1">Action Item과 회의 일정을 통합 관리합니다</p>
+          <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-2xl'}`}>일정 관리</h1>
+          <p className={`text-neutral-sub transition-all duration-300 overflow-hidden ${isScrolled ? 'text-xs mt-0 max-h-0 opacity-0' : 'text-sm mt-1 max-h-6 opacity-100'}`}>Action Item과 회의 일정을 통합 관리합니다</p>
         </div>
-        <div className="flex items-center gap-3">
-          <EmailReminderButton bulk daysBefore={3} />
-          <button onClick={() => setShowForm(!showForm)} className="btn-primary">
-            {showForm ? '취소' : '+ 일정 추가'}
-          </button>
-        </div>
+        {activeTab === 'calendar' && (
+          <div className="flex items-center gap-3">
+            {connected && hasScope('calendar') && (
+              <button
+                onClick={() => fetchCalendarEvents()}
+                disabled={calendarLoading}
+                className="btn-outline"
+                title="Google Calendar 동기화"
+              >
+                {calendarLoading ? '동기화 중...' : '새로고침'}
+              </button>
+            )}
+            <button
+              onClick={() => setShowTypeManager(true)}
+              className="btn-outline"
+              title="일정 유형 관리"
+            >
+              유형 관리
+            </button>
+            <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+              {showForm ? '취소' : '+ 일정 추가'}
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Google 서비스 연결 */}
       <GoogleServicesConnect />
+
+      {/* 유형 관리 모달 */}
+      {showTypeManager && (
+        <ScheduleTypeManager onClose={() => setShowTypeManager(false)} />
+      )}
 
       {/* 일정 추가 팝업 */}
       {showForm && (
@@ -120,22 +190,30 @@ export default function SchedulesPage() {
       {activeTab === 'calendar' && (
         <>
           {/* 범례 */}
-          <div className="flex gap-4 mb-5">
-            {[
-              { dot: 'bg-primary-500', l: '회의' },
-              { dot: 'bg-error', l: '마감일' },
-              { dot: 'bg-success', l: 'Google Calendar' },
-              { dot: 'bg-red-400', l: '공휴일' },
-            ].map(({ dot, l }) => (
-              <div key={l} className="flex items-center gap-1.5 text-xs text-neutral-sub">
-                <span className={`w-2.5 h-2.5 rounded-full ${dot}`} />{l}
-              </div>
-            ))}
-          </div>
-          <CalendarView events={events} />
-          <div className="mt-5">
-            <ActionItemList items={mockActions} />
-          </div>
+
+          {/* 에러 메시지 */}
+          {calendarError && (
+            <div className="mb-5 p-4 bg-error-bg border border-error rounded-md">
+              <p className="text-sm text-error font-medium">{calendarError}</p>
+            </div>
+          )}
+
+          {calendarLoading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="text-neutral-sub">Google Calendar 이벤트 로딩 중...</div>
+            </div>
+          ) : (
+            <>
+              <CalendarView events={events} onDeleteEvent={deleteCalendarEvent} />
+              {!connected && (
+                <div className="mt-5 p-4 bg-warning-bg border border-warning rounded-md text-center">
+                  <p className="text-sm text-warning font-medium">
+                    Google Calendar에 연결하면 실제 일정이 표시됩니다.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </>
       )}
 

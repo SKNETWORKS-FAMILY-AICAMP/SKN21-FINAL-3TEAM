@@ -1,0 +1,106 @@
+{
+  "monologg/koelectra-base-v3-discriminator": {
+    "model": "monologg/koelectra-base-v3-discriminator",
+    "train_time_sec": 65.0,
+    "test_f1": 0.9726,
+    "test_acc": 0.972,
+    "test_per_class": {
+      "judgment": {
+        "p": 0.9459,
+        "r": 0.9722,
+        "f1": 0.9589
+      },
+      "doc_search": {
+        "p": 1.0,
+        "r": 1.0,
+        "f1": 1.0
+      },
+      "doc_generate": {
+        "p": 1.0,
+        "r": 0.9722,
+        "f1": 0.9859
+      },
+      "doc_summary": {
+        "p": 0.973,
+        "r": 0.9474,
+        "f1": 0.96
+      },
+      "schedule_add": {
+        "p": 1.0,
+        "r": 1.0,
+        "f1": 1.0
+      },
+      "schedule_view": {
+        "p": 0.9677,
+        "r": 0.9677,
+        "f1": 0.9677
+      },
+      "general": {
+        "p": 0.9697,
+        "r": 0.9697,
+        "f1": 0.9697
+      },
+      "doc_qa": {
+        "p": 0.9268,
+        "r": 0.95,
+        "f1": 0.9383
+      }
+    },
+    "adv_f1": 0.8604,
+    "adv_acc": 0.86,
+    "adv_per_class": {
+      "judgment": {
+        "p": 0.963,
+        "r": 0.8814,
+        "f1": 0.9204
+      },
+      "doc_search": {
+        "p": 0.7534,
+        "r": 0.9167,
+        "f1": 0.8271
+      },
+      "doc_generate": {
+        "p": 0.9,
+        "r": 0.8654,
+        "f1": 0.8824
+      },
+      "doc_summary": {
+        "p": 0.8305,
+        "r": 0.9245,
+        "f1": 0.875
+      },
+      "schedule_add": {
+        "p": 0.9808,
+        "r": 0.9107,
+        "f1": 0.9444
+      },
+      "schedule_view": {
+        "p": 0.8644,
+        "r": 0.9107,
+        "f1": 0.887
+      },
+      "general": {
+        "p": 0.8364,
+        "r": 0.8364,
+        "f1": 0.8364
+      },
+      "doc_qa": {
+        "p": 0.7917,
+        "r": 0.6441,
+        "f1": 0.7103
+      }
+    },
+    "speed": {
+      "mean_ms": 7.915,
+      "p50_ms": 7.928,
+      "p95_ms": 8.256,
+      "p99_ms": 8.427,
+      "throughput_per_sec": 3634.2
+    },
+    "size": {
+      "param_count_m": 112.9,
+      "model_size_mb": 430.8,
+      "gpu_peak_mb": 1940.2
+    }
+  }
+}

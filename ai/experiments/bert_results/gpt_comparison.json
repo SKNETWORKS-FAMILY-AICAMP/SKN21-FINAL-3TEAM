@@ -1,0 +1,18 @@
+[
+  {
+    "method": "GPT-4o-mini Zero-shot",
+    "accuracy": 0.8491,
+    "f1_macro": 0.8511,
+    "time_ms": 435.95,
+    "cost": "~$0.030",
+    "errors": 32
+  },
+  {
+    "method": "GPT-4o-mini Few-shot",
+    "accuracy": 0.8538,
+    "f1_macro": 0.863,
+    "time_ms": 583.7,
+    "cost": "~$0.091",
+    "errors": 31
+  }
+]
