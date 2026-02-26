@@ -279,6 +279,14 @@ def route_by_intent(state: AgentState) -> str:
     intent = state.get("intent", "")
     confidence = state.get("confidence", 0)
 
+    # schedule followup 감지 (confidence 체크보다 우선 — 이전 대화 맥락 기반)
+    user_input = state.get("user_input", "")
+    chat_history = state.get("chat_history", [])
+    if _is_schedule_followup(user_input, chat_history):
+        state["intent"] = "schedule_followup"
+        print(f"[Orchestrator] 라우팅: schedule_followup 감지 → schedule_agent")
+        return "schedule_agent"
+
     # 낮은 confidence → top-3 후보 제시
     if confidence < INTENT_CONFIDENCE_THRESHOLD:
         candidates = state.get("intent_candidates", [])
@@ -287,14 +295,6 @@ def route_by_intent(state: AgentState) -> str:
             return "clarify_with_candidates"
         print(f"[Orchestrator] 라우팅: low_confidence → general_response")
         return "general_response"
-
-    # 이전 intent가 schedule_add이고 이메일이 포함된 메시지면 → schedule_followup
-    user_input = state.get("user_input", "")
-    chat_history = state.get("chat_history", [])
-    if _is_schedule_followup(user_input, chat_history):
-        state["intent"] = "schedule_followup"
-        print(f"[Orchestrator] 라우팅: schedule_followup 감지 → schedule_agent")
-        return "schedule_agent"
 
     # intent별 Agent 라우팅
     if intent == "general":
