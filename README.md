@@ -173,8 +173,10 @@ doc_qa         → Document Agent    (문서 QA)
 schedule_add   → Schedule Agent    (일정 추가)
 schedule_view  → Schedule Agent    (일정 조회)
 general        → General Response  (일반 대화)
+```
 
-### 전체 구조 2
+
+### 전체 구조 1
 
 ```mermaid
 graph TD
