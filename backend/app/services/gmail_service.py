@@ -82,7 +82,7 @@ class GmailService(GoogleBaseService):
         """회의 초대 메일 발송 (Meet 링크 포함)"""
         # ISO 형식 → 읽기 좋은 한국어 시간 포맷
         try:
-            parsed = datetime.fromisoformat(meeting_time.replace("Z", "+00:00"))
+            parsed = datetime.fromisoformat(meeting_time.replace("Z", ""))
             formatted_time = parsed.strftime("%Y년 %m월 %d일 %H:%M")
         except (ValueError, AttributeError):
             formatted_time = meeting_time

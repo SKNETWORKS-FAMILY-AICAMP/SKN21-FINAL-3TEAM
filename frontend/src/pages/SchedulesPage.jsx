@@ -94,7 +94,9 @@ export default function SchedulesPage() {
               await sendMeetingInvite({
                 recipient_emails: data.attendee_emails,
                 meeting_title: data.title,
-                meeting_time: startDateTime,
+                meeting_time: data.allDay
+                  ? `${data.date}T00:00:00`
+                  : `${data.date}T${data.start_time}:00`,
                 meet_link: result.meet_link,
               });
             } catch (emailErr) {
