@@ -70,6 +70,17 @@ async def schedule_agent(state: AgentState) -> AgentState:
     user_input = state.get("user_input", "")
     user_id = state.get("user_id")
 
+    # followup 감지: route_by_intent에서 state["intent"]를 바꿔도
+    # LangGraph가 classify_intent 값을 유지하므로, 여기서 직접 재판단
+    if intent not in ("schedule_add", "schedule_view", "schedule_followup"):
+        chat_history = state.get("chat_history", [])
+        emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', user_input)
+        meet_kw = any(kw in user_input.lower() for kw in ("meet", "미트", "미팅", "링크", "화상", "네", "응", "좋아", "생성", "만들어", "초대", "메일", "보내"))
+        if (emails or meet_kw) and _has_schedule_in_history(chat_history):
+            print(f"[ScheduleAgent] intent '{intent}' → schedule_followup으로 재판단")
+            intent = "schedule_followup"
+            state["intent"] = "schedule_followup"
+
     _t_agent = time.time()
     print(f"[ScheduleAgent] 진입 | intent={intent}, user_input='{user_input}', user_id={user_id}")
 
@@ -295,6 +306,18 @@ async def _handle_schedule_followup(user_input: str, user_id: int, state: dict) 
         "email_count": len(emails) if emails else 0,
         "message": message,
     }
+
+
+def _has_schedule_in_history(chat_history: list[dict]) -> bool:
+    """대화 이력에 schedule_add 응답이 있는지 확인"""
+    for msg in reversed(chat_history):
+        ar = msg.get("agentResponse") or msg.get("agent_response")
+        if ar and isinstance(ar, dict) and ar.get("type") in ("schedule_add", "schedule_followup"):
+            return True
+        content = msg.get("content", "")
+        if "일정이 Google Calendar에 등록" in content or "Meet 링크" in content:
+            return True
+    return False
 
 
 def _extract_last_schedule_from_history(chat_history: list[dict]) -> dict | None:
