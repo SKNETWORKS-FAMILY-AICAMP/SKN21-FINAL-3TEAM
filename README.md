@@ -251,69 +251,6 @@ graph TD
     AI_LLM --- Ext_GPU
 ```
 
-### 전체 구조 2
-
-```mermaid
-graph TD
-    %% Global Styling
-    classDef layer fill:#f9f9f9,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5;
-    classDef component fill:#fff,stroke:#444,stroke-width:1px;
-    classDef ai fill:#e1f5fe,stroke:#01579b,stroke-width:1px;
-
-    %% 1. 클라이언트 계층 (Client Layer)
-    subgraph Layer1 [1. Client Layer: UI/UX]
-        direction LR
-        FE[React 18 / Vite] --- FE_ST[Zustand / TanStack Query]
-        FE_ST --- FE_IO[SSE Stream / REST]
-    end
-    class Layer1 layer
-
-    %% 2. 애플리케이션 계층 (Application Layer)
-    subgraph Layer2 [2. Application Layer: API & Logic]
-        BE_API[FastAPI Endpoints]
-        BE_Svc[Service Orchestrator<br/>Google / Template / Statistics]
-        BE_DB[(PostgreSQL / Redis)]
-        
-        BE_API --> BE_Svc
-        BE_Svc --> BE_DB
-    end
-    class Layer2 layer
-
-    %% 3. 지능형 엔진 계층 (Intelligence Layer)
-    subgraph Layer3 [3. Intelligence Layer: AI Engine]
-        direction TB
-        AI_IC[Intent Classifier<br/>koelectra-base-v3]
-        AI_Orch[LangGraph Orchestrator<br/>State Management]
-        
-        subgraph Agents [Specialized Agents]
-            direction LR
-            A1[Judgment]
-            A2[Document]
-            A3[Schedule]
-        end
-        
-        AI_IC --> AI_Orch
-        AI_Orch --> Agents
-    end
-    class Layer3 layer
-    class AI_IC,AI_Orch,A1,A2,A3 ai
-
-    %% 4. 인프라 및 외부 서비스 (Resource Layer)
-    subgraph Layer4 [4. Resource Layer: Data & Model]
-        direction LR
-        RAG[RAG Pipeline<br/>Qdrant / BM25]
-        LLM[Kanana-1.5-8B<br/>GPT / Claude]
-        EXT[Google Workspace / RunPod]
-    end
-    class Layer4 layer
-
-    %% Cross-Layer Flow
-    Layer1 ==> Layer2
-    Layer2 ==> AI_IC
-    Agents ==> RAG
-    RAG ==> LLM
-    BE_Svc <==> EXT
-```
 
 ### RAG 검색 대상
 
