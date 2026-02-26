@@ -110,7 +110,7 @@ async def schedule_agent(state: AgentState) -> AgentState:
 
 
 async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
-    """일정 추가: LLM 파싱 → schedule_service.create_with_google_services (Meet 포함)"""
+    """일정 추가: LLM 파싱 → 캘린더 등록 (Meet 없이) → 후속 질문"""
     # 1. LLM으로 자연어 → 구조화 데이터 파싱
     print("[ScheduleAgent] _handle_schedule_add | LLM 파싱 시작...")
     parsed = _parse_schedule_input(user_input)
@@ -123,10 +123,7 @@ async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
             "schedule": parsed,
         }
 
-    # "회의", "미팅" 키워드가 있으면 Meet 링크 포함
-    include_meet = parsed.get("include_meet", False)
-
-    # 2. schedule_service.create_with_google_services 호출 (Meet + Calendar 통합)
+    # 2. 먼저 Meet 없이 캘린더에만 등록
     try:
         import sys
         from pathlib import Path
@@ -137,7 +134,6 @@ async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
         from app.db.session import async_session
         from app.services.schedule_service import create_with_google_services
 
-        # LLM 파싱 결과는 문자열 → datetime 변환 (ScheduleCreate가 datetime 요구)
         from datetime import datetime as _dt
         start_str = parsed["start_time"]
         end_str = parsed.get("end_time", parsed["start_time"])
@@ -149,32 +145,34 @@ async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
             "start_time": start_dt,
             "end_time": end_dt,
             "description": parsed.get("description", ""),
-            "schedule_type": "meeting" if include_meet else "task",
+            "schedule_type": "task",
         }
 
         async with async_session() as db:
             result = await create_with_google_services(
-                db, user_id, schedule_data, include_meet=include_meet,
+                db, user_id, schedule_data, include_meet=False,
             )
             await db.commit()
 
         google_services = result.get("google_services", {})
-        meet_link = google_services.get("meet_link")
+        schedule_obj = result.get("schedule")
+        event_id = schedule_obj.google_event_id if schedule_obj else None
 
-        message = f"'{parsed['title']}' 일정이 Google Calendar에 등록되었습니다."
-        if meet_link:
-            message += f"\nGoogle Meet 링크: {meet_link}"
-        message += "\n\n참석자 이메일을 알려주시면 초대 메일도 보내드립니다."
+        # 3. 후속 질문 메시지
+        message = f"'{parsed['title']}' 일정이 Google Calendar에 등록되었습니다.\n\n"
+        message += "추가로 필요한 사항이 있으면 알려주세요:\n"
+        message += "- Google Meet 링크를 생성할까요?\n"
+        message += "- 참석자에게 초대 메일을 보낼까요? (이메일 주소를 알려주세요)"
 
         return {
             "type": "schedule_add",
             "schedule": parsed,
             "google_services": {
                 "calendar_synced": google_services.get("calendar_synced", False),
-                "event_id": result.get("schedule").google_event_id if result.get("schedule") else None,
+                "event_id": event_id,
                 "html_link": google_services.get("html_link"),
-                "meet_link": meet_link,
-                "email_sent": google_services.get("email_sent", False),
+                "meet_link": None,
+                "email_sent": False,
             },
             "message": message,
         }
@@ -196,17 +194,7 @@ async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
 
 
 async def _handle_schedule_followup(user_input: str, user_id: int, state: dict) -> dict:
-    """후속 처리: 이메일 주소 추출 → 초대 메일 발송"""
-    # 1. 이메일 주소 추출
-    emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', user_input)
-    if not emails:
-        return {
-            "type": "schedule_followup",
-            "message": "이메일 주소를 찾지 못했습니다. 초대할 참석자의 이메일 주소를 입력해주세요.",
-            "email_sent": False,
-        }
-
-    # 2. 이전 대화에서 일정 정보 가져오기
+    """후속 처리: Meet 링크 생성 / 참석자 초대 메일 발송"""
     chat_history = state.get("chat_history", [])
     schedule_info = _extract_last_schedule_from_history(chat_history)
 
@@ -214,63 +202,117 @@ async def _handle_schedule_followup(user_input: str, user_id: int, state: dict) 
         return {
             "type": "schedule_followup",
             "message": "이전에 등록한 일정 정보를 찾을 수 없습니다. 먼저 일정을 등록해주세요.",
-            "email_sent": False,
         }
 
-    # 3. Gmail 초대 메일 발송
-    try:
-        import sys
-        from pathlib import Path
-        backend_path = str(Path(__file__).parent.parent.parent / "backend")
-        if backend_path not in sys.path:
-            sys.path.insert(0, backend_path)
+    text = user_input.lower()
+    emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', user_input)
+    want_meet = any(kw in text for kw in ("meet", "미트", "미팅", "링크", "화상", "네", "응", "좋아", "생성", "만들어", "yes"))
 
-        from app.db.session import async_session
-        from app.services.gmail_service import GmailService
+    import sys
+    from pathlib import Path
+    backend_path = str(Path(__file__).parent.parent.parent / "backend")
+    if backend_path not in sys.path:
+        sys.path.insert(0, backend_path)
 
-        gmail_service = GmailService()
-        async with async_session() as db:
-            result = await gmail_service.send_meeting_invite(
-                db,
-                user_id,
-                recipient_emails=emails,
-                meeting_title=schedule_info["title"],
-                meeting_time=schedule_info["start_time"],
-                meet_link=schedule_info.get("meet_link"),
-            )
+    from app.db.session import async_session
 
-        sent_count = result.get("sent_count", len(emails))
+    results = []
+    meet_link = schedule_info.get("meet_link")
+    event_id = schedule_info.get("event_id")
+
+    # 1. Meet 링크 생성 (아직 없는 경우)
+    if want_meet and not meet_link:
+        try:
+            from app.services.calendar_service import GoogleCalendarService
+
+            calendar_service = GoogleCalendarService()
+            event_data = {
+                "title": schedule_info["title"],
+                "start_time": schedule_info["start_time"],
+                "end_time": schedule_info.get("end_time", schedule_info["start_time"]),
+                "description": "",
+            }
+
+            async with async_session() as db:
+                meet_result = await calendar_service.create_event_with_meet(
+                    db, user_id, event_data, attendee_emails=emails or None,
+                )
+                await db.commit()
+
+            meet_link = meet_result.get("meet_link")
+            event_id = meet_result.get("event_id")
+            if meet_link:
+                results.append(f"Google Meet 링크가 생성되었습니다: {meet_link}")
+            else:
+                results.append("Meet 링크 생성을 요청했지만 링크를 받지 못했습니다.")
+        except Exception as e:
+            logger.warning(f"Meet 링크 생성 실패: {e}")
+            results.append(f"Meet 링크 생성에 실패했습니다: {e}")
+
+    # 2. 초대 메일 발송
+    if emails:
+        try:
+            from app.services.gmail_service import GmailService
+
+            gmail_service = GmailService()
+            async with async_session() as db:
+                mail_result = await gmail_service.send_meeting_invite(
+                    db,
+                    user_id,
+                    recipient_emails=emails,
+                    meeting_title=schedule_info["title"],
+                    meeting_time=schedule_info["start_time"],
+                    meet_link=meet_link,
+                )
+
+            sent_count = mail_result.get("sent_count", len(emails))
+            results.append(f"{sent_count}명에게 초대 메일을 보냈습니다.")
+        except Exception as e:
+            logger.warning(f"초대 메일 발송 실패: {e}")
+            results.append(f"초대 메일 발송에 실패했습니다: {e}")
+
+    # 3. Meet만 요청 + 이메일 없는 경우, 이메일도 안내
+    if want_meet and not emails:
+        if meet_link:
+            results.append("참석자에게 초대 메일을 보내시려면 이메일 주소를 알려주세요.")
+
+    # 4. 둘 다 아닌 경우
+    if not want_meet and not emails:
         return {
             "type": "schedule_followup",
-            "email_sent": True,
-            "email_count": sent_count,
-            "message": f"{sent_count}명에게 '{schedule_info['title']}' 초대 메일을 보냈습니다.",
+            "message": (
+                "어떤 작업을 원하시나요?\n"
+                "- **Meet 링크 생성**: \"Meet 링크 만들어줘\"\n"
+                "- **초대 메일 발송**: 이메일 주소를 입력해주세요 (예: user@gmail.com)"
+            ),
         }
 
-    except Exception as e:
-        logger.warning(f"초대 메일 발송 실패: {e}")
-        return {
-            "type": "schedule_followup",
-            "email_sent": False,
-            "message": f"초대 메일 발송에 실패했습니다: {e}",
-            "error": str(e),
-        }
+    message = "\n".join(results)
+    return {
+        "type": "schedule_followup",
+        "meet_link": meet_link,
+        "email_sent": bool(emails),
+        "email_count": len(emails) if emails else 0,
+        "message": message,
+    }
 
 
 def _extract_last_schedule_from_history(chat_history: list[dict]) -> dict | None:
     """대화 이력에서 가장 최근 schedule_add 결과 추출"""
     for msg in reversed(chat_history):
-        content = msg.get("content", "")
-        # assistant 메시지에서 agentResponse JSON 파싱 시도
         agent_response = msg.get("agentResponse") or msg.get("agent_response")
         if agent_response and isinstance(agent_response, dict):
-            if agent_response.get("type") == "schedule_add":
+            if agent_response.get("type") in ("schedule_add", "schedule_followup"):
                 schedule = agent_response.get("schedule", {})
                 google = agent_response.get("google_services", {})
+                title = schedule.get("title") or agent_response.get("title", "")
+                if not title:
+                    continue
                 return {
-                    "title": schedule.get("title", ""),
+                    "title": title,
                     "start_time": schedule.get("start_time", ""),
-                    "meet_link": google.get("meet_link"),
+                    "end_time": schedule.get("end_time", ""),
+                    "meet_link": google.get("meet_link") or agent_response.get("meet_link"),
                     "event_id": google.get("event_id"),
                 }
     return None

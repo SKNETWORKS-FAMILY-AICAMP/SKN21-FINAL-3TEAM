@@ -249,20 +249,27 @@ def classify_intent(state: AgentState) -> AgentState:
 
 
 def _is_schedule_followup(user_input: str, chat_history: list[dict]) -> bool:
-    """이전 대화가 schedule_add이고 현재 입력에 이메일이 포함되면 followup"""
+    """이전 대화가 schedule_add이고, 현재 입력이 Meet/이메일/수락 응답이면 followup"""
     import re
-    emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', user_input)
-    if not emails:
+    text = user_input.lower()
+    has_email = bool(re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', user_input))
+    has_meet_keyword = any(kw in text for kw in (
+        "meet", "미트", "미팅", "링크", "화상",
+        "네", "응", "좋아", "생성", "만들어", "yes", "ok",
+        "초대", "메일", "보내", "참석",
+    ))
+
+    if not has_email and not has_meet_keyword:
         return False
-    # 이전 assistant 응답에서 schedule_add 확인
+
+    # 이전 assistant 응답에서 schedule_add 또는 schedule_followup 확인
     for msg in reversed(chat_history):
         agent_response = msg.get("agentResponse") or msg.get("agent_response")
         if agent_response and isinstance(agent_response, dict):
-            if agent_response.get("type") == "schedule_add":
+            if agent_response.get("type") in ("schedule_add", "schedule_followup"):
                 return True
-        # 메시지 내용에서도 힌트 확인
         content = msg.get("content", "")
-        if "일정이 Google Calendar에 등록" in content or "초대 메일도 보내드립니다" in content:
+        if "일정이 Google Calendar에 등록" in content or "Meet 링크" in content or "초대 메일" in content:
             return True
     return False
 
