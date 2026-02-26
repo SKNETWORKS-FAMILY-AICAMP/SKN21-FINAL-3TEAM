@@ -78,6 +78,33 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
             graph = get_graph()
             initial_state = _build_initial_state(request, user, stream_mode=True)
 
+            # session_id로 이전 대화 이력 로드 (schedule_followup 등 맥락 판단용)
+            if request.session_id:
+                try:
+                    hist_result = await db.execute(
+                        select(ChatLog)
+                        .where(ChatLog.session_id == request.session_id, ChatLog.user_id == user.id)
+                        .order_by(ChatLog.created_at.desc())
+                        .limit(6)  # 최근 3턴
+                    )
+                    hist_logs = list(reversed(hist_result.scalars().all()))
+                    chat_history = []
+                    for log in hist_logs:
+                        chat_history.append({"role": "user", "content": log.user_message})
+                        try:
+                            ar = json.loads(log.agent_response) if log.agent_response else {}
+                        except json.JSONDecodeError:
+                            ar = {}
+                        chat_history.append({
+                            "role": "assistant",
+                            "content": ar.get("message", ""),
+                            "agentResponse": ar,
+                        })
+                    initial_state["chat_history"] = chat_history
+                    print(f"[Chat] chat_history 로드: {len(chat_history)}개 메시지 (session={request.session_id})")
+                except Exception as hist_err:
+                    print(f"[Chat] chat_history 로드 실패: {hist_err}")
+
             # document_id가 있으면 DB에서 문서 내용 로딩
             if request.document_id:
                 try:
@@ -447,6 +474,32 @@ async def chat(request: ChatRequest, user=Depends(get_current_user), db: AsyncSe
 
         graph = get_graph()
         initial_state = _build_initial_state(request, user)
+
+        # session_id로 이전 대화 이력 로드
+        if request.session_id:
+            try:
+                hist_result = await db.execute(
+                    select(ChatLog)
+                    .where(ChatLog.session_id == request.session_id, ChatLog.user_id == user.id)
+                    .order_by(ChatLog.created_at.desc())
+                    .limit(6)
+                )
+                hist_logs = list(reversed(hist_result.scalars().all()))
+                chat_history = []
+                for log in hist_logs:
+                    chat_history.append({"role": "user", "content": log.user_message})
+                    try:
+                        ar = json.loads(log.agent_response) if log.agent_response else {}
+                    except json.JSONDecodeError:
+                        ar = {}
+                    chat_history.append({
+                        "role": "assistant",
+                        "content": ar.get("message", ""),
+                        "agentResponse": ar,
+                    })
+                initial_state["chat_history"] = chat_history
+            except Exception as hist_err:
+                logger.warning("chat_history 로드 실패: %s", hist_err)
 
         # document_id가 있으면 DB에서 문서 내용 로딩
         if request.document_id:
