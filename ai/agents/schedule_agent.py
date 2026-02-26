@@ -3,8 +3,9 @@
 
 기능:
   - 자연어 → 구조화 일정 데이터 파싱 (Solar API json_mode)
-  - Google Calendar 일정 등록 (schedule_add)
+  - Google Calendar 일정 등록 + Meet 링크 (schedule_add)
   - Google Calendar 일정 조회 (schedule_view)
+  - 참석자 이메일 초대 메일 발송 (schedule_followup)
 
 입출력:
   Input: AgentState (user_input, intent, user_id)
@@ -17,14 +18,25 @@ schedule_add 응답 형식:
           "title": "...",
           "start_time": "2025-02-10T09:00:00",
           "end_time": "2025-02-10T10:00:00",
-          "description": "..."
+          "description": "...",
+          "include_meet": true
       },
       "google_services": {
           "calendar_synced": true,
           "event_id": "...",
-          "html_link": "..."
+          "html_link": "...",
+          "meet_link": "...",
+          "email_sent": false
       },
       "message": "일정이 등록되었습니다."
+  }
+
+schedule_followup 응답 형식:
+  {
+      "type": "schedule_followup",
+      "email_sent": true,
+      "email_count": 2,
+      "message": "2명에게 초대 메일을 보냈습니다."
   }
 
 schedule_view 응답 형식:
@@ -37,6 +49,7 @@ schedule_view 응답 형식:
 import json
 import logging
 import os
+import re
 import time
 from datetime import datetime, timedelta
 
@@ -69,6 +82,9 @@ async def schedule_agent(state: AgentState) -> AgentState:
         elif intent == "schedule_view":
             print("[ScheduleAgent] → _handle_schedule_view 호출")
             response_data = await _handle_schedule_view(user_input, user_id)
+        elif intent == "schedule_followup":
+            print("[ScheduleAgent] → _handle_schedule_followup 호출")
+            response_data = await _handle_schedule_followup(user_input, user_id, state)
         else:
             response_data = {
                 "type": intent,
@@ -94,7 +110,7 @@ async def schedule_agent(state: AgentState) -> AgentState:
 
 
 async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
-    """일정 추가: LLM 파싱 → Google Calendar 등록"""
+    """일정 추가: LLM 파싱 → schedule_service.create_with_google_services (Meet 포함)"""
     # 1. LLM으로 자연어 → 구조화 데이터 파싱
     print("[ScheduleAgent] _handle_schedule_add | LLM 파싱 시작...")
     parsed = _parse_schedule_input(user_input)
@@ -107,38 +123,60 @@ async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
             "schedule": parsed,
         }
 
-    # 2. Google Calendar API 호출
+    # "회의", "미팅" 키워드가 있으면 Meet 링크 포함
+    include_meet = parsed.get("include_meet", False)
+
+    # 2. schedule_service.create_with_google_services 호출 (Meet + Calendar 통합)
     try:
         import sys
         from pathlib import Path
-        # backend 디렉토리를 sys.path에 추가 (AI 모듈에서 backend import 가능하게)
         backend_path = str(Path(__file__).parent.parent.parent / "backend")
         if backend_path not in sys.path:
             sys.path.insert(0, backend_path)
 
         from app.db.session import async_session
-        from app.services.calendar_service import GoogleCalendarService
+        from app.services.schedule_service import create_with_google_services
 
-        calendar_service = GoogleCalendarService()
-        event_data = {
+        # LLM 파싱 결과는 문자열 → datetime 변환 (ScheduleCreate가 datetime 요구)
+        from datetime import datetime as _dt
+        start_str = parsed["start_time"]
+        end_str = parsed.get("end_time", parsed["start_time"])
+        start_dt = _dt.fromisoformat(start_str) if isinstance(start_str, str) else start_str
+        end_dt = _dt.fromisoformat(end_str) if isinstance(end_str, str) else end_str
+
+        schedule_data = {
             "title": parsed["title"],
-            "start_time": parsed["start_time"],
-            "end_time": parsed.get("end_time", parsed["start_time"]),
+            "start_time": start_dt,
+            "end_time": end_dt,
             "description": parsed.get("description", ""),
+            "schedule_type": "meeting" if include_meet else "task",
         }
 
         async with async_session() as db:
-            google_result = await calendar_service.push_event(db, user_id, event_data)
+            result = await create_with_google_services(
+                db, user_id, schedule_data, include_meet=include_meet,
+            )
+            await db.commit()
+
+        google_services = result.get("google_services", {})
+        meet_link = google_services.get("meet_link")
+
+        message = f"'{parsed['title']}' 일정이 Google Calendar에 등록되었습니다."
+        if meet_link:
+            message += f"\nGoogle Meet 링크: {meet_link}"
+        message += "\n\n참석자 이메일을 알려주시면 초대 메일도 보내드립니다."
 
         return {
             "type": "schedule_add",
             "schedule": parsed,
             "google_services": {
-                "calendar_synced": True,
-                "event_id": google_result.get("event_id"),
-                "html_link": google_result.get("html_link"),
+                "calendar_synced": google_services.get("calendar_synced", False),
+                "event_id": result.get("schedule").google_event_id if result.get("schedule") else None,
+                "html_link": google_services.get("html_link"),
+                "meet_link": meet_link,
+                "email_sent": google_services.get("email_sent", False),
             },
-            "message": f"'{parsed['title']}' 일정이 Google Calendar에 등록되었습니다.",
+            "message": message,
         }
 
     except Exception as e:
@@ -155,6 +193,87 @@ async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
                 "Google 캘린더 연동이 필요합니다."
             ),
         }
+
+
+async def _handle_schedule_followup(user_input: str, user_id: int, state: dict) -> dict:
+    """후속 처리: 이메일 주소 추출 → 초대 메일 발송"""
+    # 1. 이메일 주소 추출
+    emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', user_input)
+    if not emails:
+        return {
+            "type": "schedule_followup",
+            "message": "이메일 주소를 찾지 못했습니다. 초대할 참석자의 이메일 주소를 입력해주세요.",
+            "email_sent": False,
+        }
+
+    # 2. 이전 대화에서 일정 정보 가져오기
+    chat_history = state.get("chat_history", [])
+    schedule_info = _extract_last_schedule_from_history(chat_history)
+
+    if not schedule_info:
+        return {
+            "type": "schedule_followup",
+            "message": "이전에 등록한 일정 정보를 찾을 수 없습니다. 먼저 일정을 등록해주세요.",
+            "email_sent": False,
+        }
+
+    # 3. Gmail 초대 메일 발송
+    try:
+        import sys
+        from pathlib import Path
+        backend_path = str(Path(__file__).parent.parent.parent / "backend")
+        if backend_path not in sys.path:
+            sys.path.insert(0, backend_path)
+
+        from app.db.session import async_session
+        from app.services.gmail_service import GmailService
+
+        gmail_service = GmailService()
+        async with async_session() as db:
+            result = await gmail_service.send_meeting_invite(
+                db,
+                user_id,
+                recipient_emails=emails,
+                meeting_title=schedule_info["title"],
+                meeting_time=schedule_info["start_time"],
+                meet_link=schedule_info.get("meet_link"),
+            )
+
+        sent_count = result.get("sent_count", len(emails))
+        return {
+            "type": "schedule_followup",
+            "email_sent": True,
+            "email_count": sent_count,
+            "message": f"{sent_count}명에게 '{schedule_info['title']}' 초대 메일을 보냈습니다.",
+        }
+
+    except Exception as e:
+        logger.warning(f"초대 메일 발송 실패: {e}")
+        return {
+            "type": "schedule_followup",
+            "email_sent": False,
+            "message": f"초대 메일 발송에 실패했습니다: {e}",
+            "error": str(e),
+        }
+
+
+def _extract_last_schedule_from_history(chat_history: list[dict]) -> dict | None:
+    """대화 이력에서 가장 최근 schedule_add 결과 추출"""
+    for msg in reversed(chat_history):
+        content = msg.get("content", "")
+        # assistant 메시지에서 agentResponse JSON 파싱 시도
+        agent_response = msg.get("agentResponse") or msg.get("agent_response")
+        if agent_response and isinstance(agent_response, dict):
+            if agent_response.get("type") == "schedule_add":
+                schedule = agent_response.get("schedule", {})
+                google = agent_response.get("google_services", {})
+                return {
+                    "title": schedule.get("title", ""),
+                    "start_time": schedule.get("start_time", ""),
+                    "meet_link": google.get("meet_link"),
+                    "event_id": google.get("event_id"),
+                }
+    return None
 
 
 async def _handle_schedule_view(user_input: str, user_id: int) -> dict:
@@ -223,39 +342,123 @@ async def _handle_schedule_view(user_input: str, user_id: int) -> dict:
 
 
 def _parse_schedule_input(user_input: str) -> dict:
-    """자연어 입력 → 일정 데이터 파싱 (Solar API json_mode)"""
+    """자연어 입력 → 일정 데이터 파싱 (Solar API json_mode → fallback: 직접 파싱)"""
     now = datetime.now()
     current_datetime = now.strftime("%Y-%m-%dT%H:%M:%S")
     current_weekday = ["월", "화", "수", "목", "금", "토", "일"][now.weekday()]
+    tomorrow = (now + timedelta(days=1)).strftime("%Y-%m-%d")
+    today = now.strftime("%Y-%m-%d")
 
     sys_prompt = f"""당신은 일정 파싱 전문가입니다. 사용자의 자연어 입력을 구조화된 일정 JSON으로 변환하세요.
 
 현재 시각: {current_datetime} ({current_weekday}요일)
+오늘 날짜: {today}
+내일 날짜: {tomorrow}
 
-출력 형식(JSON):
-{{
-    "title": "일정 제목",
-    "start_time": "YYYY-MM-DDTHH:MM:SS",
-    "end_time": "YYYY-MM-DDTHH:MM:SS",
-    "description": "일정 설명 (없으면 빈 문자열)"
-}}
+반드시 실제 날짜와 시간을 계산하여 출력하세요. 절대로 "YYYY-MM-DD" 같은 형식 문자열을 출력하지 마세요.
+
+예시:
+입력: "내일 오후 3시 점심 회의"
+출력: {{"title": "점심 회의", "start_time": "{tomorrow}T15:00:00", "end_time": "{tomorrow}T16:00:00", "description": "", "include_meet": true}}
+
+입력: "오늘 저녁 6시 팀 식사"
+출력: {{"title": "팀 식사", "start_time": "{today}T18:00:00", "end_time": "{today}T19:00:00", "description": "", "include_meet": false}}
 
 규칙:
-- "내일"은 현재 날짜 + 1일
-- "다음 주 월요일"은 다음 주 월요일 날짜
+- "내일"은 {tomorrow}
 - "모레"는 현재 날짜 + 2일
 - 종료 시간이 명시되지 않으면 시작 시간 + 1시간
 - 시간이 명시되지 않으면 09:00:00으로 설정
-- 반드시 유효한 JSON만 출력하세요"""
+- "오후 N시"는 N+12시 (오후 3시 = 15:00)
+- include_meet: "회의", "미팅", "meeting" 키워드가 있으면 true, 아니면 false
+- 반드시 유효한 JSON만 출력하세요. 실제 날짜를 넣으세요."""
 
     user_prompt = f"일정 입력: {user_input}"
     result_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
 
     try:
-        return json.loads(result_str)
+        parsed = json.loads(result_str)
     except json.JSONDecodeError:
-        logger.error(f"일정 파싱 실패: {result_str}")
-        return {"title": "", "start_time": "", "end_time": "", "description": ""}
+        logger.error(f"일정 파싱 실패 (JSON 에러): {result_str}")
+        parsed = {}
+
+    # LLM 파싱 결과 검증 — "YYYY" 같은 포맷 문자열이 들어왔거나 비어있으면 직접 파싱
+    start_time = parsed.get("start_time", "")
+    if not start_time or "YYYY" in start_time or not _is_valid_datetime(start_time):
+        print(f"[ScheduleAgent] LLM 파싱 결과 무효 (start_time='{start_time}') → 직접 파싱 fallback")
+        parsed = _fallback_parse(user_input, parsed.get("title", ""))
+
+    return parsed
+
+
+def _is_valid_datetime(s: str) -> bool:
+    """ISO datetime 문자열 유효성 검사"""
+    try:
+        datetime.fromisoformat(s)
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def _fallback_parse(user_input: str, title_hint: str = "") -> dict:
+    """LLM 파싱 실패 시 규칙 기반 직접 파싱"""
+    now = datetime.now()
+    text = user_input
+
+    # 제목 추출: 시간/날짜 관련 키워드 제거 후 남은 것
+    title = title_hint
+    if not title:
+        # 간단한 제목 추출 — 시간/날짜 키워드 제거
+        clean = re.sub(
+            r'(내일|모레|오늘|다음\s*주|이번\s*주|오전|오후|저녁|아침|점심)'
+            r'|\d{1,2}\s*시(\s*\d{1,2}\s*분)?'
+            r'|잡아줘|등록해줘|추가해줘|넣어줘|만들어줘|해줘',
+            '', text
+        ).strip()
+        title = clean if clean else "새 일정"
+
+    # 날짜 추출
+    if "모레" in text:
+        date = now + timedelta(days=2)
+    elif "내일" in text:
+        date = now + timedelta(days=1)
+    elif "오늘" in text:
+        date = now
+    else:
+        date = now + timedelta(days=1)  # 기본: 내일
+
+    # 시간 추출
+    hour = 9  # 기본
+    minute = 0
+    time_match = re.search(r'(\d{1,2})\s*시\s*(\d{1,2}\s*분)?', text)
+    if time_match:
+        hour = int(time_match.group(1))
+        if time_match.group(2):
+            minute = int(time_match.group(2).replace('분', '').strip())
+
+    # 오후 보정
+    if "오후" in text or "저녁" in text:
+        if hour < 12:
+            hour += 12
+    elif "오전" in text or "아침" in text:
+        pass  # 그대로
+    elif "점심" in text:
+        if hour < 12:
+            hour = 12  # 점심 기본 12시
+
+    start = date.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    end = start + timedelta(hours=1)
+
+    # include_meet 판단
+    include_meet = any(kw in text for kw in ("회의", "미팅", "meeting", "미트"))
+
+    return {
+        "title": title,
+        "start_time": start.strftime("%Y-%m-%dT%H:%M:%S"),
+        "end_time": end.strftime("%Y-%m-%dT%H:%M:%S"),
+        "description": "",
+        "include_meet": include_meet,
+    }
 
 
 def _parse_view_request(user_input: str) -> dict:
@@ -353,9 +556,11 @@ def _get_mock_response(user_prompt: str, json_mode: bool) -> str:
             "time_max": (now + timedelta(days=7)).strftime("%Y-%m-%dT23:59:59Z"),
         }, ensure_ascii=False)
 
+    include_meet = any(kw in user_prompt for kw in ("회의", "미팅", "meeting"))
     return json.dumps({
         "title": "회의 (Mock)",
         "start_time": tomorrow.strftime("%Y-%m-%dT14:00:00"),
         "end_time": tomorrow.strftime("%Y-%m-%dT15:00:00"),
         "description": "",
+        "include_meet": include_meet,
     }, ensure_ascii=False)

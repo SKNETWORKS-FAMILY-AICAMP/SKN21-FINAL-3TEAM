@@ -178,13 +178,18 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
     }
 
     case 'schedule_add': {
+      const gs = data.google_services || {};
+      const sched = data.schedule || {};
       return (
         <div>
           <ScheduleCard
-            title={data.title || data.summary || '일정 등록'}
-            date={data.date || ''}
-            time={data.time || ''}
-            synced={data.synced || data.google_synced || false}
+            title={sched.title || data.title || data.summary || '일정 등록'}
+            date={sched.start_time?.split('T')[0] || data.date || ''}
+            time={sched.start_time?.split('T')[1]?.slice(0, 5) || data.time || ''}
+            synced={gs.calendar_synced || data.synced || data.google_synced || false}
+            meetLink={gs.meet_link || null}
+            emailSent={gs.email_sent || false}
+            emailCount={gs.email_count || 0}
           />
           {content && (
             <div className="mt-2 bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">

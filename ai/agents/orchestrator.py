@@ -248,6 +248,25 @@ def classify_intent(state: AgentState) -> AgentState:
     return state
 
 
+def _is_schedule_followup(user_input: str, chat_history: list[dict]) -> bool:
+    """이전 대화가 schedule_add이고 현재 입력에 이메일이 포함되면 followup"""
+    import re
+    emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', user_input)
+    if not emails:
+        return False
+    # 이전 assistant 응답에서 schedule_add 확인
+    for msg in reversed(chat_history):
+        agent_response = msg.get("agentResponse") or msg.get("agent_response")
+        if agent_response and isinstance(agent_response, dict):
+            if agent_response.get("type") == "schedule_add":
+                return True
+        # 메시지 내용에서도 힌트 확인
+        content = msg.get("content", "")
+        if "일정이 Google Calendar에 등록" in content or "초대 메일도 보내드립니다" in content:
+            return True
+    return False
+
+
 def route_by_intent(state: AgentState) -> str:
     """조건부 라우팅 — intent + confidence 기반 분기"""
     intent = state.get("intent", "")
@@ -261,6 +280,14 @@ def route_by_intent(state: AgentState) -> str:
             return "clarify_with_candidates"
         print(f"[Orchestrator] 라우팅: low_confidence → general_response")
         return "general_response"
+
+    # 이전 intent가 schedule_add이고 이메일이 포함된 메시지면 → schedule_followup
+    user_input = state.get("user_input", "")
+    chat_history = state.get("chat_history", [])
+    if _is_schedule_followup(user_input, chat_history):
+        state["intent"] = "schedule_followup"
+        print(f"[Orchestrator] 라우팅: schedule_followup 감지 → schedule_agent")
+        return "schedule_agent"
 
     # intent별 Agent 라우팅
     if intent == "general":
