@@ -93,19 +93,19 @@ export default function JudgmentCard({ summary, regulations = [], alternatives =
                 <div className="text-[0.6875rem] font-semibold text-neutral-sub">구성 요소</div>
                 {typeof confidenceBreakdown.llm_weighted === 'number' && (
                   <ConfidenceBar
-                    label={`LLM 판단 (×${confidenceBreakdown.llm_weighted && confidenceBreakdown.llm_raw ? (confidenceBreakdown.llm_weighted / confidenceBreakdown.llm_raw).toFixed(1) : '0.6'})`}
+                    label="LLM 판단 (×0.6)"
                     value={confidenceBreakdown.llm_weighted}
                   />
                 )}
                 {typeof confidenceBreakdown.rag_weighted === 'number' && (
                   <ConfidenceBar
-                    label={`RAG 검색 (×${confidenceBreakdown.rag_weighted && confidenceBreakdown.rag_score ? (confidenceBreakdown.rag_weighted / confidenceBreakdown.rag_score).toFixed(2) : '0.25'})`}
+                    label="RAG 검색 (×0.25)"
                     value={confidenceBreakdown.rag_weighted}
                   />
                 )}
                 {typeof confidenceBreakdown.coverage_weighted === 'number' && (
                   <ConfidenceBar
-                    label={`규정 커버리지 (×${confidenceBreakdown.coverage_weighted && confidenceBreakdown.coverage_score ? (confidenceBreakdown.coverage_weighted / confidenceBreakdown.coverage_score).toFixed(2) : '0.15'})`}
+                    label="규정 커버리지 (×0.15)"
                     value={confidenceBreakdown.coverage_weighted}
                   />
                 )}
