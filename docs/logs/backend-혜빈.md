@@ -469,3 +469,84 @@
 - Google Tasks 500 에러 원인 확인 (Console fetch 테스트 결과 확인)
 - 판단 Agent 스트리밍 디버깅
 - AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
+
+---
+
+## 2026-02-25 (세션 11)
+
+### 한 일
+
+**AI 채팅 → 일정 등록 + Meet 링크 + 초대 메일 통합 구현 (#22 #33)**
+
+핵심 목표: 채팅에서 "내일 오후 3시 팀 회의 잡아줘" → 캘린더 등록 + Meet 링크 + 초대 메일까지 한번에 처리
+
+**`ai/agents/schedule_agent.py` 대폭 수정:**
+- `_handle_schedule_add()`: `calendar_service.push_event()` → `schedule_service.create_with_google_services(include_meet=True)` 변경
+- `_handle_schedule_followup()` 신규 구현: 이전 대화에서 일정 정보 추출 → Meet 링크 생성(`calendar_service.create_event_with_meet()`) → 초대 메일 발송(`gmail_service.send_meeting_invite()`)
+- `_fallback_parse()` 추가: Solar LLM이 "YYYY-MM-DD" 리터럴 반환 시 규칙 기반 날짜 파싱 fallback
+- `_is_valid_datetime()` 추가: 파싱된 날짜 유효성 검증
+- `_parse_schedule_input()` 프롬프트 개선: 구체적 날짜 예시 포함 + `include_meet` 필드 추가
+- ScheduleCreate datetime 타입 호환: `datetime.fromisoformat()` 변환 추가
+- `_has_schedule_in_history()`, `_extract_last_schedule_from_history()` 헬퍼 추가
+
+**`ai/agents/orchestrator.py` 라우팅 수정:**
+- `_is_schedule_followup()` 함수 추가: 이메일 + Meet 키워드 + 이전 schedule_add 대화 감지
+- `route_by_intent()`에서 followup 체크를 confidence 체크보다 우선 배치
+
+**`frontend/src/components/chat/ScheduleCard.jsx` UI 확장:**
+- `meetLink` prop → 클릭 가능한 Google Meet 참여 링크
+- `emailSent`/`emailCount` props → 메일 발송 결과 표시
+
+**`frontend/src/pages/ChatPage.jsx` 수정:**
+- `schedule_add` 케이스에서 `data.schedule`, `data.google_services`에서 데이터 추출
+
+**`backend/app/api/v1/chat.py` 수정:**
+- `chat_history`를 DB(ChatLog)에서 로드하여 multi-turn 맥락 감지 가능하게
+- 중복 `from sqlalchemy import select` import 제거
+
+### 이슈 및 해결
+
+**이슈 1: Solar LLM이 "YYYY-MM-DD" 리터럴 반환**
+- 원인: 프롬프트의 포맷 예시를 그대로 복사
+- 해결: 구체적 날짜 예시 + `_fallback_parse()` 규칙 기반 fallback
+
+**이슈 2: ScheduleCreate에 string 전달 시 타입 에러**
+- 해결: `datetime.fromisoformat()` 변환 추가
+
+**이슈 3: chat_history가 항상 빈 배열**
+- 원인: `_build_initial_state()`에서 `chat_history: []` 하드코딩
+- 해결: ChatLog DB에서 session_id 기반 최근 6건 로드
+
+**이슈 4: schedule_followup이 clarify_candidates로 빠짐**
+- 원인: confidence 체크가 followup 체크보다 먼저 실행
+- 해결: followup 체크를 route_by_intent 최상단으로 이동
+
+### 다음 할 일
+- LangGraph state 덮어쓰기 한계 해결 (followup intent가 agent에 전달 안 됨)
+- 서버 배포 후 전체 흐름 테스트
+
+---
+
+## 2026-02-26 (세션 12)
+
+### 한 일
+
+**LangGraph state 덮어쓰기 한계 우회 (#22)**
+- 문제: `route_by_intent`에서 `state["intent"] = "schedule_followup"` 설정해도 `schedule_agent`에서는 원래 intent(예: `doc_generate`)가 보임
+- 원인: LangGraph가 conditional edge 함수의 state 변경을 다음 노드에 반영하지 않음
+- 해결: `schedule_agent()` 진입부에서 직접 followup 재판단 로직 추가
+  - intent가 `schedule_*`이 아닌 경우, 이메일/Meet 키워드 + 이전 대화 맥락으로 `schedule_followup` 재판단
+- 커밋: `4135951` — `fix: schedule_agent에서 직접 followup 재판단`
+
+**EC2 서버 재시작**
+- `dudu_key.pem`으로 SSH 접속하여 서버 재시작
+- 프로젝트 루트에서 `backend.app.main:app` 방식으로 uvicorn 실행 확인
+
+**전체 흐름 테스트 성공:**
+- ✅ "내일 오후 3시 팀 회의 잡아줘" → 일정 등록 + Meet/참석자 안내
+- ✅ "링크 생성해줘, user@gmail.com" → Meet 생성 + 초대 메일 발송
+
+### 다음 할 일
+- 디버그 로그 정리 (print문 제거)
+- 판단 Agent 스트리밍 디버깅
+- AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
