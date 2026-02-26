@@ -108,7 +108,6 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
             # document_id가 있으면 DB에서 문서 내용 로딩
             if request.document_id:
                 try:
-                    from sqlalchemy import select
                     from app.models.document import Document
                     result = await db.execute(select(Document).where(Document.id == request.document_id))
                     doc = result.scalar_one_or_none()
