@@ -50,9 +50,16 @@ const useChatStore = create((set, get) => ({
     }
   },
 
-  // fetchSessions의 alias (ChatPage에서 initSession() 호출)
-  initSession: () => {
-    get().fetchSessions()
+  // 챗봇 페이지 진입 시 초기화:
+  // 기존 세션 목록은 사이드바용으로 불러오되, 항상 새 대화창으로 시작
+  initSession: async () => {
+    try {
+      const sessions = await listSessions()
+      set({ sessions })
+    } catch (e) {
+      console.error('[ChatStore] 세션 목록 로드 실패:', e)
+    }
+    await get().createSession()
   },
 
   // 새 세션 생성 (서버 + 상태)

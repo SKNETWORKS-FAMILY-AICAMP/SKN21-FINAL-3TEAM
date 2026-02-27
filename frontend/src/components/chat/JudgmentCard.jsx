@@ -41,7 +41,6 @@ export default function JudgmentCard({ summary, regulations = [], alternatives =
   return (
     <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
       <div className="p-4">
-        {summary && <div className="text-sm text-neutral-main leading-relaxed mb-3.5"><MarkdownText>{summary}</MarkdownText></div>}
         {regulations.length > 0 && (
           <div className="mb-3.5">
             <div className="text-xs font-semibold text-neutral-sub mb-2">관련 규정 ({regulations.length}건)</div>
@@ -53,6 +52,7 @@ export default function JudgmentCard({ summary, regulations = [], alternatives =
             ))}
           </div>
         )}
+        {summary && <div className="text-sm text-neutral-main leading-relaxed mb-3.5"><MarkdownText>{summary}</MarkdownText></div>}
         {alternatives.length > 0 && (
           <div>
             <div className="text-xs font-semibold text-neutral-sub mb-2 flex items-center gap-1"><Lightbulb size={14} /> 대안</div>
