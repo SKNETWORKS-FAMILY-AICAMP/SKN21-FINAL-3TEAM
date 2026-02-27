@@ -444,7 +444,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                     intent=intent,
                     intent_confidence=final_state.get("confidence", 0.0),
                     agent_type=_get_agent_type(intent),
-                    agent_response=json.dumps(agent_response, ensure_ascii=False, default=str)[:5000],
+                    agent_response=json.dumps(agent_response, ensure_ascii=False, default=str),
                     response_time_ms=response_time_ms,
                 )
                 db.add(log)
@@ -462,6 +462,27 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
             print(f"[Chat] !!! 스트림 에러: {e}")
             import traceback
             traceback.print_exc()
+
+            # 에러 시에도 ChatLog 저장 (답변 유실 방지)
+            try:
+                err_response = final_state.get("agent_response", {}) if final_state else {}
+                err_response["error"] = str(e)
+                log = ChatLog(
+                    session_id=session_id,
+                    user_id=user.id,
+                    user_message=request.message,
+                    intent=final_state.get("intent", "general") if final_state else "general",
+                    intent_confidence=final_state.get("confidence", 0.0) if final_state else 0.0,
+                    agent_type="error",
+                    agent_response=json.dumps(err_response, ensure_ascii=False, default=str),
+                    response_time_ms=int((time.time() - _t_total) * 1000),
+                )
+                db.add(log)
+                await db.commit()
+                print(f"[Chat] 에러 시 chat_log 저장 완료 (id={log.id})")
+            except Exception as save_err:
+                print(f"[Chat] 에러 시 chat_log 저장도 실패: {save_err}")
+
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
@@ -531,7 +552,7 @@ async def chat(request: ChatRequest, user=Depends(get_current_user), db: AsyncSe
                 intent=intent,
                 intent_confidence=confidence,
                 agent_type=_get_agent_type(intent),
-                agent_response=json.dumps(agent_response, ensure_ascii=False, default=str)[:5000],
+                agent_response=json.dumps(agent_response, ensure_ascii=False, default=str),
                 response_time_ms=int((time.time() - _t_start) * 1000),
             )
             db.add(log)
