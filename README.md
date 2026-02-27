@@ -391,7 +391,6 @@ graph TD
 | 스타일 | Tailwind CSS + Lucide Icons |
 | 캘린더 | FullCalendar |
 | 애니메이션 | framer-motion |
-| 차트 | Recharts |
 | E2E 테스트 | Playwright |
 
 ### Infra
@@ -447,7 +446,7 @@ graph TD
 - 추론 속도: 7.9ms (GPU)
 - 현재 적용: 단일질문 분류 / 복합질문 강화: 중간발표 후 진행
 
-> 6단계 실험: Baseline → Grid Search → 최종 평가 → 오분류 분석 → 보강 재학습 → Label Smoothing
+> 7단계 실험 수행, **6단계(Label Smoothing) 모델 최종 선택**: Baseline → Grid Search → 최종 평가 → 오분류 분석 → 보강 재학습 → **Label Smoothing** → 시나리오 검증
 
 #### 3모델 Baseline 비교
 
