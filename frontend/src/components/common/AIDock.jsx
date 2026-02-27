@@ -88,7 +88,7 @@ export default function AIDock() {
             {isVisible && (
                 <motion.div
                     initial={{ y: 100, x: '-50%', opacity: 0 }}
-                    animate={{ y: 0, x: '-50%', opacity: 1 }}
+                    animate={{ y: 0, x: '-50%', opacity: 0.85 }}
                     exit={{ y: 100, x: '-50%', opacity: 0 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                     className="fixed bottom-6 left-1/2 z-50"
@@ -96,7 +96,7 @@ export default function AIDock() {
                     <motion.div
                         onMouseMove={(e) => mouseX.set(e.pageX)}
                         onMouseLeave={() => mouseX.set(Infinity)}
-                        className="mx-auto flex h-16 items-end gap-4 rounded-[2.5rem] bg-white/5 backdrop-blur-xl border border-white/20 px-4 pb-3 shadow-2xl"
+                        className="mx-auto flex h-16 items-end gap-4 rounded-[2.5rem] bg-white/10 backdrop-blur-md border border-white/15 px-4 pb-3 shadow-lg"
                     >
                         {features.map((feature) => (
                             <DockIcon key={feature.id} feature={feature} mouseX={mouseX} />

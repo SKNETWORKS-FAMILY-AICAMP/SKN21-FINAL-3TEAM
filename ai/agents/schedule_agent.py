@@ -380,8 +380,14 @@ async def _handle_schedule_view(user_input: str, user_id: int) -> dict:
         schedule_lines = []
         for ev in events[:10]:
             title = ev.get("title", "제목 없음")
-            start = ev.get("start", "")
-            schedule_lines.append(f"- {title} ({start})")
+            start_raw = ev.get("start", "")
+            # ISO datetime → "HH:MM" 시간만 표시
+            try:
+                start_dt = datetime.fromisoformat(start_raw.replace("Z", "+00:00"))
+                start_display = start_dt.strftime("%H:%M")
+            except (ValueError, AttributeError):
+                start_display = start_raw
+            schedule_lines.append(f"- {title} ({start_display})")
 
         message = f"총 {len(events)}개의 일정이 있습니다.\n" + "\n".join(schedule_lines)
         if len(events) > 10:
