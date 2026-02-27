@@ -151,6 +151,13 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                     _t_node = time.time() - _t_total
                     print(f"\n[Chat] >>> 노드 이벤트 수신: {node_name} (+{_t_node:.2f}s)")
                     print(f"[Chat]     output keys: {list(node_output.keys())}")
+                    # agent_response가 스트리밍으로 이미 채워졌으면 덮어쓰지 않음
+                    if "agent_response" in node_output and "agent_response" in final_state:
+                        existing = final_state["agent_response"]
+                        incoming = node_output["agent_response"]
+                        # 이미 실제 메시지가 있는데 stream_pending으로 되돌리면 안 됨
+                        if existing.get("message") and incoming.get("stream_pending"):
+                            node_output = {k: v for k, v in node_output.items() if k != "agent_response"}
                     final_state.update(node_output)
 
                     if node_name == "classify_intent":
