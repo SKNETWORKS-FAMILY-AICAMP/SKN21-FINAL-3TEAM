@@ -151,6 +151,13 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                     _t_node = time.time() - _t_total
                     print(f"\n[Chat] >>> 노드 이벤트 수신: {node_name} (+{_t_node:.2f}s)")
                     print(f"[Chat]     output keys: {list(node_output.keys())}")
+                    # agent_response가 스트리밍으로 이미 채워졌으면 덮어쓰지 않음
+                    if "agent_response" in node_output and "agent_response" in final_state:
+                        existing = final_state["agent_response"]
+                        incoming = node_output["agent_response"]
+                        # 이미 실제 메시지가 있는데 stream_pending으로 되돌리면 안 됨
+                        if existing.get("message") and incoming.get("stream_pending"):
+                            node_output = {k: v for k, v in node_output.items() if k != "agent_response"}
                     final_state.update(node_output)
 
                     if node_name == "classify_intent":
@@ -444,7 +451,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                     intent=intent,
                     intent_confidence=final_state.get("confidence", 0.0),
                     agent_type=_get_agent_type(intent),
-                    agent_response=json.dumps(agent_response, ensure_ascii=False, default=str)[:5000],
+                    agent_response=json.dumps(agent_response, ensure_ascii=False, default=str),
                     response_time_ms=response_time_ms,
                 )
                 db.add(log)
@@ -462,6 +469,27 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
             print(f"[Chat] !!! 스트림 에러: {e}")
             import traceback
             traceback.print_exc()
+
+            # 에러 시에도 ChatLog 저장 (답변 유실 방지)
+            try:
+                err_response = final_state.get("agent_response", {}) if final_state else {}
+                err_response["error"] = str(e)
+                log = ChatLog(
+                    session_id=session_id,
+                    user_id=user.id,
+                    user_message=request.message,
+                    intent=final_state.get("intent", "general") if final_state else "general",
+                    intent_confidence=final_state.get("confidence", 0.0) if final_state else 0.0,
+                    agent_type="error",
+                    agent_response=json.dumps(err_response, ensure_ascii=False, default=str),
+                    response_time_ms=int((time.time() - _t_total) * 1000),
+                )
+                db.add(log)
+                await db.commit()
+                print(f"[Chat] 에러 시 chat_log 저장 완료 (id={log.id})")
+            except Exception as save_err:
+                print(f"[Chat] 에러 시 chat_log 저장도 실패: {save_err}")
+
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
@@ -531,7 +559,7 @@ async def chat(request: ChatRequest, user=Depends(get_current_user), db: AsyncSe
                 intent=intent,
                 intent_confidence=confidence,
                 agent_type=_get_agent_type(intent),
-                agent_response=json.dumps(agent_response, ensure_ascii=False, default=str)[:5000],
+                agent_response=json.dumps(agent_response, ensure_ascii=False, default=str),
                 response_time_ms=int((time.time() - _t_start) * 1000),
             )
             db.add(log)

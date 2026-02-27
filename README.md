@@ -2,6 +2,8 @@
 
 > LangGraph 기반 멀티 Agent 업무 자동화 시스템
 
+**멘토**: 최민수
+
 **팀원**: 신지용(PM) | 윤경은(AI Engineer) | 진승언(AI Engineer) | 안혜빈(Backend) | 문지영(Frontend)
 
 ---

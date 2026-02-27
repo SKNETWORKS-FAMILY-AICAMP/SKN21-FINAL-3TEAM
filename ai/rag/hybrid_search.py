@@ -270,6 +270,14 @@ class HybridSearcher:
                 if len(diverse_results) >= top_k:
                     break
 
+        # RRF 점수 min-max 정규화 (0~1 범위)
+        # RRF 원본 점수는 0.01~0.033 범위라 프론트엔드에서 *100 해도 3%로 표시됨
+        if not diverse_results:
+            return []
+        rrf_scores_list = [doc["rrf_score"] for doc in diverse_results]
+        min_s = min(rrf_scores_list)
+        max_s = max(rrf_scores_list)
+
         return [
             {
                 "content": doc["content"],
@@ -278,7 +286,8 @@ class HybridSearcher:
                 "chapter": doc.get("chapter", ""),
                 "article": doc.get("article", ""),
                 "document_id": doc.get("document_id"),
-                "score": doc["rrf_score"],
+                "score": (doc["rrf_score"] - min_s) / (max_s - min_s) if max_s > min_s else 1.0,
+                "rrf_score": doc["rrf_score"],
                 "doc_id": doc["doc_id"],
             }
             for doc in diverse_results
