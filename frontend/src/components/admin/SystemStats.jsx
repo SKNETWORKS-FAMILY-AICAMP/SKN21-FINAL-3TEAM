@@ -44,6 +44,7 @@ function timeAgo(timestamp) {
 export default function SystemStats({ queryLogs = [] }) {
   const [period, setPeriod] = useState('daily');
   const [topQueries, setTopQueries] = useState([]);
+  const [selectedQuery, setSelectedQuery] = useState(null);
 
   useEffect(() => {
     getTopQueries(period, 5)
@@ -55,6 +56,7 @@ export default function SystemStats({ queryLogs = [] }) {
   const total = topQueries.reduce((sum, q) => sum + q.count, 0) || 1;
   const stats = topQueries.map((q) => ({
     label: q.question?.slice(0, 20) + (q.question?.length > 20 ? '...' : ''),
+    fullQuestion: q.question || '',
     intent: q.intent,
     percent: Math.round((q.count / total) * 100),
     color: INTENT_COLORS[q.intent] || '#999',
@@ -82,8 +84,8 @@ export default function SystemStats({ queryLogs = [] }) {
           {stats.length === 0 ? (
             <p className="text-sm text-neutral-sub text-center py-4">데이터가 없습니다</p>
           ) : stats.map((s, i) => (
-            <div key={i} className="flex justify-between items-center">
-              <span className="text-[0.8125rem] text-neutral-sub w-40 truncate" title={s.label}>{s.label}</span>
+            <div key={i} className="flex justify-between items-center cursor-pointer rounded-md px-1 py-1 hover:bg-surface-hover transition" onClick={() => setSelectedQuery(s)}>
+              <span className="text-[0.8125rem] text-neutral-sub w-40 truncate">{s.label}</span>
               <div className="flex-1 mx-3 h-2 bg-neutral-divider rounded-full">
                 <div className="h-full rounded-full transition-all duration-300" style={{ width: s.percent + '%', background: s.color }} />
               </div>
@@ -92,6 +94,35 @@ export default function SystemStats({ queryLogs = [] }) {
           ))}
         </div>
       </div>
+
+      {selectedQuery && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setSelectedQuery(null)}>
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-divider">
+              <span className="text-sm font-bold text-neutral-main">질의 상세</span>
+              <button onClick={() => setSelectedQuery(null)} className="text-neutral-muted hover:text-neutral-main text-lg leading-none">&times;</button>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              <div>
+                <div className="text-xs text-neutral-muted mb-1">질문 내용</div>
+                <div className="text-sm text-neutral-main leading-relaxed break-words">{selectedQuery.fullQuestion}</div>
+              </div>
+              <div className="flex gap-4">
+                <div>
+                  <div className="text-xs text-neutral-muted mb-1">분류</div>
+                  <span className="inline-block px-2 py-0.5 rounded text-xs font-medium text-white" style={{ background: selectedQuery.color }}>
+                    {INTENT_LABELS[selectedQuery.intent] || selectedQuery.intent}
+                  </span>
+                </div>
+                <div>
+                  <div className="text-xs text-neutral-muted mb-1">조회 수</div>
+                  <div className="text-sm font-semibold" style={{ color: selectedQuery.color }}>{selectedQuery.count}건</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="card overflow-hidden">
         <div className="card-header"><div className="card-title">최근 질의 로그</div></div>
@@ -102,7 +133,7 @@ export default function SystemStats({ queryLogs = [] }) {
             const type = q.intent?.startsWith('doc') ? 'doc'
               : q.intent?.startsWith('schedule') ? 'schedule' : 'query';
             return (
-              <div key={q.id || i} className={`flex items-center gap-3 px-2 py-3 rounded-sm transition hover:bg-surface-hover ${i < queryLogs.length - 1 ? 'border-b border-neutral-divider' : ''}`}>
+              <div key={q.id || i} className={`flex items-center gap-3 px-2 py-3 rounded-sm transition hover:bg-surface-hover cursor-pointer ${i < queryLogs.length - 1 ? 'border-b border-neutral-divider' : ''}`} onClick={() => setSelectedQuery({ fullQuestion: q.question, intent: q.intent, count: 1, color: INTENT_COLORS[q.intent] || '#999' })}>
                 <div className={`w-9 h-9 rounded-sm flex items-center justify-center flex-shrink-0 ${type === 'query' ? 'bg-accent-50 text-accent-700' : type === 'doc' ? 'bg-primary-50 text-primary-700' : 'bg-success-bg text-success'}`}>
                   {type === 'query' ? <HelpCircle size={18} /> : type === 'doc' ? <FileText size={18} /> : <CalendarClock size={18} />}
                 </div>
