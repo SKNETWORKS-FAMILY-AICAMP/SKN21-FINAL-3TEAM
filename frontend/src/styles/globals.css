@@ -94,42 +94,59 @@
     background: var(--color-surface-main);
     min-height: 100vh;
   }
+
+  .dark body {
+    background: linear-gradient(160deg, #20232A 0%, #252830 55%, #1E2128 100%);
+  }
 }
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-sm bg-primary-700 text-white text-sm font-semibold transition-all hover:bg-primary-900;
+    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary-700 text-white text-sm font-semibold transition-all hover:bg-primary-900 hover:shadow-md;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-sm bg-accent-50 text-accent-700 text-sm font-semibold border border-accent-300 transition-all hover:bg-accent-100;
+    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-50 text-accent-700 text-sm font-semibold border border-accent-300 transition-all hover:bg-accent-100;
   }
 
   .btn-outline {
-    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-sm bg-transparent text-primary-700 text-sm font-semibold border border-neutral-border transition-all hover:bg-primary-50 hover:border-primary-300;
+    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-transparent text-primary-700 text-sm font-semibold border border-neutral-border transition-all hover:bg-primary-50 hover:border-primary-300;
   }
 
   .btn-danger {
-    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-sm bg-error-bg text-error text-sm font-semibold transition-all hover:bg-red-200;
+    @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-error-bg text-error text-sm font-semibold transition-all hover:bg-red-200;
   }
 
   .glass-container {
-    @apply bg-surface-card rounded-3xl border border-white/60 overflow-hidden p-6;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+    @apply rounded-2xl border border-neutral-divider overflow-hidden p-6;
+    background: rgba(255, 255, 255, 0.45);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 6px 16px rgba(0, 0, 0, 0.04);
   }
 
   .card {
-    @apply rounded-2xl border border-white/60 overflow-hidden;
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04), 0 1px 4px rgba(0, 0, 0, 0.02);
+    @apply rounded-2xl border border-neutral-divider overflow-hidden;
+    background: rgba(255, 255, 255, 0.45);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 4px 12px rgba(0, 0, 0, 0.04);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+
+  .card:hover {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+    border-color: var(--color-primary-100);
+    background: rgba(255, 255, 255, 0.55);
   }
 
   .dark .card {
-    background: rgba(48, 52, 62, 0.6);
+    background: rgba(48, 52, 62, 0.45);
+    border-color: var(--color-neutral-border);
+  }
+
+  .dark .card:hover {
+    border-color: var(--color-primary-300);
   }
 
   .card-header {
@@ -146,6 +163,11 @@
 
   .badge {
     @apply text-[0.6875rem] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap;
+  }
+
+  /* Shadow utility */
+  .shadow-soft {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 4px 12px rgba(0, 0, 0, 0.04);
   }
 }
 

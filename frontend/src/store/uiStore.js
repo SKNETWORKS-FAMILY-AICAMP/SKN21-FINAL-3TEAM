@@ -12,9 +12,9 @@ const getInitialTheme = () => {
 // ── 대시보드 레이아웃 ──
 const DASHBOARD_KEY = 'dashboard-layout'
 const DEFAULT_DASHBOARD = {
-  leftColumn: ['TodaySchedule', 'ActivityTimeline'],
-  rightColumn: ['AIChatWidget', 'CalendarWidget', 'RecentDocs'],
-  hidden: [],
+  leftColumn: ['QuickStatsWidget', 'ScheduleTimelineWidget', 'WhatsOnWidget', 'TodaySchedule', 'TaskPipelineWidget', 'CalendarWidget'],
+  rightColumn: ['ApprovalQueueWidget', 'TeamMembersWidget', 'WorkHoursWidget', 'ActivityTimeline'],
+  hidden: ['AIChatWidget', 'RecentDocs', 'EmployeeTableWidget'],
 }
 
 function loadDashboard() {
