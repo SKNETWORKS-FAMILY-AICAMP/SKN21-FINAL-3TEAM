@@ -39,12 +39,24 @@ export default function DocumentsPage() {
     loadDocuments();
   }, []);
 
-  const loadDocuments = async (keyword = null, currentSearchType = null) => {
+  // scope 필터 변경 시 목록 새로고침
+  const handleScopeFilterChange = (newFilter) => {
+    setScopeFilter(newFilter);
+    loadDocuments(searchQuery || null, null, newFilter);
+  };
+
+  const SCOPE_FILTER_MAP = { '회사': 'company', '팀': 'team' };
+
+  const loadDocuments = async (keyword = null, currentSearchType = null, currentScopeFilter = null) => {
     try {
       const params = {};
       if (keyword) {
         params.keyword = keyword;
         params.search_type = currentSearchType || SEARCH_TYPE_MAP[searchType] || 'title';
+      }
+      const sf = currentScopeFilter || scopeFilter;
+      if (sf && sf !== '전체') {
+        params.scope = SCOPE_FILTER_MAP[sf];
       }
       const response = await listDocuments(params);
       setDocuments(response.data);
@@ -147,9 +159,9 @@ export default function DocumentsPage() {
   }));
 
   const filteredDocs = formattedDocs.filter((doc) => {
-    // 스코프 필터링만 클라이언트에서 처리 (검색은 서버에서 처리됨)
+    // 스코프 필터링 (검색은 서버에서 처리됨)
     if (scopeFilter === '회사' && doc.scope !== 'company') return false;
-    if (scopeFilter === '팀' && doc.scope !== 'personal') return false;
+    if (scopeFilter === '팀' && doc.scope !== 'team') return false;
     return true;
   });
 
@@ -230,7 +242,7 @@ export default function DocumentsPage() {
       </header>
       <DocumentUpload onUpload={handleUpload} onScopeChange={setScope} />
       <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-5">
-        <DocumentList documents={filteredDocs} onSelect={handleSelectDoc} searchQuery={searchQuery} scopeFilter={scopeFilter} onScopeFilterChange={setScopeFilter} />
+        <DocumentList documents={filteredDocs} onSelect={handleSelectDoc} searchQuery={searchQuery} scopeFilter={scopeFilter} onScopeFilterChange={handleScopeFilterChange} />
         <DocumentDetail
           doc={selectedDoc}
           documentDetail={documentDetail}

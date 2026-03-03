@@ -46,10 +46,13 @@ export const JUDGMENT_RESULTS = {
   NO_REGULATION: 'no_regulation',
 }
 
+// 팀(부서) 목록
+export const TEAMS = ['개발', 'QA기획', 'UI/UX', '영업', '마케팅', 'CS'];
+
 // 문서 scope
 export const DOCUMENT_SCOPES = {
   COMPANY: 'company',
-  PERSONAL: 'personal',
+  TEAM: 'team',
 }
 
 // 일정 타입 색상

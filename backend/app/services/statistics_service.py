@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.chat_log import ChatLog
 from app.models.meeting import Meeting
 from app.models.action_item import ActionItem
+from app.models.user import User
 
 
 def _period_start(period: str) -> datetime:
@@ -28,6 +29,7 @@ async def get_top_queries(
     db: AsyncSession,
     period: str = "daily",
     limit: int = 10,
+    team: str | None = None,
 ) -> list[dict]:
     """
     인기 질의 Top N 조회 (chat_logs 기간별 집계)
@@ -36,7 +38,7 @@ async def get_top_queries(
         [{"question": "...", "count": 15, "intent": "judgment", "last_asked": "..."}]
     """
     since = _period_start(period)
-    result = await db.execute(
+    stmt = (
         select(
             ChatLog.user_message,
             ChatLog.intent,
@@ -44,10 +46,15 @@ async def get_top_queries(
             func.max(ChatLog.created_at).label("last_asked"),
         )
         .where(ChatLog.created_at >= since)
-        .group_by(ChatLog.user_message, ChatLog.intent)
+    )
+    if team:
+        stmt = stmt.join(User, ChatLog.user_id == User.id).where(User.team == team)
+    stmt = (
+        stmt.group_by(ChatLog.user_message, ChatLog.intent)
         .order_by(func.count(ChatLog.id).desc())
         .limit(limit)
     )
+    result = await db.execute(stmt)
     return [
         {
             "question": row.user_message,
@@ -59,7 +66,7 @@ async def get_top_queries(
     ]
 
 
-async def get_dashboard_stats(db: AsyncSession, user_id: int | None = None) -> dict:
+async def get_dashboard_stats(db: AsyncSession, user_id: int | None = None, team: str | None = None) -> dict:
     """
     대시보드 통계 카드 데이터
 
@@ -74,11 +81,15 @@ async def get_dashboard_stats(db: AsyncSession, user_id: int | None = None) -> d
     q_queries = select(func.count(ChatLog.id)).where(ChatLog.created_at >= today_start)
     if user_id:
         q_queries = q_queries.where(ChatLog.user_id == user_id)
+    if team:
+        q_queries = q_queries.join(User, ChatLog.user_id == User.id).where(User.team == team)
     today_queries = (await db.execute(q_queries)).scalar() or 0
 
     q_meetings = select(func.count(Meeting.id))
     if user_id:
         q_meetings = q_meetings.where(Meeting.created_by == user_id)
+    if team:
+        q_meetings = q_meetings.join(User, Meeting.created_by == User.id).where(User.team == team)
     processed_meetings = (await db.execute(q_meetings)).scalar() or 0
 
     completed_action_items = (

@@ -1,7 +1,7 @@
 """
 일정 모델 (팀원 D 담당)
 """
-from sqlalchemy import String, ForeignKey
+from sqlalchemy import String, Boolean, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 from typing import Optional
@@ -23,3 +23,5 @@ class Schedule(Base, TimestampMixin):
     google_meet_link: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     action_item_id: Mapped[Optional[int]] = mapped_column(ForeignKey("action_items.id"), nullable=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    team_name: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # 유저 소속 팀
+    is_team_visible: Mapped[bool] = mapped_column(Boolean, default=False)  # 팀원에게 공유 여부

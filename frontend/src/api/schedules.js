@@ -3,8 +3,8 @@
  */
 import client from './client'
 
-export const listSchedules = () =>
-  client.get('/schedules/')
+export const listSchedules = (params) =>
+  client.get('/schedules/', { params })
 
 export const createSchedule = (data) =>
   client.post('/schedules/', data)

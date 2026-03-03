@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Users } from 'lucide-react';
 import useGoogleServices from '../../hooks/useGoogleServices';
 import useScheduleTypeStore, { DEFAULT_TYPES } from '../../store/scheduleTypeStore';
+import useAuthStore from '../../store/authStore';
 import DatePicker from '../common/DatePicker';
 
 // 00:00 ~ 23:50 (10분 간격) 타임 옵션 생성
@@ -96,6 +97,8 @@ function TimeSelect({ value, onChange }) {
 export default function ScheduleForm({ onSubmit, onClose }) {
   const { connected, hasScope } = useGoogleServices();
   const { customTypes } = useScheduleTypeStore();
+  const user = useAuthStore((s) => s.user);
+  const hasTeam = !!user?.team;
   const allTypes = [...DEFAULT_TYPES, ...customTypes];
   const [form, setForm] = useState({
     title: '',
@@ -106,6 +109,7 @@ export default function ScheduleForm({ onSubmit, onClose }) {
     allDay: false,
     includeMeet: false,
     attendeeEmails: '',
+    isTeamVisible: false,
   });
 
   const canMeet = connected && hasScope('calendar');
@@ -119,6 +123,7 @@ export default function ScheduleForm({ onSubmit, onClose }) {
         ? form.attendeeEmails.split(',').map((e) => e.trim()).filter(Boolean)
         : [],
       include_meet: form.includeMeet,
+      is_team_visible: form.isTeamVisible,
     };
     onSubmit?.(data);
   };
@@ -218,6 +223,25 @@ export default function ScheduleForm({ onSubmit, onClose }) {
                 <span className="text-sm font-medium text-neutral-main">Google Meet 링크 생성</span>
               </div>
             </label>
+          </div>
+        )}
+
+        {/* 팀에 공유 */}
+        {hasTeam && (
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-md border border-neutral-divider bg-surface-hover">
+            <label className="flex items-center gap-2 cursor-pointer flex-1">
+              <input
+                type="checkbox"
+                checked={form.isTeamVisible}
+                onChange={(e) => setForm({ ...form, isTeamVisible: e.target.checked })}
+                className="w-4 h-4 rounded border-neutral-border accent-primary-700"
+              />
+              <div className="flex items-center gap-1.5">
+                <Users size={16} className="text-primary-500" />
+                <span className="text-sm font-medium text-neutral-main">팀에 공유</span>
+              </div>
+            </label>
+            <span className="text-[0.6875rem] text-neutral-muted">{user.team}팀 멤버에게 표시됩니다</span>
           </div>
         )}
 

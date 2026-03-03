@@ -64,7 +64,7 @@ function useDashboardData() {
     let cancelled = false;
     async function fetchAll() {
       const results = await Promise.allSettled([
-        listSchedules().then(r => r.data),
+        listSchedules({ include_team: true }).then(r => r.data),
         listDocuments().then(r => r.data),
         listSessions(),
       ]);

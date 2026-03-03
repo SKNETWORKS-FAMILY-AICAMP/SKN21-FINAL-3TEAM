@@ -41,15 +41,15 @@ function timeAgo(timestamp) {
   return `${Math.floor(hours / 24)}일 전`;
 }
 
-export default function SystemStats({ queryLogs = [] }) {
+export default function SystemStats({ queryLogs = [], team = null }) {
   const [period, setPeriod] = useState('daily');
   const [topQueries, setTopQueries] = useState([]);
 
   useEffect(() => {
-    getTopQueries(period, 5)
+    getTopQueries(period, 5, team)
       .then((res) => setTopQueries(res.data || []))
       .catch(() => setTopQueries([]));
-  }, [period]);
+  }, [period, team]);
 
   // Top queries → 비율 계산
   const total = topQueries.reduce((sum, q) => sum + q.count, 0) || 1;
