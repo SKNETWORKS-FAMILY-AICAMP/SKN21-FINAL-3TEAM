@@ -10,7 +10,7 @@ const iconStyles = {
 
 export default function ActivityTimeline({ activities = [] }) {
   return (
-    <div className="card">
+    <div className="rounded-2xl border border-white/60 overflow-hidden bg-white/60 dark:bg-gray-800/60 backdrop-blur-md shadow-md">
       <div className="card-header">
         <div className="card-title"><Clock size={16} className="text-neutral-sub" />최근 활동</div>
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-success-bg text-success text-xs font-semibold">

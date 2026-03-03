@@ -12,7 +12,7 @@ export default function GreetingBanner({ meetingCount = 0, actionCount = 0, risk
   const summary = parts.length > 0 ? `오늘 ${parts.join(', ')}이 있습니다.` : '오늘 예정된 일정이 없습니다.';
 
   return (
-    <div className="card p-6">
+    <div className="rounded-2xl border border-white/60 overflow-hidden p-6 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md shadow-md">
       <div className="flex items-center gap-3">
         <Smile size={24} className="text-primary-700 flex-shrink-0" />
         <div>
