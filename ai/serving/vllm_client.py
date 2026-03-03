@@ -41,7 +41,7 @@ class VLLMProvider(BaseLLM):
 
         # vLLM 전용 환경변수
         self.base_url = os.getenv("VLLM_BASE_URL", "http://localhost:8000/v1")
-        self.model = config.model or os.getenv("VLLM_MODEL", "kaist-ai/Kanana-1.5-8B")
+        self.model = config.model or os.getenv("VLLM_MODEL", "kakaocorp/kanana-1.5-8b-instruct-2505")
         self.api_key = os.getenv("VLLM_API_KEY", "EMPTY")  # vLLM은 API key 불필요
 
         if not config.model:

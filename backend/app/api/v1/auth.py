@@ -102,6 +102,34 @@ async def get_me(current_user: User = Depends(get_current_user)):
     }
 
 
+@router.get("/team-members")
+async def get_team_members(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """현재 로그인한 사용자의 소속 팀원 목록 조회"""
+    if not current_user.team:
+        return []
+    
+    result = await db.execute(select(User).where(User.team == current_user.team))
+    team_members = result.scalars().all()
+    
+    return [
+        {
+            "id": member.id,
+            "email": member.email,
+            "name": member.name,
+            "team": member.team,
+            "phone": member.phone,
+            "address": member.address,
+            "avatar": member.avatar,
+            "role": member.role,
+            "is_active": member.is_active,
+        }
+        for member in team_members if member.is_active
+    ]
+
+
 # ── 비밀번호 변경 (로그인 상태에서) ──
 
 
