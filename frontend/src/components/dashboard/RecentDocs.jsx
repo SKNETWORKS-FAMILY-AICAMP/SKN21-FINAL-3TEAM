@@ -4,7 +4,7 @@ import { FileText } from 'lucide-react';
 
 export default function RecentDocs({ docs = [] }) {
   return (
-    <div className="card">
+    <div className="rounded-2xl border border-white/60 overflow-hidden bg-white/60 dark:bg-gray-800/60 backdrop-blur-md shadow-md">
       <div className="card-header">
         <div className="card-title"><FileText size={16} className="text-neutral-sub" />최근 문서</div>
         <Link to="/documents" className="btn-primary text-xs">+ 업로드</Link>

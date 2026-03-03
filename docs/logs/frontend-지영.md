@@ -623,12 +623,11 @@
   - Google 연결 + calendarId 있는 유형만 API 호출
   - API 실패해도 앱 내 유형은 정상 삭제 (graceful fallback)
   - Google 미연결 또는 calendarId 없는 유형은 로컬만 삭제
+  
 ### 다음 할 일
-- vite 프록시 설정 로컬/EC2 분리 (.env.local)
-- 판단 Agent 스트리밍 디버깅
 - 문서 생성 AI 연동 (501 엔드포인트 해소)
 - 관리자 API 연동 (#29)
-
+ 
 ---
 
 ## 2026-02-26 (목)
@@ -640,8 +639,83 @@
   - Judgment Agent, Document Agent, Schedule Agent, General Response 4개 서브그래프 구성
   - 전체 구조도 (`전체 구조 2`) 섹션도 Mermaid로 변환
 
+#### 2) 일정 추가 폼 날짜 선택 달력 교체 (`ScheduleForm.jsx`, `DatePicker.jsx`)
+- 네이티브 `<input type="date">` → 문서 관리 페이지와 동일한 커스텀 `DatePicker` 컴포넌트로 교체
+- DatePicker 달력 팝업 잘림 버그 수정: `.card` 클래스의 `overflow-hidden`에 의해 팝업이 클리핑되는 문제
+  - `position: absolute` → `createPortal`로 `document.body`에 직접 렌더링
+  - 트리거 버튼 위치를 `getBoundingClientRect()`로 계산하여 팝업 위치 고정
+
+#### 3) 시간 선택 커스텀 드롭다운 (`ScheduleForm.jsx`)
+- 시작/종료 시간의 네이티브 `<select>` → 커스텀 `TimeSelect` 컴포넌트로 교체
+  - 브라우저 기본 드롭다운은 144개 옵션(00:00~23:50)이 화면 가득 펼쳐지는 문제
+  - `max-h-48` 스크롤 가능한 커스텀 드롭다운으로 교체
+  - `createPortal`로 `document.body`에 렌더링 (`.card` overflow-hidden 회피)
+
+
 ### 다음 할 일
 - 나머지 Mock → 실제 API 교체 (문서 생성)
+- 관리자 API 연동 (#29)
+
+---
+
+## 2026-02-27 (금)
+
+### 한 일
+
+#### 1) 챗봇 판단 카드 규정 순서 변경 (`JudgmentCard.jsx`)
+
+- 기존: JudgmentCard 내 **설명 텍스트(summary)** → 관련 규정 순서
+- 변경: **관련 규정** → 설명 텍스트(summary) 순서로 교체
+- 답변 완료 시 관련 규정이 카드 상단에 먼저 표시되고 그 아래 설명 텍스트가 이어지도록 개선
+
+#### 2) 챗봇 페이지 진입 시 항상 새 대화창으로 시작 (`chatStore.js`)
+
+- 기존: `initSession()` → 서버에서 기존 세션 불러와 마지막 세션 메시지 자동 로드
+- 변경: `initSession()` → 기존 세션 목록만 로드(사이드바용) + 항상 새 빈 세션 생성
+- 효과: 서버 재시작 후 챗봇 페이지 접속 시 이전 대화 내역 없이 빈 새 대화창 표시
+- 사이드바의 이전 대화 목록은 그대로 유지되어 클릭 시 이전 대화 열람 가능
+
+### 다음 할 일
+- 나머지 Mock → 실제 API 교체 (문서 생성)
+- 관리자 API 연동 (#29)
+
+---
+
+## 2026-03-03 (화)
+
+### 한 일
+
+#### 1) 전체 배경색 베이지 → 연회색으로 변경 (`globals.css`)
+- `--color-surface-main`: `#F5F2EC` → `#F4F5F7`
+- `--color-surface-sub`: `#EDE5D0` → `#EBEDF0`
+- `--color-surface-hover`: `#FAFAF6` → `#F9FAFB`
+- `--color-neutral-border`: `#DDD8CE` → `#D1D5DB`
+- `--color-neutral-divider`: `#EDE9E0` → `#E5E7EB`
+
+#### 2) 카드 글라스모피즘(반투명) 효과 적용 (`globals.css`)
+- `.card` 클래스: `bg-white/60 backdrop-blur-md border-white/60 shadow-md` 적용
+- 팝업/모달은 `bg-surface-card` 변수 사용 → 불투명 유지 (`#FFFFFF`)
+- 다크 모드 카드: `rgba(48, 52, 62, 0.6)`
+
+#### 3) 배경 그라디언트 적용 및 상단바 색상 통일 (`globals.css`)
+- 처음: 파란기 있는 그라디언트 → 상단바(`#F4F5F7`)와 톤 맞는 중립 회색 그라디언트로 조정
+- 라이트: `linear-gradient(160deg, #ECEEF1 0%, #F4F5F7 55%, #EEEFF2 100%)`
+- 다크: `linear-gradient(160deg, #20232A 0%, #252830 55%, #1E2128 100%)`
+
+#### 4) 대시보드 오늘 일정 버그 수정 (`DashboardPage.jsx`)
+- **원인**: 일정 관리 페이지에서 추가한 일정은 Google Calendar에만 저장되는데, 대시보드는 백엔드 DB(`/api/v1/schedules/`)만 조회해서 표시 안 됨
+- **수정**: `googleStore`의 `calendarEvents`를 대시보드에서도 읽어와 백엔드 DB 일정과 병합
+  - 오늘 날짜 Google Calendar 이벤트 필터링 후 schedule 형식으로 변환
+  - 제목+날짜 기준 중복 제거
+  - `todayMeetings`, `upcomingActions`, `calEvents` 모두 병합된 데이터 사용
+
+#### 6) 문서 생성 AI 연동 확인 (`DocumentGeneratePage.jsx`)
+- `handleGenerate`, `handleMeetingSubmit`, `handleDownload` 모두 실제 API 호출 확인
+  - `generateDocument()` → `/api/v1/documents/generate` 실제 연동 ✅
+  - `downloadDocument()` → `/api/v1/documents/{id}/download` 실제 연동 ✅
+- 파일 상단 `mockMeetingResult`, `mockResults` 변수는 미사용 dead code (실제로는 쓰이지 않음)
+
+### 다음 할 일
 - 관리자 API 연동 (#29)
 - 판단 Agent 스트리밍 디버깅
 

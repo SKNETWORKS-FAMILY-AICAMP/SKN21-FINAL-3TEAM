@@ -19,16 +19,16 @@
   --color-accent-100: #EDE5D0;
   --color-accent-50: #F7F3EB;
 
-  --color-surface-main: #F5F2EC;
-  --color-surface-sub: #EDE5D0;
+  --color-surface-main: #F4F5F7;
+  --color-surface-sub: #EBEDF0;
   --color-surface-card: #FFFFFF;
-  --color-surface-hover: #FAFAF6;
+  --color-surface-hover: #F9FAFB;
 
   --color-neutral-main: #2C3340;
   --color-neutral-sub: #6B7280;
   --color-neutral-muted: #9CA3AF;
-  --color-neutral-border: #DDD8CE;
-  --color-neutral-divider: #EDE9E0;
+  --color-neutral-border: #D1D5DB;
+  --color-neutral-divider: #E5E7EB;
 
   --color-success: #5B9A6F;
   --color-success-bg: #E8F4EC;
@@ -90,7 +90,12 @@
 
 @layer base {
   body {
-    @apply bg-surface-main text-neutral-main font-sans antialiased;
+    @apply text-neutral-main font-sans antialiased;
+    background: linear-gradient(160deg, #ECEEF1 0%, #F4F5F7 55%, #EEEFF2 100%);
+    min-height: 100vh;
+  }
+  .dark body {
+    background: linear-gradient(160deg, #20232A 0%, #252830 55%, #1E2128 100%);
   }
 }
 
@@ -98,51 +103,105 @@
   .btn-primary {
     @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-sm bg-primary-700 text-white text-sm font-semibold transition-all hover:bg-primary-900;
   }
+
   .btn-secondary {
     @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-sm bg-accent-50 text-accent-700 text-sm font-semibold border border-accent-300 transition-all hover:bg-accent-100;
   }
+
   .btn-outline {
     @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-sm bg-transparent text-primary-700 text-sm font-semibold border border-neutral-border transition-all hover:bg-primary-50 hover:border-primary-300;
   }
+
   .btn-danger {
     @apply inline-flex items-center gap-1.5 px-4 py-2 rounded-sm bg-error-bg text-error text-sm font-semibold transition-all hover:bg-red-200;
   }
-  .card {
-    @apply bg-surface-card rounded-md border border-neutral-border overflow-hidden;
+
+  .glass-container {
+    @apply bg-surface-card rounded-3xl border border-white/60 overflow-hidden p-6;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
   }
+
+  .card {
+    @apply rounded-2xl border border-white/60 overflow-hidden;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04), 0 1px 4px rgba(0, 0, 0, 0.02);
+  }
+
+  .dark .card {
+    background: rgba(48, 52, 62, 0.6);
+  }
+
   .card-header {
     @apply flex justify-between items-center px-5 py-4 border-b border-neutral-divider;
   }
+
   .card-title {
     @apply text-[0.9375rem] font-bold text-neutral-main flex items-center gap-2;
   }
+
   .card-body {
     @apply px-5 py-4;
   }
+
   .badge {
     @apply text-[0.6875rem] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap;
   }
 }
 
 /* Custom scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { @apply bg-primary-100 rounded-full; }
-::-webkit-scrollbar-thumb:hover { @apply bg-primary-300; }
+::-webkit-scrollbar {
+  width: 6px;
+}
 
-.dark ::-webkit-scrollbar-thumb { background: #3A3E48; }
-.dark ::-webkit-scrollbar-thumb:hover { background: #4A4E58; }
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-primary-100 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary-300;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #3A3E48;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #4A4E58;
+}
 
 /* Typing animation */
 @keyframes bounce {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
+
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+
+  40% {
+    transform: scale(1);
+  }
 }
 
 /* 규정 패널 알림 glow 효과 */
 @keyframes reg-glow {
-  0%, 100% { box-shadow: 0 0 4px rgba(86, 114, 138, 0.3); }
-  50% { box-shadow: 0 0 12px rgba(86, 114, 138, 0.6), 0 0 24px rgba(86, 114, 138, 0.2); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 4px rgba(86, 114, 138, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 12px rgba(86, 114, 138, 0.6), 0 0 24px rgba(86, 114, 138, 0.2);
+  }
 }
 
 /* ── Print styles ── */
@@ -150,10 +209,12 @@
   body * {
     visibility: hidden;
   }
+
   .print-area,
   .print-area * {
     visibility: visible !important;
   }
+
   .print-area {
     position: absolute;
     left: 0;
@@ -163,9 +224,11 @@
     background: white !important;
     color: #2C3340 !important;
   }
+
   .print-area .no-print {
     display: none !important;
   }
+
   @page {
     margin: 15mm;
     size: A4;
