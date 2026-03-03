@@ -7,6 +7,7 @@ import ActivityTimeline from '../components/dashboard/ActivityTimeline';
 import CalendarWidget from '../components/dashboard/CalendarWidget';
 import RecentDocs from '../components/dashboard/RecentDocs';
 import useUIStore from '../store/uiStore';
+import useGoogleStore from '../store/googleStore';
 import { FileText, HelpCircle, CalendarClock } from 'lucide-react';
 import { listSchedules } from '../api/schedules';
 import { listDocuments } from '../api/documents';
@@ -57,6 +58,7 @@ function useDashboardData() {
   const [docs, setDocs] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const calendarEvents = useGoogleStore((s) => s.calendarEvents);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,8 +78,30 @@ function useDashboardData() {
     return () => { cancelled = true; };
   }, []);
 
+  // Google Calendar 오늘 이벤트를 schedule 형식으로 변환
+  const googleTodaySchedules = (calendarEvents || [])
+    .filter(e => isToday(e.start))
+    .map(e => ({
+      title: e.title || '제목 없음',
+      start_time: e.start,
+      end_time: e.end,
+      google_meet_link: e.meet_link || null,
+      description: '',
+      schedule_type: e.event_type || 'meeting',
+      _source: 'google',
+    }));
+
+  // 백엔드 DB + Google Calendar 합치기 (중복 제거: 제목+날짜 기준)
+  const mergedSchedules = [...schedules];
+  googleTodaySchedules.forEach(ge => {
+    const duplicate = schedules.some(
+      s => s.title === ge.title && isToday(s.start_time)
+    );
+    if (!duplicate) mergedSchedules.push(ge);
+  });
+
   // 오늘 일정 → TodaySchedule meetings
-  const todayMeetings = schedules
+  const todayMeetings = mergedSchedules
     .filter(s => isToday(s.start_time))
     .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
     .map(s => {
@@ -93,7 +117,7 @@ function useDashboardData() {
     });
 
   // 마감 임박 (7일 이내 deadline 일정)
-  const upcomingActions = schedules
+  const upcomingActions = mergedSchedules
     .filter(s => {
       if (s.schedule_type === 'meeting' && isToday(s.start_time)) return false;
       const d = daysUntil(s.end_time || s.start_time);
@@ -124,7 +148,7 @@ function useDashboardData() {
 
   // 캘린더 이벤트 맵 (day → type)
   const calEvents = {};
-  schedules.forEach(s => {
+  mergedSchedules.forEach(s => {
     const d = new Date(s.start_time);
     const now = new Date();
     if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) {
@@ -222,7 +246,7 @@ function WidgetItem({ id, col, editMode, onHide, isDragging, isDropTarget, onDra
       {isDropTarget && !isDragging && (
         <div className="absolute -top-3 left-0 right-0 h-1 bg-primary-500 rounded-full z-20 shadow-sm" />
       )}
-      <div className="rounded-lg border-2 border-dashed border-primary-300 dark:border-primary-600 cursor-grab active:cursor-grabbing">
+      <div className="card border-2 border-dashed border-transparent hover:border-primary-300 dark:hover:border-primary-600 transition-colors cursor-grab active:cursor-grabbing">
         <Comp {...props} />
       </div>
       <button
@@ -251,7 +275,7 @@ function WidgetColumn({ col, items, editMode, onHide, dragId, dropTarget, onDrag
 
   return (
     <div
-      className={`space-y-5 min-h-32 rounded-lg transition-all p-1 ${isColumnEndTarget ? 'outline-dashed outline-2 outline-primary-400 bg-primary-50/30 dark:bg-primary-900/10' : ''}`}
+      className={`space-y-5 min-h-32 glass-container transition-all ${isColumnEndTarget ? 'outline-dashed outline-2 outline-primary-400 bg-primary-50/30 dark:bg-primary-900/10' : ''}`}
       onDragOver={(e) => { e.preventDefault(); onColumnDragOver(col); }}
       onDrop={(e) => { e.preventDefault(); onColumnDrop(col); }}
     >
@@ -368,11 +392,10 @@ export default function DashboardPage() {
       <div className="flex items-center justify-center gap-3 mt-8">
         <button
           onClick={toggleEditMode}
-          className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-sm ${
-            editMode
-              ? 'bg-success text-white hover:bg-success/90'
-              : 'bg-surface-card border border-neutral-border text-neutral-main hover:bg-surface-hover'
-          }`}
+          className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-sm ${editMode
+            ? 'bg-success text-white hover:bg-success/90'
+            : 'bg-surface-card border border-neutral-border text-neutral-main hover:bg-surface-hover'
+            }`}
         >
           {editMode ? <><Check size={16} /> 완료</> : <><Pencil size={16} /> 편집</>}
         </button>

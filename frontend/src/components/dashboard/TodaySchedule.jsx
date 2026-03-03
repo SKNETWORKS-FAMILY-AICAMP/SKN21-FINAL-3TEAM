@@ -13,7 +13,7 @@ export default function TodaySchedule({ meetings = [], actions = [] }) {
   };
 
   return (
-    <div className="card">
+    <div className="rounded-2xl border border-white/60 overflow-hidden bg-white/60 dark:bg-gray-800/60 backdrop-blur-md shadow-md">
       {/* 섹션 1: 오늘 일정 */}
       <div className="card-header">
         <div className="card-title"><Calendar size={16} className="text-neutral-sub" />오늘 일정</div>

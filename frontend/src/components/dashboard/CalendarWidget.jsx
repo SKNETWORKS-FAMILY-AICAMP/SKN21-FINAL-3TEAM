@@ -31,7 +31,7 @@ export default function CalendarWidget({ events = {} }) {
   };
 
   return (
-    <div className="card cursor-pointer" onClick={() => navigate('/schedules')}>
+    <div className="rounded-2xl border border-white/60 overflow-hidden bg-white/60 dark:bg-gray-800/60 backdrop-blur-md shadow-md cursor-pointer" onClick={() => navigate('/schedules')}>
       <div className="card-body">
         <div className="flex justify-between items-center mb-4">
           <div className="text-[0.9375rem] font-bold text-neutral-main">{year}년 {month}월</div>

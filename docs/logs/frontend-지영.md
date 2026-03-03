@@ -681,6 +681,46 @@
 
 ---
 
+## 2026-03-03 (화)
+
+### 한 일
+
+#### 1) 전체 배경색 베이지 → 연회색으로 변경 (`globals.css`)
+- `--color-surface-main`: `#F5F2EC` → `#F4F5F7`
+- `--color-surface-sub`: `#EDE5D0` → `#EBEDF0`
+- `--color-surface-hover`: `#FAFAF6` → `#F9FAFB`
+- `--color-neutral-border`: `#DDD8CE` → `#D1D5DB`
+- `--color-neutral-divider`: `#EDE9E0` → `#E5E7EB`
+
+#### 2) 카드 글라스모피즘(반투명) 효과 적용 (`globals.css`)
+- `.card` 클래스: `bg-white/60 backdrop-blur-md border-white/60 shadow-md` 적용
+- 팝업/모달은 `bg-surface-card` 변수 사용 → 불투명 유지 (`#FFFFFF`)
+- 다크 모드 카드: `rgba(48, 52, 62, 0.6)`
+
+#### 3) 배경 그라디언트 적용 및 상단바 색상 통일 (`globals.css`)
+- 처음: 파란기 있는 그라디언트 → 상단바(`#F4F5F7`)와 톤 맞는 중립 회색 그라디언트로 조정
+- 라이트: `linear-gradient(160deg, #ECEEF1 0%, #F4F5F7 55%, #EEEFF2 100%)`
+- 다크: `linear-gradient(160deg, #20232A 0%, #252830 55%, #1E2128 100%)`
+
+#### 4) 대시보드 오늘 일정 버그 수정 (`DashboardPage.jsx`)
+- **원인**: 일정 관리 페이지에서 추가한 일정은 Google Calendar에만 저장되는데, 대시보드는 백엔드 DB(`/api/v1/schedules/`)만 조회해서 표시 안 됨
+- **수정**: `googleStore`의 `calendarEvents`를 대시보드에서도 읽어와 백엔드 DB 일정과 병합
+  - 오늘 날짜 Google Calendar 이벤트 필터링 후 schedule 형식으로 변환
+  - 제목+날짜 기준 중복 제거
+  - `todayMeetings`, `upcomingActions`, `calEvents` 모두 병합된 데이터 사용
+
+#### 6) 문서 생성 AI 연동 확인 (`DocumentGeneratePage.jsx`)
+- `handleGenerate`, `handleMeetingSubmit`, `handleDownload` 모두 실제 API 호출 확인
+  - `generateDocument()` → `/api/v1/documents/generate` 실제 연동 ✅
+  - `downloadDocument()` → `/api/v1/documents/{id}/download` 실제 연동 ✅
+- 파일 상단 `mockMeetingResult`, `mockResults` 변수는 미사용 dead code (실제로는 쓰이지 않음)
+
+### 다음 할 일
+- 관리자 API 연동 (#29)
+- 판단 Agent 스트리밍 디버깅
+
+---
+
 ## 현재 구현 현황 요약
 
 | 항목 | 상태 | 비고 |
