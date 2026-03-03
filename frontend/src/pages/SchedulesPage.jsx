@@ -33,6 +33,13 @@ export default function SchedulesPage() {
   const [activeTab, setActiveTab] = useState('calendar');
   const [showTeamSchedules, setShowTeamSchedules] = useState(false);
   const [teamSchedules, setTeamSchedules] = useState([]);
+  const [myDbSchedules, setMyDbSchedules] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // 팀 소속 사용자는 팀 일정 자동 활성화 (user 비동기 로드 대응)
+  useEffect(() => {
+    if (hasTeam) setShowTeamSchedules(true);
+  }, [hasTeam]);
 
   // Google Calendar 연결 시 이벤트 자동 로드 (백엔드 기본값: ±3개월)
   useEffect(() => {
@@ -41,7 +48,30 @@ export default function SchedulesPage() {
     }
   }, [connected, hasScope, fetchCalendarEvents]);
 
-  // 팀 일정 토글 시 DB 일정 로드
+  // 본인 DB 일정 로드 (Google Calendar 미연결 시에도 일정 표시)
+  useEffect(() => {
+    listSchedules().then((res) => {
+      const schedules = (res.data || []).map((s) => {
+        const start = new Date(s.start_time);
+        const end = s.end_time ? new Date(s.end_time) : start;
+        const hasTime = s.start_time.includes('T');
+        const timeStr = hasTime
+          ? `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
+          : null;
+        return {
+          month: start.getMonth() + 1,
+          day: start.getDate(),
+          type: s.schedule_type || 'meeting',
+          label: s.title,
+          time: timeStr,
+          googleEventId: s.google_event_id,
+        };
+      });
+      setMyDbSchedules(schedules);
+    }).catch(() => setMyDbSchedules([]));
+  }, [refreshKey]);
+
+  // 팀 일정 로드
   useEffect(() => {
     if (showTeamSchedules && hasTeam) {
       listSchedules({ include_team: true }).then((res) => {
@@ -65,7 +95,7 @@ export default function SchedulesPage() {
     } else {
       setTeamSchedules([]);
     }
-  }, [showTeamSchedules, hasTeam]);
+  }, [showTeamSchedules, hasTeam, refreshKey]);
 
 
   // Google Calendar 이벤트를 CalendarView 형식으로 변환 (연결된 경우만)
@@ -94,39 +124,68 @@ export default function SchedulesPage() {
     });
   }, [calendarEvents]);
 
-  // 팀원 일정과 병합
+  // Google Calendar + 본인 DB + 팀원 일정 병합
+  // DB 일정이 schedule_type을 정확히 보존하므로 DB 우선, Google Calendar에서 meetLink만 보강
   const allEvents = useMemo(() => {
-    return [...events, ...teamSchedules];
-  }, [events, teamSchedules]);
+    const dbGoogleIds = new Set(myDbSchedules.map((s) => s.googleEventId).filter(Boolean));
+
+    // Google Calendar meet 링크 맵
+    const googleMeetMap = {};
+    events.forEach((e) => { if (e.id) googleMeetMap[e.id] = e.meetLink; });
+
+    // DB에 이미 있는 Google Calendar 이벤트는 제거 (DB의 type이 정확)
+    const uniqueGoogleEvents = events.filter((e) => !e.id || !dbGoogleIds.has(e.id));
+
+    // DB 일정에 meetLink 보강
+    const enrichedDbSchedules = myDbSchedules.map((s) => ({
+      ...s,
+      meetLink: s.googleEventId ? googleMeetMap[s.googleEventId] : undefined,
+    }));
+
+    return [...uniqueGoogleEvents, ...enrichedDbSchedules, ...teamSchedules];
+  }, [events, myDbSchedules, teamSchedules]);
+
+  const [scheduleError, setScheduleError] = useState(null);
 
   const handleAddSchedule = async (data) => {
-    if (!data.date || !data.title) return;
+    setScheduleError(null);
 
-    const startDateTime = data.allDay
-      ? new Date(`${data.date}T00:00:00`)
-      : new Date(`${data.date}T${data.start_time}:00`);
-    const endDateTime = data.allDay
-      ? new Date(`${data.date}T23:59:59`)
-      : new Date(`${data.date}T${data.end_time}:00`);
+    // 타임존 없는 로컬 시간 문자열 (DB: TIMESTAMP WITHOUT TIME ZONE)
+    const startStr = data.allDay
+      ? `${data.date}T00:00:00`
+      : `${data.date}T${data.start_time}:00`;
+    const endStr = data.allDay
+      ? `${data.date}T23:59:59`
+      : `${data.date}T${data.end_time}:00`;
 
-    // 백엔드 DB에 일정 저장 (팀 공유 정보 포함)
+    const startDateTime = new Date(startStr);
+    const endDateTime = new Date(endStr);
+
+    // 1. 백엔드 DB에 일정 저장
+    let googleSynced = false;
+    let dbSaved = false;
     try {
-      await createSchedule({
+      const result = await createSchedule({
         title: data.title,
         description: data.description || '',
-        start_time: startDateTime.toISOString(),
-        end_time: endDateTime.toISOString(),
+        start_time: startStr,
+        end_time: endStr,
         schedule_type: data.type || 'meeting',
         is_team_visible: data.is_team_visible || false,
         include_meet: data.include_meet || false,
         attendee_emails: data.attendee_emails || [],
       });
+      dbSaved = true;
+      googleSynced = result?.data?.google_services?.calendar_synced || false;
     } catch (error) {
       console.error('일정 저장 실패:', error);
+      const msg = error.response?.data?.detail || '일정 저장에 실패했습니다. 다시 시도해주세요.';
+      setScheduleError(msg);
+      throw error; // ScheduleForm의 try-catch에서 잡아서 폼을 닫지 않음
     }
 
-    // Google Calendar 연동 (연결된 경우에만)
-    if (connected && hasScope('calendar')) {
+    // 2. Google Calendar 동기화 (백엔드에서 이미 동기화했으면 스킵)
+    if (connected && hasScope('calendar') && !googleSynced) {
       try {
         const selectedType = allTypes.find((t) => t.id === data.type);
         const eventData = {
@@ -140,15 +199,14 @@ export default function SchedulesPage() {
         };
 
         if (data.include_meet) {
-          const result = await createEventWithMeet(eventData);
-
-          if (result?.meet_link && data.attendee_emails?.length > 0 && hasScope('gmail_send')) {
+          const meetResult = await createEventWithMeet(eventData);
+          if (meetResult?.meet_link && data.attendee_emails?.length > 0 && hasScope('gmail_send')) {
             try {
               await sendMeetingInvite({
                 recipient_emails: data.attendee_emails,
                 meeting_title: data.title,
-                meeting_time: startDateTime.toISOString(),
-                meet_link: result.meet_link,
+                meeting_time: startDateTime,
+                meet_link: meetResult.meet_link,
               });
             } catch (emailErr) {
               console.error('회의 초대 메일 발송 실패:', emailErr);
@@ -162,6 +220,9 @@ export default function SchedulesPage() {
       }
     }
 
+    // 3. 새로고침 + 폼 닫기 (DB 저장 성공 시에만 실행)
+    setRefreshKey((k) => k + 1);
+    if (connected && hasScope('calendar')) fetchCalendarEvents();
     setShowForm(false);
   };
 
@@ -224,7 +285,12 @@ export default function SchedulesPage() {
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20" onClick={() => setShowForm(false)}>
           <div className="w-[420px]" onClick={(e) => e.stopPropagation()}>
-            <ScheduleForm onSubmit={handleAddSchedule} onClose={() => setShowForm(false)} />
+            {scheduleError && (
+              <div className="mb-2 p-3 bg-red-50 border border-red-300 rounded-md">
+                <p className="text-sm text-red-600 font-medium">{scheduleError}</p>
+              </div>
+            )}
+            <ScheduleForm onSubmit={handleAddSchedule} onClose={() => { setShowForm(false); setScheduleError(null); }} />
           </div>
         </div>
       )}
@@ -256,9 +322,9 @@ export default function SchedulesPage() {
           {/* 범례 */}
 
           {/* 에러 메시지 */}
-          {calendarError && (
-            <div className="mb-5 p-4 bg-error-bg border border-error rounded-md">
-              <p className="text-sm text-error font-medium">{calendarError}</p>
+          {(calendarError || scheduleError) && (
+            <div className="mb-5 p-4 bg-red-50 border border-red-300 rounded-md">
+              <p className="text-sm text-red-600 font-medium">{calendarError || scheduleError}</p>
             </div>
           )}
 
@@ -270,9 +336,9 @@ export default function SchedulesPage() {
             <>
               <CalendarView events={allEvents} onDeleteEvent={deleteCalendarEvent} />
               {!connected && (
-                <div className="mt-5 p-4 bg-warning-bg border border-warning rounded-md text-center">
-                  <p className="text-sm text-warning font-medium">
-                    Google Calendar에 연결하면 실제 일정이 표시됩니다.
+                <div className="mt-5 p-4 bg-surface-hover border border-neutral-divider rounded-md text-center">
+                  <p className="text-sm text-neutral-sub">
+                    Google Calendar에 연결하면 외부 일정도 함께 동기화됩니다.
                   </p>
                 </div>
               )}

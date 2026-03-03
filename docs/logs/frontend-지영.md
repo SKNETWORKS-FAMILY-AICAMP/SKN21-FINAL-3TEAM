@@ -681,6 +681,33 @@
   - `downloadDocument()` → `/api/v1/documents/{id}/download` 실제 연동 ✅
 - 파일 상단 `mockMeetingResult`, `mockResults` 변수는 미사용 dead code (실제로는 쓰이지 않음)
 
+#### 7) 일정 등록/팀 공유 버그 수정 (`SchedulesPage.jsx`, `ScheduleForm.jsx`)
+
+**문제 1: 일정 등록 버튼 눌러도 반응 없음 (사원 계정)**
+- **원인**: 제목/날짜 미입력 시 `if (!data.date || !data.title) return;`으로 아무 피드백 없이 무시됨
+- **원인 2**: API 에러(500)도 `console.error`로만 찍히고 사용자에게 안 보임 + 에러 시에도 폼이 닫힘
+- **수정 (ScheduleForm.jsx)**:
+  - 폼 유효성 검사 추가 — 제목 비면 "제목을 입력하세요", 날짜 미선택이면 "날짜를 선택하세요" 빨간 에러 표시
+  - 로딩 상태 추가 — 등록 버튼 "등록 중..." + `disabled` 중복 클릭 방지
+- **수정 (SchedulesPage.jsx)**:
+  - API 실패 시 빨간 에러 배너 표시 ("일정 저장에 실패했습니다")
+  - DB 저장 실패하면 `throw error`로 폼이 닫히지 않음
+
+**문제 2: 500 Internal Server Error (타임존)**
+- **원인**: `toISOString()`이 `2026-03-03T00:00:00.000Z` (UTC+Z) 형태로 보내는데, DB 컬럼이 `TIMESTAMP WITHOUT TIME ZONE`이라 `offset-naive/aware` 충돌
+- **수정**: `toISOString()` 대신 `2026-03-03T09:00:00` 형태(타임존 없음)로 직접 전송
+
+**문제 3: 회의 유형으로 등록했는데 "개인 일정"으로 표시됨**
+- **원인**: Google Calendar에는 type 개념이 없어서 pull 시 `event_type`이 null → 기본값 `'google'`(개인 일정)으로 표시. 중복 제거에서 DB 일정(정확한 type) 대신 Google Calendar 버전(잘못된 type)이 남음
+- **수정**: 중복 제거 방향 역전 — DB 일정을 우선하고 Google Calendar에서 meetLink만 보강
+  - 이전: Google Calendar 우선, DB 필터링 → type 소실
+  - 이후: DB 우선, Google Calendar 필터링 → type 보존
+
+**문제 4: 팀 일정 공유 안 됨 (영업팀 관리자 → 사원)**
+- **원인**: AWS RDS에 `team_name`/`is_team_visible` 컬럼 누락 (Alembic 마이그레이션 미실행)
+- **수정**: EC2 SSH 접속 → `alembic stamp` + `alembic upgrade head` 실행 → 컬럼 추가 완료
+- **수정 2**: EC2 백엔드 `git pull` + uvicorn 재시작
+
 ### 다음 할 일
 - 관리자 API 연동 (#29)
 - 판단 Agent 스트리밍 디버깅
