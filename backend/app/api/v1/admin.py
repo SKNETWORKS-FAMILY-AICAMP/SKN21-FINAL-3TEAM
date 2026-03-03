@@ -3,7 +3,7 @@
 """
 import asyncio
 
-from fastapi import APIRouter, Depends, Body, HTTPException
+from fastapi import APIRouter, Depends, Body, HTTPException, Query
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -68,11 +68,12 @@ async def list_users(
 
 @router.get("/stats")
 async def system_stats(
+    team: str | None = Query(None),
     admin: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """시스템 전체 통계 (관리자 전용)"""
-    return await statistics_service.get_dashboard_stats(db, user_id=None)
+    """시스템 전체 통계 (관리자 전용, 팀 필터 지원)"""
+    return await statistics_service.get_dashboard_stats(db, user_id=None, team=team)
 
 
 @router.get("/logs")
@@ -130,14 +131,15 @@ async def get_query_logs(
 async def get_top_queries(
     period: str = "daily",
     limit: int = 10,
+    team: str | None = Query(None),
     admin: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Top 질의 응답 통계 (월/주/일)
+    Top 질의 응답 통계 (월/주/일, 팀 필터 지원)
     period: daily | weekly | monthly
     """
-    return await statistics_service.get_top_queries(db, period=period, limit=limit)
+    return await statistics_service.get_top_queries(db, period=period, limit=limit, team=team)
 
 
 @router.put("/users/{user_id}/permissions")

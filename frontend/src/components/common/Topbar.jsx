@@ -272,13 +272,21 @@ export default function Topbar({ isScrolled = false }) {
                   {user?.name?.[0] || '?'}
                 </div>
                 <span className={`font-medium text-neutral-sub transition-all duration-300 ease-in-out ${isScrolled ? 'text-xs' : 'text-sm'}`}>{user?.name || '사용자'}</span>
+                {user?.team && (
+                  <span className={`px-1.5 py-0.5 rounded bg-primary-50 text-primary-700 font-medium transition-all duration-300 ease-in-out ${isScrolled ? 'text-[9px]' : 'text-[10px]'}`}>{user.team}</span>
+                )}
               </button>
 
               {userMenuOpen && (
                 <div className="absolute right-0 top-full mt-1.5 w-44 bg-surface-card border border-neutral-border rounded-md shadow-md z-50 overflow-hidden">
                   <div className="px-3 py-2.5 border-b border-neutral-divider">
                     <div className="text-xs font-semibold text-neutral-main">{user?.name || '사용자'}</div>
-                    <div className="text-[0.625rem] text-neutral-muted mt-0.5">{user?.is_admin ? '관리자' : '일반 사용자'}</div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[0.625rem] text-neutral-muted">{user?.is_admin ? '관리자' : '일반 사용자'}</span>
+                      {user?.team && (
+                        <span className="px-1.5 py-px rounded bg-primary-50 text-primary-700 text-[0.625rem] font-medium">{user.team}</span>
+                      )}
+                    </div>
                   </div>
                   <button
                     onClick={() => { navigate('/mypage'); setUserMenuOpen(false); }}

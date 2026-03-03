@@ -36,13 +36,32 @@ def calculate_priority(due_date: Optional[datetime]) -> str:
     return "low"
 
 
-async def list_schedules(db: AsyncSession, user_id: int) -> list[Schedule]:
-    """본인 일정 목록 조회"""
-    result = await db.execute(
-        select(Schedule)
-        .where(Schedule.user_id == user_id)
-        .order_by(Schedule.start_time.desc())
-    )
+async def list_schedules(
+    db: AsyncSession,
+    user_id: int,
+    include_team: bool = False,
+    user_team: str | None = None,
+) -> list[Schedule]:
+    """일정 목록 조회 (include_team=True 시 같은 팀의 공유 일정 포함)"""
+    from sqlalchemy import or_
+
+    if include_team and user_team:
+        result = await db.execute(
+            select(Schedule)
+            .where(
+                or_(
+                    Schedule.user_id == user_id,
+                    (Schedule.team_name == user_team) & (Schedule.is_team_visible == True),
+                )
+            )
+            .order_by(Schedule.start_time.desc())
+        )
+    else:
+        result = await db.execute(
+            select(Schedule)
+            .where(Schedule.user_id == user_id)
+            .order_by(Schedule.start_time.desc())
+        )
     return list(result.scalars().all())
 
 
@@ -63,6 +82,7 @@ async def create_schedule(
     db: AsyncSession,
     user_id: int,
     data: ScheduleCreate,
+    user_team: str | None = None,
 ) -> dict:
     """
     일정 생성 — DB 저장 + Google Calendar 연동 (선택적, best-effort)
@@ -76,6 +96,8 @@ async def create_schedule(
         schedule_type=data.schedule_type,
         priority=data.priority or calculate_priority(data.end_time),
         user_id=user_id,
+        team_name=user_team,
+        is_team_visible=data.is_team_visible,
     )
     db.add(schedule)
     await db.flush()

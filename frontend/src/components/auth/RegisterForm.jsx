@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { TEAMS } from '../../utils/constants';
 
 export default function RegisterForm({ onSubmit, error, loading }) {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', team: '' });
@@ -82,7 +83,7 @@ export default function RegisterForm({ onSubmit, error, loading }) {
           className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(110,135,160,0.1)] bg-surface-card text-neutral-main disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <option value="">팀을 선택해주세요</option>
-          {['개발', 'QA기획', 'UI/UX', '영업', '마케팅', 'CS'].map((t) => (
+          {TEAMS.map((t) => (
             <option key={t} value={t}>{t}</option>
           ))}
         </select>

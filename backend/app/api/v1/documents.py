@@ -44,7 +44,7 @@ router = APIRouter()
 
 @router.get("/")
 async def list_documents(
-    scope: str | None = Query(None, regex="^(company|personal)$"),
+    scope: str | None = Query(None, regex="^(company|team|personal)$"),
     keyword: str | None = None,
     search_type: str = Query("title", regex="^(title|title_content|date)$"),
     user=Depends(get_current_user),
@@ -52,7 +52,8 @@ async def list_documents(
 ):
     """문서 목록 조회 (scope + search_type 필터 지원)"""
     docs = await document_service.list_documents(
-        db, user_id=user.id, scope=scope, keyword=keyword, search_type=search_type
+        db, user_id=user.id, scope=scope, keyword=keyword,
+        search_type=search_type, user_team=user.team,
     )
     return [
         {
@@ -60,6 +61,7 @@ async def list_documents(
             "title": d.title,
             "file_type": d.file_type,
             "scope": d.scope,
+            "team_name": d.team_name,
             "status": d.status,
             "uploaded_by": d.uploaded_by,
             "created_at": d.created_at,
@@ -71,19 +73,21 @@ async def list_documents(
 @router.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
-    scope: str = Query("company", regex="^(company|personal)$"),
+    scope: str = Query("company", regex="^(company|team|personal)$"),
     user=Depends(get_current_user),
     db=Depends(get_db),
 ):
     """문서 업로드 (텍스트 추출 → DB 저장)"""
     doc = await document_service.upload_and_parse(
-        db, file=file, scope=scope, user_id=user.id
+        db, file=file, scope=scope, user_id=user.id,
+        team_name=user.team if scope == "team" else None,
     )
     return {
         "id": doc.id,
         "title": doc.title,
         "file_type": doc.file_type,
         "scope": doc.scope,
+        "team_name": doc.team_name,
         "status": doc.status,
         "uploaded_by": doc.uploaded_by,
         "created_at": doc.created_at,

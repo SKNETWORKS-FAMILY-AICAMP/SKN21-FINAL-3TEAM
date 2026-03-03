@@ -152,6 +152,7 @@ async def upload_and_parse(
     file: UploadFile,
     scope: str,
     user_id: int,
+    team_name: str | None = None,
 ) -> Document:
     """
     파일 업로드 → 텍스트 추출 → DB 저장
@@ -172,6 +173,7 @@ async def upload_and_parse(
         file_path=saved_path,
         file_type=file_type,
         scope=scope,
+        team_name=team_name if scope == "team" else None,
         uploaded_by=user_id,
         status="processing",
     )
@@ -197,6 +199,7 @@ async def upload_and_parse(
                     "doc_type": "general",
                     "title": doc.title,
                     "scope": doc.scope,
+                    "team_name": doc.team_name or "",
                     "user_id": str(user_id),
                     "document_id": doc.id,
                 }],
@@ -280,24 +283,38 @@ async def list_documents(
     scope: str | None = None,
     keyword: str | None = None,
     search_type: str = "title",
+    user_team: str | None = None,
 ) -> list[Document]:
     """문서 목록 조회 (scope, keyword, search_type 필터)
 
     Args:
         search_type: "title" (제목 ILIKE), "title_content" (제목+내용 ILIKE), "date" (날짜 범위)
+        user_team: 유저 소속 팀 (team scope 필터링용)
     """
     stmt = select(Document)
 
-    if scope:
+    if scope == "team":
+        # 팀 문서: 같은 팀의 team scope 문서만
+        if user_team:
+            stmt = stmt.where(
+                (Document.scope == "team") & (Document.team_name == user_team)
+            )
+        else:
+            # 팀 없는 유저는 빈 결과
+            stmt = stmt.where(Document.id < 0)
+    elif scope:
         stmt = stmt.where(Document.scope == scope)
     else:
-        # scope 미지정 시: 회사 문서 + 본인 개인 문서
-        stmt = stmt.where(
-            or_(
-                Document.scope == "company",
-                (Document.scope == "personal") & (Document.uploaded_by == user_id),
+        # scope 미지정 시: 회사 문서 + 본인 개인 문서 + 본인 팀 문서
+        conditions = [
+            Document.scope == "company",
+            (Document.scope == "personal") & (Document.uploaded_by == user_id),
+        ]
+        if user_team:
+            conditions.append(
+                (Document.scope == "team") & (Document.team_name == user_team)
             )
-        )
+        stmt = stmt.where(or_(*conditions))
 
     if keyword:
         if search_type == "title":

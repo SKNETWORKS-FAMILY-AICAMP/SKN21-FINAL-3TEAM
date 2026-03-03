@@ -623,11 +623,12 @@
   - Google 연결 + calendarId 있는 유형만 API 호출
   - API 실패해도 앱 내 유형은 정상 삭제 (graceful fallback)
   - Google 미연결 또는 calendarId 없는 유형은 로컬만 삭제
-  
 ### 다음 할 일
+- vite 프록시 설정 로컬/EC2 분리 (.env.local)
+- 판단 Agent 스트리밍 디버깅
 - 문서 생성 AI 연동 (501 엔드포인트 해소)
 - 관리자 API 연동 (#29)
- 
+
 ---
 
 ## 2026-02-26 (목)
@@ -639,45 +640,10 @@
   - Judgment Agent, Document Agent, Schedule Agent, General Response 4개 서브그래프 구성
   - 전체 구조도 (`전체 구조 2`) 섹션도 Mermaid로 변환
 
-#### 2) 일정 추가 폼 날짜 선택 달력 교체 (`ScheduleForm.jsx`, `DatePicker.jsx`)
-- 네이티브 `<input type="date">` → 문서 관리 페이지와 동일한 커스텀 `DatePicker` 컴포넌트로 교체
-- DatePicker 달력 팝업 잘림 버그 수정: `.card` 클래스의 `overflow-hidden`에 의해 팝업이 클리핑되는 문제
-  - `position: absolute` → `createPortal`로 `document.body`에 직접 렌더링
-  - 트리거 버튼 위치를 `getBoundingClientRect()`로 계산하여 팝업 위치 고정
-
-#### 3) 시간 선택 커스텀 드롭다운 (`ScheduleForm.jsx`)
-- 시작/종료 시간의 네이티브 `<select>` → 커스텀 `TimeSelect` 컴포넌트로 교체
-  - 브라우저 기본 드롭다운은 144개 옵션(00:00~23:50)이 화면 가득 펼쳐지는 문제
-  - `max-h-48` 스크롤 가능한 커스텀 드롭다운으로 교체
-  - `createPortal`로 `document.body`에 렌더링 (`.card` overflow-hidden 회피)
-
-
 ### 다음 할 일
 - 나머지 Mock → 실제 API 교체 (문서 생성)
 - 관리자 API 연동 (#29)
-
----
-
-## 2026-02-27 (금)
-
-### 한 일
-
-#### 1) 챗봇 판단 카드 규정 순서 변경 (`JudgmentCard.jsx`)
-
-- 기존: JudgmentCard 내 **설명 텍스트(summary)** → 관련 규정 순서
-- 변경: **관련 규정** → 설명 텍스트(summary) 순서로 교체
-- 답변 완료 시 관련 규정이 카드 상단에 먼저 표시되고 그 아래 설명 텍스트가 이어지도록 개선
-
-#### 2) 챗봇 페이지 진입 시 항상 새 대화창으로 시작 (`chatStore.js`)
-
-- 기존: `initSession()` → 서버에서 기존 세션 불러와 마지막 세션 메시지 자동 로드
-- 변경: `initSession()` → 기존 세션 목록만 로드(사이드바용) + 항상 새 빈 세션 생성
-- 효과: 서버 재시작 후 챗봇 페이지 접속 시 이전 대화 내역 없이 빈 새 대화창 표시
-- 사이드바의 이전 대화 목록은 그대로 유지되어 클릭 시 이전 대화 열람 가능
-
-### 다음 할 일
-- 나머지 Mock → 실제 API 교체 (문서 생성)
-- 관리자 API 연동 (#29)
+- 판단 Agent 스트리밍 디버깅
 
 ---
 
@@ -736,7 +702,6 @@
 | 로그아웃 기능 | ✅ 완료 | Sidebar 하단 텍스트 버튼 + DEV_BYPASS_AUTH 복원 |
 | 글씨 크기 조절 | ✅ 완료 | FontSizeControl (가-/가+), 전체 54파일 px→rem 변환 |
 | 다크 모드 | ✅ 완료 | CSS 변수 방식, OS 감지, localStorage 유지, ThemeToggle |
-| 인쇄 기능 | ✅ 완료 | `.print-area` 선택적 인쇄, 문서/회의 프리뷰+상세 |
 | 페이지 전환 애니메이션 | ✅ 완료 | framer-motion, fade+slide 200ms |
 | 파일 드래그&드롭 | ✅ 완료 | 채팅 파일 첨부, 검증(형식/크기), FileChip |
 | 대화 세션 관리 | ✅ 완료 | localStorage 세션 목록, 자동 생성/전환/삭제 |

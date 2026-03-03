@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import { Users } from 'lucide-react';
 import useGoogleServices from '../hooks/useGoogleServices';
+import useAuthStore from '../store/authStore';
 import { sendMeetingInvite } from '../api/google';
+import { listSchedules } from '../api/schedules';
 import GoogleServicesConnect from '../components/schedules/GoogleServicesConnect';
 import CalendarView from '../components/schedules/CalendarView';
 import ScheduleForm from '../components/schedules/ScheduleForm';
@@ -23,9 +26,13 @@ export default function SchedulesPage() {
     return map;
   }, [allTypes]);
 
+  const user = useAuthStore((s) => s.user);
+  const hasTeam = !!user?.team;
   const [showForm, setShowForm] = useState(false);
   const [showTypeManager, setShowTypeManager] = useState(false);
   const [activeTab, setActiveTab] = useState('calendar');
+  const [showTeamSchedules, setShowTeamSchedules] = useState(false);
+  const [teamSchedules, setTeamSchedules] = useState([]);
 
   // Google Calendar 연결 시 이벤트 자동 로드 (백엔드 기본값: ±3개월)
   useEffect(() => {
@@ -33,6 +40,32 @@ export default function SchedulesPage() {
       fetchCalendarEvents();
     }
   }, [connected, hasScope, fetchCalendarEvents]);
+
+  // 팀 일정 토글 시 DB 일정 로드
+  useEffect(() => {
+    if (showTeamSchedules && hasTeam) {
+      listSchedules({ include_team: true }).then((res) => {
+        const dbSchedules = (res.data || [])
+          .filter((s) => s.user_name && s.user_name !== user?.name) // 본인 제외, 팀원만
+          .map((s) => {
+            const start = new Date(s.start_time);
+            const end = s.end_time ? new Date(s.end_time) : start;
+            const timeStr = `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
+            return {
+              month: start.getMonth() + 1,
+              day: start.getDate(),
+              type: s.schedule_type || 'meeting',
+              label: `[${s.user_name}] ${s.title}`,
+              time: timeStr,
+              isTeamMember: true,
+            };
+          });
+        setTeamSchedules(dbSchedules);
+      }).catch(() => setTeamSchedules([]));
+    } else {
+      setTeamSchedules([]);
+    }
+  }, [showTeamSchedules, hasTeam]);
 
 
   // Google Calendar 이벤트를 CalendarView 형식으로 변환
@@ -60,6 +93,11 @@ export default function SchedulesPage() {
       };
     });
   }, [calendarEvents]);
+
+  // 팀원 일정과 병합
+  const allEvents = useMemo(() => {
+    return [...events, ...teamSchedules];
+  }, [events, teamSchedules]);
 
   const handleAddSchedule = async (data) => {
     if (!data.date || !data.title) return;
@@ -124,6 +162,19 @@ export default function SchedulesPage() {
         </div>
         {activeTab === 'calendar' && (
           <div className="flex items-center gap-3">
+            {hasTeam && (
+              <button
+                onClick={() => setShowTeamSchedules(!showTeamSchedules)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium border transition ${
+                  showTeamSchedules
+                    ? 'bg-primary-50 border-primary-500 text-primary-700'
+                    : 'border-neutral-border text-neutral-sub hover:border-primary-300'
+                }`}
+              >
+                <Users size={15} />
+                팀 일정
+              </button>
+            )}
             {connected && hasScope('calendar') && (
               <button
                 onClick={() => fetchCalendarEvents()}
@@ -204,7 +255,7 @@ export default function SchedulesPage() {
             </div>
           ) : (
             <>
-              <CalendarView events={events} onDeleteEvent={deleteCalendarEvent} />
+              <CalendarView events={allEvents} onDeleteEvent={deleteCalendarEvent} />
               {!connected && (
                 <div className="mt-5 p-4 bg-warning-bg border border-warning rounded-md text-center">
                   <p className="text-sm text-warning font-medium">
