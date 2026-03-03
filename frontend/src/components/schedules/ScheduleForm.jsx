@@ -165,6 +165,25 @@ export default function ScheduleForm({ onSubmit, onClose }) {
           </div>
         </div>
 
+        {/* 팀에 공유 */}
+        {hasTeam && (
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-md border border-neutral-divider bg-surface-hover">
+            <label className="flex items-center gap-2 cursor-pointer flex-1">
+              <input
+                type="checkbox"
+                checked={form.isTeamVisible}
+                onChange={(e) => setForm({ ...form, isTeamVisible: e.target.checked })}
+                className="w-4 h-4 rounded border-neutral-border accent-primary-700"
+              />
+              <div className="flex items-center gap-1.5">
+                <Users size={16} className="text-primary-500" />
+                <span className="text-sm font-medium text-neutral-main">팀에 공유</span>
+              </div>
+            </label>
+            <span className="text-[0.6875rem] text-neutral-muted">{user.team}팀 멤버에게 표시됩니다</span>
+          </div>
+        )}
+
         {/* 날짜 */}
         <div>
           <label className="text-[0.8125rem] font-semibold block mb-1">날짜</label>
@@ -223,25 +242,6 @@ export default function ScheduleForm({ onSubmit, onClose }) {
                 <span className="text-sm font-medium text-neutral-main">Google Meet 링크 생성</span>
               </div>
             </label>
-          </div>
-        )}
-
-        {/* 팀에 공유 */}
-        {hasTeam && (
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-md border border-neutral-divider bg-surface-hover">
-            <label className="flex items-center gap-2 cursor-pointer flex-1">
-              <input
-                type="checkbox"
-                checked={form.isTeamVisible}
-                onChange={(e) => setForm({ ...form, isTeamVisible: e.target.checked })}
-                className="w-4 h-4 rounded border-neutral-border accent-primary-700"
-              />
-              <div className="flex items-center gap-1.5">
-                <Users size={16} className="text-primary-500" />
-                <span className="text-sm font-medium text-neutral-main">팀에 공유</span>
-              </div>
-            </label>
-            <span className="text-[0.6875rem] text-neutral-muted">{user.team}팀 멤버에게 표시됩니다</span>
           </div>
         )}
 
