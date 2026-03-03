@@ -4,7 +4,7 @@ import { Users } from 'lucide-react';
 import useGoogleServices from '../hooks/useGoogleServices';
 import useAuthStore from '../store/authStore';
 import { sendMeetingInvite } from '../api/google';
-import { listSchedules } from '../api/schedules';
+import { listSchedules, createSchedule } from '../api/schedules';
 import GoogleServicesConnect from '../components/schedules/GoogleServicesConnect';
 import CalendarView from '../components/schedules/CalendarView';
 import ScheduleForm from '../components/schedules/ScheduleForm';
@@ -102,16 +102,32 @@ export default function SchedulesPage() {
   const handleAddSchedule = async (data) => {
     if (!data.date || !data.title) return;
 
+    const startDateTime = data.allDay
+      ? new Date(`${data.date}T00:00:00`)
+      : new Date(`${data.date}T${data.start_time}:00`);
+    const endDateTime = data.allDay
+      ? new Date(`${data.date}T23:59:59`)
+      : new Date(`${data.date}T${data.end_time}:00`);
+
+    // 백엔드 DB에 일정 저장 (팀 공유 정보 포함, Google Calendar 연동도 백엔드에서 처리)
+    try {
+      await createSchedule({
+        title: data.title,
+        description: data.description || '',
+        start_time: startDateTime.toISOString(),
+        end_time: endDateTime.toISOString(),
+        schedule_type: data.type || 'meeting',
+        is_team_visible: data.is_team_visible || false,
+        include_meet: data.include_meet || false,
+        attendee_emails: data.attendee_emails || [],
+      });
+    } catch (error) {
+      console.error('일정 저장 실패:', error);
+    }
+
+    // Google Calendar 연동 (프론트엔드 직접)
     if (connected && hasScope('calendar')) {
       try {
-        // 종일 이벤트: 날짜만 사용 (시간 없이)
-        const startDateTime = data.allDay
-          ? new Date(`${data.date}T00:00:00`)
-          : new Date(`${data.date}T${data.start_time}:00`);
-        const endDateTime = data.allDay
-          ? new Date(`${data.date}T23:59:59`)
-          : new Date(`${data.date}T${data.end_time}:00`);
-
         const selectedType = allTypes.find((t) => t.id === data.type);
         const eventData = {
           title: data.title,
@@ -126,15 +142,12 @@ export default function SchedulesPage() {
         if (data.include_meet) {
           const result = await createEventWithMeet(eventData);
 
-          // Meet 생성 후 참석자에게 회의 초대 메일 자동 발송
           if (result?.meet_link && data.attendee_emails?.length > 0 && hasScope('gmail_send')) {
             try {
               await sendMeetingInvite({
                 recipient_emails: data.attendee_emails,
                 meeting_title: data.title,
-                meeting_time: data.allDay
-                  ? `${data.date}T00:00:00`
-                  : `${data.date}T${data.start_time}:00`,
+                meeting_time: startDateTime.toISOString(),
                 meet_link: result.meet_link,
               });
             } catch (emailErr) {
@@ -145,7 +158,7 @@ export default function SchedulesPage() {
           await syncEventToGoogle(eventData);
         }
       } catch (error) {
-        console.error('일정 추가 실패:', error);
+        console.error('Google Calendar 연동 실패:', error);
       }
     }
 
