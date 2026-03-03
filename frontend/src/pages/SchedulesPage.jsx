@@ -4,7 +4,7 @@ import { Users } from 'lucide-react';
 import useGoogleServices from '../hooks/useGoogleServices';
 import useAuthStore from '../store/authStore';
 import { sendMeetingInvite } from '../api/google';
-import { listSchedules, createSchedule } from '../api/schedules';
+import { listSchedules, createSchedule, deleteSchedule } from '../api/schedules';
 import GoogleServicesConnect from '../components/schedules/GoogleServicesConnect';
 import CalendarView from '../components/schedules/CalendarView';
 import ScheduleForm from '../components/schedules/ScheduleForm';
@@ -65,6 +65,8 @@ export default function SchedulesPage() {
           label: s.title,
           time: timeStr,
           googleEventId: s.google_event_id,
+          scheduleId: s.id,
+          userId: s.user_id,
         };
       });
       setMyDbSchedules(schedules);
@@ -88,6 +90,8 @@ export default function SchedulesPage() {
               label: `[${s.user_name}] ${s.title}`,
               time: timeStr,
               isTeamMember: true,
+              scheduleId: s.id,
+              userId: s.user_id,
             };
           });
         setTeamSchedules(dbSchedules);
@@ -144,6 +148,30 @@ export default function SchedulesPage() {
 
     return [...uniqueGoogleEvents, ...enrichedDbSchedules, ...teamSchedules];
   }, [events, myDbSchedules, teamSchedules]);
+
+  // 삭제 권한 판단: 본인 일정 또는 관리자만 삭제 가능 (공휴일은 항상 X)
+  const canDelete = (event) => {
+    if (event.type === 'holiday') return false;
+    if (!event.scheduleId && !event.id) return false;
+    if (user?.is_admin) return true;
+    // DB 일정: 본인이 등록한 것만 삭제 가능
+    if (event.scheduleId) return event.userId === user?.id;
+    // Google Calendar 전용 이벤트(DB에 없음): 본인 캘린더이므로 삭제 허용
+    return true;
+  };
+
+  // 통합 삭제 핸들러: DB 삭제 + Google Calendar 삭제
+  const handleDeleteEvent = async (event) => {
+    if (event.scheduleId) {
+      // DB 일정 → 백엔드에서 DB + Google Calendar 모두 삭제
+      await deleteSchedule(event.scheduleId);
+    } else if (event.id) {
+      // Google Calendar 전용 이벤트 → 기존 방식
+      await deleteCalendarEvent(event.id, event.calendarId);
+    }
+    setRefreshKey((k) => k + 1);
+    if (connected && hasScope('calendar')) fetchCalendarEvents();
+  };
 
   const [scheduleError, setScheduleError] = useState(null);
 
@@ -334,7 +362,7 @@ export default function SchedulesPage() {
             </div>
           ) : (
             <>
-              <CalendarView events={allEvents} onDeleteEvent={deleteCalendarEvent} />
+              <CalendarView events={allEvents} onDeleteEvent={handleDeleteEvent} onCanDelete={canDelete} />
               {!connected && (
                 <div className="mt-5 p-4 bg-surface-hover border border-neutral-divider rounded-md text-center">
                   <p className="text-sm text-neutral-sub">
