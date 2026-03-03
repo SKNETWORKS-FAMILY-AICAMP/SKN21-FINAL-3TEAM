@@ -68,9 +68,9 @@ export default function SchedulesPage() {
   }, [showTeamSchedules, hasTeam]);
 
 
-  // Google Calendar 이벤트를 CalendarView 형식으로 변환
+  // Google Calendar 이벤트를 CalendarView 형식으로 변환 (연결된 경우만)
   const events = useMemo(() => {
-    if (!calendarEvents || calendarEvents.length === 0) return [];
+    if (!connected || !calendarEvents || calendarEvents.length === 0) return [];
 
     return calendarEvents.map(event => {
       const start = new Date(event.start);
@@ -109,7 +109,7 @@ export default function SchedulesPage() {
       ? new Date(`${data.date}T23:59:59`)
       : new Date(`${data.date}T${data.end_time}:00`);
 
-    // 백엔드 DB에 일정 저장 (팀 공유 정보 포함, Google Calendar 연동도 백엔드에서 처리)
+    // 백엔드 DB에 일정 저장 (팀 공유 정보 포함)
     try {
       await createSchedule({
         title: data.title,
@@ -125,7 +125,7 @@ export default function SchedulesPage() {
       console.error('일정 저장 실패:', error);
     }
 
-    // Google Calendar 연동 (프론트엔드 직접)
+    // Google Calendar 연동 (연결된 경우에만)
     if (connected && hasScope('calendar')) {
       try {
         const selectedType = allTypes.find((t) => t.id === data.type);
@@ -158,7 +158,7 @@ export default function SchedulesPage() {
           await syncEventToGoogle(eventData);
         }
       } catch (error) {
-        console.error('Google Calendar 연동 실패:', error);
+        console.error('Google Calendar 동기화 실패:', error);
       }
     }
 

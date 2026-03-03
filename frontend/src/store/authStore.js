@@ -4,6 +4,7 @@
 import { create } from 'zustand'
 import client from '../api/client'
 import useChatStore from './chatStore'
+import useGoogleStore from './googleStore'
 
 const useAuthStore = create((set, get) => ({
   user: null,
@@ -19,6 +20,13 @@ const useAuthStore = create((set, get) => ({
   logout: () => {
     localStorage.removeItem('access_token')
     useChatStore.getState().reset()
+    useGoogleStore.setState({
+      connected: false, email: null, scopes: [],
+      calendarEvents: [], tasks: [], sheets: [],
+      calendarLoading: false, calendarError: null,
+      tasksLoading: false, tasksError: null,
+      sheetsLoading: false, sheetsError: null,
+    })
     set({ user: null, token: null, isAuthenticated: false })
   },
 

@@ -59,6 +59,7 @@ function useDashboardData() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const calendarEvents = useGoogleStore((s) => s.calendarEvents);
+  const googleConnected = useGoogleStore((s) => s.connected);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,8 +79,8 @@ function useDashboardData() {
     return () => { cancelled = true; };
   }, []);
 
-  // Google Calendar 오늘 이벤트를 schedule 형식으로 변환
-  const googleTodaySchedules = (calendarEvents || [])
+  // Google Calendar 오늘 이벤트를 schedule 형식으로 변환 (연결된 경우만)
+  const googleTodaySchedules = (!googleConnected ? [] : (calendarEvents || []))
     .filter(e => isToday(e.start))
     .map(e => ({
       title: e.title || '제목 없음',
