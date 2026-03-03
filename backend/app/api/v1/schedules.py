@@ -49,6 +49,7 @@ async def list_schedules(
             google_meet_link=s.google_meet_link,
             is_team_visible=s.is_team_visible,
             team_name=s.team_name,
+            user_id=s.user_id,
             user_name=user_names.get(s.user_id) if include_team else None,
             created_at=s.created_at,
         )
@@ -80,6 +81,7 @@ async def create_schedule(
             google_meet_link=s.google_meet_link,
             is_team_visible=s.is_team_visible,
             team_name=s.team_name,
+            user_id=s.user_id,
             user_name=user.name,
             created_at=s.created_at,
         ),
@@ -116,5 +118,7 @@ async def delete_schedule(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """일정 삭제 (본인만, Google Calendar 이벤트도 삭제)"""
-    return await schedule_service.delete_schedule(db, schedule_id, user_id=user.id)
+    """일정 삭제 (본인 + 관리자, Google Calendar 이벤트도 삭제)"""
+    return await schedule_service.delete_schedule(
+        db, schedule_id, user_id=user.id, is_admin=user.is_admin,
+    )

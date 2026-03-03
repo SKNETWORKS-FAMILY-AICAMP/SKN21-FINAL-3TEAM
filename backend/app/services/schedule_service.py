@@ -65,15 +65,17 @@ async def list_schedules(
     return list(result.scalars().all())
 
 
-async def get_schedule(db: AsyncSession, schedule_id: int, user_id: int) -> Schedule:
-    """단일 조회 + 본인 소유 확인"""
+async def get_schedule(
+    db: AsyncSession, schedule_id: int, user_id: int, is_admin: bool = False,
+) -> Schedule:
+    """단일 조회 + 본인 소유 확인 (관리자는 소유권 체크 스킵)"""
     result = await db.execute(
         select(Schedule).where(Schedule.id == schedule_id)
     )
     schedule = result.scalar_one_or_none()
     if schedule is None:
         raise HTTPException(status_code=404, detail="일정을 찾을 수 없습니다")
-    if schedule.user_id != user_id:
+    if not is_admin and schedule.user_id != user_id:
         raise HTTPException(status_code=403, detail="본인의 일정만 조회할 수 있습니다")
     return schedule
 
@@ -170,9 +172,11 @@ async def update_schedule(
     return schedule
 
 
-async def delete_schedule(db: AsyncSession, schedule_id: int, user_id: int) -> dict:
-    """DB 삭제 + Google Calendar 이벤트 삭제 (best-effort)"""
-    schedule = await get_schedule(db, schedule_id, user_id)
+async def delete_schedule(
+    db: AsyncSession, schedule_id: int, user_id: int, is_admin: bool = False,
+) -> dict:
+    """DB 삭제 + Google Calendar 이벤트 삭제 (best-effort, 관리자는 타인 일정도 삭제 가능)"""
+    schedule = await get_schedule(db, schedule_id, user_id, is_admin=is_admin)
 
     # Google Calendar 이벤트 삭제 (best-effort)
     if schedule.google_event_id:

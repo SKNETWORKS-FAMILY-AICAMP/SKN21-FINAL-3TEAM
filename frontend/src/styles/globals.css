@@ -91,11 +91,8 @@
 @layer base {
   body {
     @apply text-neutral-main font-sans antialiased;
-    background: linear-gradient(160deg, #ECEEF1 0%, #F4F5F7 55%, #EEEFF2 100%);
+    background: var(--color-surface-main);
     min-height: 100vh;
-  }
-  .dark body {
-    background: linear-gradient(160deg, #20232A 0%, #252830 55%, #1E2128 100%);
   }
 }
 

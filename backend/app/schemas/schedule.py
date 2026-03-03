@@ -40,5 +40,6 @@ class ScheduleResponse(BaseModel):
     google_meet_link: Optional[str] = None
     is_team_visible: bool = False
     team_name: Optional[str] = None
+    user_id: Optional[int] = None
     user_name: Optional[str] = None
     created_at: datetime
