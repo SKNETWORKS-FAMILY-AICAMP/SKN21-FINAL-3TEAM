@@ -111,21 +111,39 @@ export default function ScheduleForm({ onSubmit, onClose }) {
     attendeeEmails: '',
     isTeamVisible: false,
   });
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   const canMeet = connected && hasScope('calendar');
 
-  const handleSubmit = () => {
-    const data = {
-      ...form,
-      start_time: form.allDay ? null : form.startTime,
-      end_time: form.allDay ? null : form.endTime,
-      attendee_emails: form.attendeeEmails
-        ? form.attendeeEmails.split(',').map((e) => e.trim()).filter(Boolean)
-        : [],
-      include_meet: form.includeMeet,
-      is_team_visible: form.isTeamVisible,
-    };
-    onSubmit?.(data);
+  const handleSubmit = async () => {
+    // 유효성 검사
+    const newErrors = {};
+    if (!form.title.trim()) newErrors.title = '제목을 입력하세요';
+    if (!form.date) newErrors.date = '날짜를 선택하세요';
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    setErrors({});
+    setSubmitting(true);
+    try {
+      const data = {
+        ...form,
+        start_time: form.allDay ? null : form.startTime,
+        end_time: form.allDay ? null : form.endTime,
+        attendee_emails: form.attendeeEmails
+          ? form.attendeeEmails.split(',').map((e) => e.trim()).filter(Boolean)
+          : [],
+        include_meet: form.includeMeet,
+        is_team_visible: form.isTeamVisible,
+      };
+      await onSubmit?.(data);
+    } catch {
+      // 에러는 상위(SchedulesPage)에서 처리됨
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -137,10 +155,11 @@ export default function ScheduleForm({ onSubmit, onClose }) {
           <label className="text-[0.8125rem] font-semibold block mb-1">제목</label>
           <input
             value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            onChange={(e) => { setForm({ ...form, title: e.target.value }); setErrors((p) => ({ ...p, title: undefined })); }}
             placeholder="일정 제목을 입력하세요"
-            className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(110,135,160,0.1)] outline-none"
+            className={`w-full px-3.5 py-2.5 border rounded-sm text-sm focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(110,135,160,0.1)] outline-none ${errors.title ? 'border-red-400' : 'border-neutral-border'}`}
           />
+          {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title}</p>}
         </div>
 
         {/* 일정 유형 */}
@@ -189,9 +208,10 @@ export default function ScheduleForm({ onSubmit, onClose }) {
           <label className="text-[0.8125rem] font-semibold block mb-1">날짜</label>
           <DatePicker
             value={form.date}
-            onChange={(dateStr) => setForm({ ...form, date: dateStr })}
+            onChange={(dateStr) => { setForm({ ...form, date: dateStr }); setErrors((p) => ({ ...p, date: undefined })); }}
             placeholder="날짜 선택..."
           />
+          {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
         </div>
 
         {/* 종일 토글 */}
@@ -261,8 +281,10 @@ export default function ScheduleForm({ onSubmit, onClose }) {
 
         {/* 버튼 */}
         <div className="flex gap-2 pt-2">
-          <button onClick={handleSubmit} className="btn-primary">등록</button>
-          <button onClick={onClose} className="btn-outline">취소</button>
+          <button onClick={handleSubmit} disabled={submitting} className="btn-primary">
+            {submitting ? '등록 중...' : '등록'}
+          </button>
+          <button onClick={onClose} disabled={submitting} className="btn-outline">취소</button>
         </div>
       </div>
     </div>
