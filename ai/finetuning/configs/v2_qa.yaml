@@ -1,0 +1,46 @@
+# LoRA v2: 문서 QA (doc_qa) 전용 어댑터
+# 문서 기반 질의응답 + 인용(citation) JSON 생성
+# 베이스 모델: Qwen3-8B (1차 추천) — 비교 대상: EXAONE-3.5-7.8B, Kanana-1.5-8B
+model:
+  base_model: "Qwen/Qwen3-8B"
+  quantization: "4bit"  # QLoRA
+
+model_candidates:
+  - "Qwen/Qwen3-8B"
+  - "LGAI-EXAONE/EXAONE-3.5-7.8B-Instruct"
+  - "kakaocorp/kanana-1.5-8b-instruct-2505"
+
+lora:
+  r: 32                      # citation 추출 정확도를 위한 표현력
+  lora_alpha: 64              # alpha/r = 2.0
+  lora_dropout: 0.05
+  target_modules:
+    - "q_proj"
+    - "v_proj"
+    - "k_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+
+training:
+  num_epochs: 5
+  batch_size: 4
+  gradient_accumulation_steps: 4  # effective batch = 16
+  learning_rate: 1e-4
+  warmup_ratio: 0.1
+  max_length: 2048
+  early_stopping_patience: 3
+
+data:
+  train_path: "data/training/v2_qa/train.jsonl"
+  eval_path: "data/training/v2_qa/eval.jsonl"
+  eval_ratio: 0.1             # 300개 중 ~30개 eval
+  total_target: 300
+
+output:
+  output_dir: "outputs/v2_qa"
+  save_steps: 100
+
+evaluation:
+  token_f1: 0.80              # Token F1 >0.80
+  citation_accuracy: 0.90     # 인용 정확도 >90%

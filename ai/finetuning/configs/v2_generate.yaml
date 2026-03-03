@@ -1,0 +1,53 @@
+# LoRA v2: 문서 생성 (doc_generate) 전용 어댑터
+# 회의록(meeting_minutes), 보고서(report), 제안서(proposal) JSON 생성
+# 베이스 모델: Qwen3-8B (1차 추천) — 비교 대상: EXAONE-3.5-7.8B, Kanana-1.5-8B
+model:
+  base_model: "Qwen/Qwen3-8B"
+  quantization: "4bit"  # QLoRA
+
+model_candidates:
+  - "Qwen/Qwen3-8B"
+  - "LGAI-EXAONE/EXAONE-3.5-7.8B-Instruct"
+  - "kakaocorp/kanana-1.5-8b-instruct-2505"
+
+lora:
+  r: 32                      # 복잡한 JSON 스키마(15+필드) 표현력
+  lora_alpha: 64              # alpha/r = 2.0
+  lora_dropout: 0.05
+  target_modules:
+    - "q_proj"
+    - "v_proj"
+    - "k_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+
+training:
+  num_epochs: 5
+  batch_size: 4
+  gradient_accumulation_steps: 4  # effective batch = 16
+  learning_rate: 1e-4
+  warmup_ratio: 0.1
+  max_length: 2048            # 제안서 JSON ~1500토큰
+  early_stopping_patience: 3
+
+data:
+  train_path: "data/training/v2_generate/train.jsonl"
+  eval_path: "data/training/v2_generate/eval.jsonl"
+  eval_ratio: 0.1             # 380개 중 ~38개 eval
+  total_target: 380           # 회의록 150 + 보고서 130 + 제안서 100
+
+# 템플릿별 데이터 목표
+templates:
+  meeting_minutes: 150        # 7필드 JSON, 사용 빈도 최고
+  report: 130                 # 12필드 JSON
+  proposal: 100               # 15+필드 JSON, 가장 복잡
+
+output:
+  output_dir: "outputs/v2_generate"
+  save_steps: 100
+
+evaluation:
+  json_valid_rate: 0.98       # JSON 유효율 >98%
+  field_completeness: 0.95    # 필수 필드 존재 >95%
+  field_accuracy: 0.99        # 필드명 정확도 >99%

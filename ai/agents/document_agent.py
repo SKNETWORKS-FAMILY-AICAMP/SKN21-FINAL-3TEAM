@@ -54,19 +54,19 @@ async def document_agent(state: AgentState) -> AgentState:
     try:
         if intent == "doc_search":
             print("[DocumentAgent] → _handle_doc_search 호출")
-            response_data = _handle_doc_search(user_input, context, user_id, stream_mode=stream_mode)
+            response_data = await _handle_doc_search(user_input, context, user_id, stream_mode=stream_mode)
 
         elif intent == "doc_generate":
             # template_type 결정: ① state에서 프론트가 보낸 값 ② LLM 판단 ③ 키워드 fallback
             document_content = state.get("document_content") or state.get("extracted_text")
-            template_type = state.get("template_type") or _llm_detect_template_type(user_input)
+            template_type = state.get("template_type") or await _llm_detect_template_type(user_input)
             print(f"[DocumentAgent] → _handle_doc_generate 호출 | template={template_type}")
-            response_data = _handle_doc_generate(user_input, template_type, document_content)
+            response_data = await _handle_doc_generate(user_input, template_type, document_content)
 
         elif intent == "doc_summary":
             print("[DocumentAgent] → _handle_doc_summary 호출")
             document_content = state.get("document_content") or state.get("extracted_text")
-            response_data = _handle_doc_summary(
+            response_data = await _handle_doc_summary(
                 user_input,
                 document_content=document_content,
                 user_id=user_id,
@@ -75,7 +75,7 @@ async def document_agent(state: AgentState) -> AgentState:
 
         elif intent == "doc_qa":
             print("[DocumentAgent] → _handle_doc_qa 호출")
-            response_data = _handle_doc_qa(
+            response_data = await _handle_doc_qa(
                 user_input,
                 context=context,
                 user_id=user_id,
@@ -147,7 +147,7 @@ def _detect_template_type(user_input: str) -> str:
     return "report"
 
 
-def _llm_detect_template_type(user_input: str) -> str:
+async def _llm_detect_template_type(user_input: str) -> str:
     """LLM을 사용해 사용자가 어떤 문서를 만들려는지 판단
 
     단순 키워드 매칭으로는 오탐이 발생하는 경우(예: 제안서 내용에 '회의록' 언급)를
@@ -173,7 +173,7 @@ def _llm_detect_template_type(user_input: str) -> str:
     )
 
     print(f"[DocumentAgent] _llm_detect_template_type LLM 호출...")
-    result_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
+    result_str = await _call_llm(sys_prompt, user_prompt, json_mode=True)
     try:
         result = json.loads(result_str)
         template_type = result.get("template_type", "")
@@ -254,7 +254,7 @@ def _build_search_prompt(query: str, context: list) -> tuple:
 
 # ── Intent 핸들러 ──
 
-def _handle_doc_search(query: str, context: List[str], user_id: int = None, stream_mode: bool = False) -> Dict[str, Any]:
+async def _handle_doc_search(query: str, context: List[str], user_id: int = None, stream_mode: bool = False) -> Dict[str, Any]:
     """문서 검색 결과 처리"""
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_search | query='{query[:50]}', context 길이={len(context)}, stream_mode={stream_mode}")
@@ -315,7 +315,7 @@ def _handle_doc_search(query: str, context: List[str], user_id: int = None, stre
 
     # 6. 비스트리밍: LLM 호출
     print("[DocumentAgent] stream_mode=False → LLM 직접 호출")
-    answer = _call_llm(sys_prompt, user_prompt)
+    answer = await _call_llm(sys_prompt, user_prompt)
     print(f"[DocumentAgent] LLM 응답 길이: {len(answer)}자")
 
     return {
@@ -326,7 +326,7 @@ def _handle_doc_search(query: str, context: List[str], user_id: int = None, stre
         "context": context,
     }
 
-def _handle_doc_generate(user_input: str, template_type: str, document_content: str = None) -> Dict[str, Any]:
+async def _handle_doc_generate(user_input: str, template_type: str, document_content: str = None) -> Dict[str, Any]:
     """문서 생성 처리 (보고서/회의록/JD/제안서)"""
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_generate | template_type={template_type}")
@@ -341,11 +341,11 @@ def _handle_doc_generate(user_input: str, template_type: str, document_content: 
         }
 
     if template_type == "meeting_minutes":
-        return _generate_meeting_minutes(user_input)
+        return await _generate_meeting_minutes(user_input)
     if template_type == "report":
-        return _generate_report(user_input)
+        return await _generate_report(user_input)
     if template_type == "proposal":
-        return _generate_proposal(user_input)
+        return await _generate_proposal(user_input)
 
     # 1. 템플릿 가져오기
     try:
@@ -365,7 +365,7 @@ def _handle_doc_generate(user_input: str, template_type: str, document_content: 
     user_prompt = f"요청: {user_input}\n\n필수 필드: {required_fields}"
 
     print(f"[DocumentAgent] LLM 호출 (doc_generate, json_mode=True)...")
-    generated_json_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
+    generated_json_str = await _call_llm(sys_prompt, user_prompt, json_mode=True)
     print(f"[DocumentAgent] LLM 응답: {generated_json_str[:200]}...")
     try:
         data = json.loads(generated_json_str)
@@ -389,7 +389,7 @@ def _handle_doc_generate(user_input: str, template_type: str, document_content: 
     }
 
 
-def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
+async def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
     """회의록 생성 (doc_generate의 meeting_minutes 분기)"""
     _t = time.time()
     print(f"[DocumentAgent] _generate_meeting_minutes | input='{user_input[:80]}...'")
@@ -414,7 +414,7 @@ def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
     )
 
     print(f"[DocumentAgent] LLM 호출 (meeting_minutes, json_mode=True)...")
-    generated_json_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
+    generated_json_str = await _call_llm(sys_prompt, user_prompt, json_mode=True)
     print(f"[DocumentAgent] LLM 응답: {generated_json_str[:200]}...")
     try:
         data = json.loads(generated_json_str)
@@ -512,7 +512,7 @@ def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
     }
 
 
-def _generate_report(user_input: str) -> Dict[str, Any]:
+async def _generate_report(user_input: str) -> Dict[str, Any]:
     """업무보고서 생성"""
     _t = time.time()
     print(f"[DocumentAgent] _generate_report | input='{user_input[:80]}...'")
@@ -544,7 +544,7 @@ def _generate_report(user_input: str) -> Dict[str, Any]:
         f"overview, main_content, tasks, issues, next_plan"
     )
 
-    generated_json_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
+    generated_json_str = await _call_llm(sys_prompt, user_prompt, json_mode=True)
     try:
         data = json.loads(generated_json_str)
         print(f"[DocumentAgent] JSON 파싱 성공 | keys={list(data.keys())}")
@@ -627,7 +627,7 @@ def _generate_report(user_input: str) -> Dict[str, Any]:
     }
 
 
-def _generate_proposal(user_input: str) -> Dict[str, Any]:
+async def _generate_proposal(user_input: str) -> Dict[str, Any]:
     """제안서 생성"""
     _t = time.time()
     print(f"[DocumentAgent] _generate_proposal | input='{user_input[:80]}...'")
@@ -665,7 +665,7 @@ def _generate_proposal(user_input: str) -> Dict[str, Any]:
         f"content, schedule, budget, budget_total, expected_effect"
     )
 
-    generated_json_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
+    generated_json_str = await _call_llm(sys_prompt, user_prompt, json_mode=True)
     try:
         data = json.loads(generated_json_str)
         print(f"[DocumentAgent] JSON 파싱 성공 | keys={list(data.keys())}")
@@ -755,7 +755,7 @@ def _generate_proposal(user_input: str) -> Dict[str, Any]:
     }
 
 
-def _handle_doc_summary(user_input: str, document_content: str = None, user_id: int = None, stream_mode: bool = False) -> Dict[str, Any]:
+async def _handle_doc_summary(user_input: str, document_content: str = None, user_id: int = None, stream_mode: bool = False) -> Dict[str, Any]:
     """문서 요약 처리"""
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_summary | content_len={len(document_content) if document_content else 0}, stream_mode={stream_mode}")
@@ -803,7 +803,7 @@ def _handle_doc_summary(user_input: str, document_content: str = None, user_id: 
 
     # 비스트리밍: LLM 직접 호출
     print("[DocumentAgent] stream_mode=False → LLM 직접 호출 (doc_summary)")
-    answer = _call_llm(sys_prompt, user_prompt)
+    answer = await _call_llm(sys_prompt, user_prompt)
     print(f"[DocumentAgent] LLM 응답 길이: {len(answer)}자")
 
     return {
@@ -813,7 +813,7 @@ def _handle_doc_summary(user_input: str, document_content: str = None, user_id: 
     }
 
 
-def _handle_doc_qa(query: str, context: list = None, user_id: int = None, stream_mode: bool = False) -> Dict[str, Any]:
+async def _handle_doc_qa(query: str, context: list = None, user_id: int = None, stream_mode: bool = False) -> Dict[str, Any]:
     """문서 내용 기반 질의응답"""
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_qa | query='{query[:50]}', context_len={len(context) if context else 0}, stream_mode={stream_mode}")
@@ -882,7 +882,7 @@ def _handle_doc_qa(query: str, context: list = None, user_id: int = None, stream
     # 비스트리밍: JSON mode로 구조화된 응답
     user_prompt = f"Context:\n{json.dumps(context, ensure_ascii=False)}\n\nQuestion: {query}"
     print("[DocumentAgent] stream_mode=False → LLM 직접 호출 (doc_qa, json_mode)")
-    answer_json_str = _call_llm(DOC_QA_SYSTEM_PROMPT, user_prompt, json_mode=True)
+    answer_json_str = await _call_llm(DOC_QA_SYSTEM_PROMPT, user_prompt, json_mode=True)
 
     try:
         qa_result = json.loads(answer_json_str)
@@ -928,47 +928,29 @@ def _build_sources(search_results: list) -> list:
     return sources
 
 
-def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False) -> str:
+async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False) -> str:
     """
-    LLM 호출 (Solar API 사용)
+    LLM 호출 (LLM Factory 사용 — 환경변수 LLM_PROVIDER로 Provider 선택)
     """
     _t_llm = time.time()
     print(f"[DocumentAgent] _call_llm 호출 | json_mode={json_mode}")
     try:
-        from openai import OpenAI
-        import os
+        from ai.llm import get_llm
 
-        api_key = os.getenv("SOLAR_API_KEY")
-        print(f"[DocumentAgent] _call_llm | SOLAR_API_KEY 존재: {bool(api_key)}")
-        if not api_key:
-            print("[DocumentAgent] _call_llm | API 키 없음 → mock 응답")
-            return _get_mock_response(user_prompt, json_mode)
+        llm = get_llm()
+        print(f"[DocumentAgent] _call_llm | Provider: {llm.__class__.__name__}")
 
-        client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.upstage.ai/v1/solar"
-        )
-
-        messages = [
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
-
-        print(f"[DocumentAgent] _call_llm | Solar API 호출 중...")
-        response = client.chat.completions.create(
-            model="solar-1-mini-chat",
-            messages=messages,
+        response = await llm.generate(
+            prompt=user_prompt,
+            system_prompt=sys_prompt,
             temperature=0.7,
-            response_format={"type": "json_object"} if json_mode else {"type": "text"}
+            json_mode=json_mode,
         )
 
-        result = response.choices[0].message.content
-        print(f"[DocumentAgent] _call_llm | Solar API 응답 ({time.time()-_t_llm:.2f}s) 길이: {len(result)}자")
+        result = response.content
+        print(f"[DocumentAgent] _call_llm | LLM 응답 ({time.time()-_t_llm:.2f}s) 길이: {len(result)}자")
         return result
 
-    except ImportError:
-        print("[DocumentAgent] _call_llm | !!! openai 패키지 없음")
-        return _get_mock_response(user_prompt, json_mode)
     except Exception as e:
         print(f"[DocumentAgent] _call_llm | !!! 에러: {e}")
         import traceback

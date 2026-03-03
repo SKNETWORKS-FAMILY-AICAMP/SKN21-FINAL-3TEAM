@@ -1,0 +1,46 @@
+# LoRA v2: 문서 요약 (doc_summary) 전용 어댑터
+# 문서 → 마크다운 요약 (핵심요약 + 주요포인트 + 키워드)
+# 베이스 모델: Qwen3-8B (1차 추천) — 비교 대상: EXAONE-3.5-7.8B, Kanana-1.5-8B
+model:
+  base_model: "Qwen/Qwen3-8B"
+  quantization: "4bit"  # QLoRA
+
+model_candidates:
+  - "Qwen/Qwen3-8B"
+  - "LGAI-EXAONE/EXAONE-3.5-7.8B-Instruct"
+  - "kakaocorp/kanana-1.5-8b-instruct-2505"
+
+lora:
+  r: 16                      # 비교적 단순한 태스크 → rank 축소
+  lora_alpha: 32              # alpha/r = 2.0
+  lora_dropout: 0.05
+  target_modules:
+    - "q_proj"
+    - "v_proj"
+    - "k_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+
+training:
+  num_epochs: 5
+  batch_size: 4
+  gradient_accumulation_steps: 4  # effective batch = 16
+  learning_rate: 1e-4
+  warmup_ratio: 0.1
+  max_length: 2048
+  early_stopping_patience: 3
+
+data:
+  train_path: "data/training/v2_summary/train.jsonl"
+  eval_path: "data/training/v2_summary/eval.jsonl"
+  eval_ratio: 0.1             # 200개 중 ~20개 eval
+  total_target: 200
+
+output:
+  output_dir: "outputs/v2_summary"
+  save_steps: 100
+
+evaluation:
+  rouge_l: 0.45               # ROUGE-L >0.45
+  format_compliance: 0.95     # 포맷 준수율 >95%

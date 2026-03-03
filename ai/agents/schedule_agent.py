@@ -124,7 +124,7 @@ async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
     """일정 추가: LLM 파싱 → 캘린더 등록 (Meet 없이) → 후속 질문"""
     # 1. LLM으로 자연어 → 구조화 데이터 파싱
     print("[ScheduleAgent] _handle_schedule_add | LLM 파싱 시작...")
-    parsed = _parse_schedule_input(user_input)
+    parsed = await _parse_schedule_input(user_input)
     print(f"[ScheduleAgent] _handle_schedule_add | 파싱 결과: {parsed}")
 
     if not parsed.get("title"):
@@ -345,7 +345,7 @@ async def _handle_schedule_view(user_input: str, user_id: int) -> dict:
     """일정 조회: LLM 파싱 → Google Calendar 조회"""
     # 1. LLM으로 조회 범위 파싱
     print("[ScheduleAgent] _handle_schedule_view | LLM 파싱 시작...")
-    parsed = _parse_view_request(user_input)
+    parsed = await _parse_view_request(user_input)
     print(f"[ScheduleAgent] _handle_schedule_view | 파싱 결과: {parsed}")
 
     # 2. Google Calendar API 호출
@@ -412,7 +412,7 @@ async def _handle_schedule_view(user_input: str, user_id: int) -> dict:
         }
 
 
-def _parse_schedule_input(user_input: str) -> dict:
+async def _parse_schedule_input(user_input: str) -> dict:
     """자연어 입력 → 일정 데이터 파싱 (Solar API json_mode → fallback: 직접 파싱)"""
     now = datetime.now()
     current_datetime = now.strftime("%Y-%m-%dT%H:%M:%S")
@@ -445,7 +445,7 @@ def _parse_schedule_input(user_input: str) -> dict:
 - 반드시 유효한 JSON만 출력하세요. 실제 날짜를 넣으세요."""
 
     user_prompt = f"일정 입력: {user_input}"
-    result_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
+    result_str = await _call_llm(sys_prompt, user_prompt, json_mode=True)
 
     try:
         parsed = json.loads(result_str)
@@ -532,7 +532,7 @@ def _fallback_parse(user_input: str, title_hint: str = "") -> dict:
     }
 
 
-def _parse_view_request(user_input: str) -> dict:
+async def _parse_view_request(user_input: str) -> dict:
     """자연어 입력 → 조회 범위 파싱 (Solar API json_mode)"""
     now = datetime.now()
     current_datetime = now.strftime("%Y-%m-%dT%H:%M:%S")
@@ -559,7 +559,7 @@ def _parse_view_request(user_input: str) -> dict:
 - 반드시 유효한 JSON만 출력하세요"""
 
     user_prompt = f"조회 요청: {user_input}"
-    result_str = _call_llm(sys_prompt, user_prompt, json_mode=True)
+    result_str = await _call_llm(sys_prompt, user_prompt, json_mode=True)
 
     try:
         return json.loads(result_str)
@@ -568,44 +568,27 @@ def _parse_view_request(user_input: str) -> dict:
         return {}
 
 
-def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False) -> str:
-    """LLM 호출 (Solar API) — document_agent._call_llm() 패턴 재사용"""
+async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False) -> str:
+    """LLM 호출 (LLM Factory 사용 — 환경변수 LLM_PROVIDER로 Provider 선택)"""
     _t_llm = time.time()
     print(f"[ScheduleAgent] _call_llm 호출 | json_mode={json_mode}")
     try:
-        from openai import OpenAI
+        from ai.llm import get_llm
 
-        api_key = os.getenv("SOLAR_API_KEY")
-        print(f"[ScheduleAgent] _call_llm | SOLAR_API_KEY 존재: {bool(api_key)}")
-        if not api_key:
-            print("[ScheduleAgent] _call_llm | API 키 없음 → mock 응답")
-            return _get_mock_response(user_prompt, json_mode)
+        llm = get_llm()
+        print(f"[ScheduleAgent] _call_llm | Provider: {llm.__class__.__name__}")
 
-        client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.upstage.ai/v1/solar",
-        )
-
-        messages = [
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": user_prompt},
-        ]
-
-        print("[ScheduleAgent] _call_llm | Solar API 호출 중...")
-        response = client.chat.completions.create(
-            model="solar-1-mini-chat",
-            messages=messages,
+        response = await llm.generate(
+            prompt=user_prompt,
+            system_prompt=sys_prompt,
             temperature=0.3,
-            response_format={"type": "json_object"} if json_mode else {"type": "text"},
+            json_mode=json_mode,
         )
 
-        result = response.choices[0].message.content
-        print(f"[ScheduleAgent] _call_llm | Solar API 응답 ({time.time()-_t_llm:.2f}s): {result}")
+        result = response.content
+        print(f"[ScheduleAgent] _call_llm | LLM 응답 ({time.time()-_t_llm:.2f}s): {result}")
         return result
 
-    except ImportError:
-        print("[ScheduleAgent] _call_llm | !!! openai 패키지 없음")
-        return _get_mock_response(user_prompt, json_mode)
     except Exception as e:
         print(f"[ScheduleAgent] _call_llm | !!! 에러: {e}")
         import traceback
