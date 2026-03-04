@@ -627,7 +627,6 @@
 - vite 프록시 설정 로컬/EC2 분리 (.env.local)
 - 판단 Agent 스트리밍 디버깅
 - 문서 생성 AI 연동 (501 엔드포인트 해소)
-- 관리자 API 연동 (#29)
 
 ---
 
@@ -710,7 +709,6 @@
 
 
 ### 다음 할 일
-- 관리자 API 연동 (#29)
 - 판단 Agent 스트리밍 디버깅
 
 ---
@@ -742,25 +740,7 @@
   - `isStreaming` 설정 전 빈 어시스턴트 메시지에도 타이핑 인디케이터 표시
   - 전송 직후 빈 화면 → 즉시 "답변을 생성하고 있어요" 표시로 개선
 
-#### 4) 대시보드 위젯 정리
-
-- **내 팀 / 팀원 수 카드 제거** (`QuickStatsWidget`) — import, 레지스트리, props 매핑 전부 삭제
-- **Member Work Hours 제거** (`WorkHoursWidget`) — 동일하게 전부 삭제
-- **최근 활동 기본값 숨김** — `ActivityTimeline`을 hidden 배열로 이동
-
-#### 5) 대시보드 레이아웃 재배치 (`uiStore.js`)
-
-- **AI 어시스턴트** → 왼쪽 컬럼 최상단으로 이동 (hidden에서 제거)
-- **3월 팀 소식** → 오른쪽 컬럼 최하단으로 이동
-- **CalendarWidget** → 왼쪽 컬럼에서 오른쪽 컬럼 최상단으로 이동 (TodaySchedule 오른쪽에 위치)
-- 오른쪽 컬럼 너비를 `330px` 고정 (`grid-cols-[1fr_330px]`) — 달력 포함 모든 오른쪽 위젯 너비 통일
-
-#### 6) 대시보드 가로 스크롤 버그 수정
-
-- `Layout.jsx` — `overflow-x-hidden` 추가
-- `DashboardPage.jsx` — 그리드 및 컬럼에 `min-w-0 overflow-hidden` 추가 (`ScheduleTimelineWidget min-w-[600px]`, `TaskPipelineWidget min-w-[800px]`로 인한 overflow 방지)
-
-#### 7) alert/window.confirm → 커스텀 Toast + ConfirmModal 교체
+#### 4) alert/window.confirm → 커스텀 Toast + ConfirmModal 교체
 
 - **`store/toastStore.js`** 신규 생성 — Zustand 기반 toast 상태 관리
   - `toast.success/error/info/warning(message)` 명령형 API
@@ -779,9 +759,35 @@
   - `RegulationManagement.jsx` — 저장/삭제 실패
   - `TasksPanel.jsx` — Task 삭제 confirm
 
+#### 8) Slack 알림 연동 UI 구현 (#85)
+
+> 일정 관리 페이지에서 Slack 알림을 활성화/비활성화할 수 있는 토글 UI 추가
+
+- **`frontend/src/components/schedules/SlackConnect.jsx`** 신규 생성
+  - Slack 보라색 아이콘(#4A154B) + 토글 스위치 카드
+  - 연결 시 CheckCircle 아이콘 + "일정 등록 시 채널로 알림이 전송됩니다" 안내
+  - 미연결 시 "활성화하면 일정 등록 시 Slack 채널로 알림을 보냅니다" 안내
+  - 토글 클릭 → `connect()`/`disconnect()` + toast 알림 (성공/실패)
+
+- **`frontend/src/api/slack.js`** 신규 생성
+  - `getSlackStatus()` — 연결 상태 조회
+  - `connectSlack()` — 알림 활성화
+  - `disconnectSlack()` — 연결 해제
+  - `sendSlackNotification(payload)` — 알림 전송
+
+- **`frontend/src/store/slackStore.js`** 신규 생성
+  - Zustand + persist (localStorage `slack-store`)
+  - `connected`, `loading` 상태
+  - `fetchStatus()` — 백엔드 상태 동기화
+  - `connect()` / `disconnect()` 액션
+
+- **`frontend/src/pages/SchedulesPage.jsx`** 수정
+  - `SlackConnect` 컴포넌트를 Google 서비스 연결 카드 아래에 배치
+
 ### 다음 할 일
+- Slack 백엔드 엔드포인트 연동 확인
 - 전체 E2E 테스트
-- 팀서비스 확장 프론트 (#85) — Slack 연동 UI
+- 팀서비스 확장 UI 최종 대응 (#87)
 
 ---
 
@@ -803,7 +809,6 @@
 | 페이지 전환 애니메이션 | ✅ 완료 | framer-motion, fade+slide 200ms |
 | 파일 드래그&드롭 | ✅ 완료 | 채팅 파일 첨부, 검증(형식/크기), FileChip |
 | 대화 세션 관리 | ✅ 완료 | localStorage 세션 목록, 자동 생성/전환/삭제 |
-| 사이드바 메모 | ✅ 완료 | 다중 메모 리스트, localStorage 저장, 자동 저장 표시 |
 | **백엔드 실제 연동** | 🔄 진행중 | 일정 관리 + 대시보드 완료, 문서 생성/관리자 교체 필요 |
 
 ### 파일 현황
