@@ -547,6 +547,55 @@
 - ✅ "링크 생성해줘, user@gmail.com" → Meet 생성 + 초대 메일 발송
 
 ### 다음 할 일
-- 디버그 로그 정리 (print문 제거)
-- 판단 Agent 스트리밍 디버깅
+- ~~디버그 로그 정리 (print문 제거)~~ → 세션 13에서 완료
+- ~~판단 Agent 스트리밍 디버깅~~ → 세션 12에서 이미 해결
 - AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
+
+---
+
+## 2026-03-04 (세션 13)
+
+### 한 일
+
+**디버그 print문 전체 정리**
+- `backend/app/api/v1/chat.py`: print문 40개+ → `logger.info/warning/error`로 전환
+  - 민감 정보 출력 제거 (사용자 메시지, 문서 내용, API 키)
+  - `traceback.print_exc()` → `logger.error(..., exc_info=True)`
+- `ai/agents/schedule_agent.py`: print문 12개 → `logger`로 전환
+- `ai/agents/orchestrator.py`: print문 21개 → `logger`로 전환
+
+**일정 등록 시 시간 되묻기 기능 구현**
+- 문제: "오늘 오후에 회의 잡아줘" → 시간 불명확한데 기본값(09:00/13:00)으로 바로 등록
+- 해결:
+  - `_parse_schedule_input()` 프롬프트 수정: 시간 불명확 시 `start_time: null` 반환하도록
+  - `_fallback_parse()`: 구체적 시간(N시) 없으면 `start_time: None` 반환
+  - `_check_missing_info()`: `start_time`이 null이면 시간 누락 판단
+  - `_build_clarify_message()`: "몇 시에 잡을까요?" 메시지 생성
+  - `_handle_schedule_add()`: 누락 정보 있으면 `schedule_clarify` 타입으로 되묻기
+  - `_register_schedule()`: 등록 로직 분리 (clarify 후속에서도 재사용)
+
+**schedule_clarify 후속 응답 처리 구현**
+- 문제 1: "19시" 입력 시 intent 분류기가 schedule_view로 분류 → 일정 조회로 빠짐
+- 해결: `schedule_agent()` 진입부에서 clarify 후속 감지를 intent 체크보다 먼저 실행
+  - `_extract_clarify_from_history()`: history에서 가장 최근 schedule 응답이 clarify인지 확인
+  - `_handle_clarify_response()`: 사용자 시간 입력 파싱 → 기존 일정 정보에 시간 보충 → 등록
+  - `_parse_time_from_input()`: "19시", "오후 3시", "14:00", 숫자만("19") 등 다양한 시간 형식 파싱
+  - `orchestrator._is_schedule_followup()`: `schedule_clarify` 타입 + 시간 입력도 followup으로 인식
+
+- 문제 2: 일정 등록 후 이메일 초대 요청 시 옛날 clarify를 찾아서 "시간을 인식하지 못했습니다" 응답
+- 해결: `_extract_clarify_from_history()`에서 `schedule_add`가 더 최근이면 clarify 무시
+
+- 문제 3: "오전 9시 회의 잡아줘" → T09:00:00 기본값 체크에 걸려서 시간 되묻기
+- 해결: T09:00:00 기본값 체크 로직 제거 (LLM이 null 반환하도록 프롬프트로만 처리)
+
+### 커밋 내역
+1. `refactor: 디버그 print문 정리 + 일정 등록 시 시간 되묻기 기능 추가` (0ccb456)
+2. `feat: 일정 등록 시 시간 되묻기 + orchestrator print문 정리` (8c0ad3d)
+3. `fix: schedule_clarify 후속 시간 입력이 schedule_view로 빠지는 문제 수정` (c6626e5)
+4. `fix: 일정 등록 후 이메일 초대 시 schedule_clarify로 잘못 라우팅되는 문제 수정` (ba4fca2)
+5. `fix: 오전 9시 일정 요청 시 시간 되묻기로 잘못 빠지는 문제 수정` (b7ca6ee)
+
+### 다음 할 일
+- 팀서비스 확장 (Slack, Jira 연동) + UI/UX 수정 (#84) — 1~2주차 작업
+- AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
+- vLLM 백엔드 연동 + sLLM 교체 및 평가 (#86) — 3주차 작업
