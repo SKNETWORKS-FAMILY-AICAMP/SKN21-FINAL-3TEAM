@@ -94,9 +94,6 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
 @router.get("/me")
 async def get_me(current_user: User = Depends(get_current_user)):
     """현재 로그인된 사용자 정보"""
-    with open("c:/tmp/auth_debug.log", "a", encoding="utf-8") as f:
-        f.write(f"{datetime.now()}: Email={current_user.email}, Avatar={'Yes' if current_user.avatar else 'No'}, AvatarVal={current_user.avatar}\n")
-        
     return {
         "id": current_user.id,
         "email": current_user.email,
@@ -165,8 +162,6 @@ async def get_team_members(
                 break
     
     print(f"[DEBUG] Fetching team members for team: {current_user.team}")
-    for member in team_members:
-        print(f"[DEBUG] Member: {member.name}, Email: {member.email}, Avatar: {'Yes' if member.avatar else 'No'}")
 
     return [
         {
@@ -181,23 +176,6 @@ async def get_team_members(
             "is_active": member.is_active,
         }
         for member in team_members if member.is_active
-    ]
-
-
-@router.get("/debug-users")
-async def debug_users(db: AsyncSession = Depends(get_db)):
-    """DB의 모든 사용자 정보 확인 (디버그용)"""
-    result = await db.execute(select(User))
-    users = result.scalars().all()
-    return [
-        {
-            "id": u.id,
-            "email": u.email,
-            "name": u.name,
-            "avatar": u.avatar,
-            "role": u.role,
-            "team": u.team
-        } for u in users
     ]
 
 
