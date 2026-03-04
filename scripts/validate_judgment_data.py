@@ -159,7 +159,7 @@ def load_jsonl(filepath: Path) -> list[dict]:
 
 VALID_RESULTS = {"yes", "no", "conditional", "no_regulation"}
 VALID_RELEVANCE = {"높음", "중간", "낮음"}
-VALID_RELATIONSHIP = {"보완", "충돌", "상위규정"}
+VALID_RELATIONSHIP = {"보완", "충돌", "상위규정", "보충", "상충", "무관"}
 
 
 def validate_record(record: dict, regulations: dict, idx: int) -> list[dict]:

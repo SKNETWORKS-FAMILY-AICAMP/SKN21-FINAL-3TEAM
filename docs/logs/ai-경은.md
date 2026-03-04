@@ -759,8 +759,78 @@ MakerBot METHOD 매뉴얼처럼 `1장 소개`, `## 안전 경고 기호`, `**무
 | `data/training/v1_judgment/backup/` | 신규 — v1 백업 |
 
 **다음 할 일:**
-- RAFT distractor 비율 보정 (7.6% → 20% 목표, noise 시나리오 추가)
-- IT보안규정 후반부 조항(제20~24조, 제28조) 타겟 시나리오 추가
-- cross_references relationship 표준화 (프롬프트 vs validator 기준 결정)
-- 나머지 규정 간 교차 조합 확장 (급여×인사, 교육훈련×IT보안 등)
+- ~~RAFT distractor 비율 보정 (7.6% → 20% 목표, noise 시나리오 추가)~~ ✅ 완료 (3/4)
+- ~~IT보안규정 후반부 조항(제20~24조, 제28조) 타겟 시나리오 추가~~ ✅ 완료 (3/3)
+- ~~cross_references relationship 표준화 (프롬프트 vs validator 기준 결정)~~ ✅ 완료 (3/4)
+- ~~나머지 규정 간 교차 조합 확장 (급여×인사, 교육훈련×IT보안 등)~~ ✅ 완료 (3/3~3/4)
 - RunPod에서 확장된 데이터로 LoRA 파인튜닝 실행
+
+---
+
+## 2026-03-04 (화)
+
+### 교차 규정 v3+v4 데이터 생성 및 리밸런싱
+
+**Phase 1: v3 교차 규정 데이터 생성 (이전 세션 마무리)**
+- 72 시나리오 × 7건 = 502건 생성 (`cross_regulation_v3.jsonl`)
+- IT보안규정 후반부(제20~28조) 시나리오 포함
+- 기존 데이터와 병합: 2,907 + 502 = 3,409건
+
+**Phase 1 Self-QA 결과:**
+- 검증 스코어: 90.6/100 (A)
+- 수정: `relationship: "무관"` validator 추가, [467] result `no→no_regulation` 수정
+
+**Phase 2: 데이터 분포 리밸런싱 (conditional ↓, no_regulation ↑)**
+
+문제: conditional 45.9%, no_regulation 8.7% → 모델 편향 위험
+
+**2-1. conflict 시나리오 확장 (10→20개)**
+- 10개 신규 충돌 시나리오 추가:
+  - 수습기간 교육비 반환, 건강검진 vs 개인정보, 배우자 이해충돌 vs 겸직,
+  - 법정교육 면책 vs 징계, 육아휴직 복직 복지, 연봉 삭감 가능성,
+  - 내부고발 신원보호, CISSP 교육비 이중적용, 해외출장 질병 보험, 자격수당 중복
+- 생성: 20 시나리오 × 7건 = **140건** (`cross_regulation_v4_conflict.jsonl`)
+- 분포: conditional 90, no_regulation 31, no 19
+
+**2-2. no_regulation 부스트 생성 (`--noreg-boost` 모드)**
+- `generate_cross_regulation_data.py`에 `--noreg-boost` 플래그 추가
+- 모든 82 시나리오를 distractor-only 컨텍스트로 실행
+- 생성: 82 시나리오 × 5건 = **410건** (`cross_regulation_v4_noreg.jsonl`)
+- 분포: **no_regulation 410건 (100%)**
+
+**2-3. 리밸런싱 실행**
+- `scripts/rebalance_judgment_data.py` 신규 스크립트 작성
+- conditional 언더샘플링: 1,665건 → 983건 (682건 제거)
+- 최종 분포 (train+eval 3,277건):
+
+| result | 건수 | 비율 | 변화 |
+|--------|------|------|------|
+| conditional | 983 | **30.0%** | 45.9% → 30.0% |
+| yes | 872 | **26.6%** | 26.0% → 26.6% |
+| no_regulation | 732 | **22.3%** | 8.7% → 22.3% |
+| no | 690 | **21.1%** | 19.4% → 21.1% |
+
+- train: 2,949건 / eval: 328건
+- 백업: `backup/train_before_rebalance.jsonl`, `backup/eval_before_rebalance.jsonl`
+
+**최종 검증: train.jsonl — 90.4/100 (A), 오류 0건**
+
+### 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `scripts/generate_cross_regulation_data.py` | 수정 — conflict 10개 추가, `--noreg-boost` 모드 추가 |
+| `scripts/rebalance_judgment_data.py` | 신규 — 데이터 리밸런싱 스크립트 |
+| `scripts/validate_judgment_data.py` | 수정 — VALID_RELATIONSHIP에 "무관" 추가 |
+| `data/training/v1_judgment/cross_regulation_v3.jsonl` | 신규 — 502건 |
+| `data/training/v1_judgment/cross_regulation_v4_conflict.jsonl` | 신규 — 140건 |
+| `data/training/v1_judgment/cross_regulation_v4_noreg.jsonl` | 신규 — 410건 |
+| `data/training/v1_judgment/train.jsonl` | 수정 — 2,949건 (리밸런싱 후) |
+| `data/training/v1_judgment/eval.jsonl` | 수정 — 328건 (리밸런싱 후) |
+| `data/training/v1_judgment/backup/` | 백업 파일 추가 |
+
+**다음 할 일:**
+- CONTENT_MISMATCH 경고 샘플링 검수 (교차규정 패턴으로 인한 예상 경고 확인)
+- 중복 의심 8쌍 검토 (이름만 다른 거의 동일한 질문)
+- RunPod에서 리밸런싱된 데이터로 QLoRA 파인튜닝 baseline 실행
+- baseline 성능 확인 후 추가 데이터 방향 결정

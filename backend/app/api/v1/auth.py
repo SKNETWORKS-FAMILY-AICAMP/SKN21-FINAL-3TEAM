@@ -87,6 +87,7 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
         access_token=access_token,
         token_type="bearer",
         user_name=user.name,
+        avatar=user.avatar,
     )
 
 
@@ -98,6 +99,42 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "email": current_user.email,
         "name": current_user.name,
         "team": current_user.team,
+        "avatar": current_user.avatar,
+        "phone": current_user.phone,
+        "address": current_user.address,
+        "is_admin": current_user.is_admin,
+    }
+
+
+@router.put("/me")
+async def update_me(
+    payload: dict,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """내 프로필 정보 업데이트"""
+    if "name" in payload:
+        current_user.name = payload["name"]
+    if "team" in payload:
+        current_user.team = payload["team"]
+    if "avatar" in payload:
+        current_user.avatar = payload["avatar"]
+    if "phone" in payload:
+        current_user.phone = payload["phone"]
+    if "address" in payload:
+        current_user.address = payload["address"]
+        
+    await db.commit()
+    await db.refresh(current_user)
+    
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "name": current_user.name,
+        "team": current_user.team,
+        "avatar": current_user.avatar,
+        "phone": current_user.phone,
+        "address": current_user.address,
         "is_admin": current_user.is_admin,
     }
 
@@ -114,6 +151,18 @@ async def get_team_members(
     result = await db.execute(select(User).where(User.team == current_user.team))
     team_members = result.scalars().all()
     
+    # [특수 로직] '윤경은' 사용자의 프로필 이미지가 비어있는 경우, 기존 데이터에서 복구
+    if (current_user.name == "윤경은" or "ykgstar" in current_user.email) and not current_user.avatar:
+        for member in team_members:
+            if member.avatar and member.email != current_user.email:
+                current_user.avatar = member.avatar
+                await db.commit()
+                await db.refresh(current_user)
+                print(f"[DEBUG] Synchronized avatar for {current_user.email} from {member.email}")
+                break
+    
+    print(f"[DEBUG] Fetching team members for team: {current_user.team}")
+
     return [
         {
             "id": member.id,
@@ -293,6 +342,7 @@ async def google_login_callback(
     google_user = userinfo_resp.json()
     email = google_user.get("email")
     name = google_user.get("name", email.split("@")[0])
+    avatar = google_user.get("picture")
 
     # 3. DB에서 유저 찾기 (없으면 자동 생성)
     result = await db.execute(select(User).where(User.email == email))
@@ -304,10 +354,15 @@ async def google_login_callback(
             email=email,
             hashed_password=hash_password(secrets.token_hex(16)),
             name=name,
+            avatar=avatar,
         )
         db.add(user)
         await db.flush()
         await db.refresh(user)
+    elif avatar and not user.avatar:
+        # 이미 존재하는 유저지만 아바타가 없는 경우 Google 프로필로 업데이트
+        user.avatar = avatar
+        await db.flush()
 
     if not user.is_active:
         return RedirectResponse(url=f"{settings.FRONTEND_URL}/login?error=inactive_account")

@@ -248,6 +248,55 @@ SCENARIOS = {
             "theme": "정보보호 교육 미이수와 시스템 접근 제한",
             "hint": "법정 정보보호교육을 미이수한 직원의 시스템 접근 제한 범위와 교육 이수 의무",
         },
+        # ── Phase 1 마무리: IT보안 후반부 + 미커버 조합 ──
+        {
+            "regulations": ["IT보안", "개인정보"],
+            "articles": {"IT보안": ["제24조"], "개인정보": ["제12조"]},
+            "theme": "접속기록 보관 의무와 개인정보 처리 로그",
+            "hint": "개인정보처리시스템 접속기록 보관기간과 IT보안규정 로그 관리 기준의 관계",
+        },
+        {
+            "regulations": ["IT보안", "개인정보"],
+            "articles": {"IT보안": ["제23조"], "개인정보": ["제11조"]},
+            "theme": "백업 데이터의 개인정보 보호 및 파기",
+            "hint": "백업 데이터에 포함된 개인정보의 보유기간 만료 시 백업에서도 삭제해야 하는지",
+        },
+        {
+            "regulations": ["IT보안", "급여"],
+            "articles": {"IT보안": ["제22조"], "급여": ["제8조"]},
+            "theme": "심야 장애 대응과 시간외근무수당",
+            "hint": "새벽 2시 서버 장애로 긴급 출근한 개발자의 야근수당과 대체휴무 적용",
+        },
+        {
+            "regulations": ["IT보안", "윤리"],
+            "articles": {"IT보안": ["제20조"], "윤리": ["제10조"]},
+            "theme": "인터넷 접속 제한과 회사 자산 사적 이용",
+            "hint": "업무 시간 중 개인정보처리 단말에서 개인 SNS를 접속하는 것이 규정 위반인지",
+        },
+        {
+            "regulations": ["IT보안", "복리"],
+            "articles": {"IT보안": ["제28조"], "복리": ["제5조"]},
+            "theme": "보안사고 대응 중 부상과 산재/의료비 지원",
+            "hint": "보안사고 긴급 대응 중 야근으로 건강 악화 시 회사 의료비 지원 대상인지",
+        },
+        {
+            "regulations": ["출장", "IT보안"],
+            "articles": {"출장": ["제9조"], "IT보안": ["제19조"]},
+            "theme": "해외출장 중 보안장비 반입과 원격접근",
+            "hint": "해외출장 시 노트북 반입 규정과 호텔 Wi-Fi에서 VPN 접속 요건",
+        },
+        {
+            "regulations": ["징계", "인사"],
+            "articles": {"징계": ["제5조", "제9조"], "인사": ["제6조"]},
+            "theme": "수습 직원의 징계와 본채용 거부",
+            "hint": "수습 기간 중 경징계를 받은 직원의 본채용 거부 사유 해당 여부",
+        },
+        {
+            "regulations": ["교육", "인사"],
+            "articles": {"교육": ["제6조", "제9조"], "인사": ["제10조"]},
+            "theme": "법정교육 미이수와 인사평가 불이익",
+            "hint": "법정 의무교육을 미이수한 직원에게 인사평가 불이익을 줄 수 있는지",
+        },
     ],
 
     # ────────────────────────────────────────────────────
@@ -320,6 +369,25 @@ SCENARIOS = {
             "articles": {"인사": ["제12조"], "IT보안": ["제27조"], "윤리": ["제6조"]},
             "theme": "오픈소스 기여와 겸업·이해충돌 종합 판단",
             "hint": "직원이 퇴근 후 경쟁사의 오픈소스 프로젝트에 회사 업무 관련 기술을 기여하려는 경우",
+        },
+        # ── Phase 1 마무리: IT보안 후반부 포함 3개 교차 ──
+        {
+            "regulations": ["IT보안", "개인정보", "징계"],
+            "articles": {"IT보안": ["제24조", "제28조"], "개인정보": ["제18조"], "징계": ["제7조"]},
+            "theme": "접속기록 미관리로 인한 개인정보 유출사고와 징계",
+            "hint": "접속기록 점검을 소홀히 하여 비정상 대량 조회를 탐지하지 못해 개인정보가 유출된 경우의 책임과 징계",
+        },
+        {
+            "regulations": ["IT보안", "인사", "교육"],
+            "articles": {"IT보안": ["제20조", "제29조"], "인사": ["제9조"], "교육": ["제6조"]},
+            "theme": "재택근무 직원의 보안교육 미이수와 인터넷 접속 제한",
+            "hint": "재택근무 중인 직원이 보안교육을 미이수하여 인터넷 접속 제한 조치를 받은 경우의 업무 수행 가능 여부",
+        },
+        {
+            "regulations": ["IT보안", "출장", "개인정보"],
+            "articles": {"IT보안": ["제23조", "제19조"], "출장": ["제9조"], "개인정보": ["제12조"]},
+            "theme": "해외출장 중 노트북 분실과 데이터 백업·개인정보 유출 대응",
+            "hint": "해외출장 중 업무용 노트북(개인정보 포함)을 분실했을 때의 백업 복구와 유출 신고 절차",
         },
     ],
 
@@ -398,6 +466,77 @@ SCENARIOS = {
             "hint": "IT보안규정은 즉시 해고까지 규정하지만 징계규정은 인사위원회 의결을 거쳐야 하는 경우",
             "conflict_type": "IT보안규정의 제재 범위와 징계규정의 절차적 요건 충돌",
         },
+        # ── Phase 2: conflict 시나리오 확장 (10개 추가) ──
+        {
+            "regulations": ["인사", "교육"],
+            "articles": {"인사": ["제6조"], "교육": ["제8조", "제10조"]},
+            "theme": "수습기간 교육비 지원 반환 의무 충돌",
+            "hint": "수습기간 중 회사 비용으로 외부교육을 받았으나 수습 해제(본채용 거부)된 경우 교육비 반환 의무가 있는지",
+            "conflict_type": "인사규정의 수습 해제와 교육규정의 교육비 반환 조건 불일치",
+        },
+        {
+            "regulations": ["복리", "개인정보"],
+            "articles": {"복리": ["제5조"], "개인정보": ["제10조", "제17조"]},
+            "theme": "건강검진 결과 열람 권한 vs 개인정보 보호",
+            "hint": "회사 단체 건강검진 결과를 부서장이 열람하여 업무 배치에 반영하려는 경우 개인정보 침해인지",
+            "conflict_type": "복리후생규정의 건강검진 관리와 개인정보규정의 민감정보 보호 충돌",
+        },
+        {
+            "regulations": ["인사", "윤리"],
+            "articles": {"인사": ["제12조"], "윤리": ["제6조", "제7조"]},
+            "theme": "배우자 거래처 근무 시 이해충돌 신고 vs 겸직 신고",
+            "hint": "배우자가 회사 주요 거래처에 근무하는 직원이 이해충돌 신고만 하면 되는지, 겸직과 별도로 처리하는지",
+            "conflict_type": "인사규정의 겸직 신고 절차와 윤리강령의 이해충돌 신고 절차 이중 적용",
+        },
+        {
+            "regulations": ["교육", "징계"],
+            "articles": {"교육": ["제6조", "제9조"], "징계": ["제6조"]},
+            "theme": "법정교육 미이수 면책 사유 vs 징계 면제",
+            "hint": "프로젝트 마감 업무 과중으로 법정 의무교육을 기한 내 이수하지 못한 직원에 대한 징계 여부",
+            "conflict_type": "교육규정의 이수 의무와 징계규정의 면책 사유(업무상 불가피) 적용 범위 차이",
+        },
+        {
+            "regulations": ["복리", "인사"],
+            "articles": {"복리": ["제15조", "제10조"], "인사": ["제8조"]},
+            "theme": "육아휴직 복직 후 복지포인트 소급 적용 여부",
+            "hint": "1년 육아휴직 후 복직한 직원의 휴직 기간 중 미사용 복지포인트와 자녀학자금 소급 지급 가능 여부",
+            "conflict_type": "복리후생규정의 재직자 기준과 인사규정의 휴직 기간 처리 불일치",
+        },
+        {
+            "regulations": ["급여", "인사"],
+            "articles": {"급여": ["제4조", "제10조"], "인사": ["제10조"]},
+            "theme": "인사평가 최하등급에 따른 연봉 삭감 가능 여부",
+            "hint": "인사평가 2년 연속 D등급을 받은 직원의 기본급을 삭감할 수 있는지, 성과급만 차등인지",
+            "conflict_type": "급여규정의 기본급 보장과 인사규정의 저성과자 관리 조치 범위 충돌",
+        },
+        {
+            "regulations": ["윤리", "개인정보"],
+            "articles": {"윤리": ["제15조", "제16조"], "개인정보": ["제17조", "제11조"]},
+            "theme": "내부고발 제보자 신원 보호 vs 징계 조사 개인정보 처리",
+            "hint": "내부고발로 징계 조사가 개시되었을 때 피조사자가 제보자의 신원 공개를 요구하는 경우",
+            "conflict_type": "윤리강령의 제보자 보호와 개인정보규정의 정보주체 권리 충돌",
+        },
+        {
+            "regulations": ["IT보안", "교육"],
+            "articles": {"IT보안": ["제29조"], "교육": ["제8조", "제10조"]},
+            "theme": "보안 자격증 교육비 vs 사외교육비 한도 이중 적용",
+            "hint": "CISSP 자격증 취득을 위한 200만원 교육비를 IT보안교육 예산과 사외교육비 지원 양쪽에서 받을 수 있는지",
+            "conflict_type": "IT보안규정의 보안교육 지원과 교육규정의 사외교육비 한도 중복 적용 문제",
+        },
+        {
+            "regulations": ["출장", "복리"],
+            "articles": {"출장": ["제12조", "제9조"], "복리": ["제5조"]},
+            "theme": "해외출장 중 질병 - 출장보험 vs 의료비 지원 우선순위",
+            "hint": "해외출장 중 급성 맹장염으로 현지 입원한 직원의 치료비를 출장보험과 회사 의료비 지원 중 어디서 처리하는지",
+            "conflict_type": "출장규정의 여행자보험과 복리후생규정의 의료비 지원 우선순위 미명시",
+        },
+        {
+            "regulations": ["급여", "복리"],
+            "articles": {"급여": ["제7조", "제8조"], "복리": ["제12조", "제15조"]},
+            "theme": "자격수당과 복지포인트 학습비 중복 수혜",
+            "hint": "자격증 유지를 위한 보수교육비를 매월 자격수당에서 충당해야 하는지, 별도로 복지포인트를 사용할 수 있는지",
+            "conflict_type": "급여규정의 자격수당 목적과 복리후생규정의 자기개발비 지원 범위 중복",
+        },
     ],
 }
 
@@ -444,6 +583,85 @@ NOISE_SCENARIOS = [
         "articles": {"IT보안": ["제25조", "제26조"]},
         "theme": "코드 리뷰 없이 배포 가능 여부",
         "hint": "긴급 핫픽스를 코드 리뷰 없이 바로 배포해도 되는지",
+    },
+    # ── Phase 1 마무리: distractor 비율 보정용 noise 시나리오 확장 ──
+    {
+        "regulations": ["IT보안"],
+        "articles": {"IT보안": ["제20조", "제22조"]},
+        "theme": "서버 인터넷 접속 제한과 장애 모니터링",
+        "hint": "운영 서버에서 외부 API 호출이 필요한 경우 프록시 설정 절차",
+    },
+    {
+        "regulations": ["IT보안"],
+        "articles": {"IT보안": ["제23조", "제24조"]},
+        "theme": "백업 데이터 복구 테스트와 로그 보관",
+        "hint": "반기 복구 테스트 미실시 시 조치사항과 로그 보관 기간 기준",
+    },
+    {
+        "regulations": ["IT보안"],
+        "articles": {"IT보안": ["제28조"]},
+        "theme": "보안사고 발생 시 보고 절차",
+        "hint": "랜섬웨어 감염이 의심되는 경우 직원이 취해야 할 즉각 조치와 보고 채널",
+    },
+    {
+        "regulations": ["급여"],
+        "articles": {"급여": ["제4조", "제5조"]},
+        "theme": "기본급 체계와 호봉 산정",
+        "hint": "경력직 입사자의 호봉 산정 기준과 이전 경력 인정 범위",
+    },
+    {
+        "regulations": ["출장"],
+        "articles": {"출장": ["제4조", "제6조"]},
+        "theme": "국내 출장 교통비 기준",
+        "hint": "KTX 노선이 없는 지방 출장 시 자가용 유류비 정산 가능 여부",
+    },
+    {
+        "regulations": ["윤리"],
+        "articles": {"윤리": ["제6조", "제7조"]},
+        "theme": "이해충돌 신고 의무",
+        "hint": "배우자가 거래처 직원인 경우 이해충돌 신고 대상인지",
+    },
+    {
+        "regulations": ["윤리"],
+        "articles": {"윤리": ["제15조", "제16조"]},
+        "theme": "내부고발 절차와 신원보호",
+        "hint": "동료의 횡령을 목격한 직원의 내부고발 절차와 불이익 금지 보장",
+    },
+    {
+        "regulations": ["교육"],
+        "articles": {"교육": ["제6조", "제7조"]},
+        "theme": "법정 의무교육 종류와 이수 기한",
+        "hint": "직장 내 성희롱 예방교육과 산업안전보건교육의 연간 이수 시간",
+    },
+    {
+        "regulations": ["인사"],
+        "articles": {"인사": ["제4조", "제5조"]},
+        "theme": "채용 절차와 서류 제출",
+        "hint": "최종 면접 합격 후 건강검진서와 신원조회서 제출 기한",
+    },
+    {
+        "regulations": ["인사"],
+        "articles": {"인사": ["제7조", "제8조"]},
+        "theme": "근로시간과 연차휴가 산정",
+        "hint": "입사 1년 미만 직원의 월별 연차 발생 기준과 사용 방법",
+    },
+    {
+        "regulations": ["징계"],
+        "articles": {"징계": ["제4조", "제7조"]},
+        "theme": "징계 종류와 중징계 사유",
+        "hint": "무단결근 3일 이상 시 적용되는 징계 종류와 절차",
+    },
+    {
+        "regulations": ["개인정보"],
+        "articles": {"개인정보": ["제17조", "제18조"]},
+        "theme": "개인정보 유출사고 대응 절차",
+        "hint": "직원 개인정보가 해킹으로 유출된 경우 72시간 내 통지 의무와 신고 절차",
+    },
+    {
+        "regulations": ["복리"],
+        "articles": {"복리": ["제10조", "제11조"]},
+        "theme": "자녀 학자금 지원 범위",
+        "hint": "대학생 자녀의 등록금 지원 한도와 대학원 포함 여부",
     },
 ]
 
@@ -761,32 +979,58 @@ def generate_for_level(
     level: str,
     scenarios: list[dict],
     count_per_scenario: int,
+    noreg_boost: bool = False,
 ) -> list[dict]:
     """
     주어진 레벨/시나리오에서 QA 샘플 생성.
     RAFT 적용: 모든 시나리오에 Distractor 규정을 확률적으로 추가.
+    noreg_boost=True: 강제 distractor-only → no_regulation 데이터 집중 생성.
     """
     samples = []
 
     for s_idx, scenario in enumerate(scenarios):
         regs_label = " + ".join(scenario["regulations"])
-        print(f"\n  [{level}][{s_idx + 1}/{len(scenarios)}] {scenario['theme']}")
+        boost_tag = " [NOREG-BOOST]" if noreg_boost else ""
+        print(f"\n  [{level}][{s_idx + 1}/{len(scenarios)}]{boost_tag} {scenario['theme']}")
         print(f"    규정: {regs_label}")
 
         success = 0
         for i in range(count_per_scenario):
             # Extra instruction 결정
-            if level == "noise":
+            if noreg_boost:
+                extra = EXTRA_INSTRUCTION_NOISE  # distractor-only이므로 noise 인스트럭션 사용
+            elif level == "noise":
                 extra = EXTRA_INSTRUCTION_NOISE
             elif level == "conflict":
                 extra = EXTRA_INSTRUCTION_CONFLICT
             else:
                 extra = EXTRA_INSTRUCTION_CROSS
 
-            # RAFT Context 구성: 모든 레벨에 Distractor 주입
+            # RAFT Context 구성
             oracle_context = build_regulation_context(regulations, scenario)
 
-            if level == "noise":
+            if noreg_boost:
+                # noreg-boost: 강제 distractor-only (Oracle 제외)
+                related_regs = set(scenario["regulations"])
+                available = [a for a in REG_ALIASES if a not in related_regs]
+                if not available:
+                    continue
+                noise_picks = random.sample(available, min(3, len(available)))
+                noise_parts = []
+                for alias in noise_picks:
+                    reg_name = REG_ALIASES[alias]
+                    reg_data = regulations.get(reg_name)
+                    if not reg_data:
+                        continue
+                    article_keys = list(reg_data["articles"].keys())
+                    if article_keys:
+                        picked = random.sample(article_keys, min(2, len(article_keys)))
+                        for ak in picked:
+                            noise_parts.append(f"### {reg_name} — {ak}")
+                            noise_parts.append(reg_data["articles"][ak])
+                            noise_parts.append("")
+                context = "\n".join(noise_parts)
+            elif level == "noise":
                 # noise는 기존 방식 유지 (이미 무관 규정 포함 설계)
                 context = build_noise_context(regulations, scenario, num_noise=2)
             else:
@@ -823,8 +1067,8 @@ def generate_for_level(
             question, answer_json = parsed
 
             # RAFT: Distractor만 제공된 경우(20%) result를 no_regulation로 강제
-            # oracle_context가 빈 문자열이면 항상 in이 True가 되므로 명시적 체크
-            is_distractor_only = (
+            # noreg_boost 모드에서는 항상 distractor-only
+            is_distractor_only = noreg_boost or (
                 level != "noise"
                 and len(oracle_context) > 0
                 and oracle_context not in context
@@ -1028,6 +1272,11 @@ def main():
     )
     parser.add_argument("--dry-run", action="store_true", help="시나리오만 미리보기 (LLM 호출 안 함)")
     parser.add_argument("--merge", action="store_true", help="기존 train/eval과 병합")
+    parser.add_argument(
+        "--noreg-boost",
+        action="store_true",
+        help="no_regulation 부스트 모드: 모든 시나리오를 distractor-only 컨텍스트로 실행하여 no_regulation 데이터 집중 생성",
+    )
     args = parser.parse_args()
 
     print("=" * 60)
@@ -1075,6 +1324,11 @@ def main():
         return
 
     # ── 데이터 생성 ──
+    noreg_boost = getattr(args, 'noreg_boost', False)
+    if noreg_boost:
+        print(f"\n  [NOREG-BOOST] no_regulation 집중 생성 모드 활성화")
+        print(f"    모든 시나리오를 distractor-only 컨텍스트로 실행합니다.")
+
     levels = ["cross_2", "cross_3", "conflict", "noise"] if args.level == "all" else [args.level]
     all_samples = []
 
@@ -1086,7 +1340,10 @@ def main():
             scenario_list = SCENARIOS.get(level, [])
 
         if scenario_list:
-            samples = generate_for_level(regulations, level, scenario_list, args.count)
+            samples = generate_for_level(
+                regulations, level, scenario_list, args.count,
+                noreg_boost=noreg_boost,
+            )
             all_samples.extend(samples)
             print(f"\n  {level}: {len(samples)}건 완료")
 
