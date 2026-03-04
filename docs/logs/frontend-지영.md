@@ -685,17 +685,8 @@
 - **수정**: EC2 SSH 접속 → `alembic stamp` + `alembic upgrade head` 실행 → 컬럼 추가 완료
 - **수정 2**: EC2 백엔드 `git pull` + uvicorn 재시작
 
-### 다음 할 일
-- 관리자 API 연동 (#29)
-- 판단 Agent 스트리밍 디버깅
 
----
-
-## 2026-03-03 (월)
-
-### 한 일
-
-#### 1) 일정 삭제 권한 제어 — 본인 + 관리자만 삭제 가능
+#### 6) 일정 삭제 권한 제어 — 본인 + 관리자만 삭제 가능
 
 **백엔드 수정 (3개 파일)**
 - **`backend/app/schemas/schedule.py`** — `ScheduleResponse`에 `user_id` 필드 추가 (프론트에서 소유자 판별용)
@@ -716,14 +707,61 @@
 | 타인이 등록한 일정 | X | O |
 | 공휴일 | X | X |
 
-#### 2) 헤더 그림자 제거 — body 배경색 통일
 
-- **`frontend/src/styles/globals.css`** — body 배경을 그라데이션(`linear-gradient`) → 단색(`var(--color-surface-main)`)으로 변경
-- 라이트/다크 모드 모두 CSS 변수 자동 전환, Topbar·페이지 헤더와 배경색 완전 통일
 
 ### 다음 할 일
 - 관리자 API 연동 (#29)
 - 판단 Agent 스트리밍 디버깅
+
+---
+
+## 2026-03-04 (수)
+
+### 한 일
+
+#### 1) 판단 Agent 응답 카드 UI 개선 (`JudgmentCard.jsx`, `ChatPage.jsx`)
+
+- **규정 팝업 기능 추가** — 관련 규정 클릭 시 전체 내용을 모달 팝업으로 표시
+  - `RegulationPopup` 컴포넌트 신규 생성 (ESC/외부 클릭으로 닫기)
+  - 규정 항목을 `<div>` → `<button>`으로 변경, hover 시 색상 전환 + "전체 보기 →" 링크
+- **레이아웃 변경** — summary(줄글)를 규정+신뢰도 아래로 이동 (border-t 구분선 추가)
+- **ChatPage 판단 응답 렌더링 리팩토링**
+  - 줄글(스트리밍 텍스트)을 별도 카드로 먼저 표시
+  - JudgmentCard는 `summary=null`로 규정+신뢰도만 표시
+  - 기존 content/reasoning 중복 렌더링 로직 정리
+
+#### 2) 스트리밍 메시지 UX 개선 (`StreamingMessage.jsx`)
+
+- status(에이전트 상태) 표시 제거
+- 빈 텍스트 상태: 점 3개만 → "답변을 생성하고 있어요" 텍스트 + bounce 도트(w-2 h-2)로 변경
+
+#### 3) 채팅 스크롤/대기 표시 버그 수정 (`ChatWindow.jsx`, `ChatPage.jsx`)
+
+- **ChatWindow** — `useEffect` 의존성에 `isStreaming` 추가 (스트리밍 시작/종료 시 자동 스크롤)
+- **ChatPage** — `isWaitingForResponse` 로직 추가
+  - `isStreaming` 설정 전 빈 어시스턴트 메시지에도 타이핑 인디케이터 표시
+  - 전송 직후 빈 화면 → 즉시 "답변을 생성하고 있어요" 표시로 개선
+
+#### 4) 대시보드 위젯 정리
+
+- **내 팀 / 팀원 수 카드 제거** (`QuickStatsWidget`) — import, 레지스트리, props 매핑 전부 삭제
+- **Member Work Hours 제거** (`WorkHoursWidget`) — 동일하게 전부 삭제
+- **최근 활동 기본값 숨김** — `ActivityTimeline`을 hidden 배열로 이동
+
+#### 5) 대시보드 레이아웃 재배치 (`uiStore.js`)
+
+- **AI 어시스턴트** → 왼쪽 컬럼 최상단으로 이동 (hidden에서 제거)
+- **3월 팀 소식** → 오른쪽 컬럼 최하단으로 이동
+- **CalendarWidget** → 왼쪽 컬럼에서 오른쪽 컬럼 최상단으로 이동 (TodaySchedule 오른쪽에 위치)
+- 오른쪽 컬럼 너비를 `330px` 고정 (`grid-cols-[1fr_330px]`) — 달력 포함 모든 오른쪽 위젯 너비 통일
+
+#### 6) 대시보드 가로 스크롤 버그 수정
+
+- `Layout.jsx` — `overflow-x-hidden` 추가
+- `DashboardPage.jsx` — 그리드 및 컬럼에 `min-w-0 overflow-hidden` 추가 (`ScheduleTimelineWidget min-w-[600px]`, `TaskPipelineWidget min-w-[800px]`로 인한 overflow 방지)
+
+### 다음 할 일
+- 전체 E2E 테스트
 
 ---
 

@@ -115,7 +115,7 @@ export default function Layout() {
         onScrollCapture={handleScroll}
         className={`flex-1 min-h-0 ${isChatPage
             ? 'overflow-hidden flex flex-col'
-            : 'overflow-y-auto px-8 pb-20'
+            : 'overflow-y-auto overflow-x-hidden px-8 pb-20'
           }`}
       >
         <AnimatePresence mode="wait">

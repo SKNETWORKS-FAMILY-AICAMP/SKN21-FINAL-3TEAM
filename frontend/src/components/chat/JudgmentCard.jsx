@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Lightbulb, ChevronDown, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Lightbulb, ChevronDown, AlertTriangle, ShieldCheck, FileText, X } from 'lucide-react';
 import MarkdownText from './MarkdownText';
 
 const borderColors = { deny: 'border-l-error', conditional: 'border-l-warning', ref: 'border-l-primary-300' };
@@ -24,8 +24,43 @@ function ConfidenceBar({ label, value, maxValue = 1 }) {
   );
 }
 
+function RegulationPopup({ reg, onClose }) {
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="bg-surface-card rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between px-5 py-4 border-b border-neutral-divider">
+          <div className="flex items-center gap-2 pr-4">
+            <FileText size={16} className="text-primary-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm font-bold text-neutral-main leading-snug">{reg.name}</div>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-md flex items-center justify-center text-neutral-muted hover:bg-surface-hover transition flex-shrink-0">
+            <X size={15} />
+          </button>
+        </div>
+        <div className="overflow-y-auto px-5 py-4 flex-1">
+          {reg.verdict ? (
+            <p className="text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">{reg.verdict}</p>
+          ) : (
+            <p className="text-sm text-neutral-muted text-center py-8">내용이 없습니다.</p>
+          )}
+        </div>
+        <div className="px-5 py-3 border-t border-neutral-divider flex justify-end">
+          <button onClick={onClose} className="btn-outline text-xs px-4 py-1.5">닫기</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function JudgmentCard({ summary, regulations = [], alternatives = [], confidenceBreakdown, warnings, confidence }) {
   const [open, setOpen] = useState(false);
+  const [selectedReg, setSelectedReg] = useState(null);
 
   const hasBreakdown = confidenceBreakdown && typeof confidenceBreakdown === 'object';
   const finalScore = hasBreakdown ? confidenceBreakdown.final : confidence;
@@ -39,20 +74,21 @@ export default function JudgmentCard({ summary, regulations = [], alternatives =
   const hasWarnings = Array.isArray(warnings) && warnings.length > 0;
 
   return (
+  <>
     <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
       <div className="p-4">
         {regulations.length > 0 && (
           <div className="mb-3.5">
             <div className="text-xs font-semibold text-neutral-sub mb-2">관련 규정 ({regulations.length}건)</div>
             {regulations.map((r, i) => (
-              <div key={i} className={`px-3 py-2 bg-surface-hover rounded-lg mb-1.5 border-l-[3px] ${borderColors[r.type] || 'border-l-primary-300'}`}>
+              <button key={i} onClick={() => setSelectedReg(r)} className={`w-full text-left px-3 py-2 bg-surface-hover rounded-lg mb-1.5 border-l-[3px] hover:bg-primary-50 hover:border-l-primary-500 transition cursor-pointer ${borderColors[r.type] || 'border-l-primary-300'}`}>
                 <div className="text-xs font-semibold text-neutral-main">{r.name}</div>
-                <div className="text-[0.6875rem] text-neutral-sub mt-0.5">{r.verdict}</div>
-              </div>
+                <div className="text-[0.6875rem] text-neutral-sub mt-0.5 line-clamp-2">{r.verdict}</div>
+                <div className="text-[0.625rem] text-primary-500 mt-1 font-medium">전체 보기 →</div>
+              </button>
             ))}
           </div>
         )}
-        {summary && <div className="text-sm text-neutral-main leading-relaxed mb-3.5"><MarkdownText>{summary}</MarkdownText></div>}
         {alternatives.length > 0 && (
           <div>
             <div className="text-xs font-semibold text-neutral-sub mb-2 flex items-center gap-1"><Lightbulb size={14} /> 대안</div>
@@ -138,6 +174,16 @@ export default function JudgmentCard({ summary, regulations = [], alternatives =
           )}
         </div>
       )}
+
+      {/* 줄글 (summary) — 규정 + 신뢰도 아래에 표시 */}
+      {summary && (
+        <div className="border-t border-neutral-divider p-4">
+          <div className="text-sm text-neutral-main leading-relaxed"><MarkdownText>{summary}</MarkdownText></div>
+        </div>
+      )}
     </div>
+
+    {selectedReg && <RegulationPopup reg={selectedReg} onClose={() => setSelectedReg(null)} />}
+  </>
   );
 }
