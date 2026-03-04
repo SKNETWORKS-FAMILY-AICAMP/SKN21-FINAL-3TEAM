@@ -24,7 +24,7 @@ export default function TodaySchedule({ meetings = [], actions = [] }) {
       >
         <h3 className="text-lg font-bold text-neutral-main flex items-center gap-2">
           <Calendar className="text-primary-500" size={20} />
-          팀 오늘 일정
+          오늘 일정
         </h3>
         <button className="text-neutral-muted hover:text-primary-500 transition-colors p-1 rounded-full hover:bg-surface-hover">
           {isCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
@@ -36,7 +36,7 @@ export default function TodaySchedule({ meetings = [], actions = [] }) {
           <p className="text-sm font-bold text-neutral-muted py-2 text-center mt-4">오늘 예정된 회의가 없습니다.</p>
         )}
         {displayMeetings.map((m, i) => (
-          <Link key={i} to="/meetings" className="group flex items-center gap-3 p-3 rounded-2xl border border-transparent bg-white/40 hover:border-primary-200 hover:shadow-soft transition-all duration-300 relative overflow-hidden">
+          <Link key={i} to="/schedules" className="group flex items-center gap-3 p-3 rounded-2xl border border-transparent bg-white/40 hover:border-primary-200 hover:shadow-soft transition-all duration-300 relative overflow-hidden">
             <div className="absolute inset-0 bg-primary-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             <div className="relative z-10 text-center flex-shrink-0 bg-primary-50 w-12 h-12 rounded-xl flex flex-col items-center justify-center">
               <div className="font-display text-base font-bold text-primary-700 leading-none">{m.time.split(' ')[0]}</div>
@@ -69,7 +69,7 @@ export default function TodaySchedule({ meetings = [], actions = [] }) {
           <div className="flex items-center justify-between mb-3 mt-1">
             <h3 className="text-[15px] font-bold text-neutral-main flex items-center gap-2">
               <ListChecks className="text-error" size={18} />
-              팀 마감 임박
+              마감 임박
             </h3>
           </div>
           <div className="space-y-2">

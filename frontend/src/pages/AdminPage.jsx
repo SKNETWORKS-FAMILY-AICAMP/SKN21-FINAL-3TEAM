@@ -4,8 +4,6 @@ import UserManagement from '../components/admin/UserManagement';
 import RegulationManagement from '../components/admin/RegulationManagement';
 import SystemStats from '../components/admin/SystemStats';
 import { listUsers, getSystemStats, getQueryLogs, listRegulations } from '../api/admin';
-import { TEAMS } from '../utils/constants';
-
 export default function AdminPage() {
   const { isScrolled } = useOutletContext();
   const [users, setUsers] = useState([]);
@@ -14,15 +12,14 @@ export default function AdminPage() {
   const [queryLogs, setQueryLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedTeam, setSelectedTeam] = useState(null);
 
-  const loadAll = async (team = selectedTeam) => {
+  const loadAll = async () => {
     setLoading(true);
     setError(null);
     const results = await Promise.allSettled([
       listUsers(),
       listRegulations(),
-      getSystemStats(team ? { team } : {}),
+      getSystemStats(),
       getQueryLogs(),
     ]);
 
@@ -58,10 +55,6 @@ export default function AdminPage() {
 
   useEffect(() => { loadAll(); }, []);
 
-  const handleTeamChange = (team) => {
-    setSelectedTeam(team);
-    loadAll(team);
-  };
 
   return (
     <div>
@@ -81,26 +74,6 @@ export default function AdminPage() {
         </div>
       ) : (
         <>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xs font-medium text-neutral-sub">팀 필터:</span>
-            <div className="flex gap-1 flex-wrap">
-              <button
-                onClick={() => handleTeamChange(null)}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition ${!selectedTeam ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-sub hover:bg-surface-hover'}`}
-              >
-                전체
-              </button>
-              {TEAMS.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => handleTeamChange(t)}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition ${selectedTeam === t ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-sub hover:bg-surface-hover'}`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             {[
               { l: '전체 사용자', v: users.length },
@@ -119,7 +92,7 @@ export default function AdminPage() {
               <RegulationManagement regulations={regulations} onRefresh={loadAll} />
             </div>
             <div className="min-w-0">
-              <SystemStats queryLogs={queryLogs} team={selectedTeam} />
+              <SystemStats queryLogs={queryLogs} />
             </div>
           </div>
         </>

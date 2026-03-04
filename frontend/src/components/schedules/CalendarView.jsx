@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import MeetLinkBadge from './MeetLinkBadge';
 import useScheduleTypeStore, { DEFAULT_TYPES } from '../../store/scheduleTypeStore';
 
@@ -84,7 +84,7 @@ function getKoreanHolidays(year) {
   return [...fixed, ...lunar].map((h) => ({ ...h, type: 'holiday' }));
 }
 
-function DayDetailPopup({ day, month, year, events, typeColorMap, typeLabelMap, onClose, onDeleteEvent, onCanDelete }) {
+function DayDetailPopup({ day, month, year, events, typeColorMap, typeLabelMap, onClose, onDeleteEvent, onCanDelete, onEditEvent, onCanEdit }) {
   const ref = useRef(null);
   const [deletingId, setDeletingId] = useState(null);
 
@@ -129,6 +129,7 @@ function DayDetailPopup({ day, month, year, events, typeColorMap, typeLabelMap, 
                 const eventKey = e.scheduleId || e.id;
                 const isDeleting = deletingId === eventKey;
                 const showDelete = onDeleteEvent && onCanDelete?.(e);
+                const showEdit = onEditEvent && onCanEdit?.(e);
                 return (
                   <li key={i} className="flex gap-3 items-start">
                     <span
@@ -143,19 +144,33 @@ function DayDetailPopup({ day, month, year, events, typeColorMap, typeLabelMap, 
                       </div>
                       {e.meetLink && <div className="mt-1"><MeetLinkBadge meetLink={e.meetLink} /></div>}
                     </div>
-                    {showDelete && (
-                      <button
-                        onClick={() => handleDelete(e)}
-                        disabled={isDeleting}
-                        className="shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-error-bg text-neutral-muted hover:text-error transition disabled:opacity-40"
-                        aria-label="일정 삭제"
-                        title="일정 삭제"
-                      >
-                        {isDeleting
-                          ? <span className="w-3.5 h-3.5 border-2 border-error border-t-transparent rounded-full animate-spin" />
-                          : <Trash2 size={14} />
-                        }
-                      </button>
+                    {(showEdit || showDelete) && (
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        {showEdit && (
+                          <button
+                            onClick={() => onEditEvent(e)}
+                            className="w-7 h-7 flex items-center justify-center rounded hover:bg-primary-50 text-neutral-muted hover:text-primary-700 transition"
+                            aria-label="일정 수정"
+                            title="일정 수정"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        )}
+                        {showDelete && (
+                          <button
+                            onClick={() => handleDelete(e)}
+                            disabled={isDeleting}
+                            className="w-7 h-7 flex items-center justify-center rounded hover:bg-error-bg text-neutral-muted hover:text-error transition disabled:opacity-40"
+                            aria-label="일정 삭제"
+                            title="일정 삭제"
+                          >
+                            {isDeleting
+                              ? <span className="w-3.5 h-3.5 border-2 border-error border-t-transparent rounded-full animate-spin" />
+                              : <Trash2 size={14} />
+                            }
+                          </button>
+                        )}
+                      </div>
                     )}
                   </li>
                 );
@@ -223,7 +238,7 @@ function YearView({ year, events, todayYear, todayMonth, todayDate, onMonthClick
   );
 }
 
-export default function CalendarView({ events = [], onDeleteEvent, onCanDelete }) {
+export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, onEditEvent, onCanEdit }) {
   const now = new Date();
   const [currentYear, setCurrentYear] = useState(now.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(now.getMonth() + 1);
@@ -443,6 +458,8 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete }
           onClose={() => setSelectedDay(null)}
           onDeleteEvent={onDeleteEvent}
           onCanDelete={onCanDelete}
+          onEditEvent={onEditEvent}
+          onCanEdit={onCanEdit}
         />
       )}
     </div>
