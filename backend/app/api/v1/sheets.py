@@ -2,7 +2,7 @@
 Google Sheets API 엔드포인트 (팀원 D 담당)
 - Action Item 추적 스프레드시트 생성/동기화
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -54,6 +54,19 @@ async def list_sheets(
 ):
     """사용자의 추적 스프레드시트 목록"""
     return await sheets_service.list_sheets(db, current_user.id)
+
+
+@router.delete("/{spreadsheet_id}")
+async def delete_sheet(
+    spreadsheet_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """추적 시트 삭제 (DB 레코드만 삭제)"""
+    deleted = await sheets_service.delete_sheet(db, current_user.id, spreadsheet_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="시트를 찾을 수 없습니다")
+    return {"message": "삭제되었습니다"}
 
 
 @router.get("/{meeting_id}/url")

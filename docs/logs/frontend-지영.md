@@ -835,6 +835,14 @@
 
 **결과**: 세션은 실제로 메시지를 보낼 때만 생성 / 페이지 로드 시 기존 빈 "새 대화" 세션 자동 정리
 
+#### 9) Sheets 삭제 기능 구현 + UX 개선
+
+- **`backend/app/services/sheets_service.py`** — `delete_sheet()` 메서드 추가 (DB 레코드 삭제)
+- **`backend/app/api/v1/sheets.py`** — `DELETE /sheets/{spreadsheet_id}` 엔드포인트 추가 (404 처리 포함)
+- **`frontend/src/api/google.js`** — `deleteSheet(spreadsheetId)` API 함수 추가
+- **`frontend/src/store/googleStore.js`** — `deleteSheet` 액션 추가 (API 호출 후 스토어 즉시 반영)
+- **`frontend/src/components/schedules/SheetsDashboard.jsx`** — 각 시트 우측에 빨간 "삭제" 텍스트 버튼 추가 (동기화/열기와 통일감), 삭제 전 커스텀 confirm 모달("이 시트를 삭제하시겠습니까?"), 성공/실패 toast 알림, 삭제 중 로딩 상태 처리
+
 ### 다음 할 일
 - Slack 백엔드 엔드포인트 연동 확인
 - 전체 E2E 테스트

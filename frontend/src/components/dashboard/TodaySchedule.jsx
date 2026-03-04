@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Badge from '../common/Badge';
 import { Calendar, MapPin, Users, ListChecks, User, ChevronUp, ChevronDown } from 'lucide-react';
 
 export default function TodaySchedule({ meetings = [], actions = [] }) {
   const [actionData, setActionData] = useState(actions);
+
+  useEffect(() => {
+    setActionData(actions);
+  }, [actions]);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const toggleDone = (i) => {
