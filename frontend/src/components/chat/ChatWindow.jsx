@@ -98,7 +98,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       // 이후 메시지 추가: smooth scroll
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages]);
+  }, [messages, isStreaming]);
 
   const addFiles = useCallback((fileList) => {
     setFileError(null);

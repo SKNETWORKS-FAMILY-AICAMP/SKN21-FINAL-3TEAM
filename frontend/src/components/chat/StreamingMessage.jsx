@@ -14,21 +14,19 @@ export default function StreamingMessage({ text, status, intent = 'general', isI
 
   const content = (
     <>
-      {status && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-primary-50 border border-primary-100 rounded-lg mb-3 text-[11px] font-medium text-primary-700 animate-pulse">
-          {status}
-        </div>
-      )}
       {trimmedText ? (
         <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main shadow-sm relative leading-relaxed whitespace-pre-wrap">
           {trimmedText}
           <span className="inline-block w-1.5 h-3.5 bg-primary-400 ml-1.5 animate-pulse rounded-full align-middle" />
         </div>
       ) : (
-        <div className="flex gap-1.5 py-3 px-4 bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm">
-          {[0, 1, 2].map((i) => (
-            <span key={i} className="w-1.5 h-1.5 bg-primary-300 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-          ))}
+        <div className="flex items-center gap-3 py-3.5 px-4 bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm">
+          <span className="text-xs text-neutral-muted">답변을 생성하고 있어요</span>
+          <div className="flex gap-1.5">
+            {[0, 1, 2].map((i) => (
+              <span key={i} className="w-2 h-2 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </div>
         </div>
       )}
     </>

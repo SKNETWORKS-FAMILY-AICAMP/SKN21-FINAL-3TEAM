@@ -89,6 +89,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       }));
       return (
         <>
+          {/* 판단 배지 (불가/가능 등) — 맨 위 */}
           {resultLabel && badge && (() => {
             const Icon = badge.icon;
             return (
@@ -98,12 +99,12 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
               </div>
             );
           })()}
-          <JudgmentCard summary={cleanResultText(data.reasoning || content)} regulations={regulations} confidenceBreakdown={data.confidence_breakdown} warnings={data.warnings} confidence={data.confidence} />
-          {content && data.reasoning && content !== data.reasoning && (
-            <div className="mt-2 bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed shadow-sm">
-              <MarkdownText>{cleanResultText(content)}</MarkdownText>
-            </div>
-          )}
+          {/* 줄글 (스트리밍 텍스트) */}
+          <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed shadow-sm">
+            <MarkdownText>{cleanResultText(content || data.reasoning)}</MarkdownText>
+          </div>
+          {/* 규정 + 신뢰도 카드 */}
+          <JudgmentCard summary={null} regulations={regulations} confidenceBreakdown={data.confidence_breakdown} warnings={data.warnings} confidence={data.confidence} />
         </>
       );
     }
@@ -644,6 +645,8 @@ export default function ChatPage() {
             {/* 메시지 렌더링 */}
             {messages.map((msg, i) => {
               const isLastAssistant = msg.role === 'assistant' && i === messages.length - 1 && isStreaming;
+              // 빈 어시스턴트 메시지: isStreaming 설정 전에도 타이핑 인디케이터 표시
+              const isWaitingForResponse = !isLastAssistant && msg.role === 'assistant' && i === messages.length - 1 && !msg.content && !msg.error && !msg.agentResponse;
 
               // 사용자 메시지
               if (msg.role === 'user') {
@@ -656,7 +659,7 @@ export default function ChatPage() {
               }
 
               // 스트리밍 중인 AI 응답 (데이터가 미리 왔더라도 텍스트 출력을 우선으로 보여줌)
-              if (isLastAssistant) {
+              if (isLastAssistant || isWaitingForResponse) {
                 const intent = currentIntent || msg.resultIntent || msg.intent || 'general';
                 return (
                   <MessageBubble key={i} type="bot" intent={intent}>
