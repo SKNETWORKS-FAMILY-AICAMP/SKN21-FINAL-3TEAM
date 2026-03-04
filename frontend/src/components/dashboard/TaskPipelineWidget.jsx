@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitMerge, Clock, CheckCircle2, AlertTriangle, ArrowRight, ChevronUp, ChevronDown } from 'lucide-react';
 
@@ -23,6 +24,7 @@ const stageConfig = [
 ];
 
 export default function TaskPipelineWidget() {
+    const navigate = useNavigate();
     const [tasks, setTasks] = useState(mockTasks);
     const [draggingId, setDraggingId] = useState(null);
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -57,7 +59,7 @@ export default function TaskPipelineWidget() {
                 <div className="flex items-center gap-3">
                     <button
                         className="text-xs text-primary-600 hover:text-primary-700 font-bold"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); navigate('/schedules?tab=tasks'); }}
                     >
                         View All Tasks &rarr;
                     </button>

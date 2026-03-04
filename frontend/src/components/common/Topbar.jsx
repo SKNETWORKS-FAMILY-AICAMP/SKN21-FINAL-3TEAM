@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, MessageSquare, FilePlus, FileText,
   Calendar, Settings, LogOut, KeyRound,
-  StickyNote, Plus, Trash2, ArrowLeft, Check, User
+  StickyNote, Plus, Trash2, ArrowLeft, Check, User, Menu, X as XIcon
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useUIStore from '../../store/uiStore';
@@ -185,6 +185,7 @@ export default function Topbar({ isScrolled = false }) {
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
   const [pwError, setPwError] = useState('');
   const [pwSaving, setPwSaving] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     useChatStore.getState().reset();
@@ -229,7 +230,7 @@ export default function Topbar({ isScrolled = false }) {
   return (
     <>
       <header className={`bg-surface-main flex-shrink-0 z-20 transition-all duration-300 ease-in-out ${isScrolled ? 'h-[56px] shadow-sm' : 'h-[100px]'}`}>
-        <div className={`grid grid-cols-[1fr_auto_1fr] items-center px-10 transition-all duration-300 ease-in-out ${isScrolled ? 'py-2.5' : 'py-[30px]'}`}>
+        <div className={`flex items-center justify-between px-4 md:grid md:grid-cols-[1fr_auto_1fr] md:px-10 transition-all duration-300 ease-in-out ${isScrolled ? 'py-2.5' : 'py-[30px]'}`}>
 
           {/* 좌측 - 로고 */}
           <div className="flex items-center">
@@ -239,8 +240,16 @@ export default function Topbar({ isScrolled = false }) {
             </a>
           </div>
 
-          {/* 중앙 - 네비게이션 */}
-          <nav className="flex items-center gap-0">
+          {/* 모바일 햄버거 */}
+          <button
+            className="md:hidden p-2 rounded-md text-primary-700 hover:bg-primary-50 transition"
+            onClick={() => setMobileMenuOpen((o) => !o)}
+          >
+            {mobileMenuOpen ? <XIcon size={22} /> : <Menu size={22} />}
+          </button>
+
+          {/* 중앙 - 네비게이션 (데스크톱) */}
+          <nav className="hidden md:flex items-center gap-0">
             {getNavItems(user?.is_admin).map(item => (
               <NavLink
                 key={item.to}
@@ -258,8 +267,8 @@ export default function Topbar({ isScrolled = false }) {
             ))}
           </nav>
 
-          {/* 우측 - 유틸리티 */}
-          <div className="flex items-center justify-end gap-3">
+          {/* 우측 - 유틸리티 (데스크톱) */}
+          <div className="hidden md:flex items-center justify-end gap-3">
             <ThemeToggle />
             <MemoPanel />
 
@@ -315,6 +324,36 @@ export default function Topbar({ isScrolled = false }) {
           </div>
         </div>
       </header>
+
+      {/* 모바일 네비게이션 드롭다운 */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-x-0 top-[56px] bg-surface-card border-b border-neutral-border shadow-lg z-40">
+          <nav className="flex flex-col px-4 py-2">
+            {getNavItems(user?.is_admin).map(item => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={() => setMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium transition ${
+                    isActive
+                      ? 'text-primary-900 bg-primary-50'
+                      : 'text-neutral-sub hover:bg-surface-hover'
+                  }`
+                }
+              >
+                <item.icon size={18} />
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="flex items-center gap-3 px-6 py-3 border-t border-neutral-divider">
+            <ThemeToggle />
+            <MemoPanel />
+            <span className="text-xs text-neutral-sub ml-auto">{user?.name || '사용자'}</span>
+          </div>
+        </div>
+      )}
 
       {pwModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setPwModal(false)}>

@@ -12,6 +12,7 @@ import ApprovalQueueWidget from '../components/dashboard/ApprovalQueueWidget';
 import ScheduleTimelineWidget from '../components/dashboard/ScheduleTimelineWidget';
 import EmployeeTableWidget from '../components/dashboard/EmployeeTableWidget';
 import WhatsOnWidget from '../components/dashboard/WhatsOnWidget';
+import { SkeletonCard } from '../components/common/Skeleton';
 import useUIStore from '../store/uiStore';
 import useGoogleStore from '../store/googleStore';
 import { FileText, HelpCircle, CalendarClock } from 'lucide-react';
@@ -386,7 +387,10 @@ export default function DashboardPage() {
       <GreetingBanner meetingCount={meetingCount} actionCount={actionCount} riskCount={0} />
 
       {loading && (
-        <div className="mt-5 text-center text-sm text-neutral-muted py-8">데이터를 불러오는 중...</div>
+        <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1fr_330px] gap-5 min-w-0">
+          <div className="space-y-5"><SkeletonCard lines={4} /><SkeletonCard lines={3} /><SkeletonCard lines={2} /></div>
+          <div className="space-y-5"><SkeletonCard lines={2} /><SkeletonCard lines={3} /></div>
+        </div>
       )}
 
       <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1fr_330px] gap-5 min-w-0">

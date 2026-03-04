@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react';
 import Topbar from './Topbar';
 import AIDock from './AIDock';
+import ErrorBoundary from './ErrorBoundary';
 
 const pageVariants = {
   initial: { opacity: 0, y: 8 },
@@ -115,7 +116,7 @@ export default function Layout() {
         onScrollCapture={handleScroll}
         className={`flex-1 min-h-0 ${isChatPage
             ? 'overflow-hidden flex flex-col'
-            : 'overflow-y-auto overflow-x-hidden px-8 pb-20'
+            : 'overflow-y-auto overflow-x-hidden px-4 md:px-8 pb-20'
           }`}
       >
         <AnimatePresence mode="wait">
@@ -128,7 +129,9 @@ export default function Layout() {
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className={isChatPage ? 'flex-1 min-h-0' : ''}
           >
-            <Outlet context={{ isScrolled }} />
+            <ErrorBoundary key={location.pathname}>
+              <Outlet context={{ isScrolled }} />
+            </ErrorBoundary>
           </motion.div>
         </AnimatePresence>
       </main>

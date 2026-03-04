@@ -5,6 +5,7 @@ import RegulationManagement from '../components/admin/RegulationManagement';
 import SystemStats from '../components/admin/SystemStats';
 import { listUsers, getSystemStats, getQueryLogs, listRegulations } from '../api/admin';
 import { TEAMS } from '../utils/constants';
+import { SkeletonCard, SkeletonTable } from '../components/common/Skeleton';
 
 export default function AdminPage() {
   const { isScrolled } = useOutletContext();
@@ -71,8 +72,9 @@ export default function AdminPage() {
       </header>
 
       {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500" />
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4"><SkeletonCard lines={1} /><SkeletonCard lines={1} /><SkeletonCard lines={1} /></div>
+          <SkeletonTable rows={4} cols={4} />
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center py-20">

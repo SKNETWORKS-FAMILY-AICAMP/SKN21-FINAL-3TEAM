@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import useGoogleServices from '../hooks/useGoogleServices';
 import useAuthStore from '../store/authStore';
 import { sendMeetingInvite } from '../api/google';
@@ -15,6 +15,7 @@ import useScheduleTypeStore, { DEFAULT_TYPES } from '../store/scheduleTypeStore'
 
 export default function SchedulesPage() {
   const { isScrolled } = useOutletContext();
+  const [searchParams] = useSearchParams();
   const { connected, calendarEvents, calendarLoading, calendarError, fetchCalendarEvents, hasScope, syncEventToGoogle, createEventWithMeet, deleteCalendarEvent } = useGoogleServices();
   const { customTypes } = useScheduleTypeStore();
   const allTypes = [...DEFAULT_TYPES, ...customTypes];
@@ -31,7 +32,10 @@ export default function SchedulesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [showTypeManager, setShowTypeManager] = useState(false);
-  const [activeTab, setActiveTab] = useState('calendar');
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = searchParams.get('tab');
+    return ['calendar', 'tasks', 'sheets'].includes(tab) ? tab : 'calendar';
+  });
   const [taskActions, setTaskActions] = useState(null);
   const [sheetActions, setSheetActions] = useState(null);
   const [teamSchedules, setTeamSchedules] = useState([]);

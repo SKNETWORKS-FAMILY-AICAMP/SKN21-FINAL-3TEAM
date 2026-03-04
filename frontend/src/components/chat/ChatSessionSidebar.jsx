@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
+import { MessageSquare } from 'lucide-react';
 import useChatStore from '../../store/chatStore';
+import EmptyState from '../common/EmptyState';
 
 const KST = 'Asia/Seoul';
 
@@ -79,9 +81,7 @@ export default function ChatSessionSidebar({ isOpen }) {
 
       <div className="flex-1 overflow-y-auto">
         {sessions.length === 0 ? (
-          <div className="p-4 text-center text-xs text-neutral-muted">
-            대화를 시작하면 자동으로 저장됩니다.
-          </div>
+          <EmptyState icon={MessageSquare} title="대화가 없습니다" description="대화를 시작하면 자동으로 저장됩니다" />
         ) : (
           sessions.map((session) => {
             const isActive = session.session_id === activeSessionId;

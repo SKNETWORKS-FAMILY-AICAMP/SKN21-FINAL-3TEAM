@@ -2,14 +2,13 @@ import Badge from '../common/Badge';
 import DataTable from '../common/DataTable';
 import KeywordHighlight from '../common/KeywordHighlight';
 import CustomSelect from '../common/CustomSelect';
+import EmptyState from '../common/EmptyState';
 import { FileText } from 'lucide-react';
 
 export default function DocumentList({ documents = [], onSelect, searchQuery = '', scopeFilter = '전체', onScopeFilterChange }) {
   const columns = [
     { key: 'name', label: '문서명', render: (v) => <span className="font-semibold"><KeywordHighlight text={v} keyword={searchQuery} /></span> },
     { key: 'category', label: '분류', render: (v) => <Badge variant={v === '규정' ? 'intent' : v === '회의록' ? 'document' : 'status-revising'}>{v}</Badge> },
-    { key: 'version', label: '버전' },
-    { key: 'status', label: '상태', render: (v) => <Badge variant={v === '적용중' || v === '완료' ? 'status-active' : 'status-revising'}>{v}</Badge> },
     { key: 'date', label: '수정일' },
   ];
 
@@ -27,7 +26,11 @@ export default function DocumentList({ documents = [], onSelect, searchQuery = '
         <span className="text-xs text-neutral-muted" data-testid="doc-count">총 {documents.length}개 문서</span>
       </div>
       <div className="overflow-x-auto">
-        <DataTable columns={columns} data={documents} onRowClick={onSelect} />
+        {documents.length === 0 ? (
+          <EmptyState icon={FileText} title="문서가 없습니다" description="문서를 업로드하면 여기에 표시됩니다" />
+        ) : (
+          <DataTable columns={columns} data={documents} onRowClick={onSelect} />
+        )}
       </div>
     </div>
   );
