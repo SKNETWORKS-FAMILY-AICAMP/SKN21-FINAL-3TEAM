@@ -182,6 +182,18 @@ const useGoogleStore = create((set, get) => ({
     }
   },
 
+  deleteSheet: async (spreadsheetId) => {
+    try {
+      await googleApi.deleteSheet(spreadsheetId)
+      set((state) => ({
+        sheets: state.sheets.filter((s) => s.spreadsheet_id !== spreadsheetId),
+      }))
+    } catch (err) {
+      set({ sheetsError: err.response?.data?.detail || 'Sheets 삭제 실패' })
+      throw err
+    }
+  },
+
   syncSheet: async (spreadsheetId, meetingId = null) => {
     try {
       await googleApi.syncSheet(spreadsheetId, meetingId)

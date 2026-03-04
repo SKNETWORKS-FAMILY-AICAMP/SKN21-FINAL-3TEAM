@@ -65,6 +65,9 @@ export const syncSheet = (spreadsheetId, meetingId = null) =>
 export const listSheets = () =>
   client.get('/sheets/')
 
+export const deleteSheet = (spreadsheetId) =>
+  client.delete(`/sheets/${spreadsheetId}`)
+
 export const getSheetUrl = (meetingId) =>
   client.get(`/sheets/${meetingId}/url`)
 

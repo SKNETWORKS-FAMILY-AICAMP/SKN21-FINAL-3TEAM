@@ -130,6 +130,26 @@ class GoogleSheetsService(GoogleBaseService):
             for t in trackers
         ]
 
+    async def delete_sheet(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        spreadsheet_id: str,
+    ) -> bool:
+        """DB에서 추적 시트 레코드 삭제"""
+        result = await db.execute(
+            select(GoogleSheetTracker).where(
+                GoogleSheetTracker.user_id == user_id,
+                GoogleSheetTracker.spreadsheet_id == spreadsheet_id,
+            )
+        )
+        tracker = result.scalar_one_or_none()
+        if not tracker:
+            return False
+        await db.delete(tracker)
+        await db.flush()
+        return True
+
     async def get_sheet_url_by_meeting(
         self, db: AsyncSession, user_id: int, meeting_id: int
     ) -> Optional[str]:

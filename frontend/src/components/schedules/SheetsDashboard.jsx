@@ -1,10 +1,25 @@
 import { useState, useEffect } from 'react';
 import { BarChart3 } from 'lucide-react';
 import useGoogleServices from '../../hooks/useGoogleServices';
+import { confirm, toast } from '../../store/toastStore';
 
 export default function SheetsDashboard({ externalActions, onReady }) {
-  const { sheets, sheetsLoading, sheetsError, hasScope, createSheet, syncSheet } = useGoogleServices();
+  const { sheets, sheetsLoading, sheetsError, hasScope, createSheet, syncSheet, deleteSheet } = useGoogleServices();
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const handleDelete = async (spreadsheetId) => {
+    if (!await confirm('이 시트를 삭제하시겠습니까?')) return;
+    setDeletingId(spreadsheetId);
+    try {
+      await deleteSheet(spreadsheetId);
+      toast.success('시트가 삭제되었습니다.');
+    } catch {
+      toast.error('시트 삭제에 실패했습니다.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const handleCreate = async () => {
     setCreating(true);
@@ -95,6 +110,13 @@ export default function SheetsDashboard({ externalActions, onReady }) {
                       열기
                     </a>
                   )}
+                  <button
+                    onClick={() => handleDelete(sheet.spreadsheet_id)}
+                    disabled={deletingId === sheet.spreadsheet_id}
+                    className="text-[0.6875rem] px-2 py-1 rounded border border-error text-error hover:bg-red-50 transition disabled:opacity-50"
+                  >
+                    {deletingId === sheet.spreadsheet_id ? '삭제 중...' : '삭제'}
+                  </button>
                 </div>
               </li>
             ))}
