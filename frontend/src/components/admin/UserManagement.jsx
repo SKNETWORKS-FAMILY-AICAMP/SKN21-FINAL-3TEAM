@@ -4,7 +4,8 @@ import { createUser, updateUserPermissions, deleteUser } from '../../api/admin';
 import { TEAMS } from '../../utils/constants';
 import { toast } from '../../store/toastStore';
 
-export default function UserManagement({ users = [], onRefresh }) {
+export default function UserManagement({ users = [], onRefresh, selectedTeam = null }) {
+  const filteredUsers = selectedTeam ? users.filter((u) => u.team === selectedTeam) : users;
   const [showModal, setShowModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [form, setForm] = useState({ name: '', email: '', password: '', team: '', is_admin: false });
@@ -80,9 +81,9 @@ export default function UserManagement({ users = [], onRefresh }) {
             ))}
           </tr></thead>
           <tbody>
-            {users.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-neutral-sub">등록된 사용자가 없습니다</td></tr>
-            ) : users.map((u) => (
+            {filteredUsers.length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-neutral-sub">{selectedTeam ? `${selectedTeam} 팀에 소속된 사용자가 없습니다` : '등록된 사용자가 없습니다'}</td></tr>
+            ) : filteredUsers.map((u) => (
               <tr key={u.id} className="hover:bg-surface-hover">
                 <td className="px-4 py-3 text-[0.8125rem] font-semibold border-b border-neutral-divider">{u.name}</td>
                 <td className="px-4 py-3 text-[0.8125rem] border-b border-neutral-divider">{u.email}</td>

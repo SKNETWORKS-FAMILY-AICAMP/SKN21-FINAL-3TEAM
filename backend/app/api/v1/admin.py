@@ -80,11 +80,12 @@ async def system_stats(
 async def query_logs(
     page: int = 1,
     per_page: int = 20,
+    team: str | None = None,
     admin: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
     """질의 로그 조회"""
-    return await statistics_service.get_query_logs(db, page=page, per_page=per_page)
+    return await statistics_service.get_query_logs(db, page=page, per_page=per_page, team=team)
 
 
 @router.get("/regulations")
@@ -117,6 +118,7 @@ async def list_regulations(
 async def get_query_logs(
     page: int = 1,
     per_page: int = 20,
+    team: str | None = None,
     admin: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -124,7 +126,7 @@ async def get_query_logs(
     질의 로그 조회 (NF-ST-002)
     사용자 / 질문 내용 / 호출된 Agent / 응답 시간 포함
     """
-    return await statistics_service.get_query_logs(db, page=page, per_page=per_page)
+    return await statistics_service.get_query_logs(db, page=page, per_page=per_page, team=team)
 
 
 @router.get("/top-queries")

@@ -23,7 +23,7 @@ export default function AdminPage() {
       listUsers(),
       listRegulations(),
       getSystemStats(team ? { team } : {}),
-      getQueryLogs(),
+      getQueryLogs(1, 20, team),
     ]);
 
     const [usersRes, regsRes, statsRes, logsRes] = results;
@@ -82,7 +82,6 @@ export default function AdminPage() {
       ) : (
         <>
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-xs font-medium text-neutral-sub">팀 필터:</span>
             <div className="flex gap-1 flex-wrap">
               <button
                 onClick={() => handleTeamChange(null)}
@@ -103,7 +102,7 @@ export default function AdminPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             {[
-              { l: '전체 사용자', v: users.length },
+              { l: selectedTeam ? `${selectedTeam} 사용자` : '전체 사용자', v: selectedTeam ? users.filter((u) => u.team === selectedTeam).length : users.length },
               { l: '오늘 질의 수', v: stats.today_queries || 0 },
               { l: '등록된 규정', v: regulations.length },
             ].map(({ l, v }) => (
@@ -115,7 +114,7 @@ export default function AdminPage() {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-5">
             <div className="space-y-5 min-w-0">
-              <UserManagement users={users} onRefresh={loadAll} />
+              <UserManagement users={users} onRefresh={loadAll} selectedTeam={selectedTeam} />
               <RegulationManagement regulations={regulations} onRefresh={loadAll} />
             </div>
             <div className="min-w-0">

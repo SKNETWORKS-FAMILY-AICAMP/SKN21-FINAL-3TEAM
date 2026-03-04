@@ -116,6 +116,7 @@ async def get_query_logs(
     db: AsyncSession,
     page: int = 1,
     per_page: int = 20,
+    team: str | None = None,
 ) -> dict:
     """
     질의 로그 조회 — 페이지네이션 (관리자 전용)
@@ -124,9 +125,14 @@ async def get_query_logs(
         {"items": [...], "total": 150, "page": 1, "per_page": 20}
     """
     offset = (page - 1) * per_page
-    total = (await db.execute(select(func.count(ChatLog.id)))).scalar() or 0
+    count_stmt = select(func.count(ChatLog.id))
+    query_stmt = select(ChatLog)
+    if team:
+        count_stmt = count_stmt.join(User, ChatLog.user_id == User.id).where(User.team == team)
+        query_stmt = query_stmt.join(User, ChatLog.user_id == User.id).where(User.team == team)
+    total = (await db.execute(count_stmt)).scalar() or 0
     result = await db.execute(
-        select(ChatLog).order_by(ChatLog.created_at.desc()).offset(offset).limit(per_page)
+        query_stmt.order_by(ChatLog.created_at.desc()).offset(offset).limit(per_page)
     )
     logs = result.scalars().all()
     return {

@@ -20,8 +20,8 @@ export const deleteUser = (userId) =>
 export const getSystemStats = (params = {}) =>
   client.get('/admin/stats', { params })
 
-export const getQueryLogs = (page = 1, perPage = 20) =>
-  client.get('/admin/query-logs', { params: { page, per_page: perPage } })
+export const getQueryLogs = (page = 1, perPage = 20, team = null) =>
+  client.get('/admin/query-logs', { params: { page, per_page: perPage, ...(team && { team }) } })
 
 export const getTopQueries = (period = 'daily', limit = 10, team = null) =>
   client.get('/admin/top-queries', { params: { period, limit, ...(team ? { team } : {}) } })
