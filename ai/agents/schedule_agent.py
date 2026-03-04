@@ -327,14 +327,19 @@ async def _handle_schedule_followup(user_input: str, user_id: int, state: dict) 
 
 
 def _extract_clarify_from_history(chat_history: list[dict]) -> dict | None:
-    """대화 이력에서 가장 최근 schedule_clarify 결과 추출"""
+    """대화 이력에서 가장 최근 schedule 응답이 clarify일 때만 반환"""
     for msg in reversed(chat_history):
         ar = msg.get("agentResponse") or msg.get("agent_response")
-        if ar and isinstance(ar, dict) and ar.get("type") == "schedule_clarify":
-            return ar.get("schedule", {})
+        if ar and isinstance(ar, dict):
+            ar_type = ar.get("type", "")
+            # 가장 최근 schedule 관련 응답 확인
+            if ar_type == "schedule_clarify":
+                return ar.get("schedule", {})
+            # schedule_add/followup이 더 최근이면 → clarify는 이미 해결된 것
+            if ar_type in ("schedule_add", "schedule_followup"):
+                return None
         content = msg.get("content", "")
         if "몇 시에 잡을까요" in content:
-            # schedule 정보가 없어도 clarify였다는 신호
             if ar and isinstance(ar, dict):
                 return ar.get("schedule", {})
     return None
