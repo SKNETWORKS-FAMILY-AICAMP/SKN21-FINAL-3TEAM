@@ -669,3 +669,54 @@ QA 결과:
 - 중간발표 (발표 자료 최종 점검)
 - 시연 시나리오 리허설
 - 팀원 작업 통합 테스트
+
+---
+
+## 2026-03-03 (월)
+
+**문서 Agent LoRA v2 파인튜닝 인프라 구축:**
+
+Phase 0 — LLM Factory 리팩토링:
+- `_call_llm()` Solar API 하드코딩 → `get_llm().generate()` async 리팩토링
+  - `ai/agents/document_agent.py`: 8개 함수 async 전환 + await 추가
+  - `ai/agents/schedule_agent.py`: 3개 함수 async 전환 + await 추가
+- `ai/llm/base.py`: `generate()`/`chat()`에 `json_mode: bool` 파라미터 추가
+- `ai/llm/openai_provider.py`: json_mode → `response_format={"type": "json_object"}` 구현
+- `ai/llm/anthropic_provider.py`: json_mode → 시스템 프롬프트에 JSON 지시 추가
+
+어댑터 분리 전략 결정 (통합 X → 기능별 분리 O):
+- doc_generate(JSON)와 doc_summary(마크다운)의 출력 포맷 차이로 통합 학습 시 간섭 위험
+- JD 템플릿 제외 → 회의록/보고서/제안서 3종만 유지
+
+Config 분리 (3종):
+- `ai/finetuning/configs/v2_generate.yaml` — r=32, 380개 (회의록150+보고서130+제안서100)
+- `ai/finetuning/configs/v2_qa.yaml` — r=32, 300개
+- `ai/finetuning/configs/v2_summary.yaml` — r=16 (단순 태스크), 200개
+
+학습/평가/검증 스크립트:
+- `ai/finetuning/train_v2_document.py` — `--task generate/qa/summary/all` 지원, 3개 모델 비교 모드
+- `ai/finetuning/evaluate.py` — 평가 함수 6종 (JSON유효율, 필드정확도, TokenF1, ROUGE-L 등)
+- `ai/finetuning/validate_v2_data.py` — 데이터 검증 (JSON파싱, 필수필드, 한국어키 탐지, 중복제거)
+
+데이터 디렉토리 분리:
+- `data/training/v2_generate/` — sample_generate.jsonl (회의록+보고서+제안서 3개)
+- `data/training/v2_qa/` — sample_qa.jsonl (2개)
+- `data/training/v2_summary/` — sample_summary.jsonl (2개)
+
+문서:
+- `docs/지용/문서Agent_LoRA_v2_파인튜닝_계획.md` — 전체 계획 문서 (베이스모델 비교, 데이터 설계, 하이퍼파라미터, 평가 기준, 리스크)
+- `data/training/v2_document/FORMAT_GUIDE.md` — 데이터 형식 가이드 업데이트
+
+정리:
+- 승언 이전 파일 `ai/finetuning/legacy/`로 이동 (train_qa_lora.py, qa_ft_colab.ipynb, v2_document.yaml)
+- `ai/data/회의록3.json` 삭제 (미사용)
+
+커밋 `bc20261` → feat/jiyong + develop 양쪽 push 완료
+
+**다음 할 일:**
+- AI Hub 데이터 검색 + 다운로드 (국회회의록, 행정문서 기계독해, 문서요약 등)
+- 변환 스크립트 작성 (AI Hub → messages JSONL)
+- GPT-4o/Claude 합성 데이터 생성 (교차 검증)
+- 변형 데이터 생성 (구어체/오타)
+- 검증 + train/eval 분할
+- RunPod A100에서 3개 모델 비교 학습 (Qwen3-8B, EXAONE-3.5-7.8B, Kanana-1.5-8B)
