@@ -31,23 +31,17 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+sys.path.insert(0, str(BASE_DIR))
 
 from dotenv import load_dotenv
 load_dotenv(BASE_DIR / ".env")
+
+from ai.llm.prompts import DOC_GENERATE_SLLM_PROMPT
+
 OUTPUT_DIR = BASE_DIR / "data" / "training" / "v2_generate"
 
-# ── 프로덕션 동적 시스템 프롬프트 (convert_to_dynamic_fields.py와 100% 일치) ──
-
-DYNAMIC_SYSTEM_PROMPT = (
-    "당신은 기업 문서 작성 전문가입니다.\n"
-    "사용자가 제공하는 [필드 명세]에 따라 문서 내용을 JSON으로 생성하세요.\n\n"
-    "규칙:\n"
-    "- [필드 명세]에 정의된 필드만 JSON 키로 사용하세요.\n"
-    "- 각 필드의 설명을 참고하여 적절한 값을 생성하세요.\n"
-    "- 입력 내용에 해당 정보가 없으면 빈 문자열 또는 빈 배열로 두세요.\n"
-    "- 배열 필드는 반드시 JSON 배열 형태로 출력하세요.\n"
-    "- 반드시 JSON만 출력하세요. 설명 텍스트나 마크다운을 포함하지 마세요."
-)
+# ── sLLM 시스템 프롬프트 (ai/llm/prompts.py에서 import) ──
+DYNAMIC_SYSTEM_PROMPT = DOC_GENERATE_SLLM_PROMPT
 
 # ── 템플릿별 필드 명세 (convert_to_dynamic_fields.py와 100% 일치) ──
 

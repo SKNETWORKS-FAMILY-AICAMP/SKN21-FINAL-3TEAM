@@ -34,23 +34,17 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+sys.path.insert(0, str(BASE_DIR))
 
 from dotenv import load_dotenv
 load_dotenv(BASE_DIR / ".env")
+
+from ai.llm.prompts import DOC_SUMMARY_SLLM_PROMPT
+
 OUTPUT_DIR = BASE_DIR / "data" / "training" / "v2_summary"
 
-# ── 프로덕션 시스템 프롬프트 (ai/llm/prompts.py와 100% 일치) ──
-
-SYSTEM_PROMPT = (
-    "당신은 기업 문서 요약 전문가입니다.\n"
-    "주어진 문서를 분석하여 핵심 내용을 정리합니다.\n\n"
-    "규칙:\n"
-    "- 문서의 핵심 요약을 먼저 2-3문장으로 작성하세요.\n"
-    "- 주요 포인트를 마크다운 불릿 리스트로 정리하세요.\n"
-    "- 중요 키워드를 별도로 나열하세요.\n"
-    "- 원문에 없는 내용을 추가하지 마세요.\n"
-    "- 한국어로 답변하세요."
-)
+# ── sLLM 시스템 프롬프트 (ai/llm/prompts.py에서 import) ──
+SYSTEM_PROMPT = DOC_SUMMARY_SLLM_PROMPT
 
 # ── 카테고리별 합성 목표 ──
 

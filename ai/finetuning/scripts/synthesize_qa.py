@@ -31,31 +31,20 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+sys.path.insert(0, str(BASE_DIR))
 
 from dotenv import load_dotenv
 load_dotenv(BASE_DIR / ".env")
+
+from ai.llm.prompts import DOC_QA_SLLM_PROMPT
+
 OUTPUT_DIR = BASE_DIR / "data" / "training" / "v2_qa"
 
-# ── 프로덕션 시스템 프롬프트 (ai/llm/prompts.py와 100% 일치) ──
+# ── sLLM 시스템 프롬프트 (ai/llm/prompts.py에서 import) ──
+SYSTEM_PROMPT = DOC_QA_SLLM_PROMPT
 
-SYSTEM_PROMPT = (
-    "당신은 기업 문서 기반 질의응답 전문가입니다.\n"
-    "주어진 문서 내용을 근거로 사용자의 질문에 정확하게 답변합니다.\n\n"
-    "결과는 반드시 아래 JSON 형식으로만 응답하세요:\n"
-    "{\n"
-    '    "answer": "질문에 대한 답변",\n'
-    '    "citations": [\n'
-    '        {"source": "문서명/출처", "content": "인용 내용", "relevance": "높음|중간|낮음"}\n'
-    "    ],\n"
-    '    "confidence": 0.0~1.0\n'
-    "}\n\n"
-    "규칙:\n"
-    "- 반드시 제공된 문서 내용만을 근거로 답변하세요.\n"
-    "- 답변의 근거가 되는 문서 내용을 citations에 포함하세요.\n"
-    "- 문서에서 답을 찾을 수 없으면 confidence를 낮게 설정하고 솔직히 답하세요.\n"
-    "- 추측이나 외부 지식으로 답변을 보충하지 마세요.\n"
-    "- JSON 외의 텍스트를 포함하지 마세요."
-)
+# not-found 응답 문구 (프롬프트 기준 통일)
+NOT_FOUND_ANSWER = "제공된 문서에서 해당 내용을 찾을 수 없습니다."
 
 # ── QA 생성용 GPT-4o 프롬프트 ──
 
@@ -110,7 +99,7 @@ QUESTION_HINTS = {
 CHUNK_SIZE = 250
 
 # ── 부정 예시 비율 ──
-NEGATIVE_RATIO = 0.05  # 5%는 "답을 찾을 수 없음" 예시
+NEGATIVE_RATIO = 0.12  # 10~15%는 "답을 찾을 수 없음" 예시
 
 
 def call_openai(
@@ -225,7 +214,6 @@ def build_training_sample(
     question = qa_result["question"]
     answer = qa_result["answer"]
     citation_text = qa_result["citation_text"]
-    source_title = qa_result.get("source_title", "업무 문서")
 
     # Context를 청크로 분할
     chunks = split_into_chunks(passage)
@@ -235,25 +223,19 @@ def build_training_sample(
     context_array = json.dumps(chunks, ensure_ascii=False)
 
     if is_negative:
-        # 부정 예시: 다른 문서의 질문을 사용하여 "답을 찾을 수 없음" 상황
+        # 부정 예시: 다른 카테고리의 질문을 사용하여 "답을 찾을 수 없음" 상황
         user_prompt = f"Context:\n{context_array}\n\nQuestion: {question}"
         assistant_response = json.dumps({
-            "answer": "제공된 문서에서 해당 질문에 대한 답변을 찾을 수 없습니다.",
+            "answer": NOT_FOUND_ANSWER,
             "citations": [],
-            "confidence": 0.1,
         }, ensure_ascii=False)
     else:
         user_prompt = f"Context:\n{context_array}\n\nQuestion: {question}"
         assistant_response = json.dumps({
             "answer": answer,
             "citations": [
-                {
-                    "source": source_title,
-                    "content": citation_text[:200] if len(citation_text) > 200 else citation_text,
-                    "relevance": "높음",
-                }
+                {"content": citation_text[:200] if len(citation_text) > 200 else citation_text}
             ],
-            "confidence": 0.95 if len(answer) > 50 else 0.90,
         }, ensure_ascii=False)
 
     return {
@@ -307,6 +289,7 @@ def synthesize_all(
 
                 f.write(json.dumps(sample, ensure_ascii=False) + "\n")
                 cat_success += 1
+                qa_result["_doc_type"] = doc_type  # 카테고리 교차 매칭용
                 all_qa_results.append(qa_result)
                 print("- OK")
 
@@ -319,21 +302,40 @@ def synthesize_all(
             total_success += cat_success
             total_failed += cat_failed
 
-        # 부정 예시 추가 (다른 문서의 질문 + 현재 문서의 context)
+        # 부정 예시 추가 (카테고리 교차: 다른 doc_type의 질문 + 현재 context)
         neg_count = max(1, int(total_success * negative_ratio))
         if len(all_qa_results) >= 2:
-            print(f"\n  [부정 예시] {neg_count}건 생성...")
+            print(f"\n  [부정 예시 - 카테고리 교차] {neg_count}건 생성...")
             neg_added = 0
+
+            # doc_type별로 그룹핑 (생성 시 doc_type 정보 활용)
+            by_doc_type = {}
+            for qa in all_qa_results:
+                dt = qa.get("_doc_type", "기타")
+                by_doc_type.setdefault(dt, []).append(qa)
+
+            doc_types = list(by_doc_type.keys())
             random.shuffle(all_qa_results)
 
             for i in range(min(neg_count, len(all_qa_results) - 1)):
-                # 다른 문서의 context에 현재 질문을 매칭
+                current = all_qa_results[i]
+                current_dt = current.get("_doc_type", "기타")
+
+                # 다른 doc_type에서 질문 선택
+                other_types = [dt for dt in doc_types if dt != current_dt]
+                if not other_types:
+                    # 같은 타입밖에 없으면 충분히 먼 인덱스에서 가져옴
+                    other_idx = (i + len(all_qa_results) // 2) % len(all_qa_results)
+                    other_q = all_qa_results[other_idx]["question"]
+                else:
+                    other_dt = random.choice(other_types)
+                    other_q = random.choice(by_doc_type[other_dt])["question"]
+
                 qa_with_wrong_ctx = {
-                    "passage": all_qa_results[i]["passage"],
-                    "question": all_qa_results[(i + len(all_qa_results) // 2) % len(all_qa_results)]["question"],
+                    "passage": current["passage"],
+                    "question": other_q,
                     "answer": "",
                     "citation_text": "",
-                    "source_title": all_qa_results[i].get("source_title", "업무 문서"),
                 }
                 sample = build_training_sample(qa_with_wrong_ctx, is_negative=True)
                 f.write(json.dumps(sample, ensure_ascii=False) + "\n")
@@ -407,8 +409,8 @@ def main():
 
         json_valid = 0
         has_citations = 0
-        has_confidence = 0
         negative_count = 0
+        citation_len_dist = {}
 
         for line in lines:
             sample = json.loads(line)
@@ -418,18 +420,18 @@ def main():
                 json_valid += 1
                 if "citations" in parsed and isinstance(parsed["citations"], list):
                     has_citations += 1
-                    if len(parsed["citations"]) == 0:
+                    cit_len = len(parsed["citations"])
+                    citation_len_dist[cit_len] = citation_len_dist.get(cit_len, 0) + 1
+                    if cit_len == 0:
                         negative_count += 1
-                if "confidence" in parsed and isinstance(parsed["confidence"], (int, float)):
-                    has_confidence += 1
             except json.JSONDecodeError:
                 pass
 
         pct = json_valid / len(lines) * 100 if lines else 0
         print(f"  JSON 유효: {json_valid}/{len(lines)} ({pct:.1f}%)")
         print(f"  citations 존재: {has_citations}/{len(lines)}")
-        print(f"  confidence 존재: {has_confidence}/{len(lines)}")
-        print(f"  부정 예시: {negative_count}건")
+        print(f"  not-found (citations=[]): {negative_count}건 ({negative_count/len(lines)*100:.1f}%)")
+        print(f"  citations 길이 분포: {dict(sorted(citation_len_dist.items()))}")
 
     print(f"\n  완료! 총 성공: {total_success}건")
 

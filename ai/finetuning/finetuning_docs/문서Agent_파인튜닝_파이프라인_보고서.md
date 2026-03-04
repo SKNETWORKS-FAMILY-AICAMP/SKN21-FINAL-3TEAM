@@ -11,7 +11,7 @@ LLM API(GPT/Claude) 기반으로 구현된 기능을 **Qwen3-8B + QLoRA 어댑�
 | 어댑터 | 기능 | 입력 | 출력 |
 |--------|------|------|------|
 | **v2_summary** | 문서 요약 | 원문 텍스트 | 마크다운 (핵심요약 + 주요포인트 + 키워드) |
-| **v2_qa** | 문서 QA | Context 청크 + Question | JSON (answer + citations + confidence) |
+| **v2_qa** | 문서 QA | Context 청크 + Question | JSON (answer + citations) |
 | **v2_generate** | 문서 생성 | 필드 명세 + 자연어 지시 | JSON (동적 필드 명세 기반, 양식 확장 가능) |
 
 ### 1.3 기술 스택
@@ -200,7 +200,7 @@ SN 569 MRC                     →  학습 데이터
 ─────────────────────────────────────────────
 context (지문)                 →  Context: ["청크1", "청크2", ...] (250자씩 분할)
 question                       →  Question: {question}
-answers.text                   →  {"answer": "...", "citations": [...], "confidence": 0.95}
+answers.text                   →  {"answer": "...", "citations": [{"content": "..."}]}
 ```
 
 - span_extraction (추출형) 60% + span_extraction_how (절차형) 40% 비율 혼합
@@ -212,7 +212,7 @@ SN 582 passage                 →  GPT-4o가 질문+답변 쌍 생성
 ─────────────────────────────────────────────
 passage (원문)                 →  Context 청크 분할
 GPT-4o 생성 question           →  Question
-GPT-4o 생성 answer + citation  →  {"answer": "...", "citations": [...], "confidence": 0.90}
+GPT-4o 생성 answer + citation  →  {"answer": "...", "citations": [{"content": "..."}]}
 ```
 
 - 보고서, 회의록, 간행물, 보도자료, 뉴스 카테고리 혼합
@@ -223,11 +223,21 @@ GPT-4o 생성 answer + citation  →  {"answer": "...", "citations": [...], "con
 {
   "answer": "질문에 대한 답변",
   "citations": [
-    {"source": "문서명", "content": "인용 내용", "relevance": "높음"}
-  ],
-  "confidence": 0.95
+    {"content": "답변의 근거가 되는 원문 인용"}
+  ]
 }
 ```
+
+> **v2 변경 (2026-03-04)**: `source`, `relevance`, `confidence` 필드를 sLLM 학습 데이터에서 제거.
+> 이 필드들은 sLLM 서빙 시 백엔드가 RAG score 기반으로 계산하여 채움.
+> - `confidence`: `avg(search_scores) * 0.7 + min(citation_count/3, 1.0) * 0.3`, not-found 시 0.1 고정
+> - `relevance`: citation과 RAG 청크의 reranker score로 산출
+> - `source`: RAG 청크 메타데이터에서 문서명 추출
+
+**not-found 예시 (10~15%)**:
+- 카테고리 교차 매칭 (경제 문서 context + 교육 질문 등)으로 자연스러운 불일치 생성
+- `{"answer": "제공된 문서에서 해당 내용을 찾을 수 없습니다.", "citations": []}`
+- 감지 방식: `citations == []` (문구 매칭보다 안정적)
 
 ---
 
@@ -281,15 +291,19 @@ passage (원문)                 →  user: "[문서 유형] 회의록\n[필드 
 GPT-4o 생성 JSON               →  assistant: {"title": "...", "summary": "...", ...} (그대로 유지)
 ```
 
-**템플릿별 배분 (783건):**
+**템플릿별 배분 — AI Hub (690건):**
 
 | 템플릿 | 건수 | JSON 필드 수 | 소스 카테고리 |
 |--------|:----:|:------------:|---------------|
-| meeting_minutes | 39 | 7필드 | 회의록 |
-| report | 342 | 12필드 | 보고서, 간행물 |
-| proposal | 402 | 19필드 | 보도자료, 간행물 |
+| meeting_minutes | 60 | 7필드 | 회의록 |
+| report | 315 | 12필드 | 보고서, 간행물 |
+| proposal | 315 | 19필드 | 보도자료, 간행물 |
 
-> **참고**: 회의록은 AI Hub 회의록이 국회 속기록이라 기업 회의록과 도메인 차이가 있어, 나머지 217건 중 합성으로 보충 예정.
+**전체 1,500건 (AI Hub 690 + 합성 600 + 변형 210):**
+- 타입당 500건 (회의록 600 / 보고서 450 / 제안서 450)
+- 합성 600건 중 30% (180건)는 **부분 누락** — 입력에 없는 정보를 지어내지 않도록 빈 필드 학습
+
+> **참고**: 회의록은 AI Hub가 국회 속기록이라 기업 회의록과 도메인 차이가 있어, 합성 420건으로 기업 도메인 보충.
 
 ---
 
@@ -301,8 +315,8 @@ GPT-4o 생성 JSON               →  assistant: {"title": "...", "summary": "..
 |--------|:----:|:------:|:------------------:|:----:|
 | v2_summary | **1,000** | 700 (70%) | 200 (20%) | 100 (10%) |
 | v2_qa | **1,000** | 600 (60%) | 300 (30%) | 100 (10%) |
-| v2_generate | **1,000** | 783 (78%) | 150 (15%) | 67 (7%) |
-| **합계** | **3,000** | **2,083 (69%)** | **650 (22%)** | **267 (9%)** |
+| v2_generate | **1,500** | 690 (46%) | 600 (40%) | 210 (14%) |
+| **합계** | **3,500** | **1,990 (57%)** | **1,100 (31%)** | **410 (12%)** |
 
 ### 4.2 비율 설계 근거
 
@@ -316,11 +330,11 @@ GPT-4o 생성 JSON               →  assistant: {"title": "...", "summary": "..
 - SN 582 기반 GPT-4o 생성 300건 (업무 문서 도메인 QA)
 - 합성 30%로 다양한 질문 패턴 보충
 
-**v2_generate — AI Hub 78%로 높아진 이유:**
-- 이전 세션 병렬 실행으로 report/proposal이 계획보다 많이 확보됨
+**v2_generate — 1,500건 증량 이유:**
+- 3개 문서 유형(회의록/보고서/제안서) 각각이 별도 서브태스크 → 타입당 500건 필요
+- 부분 누락(빈 필드) 학습을 위해 합성 600건 중 30%(180건) 할당 — 할루시네이션 방지
 - AI Hub 원문을 input으로 사용, output은 GPT-4o가 생성 (반합성)
 - 동적 필드 방식으로 전환하여 다양한 필드 조합 학습 효과
-- 나머지 217건은 합성+변형으로 보충 (회의록 도메인 보강 포함)
 
 ### 4.3 예상 비용
 
@@ -328,9 +342,9 @@ GPT-4o 생성 JSON               →  assistant: {"title": "...", "summary": "..
 |------|------|-----:|-----:|
 | v2_summary 키워드 보강 | GPT-4o-mini | 700 | ~$0.7 |
 | v2_qa Report QA 생성 | GPT-4o | 300 | ~$7.5 |
-| v2_generate JSON 생성 | GPT-4o | 783 | ~$31.3 |
-| 합성 데이터 생성 (예정) | GPT-4o / Claude | 650 | ~$13.0 |
-| **합계** | | | **~$52.5** |
+| v2_generate JSON 생성 | GPT-4o | 690 | ~$27.6 |
+| 합성 데이터 생성 (예정) | GPT-4o / Claude | 1,100 | ~$22.0 |
+| **합계** | | | **~$57.8** |
 
 ---
 
@@ -349,9 +363,9 @@ GPT-4o 생성 JSON               →  assistant: {"title": "...", "summary": "..
 | JSON 파싱 (assistant 응답) | - | ✅ | ✅ |
 | 필수 필드 존재 | - | ✅ | ✅ |
 | 한국어 키 혼입 방지 | - | ✅ | ✅ |
-| confidence 범위 (0.0~1.0) | - | ✅ | - |
-| relevance 값 (높음/중간/낮음) | - | ✅ | - |
-| citations 배열 검증 | - | ✅ | - |
+| citations 배열 검증 (content 필드) | - | ✅ | - |
+| citations 길이 분포 리포트 | - | ✅ | - |
+| not-found 비율 (10~15%) | - | ✅ | - |
 | 템플릿별 필수 필드 | - | - | ✅ |
 
 ### 5.2 품질 기준
@@ -383,7 +397,7 @@ GPT-4o 생성 JSON               →  assistant: {"title": "...", "summary": "..
 |--------|------:|-----:|:---------:|
 | v2_summary | 850 | 150 | 15% |
 | v2_qa | 900 | 100 | 10% |
-| v2_generate | 900 | 100 | 10% |
+| v2_generate | 1,350 | 150 | 10% |
 
 ```bash
 # 분할 실행
@@ -500,8 +514,13 @@ response = await vllm_client.chat.completions.create(
 
 ### 9.3 프로덕션 프롬프트 수정 (vLLM 교체 시 필수)
 
-> **주의**: 학습 데이터의 system prompt와 프로덕션(`document_agent.py`)의 system prompt가 일부 불일치.
-> vLLM으로 교체할 때 반드시 아래 수정을 함께 진행해야 sLLM이 학습한 패턴대로 동작함.
+> **2026-03-04 업데이트**: sLLM 전용 프롬프트 상수가 `ai/llm/prompts.py`에 추가됨.
+> - `DOC_QA_SLLM_PROMPT` — JSON 간소화 (answer + citations[].content만)
+> - `DOC_SUMMARY_SLLM_PROMPT` — 태그/괄호 제거, 규칙 섹션 분리
+> - `DOC_GENERATE_SLLM_PROMPT` — 복사 금지 규칙 추가, 동적 필드
+>
+> **기존 LLM API 프롬프트(`DOC_QA_SYSTEM_PROMPT` 등)는 수정 없이 유지.**
+> vLLM으로 교체할 때 `document_agent.py`에서 provider 타입 분기 → sLLM이면 `_SLLM_PROMPT` 사용.
 
 #### 9.3.1 v2_generate: 고정 템플릿 → 동적 필드 방식 전환
 
@@ -531,35 +550,30 @@ sys_prompt = (
 )
 ```
 
-**수정 방법**: `_generate_meeting_minutes`, `_generate_report`, `_generate_proposal` 3개 함수의 system prompt를 위 범용 프롬프트로 통일하고, 기존 필드 지침은 user prompt의 `[필드 명세]` 섹션으로 이동.
+**수정 방법**: `_generate_meeting_minutes`, `_generate_report`, `_generate_proposal` 3개 함수의 system prompt를 `DOC_GENERATE_SLLM_PROMPT`로 통일하고, 기존 필드 지침은 user prompt의 `[필드 명세]` 섹션으로 이동.
 
-#### 9.3.2 v2_qa: 스트리밍 모드 프롬프트 통일
+> **v2 변경**: "적절한 값을 생성하세요" → "입력 내용을 바탕으로 구체적인 문서 내용을 작성하세요"
+> "필드 설명이나 지침 문장을 그대로 값으로 출력하지 마세요" 규칙 추가 (복사 방지)
 
-**현재 프로덕션 (스트리밍 모드에서 별도 프롬프트 사용)**
+#### 9.3.2 v2_qa: sLLM 비스트리밍 전용 + 프롬프트 교체
+
+**학습 데이터 (DOC_QA_SLLM_PROMPT — JSON 출력, 간소화)**
 ```python
-# _handle_doc_qa() 스트리밍 모드 — document_agent.py:861
-sys_prompt = """당신은 기업 문서 기반 질의응답 전문가입니다.
-주어진 문서 내용을 근거로 사용자의 질문에 정확하게 답변하세요.
-...
-"""
-# → 자연어 답변용 (JSON 아님), 학습 데이터와 불일치
-```
-
-**학습 데이터 (DOC_QA_SYSTEM_PROMPT — JSON 출력)**
-```python
-# ai/llm/prompts.py:122
-DOC_QA_SYSTEM_PROMPT = """당신은 기업 문서 기반 질의응답 전문가입니다.
+# ai/llm/prompts.py (신규 추가)
+DOC_QA_SLLM_PROMPT = """당신은 기업 문서 기반 질의응답 전문가입니다.
 ...
 결과는 반드시 아래 JSON 형식으로만 응답하세요:
-{"answer": "...", "citations": [...], "confidence": 0.0~1.0}
+{"answer": "...", "citations": [{"content": "..."}]}
 """
+# confidence/source/relevance 제거 → 백엔드가 RAG score 기반으로 계산
 ```
 
-**수정 방법**: 스트리밍 모드에서도 `DOC_QA_SYSTEM_PROMPT`를 사용하도록 통일. 스트리밍 시 JSON 응답을 받아서 `answer` 필드만 토큰 전송하고, `sources`/`citations`는 `result` 이벤트로 별도 전달.
+**수정 방법**: sLLM은 **비스트리밍(JSON) 전용**으로 운용. vLLM 8B ~50 tok/s 기준 200~300 토큰 JSON은 ~5초. 백엔드에서 JSON 파싱 → `answer` 필드 추출 → 프론트에 전달. `citations == []`이면 not-found로 감지.
 
-#### 9.3.3 v2_summary: 수정 불필요
+#### 9.3.3 v2_summary: sLLM 전용 프롬프트로 교체
 
-프로덕션과 학습 데이터 모두 `DOC_SUMMARY_SYSTEM_PROMPT` (`ai/llm/prompts.py:110`) 사용. 100% 일치.
+학습 데이터는 `DOC_SUMMARY_SLLM_PROMPT` 사용 (태그/괄호 제거 버전).
+프로덕션 교체 시 `DOC_SUMMARY_SLLM_PROMPT`로 전환. 기존 `DOC_SUMMARY_SYSTEM_PROMPT`는 LLM API용으로 유지.
 
 #### 9.3.4 수정 체크리스트
 
@@ -568,8 +582,8 @@ DOC_QA_SYSTEM_PROMPT = """당신은 기업 문서 기반 질의응답 전문가�
 | `ai/agents/document_agent.py` | `_generate_meeting_minutes()` system prompt → 동적 필드 | v2_generate |
 | `ai/agents/document_agent.py` | `_generate_report()` system prompt → 동적 필드 | v2_generate |
 | `ai/agents/document_agent.py` | `_generate_proposal()` system prompt → 동적 필드 | v2_generate |
-| `ai/agents/document_agent.py` | `_handle_doc_qa()` 스트리밍 프롬프트 → `DOC_QA_SYSTEM_PROMPT` 통일 | v2_qa |
-| `ai/llm/prompts.py` | 동적 필드 범용 system prompt 상수 추가 (`DOC_GENERATE_SYSTEM_PROMPT`) | v2_generate |
+| `ai/agents/document_agent.py` | `_handle_doc_qa()` → `DOC_QA_SLLM_PROMPT` (비스트리밍 JSON) | v2_qa |
+| `ai/llm/prompts.py` | ✅ sLLM 전용 상수 3개 추가 완료 (`DOC_*_SLLM_PROMPT`) | 전체 |
 
 ---
 
@@ -619,9 +633,9 @@ python ai/finetuning/validate_v2_data.py --split
 | v2_summary | 700 | 700 | ✅ |
 | v2_qa (MRC) | 300 | 300 | ✅ |
 | v2_qa (Report QA) | 300 | 300 | ✅ |
-| v2_generate | 783 | 783 | ✅ (동적 필드 변환 완료) |
+| v2_generate | 690 | 0 | ⏳ GPT-4o 필요 |
 
-### 검증 결과 (2026-03-04)
+### 검증 결과 (2026-03-04, 프롬프트 v2 이전)
 
 | 어댑터 | 건수 | 에러 | 경고 | 판정 |
 |--------|:----:|:----:|:----:|:----:|
@@ -630,16 +644,23 @@ python ai/finetuning/validate_v2_data.py --split
 | v2_generate | 783 | 0 | 0 | ✅ PASS |
 | **합계** | **2,083** | **0** | **236** | **✅ PASS** |
 
+> **참고**: 프롬프트 v2 수정 후 데이터 재생성이 필요하며, 재생성 후 아래 검증 기준으로 재검증:
+> - v2_qa: JSON에 `answer` + `citations[].content`만 존재, not-found 10~15%, citations 분포 (1개 70~80%, 2개 15~20%, 3개 5~10%)
+> - v2_summary: 포인트 3개 미만 0건
+> - v2_generate: 476건 (307건 탈락분은 합성 데이터로 보충)
+
 ### 전체 데이터 파이프라인
 
 | 단계 | 내용 | 상태 |
 |:----:|------|:----:|
 | 1 | AI Hub 데이터 다운로드 (SN 582 + SN 569) | ✅ |
-| 2 | AI Hub → 학습 형식 변환 (2,083건) | ✅ |
+| 2 | AI Hub → 학습 형식 변환 (1,990건) | ⏳ |
 | 3 | v2_generate 동적 필드 프롬프트 변환 | ✅ |
 | 4 | AI Hub 데이터 검증 (에러 0건) | ✅ |
-| 5 | 합성 데이터 생성 (650건) | ⏳ |
-| 6 | 변형 데이터 생성 (267건) | ⏳ |
+| 4.5 | **프롬프트 v2 수정 + sLLM 상수 분리** (8개 파일) | ✅ |
+| 4.6 | 프롬프트 v2 기반 데이터 재생성 (~$13) | ⏳ |
+| 5 | 합성 데이터 생성 (1,100건, 부분 누락 180건 포함) | ⏳ |
+| 6 | 변형 데이터 생성 (410건) | ⏳ |
 | 7 | 전체 데이터 검증 + 중복 제거 | ⏳ |
 | 8 | Train/Eval 분할 | ⏳ |
 | 9 | QLoRA 파인튜닝 (3개 어댑터) | ⏳ |
@@ -671,10 +692,9 @@ data/
 │   │   ├── train.jsonl
 │   │   └── eval.jsonl
 │   └── v2_generate/
-│       ├── aihub_generate.jsonl            ← AI Hub 변환 (783건, 동적 필드 방식)
-│       ├── aihub_generate_fixed_prompt_backup.jsonl  ← 고정 프롬프트 백업
-│       ├── synthetic_generate.jsonl        ← 합성 (150건) [예정]
-│       ├── variant_generate.jsonl          ← 변형 (67건) [예정]
+│       ├── aihub_generate.jsonl            ← AI Hub 변환 (690건, 동적 필드 방식)
+│       ├── synthetic_generate.jsonl        ← 합성 (600건, 부분 누락 180건 포함) [예정]
+│       ├── variant_generate.jsonl          ← 변형 (210건) [예정]
 │       ├── train.jsonl
 │       └── eval.jsonl
 ```

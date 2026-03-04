@@ -74,9 +74,7 @@ GENERATE_FIELDS = {
     },
 }
 
-QA_FIELDS = ["answer", "citations", "confidence"]
-
-VALID_RELEVANCE = {"높음", "중간", "낮음"}
+QA_FIELDS = ["answer", "citations"]
 
 KOREAN_KEY_PATTERN = re.compile(r"[\uac00-\ud7a3]")
 REPETITION_PATTERN = re.compile(r"(.{10,})\1{2,}")
@@ -100,7 +98,7 @@ def _detect_task(messages: list) -> str:
 
     if any(kw in sys_content for kw in ("회의록 작성", "보고서 작성", "제안서 작성", "필드 명세")):
         return "doc_generate"
-    if any(kw in sys_content for kw in ("질의응답", "citation")):
+    if any(kw in sys_content for kw in ("질의응답", "citation", "citations")):
         return "doc_qa"
     if any(kw in sys_content for kw in ("요약", "summary")):
         return "doc_summary"
@@ -223,7 +221,7 @@ def _validate_generate(content: str, messages: list, idx: int, errors: list, war
 
 
 def _validate_qa(content: str, idx: int, errors: list, warnings: list):
-    """v2_qa 검증"""
+    """v2_qa 검증 (sLLM 간소화 JSON: answer + citations[].content만)"""
     parsed = _safe_parse_json(content)
     if parsed is None:
         errors.append(f"[{idx}] (qa) JSON 파싱 실패")
@@ -239,20 +237,15 @@ def _validate_qa(content: str, idx: int, errors: list, warnings: list):
     if not answer or (isinstance(answer, str) and len(answer.strip()) < 2):
         errors.append(f"[{idx}] (qa) answer 비어있음")
 
-    # confidence 범위
-    confidence = parsed.get("confidence")
-    if confidence is not None:
-        if not isinstance(confidence, (int, float)):
-            errors.append(f"[{idx}] (qa) confidence가 숫자 아님: {type(confidence)}")
-        elif not (0.0 <= confidence <= 1.0):
-            errors.append(f"[{idx}] (qa) confidence 범위 초과: {confidence}")
-
     # citations 검증
     citations = parsed.get("citations", [])
     if not isinstance(citations, list):
         errors.append(f"[{idx}] (qa) citations가 배열 아님")
     elif len(citations) == 0:
-        warnings.append(f"[{idx}] (qa) citations 비어있음")
+        # not-found 케이스는 정상 (빈 배열 허용)
+        not_found_answer = "제공된 문서에서 해당 내용을 찾을 수 없습니다."
+        if not_found_answer not in answer:
+            warnings.append(f"[{idx}] (qa) citations 비어있는데 not-found 문구 없음")
     else:
         for ci, cit in enumerate(citations):
             if not isinstance(cit, dict):
@@ -260,9 +253,6 @@ def _validate_qa(content: str, idx: int, errors: list, warnings: list):
                 continue
             if "content" not in cit:
                 errors.append(f"[{idx}] (qa) citations[{ci}] 'content' 없음")
-            relevance = cit.get("relevance", "")
-            if relevance and relevance not in VALID_RELEVANCE:
-                warnings.append(f"[{idx}] (qa) citations[{ci}] relevance 값 이상: '{relevance}'")
 
 
 def _validate_summary(content: str, idx: int, errors: list, warnings: list):
@@ -287,8 +277,8 @@ def _validate_summary(content: str, idx: int, errors: list, warnings: list):
         bullet_count = points_section.count("\n- ")
         if bullet_count == 0:
             errors.append(f"[{idx}] (summary) 주요 포인트 불릿 없음")
-        elif bullet_count < 2:
-            warnings.append(f"[{idx}] (summary) 주요 포인트 {bullet_count}개 (2개 이상 권장)")
+        elif bullet_count < 3:
+            errors.append(f"[{idx}] (summary) 주요 포인트 {bullet_count}개 (3개 이상 필수)")
 
     # 키워드 품질
     if has_keywords:
@@ -334,6 +324,8 @@ def validate_file(filepath: Path) -> dict:
     all_warnings = []
     task_counter = Counter()
     template_counter = Counter()
+    citation_len_dist = Counter()  # citations 배열 길이 분포 (QA용)
+    not_found_count = 0
     user_lens = []
     asst_lens = []
 
@@ -349,6 +341,15 @@ def validate_file(filepath: Path) -> dict:
         if task_type == "doc_generate":
             template_counter[_detect_template(messages)] += 1
 
+        # QA: citations 길이 분포 수집
+        if task_type == "doc_qa" and len(messages) >= 3:
+            parsed = _safe_parse_json(messages[2].get("content", ""))
+            if parsed and isinstance(parsed.get("citations"), list):
+                cit_len = len(parsed["citations"])
+                citation_len_dist[cit_len] += 1
+                if cit_len == 0:
+                    not_found_count += 1
+
         # 길이 수집
         if len(messages) >= 3:
             user_lens.append(len(messages[1].get("content", "")))
@@ -358,6 +359,10 @@ def validate_file(filepath: Path) -> dict:
     print(f"    태스크: {dict(task_counter)}")
     if template_counter:
         print(f"    템플릿: {dict(template_counter)}")
+    if citation_len_dist:
+        total_qa = sum(citation_len_dist.values())
+        print(f"    citations 길이 분포: {dict(sorted(citation_len_dist.items()))}")
+        print(f"    not-found (citations=[]): {not_found_count}건 ({not_found_count/total_qa*100:.1f}%)")
 
     if user_lens:
         print(f"    user 길이: 평균 {sum(user_lens)//len(user_lens)}자 "

@@ -35,24 +35,17 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+sys.path.insert(0, str(BASE_DIR))
+
+from ai.llm.prompts import DOC_SUMMARY_SLLM_PROMPT
 
 # AI Hub 데이터 경로 (실제 구조에 맞춤)
-RAW_BASE = BASE_DIR / "data" / "raw" / "aihub" / "022.요약문 및 레포트 생성 데이터" / "01.데이터"
+RAW_BASE = BASE_DIR / "data" / "raw" / "ai_hub" / "022.요약문 및 레포트 생성 데이터" / "01.데이터"
 TRAIN_LABEL_DIR = RAW_BASE / "1.Training" / "라벨링데이터" / "TL1"
 OUTPUT_DIR = BASE_DIR / "data" / "training" / "v2_summary"
 
-# ── 프로덕션 시스템 프롬프트 (ai/llm/prompts.py와 100% 일치) ──
-
-SYSTEM_PROMPT = (
-    "당신은 기업 문서 요약 전문가입니다.\n"
-    "주어진 문서를 분석하여 핵심 내용을 정리합니다.\n\n"
-    "규칙:\n"
-    "- 문서의 핵심 요약을 먼저 2-3문장으로 작성하세요.\n"
-    "- 주요 포인트를 마크다운 불릿 리스트로 정리하세요.\n"
-    "- 중요 키워드를 별도로 나열하세요.\n"
-    "- 원문에 없는 내용을 추가하지 마세요.\n"
-    "- 한국어로 답변하세요."
-)
+# ── sLLM 시스템 프롬프트 (ai/llm/prompts.py에서 import) ──
+SYSTEM_PROMPT = DOC_SUMMARY_SLLM_PROMPT
 
 # ── 카테고리 매핑 (폴더명 → 한글) ──
 
@@ -143,10 +136,12 @@ def load_aihub_data(label_dir: Path, targets: dict[str, int], max_per_cat: int =
         if target == 0:
             continue
 
-        limit = max_per_cat if max_per_cat > 0 else target * 3
+        limit = max_per_cat if max_per_cat > 0 else target * 7
 
         cat_docs = []
-        for sub_folder in sorted(cat_folder.iterdir()):
+        # 2~3sent 우선 로드 (summary2 있음, passage에서 불릿 추출 용이)
+        sub_folders = sorted(cat_folder.iterdir(), key=lambda p: (0 if "sent" in p.name else 1, p.name))
+        for sub_folder in sub_folders:
             if not sub_folder.is_dir():
                 continue
 
@@ -247,13 +242,14 @@ def filter_and_select(
         # 2~3sent 우선 정렬 (summary2가 있는 것 먼저)
         pool_sorted = sorted(pool, key=lambda d: (0 if d["summary2"] else 1))
 
-        if len(pool_sorted) < target:
-            print(f"    [경고] {cat}: {len(pool_sorted)}건만 사용 가능 (목표 {target}건)")
+        # 포인트 필터 탈락 보상을 위해 target * 3 선별
+        over_target = target * 3
+        if len(pool_sorted) < over_target:
+            print(f"    [참고] {cat}: {len(pool_sorted)}건 사용 가능 (목표 {target}, 선별 {len(pool_sorted)})")
             selected[cat] = pool_sorted
         else:
-            # 상위 target*2개에서 랜덤 선택 (다양성 확보)
-            candidates = pool_sorted[:min(target * 3, len(pool_sorted))]
-            selected[cat] = random.sample(candidates, target)
+            candidates = pool_sorted[:min(over_target * 2, len(pool_sorted))]
+            selected[cat] = random.sample(candidates, over_target)
 
     total = sum(len(v) for v in selected.values())
     print(f"\n  총 선별: {total}건")
@@ -277,11 +273,22 @@ def extract_keywords_simple(passage: str, top_n: int = 5) -> list[str]:
     return keywords[:top_n]
 
 
-def extract_bullet_points(text: str, max_points: int = 5) -> list[str]:
-    """텍스트에서 핵심 포인트를 문장 단위로 추출"""
+def extract_bullet_points(text: str, max_points: int = 0) -> list[str]:
+    """텍스트에서 핵심 포인트를 문장 단위로 추출 (max_points=0이면 3~5 랜덤)"""
+    if max_points == 0:
+        max_points = random.randint(3, 5)
     if not text or not text.strip():
         return []
-    sentences = re.split(r"[.!?。]\s*", text)
+
+    # 1. 줄바꿈으로 먼저 분할
+    paragraphs = re.split(r"\n+", text.strip())
+
+    sentences = []
+    for para in paragraphs:
+        # 2. 문장 분할 — 소수점(3.5) 오분할 방지: 숫자 뒤 마침표는 무시
+        sents = re.split(r"(?<!\d)[.!?。]\s*", para)
+        sentences.extend(sents)
+
     sentences = [s.strip() for s in sentences if len(s.strip()) > 15]
     return sentences[:max_points]
 
@@ -377,6 +384,7 @@ def convert_and_save(
     selected: dict[str, list[dict]],
     output_path: Path,
     llm_enhance: bool = False,
+    targets: dict[str, int] = None,
 ):
     """선별된 데이터를 v2_summary JSONL 형식으로 변환 저장"""
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -384,16 +392,31 @@ def convert_and_save(
     count = 0
     errors = 0
     llm_calls = 0
+    point_filtered = 0
 
     with open(output_path, "w", encoding="utf-8") as f:
         for category, docs in selected.items():
-            print(f"\n  [{category}] {len(docs)}건 변환 중...")
+            cat_target = (targets or {}).get(category, len(docs))
+            cat_count = 0
+            print(f"\n  [{category}] {len(docs)}건 중 {cat_target}건 목표...")
 
             for i, doc in enumerate(docs):
+                if cat_count >= cat_target:
+                    break
                 try:
                     # 프로덕션 형식 구성
                     user_prompt = build_user_prompt(doc["passage"], category)
                     response = build_assistant_response(doc)
+
+                    # 포인트 3개 미만 필터
+                    if "## 주요 포인트" in response:
+                        points_section = response.split("## 주요 포인트")[1]
+                        if "## 키워드" in points_section:
+                            points_section = points_section.split("## 키워드")[0]
+                        bullet_count = points_section.count("\n- ")
+                        if bullet_count < 3:
+                            point_filtered += 1
+                            continue
 
                     # LLM 키워드 보강 (전체 적용)
                     if llm_enhance:
@@ -419,9 +442,10 @@ def convert_and_save(
 
                     f.write(json.dumps(sample, ensure_ascii=False) + "\n")
                     count += 1
+                    cat_count += 1
 
-                    if (i + 1) % 100 == 0:
-                        print(f"    {i+1}/{len(docs)}건 완료")
+                    if cat_count % 100 == 0:
+                        print(f"    {cat_count}/{cat_target}건 완료")
 
                 except Exception as e:
                     errors += 1
@@ -429,6 +453,8 @@ def convert_and_save(
                         print(f"    [에러] {category} #{i}: {e}")
 
     print(f"\n  변환 완료: {count}건 -> {output_path}")
+    if point_filtered:
+        print(f"  포인트 3개 미만 필터: {point_filtered}건 제외")
     if errors:
         print(f"  에러: {errors}건")
     if llm_calls:
@@ -476,7 +502,7 @@ def main():
 
     # 3. 변환 & 저장
     print(f"\n[3/3] 변환 & 저장")
-    convert_and_save(selected, Path(args.output), args.llm_enhance)
+    convert_and_save(selected, Path(args.output), args.llm_enhance, targets=adjusted_targets)
 
     # 4. 검증 요약
     output_path = Path(args.output)

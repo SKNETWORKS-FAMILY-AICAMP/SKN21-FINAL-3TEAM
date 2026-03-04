@@ -61,6 +61,7 @@ import random
 import re
 import sys
 import time
+from collections import Counter
 from pathlib import Path
 
 # Windows 콘솔 한글 출력
@@ -68,36 +69,24 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+sys.path.insert(0, str(BASE_DIR))
+
+from ai.llm.prompts import DOC_QA_SLLM_PROMPT
 
 # AI Hub 데이터 경로
-MRC_BASE = BASE_DIR / "data" / "raw" / "aihub" / "016.행정 문서 대상 기계독해 데이터" / "01.데이터"
+MRC_BASE = BASE_DIR / "data" / "raw" / "ai_hub" / "016.행정 문서 대상 기계독해 데이터" / "01.데이터"
 MRC_LABEL_DIR = MRC_BASE / "1.Training" / "라벨링데이터"
 
-REPORT_BASE = BASE_DIR / "data" / "raw" / "aihub" / "022.요약문 및 레포트 생성 데이터" / "01.데이터"
+REPORT_BASE = BASE_DIR / "data" / "raw" / "ai_hub" / "022.요약문 및 레포트 생성 데이터" / "01.데이터"
 REPORT_LABEL_DIR = REPORT_BASE / "1.Training" / "라벨링데이터" / "TL1"
 
 OUTPUT_DIR = BASE_DIR / "data" / "training" / "v2_qa"
 
-# ── 프로덕션 시스템 프롬프트 (ai/llm/prompts.py와 100% 일치) ──
+# ── sLLM 시스템 프롬프트 (ai/llm/prompts.py에서 import) ──
+SYSTEM_PROMPT = DOC_QA_SLLM_PROMPT
 
-SYSTEM_PROMPT = (
-    "당신은 기업 문서 기반 질의응답 전문가입니다.\n"
-    "주어진 문서 내용을 근거로 사용자의 질문에 정확하게 답변합니다.\n\n"
-    "결과는 반드시 아래 JSON 형식으로만 응답하세요:\n"
-    "{\n"
-    '    "answer": "질문에 대한 답변",\n'
-    '    "citations": [\n'
-    '        {"source": "문서명/출처", "content": "인용 내용", "relevance": "높음|중간|낮음"}\n'
-    "    ],\n"
-    '    "confidence": 0.0~1.0\n'
-    "}\n\n"
-    "규칙:\n"
-    "- 반드시 제공된 문서 내용만을 근거로 답변하세요.\n"
-    "- 답변의 근거가 되는 문서 내용을 citations에 포함하세요.\n"
-    "- 문서에서 답을 찾을 수 없으면 confidence를 낮게 설정하고 솔직히 답하세요.\n"
-    "- 추측이나 외부 지식으로 답변을 보충하지 마세요.\n"
-    "- JSON 외의 텍스트를 포함하지 마세요."
-)
+# not-found 응답 문구 (프롬프트 기준 통일)
+NOT_FOUND_ANSWER = "제공된 문서에서 해당 내용을 찾을 수 없습니다."
 
 # QA 생성용 GPT-4o 프롬프트
 QA_GENERATION_SYSTEM_PROMPT = (
@@ -270,12 +259,72 @@ def filter_mrc_pairs(
     return selected
 
 
-def convert_mrc_to_training(qa: dict) -> dict:
-    """MRC QA 쌍을 v2_qa 학습 데이터 형식으로 변환"""
+def _normalize_for_match(text: str) -> str:
+    """공백/조사 제거 후 비교용 텍스트 반환"""
+    # 공백 제거
+    text = re.sub(r"\s+", "", text)
+    # 일반적인 한국어 조사 제거
+    text = re.sub(r"(은|는|이|가|을|를|의|에|에서|으로|로|와|과|도|만)$", "", text)
+    return text
+
+
+def _char_overlap_ratio(text_a: str, text_b: str) -> float:
+    """두 텍스트 간 character overlap ratio"""
+    a = _normalize_for_match(text_a)
+    b = _normalize_for_match(text_b)
+    if not a or not b:
+        return 0.0
+    shorter = min(len(a), len(b))
+    overlap = sum(1 for c in a if c in b)
+    return overlap / shorter if shorter > 0 else 0.0
+
+
+def _find_citation_chunks(chunks: list[str], answer_text: str) -> list[str]:
+    """답변 텍스트가 포함된 청크들을 찾아 citations 반환.
+
+    MRC span extraction은 answer가 context의 정확한 substring이므로:
+      1) 정확 매칭 → 1개 citation (70~80%)
+      2) 청크 경계 걸침 → 인접 2개 citation (15~20%)
+      3) 공백 차이 보정 → 1개 citation (나머지)
+      4) 전부 실패 → 빈 리스트 (샘플 제외)
+
+    Returns:
+        list[str]: 매칭된 청크 텍스트 목록 (빈 리스트 = 매칭 실패)
+    """
+    if not chunks or not answer_text:
+        return []
+
+    # 1. 정확 substring 매칭 → 1개만 반환
+    for chunk in chunks:
+        if answer_text in chunk:
+            return [chunk]
+
+    # 2. 인접 청크 경계 걸침 → 2개 반환
+    for i in range(len(chunks) - 1):
+        combined = chunks[i] + " " + chunks[i + 1]
+        if answer_text in combined:
+            return [chunks[i], chunks[i + 1]]
+
+    # 3. 공백 차이 보정 (normalize 후 매칭)
+    norm_answer = re.sub(r"\s+", "", answer_text)
+    for chunk in chunks:
+        norm_chunk = re.sub(r"\s+", "", chunk)
+        if norm_answer in norm_chunk:
+            return [chunk]
+
+    # 4. 매칭 실패
+    return []
+
+
+def convert_mrc_to_training(qa: dict) -> dict | None:
+    """MRC QA 쌍을 v2_qa 학습 데이터 형식으로 변환.
+
+    Returns:
+        dict or None: 매칭 실패 시 None 반환 (해당 샘플 제외)
+    """
     context = qa["context"]
     question = qa["question"]
     answer_text = qa["answer"]
-    title = qa.get("title", "행정 문서")
 
     # Context를 청크로 분할
     chunks = split_into_chunks(context)
@@ -286,28 +335,20 @@ def convert_mrc_to_training(qa: dict) -> dict:
     context_array = json.dumps(chunks, ensure_ascii=False)
     user_prompt = f"Context:\n{context_array}\n\nQuestion: {question}"
 
-    # 답변이 포함된 청크를 citation으로
-    citation_chunk = chunks[0]
-    for chunk in chunks:
-        if answer_text in chunk:
-            citation_chunk = chunk
-            break
-        # 부분 매칭
-        answer_words = answer_text.split()[:3]
-        if any(w in chunk for w in answer_words if len(w) >= 2):
-            citation_chunk = chunk
-            break
+    # 답변이 포함된 청크를 citation으로 (퍼지 매칭)
+    citation_chunks = _find_citation_chunks(chunks, answer_text)
+    if not citation_chunks:
+        # 매칭 실패 → 샘플 제외
+        return None
+
+    citations = [
+        {"content": chunk[:200] if len(chunk) > 200 else chunk}
+        for chunk in citation_chunks
+    ]
 
     assistant_response = json.dumps({
         "answer": answer_text,
-        "citations": [
-            {
-                "source": title if title else "행정 문서",
-                "content": citation_chunk[:200] if len(citation_chunk) > 200 else citation_chunk,
-                "relevance": "높음",
-            }
-        ],
-        "confidence": 0.95,
+        "citations": citations,
     }, ensure_ascii=False)
 
     return {
@@ -342,11 +383,15 @@ def process_mrc_source(
 
     # 변환
     training_samples = []
+    skipped = 0
     for qa in selected:
         sample = convert_mrc_to_training(qa)
+        if sample is None:
+            skipped += 1
+            continue
         training_samples.append(sample)
 
-    print(f"    변환 완료: {len(training_samples)}건")
+    print(f"    변환 완료: {len(training_samples)}건 (매칭 실패 제외: {skipped}건)")
     return training_samples
 
 
@@ -457,7 +502,7 @@ def convert_report_qa_to_training(
     passage: str,
     qa_result: dict,
     doc_category: str,
-) -> dict:
+) -> dict | None:
     """GPT-4o 생성 QA 결과 → v2_qa 학습 데이터"""
     chunks = split_into_chunks(passage)
     if not chunks:
@@ -469,18 +514,24 @@ def convert_report_qa_to_training(
 
     answer = qa_result.get("answer", "")
     citation_text = qa_result.get("citation_text", "")
-    source_title = qa_result.get("source_title", doc_category)
+
+    # citation 퍼지 매칭
+    citation_chunks = _find_citation_chunks(chunks, citation_text)
+    if not citation_chunks and citation_text:
+        # GPT 생성 citation_text를 직접 사용
+        citation_chunks = [citation_text[:200]]
+
+    if not citation_chunks:
+        return None
+
+    citations = [
+        {"content": chunk[:200] if len(chunk) > 200 else chunk}
+        for chunk in citation_chunks
+    ]
 
     assistant_response = json.dumps({
         "answer": answer,
-        "citations": [
-            {
-                "source": source_title,
-                "content": citation_text[:200] if len(citation_text) > 200 else citation_text,
-                "relevance": "높음",
-            }
-        ],
-        "confidence": 0.90,
+        "citations": citations,
     }, ensure_ascii=False)
 
     return {
@@ -532,6 +583,10 @@ def process_report_source(
             continue
 
         sample = convert_report_qa_to_training(passage, qa_result, category)
+        if sample is None:
+            print("매칭실패")
+            failed += 1
+            continue
         training_samples.append(sample)
         print("OK")
 
@@ -542,6 +597,94 @@ def process_report_source(
 
     print(f"    변환 완료: {len(training_samples)}건 (실패: {failed}건)")
     return training_samples
+
+
+# ── not-found 카테고리 교차 매칭 ──
+
+# MRC 데이터의 doc_class 기반 카테고리 그룹 (교차 매칭에 사용)
+_CATEGORY_GROUPS = {
+    "경제": ["경제", "산업", "무역", "재정"],
+    "교육": ["교육", "학교", "대학", "연구"],
+    "기술": ["기술", "과학", "IT", "디지털"],
+    "사회": ["사회", "복지", "인구", "노동"],
+    "환경": ["환경", "에너지", "기후"],
+    "행정": ["행정", "법률", "규정", "정책"],
+}
+
+
+def _classify_category(text: str) -> str:
+    """간이 카테고리 분류 (user prompt에서 카테고리 추정)"""
+    for cat, keywords in _CATEGORY_GROUPS.items():
+        if any(kw in text for kw in keywords):
+            return cat
+    return "기타"
+
+
+def generate_not_found_samples(
+    samples: list[dict],
+    ratio: float = 0.12,
+    seed: int = 42,
+) -> list[dict]:
+    """카테고리 교차 매칭으로 not-found 샘플 생성.
+
+    다른 카테고리의 질문을 현재 context에 매칭하여
+    "제공된 문서에서 해당 내용을 찾을 수 없습니다." 응답 생성.
+    같은 카테고리 내 rotation 금지.
+    """
+    random.seed(seed)
+    target_count = max(1, int(len(samples) * ratio))
+
+    # 샘플에서 context와 question 추출 + 카테고리 분류
+    indexed = []
+    for s in samples:
+        user_content = s["messages"][1]["content"]
+        cat = _classify_category(user_content)
+        # Context와 Question 분리
+        if "Question: " in user_content:
+            ctx_part, q_part = user_content.rsplit("Question: ", 1)
+            indexed.append({"context_prompt": ctx_part, "question": q_part.strip(), "category": cat})
+
+    if len(indexed) < 2:
+        return []
+
+    # 카테고리별 그룹핑
+    by_cat = {}
+    for item in indexed:
+        by_cat.setdefault(item["category"], []).append(item)
+
+    categories = list(by_cat.keys())
+    not_found_samples = []
+
+    random.shuffle(indexed)
+    for item in indexed:
+        if len(not_found_samples) >= target_count:
+            break
+
+        # 다른 카테고리에서 질문 선택
+        other_cats = [c for c in categories if c != item["category"]]
+        if not other_cats:
+            continue
+
+        other_cat = random.choice(other_cats)
+        other_item = random.choice(by_cat[other_cat])
+
+        # 현재 context + 다른 카테고리의 질문
+        user_prompt = item["context_prompt"] + "Question: " + other_item["question"]
+
+        assistant_response = json.dumps({
+            "answer": NOT_FOUND_ANSWER,
+            "citations": [],
+        }, ensure_ascii=False)
+
+        not_found_samples.append({
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+                {"role": "assistant", "content": assistant_response},
+            ]
+        })
+
+    return not_found_samples
 
 
 # ── 메인 ──
@@ -571,7 +714,8 @@ def validate_output(output_path: Path):
 
     json_valid = 0
     has_citations = 0
-    has_confidence = 0
+    citation_len_dist = Counter()  # citations 배열 길이 분포
+    not_found_count = 0
 
     for line in lines:
         sample = json.loads(line)
@@ -581,15 +725,18 @@ def validate_output(output_path: Path):
             json_valid += 1
             if "citations" in parsed and isinstance(parsed["citations"], list):
                 has_citations += 1
-            if "confidence" in parsed and isinstance(parsed["confidence"], (int, float)):
-                has_confidence += 1
+                cit_len = len(parsed["citations"])
+                citation_len_dist[cit_len] += 1
+                if cit_len == 0:
+                    not_found_count += 1
         except json.JSONDecodeError:
             pass
 
     pct = json_valid / len(lines) * 100 if lines else 0
     print(f"  JSON 유효: {json_valid}/{len(lines)} ({pct:.1f}%)")
     print(f"  citations 존재: {has_citations}/{len(lines)}")
-    print(f"  confidence 존재: {has_confidence}/{len(lines)}")
+    print(f"  not-found (citations=[]): {not_found_count}건 ({not_found_count/len(lines)*100:.1f}%)")
+    print(f"  citations 길이 분포: {dict(sorted(citation_len_dist.items()))}")
 
 
 def main():
@@ -635,6 +782,13 @@ def main():
 
     if args.dry_run and args.source in ("report", "all"):
         print(f"\n  [DRY RUN] 레포트 QA 생성은 건너뜁니다 (API 필요)")
+
+    # not-found 카테고리 교차 매칭 (10~15%)
+    if all_samples:
+        not_found_samples = generate_not_found_samples(all_samples, ratio=0.12, seed=args.seed)
+        if not_found_samples:
+            all_samples.extend(not_found_samples)
+            print(f"\n  not-found 샘플 추가: {len(not_found_samples)}건")
 
     # 저장
     if all_samples:
