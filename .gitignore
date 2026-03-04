@@ -59,6 +59,9 @@ logs/
 # Uploads (runtime files)
 backend/uploads/
 
+# AI Hub 원본 데이터 (대용량)
+data/raw/
+
 # AI 생성 문서 (임시 파일)
 backend/generated_docs/*.docx
 backend/generated_docs/*.pdf

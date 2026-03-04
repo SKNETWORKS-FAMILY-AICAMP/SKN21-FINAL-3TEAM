@@ -34,8 +34,14 @@ training:
 data:
   train_path: "data/training/v2_summary/train.jsonl"
   eval_path: "data/training/v2_summary/eval.jsonl"
-  eval_ratio: 0.1             # 200개 중 ~20개 eval
-  total_target: 200
+  eval_ratio: 0.15            # 1000개 중 ~150개 eval (마크다운 출력 검증 강화)
+  total_target: 1000
+
+# 데이터 소스별 구성 (AI Hub 70% + 합성 20% + 변형 10%)
+data_sources:
+  aihub: 700                  # 10개 카테고리에서 고품질 선별 (70%)
+  synthetic: 200              # 추상형 마크다운 모범답안 + 문체 다양성 (20%)
+  variants: 100               # 짧은/긴/표 많은 문서 엣지케이스 (10%)
 
 output:
   output_dir: "outputs/v2_summary"

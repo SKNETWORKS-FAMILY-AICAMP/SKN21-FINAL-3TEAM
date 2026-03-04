@@ -14,6 +14,7 @@
 """
 import json
 import logging
+import os
 import re
 import time
 import uuid
@@ -414,7 +415,7 @@ async def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
     )
 
     print(f"[DocumentAgent] LLM 호출 (meeting_minutes, json_mode=True)...")
-    generated_json_str = await _call_llm(sys_prompt, user_prompt, json_mode=True)
+    generated_json_str = await _call_llm(sys_prompt, user_prompt, json_mode=True, task="generate")
     print(f"[DocumentAgent] LLM 응답: {generated_json_str[:200]}...")
     try:
         data = json.loads(generated_json_str)
@@ -544,7 +545,7 @@ async def _generate_report(user_input: str) -> Dict[str, Any]:
         f"overview, main_content, tasks, issues, next_plan"
     )
 
-    generated_json_str = await _call_llm(sys_prompt, user_prompt, json_mode=True)
+    generated_json_str = await _call_llm(sys_prompt, user_prompt, json_mode=True, task="generate")
     try:
         data = json.loads(generated_json_str)
         print(f"[DocumentAgent] JSON 파싱 성공 | keys={list(data.keys())}")
@@ -665,7 +666,7 @@ async def _generate_proposal(user_input: str) -> Dict[str, Any]:
         f"content, schedule, budget, budget_total, expected_effect"
     )
 
-    generated_json_str = await _call_llm(sys_prompt, user_prompt, json_mode=True)
+    generated_json_str = await _call_llm(sys_prompt, user_prompt, json_mode=True, task="generate")
     try:
         data = json.loads(generated_json_str)
         print(f"[DocumentAgent] JSON 파싱 성공 | keys={list(data.keys())}")
@@ -803,7 +804,7 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, use
 
     # 비스트리밍: LLM 직접 호출
     print("[DocumentAgent] stream_mode=False → LLM 직접 호출 (doc_summary)")
-    answer = await _call_llm(sys_prompt, user_prompt)
+    answer = await _call_llm(sys_prompt, user_prompt, task="summary")
     print(f"[DocumentAgent] LLM 응답 길이: {len(answer)}자")
 
     return {
@@ -882,7 +883,7 @@ async def _handle_doc_qa(query: str, context: list = None, user_id: int = None, 
     # 비스트리밍: JSON mode로 구조화된 응답
     user_prompt = f"Context:\n{json.dumps(context, ensure_ascii=False)}\n\nQuestion: {query}"
     print("[DocumentAgent] stream_mode=False → LLM 직접 호출 (doc_qa, json_mode)")
-    answer_json_str = await _call_llm(DOC_QA_SYSTEM_PROMPT, user_prompt, json_mode=True)
+    answer_json_str = await _call_llm(DOC_QA_SYSTEM_PROMPT, user_prompt, json_mode=True, task="qa")
 
     try:
         qa_result = json.loads(answer_json_str)
@@ -928,17 +929,29 @@ def _build_sources(search_results: list) -> list:
     return sources
 
 
-async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False) -> str:
+async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, task: str = None) -> str:
     """
-    LLM 호출 (LLM Factory 사용 — 환경변수 LLM_PROVIDER로 Provider 선택)
+    LLM 호출 — 모드에 따라 LLM API 또는 sLLM(vLLM + LoRA) 사용
+
+    Args:
+        task: 파인튜닝 태스크명 ("generate", "qa", "summary").
+              DOC_AGENT_MODE=sllm일 때 해당 LoRA 어댑터로 라우팅.
+              None이면 항상 LLM API 사용 (template_type 감지 등).
     """
     _t_llm = time.time()
-    print(f"[DocumentAgent] _call_llm 호출 | json_mode={json_mode}")
+    mode = os.getenv("DOC_AGENT_MODE", "api")
+    print(f"[DocumentAgent] _call_llm 호출 | mode={mode}, task={task}, json_mode={json_mode}")
     try:
-        from ai.llm import get_llm
-
-        llm = get_llm()
-        print(f"[DocumentAgent] _call_llm | Provider: {llm.__class__.__name__}")
+        if mode == "sllm" and task:
+            # sLLM 모드: vLLM + LoRA 어댑터
+            from ai.serving.vllm_client import VLLMProvider
+            llm = VLLMProvider().with_lora(f"v2_{task}")
+            print(f"[DocumentAgent] _call_llm | sLLM: v2_{task} 어댑터")
+        else:
+            # API 모드: 기존 LLM Factory (GPT/Claude)
+            from ai.llm import get_llm
+            llm = get_llm()
+            print(f"[DocumentAgent] _call_llm | API: {llm.__class__.__name__}")
 
         response = await llm.generate(
             prompt=user_prompt,
@@ -948,7 +961,7 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False) 
         )
 
         result = response.content
-        print(f"[DocumentAgent] _call_llm | LLM 응답 ({time.time()-_t_llm:.2f}s) 길이: {len(result)}자")
+        print(f"[DocumentAgent] _call_llm | 응답 ({time.time()-_t_llm:.2f}s) 길이: {len(result)}자")
         return result
 
     except Exception as e:

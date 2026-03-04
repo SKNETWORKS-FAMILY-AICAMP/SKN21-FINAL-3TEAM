@@ -34,14 +34,20 @@ training:
 data:
   train_path: "data/training/v2_generate/train.jsonl"
   eval_path: "data/training/v2_generate/eval.jsonl"
-  eval_ratio: 0.1             # 380개 중 ~38개 eval
-  total_target: 380           # 회의록 150 + 보고서 130 + 제안서 100
+  eval_ratio: 0.1             # 1000개 중 ~100개 eval
+  total_target: 1000          # 회의록 400 + 보고서 300 + 제안서 300
+
+# 데이터 소스별 구성 (AI Hub 46% + 합성 40% + 변형 14%)
+data_sources:
+  aihub: 460                  # AI Hub 원문 + GPT-4o 변환 (46%)
+  synthetic: 400              # GPT-4o/Claude 합성 (40%)
+  variants: 140               # 변형 데이터 (14%)
 
 # 템플릿별 데이터 목표
 templates:
-  meeting_minutes: 150        # 7필드 JSON, 사용 빈도 최고
-  report: 130                 # 12필드 JSON
-  proposal: 100               # 15+필드 JSON, 가장 복잡
+  meeting_minutes: 400        # 7필드 JSON, 사용 빈도 최고 (합성 중심: AI Hub 40 + 합성 280 + 변형 80)
+  report: 300                 # 12필드 JSON (AI Hub 210 + 합성 60 + 변형 30)
+  proposal: 300               # 15+필드 JSON (AI Hub 210 + 합성 60 + 변형 30)
 
 output:
   output_dir: "outputs/v2_generate"

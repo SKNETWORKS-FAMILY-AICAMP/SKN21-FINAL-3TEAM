@@ -1,5 +1,6 @@
 # LoRA v2: 문서 QA (doc_qa) 전용 어댑터
-# 문서 기반 질의응답 + 인용(citation) JSON 생성
+# 일반 업무 문서(회의록/보고서/기획서) 기반 질의응답 + 인용(citation) JSON 생성
+# 주의: 규정 QA는 v1_judgment 영역이므로 여기서 다루지 않음
 # 베이스 모델: Qwen3-8B (1차 추천) — 비교 대상: EXAONE-3.5-7.8B, Kanana-1.5-8B
 model:
   base_model: "Qwen/Qwen3-8B"
@@ -34,8 +35,14 @@ training:
 data:
   train_path: "data/training/v2_qa/train.jsonl"
   eval_path: "data/training/v2_qa/eval.jsonl"
-  eval_ratio: 0.1             # 300개 중 ~30개 eval
-  total_target: 300
+  eval_ratio: 0.1             # 1000개 중 ~100개 eval
+  total_target: 1000
+
+# 데이터 소스별 구성 (AI Hub 60% + 합성 30% + 변형 10%)
+data_sources:
+  aihub: 600                  # SN 569 MRC 300 + SN 582 레포트 QA 300 (60%)
+  synthetic: 300              # GPT-4o/Claude 합성 (30%)
+  variants: 100               # 변형 데이터 (10%)
 
 output:
   output_dir: "outputs/v2_qa"
