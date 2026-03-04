@@ -599,3 +599,42 @@
 - 팀서비스 확장 (Slack, Jira 연동) + UI/UX 수정 (#84) — 1~2주차 작업
 - AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
 - vLLM 백엔드 연동 + sLLM 교체 및 평가 (#86) — 3주차 작업
+
+---
+
+## 2026-03-04 (세션 14) — Task Pipeline + EC2 배포
+
+### 한 일
+
+**Task Pipeline 기능 구현 (백엔드 + 프론트엔드)**
+- `backend/app/models/pipeline_task.py` 신규: PipelineTask ORM 모델 (title, assignee, stage, priority, due_date, team, tags 등)
+- `backend/app/api/v1/pipeline.py` 신규: CRUD API 4개 (GET/POST/PUT/DELETE) + 팀별 데이터 격리
+- `backend/app/api/v1/router.py` 수정: pipeline 라우터 등록
+- `backend/app/api/v1/auth.py` 수정: `/auth/team-members` 엔드포인트 추가 (같은 팀 사용자 목록)
+- `frontend/src/api/tasks.js` 신규: Pipeline API 클라이언트
+- `frontend/src/pages/TasksPage.jsx` 신규: 칸반 보드 (To Do / In Progress / Review / Done)
+  - HTML5 드래그 앤 드롭으로 상태 변경
+  - 태스크 추가/수정/삭제 모달 (제목, 설명, 담당자, 우선순위, 마감일, 태그)
+  - 같은 팀 멤버만 담당자로 선택 가능
+  - 다크모드 대응 완료
+- `frontend/src/App.jsx` 수정: `/tasks` 라우트 추가
+- `frontend/src/components/common/Sidebar.jsx` 수정: '태스크 관리' 메뉴 추가
+- `frontend/src/components/dashboard/TaskPipelineWidget.jsx` 수정: mock 데이터 → 실제 API 연결
+
+**AWS RDS에 pipeline_tasks 테이블 생성**
+- EC2 SSH 터널을 통해 RDS PostgreSQL에 직접 접속
+- `pipeline_tasks` 테이블 CREATE + 영업팀 초기 데이터 7건 INSERT
+
+**EC2 배포**
+- git push → EC2 git pull
+- 프론트엔드 로컬 빌드 후 `rsync`로 dist 업로드
+- 백엔드 uvicorn 재시작 (`--app-dir backend` 플래그 사용)
+
+**기타**
+- `dayjs` 누락 → `npm install dayjs` (이미 package.json에 있었으나 node_modules에 미설치)
+- 로컬 git 깨짐(SIGBUS) → 새 clone으로 교체
+
+### 다음 할 일
+- Slack 연동 확장
+- AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
+- vLLM 백엔드 연동 + sLLM 교체 및 평가
