@@ -1,14 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitMerge, Clock, CheckCircle2, AlertTriangle, ArrowRight, ChevronUp, ChevronDown } from 'lucide-react';
-
-const mockTasks = [
-    { id: 101, title: '디자인 시스템 리뉴얼', stage: 'todo', assigneeName: 'Brooklyn', assigneeAvatar: 'https://i.pravatar.cc/150?u=1', priority: 'high', dependency: null },
-    { id: 102, title: '메인보드 UI 컴포넌트 개발', stage: 'inProgress', assigneeName: 'Cody', assigneeAvatar: 'https://i.pravatar.cc/150?u=2', priority: 'medium', dependency: '#101 디자인 리뉴얼' },
-    { id: 103, title: '사용자 프로필 페이지 수정', stage: 'review', assigneeName: 'Ralph', assigneeAvatar: 'https://i.pravatar.cc/150?u=3', priority: 'low', dependency: null },
-    { id: 104, title: '결제 모듈 연동 테스트', stage: 'done', assigneeName: 'Eleanor', assigneeAvatar: 'https://i.pravatar.cc/150?u=4', priority: 'high', dependency: null },
-];
+import { GitMerge, Clock, CheckCircle2, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
+import { listPipelineTasks, updatePipelineTask } from '../../api/tasks';
 
 const priorityColors = {
     high: 'bg-error-bg text-error dark:bg-red-900/40 dark:text-red-400',
@@ -18,34 +12,52 @@ const priorityColors = {
 
 const stageConfig = [
     { id: 'todo', label: 'To Do', icon: Clock, color: 'text-neutral-500' },
-    { id: 'inProgress', label: 'In Progress', icon: GitMerge, color: 'text-primary-500' },
+    { id: 'in_progress', label: 'In Progress', icon: GitMerge, color: 'text-primary-500' },
     { id: 'review', label: 'Review', icon: AlertTriangle, color: 'text-orange-500' },
     { id: 'done', label: 'Done', icon: CheckCircle2, color: 'text-success' },
 ];
 
 export default function TaskPipelineWidget() {
-    const navigate = useNavigate();
-    const [tasks, setTasks] = useState(mockTasks);
+    const [tasks, setTasks] = useState([]);
     const [draggingId, setDraggingId] = useState(null);
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const navigate = useNavigate();
+
+    const fetchTasks = async () => {
+        try {
+            const res = await listPipelineTasks();
+            setTasks(Array.isArray(res.data) ? res.data : []);
+        } catch (err) {
+            console.error('Failed to fetch pipeline tasks', err);
+        }
+    };
+
+    useEffect(() => { fetchTasks(); }, []);
 
     const handleDragStart = (e, id) => {
         setDraggingId(id);
         e.dataTransfer.effectAllowed = 'move';
-        // Required for Firefox
         e.dataTransfer.setData('text/plain', id.toString());
     };
 
     const handleDragOver = (e) => {
-        e.preventDefault(); // allow drop
+        e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
     };
 
-    const handleDrop = (e, stageId) => {
+    const handleDrop = async (e, stageId) => {
         e.preventDefault();
-        if (draggingId) {
-            setTasks(prev => prev.map(t => t.id === draggingId ? { ...t, stage: stageId } : t));
-            setDraggingId(null);
+        if (!draggingId) return;
+        const task = tasks.find(t => t.id === draggingId);
+        if (!task || task.stage === stageId) { setDraggingId(null); return; }
+
+        setTasks(prev => prev.map(t => t.id === draggingId ? { ...t, stage: stageId } : t));
+        setDraggingId(null);
+
+        try {
+            await updatePipelineTask(task.id, { stage: stageId });
+        } catch {
+            fetchTasks();
         }
     };
 
@@ -59,7 +71,7 @@ export default function TaskPipelineWidget() {
                 <div className="flex items-center gap-3">
                     <button
                         className="text-xs text-primary-600 hover:text-primary-700 font-bold"
-                        onClick={(e) => { e.stopPropagation(); navigate('/schedules?tab=tasks'); }}
+                        onClick={(e) => { e.stopPropagation(); navigate('/tasks'); }}
                     >
                         View All Tasks &rarr;
                     </button>
@@ -69,7 +81,6 @@ export default function TaskPipelineWidget() {
                 </div>
             </div>
 
-            {/* Horizontal Scroll Area */}
             <div className="overflow-x-auto custom-scrollbar pb-2">
                 <div className="flex items-start gap-4 min-w-[800px]">
                     {stageConfig.map((stage) => (
@@ -79,17 +90,14 @@ export default function TaskPipelineWidget() {
                             onDragOver={handleDragOver}
                             onDrop={(e) => handleDrop(e, stage.id)}
                         >
-
-                            {/* Stage Header */}
                             <div className="flex items-center gap-2 mb-2 bg-white p-2.5 rounded-2xl shadow-sm border border-neutral-100">
-                                <stage.icon className={`${stage.color}`} size={16} />
+                                <stage.icon className={stage.color} size={16} />
                                 <span className="font-bold text-sm text-neutral-main">{stage.label}</span>
                                 <span className="ml-auto text-xs font-bold text-primary-700 bg-primary-50 px-2.5 py-0.5 rounded-full">
                                     {tasks.filter(t => t.stage === stage.id).length}
                                 </span>
                             </div>
 
-                            {/* Task Cards Container */}
                             <div className={`flex-1 space-y-2.5 p-2 rounded-[1.5rem] bg-white/40 border-2 transition-colors ${draggingId ? 'border-dashed border-primary-100 bg-primary-50/20' : 'border-transparent'}`}>
                                 <AnimatePresence>
                                     {tasks.filter(t => t.stage === stage.id).slice(0, isCollapsed ? 1 : 999).map((task) => (
@@ -107,34 +115,29 @@ export default function TaskPipelineWidget() {
                                             className={`bg-white p-3.5 rounded-3xl border border-transparent hover:border-primary-200 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-soft transition-all group ${draggingId === task.id ? 'opacity-50 scale-95' : ''}`}
                                         >
                                             <div className="flex justify-between items-start mb-2">
-                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${priorityColors[task.priority]}`}>
-                                                    {task.priority.toUpperCase()}
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${priorityColors[task.priority] || priorityColors.medium}`}>
+                                                    {(task.priority || 'medium').toUpperCase()}
                                                 </span>
-                                                <span className="text-xs text-neutral-muted font-mono font-bold">{`#${task.id}`}</span>
                                             </div>
 
                                             <h4 className="text-[13px] font-bold text-neutral-main leading-snug mb-3 group-hover:text-primary-600 transition-colors">
                                                 {task.title}
                                             </h4>
 
-                                            {/* Dependency Badge */}
-                                            {task.dependency && (
-                                                <div className="flex items-center gap-1 mb-3 bg-error-bg text-error px-2 py-1 rounded-xl border border-error-bg shadow-sm">
-                                                    <AlertTriangle size={12} />
-                                                    <span className="text-[10px] font-bold truncate w-full" title={`대기중: ${task.dependency}`}>
-                                                        Wait: {task.dependency}
-                                                    </span>
-                                                </div>
-                                            )}
-
                                             <div className="flex items-center justify-between mt-auto pt-2 border-t border-neutral-100">
                                                 <div className="flex items-center gap-2">
-                                                    <img src={task.assigneeAvatar} alt={task.assigneeName} className="w-7 h-7 rounded-full border-2 border-white shadow-sm" />
-                                                    <span className="text-xs text-neutral-sub font-bold">{task.assigneeName}</span>
+                                                    {task.assignee && (
+                                                        <img
+                                                            src={`https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(task.assignee)}`}
+                                                            alt={task.assignee}
+                                                            className="w-6 h-6 rounded-full border border-neutral-200 bg-white"
+                                                        />
+                                                    )}
+                                                    <span className="text-xs text-neutral-sub font-bold">{task.assignee || '미지정'}</span>
                                                 </div>
-                                                <button className="text-neutral-muted hover:text-primary-500 transition-colors">
-                                                    <ArrowRight size={16} />
-                                                </button>
+                                                {task.dueDate && (
+                                                    <span className="text-[10px] text-neutral-muted">{task.dueDate}</span>
+                                                )}
                                             </div>
                                         </motion.div>
                                     ))}

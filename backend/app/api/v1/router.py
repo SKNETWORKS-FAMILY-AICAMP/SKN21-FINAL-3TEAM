@@ -6,7 +6,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     chat, auth, documents, meetings, schedules, calendar, admin,
-    google_connect, tasks, gmail, sheets, regulations, slack,
+    google_connect, tasks, gmail, sheets, regulations, slack, pipeline,
 )
 
 api_router = APIRouter()
@@ -46,6 +46,9 @@ api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])
 
 # 팀원 D: Slack 연동
 api_router.include_router(slack.router, prefix="/slack", tags=["Slack"])
+
+# 팀원 D: Pipeline Task (프로젝트 칸반)
+api_router.include_router(pipeline.router, prefix="/pipeline", tags=["Pipeline Tasks"])
 
 # 공개 규정 API
 api_router.include_router(regulations.router, prefix="/regulations", tags=["Regulations"])

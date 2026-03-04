@@ -4,7 +4,7 @@ import useAuthStore from '../../store/authStore';
 import useUIStore from '../../store/uiStore';
 import ThemeToggle from './ThemeToggle';
 import api from '../../api/client';
-import { LayoutDashboard, MessageSquare, FilePlus, FileText, Users2, Calendar, Settings, Menu, LogOut, StickyNote, ChevronUp, ChevronDown, Plus, Trash2, ArrowLeft, Check } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, FilePlus, FileText, Users2, Calendar, CheckSquare, Settings, Menu, LogOut, StickyNote, ChevronUp, ChevronDown, Plus, Trash2, ArrowLeft, Check } from 'lucide-react';
 
 const TEAM_COLORS = {
   '개발': '#3B82F6',
@@ -33,6 +33,7 @@ const getNavItems = (isAdmin) => [
       { to: '/documents', icon: FileText, label: '문서 관리' },
       { to: '/meetings', icon: Users2, label: '회의 관리' },
       { to: '/schedules', icon: Calendar, label: '일정 관리' },
+      { to: '/tasks', icon: CheckSquare, label: '태스크 관리' },
     ]
   },
   ...(isAdmin ? [{
