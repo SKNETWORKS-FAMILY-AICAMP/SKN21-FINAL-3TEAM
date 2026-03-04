@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Badge from '../common/Badge';
 import { createRegulation, updateRegulation, deleteRegulation } from '../../api/admin';
+import { toast } from '../../store/toastStore';
 
 export default function RegulationManagement({ regulations = [], onRefresh }) {
   const [showModal, setShowModal] = useState(false);
@@ -39,7 +40,7 @@ export default function RegulationManagement({ regulations = [], onRefresh }) {
       setShowModal(false);
       onRefresh?.();
     } catch (e) {
-      alert('저장 실패: ' + (e.response?.data?.detail || e.message));
+      toast.error('저장 실패: ' + (e.response?.data?.detail || e.message));
     } finally {
       setSaving(false);
     }
@@ -52,7 +53,7 @@ export default function RegulationManagement({ regulations = [], onRefresh }) {
       setDeleteTarget(null);
       onRefresh?.();
     } catch (e) {
-      alert('삭제 실패: ' + (e.response?.data?.detail || e.message));
+      toast.error('삭제 실패: ' + (e.response?.data?.detail || e.message));
     }
   };
 

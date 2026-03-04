@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Badge from '../common/Badge';
 import { createUser, updateUserPermissions, deleteUser } from '../../api/admin';
 import { TEAMS } from '../../utils/constants';
+import { toast } from '../../store/toastStore';
 
 export default function UserManagement({ users = [], onRefresh }) {
   const [showModal, setShowModal] = useState(false);
@@ -22,7 +23,7 @@ export default function UserManagement({ users = [], onRefresh }) {
       setShowModal(false);
       onRefresh?.();
     } catch (e) {
-      alert('사용자 추가 실패: ' + (e.response?.data?.detail || e.message));
+      toast.error('사용자 추가 실패: ' + (e.response?.data?.detail || e.message));
     } finally {
       setSaving(false);
     }
@@ -37,7 +38,7 @@ export default function UserManagement({ users = [], onRefresh }) {
       });
       onRefresh?.();
     } catch (e) {
-      alert('상태 변경 실패: ' + (e.response?.data?.detail || e.message));
+      toast.error('상태 변경 실패: ' + (e.response?.data?.detail || e.message));
     }
   };
 
@@ -50,7 +51,7 @@ export default function UserManagement({ users = [], onRefresh }) {
       });
       onRefresh?.();
     } catch (e) {
-      alert('권한 변경 실패: ' + (e.response?.data?.detail || e.message));
+      toast.error('권한 변경 실패: ' + (e.response?.data?.detail || e.message));
     }
   };
 
@@ -61,7 +62,7 @@ export default function UserManagement({ users = [], onRefresh }) {
       setDeleteTarget(null);
       onRefresh?.();
     } catch (e) {
-      alert('삭제 실패: ' + (e.response?.data?.detail || e.message));
+      toast.error('삭제 실패: ' + (e.response?.data?.detail || e.message));
     }
   };
 

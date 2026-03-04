@@ -6,6 +6,7 @@ import DatePicker from '../components/common/DatePicker';
 import DocumentList from '../components/documents/DocumentList';
 import DocumentDetail from '../components/documents/DocumentDetail';
 import { uploadDocument, listDocuments, getDocument, deleteDocument } from '../api/documents';
+import { toast, confirm } from '../store/toastStore';
 
 
 const SEARCH_TYPE_MAP = {
@@ -128,17 +129,17 @@ export default function DocumentsPage() {
 
       // 업로드 응답의 status 확인
       if (uploadedDoc.status === 'failed') {
-        alert(`문서 업로드는 되었지만 텍스트 추출에 실패했습니다.\n파일: ${uploadedDoc.title}\n파일 형식을 확인해주세요.`);
+        toast.warning(`텍스트 추출에 실패했습니다. 파일 형식을 확인해주세요.\n파일: ${uploadedDoc.title}`);
       } else if (uploadedDoc.status === 'completed') {
-        alert('문서가 성공적으로 업로드되었습니다.');
+        toast.success('문서가 성공적으로 업로드되었습니다.');
       } else {
-        alert(`문서가 업로드되었습니다. (상태: ${uploadedDoc.status})`);
+        toast.info(`문서가 업로드되었습니다. (상태: ${uploadedDoc.status})`);
       }
 
       loadDocuments(); // 목록 새로고침
     } catch (error) {
       console.error('Upload failed:', error);
-      alert('문서 업로드에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+      toast.error('문서 업로드에 실패했습니다: ' + (error.response?.data?.detail || error.message));
     } finally {
       setLoading(false);
     }
@@ -185,17 +186,18 @@ export default function DocumentsPage() {
 
   // 문서 삭제 핸들러
   const handleDeleteDoc = async (docId) => {
-    if (!window.confirm('이 문서를 삭제하시겠습니까?')) return;
+    const ok = await confirm('이 문서를 삭제하시겠습니까?');
+    if (!ok) return;
 
     try {
       await deleteDocument(docId);
-      alert('문서가 삭제되었습니다.');
+      toast.success('문서가 삭제되었습니다.');
       loadDocuments();
       setSelectedDoc(null);
       setDocumentDetail(null);
     } catch (error) {
       console.error('Failed to delete document:', error);
-      alert('문서 삭제에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+      toast.error('문서 삭제에 실패했습니다: ' + (error.response?.data?.detail || error.message));
     }
   };
 

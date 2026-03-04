@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { RefreshCw, Plus, X } from 'lucide-react';
 import useGoogleServices from '../../hooks/useGoogleServices';
 import { TASK_STATUS_LABELS } from '../../utils/constants';
+import { confirm } from '../../store/toastStore';
 
 function TaskCreateModal({ onClose, onSubmit, submitting }) {
   const [formData, setFormData] = useState({ title: '', assignee: '', due_date: '', priority: 'medium' });
@@ -128,7 +129,8 @@ export default function TasksPanel() {
   };
 
   const handleDelete = async (actionItemId) => {
-    if (!window.confirm('이 Task를 삭제하시겠습니까?')) return;
+    const ok = await confirm('이 Task를 삭제하시겠습니까?');
+    if (!ok) return;
     try {
       await deleteTask(actionItemId);
     } catch {

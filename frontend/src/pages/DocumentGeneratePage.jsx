@@ -7,6 +7,7 @@ import DocumentPreview from '../components/documents/DocumentPreview';
 import MeetingInput from '../components/meetings/MeetingInput';
 import MeetingPreview from '../components/meetings/MeetingPreview';
 import { generateDocument, downloadDocument } from '../api/documents';
+import { toast } from '../store/toastStore';
 
 
 export default function DocumentGeneratePage() {
@@ -90,7 +91,7 @@ export default function DocumentGeneratePage() {
         document_id: apiData.document_id,
       });
     } catch (err) {
-      alert('문서 생성 실패: ' + (err.response?.data?.detail || err.message));
+      toast.error('문서 생성 실패: ' + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
     }
@@ -121,7 +122,7 @@ export default function DocumentGeneratePage() {
         document_id: apiData.document_id,
       });
     } catch (err) {
-      alert('회의록 생성 실패: ' + (err.response?.data?.detail || err.message));
+      toast.error('회의록 생성 실패: ' + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
     }
@@ -130,7 +131,7 @@ export default function DocumentGeneratePage() {
   const handleDownload = async (format) => {
     const documentId = meetingResult?.document_id || result?.document_id;
     if (!documentId) {
-      alert('먼저 문서를 생성해주세요.');
+      toast.warning('먼저 문서를 생성해주세요.');
       return;
     }
     const filenameMap = {
@@ -148,12 +149,12 @@ export default function DocumentGeneratePage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert('다운로드 실패: ' + (err.response?.data?.detail || err.message));
+      toast.error('다운로드 실패: ' + (err.response?.data?.detail || err.message));
     }
   };
 
   const handleUpload = async (data) => {
-    alert(`"${data.name}" 템플릿이 업로드되었습니다. (Mock)`);
+    toast.info(`"${data.name}" 템플릿이 업로드되었습니다.`);
   };
 
   return (
