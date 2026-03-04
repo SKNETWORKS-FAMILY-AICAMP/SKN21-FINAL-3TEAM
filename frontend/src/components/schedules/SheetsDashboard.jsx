@@ -1,22 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BarChart3 } from 'lucide-react';
 import useGoogleServices from '../../hooks/useGoogleServices';
 
-export default function SheetsDashboard() {
+export default function SheetsDashboard({ externalActions, onReady }) {
   const { sheets, sheetsLoading, sheetsError, hasScope, createSheet, syncSheet } = useGoogleServices();
   const [creating, setCreating] = useState(false);
-
-  if (!hasScope('sheets')) {
-    return (
-      <div className="card">
-        <div className="card-header"><span className="card-title">Google Sheets 추적</span></div>
-        <div className="card-body text-center py-8">
-          <p className="text-sm text-neutral-muted">Google Sheets가 연결되지 않았습니다</p>
-          <p className="text-xs text-neutral-muted mt-1">Google 서비스 연결에서 Sheets를 활성화하세요</p>
-        </div>
-      </div>
-    );
-  }
 
   const handleCreate = async () => {
     setCreating(true);
@@ -32,17 +20,37 @@ export default function SheetsDashboard() {
     }
   };
 
+  useEffect(() => {
+    if (externalActions && onReady) {
+      onReady({ create: handleCreate, creating, sheetsLoading });
+    }
+  }, [externalActions, onReady, creating, sheetsLoading]);
+
+  if (!hasScope('sheets')) {
+    return (
+      <div className="card">
+        <div className="card-header"><span className="card-title">Google Sheets 추적</span></div>
+        <div className="card-body text-center py-8">
+          <p className="text-sm text-neutral-muted">Google Sheets가 연결되지 않았습니다</p>
+          <p className="text-xs text-neutral-muted mt-1">Google 서비스 연결에서 Sheets를 활성화하세요</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="card">
       <div className="card-header">
         <span className="card-title">Google Sheets 추적</span>
-        <button
-          onClick={handleCreate}
-          disabled={creating || sheetsLoading}
-          className="text-xs px-2.5 py-1.5 rounded-md border border-neutral-border text-neutral-sub hover:bg-primary-50 hover:text-primary-700 transition"
-        >
-          {creating ? '생성 중...' : '+ 새 시트'}
-        </button>
+        {!externalActions && (
+          <button
+            onClick={handleCreate}
+            disabled={creating || sheetsLoading}
+            className="text-xs px-2.5 py-1.5 rounded-md border border-neutral-border text-neutral-sub hover:bg-primary-50 hover:text-primary-700 transition"
+          >
+            {creating ? '생성 중...' : '+ 새 시트'}
+          </button>
+        )}
       </div>
       <div className="card-body">
         {sheetsError && <p className="text-xs text-error mb-3">{sheetsError}</p>}

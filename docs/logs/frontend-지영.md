@@ -724,7 +724,6 @@
   - 규정 항목을 `<div>` → `<button>`으로 변경, hover 시 색상 전환 + "전체 보기 →" 링크
 - **레이아웃 변경** — summary(줄글)를 규정+신뢰도 아래로 이동 (border-t 구분선 추가)
 - **ChatPage 판단 응답 렌더링 리팩토링**
-  - 줄글(스트리밍 텍스트)을 별도 카드로 먼저 표시
   - JudgmentCard는 `summary=null`로 규정+신뢰도만 표시
   - 기존 content/reasoning 중복 렌더링 로직 정리
 
@@ -783,6 +782,45 @@
 
 - **`frontend/src/pages/SchedulesPage.jsx`** 수정
   - `SlackConnect` 컴포넌트를 Google 서비스 연결 카드 아래에 배치
+
+#### 9) 일정 수정 기능 구현
+
+- **`CalendarView.jsx`** — `DayDetailPopup`에 Pencil 수정 아이콘 추가
+  - 삭제 아이콘 왼쪽에 배치, hover 시 파란색 전환
+  - `onEditEvent`, `onCanEdit` prop 추가 — 수정/삭제 권한 독립 분리
+  - 수정 권한: 본인 DB 일정만 (관리자도 남의 일정 수정 불가)
+  - 삭제 권한: 기존 유지 (본인 + 관리자)
+- **`ScheduleForm.jsx`** — `initialData` prop 추가로 편집 모드 지원
+  - 전달 시 기존 값(제목, 날짜, 시간, 유형, 종일, 팀공유)으로 폼 프리필
+  - 헤더: "일정 추가" / "일정 수정", 버튼: "등록" / "수정"
+- **`SchedulesPage.jsx`** — 수정 흐름 연결
+  - `editingSchedule` 상태 + `handleEditEvent` / `handleUpdateSchedule` 함수 추가
+  - 기존 `updateSchedule` API (`PUT /schedules/{id}`) 연동
+  - DB 일정에 `rawStartTime`/`rawEndTime` (HH:mm 형식) 저장 — 한국어 로케일 시간("오후 02:00") 대신 원본 시간 사용
+  - DB 일정에 `year`, `isTeamVisible` 필드 추가
+  - 수정 완료 시 목록 새로고침 + 폼 닫기
+- **에러 처리 안전장치 추가**
+  - Pydantic 422 에러의 `detail`이 객체 배열일 때 React 크래시 방지 (`typeof detail === 'string'` 체크)
+  - `handleAddSchedule`에도 동일 적용
+
+**수정 아이콘 표시 규칙:**
+| 이벤트 | 수정 | 삭제 |
+|--------|------|------|
+| 내가 등록한 일정 | O | O |
+| 타인이 등록한 일정 | X | X (관리자만 O) |
+| 공휴일 | X | X |
+
+#### 10) '팀 일정' 토글 버튼 제거
+
+- 헤더 우측 '팀 일정' 버튼 제거 — 팀 소속이면 팀원 일정 항상 표시
+- `showTeamSchedules` 상태 + useEffect 제거, `hasTeam`으로 직접 판단
+- 미사용 `Users` import 제거
+
+#### 11) 비활성화된 계정 복구
+
+- DB에서 비활성(`is_active=false`)된 2개 계정을 관리자 API로 활성화
+  - Maria Stanley (maria.stanley@example.com)
+  - 영업팀 test (mjy6812@gmail.com)
 
 ### 다음 할 일
 - Slack 백엔드 엔드포인트 연동 확인

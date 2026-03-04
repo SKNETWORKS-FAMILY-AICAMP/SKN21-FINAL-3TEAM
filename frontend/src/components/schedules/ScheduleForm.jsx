@@ -94,22 +94,23 @@ function TimeSelect({ value, onChange }) {
   );
 }
 
-export default function ScheduleForm({ onSubmit, onClose }) {
+export default function ScheduleForm({ onSubmit, onClose, initialData }) {
+  const isEditMode = !!initialData;
   const { connected, hasScope } = useGoogleServices();
   const { customTypes } = useScheduleTypeStore();
   const user = useAuthStore((s) => s.user);
   const hasTeam = !!user?.team;
   const allTypes = [...DEFAULT_TYPES, ...customTypes];
   const [form, setForm] = useState({
-    title: '',
-    date: '',
-    startTime: '09:00',
-    endTime: '10:00',
-    type: 'meeting',
-    allDay: false,
+    title: initialData?.title || '',
+    date: initialData?.date || '',
+    startTime: initialData?.startTime || '09:00',
+    endTime: initialData?.endTime || '10:00',
+    type: initialData?.type || 'meeting',
+    allDay: initialData?.allDay || false,
     includeMeet: false,
     attendeeEmails: '',
-    isTeamVisible: false,
+    isTeamVisible: initialData?.isTeamVisible || false,
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -148,7 +149,7 @@ export default function ScheduleForm({ onSubmit, onClose }) {
 
   return (
     <div className="card p-5">
-      <h3 className="text-base font-bold mb-4">일정 추가</h3>
+      <h3 className="text-base font-bold mb-4">{isEditMode ? '일정 수정' : '일정 추가'}</h3>
       <div className="space-y-3">
         {/* 제목 */}
         <div>
@@ -282,7 +283,7 @@ export default function ScheduleForm({ onSubmit, onClose }) {
         {/* 버튼 */}
         <div className="flex gap-2 pt-2">
           <button onClick={handleSubmit} disabled={submitting} className="btn-primary">
-            {submitting ? '등록 중...' : '등록'}
+            {submitting ? (isEditMode ? '수정 중...' : '등록 중...') : (isEditMode ? '수정' : '등록')}
           </button>
           <button onClick={onClose} disabled={submitting} className="btn-outline">취소</button>
         </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { RefreshCw, Plus, X } from 'lucide-react';
 import useGoogleServices from '../../hooks/useGoogleServices';
 import { TASK_STATUS_LABELS } from '../../utils/constants';
@@ -92,11 +92,22 @@ function TaskCreateModal({ onClose, onSubmit, submitting }) {
   );
 }
 
-export default function TasksPanel() {
+export default function TasksPanel({ externalActions, onReady }) {
   const { tasks, tasksLoading, tasksError, updateTask, pullTasks, hasScope, createTask, deleteTask } = useGoogleServices();
   const [filter, setFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // 외부에서 모달/새로고침 트리거용 콜백 전달
+  useEffect(() => {
+    if (externalActions && onReady) {
+      onReady({
+        openCreate: () => setShowModal(true),
+        refresh: () => pullTasks(),
+        tasksLoading,
+      });
+    }
+  }, [externalActions, onReady, tasksLoading]);
 
   if (!hasScope('tasks')) {
     return (
@@ -155,24 +166,26 @@ export default function TasksPanel() {
             {tasks.filter((t) => !t.completed).length}개 미완료
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowModal(true)}
-            className="btn-outline flex items-center gap-1.5"
-          >
-            <Plus size={14} />
-            추가
-          </button>
-          <button
-            onClick={() => pullTasks()}
-            disabled={tasksLoading}
-            className="btn-outline flex items-center gap-1.5"
-            title="새로고침"
-          >
-            <RefreshCw size={14} className={tasksLoading ? 'animate-spin' : ''} />
-            {tasksLoading ? '동기화 중...' : '새로고침'}
-          </button>
-        </div>
+        {!externalActions && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowModal(true)}
+              className="btn-outline flex items-center gap-1.5"
+            >
+              <Plus size={14} />
+              추가
+            </button>
+            <button
+              onClick={() => pullTasks()}
+              disabled={tasksLoading}
+              className="btn-outline flex items-center gap-1.5"
+              title="새로고침"
+            >
+              <RefreshCw size={14} className={tasksLoading ? 'animate-spin' : ''} />
+              {tasksLoading ? '동기화 중...' : '새로고침'}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="px-5 pt-2 flex gap-1">
