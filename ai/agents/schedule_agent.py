@@ -668,12 +668,6 @@ def _check_missing_info(parsed: dict) -> list:
     # start_time이 null이거나 없으면 시간 누락
     if not start_time:
         missing.append("time")
-        return missing
-
-    # start_time이 있어도 T09:00:00(기본값)이면 사용자가 시간을 안 말한 건지 확인
-    # → LLM이 null 대신 09:00을 넣었을 수 있음
-    if "T09:00:00" in str(start_time):
-        missing.append("time")
 
     return missing
 
