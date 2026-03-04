@@ -70,10 +70,16 @@ async def schedule_agent(state: AgentState) -> AgentState:
     user_input = state.get("user_input", "")
     user_id = state.get("user_id")
 
-    # followup 감지: route_by_intent에서 state["intent"]를 바꿔도
-    # LangGraph가 classify_intent 값을 유지하므로, 여기서 직접 재판단
+    # followup 감지: 이전 대화에 schedule_clarify가 있고 시간 입력이면 → clarify 후속
+    chat_history = state.get("chat_history", [])
+    clarify_info = _extract_clarify_from_history(chat_history)
+    if clarify_info and re.search(r'\d{1,2}\s*시|\d{1,2}:\d{2}|오전|오후|저녁|아침|점심', user_input):
+        logger.info("[ScheduleAgent] schedule_clarify 후속 감지 → schedule_followup")
+        intent = "schedule_followup"
+        state["intent"] = "schedule_followup"
+
+    # 일반 followup 감지 (Meet/이메일 등)
     if intent not in ("schedule_add", "schedule_view", "schedule_followup"):
-        chat_history = state.get("chat_history", [])
         emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', user_input)
         meet_kw = any(kw in user_input.lower() for kw in ("meet", "미트", "미팅", "링크", "화상", "네", "응", "좋아", "생성", "만들어", "초대", "메일", "보내"))
         if (emails or meet_kw) and _has_schedule_in_history(chat_history):
