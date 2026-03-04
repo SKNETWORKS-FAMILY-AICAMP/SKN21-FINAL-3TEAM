@@ -336,7 +336,7 @@ export default function ChatPage() {
   const { messages, isStreaming, currentIntent, currentStatus, sendMessage } = useChat();
   const clearMessages = useChatStore((s) => s.clearMessages);
   const initSession = useChatStore((s) => s.initSession);
-  const createSession = useChatStore((s) => s.createSession);
+  const startNewSession = useChatStore((s) => s.startNewSession);
   const pendingQuestion = useChatStore((s) => s.pendingQuestion);
   const clearPendingQuestion = useChatStore((s) => s.clearPendingQuestion);
   const selectedDocumentId = useChatStore((s) => s.selectedDocumentId);
@@ -364,9 +364,8 @@ export default function ChatPage() {
 
     const q = useChatStore.getState().pendingQuestion;
     if (q) {
-      // 대시보드에서 질문 클릭 → 새 세션 시작 후 자동 전송
+      // 대시보드에서 질문 클릭 → 새 세션 시작 후 자동 전송 (세션은 sendMessage에서 생성)
       clearPendingQuestion();
-      createSession();
       setLastInput(q);
       sendMessage(q);
     } else {
@@ -625,7 +624,7 @@ export default function ChatPage() {
               <Menu size={18} />
             </button>
             <button
-              onClick={() => { createSession(); setSessionSidebarOpen(true); }}
+              onClick={() => { startNewSession(); setSessionSidebarOpen(true); }}
               title="새 대화"
               className="w-8 h-8 flex items-center justify-center rounded-md text-neutral-sub hover:text-primary-700 hover:bg-primary-50 transition"
             >

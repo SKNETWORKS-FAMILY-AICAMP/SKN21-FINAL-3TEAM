@@ -26,7 +26,7 @@ function formatTime(isoStr) {
 export default function ChatSessionSidebar({ isOpen }) {
   const sessions = useChatStore((s) => s.sessions);
   const activeSessionId = useChatStore((s) => s.activeSessionId);
-  const createSession = useChatStore((s) => s.createSession);
+  const startNewSession = useChatStore((s) => s.startNewSession);
   const switchSession = useChatStore((s) => s.switchSession);
   const deleteSession = useChatStore((s) => s.deleteSession);
   const renameSessionById = useChatStore((s) => s.renameSessionById);
@@ -72,7 +72,7 @@ export default function ChatSessionSidebar({ isOpen }) {
       <div className="px-4 py-3 border-b border-neutral-divider flex items-center justify-between">
         <span className="text-sm font-semibold text-neutral-main">대화 목록</span>
         <button
-          onClick={createSession}
+          onClick={startNewSession}
           className="text-xs px-2.5 py-1 rounded-md bg-primary-700 text-white hover:bg-primary-900 transition"
         >
           + 새 대화

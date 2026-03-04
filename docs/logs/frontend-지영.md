@@ -758,7 +758,7 @@
   - `RegulationManagement.jsx` — 저장/삭제 실패
   - `TasksPanel.jsx` — Task 삭제 confirm
 
-#### 8) Slack 알림 연동 UI 구현 (#85)
+#### 5) Slack 알림 연동 UI 구현 (#85)
 
 > 일정 관리 페이지에서 Slack 알림을 활성화/비활성화할 수 있는 토글 UI 추가
 
@@ -783,7 +783,7 @@
 - **`frontend/src/pages/SchedulesPage.jsx`** 수정
   - `SlackConnect` 컴포넌트를 Google 서비스 연결 카드 아래에 배치
 
-#### 9) 일정 수정 기능 구현
+#### 6) 일정 수정 기능 구현
 
 - **`CalendarView.jsx`** — `DayDetailPopup`에 Pencil 수정 아이콘 추가
   - 삭제 아이콘 왼쪽에 배치, hover 시 파란색 전환
@@ -810,17 +810,30 @@
 | 타인이 등록한 일정 | X | X (관리자만 O) |
 | 공휴일 | X | X |
 
-#### 10) '팀 일정' 토글 버튼 제거
+#### 7) '팀 일정' 토글 버튼 제거
 
 - 헤더 우측 '팀 일정' 버튼 제거 — 팀 소속이면 팀원 일정 항상 표시
 - `showTeamSchedules` 상태 + useEffect 제거, `hasTeam`으로 직접 판단
 - 미사용 `Users` import 제거
 
-#### 11) 비활성화된 계정 복구
+#### 8) 챗봇 대화목록 빈 세션 개선
 
-- DB에서 비활성(`is_active=false`)된 2개 계정을 관리자 API로 활성화
-  - Maria Stanley (maria.stanley@example.com)
-  - 영업팀 test (mjy6812@gmail.com)
+**문제**: 챗봇 페이지 진입 시마다 서버에 새 세션이 생성되어, 메시지 없이 페이지를 떠나면 빈 "새 대화" 세션이 계속 쌓이는 현상
+
+**수정 — `chatStore.js`**
+- `initSession`: `createSession()` 호출 제거 → 세션 목록만 로드 후 `activeSessionId: null` 상태로 초기화
+  - 페이지 진입 시 기존 세션 목록을 사이드바에 표시하되 서버 세션은 생성하지 않음
+- `initSession` 내 빈 세션 정리 로직 추가:
+  - "새 대화" 이름의 세션들에 대해 `getSessionMessages` 병렬 조회
+  - 메시지 0개인 세션을 `deleteSessionAPI`로 서버에서 일괄 삭제 (Promise.allSettled)
+  - 삭제된 세션 제외한 목록으로 상태 갱신
+- `startNewSession` 액션 신규 추가: 서버 세션 생성 없이 `activeSessionId: null, messages: []` 로컬 상태만 초기화
+
+**수정 — `ChatPage.jsx`**
+- 좌측 레일 "새 대화" 버튼: `createSession` → `startNewSession`
+- 대시보드 질문 자동 전송 시 중복 `createSession()` 호출 제거 (sendMessage 내부에서 처리)
+
+**결과**: 세션은 실제로 메시지를 보낼 때만 생성 / 페이지 로드 시 기존 빈 "새 대화" 세션 자동 정리
 
 ### 다음 할 일
 - Slack 백엔드 엔드포인트 연동 확인
@@ -841,10 +854,8 @@
 | Google Services UI | ✅ 완료 | 5개 서비스 통합 UI |
 | 일정 관리 | ✅ 완료 | Google Calendar 실제 연동, 공휴일 중복 제거, 자동 갱신 |
 | KeywordHighlight (FR-DOC-006) | ✅ 완료 | 문서 검색 + 규정 패널 키워드 하이라이트 |
-| 로그아웃 기능 | ✅ 완료 | Sidebar 하단 텍스트 버튼 + DEV_BYPASS_AUTH 복원 |
 | 글씨 크기 조절 | ✅ 완료 | FontSizeControl (가-/가+), 전체 54파일 px→rem 변환 |
 | 다크 모드 | ✅ 완료 | CSS 변수 방식, OS 감지, localStorage 유지, ThemeToggle |
-| 페이지 전환 애니메이션 | ✅ 완료 | framer-motion, fade+slide 200ms |
 | 파일 드래그&드롭 | ✅ 완료 | 채팅 파일 첨부, 검증(형식/크기), FileChip |
 | 대화 세션 관리 | ✅ 완료 | localStorage 세션 목록, 자동 생성/전환/삭제 |
 | **백엔드 실제 연동** | 🔄 진행중 | 일정 관리 + 대시보드 완료, 문서 생성/관리자 교체 필요 |
