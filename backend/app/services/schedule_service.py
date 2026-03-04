@@ -149,6 +149,24 @@ async def create_schedule(
         except Exception as e:
             logger.warning(f"Gmail 초대 발송 실패 (best-effort): {e}")
 
+    # 4. Slack 알림 (best-effort, slack_enabled인 경우)
+    try:
+        from app.models.user import User
+        user_result = await db.execute(select(User).where(User.id == user_id))
+        user = user_result.scalar_one_or_none()
+        if user and user.slack_enabled:
+            from app.services.slack_service import send_slack_webhook
+            import os
+            webhook_url = os.getenv("SLACK_WEBHOOK_URL", "")
+            if webhook_url:
+                time_str = data.start_time.strftime("%m/%d %H:%M")
+                msg = f":calendar: *[일정 등록]* {data.title}\n  - 시간: {time_str}\n  - 등록자: {user.name}"
+                if schedule.google_meet_link:
+                    msg += f"\n  - Meet: {schedule.google_meet_link}"
+                await send_slack_webhook(webhook_url, msg)
+    except Exception as e:
+        logger.warning(f"Slack 알림 실패 (best-effort): {e}")
+
     return {"schedule": schedule, "google_services": google_result}
 
 
