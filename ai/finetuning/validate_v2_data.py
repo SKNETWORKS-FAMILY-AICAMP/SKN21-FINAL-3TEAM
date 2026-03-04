@@ -232,6 +232,11 @@ def _validate_qa(content: str, idx: int, errors: list, warnings: list):
     if missing:
         errors.append(f"[{idx}] (qa) 필수 필드 누락: {missing}")
 
+    # deprecated 필드 거부 (sLLM v2에서 제거됨 — 백엔드가 RAG score 기반으로 계산)
+    for deprecated in ("confidence", "relevance", "source"):
+        if deprecated in parsed:
+            errors.append(f"[{idx}] (qa) deprecated 필드 '{deprecated}' 존재 (sLLM v2에서 제거됨)")
+
     # answer 비어있는지
     answer = parsed.get("answer", "")
     if not answer or (isinstance(answer, str) and len(answer.strip()) < 2):
