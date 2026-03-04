@@ -205,8 +205,25 @@ export default function Topbar({ isScrolled = false }) {
   const [pwSaving, setPwSaving] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const [todaySchedules, setTodaySchedules] = useState([]);
+  const [allDayMeetings, setAllDayMeetings] = useState([]);
+  const [currentTime, setCurrentTime] = useState(dayjs());
   const [teamMembers, setTeamMembers] = useState([]);
+
+  // 1분마다 현재 시간 업데이트
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(dayjs());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // 현재 시간에 활성화된 일정만 필터링 (useMemo로 실시간성 확보)
+  const todaySchedules = useMemo(() => {
+    return allDayMeetings.filter(s => {
+      const endTime = s.end_time ? dayjs(s.end_time) : dayjs(s.start_time).add(1, 'hour');
+      return endTime.isAfter(currentTime);
+    });
+  }, [allDayMeetings, currentTime]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -244,12 +261,7 @@ export default function Topbar({ isScrolled = false }) {
         
         todayAllMeetings.forEach((s, i) => s.originalIndex = i);
 
-        const now = dayjs();
-        let activeSchedules = todayAllMeetings.filter(s => {
-          const endTime = s.end_time ? dayjs(s.end_time) : dayjs(s.start_time).add(1, 'hour');
-          return endTime.isAfter(now);
-        });
-        setTodaySchedules(activeSchedules);
+        setAllDayMeetings(todayAllMeetings);
 
         const members = teamRes.data || teamRes || [];
         setTeamMembers((Array.isArray(members) ? members : []).filter(m => m.id !== user?.id));
@@ -403,7 +415,7 @@ export default function Topbar({ isScrolled = false }) {
                         {/* Current Time Indicator */}
                         <div className="absolute -top-4 right-1/4 bg-neutral-800 text-white text-[9px] font-bold px-2 py-0.5 rounded-full z-50 shadow-md flex items-center gap-1.5 border border-neutral-700/50">
                           <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_4px_#4ade80]" />
-                          {dayjs().format('h:mm A')}
+                          {currentTime.format('h:mm A')}
                         </div>
                       </div>
                     
