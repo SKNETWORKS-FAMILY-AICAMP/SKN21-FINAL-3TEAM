@@ -77,24 +77,21 @@ async def schedule_agent(state: AgentState) -> AgentState:
         emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', user_input)
         meet_kw = any(kw in user_input.lower() for kw in ("meet", "미트", "미팅", "링크", "화상", "네", "응", "좋아", "생성", "만들어", "초대", "메일", "보내"))
         if (emails or meet_kw) and _has_schedule_in_history(chat_history):
-            print(f"[ScheduleAgent] intent '{intent}' → schedule_followup으로 재판단")
+            logger.info("[ScheduleAgent] intent '%s' → schedule_followup", intent)
             intent = "schedule_followup"
             state["intent"] = "schedule_followup"
 
     _t_agent = time.time()
-    print(f"[ScheduleAgent] 진입 | intent={intent}, user_input='{user_input}', user_id={user_id}")
+    logger.info("[ScheduleAgent] 진입 | intent=%s, user_id=%s", intent, user_id)
 
     response_data = {}
 
     try:
         if intent == "schedule_add":
-            print("[ScheduleAgent] → _handle_schedule_add 호출")
             response_data = await _handle_schedule_add(user_input, user_id)
         elif intent == "schedule_view":
-            print("[ScheduleAgent] → _handle_schedule_view 호출")
             response_data = await _handle_schedule_view(user_input, user_id)
         elif intent == "schedule_followup":
-            print("[ScheduleAgent] → _handle_schedule_followup 호출")
             response_data = await _handle_schedule_followup(user_input, user_id, state)
         else:
             response_data = {
@@ -102,16 +99,14 @@ async def schedule_agent(state: AgentState) -> AgentState:
                 "message": f"지원하지 않는 일정 intent입니다: {intent}",
             }
     except Exception as e:
-        print(f"[ScheduleAgent] !!! 에러 발생: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error("[ScheduleAgent] 에러: %s", e, exc_info=True)
         response_data = {
             "type": intent or "schedule",
             "message": f"일정 처리 중 오류가 발생했습니다: {e}",
             "error": str(e),
         }
 
-    print(f"[ScheduleAgent] 완료 ({time.time()-_t_agent:.2f}s) | response_data={response_data}")
+    logger.info("[ScheduleAgent] 완료 (%.2fs)", time.time() - _t_agent)
     state["agent_response"] = response_data
 
     if response_data.get("google_services"):
@@ -122,16 +117,24 @@ async def schedule_agent(state: AgentState) -> AgentState:
 
 async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
     """일정 추가: LLM 파싱 → 캘린더 등록 (Meet 없이) → 후속 질문"""
-    # 1. LLM으로 자연어 → 구조화 데이터 파싱
-    print("[ScheduleAgent] _handle_schedule_add | LLM 파싱 시작...")
     parsed = await _parse_schedule_input(user_input)
-    print(f"[ScheduleAgent] _handle_schedule_add | 파싱 결과: {parsed}")
+    logger.info("[ScheduleAgent] 파싱 결과: %s", parsed)
 
     if not parsed.get("title"):
         return {
             "type": "schedule_add",
             "message": "일정 제목을 파악하지 못했습니다. 다시 입력해주세요.",
             "schedule": parsed,
+        }
+
+    # 시간이 불명확하면 되물어보기
+    missing = _check_missing_info(parsed)
+    if missing:
+        return {
+            "type": "schedule_clarify",
+            "schedule": parsed,
+            "missing": missing,
+            "message": _build_clarify_message(parsed, missing),
         }
 
     # 2. 먼저 Meet 없이 캘린더에만 등록
@@ -344,9 +347,9 @@ def _extract_last_schedule_from_history(chat_history: list[dict]) -> dict | None
 async def _handle_schedule_view(user_input: str, user_id: int) -> dict:
     """일정 조회: LLM 파싱 → Google Calendar 조회"""
     # 1. LLM으로 조회 범위 파싱
-    print("[ScheduleAgent] _handle_schedule_view | LLM 파싱 시작...")
+    logger.debug("[ScheduleAgent] schedule_view 파싱 시작")
     parsed = await _parse_view_request(user_input)
-    print(f"[ScheduleAgent] _handle_schedule_view | 파싱 결과: {parsed}")
+    logger.debug("[ScheduleAgent] schedule_view 파싱 결과: %s", parsed)
 
     # 2. Google Calendar API 호출
     try:
@@ -439,7 +442,8 @@ async def _parse_schedule_input(user_input: str) -> dict:
 - "내일"은 {tomorrow}
 - "모레"는 현재 날짜 + 2일
 - 종료 시간이 명시되지 않으면 시작 시간 + 1시간
-- 시간이 명시되지 않으면 09:00:00으로 설정
+- 시간이 명시되지 않으면 start_time을 null로 설정 (절대 임의로 시간을 넣지 마세요)
+- "오후", "저녁" 같은 모호한 표현만 있고 구체적 시간이 없으면 start_time을 null로 설정
 - "오후 N시"는 N+12시 (오후 3시 = 15:00)
 - include_meet: "회의", "미팅", "meeting" 키워드가 있으면 true, 아니면 false
 - 반드시 유효한 JSON만 출력하세요. 실제 날짜를 넣으세요."""
@@ -453,10 +457,19 @@ async def _parse_schedule_input(user_input: str) -> dict:
         logger.error(f"일정 파싱 실패 (JSON 에러): {result_str}")
         parsed = {}
 
-    # LLM 파싱 결과 검증 — "YYYY" 같은 포맷 문자열이 들어왔거나 비어있으면 직접 파싱
-    start_time = parsed.get("start_time", "")
-    if not start_time or "YYYY" in start_time or not _is_valid_datetime(start_time):
-        print(f"[ScheduleAgent] LLM 파싱 결과 무효 (start_time='{start_time}') → 직접 파싱 fallback")
+    # LLM이 null로 반환한 경우 → 시간 불명확, 그대로 둠 (되물어보기 트리거)
+    start_time = parsed.get("start_time")
+    if start_time is None:
+        # 제목이라도 있으면 그대로 반환 (되물어보기용)
+        if parsed.get("title"):
+            return parsed
+        parsed = _fallback_parse(user_input, "")
+        parsed["start_time"] = None
+        return parsed
+
+    # "YYYY" 같은 포맷 문자열이 들어왔거나 무효하면 직접 파싱
+    if "YYYY" in str(start_time) or not _is_valid_datetime(str(start_time)):
+        logger.warning("[ScheduleAgent] LLM 파싱 무효 (start_time='%s') → fallback", start_time)
         parsed = _fallback_parse(user_input, parsed.get("title", ""))
 
     return parsed
@@ -499,7 +512,7 @@ def _fallback_parse(user_input: str, title_hint: str = "") -> dict:
         date = now + timedelta(days=1)  # 기본: 내일
 
     # 시간 추출
-    hour = 9  # 기본
+    hour = None
     minute = 0
     time_match = re.search(r'(\d{1,2})\s*시\s*(\d{1,2}\s*분)?', text)
     if time_match:
@@ -508,14 +521,26 @@ def _fallback_parse(user_input: str, title_hint: str = "") -> dict:
             minute = int(time_match.group(2).replace('분', '').strip())
 
     # 오후 보정
-    if "오후" in text or "저녁" in text:
-        if hour < 12:
-            hour += 12
-    elif "오전" in text or "아침" in text:
-        pass  # 그대로
+    if hour is not None:
+        if "오후" in text or "저녁" in text:
+            if hour < 12:
+                hour += 12
+        elif "점심" in text:
+            if hour < 12:
+                hour = 12
     elif "점심" in text:
-        if hour < 12:
-            hour = 12  # 점심 기본 12시
+        hour = 12
+    # "오후", "저녁" 등만 있고 구체적 시간 없으면 hour는 None 유지
+
+    if hour is None:
+        # 시간 불명확 → start_time을 None으로
+        return {
+            "title": title,
+            "start_time": None,
+            "end_time": None,
+            "description": "",
+            "include_meet": any(kw in text for kw in ("회의", "미팅", "meeting", "미트")),
+        }
 
     start = date.replace(hour=hour, minute=minute, second=0, microsecond=0)
     end = start + timedelta(hours=1)
@@ -530,6 +555,37 @@ def _fallback_parse(user_input: str, title_hint: str = "") -> dict:
         "description": "",
         "include_meet": include_meet,
     }
+
+
+def _check_missing_info(parsed: dict) -> list:
+    """파싱 결과에서 누락된 필수 정보 확인"""
+    missing = []
+    start_time = parsed.get("start_time")
+
+    # start_time이 null이거나 없으면 시간 누락
+    if not start_time:
+        missing.append("time")
+        return missing
+
+    # start_time이 있어도 T09:00:00(기본값)이면 사용자가 시간을 안 말한 건지 확인
+    # → LLM이 null 대신 09:00을 넣었을 수 있음
+    if "T09:00:00" in str(start_time):
+        missing.append("time")
+
+    return missing
+
+
+def _build_clarify_message(parsed: dict, missing: list) -> str:
+    """누락 정보에 따른 되묻기 메시지 생성"""
+    title = parsed.get("title", "일정")
+    parts = []
+
+    if "time" in missing:
+        parts.append("몇 시에 잡을까요? (예: 오후 3시, 14:00)")
+
+    msg = f"'{title}' 일정을 등록하려고 합니다.\n"
+    msg += "\n".join(f"- {p}" for p in parts)
+    return msg
 
 
 async def _parse_view_request(user_input: str) -> dict:
@@ -571,12 +627,12 @@ async def _parse_view_request(user_input: str) -> dict:
 async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False) -> str:
     """LLM 호출 (LLM Factory 사용 — 환경변수 LLM_PROVIDER로 Provider 선택)"""
     _t_llm = time.time()
-    print(f"[ScheduleAgent] _call_llm 호출 | json_mode={json_mode}")
+    logger.debug("[ScheduleAgent] _call_llm | json_mode=%s", json_mode)
     try:
         from ai.llm import get_llm
 
         llm = get_llm()
-        print(f"[ScheduleAgent] _call_llm | Provider: {llm.__class__.__name__}")
+        logger.debug("[ScheduleAgent] Provider: %s", llm.__class__.__name__)
 
         response = await llm.generate(
             prompt=user_prompt,
@@ -586,11 +642,11 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False) 
         )
 
         result = response.content
-        print(f"[ScheduleAgent] _call_llm | LLM 응답 ({time.time()-_t_llm:.2f}s): {result}")
+        logger.debug("[ScheduleAgent] LLM 응답 (%.2fs)", time.time() - _t_llm)
         return result
 
     except Exception as e:
-        print(f"[ScheduleAgent] _call_llm | !!! 에러: {e}")
+        logger.error("[ScheduleAgent] _call_llm 에러: %s", e)
         import traceback
         traceback.print_exc()
         return _get_mock_response(user_prompt, json_mode)

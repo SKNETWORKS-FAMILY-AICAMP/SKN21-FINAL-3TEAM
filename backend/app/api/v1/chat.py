@@ -67,14 +67,11 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
     async def event_generator():
         try:
             _t_total = time.time()
-            print(f"\n{'='*60}")
-            print(f"[Chat] 요청 수신 | user_id={user.id} | message='{request.message}'")
-            print(f"{'='*60}")
+            logger.info("[Chat] 요청 수신 | user_id=%s", user.id)
 
             # lazy import (AI 의존성 없을 때 서버 기동 안 깨지게)
             from ai.agents.orchestrator import get_graph
 
-            print("[Chat] 그래프 로딩 중...")
             graph = get_graph()
             initial_state = _build_initial_state(request, user, stream_mode=True)
 
@@ -101,13 +98,9 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             "agentResponse": ar,
                         })
                     initial_state["chat_history"] = chat_history
-                    # 디버그: agentResponse type 목록 출력
-                    ar_types = [m.get("agentResponse", {}).get("type", "?") for m in chat_history if m.get("role") == "assistant"]
-                    print(f"[Chat] chat_history 로드: {len(chat_history)}개 메시지 (session={request.session_id}), agent types={ar_types}")
+                    logger.debug("[Chat] chat_history 로드: %d개 메시지", len(chat_history))
                 except Exception as hist_err:
-                    import traceback
-                    print(f"[Chat] chat_history 로드 실패: {hist_err}")
-                    traceback.print_exc()
+                    logger.warning("[Chat] chat_history 로드 실패: %s", hist_err)
 
             # document_id가 있으면 DB에서 문서 내용 로딩
             if request.document_id:
@@ -116,41 +109,28 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                     result = await db.execute(select(Document).where(Document.id == request.document_id))
                     doc = result.scalar_one_or_none()
                     if doc:
-                        content_len = len(doc.content) if doc.content else 0
-                        print(f"[Chat] document_id={request.document_id} → content 로딩 ({content_len}자)")
                         if not doc.content or not doc.content.strip():
-                            print(f"[Chat] ⚠️  WARNING: document_id={request.document_id} content가 비어있음! 파싱 실패 가능성 있음.")
-                        else:
-                            print(f"[Chat] document_content 앞 200자:\n{doc.content[:200]}")
+                            logger.warning("[Chat] document_id=%s content 비어있음", request.document_id)
                         initial_state["document_content"] = doc.content or None
                     else:
-                        # DB에 없으면 Qdrant 청크 합산 fallback (로컬 reindex로 생긴 ID가 AWS RDS에 없을 때)
-                        print(f"[Chat] document_id={request.document_id} DB에 없음 → Qdrant fallback 시도")
                         try:
                             from ai.rag.qdrant_pipeline import get_qdrant_pipeline
                             pipeline = get_qdrant_pipeline()
                             content = pipeline.get_document_content(request.document_id)
                             if content:
-                                print(f"[Chat] Qdrant fallback 성공 ({len(content)}자)")
                                 initial_state["document_content"] = content
                             else:
-                                print(f"[Chat] Qdrant fallback 실패: content 없음")
+                                logger.warning("[Chat] Qdrant fallback: content 없음")
                         except Exception as qdrant_err:
-                            print(f"[Chat] Qdrant fallback 실패: {qdrant_err}")
+                            logger.warning("[Chat] Qdrant fallback 실패: %s", qdrant_err)
                 except Exception as doc_err:
-                    print(f"[Chat] document_id 로딩 실패: {doc_err}")
-
-            print("[Chat] 그래프 로딩 완료. astream 시작...")
+                    logger.warning("[Chat] document_id 로딩 실패: %s", doc_err)
 
             # astream으로 노드별 실시간 이벤트 전송
             final_state = {}
 
             async for event in graph.astream(initial_state):
-                # event = {"node_name": {updated_state_fields}}
                 for node_name, node_output in event.items():
-                    _t_node = time.time() - _t_total
-                    print(f"\n[Chat] >>> 노드 이벤트 수신: {node_name} (+{_t_node:.2f}s)")
-                    print(f"[Chat]     output keys: {list(node_output.keys())}")
                     # agent_response가 스트리밍으로 이미 채워졌으면 덮어쓰지 않음
                     if "agent_response" in node_output and "agent_response" in final_state:
                         existing = final_state["agent_response"]
@@ -165,7 +145,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         intent = node_output.get("intent", "general")
                         confidence = node_output.get("confidence", 0.0)
                         agent_type = _get_agent_type(intent)
-                        print(f"[Chat] Intent 분류 결과: intent={intent}, confidence={confidence:.4f}")
+                        logger.info("[Chat] intent=%s confidence=%.4f", intent, confidence)
 
                         yield f"data: {json.dumps({'type': 'intent', 'intent': intent, 'confidence': confidence, 'agent_type': agent_type}, ensure_ascii=False)}\n\n"
                         yield f"data: {json.dumps({'type': 'status', 'value': f'{agent_type} 처리 중...'}, ensure_ascii=False)}\n\n"
@@ -174,17 +154,14 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         # top-3 후보 제시
                         agent_response = node_output.get("agent_response", {})
                         candidates = agent_response.get("candidates", [])
-                        print(f"[Chat] clarify_with_candidates: {candidates}")
                         yield f"data: {json.dumps({'type': 'clarify_candidates', 'data': {'candidates': candidates, 'message': agent_response.get('message', '')}}, ensure_ascii=False)}\n\n"
 
                     elif node_name == "general_response":
                         # 2-1. 일반 응답 스트리밍 (Solar API)
-                        print("[Chat] general_response 노드 진입 → Solar API 스트리밍 시작")
                         import os as _os
                         from openai import AsyncOpenAI
 
                         solar_key = _os.getenv("SOLAR_API_KEY")
-                        print(f"[Chat] SOLAR_API_KEY 존재: {bool(solar_key)}")
 
                         if not solar_key:
                             yield f"data: {json.dumps({'type': 'error', 'message': 'SOLAR_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
@@ -217,8 +194,6 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                 full_response += token
                                 yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
 
-                        # 최종 응답 저장
-                        print(f"[Chat] general_response 스트리밍 완료. 응답 길이: {len(full_response)}자")
                         final_state["agent_response"] = {
                             "type": "general",
                             "message": full_response,
@@ -227,8 +202,6 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                     elif node_name == "judgment_agent":
                         # 2-4. 판단 Agent 스트리밍 (document_agent와 동일한 패턴)
                         agent_response = node_output.get("agent_response", {})
-                        print(f"[Chat] judgment_agent 노드 진입. stream_pending={agent_response.get('stream_pending')}")
-
                         if agent_response.get("stream_pending"):
                             import os as _os_j
                             from openai import AsyncOpenAI as _AsyncOpenAI_j
@@ -246,7 +219,6 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                 base_url=openai_base,
                             )
 
-                            print(f"[Chat] judgment OpenAI 스트리밍 시작 (model={openai_model})")
                             j_stream = await j_client.chat.completions.create(
                                 model=openai_model,
                                 messages=[
@@ -277,7 +249,6 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                     if "```json" in full_response:
                                         in_json_block = True
                                         pending_tokens.clear()
-                                        print(f"[Chat] judgment ```json 마커 감지 (토큰 {token_count}개 전송됨)")
                                     elif full_response.rstrip().endswith(_JSON_PREFIXES):
                                         # 백틱이 쌓이는 중 — ```json 될 수 있으므로 버퍼에 보관
                                         pending_tokens.append(token)
@@ -289,8 +260,6 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                         pending_tokens.clear()
                                         token_count += 1
                                         yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
-
-                            print(f"[Chat] judgment 스트리밍 완료. 전송 토큰: {token_count}개, 전체: {len(full_response)}자")
 
                             # JSON 파싱 + 3중 검증
                             from ai.agents.judgment_agent import (
@@ -355,8 +324,6 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                     elif node_name == "document_agent":
                         # 2-2. 문서 Agent 스트리밍
                         agent_response = node_output.get("agent_response", {})
-                        print(f"[Chat] document_agent 노드 진입. stream_pending={agent_response.get('stream_pending')}")
-
                         if agent_response.get("stream_pending"):
                             # RAG 검색은 완료, LLM 답변만 스트리밍
                             import os as _os2
@@ -398,15 +365,13 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             agent_response.pop("user_prompt", None)
                             final_state["agent_response"] = agent_response
                         elif agent_response.get("type") == "doc_pick":
-                            # doc_pick: document_agent에서 Qdrant 목록 이미 채워서 옴 — 그대로 사용
-                            print(f"[Chat] doc_pick: 문서 {len(agent_response.get('documents', []))}개")
+                            pass
                         else:
                             yield f"data: {json.dumps({'type': 'status', 'value': 'document_agent 처리 완료'}, ensure_ascii=False)}\n\n"
 
                     elif node_name == "schedule_agent":
                         # 2-3. 일정 Agent (스트리밍 불필요 — JSON 파싱 + API 호출 결과)
                         agent_response = node_output.get("agent_response", {})
-                        print(f"[Chat] schedule_agent 노드 완료. response: {agent_response}")
                         yield f"data: {json.dumps({'type': 'status', 'value': 'schedule_agent 처리 완료'}, ensure_ascii=False)}\n\n"
 
                     elif node_name == "format_response":
@@ -421,8 +386,6 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             message = agent_response.get("preview", "") or agent_response.get("summary", "")
                             if message:
                                 agent_response["message"] = message
-
-                        print(f"[Chat] format_response 노드. type={resp_type}, intent={intent}, message 길이={len(message)}자")
 
                         if resp_type == "clarify_candidates":
                             # clarify로 전송해야 프론트에서 버튼 카드로 렌더링됨
@@ -456,19 +419,15 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                 )
                 db.add(log)
                 await db.commit()
-                print(f"[Chat] chat_log 저장 완료 (id={log.id})")
+                logger.debug("[Chat] chat_log 저장 완료 (id=%s)", log.id)
             except Exception as log_err:
-                print(f"[Chat] chat_log 저장 실패: {log_err}")
+                logger.warning("[Chat] chat_log 저장 실패: %s", log_err)
 
-            # 5. 완료
-            print(f"[Chat] 스트림 완료 ✓ (총 {_t_done:.2f}s)")
-            print(f"{'='*60}\n")
+            logger.info("[Chat] 스트림 완료 (%.2fs)", _t_done)
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
         except Exception as e:
-            print(f"[Chat] !!! 스트림 에러: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error("[Chat] 스트림 에러: %s", e, exc_info=True)
 
             # 에러 시에도 ChatLog 저장 (답변 유실 방지)
             try:
@@ -486,9 +445,9 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                 )
                 db.add(log)
                 await db.commit()
-                print(f"[Chat] 에러 시 chat_log 저장 완료 (id={log.id})")
+                logger.debug("[Chat] 에러 시 chat_log 저장 완료 (id=%s)", log.id)
             except Exception as save_err:
-                print(f"[Chat] 에러 시 chat_log 저장도 실패: {save_err}")
+                logger.warning("[Chat] 에러 시 chat_log 저장 실패: %s", save_err)
 
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
 
