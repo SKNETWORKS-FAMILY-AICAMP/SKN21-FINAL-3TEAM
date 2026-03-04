@@ -6,6 +6,7 @@ import useAuthStore from '../store/authStore';
 import { sendMeetingInvite } from '../api/google';
 import { listSchedules, createSchedule, deleteSchedule } from '../api/schedules';
 import GoogleServicesConnect from '../components/schedules/GoogleServicesConnect';
+import SlackConnect from '../components/schedules/SlackConnect';
 import CalendarView from '../components/schedules/CalendarView';
 import ScheduleForm from '../components/schedules/ScheduleForm';
 import ScheduleTypeManager from '../components/schedules/ScheduleTypeManager';
@@ -303,6 +304,9 @@ export default function SchedulesPage() {
 
       {/* Google 서비스 연결 */}
       <GoogleServicesConnect />
+
+      {/* Slack 연결 */}
+      <SlackConnect />
 
       {/* 유형 관리 모달 */}
       {showTypeManager && (
