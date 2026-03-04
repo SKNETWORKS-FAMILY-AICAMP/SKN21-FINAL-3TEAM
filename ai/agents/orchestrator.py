@@ -48,7 +48,7 @@ async def general_response_node(state: AgentState) -> AgentState:
     stream_mode=True이면 LLM 호출을 건너뛰고 chat.py에서 직접 스트리밍 처리.
     """
     _t = time.time()
-    print(f"[Orchestrator] general_response_node 진입 | stream_mode={state.get('stream_mode')}")
+    logger.info("[Orchestrator] general_response_node 진입 | stream_mode=%s", state.get('stream_mode'))
     # 스트리밍 모드면 chat.py에서 직접 LLM 스트리밍 처리
     if state.get("stream_mode"):
         state["agent_response"] = {
@@ -108,7 +108,7 @@ async def general_response_node(state: AgentState) -> AgentState:
 async def safe_judgment_agent(state: AgentState) -> AgentState:
     """판단 Agent 안전 래퍼 (팀원 B)"""
     _t = time.time()
-    print(f"[Orchestrator] safe_judgment_agent 진입 | stream_mode={state.get('stream_mode')}")
+    logger.info("[Orchestrator] safe_judgment_agent 진입 | stream_mode=%s", state.get('stream_mode'))
     try:
         # 스트리밍 모드: RAG 검색 + 프롬프트 빌드 → chat.py에서 직접 스트리밍
         if state.get("stream_mode"):
@@ -126,10 +126,10 @@ async def safe_judgment_agent(state: AgentState) -> AgentState:
 
             # RAG 검색
             _t_rag = time.time()
-            print("[Orchestrator] judgment 스트리밍: RAG 검색 시작 (top_k=10)...")
+            logger.debug("[Orchestrator] judgment 스트리밍: RAG 검색 시작 (top_k=10)...")
             pipeline = get_qdrant_pipeline()
             context = pipeline.retrieve(query=user_input, user_id=user_id, top_k=10, filter={"source": "regulations"})
-            print(f"[Orchestrator] judgment RAG 완료 ({time.time()-_t_rag:.2f}s) | {len(context)}개 문서")
+            logger.debug("[Orchestrator] judgment RAG 완료 (%.2fs) | %d개 문서", time.time()-_t_rag, len(context))
 
             # 프롬프트 빌드
             judgment_history = _extract_judgment_history(chat_history)
@@ -147,13 +147,13 @@ async def safe_judgment_agent(state: AgentState) -> AgentState:
                 "user_prompt": user_prompt,
                 "_rag_context": context,
             }
-            print(f"[Orchestrator] judgment stream_pending 반환 ({time.time()-_t:.2f}s)")
+            logger.debug("[Orchestrator] judgment stream_pending 반환 (%.2fs)", time.time()-_t)
             return state
 
         from ai.agents.judgment_agent import judgment_agent
 
         result = await judgment_agent(state)
-        print(f"[Orchestrator] safe_judgment_agent 완료 ({time.time()-_t:.2f}s)")
+        logger.info("[Orchestrator] safe_judgment_agent 완료 (%.2fs)", time.time()-_t)
         return result
     except NotImplementedError:
         state["agent_response"] = {
@@ -174,12 +174,12 @@ async def safe_judgment_agent(state: AgentState) -> AgentState:
 async def safe_document_agent(state: AgentState) -> AgentState:
     """문서 Agent 안전 래퍼 (팀원 C)"""
     _t = time.time()
-    print("[Orchestrator] safe_document_agent 진입")
+    logger.info("[Orchestrator] safe_document_agent 진입")
     try:
         from ai.agents.document_agent import document_agent
 
         result = await document_agent(state)
-        print(f"[Orchestrator] safe_document_agent 완료 ({time.time()-_t:.2f}s)")
+        logger.info("[Orchestrator] safe_document_agent 완료 (%.2fs)", time.time()-_t)
         return result
     except NotImplementedError:
         state["agent_response"] = {
@@ -200,12 +200,12 @@ async def safe_document_agent(state: AgentState) -> AgentState:
 async def safe_schedule_agent(state: AgentState) -> AgentState:
     """일정 Agent 안전 래퍼 (팀원 D)"""
     _t = time.time()
-    print("[Orchestrator] safe_schedule_agent 진입")
+    logger.info("[Orchestrator] safe_schedule_agent 진입")
     try:
         from ai.agents.schedule_agent import schedule_agent
 
         result = await schedule_agent(state)
-        print(f"[Orchestrator] safe_schedule_agent 완료 ({time.time()-_t:.2f}s) | response type={result.get('agent_response', {}).get('type')}")
+        logger.info("[Orchestrator] safe_schedule_agent 완료 (%.2fs) | response type=%s", time.time()-_t, result.get('agent_response', {}).get('type'))
         return result
     except NotImplementedError:
         state["agent_response"] = {
@@ -230,7 +230,7 @@ def classify_intent(state: AgentState) -> AgentState:
     """Intent 분류 — BERT (→ Solar fallback → 임베딩 fallback)"""
     _t = time.time()
     user_input = state["user_input"]
-    print(f"[Orchestrator] classify_intent 시작 | input='{user_input}'")
+    logger.info("[Orchestrator] classify_intent 시작 | input='%s'", user_input)
 
     classifier = get_classifier()
     result = classifier.predict(user_input, return_candidates=True)
@@ -241,15 +241,15 @@ def classify_intent(state: AgentState) -> AgentState:
         {"intent": result["intent"], "confidence": result["confidence"]}
     ])
 
-    print(
-        f"[Orchestrator] classify_intent 완료 ({time.time()-_t:.2f}s) | "
-        f"intent={state['intent']}, confidence={state['confidence']:.4f}"
+    logger.info(
+        "[Orchestrator] classify_intent 완료 (%.2fs) | intent=%s, confidence=%.4f",
+        time.time()-_t, state['intent'], state['confidence']
     )
     return state
 
 
 def _is_schedule_followup(user_input: str, chat_history: list[dict]) -> bool:
-    """이전 대화가 schedule_add이고, 현재 입력이 Meet/이메일/수락 응답이면 followup"""
+    """이전 대화가 schedule 관련이고, 현재 입력이 후속 응답이면 followup"""
     import re
     text = user_input.lower()
     has_email = bool(re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', user_input))
@@ -258,19 +258,36 @@ def _is_schedule_followup(user_input: str, chat_history: list[dict]) -> bool:
         "네", "응", "좋아", "생성", "만들어", "yes", "ok",
         "초대", "메일", "보내", "참석",
     ))
+    # 시간 관련 입력 (schedule_clarify 후속 응답)
+    has_time_input = bool(re.search(r'\d{1,2}\s*시|\d{1,2}:\d{2}|오전|오후|저녁|아침|점심', text))
 
-    if not has_email and not has_meet_keyword:
-        return False
-
-    # 이전 assistant 응답에서 schedule_add 또는 schedule_followup 확인
+    # 이전 assistant 응답에서 schedule 관련 타입 확인
+    last_schedule_type = None
     for msg in reversed(chat_history):
         agent_response = msg.get("agentResponse") or msg.get("agent_response")
         if agent_response and isinstance(agent_response, dict):
-            if agent_response.get("type") in ("schedule_add", "schedule_followup"):
-                return True
+            if agent_response.get("type") in ("schedule_add", "schedule_followup", "schedule_clarify"):
+                last_schedule_type = agent_response.get("type")
+                break
         content = msg.get("content", "")
         if "일정이 Google Calendar에 등록" in content or "Meet 링크" in content or "초대 메일" in content:
-            return True
+            last_schedule_type = "schedule_add"
+            break
+        if "몇 시에 잡을까요" in content:
+            last_schedule_type = "schedule_clarify"
+            break
+
+    if not last_schedule_type:
+        return False
+
+    # schedule_clarify 후속 → 시간 입력이면 followup
+    if last_schedule_type == "schedule_clarify" and has_time_input:
+        return True
+
+    # schedule_add/followup 후속 → 이메일/meet 키워드면 followup
+    if has_email or has_meet_keyword:
+        return True
+
     return False
 
 
@@ -282,21 +299,21 @@ def route_by_intent(state: AgentState) -> str:
     # schedule followup 감지 (confidence 체크보다 우선 — 이전 대화 맥락 기반)
     user_input = state.get("user_input", "")
     chat_history = state.get("chat_history", [])
-    print(f"[Orchestrator] followup 체크: chat_history={len(chat_history)}개, input='{user_input[:50]}'")
+    logger.debug("[Orchestrator] followup 체크: chat_history=%d개, input='%s'", len(chat_history), user_input[:50])
     is_followup = _is_schedule_followup(user_input, chat_history)
-    print(f"[Orchestrator] _is_schedule_followup 결과: {is_followup}")
+    logger.debug("[Orchestrator] _is_schedule_followup 결과: %s", is_followup)
     if is_followup:
         state["intent"] = "schedule_followup"
-        print(f"[Orchestrator] 라우팅: schedule_followup 감지 → schedule_agent")
+        logger.info("[Orchestrator] 라우팅: schedule_followup 감지 → schedule_agent")
         return "schedule_agent"
 
     # 낮은 confidence → top-3 후보 제시
     if confidence < INTENT_CONFIDENCE_THRESHOLD:
         candidates = state.get("intent_candidates", [])
         if len(candidates) >= 2:
-            print(f"[Orchestrator] 라우팅: low_confidence → clarify_with_candidates")
+            logger.info("[Orchestrator] 라우팅: low_confidence → clarify_with_candidates")
             return "clarify_with_candidates"
-        print(f"[Orchestrator] 라우팅: low_confidence → general_response")
+        logger.info("[Orchestrator] 라우팅: low_confidence → general_response")
         return "general_response"
 
     # intent별 Agent 라우팅
@@ -311,14 +328,14 @@ def route_by_intent(state: AgentState) -> str:
     else:
         route = "general_response"
 
-    print(f"[Orchestrator] 라우팅: {intent} (confidence={confidence:.4f}) → {route}")
+    logger.info("[Orchestrator] 라우팅: %s (confidence=%.4f) → %s", intent, confidence, route)
     return route
 
 
 def clarify_with_candidates(state: AgentState) -> AgentState:
     """top-3 후보 제시 노드 (confidence < 0.7)"""
     candidates = state.get("intent_candidates", [])
-    print(f"[Orchestrator] clarify_with_candidates 진입 | candidates={candidates}")
+    logger.debug("[Orchestrator] clarify_with_candidates 진입 | candidates=%s", candidates)
 
     # 후보 목록 구성
     intent_labels_kr = {
@@ -356,7 +373,7 @@ def clarify_with_candidates(state: AgentState) -> AgentState:
 
 def format_response(state: AgentState) -> AgentState:
     """응답 포맷팅 노드 — agent_response에 type/message 필드 보장"""
-    print(f"[Orchestrator] format_response 진입 | agent_response type={state.get('agent_response', {}).get('type', 'none')}")
+    logger.debug("[Orchestrator] format_response 진입 | agent_response type=%s", state.get('agent_response', {}).get('type', 'none'))
     resp = state.get("agent_response", {})
     if not resp:
         state["agent_response"] = {
@@ -422,6 +439,6 @@ def get_graph():
             _compiled_graph = build_graph()
             logger.info("Orchestrator graph compiled successfully")
         except Exception as e:
-            logger.error(f"Graph build error: {e}", exc_info=True)
+            logger.error("Graph build error: %s", e, exc_info=True)
             raise
     return _compiled_graph

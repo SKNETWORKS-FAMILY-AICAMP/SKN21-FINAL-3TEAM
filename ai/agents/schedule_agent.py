@@ -137,7 +137,11 @@ async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
             "message": _build_clarify_message(parsed, missing),
         }
 
-    # 2. 먼저 Meet 없이 캘린더에만 등록
+    return await _register_schedule(parsed, user_id)
+
+
+async def _register_schedule(parsed: dict, user_id: int) -> dict:
+    """파싱된 일정 데이터를 Google Calendar에 등록"""
     try:
         import sys
         from pathlib import Path
@@ -172,7 +176,6 @@ async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
         schedule_obj = result.get("schedule")
         event_id = schedule_obj.google_event_id if schedule_obj else None
 
-        # 3. 후속 질문 메시지
         message = f"'{parsed['title']}' 일정이 Google Calendar에 등록되었습니다.\n\n"
         message += "추가로 필요한 사항이 있으면 알려주세요:\n"
         message += "- Google Meet 링크를 생성할까요?\n"
@@ -192,7 +195,7 @@ async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
         }
 
     except Exception as e:
-        logger.warning(f"Google Calendar 연동 실패: {e}")
+        logger.warning("Google Calendar 연동 실패: %s", e)
         return {
             "type": "schedule_add",
             "schedule": parsed,
@@ -208,8 +211,14 @@ async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
 
 
 async def _handle_schedule_followup(user_input: str, user_id: int, state: dict) -> dict:
-    """후속 처리: Meet 링크 생성 / 참석자 초대 메일 발송"""
+    """후속 처리: 시간 보충(schedule_clarify) / Meet 링크 생성 / 참석자 초대 메일 발송"""
     chat_history = state.get("chat_history", [])
+
+    # schedule_clarify 후속인지 확인 → 시간 보충 후 등록
+    clarify_info = _extract_clarify_from_history(chat_history)
+    if clarify_info:
+        return await _handle_clarify_response(user_input, user_id, clarify_info)
+
     schedule_info = _extract_last_schedule_from_history(chat_history)
 
     if not schedule_info:
@@ -309,6 +318,89 @@ async def _handle_schedule_followup(user_input: str, user_id: int, state: dict) 
         "email_count": len(emails) if emails else 0,
         "message": message,
     }
+
+
+def _extract_clarify_from_history(chat_history: list[dict]) -> dict | None:
+    """대화 이력에서 가장 최근 schedule_clarify 결과 추출"""
+    for msg in reversed(chat_history):
+        ar = msg.get("agentResponse") or msg.get("agent_response")
+        if ar and isinstance(ar, dict) and ar.get("type") == "schedule_clarify":
+            return ar.get("schedule", {})
+        content = msg.get("content", "")
+        if "몇 시에 잡을까요" in content:
+            # schedule 정보가 없어도 clarify였다는 신호
+            if ar and isinstance(ar, dict):
+                return ar.get("schedule", {})
+    return None
+
+
+async def _handle_clarify_response(user_input: str, user_id: int, clarify_schedule: dict) -> dict:
+    """schedule_clarify 후속: 사용자가 시간을 보충 → 일정 등록"""
+    # 사용자 입력에서 시간 파싱
+    time_info = _parse_time_from_input(user_input)
+    if not time_info:
+        return {
+            "type": "schedule_clarify",
+            "schedule": clarify_schedule,
+            "missing": ["time"],
+            "message": "시간을 인식하지 못했습니다. 다시 입력해주세요. (예: 오후 3시, 14:00, 19시)",
+        }
+
+    hour, minute = time_info
+
+    # 기존 clarify 정보에서 날짜 가져오기
+    now = datetime.now()
+    # clarify_schedule에 start_time이 없으면 오늘 날짜 사용
+    base_date = now
+    start_time_str = clarify_schedule.get("start_time")
+    if start_time_str:
+        try:
+            base_date = datetime.fromisoformat(start_time_str)
+        except (ValueError, TypeError):
+            pass
+
+    start_dt = base_date.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    end_dt = start_dt + timedelta(hours=1)
+
+    # 완성된 parsed로 _handle_schedule_add 로직 재실행
+    completed = {
+        "title": clarify_schedule.get("title", "새 일정"),
+        "start_time": start_dt.strftime("%Y-%m-%dT%H:%M:%S"),
+        "end_time": end_dt.strftime("%Y-%m-%dT%H:%M:%S"),
+        "description": clarify_schedule.get("description", ""),
+        "include_meet": clarify_schedule.get("include_meet", False),
+    }
+
+    return await _register_schedule(completed, user_id)
+
+
+def _parse_time_from_input(text: str) -> tuple | None:
+    """사용자 입력에서 시간(hour, minute) 추출"""
+    text = text.strip()
+
+    # "14:00", "19:30" 형태
+    m = re.search(r'(\d{1,2}):(\d{2})', text)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+
+    # "오후 3시 30분", "19시", "3시" 형태
+    m = re.search(r'(\d{1,2})\s*시\s*(\d{1,2}\s*분)?', text)
+    if m:
+        hour = int(m.group(1))
+        minute = int(m.group(2).replace('분', '').strip()) if m.group(2) else 0
+        if "오후" in text or "저녁" in text:
+            if hour < 12:
+                hour += 12
+        return hour, minute
+
+    # 숫자만 입력 ("19", "3")
+    m = re.match(r'^(\d{1,2})$', text)
+    if m:
+        hour = int(m.group(1))
+        if 0 <= hour <= 23:
+            return hour, 0
+
+    return None
 
 
 def _has_schedule_in_history(chat_history: list[dict]) -> bool:
