@@ -111,10 +111,7 @@ export default function Sidebar() {
             href="/dashboard"
             className={`flex items-center gap-3 overflow-hidden ${collapsed ? 'justify-center' : ''}`}
           >
-            <div className="w-9 h-9 bg-accent-300 rounded-sm flex items-center justify-center text-lg font-bold text-primary-900 flex-shrink-0">W</div>
-            {!collapsed && (
-              <span className="font-display text-lg font-bold text-sidebar-text tracking-tight whitespace-nowrap">WorkFlow</span>
-            )}
+            <img src="/logo.png" alt="Logo" className={`${collapsed ? 'w-10' : 'w-14'} object-contain mix-blend-multiply transition-all`} />
           </a>
 
           <button

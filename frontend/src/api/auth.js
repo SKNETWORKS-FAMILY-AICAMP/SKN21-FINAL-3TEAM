@@ -20,3 +20,5 @@ export const confirmPasswordReset = (token, newPassword) =>
 
 export const changePassword = (currentPassword, newPassword) =>
   client.post('/auth/change-password', { current_password: currentPassword, new_password: newPassword })
+
+export const getTeamMembers = () => client.get('/auth/team-members')
