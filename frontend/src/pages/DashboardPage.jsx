@@ -6,6 +6,14 @@ import AIChatWidget from '../components/dashboard/AIChatWidget';
 import ActivityTimeline from '../components/dashboard/ActivityTimeline';
 import CalendarWidget from '../components/dashboard/CalendarWidget';
 import RecentDocs from '../components/dashboard/RecentDocs';
+import TeamMembersWidget from '../components/dashboard/TeamMembersWidget';
+import TaskPipelineWidget from '../components/dashboard/TaskPipelineWidget';
+import ApprovalQueueWidget from '../components/dashboard/ApprovalQueueWidget';
+import QuickStatsWidget from '../components/dashboard/QuickStatsWidget';
+import ScheduleTimelineWidget from '../components/dashboard/ScheduleTimelineWidget';
+import EmployeeTableWidget from '../components/dashboard/EmployeeTableWidget';
+import WorkHoursWidget from '../components/dashboard/WorkHoursWidget';
+import WhatsOnWidget from '../components/dashboard/WhatsOnWidget';
 import useUIStore from '../store/uiStore';
 import useGoogleStore from '../store/googleStore';
 import { FileText, HelpCircle, CalendarClock } from 'lucide-react';
@@ -114,6 +122,8 @@ function useDashboardData() {
         location: s.google_meet_link ? '온라인 (Meet)' : s.description || '-',
         attendees: 0,
         scheduleType: s.schedule_type,
+        start_time: s.start_time,
+        end_time: s.end_time,
       };
     });
 
@@ -218,11 +228,19 @@ function useDashboardData() {
 
 // ── 위젯 레지스트리 (props는 DashboardPage에서 주입) ──
 const WIDGET_REGISTRY = {
+  QuickStatsWidget: { component: QuickStatsWidget, label: '팀 요약' },
+  WhatsOnWidget: { component: WhatsOnWidget, label: '이번 달 현황' },
+  ScheduleTimelineWidget: { component: ScheduleTimelineWidget, label: '타임라인 일정' },
   TodaySchedule: { component: TodaySchedule, label: '오늘 일정' },
   ActivityTimeline: { component: ActivityTimeline, label: '최근 활동' },
   AIChatWidget: { component: AIChatWidget, label: 'AI 어시스턴트' },
   CalendarWidget: { component: CalendarWidget, label: '캘린더' },
   RecentDocs: { component: RecentDocs, label: '최근 문서' },
+  TeamMembersWidget: { component: TeamMembersWidget, label: '팀원 상태' },
+  EmployeeTableWidget: { component: EmployeeTableWidget, label: '팀원 테이블' },
+  WorkHoursWidget: { component: WorkHoursWidget, label: '근무시간' },
+  TaskPipelineWidget: { component: TaskPipelineWidget, label: '태스크 파이프라인' },
+  ApprovalQueueWidget: { component: ApprovalQueueWidget, label: '승인 대기열' },
 };
 
 // ── 위젯 카드 ──
@@ -337,11 +355,19 @@ export default function DashboardPage() {
 
   // 위젯별 props 매핑
   const widgetProps = {
+    QuickStatsWidget: {},
+    WhatsOnWidget: {},
+    ScheduleTimelineWidget: { meetings: todayMeetings },
     TodaySchedule: { meetings: todayMeetings, actions: upcomingActions },
     ActivityTimeline: { activities: recentActivities },
     AIChatWidget: {},
     CalendarWidget: { events: calEvents },
     RecentDocs: { docs: recentDocs },
+    TeamMembersWidget: {},
+    EmployeeTableWidget: {},
+    WorkHoursWidget: {},
+    TaskPipelineWidget: {},
+    ApprovalQueueWidget: {},
   };
 
   const [dragId, setDragId] = useState(null);

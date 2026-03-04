@@ -4,7 +4,7 @@ FROM vllm/vllm-openai:latest
 
 # LoRA 어댑터 마운트 경로
 # docker run -v /path/to/adapters:/adapters ...
-ENV MODEL_NAME="Qwen/Qwen3-8B"
+ENV MODEL_NAME="kakaocorp/kanana-1.5-8b-instruct-2505"
 
 CMD ["python", "-m", "vllm.entrypoints.openai.api_server", \
      "--model", "${MODEL_NAME}", \
