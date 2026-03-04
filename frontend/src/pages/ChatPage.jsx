@@ -19,6 +19,7 @@ import useChat from '../hooks/useChat';
 import useChatStore from '../store/chatStore';
 import { listRegulations } from '../api/regulations';
 import { listDocuments, downloadDocument, uploadDocument } from '../api/documents';
+import { toast } from '../store/toastStore';
 
 function exportChat(messages) {
   if (messages.length === 0) return;
@@ -154,7 +155,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       const fields = (fieldsMap[data.template_type] || []).filter((f) => f.value);
 
       const handleDocDownload = async () => {
-        if (!data.document_id) { alert('문서 ID가 없습니다.'); return; }
+        if (!data.document_id) { toast.warning('문서 ID가 없습니다.'); return; }
         try {
           const resp = await downloadDocument(data.document_id, 'docx');
           const url = URL.createObjectURL(resp.data);
@@ -164,7 +165,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
           a.click();
           URL.revokeObjectURL(url);
         } catch (err) {
-          alert('다운로드 실패: ' + (err.response?.data?.detail || err.message));
+          toast.error('다운로드 실패: ' + (err.response?.data?.detail || err.message));
         }
       };
 

@@ -4,6 +4,7 @@ import useAuthStore from './store/authStore';
 import useUIStore from './store/uiStore';
 import Layout from './components/common/Layout';
 import FontSizeControl from './components/common/FontSizeControl';
+import Toast from './components/common/Toast';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ChatPage from './pages/ChatPage';
@@ -63,6 +64,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <Toast />
       <ConditionalFontSizeControl />
       <Routes>
         {/* 비로그인 전용 (로그인 상태면 대시보드로) */}
