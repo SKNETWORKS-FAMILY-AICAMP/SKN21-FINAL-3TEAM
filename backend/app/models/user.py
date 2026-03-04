@@ -26,3 +26,4 @@ class User(Base, TimestampMixin):
     
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    slack_enabled: Mapped[bool] = mapped_column(Boolean, default=False)

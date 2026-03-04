@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     # Redis (Task Queue)
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # Slack (팀원 D)
+    SLACK_WEBHOOK_URL: str = ""
+
     # Encryption (팀원 D)
     ENCRYPTION_KEY: str = "change-this-encryption-key"
 

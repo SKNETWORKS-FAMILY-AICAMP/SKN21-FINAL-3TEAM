@@ -87,6 +87,57 @@ async def startup_migrate_team_column():
 
 
 @app.on_event("startup")
+async def startup_migrate_slack_column():
+    """users.slack_enabled 컬럼 추가"""
+    try:
+        from app.db.session import engine
+        from sqlalchemy import text
+
+        async with engine.begin() as conn:
+            await conn.execute(text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS slack_enabled BOOLEAN DEFAULT FALSE"
+            ))
+        print("[Startup] users.slack_enabled 컬럼 확인/추가 완료")
+    except Exception as _e:
+        print(f"[Startup] slack_enabled 처리 실패 (무시하고 계속): {_e}")
+
+
+@app.on_event("startup")
+async def startup_slack_scheduler():
+    """Slack 마감 알림 스케줄러 (매일 오전 9시 KST)"""
+    import asyncio
+    from datetime import datetime, timezone, timedelta
+
+    KST = timezone(timedelta(hours=9))
+
+    async def _scheduler():
+        while True:
+            now = datetime.now(KST)
+            # 다음 오전 9시까지 대기
+            target = now.replace(hour=9, minute=0, second=0, microsecond=0)
+            if now >= target:
+                target += timedelta(days=1)
+            wait_seconds = (target - now).total_seconds()
+            print(f"[Slack Scheduler] 다음 실행까지 {wait_seconds:.0f}초 대기 ({target.strftime('%Y-%m-%d %H:%M')} KST)")
+            await asyncio.sleep(wait_seconds)
+
+            # 실행
+            try:
+                from app.db.session import async_session
+                from app.services.slack_service import check_and_notify_deadlines
+
+                async with async_session() as db:
+                    await check_and_notify_deadlines(db)
+                    await db.commit()
+                print("[Slack Scheduler] 마감 알림 체크 완료")
+            except Exception as e:
+                print(f"[Slack Scheduler] 실행 실패: {e}")
+
+    asyncio.create_task(_scheduler())
+    print("[Startup] Slack 마감 알림 스케줄러 등록 완료")
+
+
+@app.on_event("startup")
 async def startup_preload():
     """서버 시작 시 모델 pre-loading (첫 요청 지연 방지)"""
     import time
