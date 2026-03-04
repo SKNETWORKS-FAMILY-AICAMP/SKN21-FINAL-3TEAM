@@ -40,9 +40,15 @@ const useAuthStore = create((set, get) => ({
     try {
       const { data } = await client.get('/auth/me')
       set({ user: data, isAuthenticated: true, initialized: true })
-    } catch {
-      localStorage.removeItem('access_token')
-      set({ user: null, token: null, isAuthenticated: false, initialized: true })
+    } catch (err) {
+      // 401(토큰 만료/무효)일 때만 로그아웃, 그 외(네트워크 오류 등)는 토큰 유지
+      if (err.response?.status === 401) {
+        localStorage.removeItem('access_token')
+        set({ user: null, token: null, isAuthenticated: false, initialized: true })
+      } else {
+        // 서버 오류/네트워크 오류 → 토큰은 유지하고 인증 상태만 복원
+        set({ isAuthenticated: true, initialized: true })
+      }
     }
   },
 }))

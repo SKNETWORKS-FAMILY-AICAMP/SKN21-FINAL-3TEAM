@@ -387,13 +387,13 @@ export default function DashboardPage() {
       <GreetingBanner meetingCount={meetingCount} actionCount={actionCount} riskCount={0} />
 
       {loading && (
-        <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1fr_330px] gap-5 min-w-0">
+        <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-5 min-w-0">
           <div className="space-y-5"><SkeletonCard lines={4} /><SkeletonCard lines={3} /><SkeletonCard lines={2} /></div>
           <div className="space-y-5"><SkeletonCard lines={2} /><SkeletonCard lines={3} /></div>
         </div>
       )}
 
-      <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1fr_330px] gap-5 min-w-0">
+      <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-5 min-w-0">
         <WidgetColumn col="leftColumn" items={leftColumn} editMode={editMode} onHide={hideWidget} {...dragProps} widgetProps={widgetProps} />
         <WidgetColumn col="rightColumn" items={rightColumn} editMode={editMode} onHide={hideWidget} {...dragProps} widgetProps={widgetProps} />
       </div>

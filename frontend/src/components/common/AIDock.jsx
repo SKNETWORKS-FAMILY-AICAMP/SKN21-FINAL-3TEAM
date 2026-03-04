@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from 'framer-motion';
-import { MessageSquare, FilePlus, FileText, Calendar, User } from 'lucide-react';
+import { MessageSquare, FilePlus, FileText, Calendar, User, Settings } from 'lucide-react';
+import useAuthStore from '../../store/authStore';
 
 const features = [
     { id: 'chat', icon: MessageSquare, label: 'AI 챗봇', color: 'bg-[#89A681]', to: '/chat' },
@@ -55,8 +56,14 @@ function DockIcon({ feature, mouseX }) {
 }
 
 export default function AIDock() {
+    const user = useAuthStore(s => s.user);
     const mouseX = useMotionValue(Infinity);
     const [isVisible, setIsVisible] = useState(false);
+
+    const activeFeatures = [...features];
+    if (user?.is_admin) {
+        activeFeatures.push({ id: 'admin', icon: Settings, label: '관리자', color: 'bg-[#C3B1CE]', to: '/admin' });
+    }
 
     useEffect(() => {
         const handleMouseMove = (e) => {
@@ -98,7 +105,7 @@ export default function AIDock() {
                         onMouseLeave={() => mouseX.set(Infinity)}
                         className="mx-auto flex h-16 items-end gap-4 rounded-[2.5rem] bg-white/10 backdrop-blur-md border border-white/15 px-4 pb-3 shadow-lg"
                     >
-                        {features.map((feature) => (
+                        {activeFeatures.map((feature) => (
                             <DockIcon key={feature.id} feature={feature} mouseX={mouseX} />
                         ))}
                     </motion.div>

@@ -13,6 +13,7 @@ class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user_name: str
+    avatar: str | None = None
 
 
 class RegisterRequest(BaseModel):

@@ -20,6 +20,11 @@ export default function MyPage() {
     const [recentDocs, setRecentDocs] = useState([]);
     const [recentSchedules, setRecentSchedules] = useState([]);
     const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'activity' | 'settings'
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editForm, setEditForm] = useState({ name: '', team: '', avatar: '', phone: '', address: '' });
+    const [saving, setSaving] = useState(false);
+    const setAuth = useAuthStore((s) => s.setAuth);
+    const token = useAuthStore((s) => s.token);
 
     useEffect(() => {
         const loadStats = async () => {
@@ -55,12 +60,42 @@ export default function MyPage() {
         updateSettings({ notifications: !settings.notifications });
     };
 
+    useEffect(() => {
+        if (user) {
+            setEditForm({
+                name: user.name || '',
+                team: user.team || '',
+                avatar: user.avatar || '',
+                phone: user.phone || '',
+                address: user.address || ''
+            });
+        }
+    }, [user]);
+
+    const handleUpdateProfile = async () => {
+        setSaving(true);
+        try {
+            const { data } = await client.put('/auth/me', editForm);
+            setAuth(data, token);
+            setShowEditModal(false);
+        } catch (e) {
+            console.error('Failed to update profile:', e);
+            alert('프로필 업데이트에 실패했습니다.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     return (
         <div className="max-w-6xl mx-auto py-8 px-4 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* 1. 프로필 헤더 */}
             <section className="bg-white rounded-2xl border border-neutral-divider shadow-sm p-8 flex flex-col md:flex-row items-center gap-8">
-                <div className="w-24 h-24 rounded-2xl bg-accent-500 flex items-center justify-center text-3xl font-bold text-white shadow-sm shrink-0">
-                    {user?.name?.[0] || '?'}
+                <div className="w-24 h-24 rounded-2xl bg-accent-500 border border-white/20 flex items-center justify-center text-3xl font-bold text-white shadow-sm shrink-0 overflow-hidden">
+                    {user?.avatar ? (
+                        <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                    ) : (
+                        user?.name?.[0] || '?'
+                    )}
                 </div>
                 <div className="flex-1 text-center md:text-left">
                     <h1 className="text-2xl font-bold text-neutral-main">{user?.name || '사용자'}</h1>
@@ -72,7 +107,10 @@ export default function MyPage() {
                         </span>
                     </div>
                 </div>
-                <button className="px-6 py-2.5 bg-neutral-main text-white rounded-xl text-sm font-semibold hover:bg-neutral-dark transition-all shrink-0">
+                <button 
+                  onClick={() => setShowEditModal(true)}
+                  className="px-6 py-2.5 bg-neutral-main text-white rounded-xl text-sm font-semibold hover:bg-neutral-dark transition-all shrink-0"
+                >
                     프로필 수정
                 </button>
             </section>
@@ -245,6 +283,106 @@ export default function MyPage() {
 
                 </div>
             </div>
+            {/* 프로필 수정 모달 */}
+            {showEditModal && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60]" onClick={() => setShowEditModal(false)}>
+                    <div className="bg-white rounded-2xl border border-neutral-divider shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 border-b border-neutral-divider flex items-center justify-between bg-neutral-50/50">
+                            <h3 className="text-lg font-bold text-neutral-main">프로필 수정</h3>
+                            <button onClick={() => setShowEditModal(false)} className="text-neutral-sub hover:text-neutral-main transition-colors">
+                                <Plus size={20} className="rotate-45" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="flex justify-center mb-6">
+                                <div className="relative group">
+                                    <div className="w-24 h-24 rounded-2xl bg-accent-500 border-2 border-white shadow-md flex items-center justify-center text-3xl font-bold text-white overflow-hidden">
+                                        {editForm.avatar ? (
+                                            <img src={editForm.avatar} alt="Preview" className="w-full h-full object-cover" />
+                                        ) : (
+                                            editForm.name?.[0] || '?'
+                                        )}
+                                    </div>
+                                    <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full border border-neutral-divider shadow-sm flex items-center justify-center text-primary-600">
+                                        <Zap size={14} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold text-neutral-sub uppercase tracking-wider mb-1.5 block">이름</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.name}
+                                        onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                        className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-divider rounded-xl text-sm focus:border-primary-500 focus:bg-white outline-none transition-all"
+                                        placeholder="이름을 입력하세요"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-neutral-sub uppercase tracking-wider mb-1.5 block">프로필 이미지 URL</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.avatar}
+                                        onChange={e => setEditForm({ ...editForm, avatar: e.target.value })}
+                                        className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-divider rounded-xl text-sm focus:border-primary-500 focus:bg-white outline-none transition-all"
+                                        placeholder="이미지 URL을 입력하세요"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-neutral-sub uppercase tracking-wider mb-1.5 block">소속 팀</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.team}
+                                            onChange={e => setEditForm({ ...editForm, team: e.target.value })}
+                                            className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-divider rounded-xl text-sm focus:border-primary-500 focus:bg-white outline-none transition-all"
+                                            placeholder="팀명"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-neutral-sub uppercase tracking-wider mb-1.5 block">전화번호</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.phone}
+                                            onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                                            className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-divider rounded-xl text-sm focus:border-primary-500 focus:bg-white outline-none transition-all"
+                                            placeholder="010-0000-0000"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-neutral-sub uppercase tracking-wider mb-1.5 block">주소</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.address}
+                                        onChange={e => setEditForm({ ...editForm, address: e.target.value })}
+                                        className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-divider rounded-xl text-sm focus:border-primary-500 focus:bg-white outline-none transition-all"
+                                        placeholder="주소를 입력하세요"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-6 bg-neutral-50/50 border-t border-neutral-divider flex gap-3">
+                            <button
+                                onClick={() => setShowEditModal(false)}
+                                className="flex-1 py-3 border border-neutral-divider bg-white text-neutral-sub rounded-xl text-sm font-bold hover:bg-neutral-50 transition-all"
+                            >
+                                취소
+                            </button>
+                            <button
+                                onClick={handleUpdateProfile}
+                                disabled={saving}
+                                className="flex-1 py-3 bg-primary-600 text-white rounded-xl text-sm font-bold hover:bg-primary-700 transition-all disabled:opacity-50 shadow-sm flex items-center justify-center gap-2"
+                            >
+                                {saving ? <Zap size={16} className="animate-spin" /> : <Save size={16} />}
+                                저장하기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
