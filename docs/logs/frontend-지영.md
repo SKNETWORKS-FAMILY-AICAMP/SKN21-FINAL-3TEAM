@@ -760,8 +760,28 @@
 - `Layout.jsx` — `overflow-x-hidden` 추가
 - `DashboardPage.jsx` — 그리드 및 컬럼에 `min-w-0 overflow-hidden` 추가 (`ScheduleTimelineWidget min-w-[600px]`, `TaskPipelineWidget min-w-[800px]`로 인한 overflow 방지)
 
+#### 7) alert/window.confirm → 커스텀 Toast + ConfirmModal 교체
+
+- **`store/toastStore.js`** 신규 생성 — Zustand 기반 toast 상태 관리
+  - `toast.success/error/info/warning(message)` 명령형 API
+  - `confirm(message)` — Promise 반환, 사용자 응답(확인/취소) 대기
+  - 토스트 3.5초 후 자동 제거
+- **`components/common/Toast.jsx`** 신규 생성
+  - 우측 상단 고정 토스트 (success/error/info/warning 타입별 색상)
+  - 좌측 컬러 바로 타입 시각화, X 버튼으로 수동 닫기
+  - 커스텀 확인 모달 (ESC/외부 클릭 닫기, 취소/확인 버튼)
+- **`App.jsx`** — `<Toast />` 전역 마운트
+- **6개 파일 교체** (총 alert 18개, window.confirm 2개 → 0개)
+  - `DocumentsPage.jsx` — 업로드 성공/실패, 삭제 confirm
+  - `DocumentGeneratePage.jsx` — 생성/다운로드/템플릿 실패
+  - `ChatPage.jsx` — 문서 다운로드
+  - `UserManagement.jsx` — 사용자 추가/상태/권한/삭제 실패
+  - `RegulationManagement.jsx` — 저장/삭제 실패
+  - `TasksPanel.jsx` — Task 삭제 confirm
+
 ### 다음 할 일
 - 전체 E2E 테스트
+- 팀서비스 확장 프론트 (#85) — Slack 연동 UI
 
 ---
 
