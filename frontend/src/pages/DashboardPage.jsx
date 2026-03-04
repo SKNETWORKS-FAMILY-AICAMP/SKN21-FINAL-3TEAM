@@ -85,24 +85,29 @@ function useDashboardData() {
     return () => { cancelled = true; };
   }, []);
 
-  // Google Calendar 오늘 이벤트를 schedule 형식으로 변환 (연결된 경우만)
-  const googleTodaySchedules = (!googleConnected ? [] : (calendarEvents || []))
-    .filter(e => isToday(e.start))
+  // Google Calendar 전체 이벤트를 schedule 형식으로 변환 (연결된 경우만)
+  const googleSchedules = (!googleConnected ? [] : (calendarEvents || []))
     .map(e => ({
       title: e.title || '제목 없음',
       start_time: e.start,
       end_time: e.end,
       google_meet_link: e.meet_link || null,
+      google_event_id: e.event_id,
       description: '',
       schedule_type: e.event_type || 'meeting',
       _source: 'google',
     }));
 
-  // 백엔드 DB + Google Calendar 합치기 (중복 제거: 제목+날짜 기준)
+  // 백엔드 DB + Google Calendar 합치기 (중복 제거: google_event_id 또는 제목+날짜 기준)
+  const dbGoogleIds = new Set(schedules.map(s => s.google_event_id).filter(Boolean));
   const mergedSchedules = [...schedules];
-  googleTodaySchedules.forEach(ge => {
+  googleSchedules.forEach(ge => {
+    // google_event_id로 중복 체크
+    if (ge.google_event_id && dbGoogleIds.has(ge.google_event_id)) return;
+    // 제목+같은 날짜로 중복 체크
+    const startDate = new Date(ge.start_time).toDateString();
     const duplicate = schedules.some(
-      s => s.title === ge.title && isToday(s.start_time)
+      s => s.title === ge.title && new Date(s.start_time).toDateString() === startDate
     );
     if (!duplicate) mergedSchedules.push(ge);
   });
@@ -155,16 +160,8 @@ function useDashboardData() {
       status: d.status === 'completed' ? '완료' : d.status === 'processing' ? '처리중' : '업로드됨',
     }));
 
-  // 캘린더 이벤트 맵 (day → type)
-  const calEvents = {};
-  mergedSchedules.forEach(s => {
-    const d = new Date(s.start_time);
-    const now = new Date();
-    if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) {
-      const day = d.getDate();
-      calEvents[day] = s.schedule_type === 'meeting' ? 'meeting' : 'deadline';
-    }
-  });
+  // 전체 일정을 CalendarWidget에 전달 (위젯 내부에서 월별 필터링)
+  const allSchedules = mergedSchedules;
 
   // 최근 활동 타임라인 (문서 + 채팅 세션 + 일정 조합, 최신 6개)
   const activities = [];
@@ -217,7 +214,7 @@ function useDashboardData() {
     todayMeetings,
     upcomingActions,
     recentDocs,
-    calEvents,
+    allSchedules,
     recentActivities,
     meetingCount,
     actionCount,
@@ -343,7 +340,7 @@ export default function DashboardPage() {
     todayMeetings,
     upcomingActions,
     recentDocs,
-    calEvents,
+    allSchedules,
     recentActivities,
     meetingCount,
     actionCount,
@@ -356,7 +353,7 @@ export default function DashboardPage() {
     TodaySchedule: { meetings: todayMeetings, actions: upcomingActions },
     ActivityTimeline: { activities: recentActivities },
     AIChatWidget: {},
-    CalendarWidget: { events: calEvents },
+    CalendarWidget: { allSchedules },
     RecentDocs: { docs: recentDocs },
     TeamMembersWidget: {},
     EmployeeTableWidget: {},

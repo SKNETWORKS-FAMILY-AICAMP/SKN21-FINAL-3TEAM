@@ -4,14 +4,12 @@ import { createUser, updateUserPermissions, deleteUser } from '../../api/admin';
 import { TEAMS } from '../../utils/constants';
 import { toast } from '../../store/toastStore';
 
-export default function UserManagement({ users = [], onRefresh }) {
+export default function UserManagement({ users = [], onRefresh, selectedTeam = null }) {
+  const filteredUsers = selectedTeam ? users.filter((u) => u.team === selectedTeam) : users;
   const [showModal, setShowModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [form, setForm] = useState({ name: '', email: '', password: '', team: '', is_admin: false });
   const [saving, setSaving] = useState(false);
-  const [filterTeam, setFilterTeam] = useState('');
-
-  const filteredUsers = filterTeam ? users.filter((u) => u.team === filterTeam) : users;
 
   const openAdd = () => {
     setForm({ name: '', email: '', password: '', team: '', is_admin: false });
@@ -72,31 +70,19 @@ export default function UserManagement({ users = [], onRefresh }) {
   return (
     <div className="card">
       <div className="card-header">
-        <div className="flex items-center gap-3">
-          <div className="card-title">사용자 관리</div>
-          <select
-            value={filterTeam}
-            onChange={(e) => setFilterTeam(e.target.value)}
-            className="px-2.5 py-1 border border-neutral-border rounded-md text-xs outline-none focus:border-primary-500 bg-surface-card text-neutral-main"
-          >
-            <option value="">전체 팀</option>
-            {TEAMS.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-        </div>
+        <div className="card-title">사용자 관리</div>
         <button className="btn-primary" onClick={openAdd}>+ 사용자 추가</button>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead><tr>
-            {['이름', '이메일', '팀', '권한', '관리'].map((h) => (
+            {['이름', '이메일', '팀', '권한', '상태', '관리'].map((h) => (
               <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-neutral-sub border-b-2 border-neutral-divider bg-surface-hover">{h}</th>
             ))}
           </tr></thead>
           <tbody>
             {filteredUsers.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-neutral-sub">{filterTeam ? `${filterTeam} 팀에 등록된 사용자가 없습니다` : '등록된 사용자가 없습니다'}</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-neutral-sub">{selectedTeam ? `${selectedTeam} 팀에 소속된 사용자가 없습니다` : '등록된 사용자가 없습니다'}</td></tr>
             ) : filteredUsers.map((u) => (
               <tr key={u.id} className="hover:bg-surface-hover">
                 <td className="px-4 py-3 text-[0.8125rem] font-semibold border-b border-neutral-divider">{u.name}</td>
@@ -114,7 +100,12 @@ export default function UserManagement({ users = [], onRefresh }) {
                   </button>
                 </td>
                 <td className="px-4 py-3 border-b border-neutral-divider">
-                  <button className="py-1 px-2.5 text-[0.6875rem] rounded-sm border border-error text-error bg-error-bg hover:bg-error hover:text-white transition whitespace-nowrap" onClick={() => setDeleteTarget(u)}>삭제</button>
+                  <button onClick={() => toggleActive(u)} className={`w-10 h-[22px] rounded-full relative transition ${u.is_active ? 'bg-success' : 'bg-neutral-border'}`}>
+                    <span className={`absolute left-[2px] top-[2px] w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-transform ${u.is_active ? 'translate-x-[18px]' : 'translate-x-0'}`} />
+                  </button>
+                </td>
+                <td className="px-4 py-3 border-b border-neutral-divider">
+                  <button className="py-1 px-2.5 text-[0.6875rem] rounded-sm border border-error text-error bg-error-bg hover:bg-error hover:text-white transition" onClick={() => setDeleteTarget(u)}>삭제</button>
                 </td>
               </tr>
             ))}
