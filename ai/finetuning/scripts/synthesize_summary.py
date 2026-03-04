@@ -34,6 +34,9 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+
+from dotenv import load_dotenv
+load_dotenv(BASE_DIR / ".env")
 OUTPUT_DIR = BASE_DIR / "data" / "training" / "v2_summary"
 
 # ── 프로덕션 시스템 프롬프트 (ai/llm/prompts.py와 100% 일치) ──

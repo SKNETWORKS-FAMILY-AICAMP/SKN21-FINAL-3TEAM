@@ -720,3 +720,42 @@ Config 분리 (3종):
 - 변형 데이터 생성 (구어체/오타)
 - 검증 + train/eval 분할
 - RunPod A100에서 3개 모델 비교 학습 (Qwen3-8B, EXAONE-3.5-7.8B, Kanana-1.5-8B)
+
+---
+
+## 2026-03-04 (화)
+
+**파인튜닝 시스템 프롬프트 검토 + 데이터 품질 QA:**
+
+프롬프트 ↔ 학습 데이터 일치 검증:
+- v2_summary: `prompts.py` ↔ 학습 데이터 system 100% 일치 (171자) ✅
+- v2_qa: `prompts.py` ↔ 학습 데이터 system 100% 일치 (423자) ✅
+- v2_generate: 동적 필드 방식 system prompt 적용됨 ✅
+
+v2_qa 데이터 다양성 문제 발견 (심각):
+- confidence: 0.9, 0.95 딱 2종류뿐 (600건 전부)
+- relevance: 전부 "높음" (600건 전부)
+- citations 수: 전부 1개 (600건 전부)
+- 합성 스크립트(`synthesize_qa.py`)도 동일 문제 — `build_training_sample`에서 하드코딩
+- **원인**: AI Hub 원본에 confidence/relevance 정보 없어서 변환 시 하드코딩, 합성 스크립트도 그대로 가져감
+
+v2_generate AI Hub 데이터 탈락:
+- 고정 프롬프트 backup: 783건
+- 동적 필드 변환 후: 476건 (307건 탈락)
+- `convert_to_dynamic_fields.py` 변환 실패 원인 확인 필요
+
+3개 어댑터 시스템 프롬프트 개선안 작성:
+- v2_generate: "실제 내용 작성" + "지침 문장 복사 금지" 2줄 추가
+- v2_summary: 출력 형식 단계별 명시 (헤딩명, 포인트 3~5개, 키워드 3~7개 쉼표 구분)
+- v2_qa: confidence 구간 가이드, relevance 판단 기준, citations 복수 허용 명시
+- v2_qa 근본적 설계 선택지 3가지 정리 (A.현행+보완 / B.간소화 / C.자연어)
+
+**산출물:**
+- `ai/finetuning/finetuning_docs/프롬프트_검토_TODO.md` — 검토 결과 + 개선안 + 작업 체크리스트
+
+**다음 할 일 (집에서 이어서):**
+- Step 1: 3개 어댑터 프롬프트 확정 (TODO.md 개선안 기반)
+- Step 2: v2_generate 476건 탈락 원인 확인 + 복구
+- Step 3: v2_qa 합성 스크립트 수정 (다양성 보완)
+- Step 4: 프롬프트 변경 시 AI Hub 데이터 재변환 + 합성 데이터 재생성
+- Step 5: 검증 + train/eval 분할
