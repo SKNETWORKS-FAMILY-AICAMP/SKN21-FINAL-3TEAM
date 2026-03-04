@@ -90,10 +90,12 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
 
   useEffect(() => {
     if (!mountedRef.current) {
-      // 초기 마운트: instant scroll (smooth는 500ms+ 동안 이벤트를 발생시켜 topbar 오작동 유발)
+      // 초기 마운트: 메시지가 있을 때만 하단으로 스크롤 (없으면 welcome 화면 상단 표시)
       mountedRef.current = true;
-      const container = bottomRef.current?.closest('[data-main-scroll]');
-      if (container) container.scrollTop = container.scrollHeight;
+      if (messages && messages.length > 0) {
+        const container = bottomRef.current?.closest('[data-main-scroll]');
+        if (container) container.scrollTop = container.scrollHeight;
+      }
     } else {
       // 이후 메시지 추가: smooth scroll
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -196,7 +198,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       )}
 
 
-      <div className="flex-1 overflow-y-auto py-4 px-4" data-main-scroll="">{children}<div ref={bottomRef} /></div>
+      <div className="flex-1 min-h-0 overflow-y-auto py-4 px-4" data-main-scroll="">{children}<div ref={bottomRef} /></div>
 
       {/* 선택 문서 칩 & 파일 칩 & 에러 */}
       {(selectedDocumentName || files.length > 0 || fileError) && (

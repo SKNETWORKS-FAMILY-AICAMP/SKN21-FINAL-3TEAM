@@ -12,7 +12,7 @@ export default function SuggestedQuestions({ questions = SUGGESTED_QUESTIONS, on
     : questions.filter((q) => q.category === activeCategory);
 
   return (
-    <div className="flex flex-col items-center gap-6 py-20">
+    <div className="flex flex-col items-center justify-center gap-6 min-h-full py-8">
       <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white text-xl font-bold">
         AI
       </div>

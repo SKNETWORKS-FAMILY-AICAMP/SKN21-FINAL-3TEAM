@@ -107,7 +107,9 @@ export default function CalendarWidget({ allSchedules = [] }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [selectedDay]);
 
-  const selectedSchedules = selectedDay ? (schedules[selectedDay] || []) : [];
+  const selectedSchedules = selectedDay
+    ? (schedules[selectedDay] || []).slice().sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+    : [];
 
   const formatTime = (timeStr) => {
     if (!timeStr) return '';
