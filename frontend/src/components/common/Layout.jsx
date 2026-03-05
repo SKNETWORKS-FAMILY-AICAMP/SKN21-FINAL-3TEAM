@@ -5,6 +5,7 @@ import Topbar from './Topbar';
 import AIDock from './AIDock';
 import ErrorBoundary from './ErrorBoundary';
 import AIChatPopup from '../chat/AIChatPopup';
+import MessagePopup from '../messages/MessagePopup';
 
 const pageVariants = {
   initial: { opacity: 0, y: 8 },
@@ -138,6 +139,7 @@ export default function Layout() {
       </main>
       {!isChatPage && <AIDock />}
       {!isChatPage && <AIChatPopup />}
+      <MessagePopup />
     </div>
   );
 }

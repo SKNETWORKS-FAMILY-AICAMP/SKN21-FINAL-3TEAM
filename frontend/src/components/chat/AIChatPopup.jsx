@@ -149,9 +149,9 @@ export default function AIChatPopup() {
       {/* 플로팅 버튼 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ${isOpen ? 'bg-neutral-200 text-neutral-600 scale-90' : 'bg-primary-600 text-white hover:bg-primary-700 hover:scale-105 hover:shadow-xl'}`}
+        className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 border-2 ${isOpen ? 'bg-neutral-200 text-neutral-600 border-neutral-300 scale-90' : 'bg-white dark:bg-neutral-900 text-primary-600 border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:scale-105 hover:shadow-xl'}`}
       >
-        {isOpen ? <X size={24} /> : <MessageSquare size={24} />}
+        {isOpen ? <X size={20} /> : <MessageSquare size={20} />}
       </button>
       
     </div>

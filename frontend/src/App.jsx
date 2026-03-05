@@ -15,6 +15,7 @@ import DocumentGeneratePage from './pages/DocumentGeneratePage';
 import MyPage from './pages/MyPage';
 import TasksPage from './pages/TasksPage';
 import ApprovalsPage from './pages/ApprovalsPage';
+import MessagesPage from './pages/MessagesPage';
 import NavPreviewPage from './pages/NavPreviewPage';
 
 function ConditionalFontSizeControl() {
@@ -85,6 +86,7 @@ export default function App() {
             <Route path="/schedules" element={<SchedulesPage />} />
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/approvals" element={<ApprovalsPage />} />
+            <Route path="/messages" element={<MessagesPage />} />
             <Route path="/mypage" element={<MyPage />} />
             <Route element={<AdminRoute />}>
               <Route path="/admin" element={<AdminPage />} />

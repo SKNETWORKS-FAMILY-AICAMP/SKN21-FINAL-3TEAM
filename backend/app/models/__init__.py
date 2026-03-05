@@ -16,6 +16,7 @@ from app.models.oauth_token import OAuthToken
 from app.models.google_sheet_tracker import GoogleSheetTracker
 from app.models.pipeline_task import PipelineTask
 from app.models.approval_request import ApprovalRequest
+from app.models.message import Message
 
 __all__ = [
     "User",
@@ -32,4 +33,5 @@ __all__ = [
     "GoogleSheetTracker",
     "PipelineTask",
     "ApprovalRequest",
+    "Message",
 ]
