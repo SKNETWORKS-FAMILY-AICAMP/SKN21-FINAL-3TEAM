@@ -32,17 +32,12 @@ async def list_approvals(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """내 팀의 pending 요청 목록"""
+    """모든 pending 요청 목록 (팀 구분 없이 전체 조회)"""
     query = (
         select(ApprovalRequest)
         .where(ApprovalRequest.status == "pending")
         .order_by(ApprovalRequest.created_at.desc())
     )
-    if current_user.team:
-        query = query.where(ApprovalRequest.target_team == current_user.team)
-    else:
-        query = query.where(ApprovalRequest.requester_id == current_user.id)
-
     result = await db.execute(query)
     items = result.scalars().all()
 
@@ -139,14 +134,10 @@ async def seed_approvals(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """초기 샘플 데이터 시드 (현재 유저 팀 기준, 기존 pending 없을 때만)"""
-    # 현재 유저가 볼 수 있는 pending 확인
-    query = select(ApprovalRequest).where(ApprovalRequest.status == "pending")
-    if current_user.team:
-        query = query.where(ApprovalRequest.target_team == current_user.team)
-    else:
-        query = query.where(ApprovalRequest.requester_id == current_user.id)
-    existing = await db.execute(query.limit(1))
+    """초기 샘플 데이터 시드 (기존 pending 없을 때만)"""
+    existing = await db.execute(
+        select(ApprovalRequest).where(ApprovalRequest.status == "pending").limit(1)
+    )
     if existing.scalar_one_or_none():
         return {"seeded": 0, "message": "이미 pending 데이터가 있습니다"}
 
