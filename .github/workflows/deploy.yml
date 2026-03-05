@@ -19,6 +19,7 @@ jobs:
           script: |
             cd /home/ubuntu/SKN21-FINAL-3TEAM
             git pull origin develop
+            find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
             source .venv/bin/activate
             pip install -r requirements.txt
             cd backend
