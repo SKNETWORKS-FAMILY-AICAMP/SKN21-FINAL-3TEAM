@@ -5,11 +5,14 @@
 - Google OAuth 2.0 소셜 로그인
 """
 import secrets
+import uuid
+import os
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -137,6 +140,47 @@ async def update_me(
         "address": current_user.address,
         "is_admin": current_user.is_admin,
     }
+
+
+_ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+_IMAGE_EXTENSIONS = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+}
+
+@router.post("/me/avatar")
+async def upload_avatar(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """프로필 사진 업로드 — 로컬 저장 후 URL 반환 (추후 S3로 교체 가능)"""
+    if file.content_type not in _ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="jpg, png, webp, gif 파일만 업로드 가능합니다.")
+
+    # backend/uploads/avatars — main.py 정적 서빙 경로와 일치
+    avatar_dir = Path(__file__).resolve().parents[3] / "uploads" / "avatars"
+    avatar_dir.mkdir(parents=True, exist_ok=True)
+
+    ext = _IMAGE_EXTENSIONS[file.content_type]
+    filename = f"{uuid.uuid4().hex}{ext}"
+    save_path = avatar_dir / filename
+
+    content = await file.read()
+    with open(save_path, "wb") as f:
+        f.write(content)
+
+    base_url = str(request.base_url).rstrip("/")
+    avatar_url = f"{base_url}/uploads/avatars/{filename}"
+
+    current_user.avatar = avatar_url
+    await db.commit()
+    await db.refresh(current_user)
+
+    return {"avatar_url": avatar_url}
 
 
 @router.get("/team-members")

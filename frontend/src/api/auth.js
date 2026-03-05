@@ -22,3 +22,11 @@ export const changePassword = (currentPassword, newPassword) =>
   client.post('/auth/change-password', { current_password: currentPassword, new_password: newPassword })
 
 export const getTeamMembers = () => client.get('/auth/team-members')
+
+export const updateProfile = (payload) => client.put('/auth/me', payload)
+
+export const uploadAvatar = (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return client.post('/auth/me/avatar', formData)
+}

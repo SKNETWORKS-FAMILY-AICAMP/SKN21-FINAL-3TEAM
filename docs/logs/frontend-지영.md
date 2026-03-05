@@ -850,6 +850,60 @@
 
 ---
 
+## 2026-03-05 (목)
+
+### 한 일
+
+#### 1) 다크모드 UI 가시성 전반 개선
+
+- **`globals.css`** — 다크모드 surface/border 색상 전체 밝기 상향 조정
+  - `surface-main` `#262A32` → `#2E3240`, `surface-card` `#30343E` → `#3C4052` 등 전체 surface 계열 +8~12 밝기
+  - `neutral-border` `#484C58` → `#5C6070`, `neutral-divider` `#3C4050` → `#4E5264` (보더 가시성 개선)
+  - `.dark .card` 보더 `rgba(white, 0.1)` → `rgba(white, 0.2)`, hover `0.2` → `0.3`
+  - body 배경 그라디언트 및 sidebar 배경도 동일 밝기로 조정
+
+- **`MyPage.jsx`** — 다크모드에서 안 보이던 요소 전면 수정
+  - 프로필 헤더 섹션: `bg-white` → `bg-surface-card`
+  - 프로필 수정 버튼: `bg-neutral-main` → `bg-primary-700` (다크모드에서 `neutral-main`이 밝아져 흰 텍스트 구분 불가 문제 해결)
+  - 프로필 수정 모달: `bg-white` → `bg-surface-card`, 헤더/푸터 `bg-neutral-50/50` → `bg-surface-hover`
+  - 모달 input 필드: `bg-neutral-50 focus:bg-white` → `bg-surface-hover focus:bg-surface-card` + `text-neutral-main` 추가
+  - AI 스타일 토글 선택 버튼: `bg-white` → `bg-surface-card`
+
+- **`TaskPipelineWidget.jsx`** — 하드코딩된 `bg-white`/`bg-white/60` 전면 제거
+  - 팀 아바타 pill, 유틸리티 버튼, Stage 헤더, 카드 컨테이너, 태스크 카드, Empty 상태, 진행률 바 영역 모두 CSS 변수 색상으로 교체
+
+- **`AIChatWidget.jsx`, `CalendarWidget.jsx`** — `border border-white/60` → `border border-neutral-border`, 배경 `dark:bg-surface-card`로 교체
+
+- **`GreetingBanner.jsx`** — 인라인 스타일(`rgba(255,255,255,0.45)`) 제거 → `bg-white/50 dark:bg-surface-card border-neutral-border` Tailwind 클래스로 교체
+  - CSS 변수 기반 색상에 `/80` 투명도 수식어 미동작 버그 발견 및 solid 색상으로 수정
+
+#### 2) 마이페이지 프로필 사진 업로드 기능 구현
+
+- **`backend/app/api/v1/auth.py`** — `POST /auth/me/avatar` 엔드포인트 신규 추가
+  - `UploadFile` 수신 → jpg/png/webp/gif 형식 검증
+  - `backend/uploads/avatars/{uuid}.ext` 절대 경로로 저장 (추후 S3 교체 용이한 구조)
+  - `users.avatar` 필드 URL로 즉시 업데이트 후 반환
+
+- **`backend/app/main.py`** — `StaticFiles` 마운트 추가 (`/uploads` → `backend/uploads/`)
+  - 절대 경로 `Path(__file__).resolve().parent.parent / "uploads"` 사용 (CWD 의존 제거)
+
+- **`frontend/src/api/auth.js`** — `uploadAvatar(file)`, `updateProfile(payload)` 함수 추가
+  - `uploadAvatar`: `FormData`로 multipart 업로드 (Content-Type 헤더 수동 지정 제거 → axios 자동 boundary 설정)
+  - `updateProfile`: 기존 `client` 미import 버그 해결 (저장 버튼이 아예 동작하지 않던 문제)
+
+- **`frontend/src/pages/MyPage.jsx`** — 프로필 사진 업로드 UI 구현
+  - 카메라(`Camera`) 아이콘 버튼 추가 (아바타 우측 하단, 파란색)
+  - 클릭 → 숨겨진 `<input type="file" accept="image/*">` 트리거
+  - 파일 선택 즉시 `createObjectURL`로 미리보기 → 백엔드 업로드 → 영구 URL로 교체
+  - 업로드 중 스피너 표시 + 버튼 비활성화, 실패 시 이전 아바타로 복원
+  - URL 입력칸 제거, 안내 텍스트로 대체
+
+### 다음 할 일
+- 전체 E2E 테스트
+- 판단 Agent 스트리밍 디버깅
+
+---
+
 ## 현재 구현 현황 요약
 
 | 항목 | 상태 | 비고 |
