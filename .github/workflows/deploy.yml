@@ -44,6 +44,12 @@ jobs:
             print('Migration complete')
             "
             cd ..
+            echo "=== 파일 확인 ==="
+            ls -la backend/app/api/v1/approvals.py 2>&1 || echo "approvals.py 파일 없음!"
+            head -5 backend/app/api/v1/router.py
+            echo "=== git log ==="
+            git log --oneline -3
+            echo "=== 서버 재시작 ==="
             sudo systemctl restart workflow-agent
             sleep 5
             sudo systemctl status workflow-agent --no-pager || true
