@@ -524,56 +524,24 @@ response = await vllm_client.chat.completions.create(
 
 #### 9.3.1 v2_generate: 고정 템플릿 → 동적 필드 방식 전환
 
-**현재 프로덕션 (고정 템플릿 — 템플릿별 system prompt 별도)**
-```python
-# _generate_meeting_minutes() — document_agent.py:398
-sys_prompt = "당신은 회의록 작성 전문가입니다.\n아래 [작성 지침]을 참고하여..."
-
-# _generate_report() — document_agent.py:521
-sys_prompt = "당신은 업무보고서 작성 전문가입니다.\n아래 [작성 지침]을 참고하여..."
-
-# _generate_proposal() — document_agent.py:636
-sys_prompt = "당신은 제안서 작성 전문가입니다.\n아래 [작성 지침]을 참고하여..."
-```
-
-**학습 데이터 (동적 필드 — 범용 system prompt 1개)**
-```python
-sys_prompt = (
-    "당신은 기업 문서 작성 전문가입니다.\n"
-    "사용자가 제공하는 [필드 명세]에 따라 문서 내용을 JSON으로 생성하세요.\n\n"
-    "규칙:\n"
-    "- [필드 명세]에 정의된 필드만 JSON 키로 사용하세요.\n"
-    "- 각 필드의 설명을 참고하여 적절한 값을 생성하세요.\n"
-    "- 입력 내용에 해당 정보가 없으면 빈 문자열 또는 빈 배열로 두세요.\n"
-    "- 배열 필드는 반드시 JSON 배열 형태로 출력하세요.\n"
-    "- 반드시 JSON만 출력하세요. 설명 텍스트나 마크다운을 포함하지 마세요."
-)
-```
-
-**수정 방법**: `_generate_meeting_minutes`, `_generate_report`, `_generate_proposal` 3개 함수의 system prompt를 `DOC_GENERATE_SLLM_PROMPT`로 통일하고, 기존 필드 지침은 user prompt의 `[필드 명세]` 섹션으로 이동.
-
-> **v2 변경**: "적절한 값을 생성하세요" → "입력 내용을 바탕으로 구체적인 문서 내용을 작성하세요"
-> "필드 설명이나 지침 문장을 그대로 값으로 출력하지 마세요" 규칙 추가 (복사 방지)
+- **프로덕션**: 템플릿별 고정 system prompt 3개 (`_generate_meeting_minutes`, `_generate_report`, `_generate_proposal`)
+- **sLLM**: 범용 system prompt 1개 (`DOC_GENERATE_SLLM_PROMPT`) + 동적 `[필드 명세]`
+- **교체 방법**: 3개 함수의 system prompt를 통일, 기존 필드 지침은 user prompt의 `[필드 명세]`로 이동
+- v2 변경: 복사 방지 규칙 추가 ("필드 설명을 그대로 값으로 출력하지 마세요")
+- 프롬프트 전문 → **부록 C.1** 참조
 
 #### 9.3.2 v2_qa: sLLM 비스트리밍 전용 + 프롬프트 교체
 
-**학습 데이터 (DOC_QA_SLLM_PROMPT — JSON 출력, 간소화)**
-```python
-# ai/llm/prompts.py (신규 추가)
-DOC_QA_SLLM_PROMPT = """당신은 기업 문서 기반 질의응답 전문가입니다.
-...
-결과는 반드시 아래 JSON 형식으로만 응답하세요:
-{"answer": "...", "citations": [{"content": "..."}]}
-"""
-# confidence/source/relevance 제거 → 백엔드가 RAG score 기반으로 계산
-```
-
-**수정 방법**: sLLM은 **비스트리밍(JSON) 전용**으로 운용. vLLM 8B ~50 tok/s 기준 200~300 토큰 JSON은 ~5초. 백엔드에서 JSON 파싱 → `answer` 필드 추출 → 프론트에 전달. `citations == []`이면 not-found로 감지.
+- **sLLM**: `DOC_QA_SLLM_PROMPT` — JSON 출력, confidence/source/relevance 제거 (백엔드가 RAG score로 계산)
+- **운용**: 비스트리밍(JSON) 전용. vLLM 8B ~50 tok/s 기준 ~5초
+- `citations == []`이면 not-found로 감지
+- 프롬프트 전문 → **부록 C.2** 참조
 
 #### 9.3.3 v2_summary: sLLM 전용 프롬프트로 교체
 
-학습 데이터는 `DOC_SUMMARY_SLLM_PROMPT` 사용 (태그/괄호 제거 버전).
-프로덕션 교체 시 `DOC_SUMMARY_SLLM_PROMPT`로 전환. 기존 `DOC_SUMMARY_SYSTEM_PROMPT`는 LLM API용으로 유지.
+- **sLLM**: `DOC_SUMMARY_SLLM_PROMPT` — 태그/괄호 제거 버전
+- 기존 `DOC_SUMMARY_SYSTEM_PROMPT`는 LLM API용으로 유지
+- 프롬프트 전문 → **부록 C.3** 참조
 
 #### 9.3.4 수정 체크리스트
 
@@ -591,81 +559,156 @@ DOC_QA_SLLM_PROMPT = """당신은 기업 문서 기반 질의응답 전문가입
 
 | 스크립트 | 용도 | API 필요 |
 |----------|------|:--------:|
-| `ai/finetuning/scripts/convert_aihub_summary.py` | SN 582 → v2_summary 변환 | GPT-4o-mini (키워드만) |
-| `ai/finetuning/scripts/convert_aihub_qa.py` | SN 569 + SN 582 → v2_qa 변환 | GPT-4o (Report QA만) |
-| `ai/finetuning/scripts/convert_aihub_generate.py` | SN 582 → v2_generate 변환 (고정 프롬프트) | GPT-4o |
-| `ai/finetuning/scripts/convert_to_dynamic_fields.py` | v2_generate 프롬프트를 동적 필드 방식으로 변환 | 불필요 |
-| `ai/finetuning/validate_v2_data.py` | 3개 어댑터 데이터 통합 검증 | 불필요 |
+| `convert_aihub_summary.py` | SN 582 → v2_summary 700건 | GPT-4o-mini (키워드만) |
+| `convert_aihub_qa.py` | SN 569 MRC 300건 + SN 582 Report QA 300건 | GPT-4o (Report만) |
+| `convert_aihub_generate.py` | SN 582 → v2_generate 690건 (동적 필드) | GPT-4o |
+| `synthesize_generate.py` | v2_generate 합성 600건 | GPT-4o |
+| `synthesize_qa.py` | v2_qa 합성 300건 | GPT-4o |
+| `synthesize_summary.py` | v2_summary 합성 200건 | GPT-4o |
+| `merge_training_data.py` | 소스별 병합 → merged_*.jsonl | 불필요 |
+| `validate_v2_data.py` | 3개 어댑터 데이터 통합 검증 | 불필요 |
+
+> 스크립트 경로: `ai/finetuning/scripts/`
 
 ### 실행 명령어
 
 ```bash
-# 1. v2_summary (700건, 키워드 GPT 보강)
+# Phase 1: AI Hub 변환
 python ai/finetuning/scripts/convert_aihub_summary.py --total 700 --llm-enhance
-
-# 2. v2_qa MRC (300건, API 불필요)
 python ai/finetuning/scripts/convert_aihub_qa.py --source mrc --mrc-count 300
-
-# 3. v2_qa Report QA (300건, GPT-4o)
-python ai/finetuning/scripts/convert_aihub_qa.py --source report --report-count 300
-
-# 4. v2_generate (783건, GPT-4o)
+python ai/finetuning/scripts/convert_aihub_qa.py --source report --report-count 300 --output data/training/v2_qa/report_qa.jsonl
 python ai/finetuning/scripts/convert_aihub_generate.py
 
-# 5. 동적 필드 방식으로 프롬프트 변환
-python ai/finetuning/scripts/convert_to_dynamic_fields.py
+# Phase 2: 합성 데이터
+python ai/finetuning/scripts/synthesize_generate.py
+python ai/finetuning/scripts/synthesize_qa.py
+python ai/finetuning/scripts/synthesize_summary.py
 
-# 6. 검증
+# Phase 3: 변형 데이터 (규칙 기반, 예정)
+
+# Phase 4: 병합 + 검증 + 분할
+python ai/finetuning/scripts/merge_training_data.py
 python ai/finetuning/validate_v2_data.py --deduplicate
-
-# 7. Train/Eval 분할
 python ai/finetuning/validate_v2_data.py --split
 ```
 
 ---
 
-## 11. 진행 현황
+## 11. 진행 현황 (2026-03-05 기준)
 
-### AI Hub 데이터 변환 (2026-03-04 기준)
+### 데이터 수집 현황
 
-| 어댑터 | AI Hub 목표 | 완료 | 상태 |
-|--------|:-----------:|:----:|:----:|
-| v2_summary | 700 | 700 | ✅ |
-| v2_qa (MRC) | 300 | 300 | ✅ |
-| v2_qa (Report QA) | 300 | 300 | ✅ |
-| v2_generate | 690 | 0 | ⏳ GPT-4o 필요 |
+| 어댑터 | 소스 | 목표 | 완료 | 상태 |
+|--------|------|:----:|:----:|:----:|
+| v2_summary | AI Hub 변환 | 700 | 700 | ✅ |
+| v2_qa | AI Hub MRC | 300 | 300 | ✅ |
+| v2_qa | AI Hub Report QA | 300 | 300 | ✅ |
+| v2_generate | AI Hub 변환 | 690 | 690 | ✅ GPT-4o ~$27.6 |
+| v2_generate | 합성 | 600 | 600 | ✅ |
+| v2_qa | 합성 | 300 | 300 | ✅ |
+| v2_summary | 합성 | 200 | 200 | ✅ |
+| 전체 | 변형 | 410 | 0 | ⏳ |
 
-### 검증 결과 (2026-03-04, 프롬프트 v2 이전)
-
-| 어댑터 | 건수 | 에러 | 경고 | 판정 |
-|--------|:----:|:----:|:----:|:----:|
-| v2_summary | 700 | 0 | 235 | ✅ PASS |
-| v2_qa | 600 | 0 | 1 | ✅ PASS |
-| v2_generate | 783 | 0 | 0 | ✅ PASS |
-| **합계** | **2,083** | **0** | **236** | **✅ PASS** |
-
-> **참고**: 프롬프트 v2 수정 후 데이터 재생성이 필요하며, 재생성 후 아래 검증 기준으로 재검증:
-> - v2_qa: JSON에 `answer` + `citations[].content`만 존재, not-found 10~15%, citations 분포 (1개 70~80%, 2개 15~20%, 3개 5~10%)
-> - v2_summary: 포인트 3개 미만 0건
-> - v2_generate: 476건 (307건 탈락분은 합성 데이터로 보충)
-
-### 전체 데이터 파이프라인
+### 전체 파이프라인
 
 | 단계 | 내용 | 상태 |
 |:----:|------|:----:|
 | 1 | AI Hub 데이터 다운로드 (SN 582 + SN 569) | ✅ |
-| 2 | AI Hub → 학습 형식 변환 (1,990건) | ⏳ |
-| 3 | v2_generate 동적 필드 프롬프트 변환 | ✅ |
-| 4 | AI Hub 데이터 검증 (에러 0건) | ✅ |
-| 4.5 | **프롬프트 v2 수정 + sLLM 상수 분리** (8개 파일) | ✅ |
-| 4.6 | 프롬프트 v2 기반 데이터 재생성 (~$13) | ⏳ |
-| 5 | 합성 데이터 생성 (1,100건, 부분 누락 180건 포함) | ⏳ |
-| 6 | 변형 데이터 생성 (410건) | ⏳ |
-| 7 | 전체 데이터 검증 + 중복 제거 | ⏳ |
-| 8 | Train/Eval 분할 | ⏳ |
-| 9 | QLoRA 파인튜닝 (3개 어댑터) | ⏳ |
-| 10 | 모델 평가 | ⏳ |
-| 11 | vLLM 배포 | ⏳ |
+| 2 | AI Hub → 학습 형식 변환 (v2_summary 700 + v2_qa 600) | ✅ |
+| 3 | 프롬프트 v2 수정 + sLLM 상수 분리 | ✅ |
+| 4 | 스크립트 QA + 계획서 수치 일관성 검증 | ✅ |
+| 5 | v2_generate AI Hub 690건 변환 (GPT-4o) | ✅ |
+| 6 | 합성 데이터 생성 (1,100건) | ✅ |
+| 7 | 변형 데이터 생성 (410건) | ⏳ |
+| 8 | 전체 데이터 검증 + 중복 제거 | ⏳ |
+| 9 | Train/Eval 분할 | ⏳ |
+| 10 | QLoRA 파인튜닝 (3개 어댑터) | ⏳ |
+| 11 | 3개 모델 비교 → 1개 모델 선정 | ⏳ |
+| 12 | vLLM 배포 + Agent 연동 | ⏳ |
+
+### 구현 완료 이력
+
+<details>
+<summary>2026-03-03 (인프라 구축)</summary>
+
+| 작업 | 파일 |
+|------|------|
+| `_call_llm()` Solar→LLM Factory 리팩토링 | `document_agent.py`, `schedule_agent.py` |
+| BaseLLM에 json_mode 파라미터 추가 | `base.py`, `openai_provider.py`, `anthropic_provider.py` |
+| v2_document.yaml 하이퍼파라미터 설정 | `ai/finetuning/configs/v2_document.yaml` |
+| train_v2_document.py 학습 스크립트 | `ai/finetuning/train_v2_document.py` |
+| evaluate.py 평가 함수 6개 구현 | `ai/finetuning/evaluate.py` |
+| validate_v2_data.py 검증 스크립트 | `ai/finetuning/validate_v2_data.py` |
+| 어댑터별 yaml config 3개 | `ai/finetuning/configs/v2_*.yaml` |
+| 데이터 디렉토리 분리 | `data/training/v2_generate/`, `v2_qa/`, `v2_summary/` |
+
+</details>
+
+<details>
+<summary>2026-03-04 (데이터 변환 + 프롬프트 v2)</summary>
+
+| 작업 | 파일 |
+|------|------|
+| AI Hub 데이터 다운로드 (SN 582 + SN 569) | `data/raw/ai_hub/` |
+| AI Hub 탐색/분석 스크립트 | `aihub_explore.py` |
+| v2_summary 700건 변환 | `convert_aihub_summary.py` |
+| v2_qa MRC 300건 변환 | `convert_aihub_qa.py` |
+| v2_qa Report QA 300건 생성 | `convert_aihub_qa.py` |
+| sLLM 전용 프롬프트 상수 3개 | `ai/llm/prompts.py` |
+| 합성 스크립트 3개 프롬프트 교체 | `synthesize_qa/generate/summary.py` |
+
+</details>
+
+<details>
+<summary>2026-03-05 (스크립트 QA + 정합성 수정)</summary>
+
+| 작업 | 파일 |
+|------|------|
+| convert_aihub_generate.py 하드코딩 프롬프트 → DOC_GENERATE_SLLM_PROMPT 동적 필드 | `convert_aihub_generate.py` |
+| 전 스크립트 dotenv override=True 통일 | 6개 스크립트 |
+| v2_generate 1500건 수치 일관성 (yaml/merge/가이드) | 4개 파일 |
+| merge output → merged_*.jsonl (base 덮어쓰기 방지) | `merge_training_data.py` |
+| synthesize_qa 400→300건, synthesize_summary 300→200건 | 2개 스크립트 |
+| v2_qa not-found 목표 건수 안에 포함하도록 로직 수정 | `convert_aihub_qa.py` |
+| v2_qa 데이터 트리밍 (324→300, 336→300) | `aihub_qa.jsonl`, `report_qa.jsonl` |
+| 문서 통합: 보고서를 정본으로, 계획서 deprecated | 보고서, 계획서 |
+
+</details>
+
+---
+
+## 12. TODO
+
+### 데이터 수집 (PM 단독 진행)
+
+| STEP | 작업 |
+|------|------|
+| 5 | v2_generate AI Hub 690건 변환 (GPT-4o ~$27.6) |
+| 6 | 합성: meeting_minutes 420 + report 90 + proposal 90 + qa 300 + summary 200 |
+| 7 | 변형 데이터 410건 (구어체/오타, 규칙 기반) |
+| 8 | 전체 검증 + 중복 제거 + Train/Eval 분할 |
+
+### 학습 + 평가
+
+| STEP | 작업 |
+|------|------|
+| 9 | RunPod RTX 5090에서 3개 모델 비교 학습 (v2_generate 기준) |
+| 10 | 평가 결과 비교 → **1개 모델로 통일** 선정 |
+| 11 | 선정 모델로 v2_qa, v2_summary 추가 학습 |
+| 12 | vLLM 서버 배포 + Agent 연동 + E2E 테스트 |
+
+---
+
+## 13. 리스크 및 대응
+
+| 리스크 | 대응 |
+|--------|------|
+| 제안서(15+필드) JSON 깨짐 | 10개 샘플 선행 테스트. 실패 10%+ 시 rank→48 또는 EXAONE 전환 |
+| AI Hub 데이터 도메인 불일치 (국회 회의록 등) | meeting_minutes는 합성 중심으로 전환 완료. report/proposal은 적합 확인 |
+| Solar API보다 성능 하락 | Solar API를 fallback으로 유지. 설정 플래그로 전환 |
+| RTX 5090 32GB VRAM 부족 | batch_size 2로 축소 + grad_accum 8로 조정. 또는 A100 전환 |
+| 합성 데이터 품질 부족 | 3단계 검증: 자동검증 → LLM 교차검증 → 수동 샘플링(150개) |
+| AI Hub summary2가 추출형 | GPT-4o mini로 마크다운 구조 변환 + 합성 20%로 추상형 모범답안 확보 |
 
 ---
 
@@ -675,35 +718,203 @@ python ai/finetuning/validate_v2_data.py --split
 
 ```
 data/
-├── raw/aihub/                              ← AI Hub 원본 (git 미추적)
+├── raw/ai_hub/                             ← AI Hub 원본 (git 미추적)
 │   ├── 022.요약문 및 레포트 생성 데이터/   ← SN 582
 │   └── 016.행정 문서 대상 기계독해 데이터/ ← SN 569
 ├── training/
 │   ├── v2_summary/
-│   │   ├── aihub_summary.jsonl             ← AI Hub 변환 (700건)
-│   │   ├── synthetic_summary.jsonl         ← 합성 (200건) [예정]
+│   │   ├── aihub_summary.jsonl             ← AI Hub 변환 (700건) ✅
+│   │   ├── synthetic_summary.jsonl         ← 합성 (200건) ✅
 │   │   ├── variant_summary.jsonl           ← 변형 (100건) [예정]
+│   │   ├── merged_summary.jsonl            ← 병합 (분할 전) [예정]
 │   │   ├── train.jsonl                     ← 학습용 (850건) [분할 후]
 │   │   └── eval.jsonl                      ← 검증용 (150건) [분할 후]
 │   ├── v2_qa/
-│   │   ├── aihub_qa.jsonl                  ← AI Hub 변환 (600건)
-│   │   ├── synthetic_qa.jsonl              ← 합성 (300건) [예정]
+│   │   ├── aihub_qa.jsonl                  ← AI Hub MRC (300건) ✅
+│   │   ├── report_qa.jsonl                 ← AI Hub Report QA (300건) ✅
+│   │   ├── synthetic_qa.jsonl              ← 합성 (300건) ✅
 │   │   ├── variant_qa.jsonl                ← 변형 (100건) [예정]
-│   │   ├── train.jsonl
-│   │   └── eval.jsonl
+│   │   ├── merged_qa.jsonl                 ← 병합 (분할 전) [예정]
+│   │   ├── train.jsonl                     ← 학습용 (900건) [분할 후]
+│   │   └── eval.jsonl                      ← 검증용 (100건) [분할 후]
 │   └── v2_generate/
-│       ├── aihub_generate.jsonl            ← AI Hub 변환 (690건, 동적 필드 방식)
-│       ├── synthetic_generate.jsonl        ← 합성 (600건, 부분 누락 180건 포함) [예정]
+│       ├── aihub_generate.jsonl            ← AI Hub 변환 (690건, 동적 필드) ✅
+│       ├── synthetic_generate.jsonl        ← 합성 (600건, 부분 누락 180건 포함) ✅
 │       ├── variant_generate.jsonl          ← 변형 (210건) [예정]
-│       ├── train.jsonl
-│       └── eval.jsonl
+│       ├── merged_generate.jsonl           ← 병합 (분할 전) [예정]
+│       ├── train.jsonl                     ← 학습용 (1,350건) [분할 후]
+│       └── eval.jsonl                      ← 검증용 (150건) [분할 후]
 ```
 
 ### B. 관련 문서
 
-- `ai/finetuning/finetuning_docs/문서Agent_LoRA_v2_파인튜닝_계획.md` — 상세 계획서
 - `ai/finetuning/finetuning_docs/AI_Hub_데이터_적합성_검토.md` — AI Hub 데이터 적합성 분석
-- `data/training/v2_document/FORMAT_GUIDE.md` — 데이터 형식 가이드
-- `ai/finetuning/configs/v2_summary.yaml` — v2_summary 학습 설정
-- `ai/finetuning/configs/v2_qa.yaml` — v2_qa 학습 설정
-- `ai/finetuning/configs/v2_generate.yaml` — v2_generate 학습 설정
+- `ai/finetuning/configs/v2_*.yaml` — 어댑터별 학습 설정
+- `docs/지용/FINETUNING_PROMPT_V2_PLAN.md` — 프롬프트 v2 변경 상세
+
+---
+
+### C. sLLM 학습용 프롬프트 전문
+
+> 출처: `ai/llm/prompts.py` — 학습 데이터 생성 + vLLM 서빙 시 동일하게 사용
+
+#### C.1 DOC_GENERATE_SLLM_PROMPT (문서 생성)
+
+```
+당신은 기업 문서 작성 전문가입니다.
+사용자가 제공하는 [필드 명세]에 따라 문서 내용을 JSON으로 생성하세요.
+
+규칙:
+- [필드 명세]에 정의된 필드만 JSON 키로 사용하세요.
+- 각 필드의 설명을 참고하여, 입력 내용을 바탕으로 구체적인 문서 내용을 작성하세요.
+- 필드 설명이나 지침 문장을 그대로 값으로 출력하지 마세요.
+- 입력 내용에 해당 정보가 없으면 빈 문자열 또는 빈 배열로 두세요.
+- 배열 필드는 반드시 JSON 배열 형태로 출력하세요.
+- 반드시 JSON만 출력하세요. 설명 텍스트나 마크다운을 포함하지 마세요.
+```
+
+> system prompt 1개로 회의록(7필드), 보고서(12필드), 제안서(18필드)를 모두 처리.
+> 문서 유형별 필드 명세는 user prompt의 `[필드 명세]` 섹션에 동적으로 삽입됨.
+
+#### C.2 DOC_QA_SLLM_PROMPT (문서 QA)
+
+```
+당신은 기업 문서 기반 질의응답 전문가입니다.
+주어진 문서 내용을 근거로 사용자의 질문에 정확하게 답변합니다.
+
+결과는 반드시 아래 JSON 형식으로만 응답하세요:
+{
+    "answer": "질문에 대한 답변",
+    "citations": [
+        {"content": "답변의 근거가 되는 원문 인용"}
+    ]
+}
+
+규칙:
+- 반드시 제공된 문서 내용만을 근거로 답변하세요.
+- 답변의 근거가 되는 문서 원문을 citations에 1~3개 포함하세요.
+- 문서에서 답을 찾을 수 없으면 answer에 "제공된 문서에서 해당 내용을 찾을 수 없습니다."라고 작성하고 citations는 빈 배열([])로 두세요.
+- 추측이나 외부 지식으로 답변을 보충하지 마세요.
+- JSON 외의 텍스트를 포함하지 마세요.
+```
+
+> LLM API용 `DOC_QA_SYSTEM_PROMPT`에서 `source`, `relevance`, `confidence` 필드를 제거한 간소화 버전.
+> 해당 필드들은 서빙 시 백엔드가 RAG score 기반으로 계산하여 채움.
+
+#### C.3 DOC_SUMMARY_SLLM_PROMPT (문서 요약)
+
+```
+당신은 기업 문서 요약 전문가입니다.
+주어진 문서를 분석하여 핵심 내용을 정리합니다.
+
+반드시 아래 형식으로 출력하세요:
+
+핵심 요약
+
+## 주요 포인트
+- 포인트
+
+## 키워드
+키워드들
+
+규칙:
+- 핵심 요약은 2~3문장으로 작성하세요.
+- 주요 포인트는 불릿(-)으로 3~5개 작성하세요.
+- 키워드는 명사/명사구 3~7개를 쉼표로 구분하세요.
+- 원문에 없는 내용을 추가하지 마세요.
+- 한국어로 답변하세요.
+```
+
+---
+
+### D. 어댑터별 실제 학습 데이터 예시
+
+> 실제 생성된 JSONL에서 발췌. sLLM은 이 messages 형식을 그대로 학습함.
+
+#### D.1 v2_generate — 문서 생성 (회의록)
+
+```json
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "(C.1 DOC_GENERATE_SLLM_PROMPT 전문)"
+    },
+    {
+      "role": "user",
+      "content": "다음 내용을 바탕으로 문서를 JSON 형식으로 작성해주세요.\n\n[문서 유형] 회의록\n\n[필드 명세]\n- title: 회의 주제를 반영한 구체적인 제목\n- date: 회의 날짜 (YYYY-MM-DD 형식, 없으면 오늘 날짜)\n- attendees: 참석자 이름 배열 (없으면 빈 배열)\n- summary: 회의에서 논의된 주요 내용을 파트별로 3~5문장으로 요약\n- decisions: 결정된 사항 목록 (배열, 없으면 빈 배열)\n- action_items: 후속 조치 목록 배열. 각 항목은 {\"content\", \"assignee\", \"due_date\"} 형태\n- risks: 리스크 목록 배열. 각 항목은 {\"description\", \"level\"(상/중/하), \"regulation\"} 형태\n\n[회의 내용]\n인천국제공항공사 3단계 사업 진행 상황 회의..."
+    },
+    {
+      "role": "assistant",
+      "content": "{\n  \"title\": \"인천공항 3단계 사업 진행 상황 및 국고지원 관련 논의\",\n  \"date\": \"2023-10-06\",\n  \"attendees\": [\"최홍열\", \"황영철\"],\n  \"summary\": \"회의에서는 인천국제공항공사의 3단계 사업 진행 상황에 대한 논의가 이루어졌다...\",\n  \"decisions\": [],\n  \"action_items\": [],\n  \"risks\": [{\"description\": \"국고지원 없이 3단계 사업을 진행할 경우 재정적 부담 증가\", \"level\": \"상\", \"regulation\": \"국가 재정 지원 확보 필요\"}]\n}"
+    }
+  ]
+}
+```
+
+> `decisions`, `action_items`가 빈 배열 — 원문에 해당 내용이 없어 GPT-4o가 비워둔 정상 케이스.
+
+#### D.2 v2_qa — 문서 QA (정상 응답)
+
+```json
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "(C.2 DOC_QA_SLLM_PROMPT 전문)"
+    },
+    {
+      "role": "user",
+      "content": "Context:\n[\"기술력 우수한 창업기업, 벤처기업 인증 쉬워진다...\", \"벤처투자기관: 창투사, 신기술사업금융업자...\", \"투자 기업과 같이 벤처확인 기회를 부여...\"]\n\nQuestion: 이번 벤처확인 제도 개선의 목적은?"
+    },
+    {
+      "role": "assistant",
+      "content": "{\"answer\": \"벤처확인 제도 개선\", \"citations\": [{\"content\": \"이번 벤처확인 제도 개선을 통해 우수한 기술력을 갖춘 기업들이 보다 수월하게 벤처기업으로 확인을 받을 수 있을 것으로 예상된다.\"}]}"
+    }
+  ]
+}
+```
+
+#### D.3 v2_qa — 문서 QA (not-found 응답, ~12%)
+
+```json
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "(C.2 DOC_QA_SLLM_PROMPT 전문)"
+    },
+    {
+      "role": "user",
+      "content": "Context:\n[\"2021 사회적 고립가구 지원 사업 자문운영 관련 사전 간담회. 일시: 2021년 4월 1일...\"]\n\nQuestion: 2014년 지방공기업 경영평가는 어떤 방법의 평가를 통해 지방공기업의 개혁을 이끌어낼 계획일까"
+    },
+    {
+      "role": "assistant",
+      "content": "{\"answer\": \"제공된 문서에서 해당 내용을 찾을 수 없습니다.\", \"citations\": []}"
+    }
+  ]
+}
+```
+
+> Context는 2021년 사회적 고립가구 문서인데, 질문은 2014년 지방공기업 경영평가 — 의도적 카테고리 교차 매칭으로 생성된 not-found 샘플.
+
+#### D.4 v2_summary — 문서 요약
+
+```json
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "(C.3 DOC_SUMMARY_SLLM_PROMPT 전문)"
+    },
+    {
+      "role": "user",
+      "content": "다음 문서를 요약해주세요.\n\n사용자 요청: 회의 결과 요약\n\n문서 내용:\n회의 제목: 2023년 3분기 전략 계획 회의\n일시: 2023년 10월 25일 오후 2시\n참석자: 박준형(대표이사), 이민정(전략기획팀장)...\n\n회의 안건:\n1. 2023년 3분기 성과 분석\n2. 2024년 사업 계획 수립..."
+    },
+    {
+      "role": "assistant",
+      "content": "2023년 10월 25일에 열린 3분기 전략 계획 회의에서는 3분기 성과 분석, 2024년 사업 계획 수립, 신규 프로젝트 추진 방안이 논의되었다. 3분기 매출이 15% 증가하였으나 고객 유치 목표 달성 미흡, 2024년 매출 20% 증가 목표 설정 등이 주요 이슈로 다뤄졌다.\n\n## 주요 포인트\n- 3분기 매출 15% 증가 보고\n- 2024년 매출 목표 20% 증가 설정\n- 중국 및 동남아시아 시장 진출 검토\n- AI 기반 컨설팅 솔루션 시범 프로젝트 제안\n- 고객 유치 프로그램 개선 필요성 제기\n\n## 키워드\n3분기 성과, 2024년 사업 계획, 신규 프로젝트, 고객 유치, AI 솔루션"
+    }
+  ]
+}
+```

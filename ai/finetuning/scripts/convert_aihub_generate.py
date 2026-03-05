@@ -2,7 +2,7 @@
 AI Hub 데이터 → v2_generate 학습 데이터 변환 스크립트 (반자동 파이프라인)
 
 소스: AI Hub "요약문 및 레포트 생성 데이터" (SN 582)
-타겟: data/training/v2_generate/aihub_generate.jsonl (460개)
+타겟: data/training/v2_generate/aihub_generate.jsonl (690개)
 
 AI Hub 데이터 구조 (파일 1건 = JSON 1건):
   {
@@ -12,9 +12,9 @@ AI Hub 데이터 구조 (파일 1건 = JSON 1건):
   }
 
 배분:
-  - meeting_minutes: 40개 (회의록 카테고리 → GPT-4o로 JSON 생성)
-  - report: 210개 (보고서 + 간행물 → GPT-4o로 JSON 생성)
-  - proposal: 210개 (보도자료 + 간행물 중 사업/정책 → GPT-4o로 JSON 생성)
+  - meeting_minutes: 60개 (회의록 카테고리 → GPT-4o로 JSON 생성)
+  - report: 315개 (보고서 + 간행물 → GPT-4o로 JSON 생성)
+  - proposal: 315개 (보도자료 → GPT-4o로 JSON 생성)
 
 변환 전략 (반자동):
   1. AI Hub passage → user input 으로 사용
@@ -55,97 +55,100 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+sys.path.insert(0, str(BASE_DIR))
+
+from dotenv import load_dotenv
+load_dotenv(BASE_DIR / ".env", override=True)
+
+from ai.llm.prompts import DOC_GENERATE_SLLM_PROMPT
 
 # AI Hub 데이터 경로 (실제 구조에 맞춤)
-RAW_BASE = BASE_DIR / "data" / "raw" / "aihub" / "022.요약문 및 레포트 생성 데이터" / "01.데이터"
+RAW_BASE = BASE_DIR / "data" / "raw" / "ai_hub" / "022.요약문 및 레포트 생성 데이터" / "01.데이터"
 TRAIN_LABEL_DIR = RAW_BASE / "1.Training" / "라벨링데이터" / "TL1"
 OUTPUT_DIR = BASE_DIR / "data" / "training" / "v2_generate"
 
-# ── 프로덕션 시스템 프롬프트 (document_agent.py와 100% 일치) ──
+# ── sLLM 시스템 프롬프트 (ai/llm/prompts.py에서 import — synthesize_generate.py와 동일) ──
+DYNAMIC_SYSTEM_PROMPT = DOC_GENERATE_SLLM_PROMPT
 
-SYSTEM_PROMPTS = {
-    "meeting_minutes": (
-        "당신은 회의록 작성 전문가입니다.\n"
-        "아래 [작성 지침]을 참고하여 입력된 회의 내용을 바탕으로 실제 회의록을 생성하세요.\n\n"
-        "[작성 지침]\n"
-        "- title: 회의 주제를 반영한 구체적인 제목\n"
-        "- date: 회의 날짜 (YYYY-MM-DD 형식, 없으면 오늘 날짜)\n"
-        "- attendees: 참석자 이름 배열 (없으면 빈 배열)\n"
-        "- summary: 회의에서 논의된 주요 내용을 파트별로 3~5문장으로 요약 "
-        "(한 줄 요약 금지, 반드시 실제 내용으로 작성)\n"
-        "- decisions: 결정된 사항 목록 (배열, 없으면 빈 배열)\n"
-        "- action_items: 후속 조치 목록. 각 항목은 {content, assignee, due_date} 형태\n"
-        "- risks: 리스크 목록. 각 항목은 {description, level(상/중/하), regulation} 형태\n\n"
-        "반드시 JSON만 출력하세요. 설명 텍스트나 지침 문장을 값으로 출력하지 마세요."
-    ),
-    "report": (
-        "당신은 업무보고서 작성 전문가입니다.\n"
-        "아래 [작성 지침]을 참고하여 사용자의 업무 내용을 바탕으로 실제 보고서 내용을 생성하세요.\n\n"
-        "[작성 지침]\n"
-        "- title: 업무 내용을 반영한 구체적인 보고서 제목\n"
-        "- author: 작성자 이름 (없으면 빈 문자열)\n"
-        "- date: 오늘 날짜 (YYYY-MM-DD 형식)\n"
-        "- department: 부서명 (없으면 빈 문자열)\n"
-        "- position: 직급 (없으면 빈 문자열)\n"
-        "- report_to: 보고 대상 (없으면 빈 문자열)\n"
-        "- report_type: '일일', '주간', '월간', '수시' 중 하나\n"
-        "- overview: 업무 내용을 요약한 보고 개요 (3~5문장, 반드시 실제 내용으로 작성)\n"
-        "- main_content: 업무 세부 내용을 항목별로 구체적으로 작성\n"
-        "- tasks: 진행 중인 업무 목록. 반드시 JSON 배열 형태이며 각 항목은 다음 키를 포함해야 함:\n"
-        '  { "item": "업무항목명", "assignee": "담당자", "progress": "진행률(예:70%)", '
-        '"start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD" }\n'
-        "  (담당자/날짜 정보가 없으면 빈 문자열로 채울 것)\n"
-        "- issues: 이슈 및 건의사항 (없으면 빈 문자열)\n"
-        "- next_plan: 향후 계획 (구체적으로 작성)\n\n"
-        "반드시 JSON만 출력하세요. 설명 텍스트나 지침 문장을 값으로 출력하지 마세요."
-    ),
-    "proposal": (
-        "당신은 제안서 작성 전문가입니다.\n"
-        "아래 [작성 지침]을 참고하여 사용자의 제안 내용을 바탕으로 실제 제안서 내용을 생성하세요.\n\n"
-        "[작성 지침]\n"
-        "- title: 제안 내용을 반영한 구체적인 제안서 제목\n"
-        "- submit_date: 제출 날짜 (YYYY-MM-DD, 없으면 오늘 날짜)\n"
-        "- submit_to: 제출처 (없으면 빈 문자열)\n"
-        "- company: 제안사 이름 (없으면 빈 문자열)\n"
-        "- manager: 담당자 이름 (없으면 빈 문자열)\n"
-        "- contact: 연락처 (없으면 빈 문자열)\n"
-        "- proposal_name: 제안명 (title과 유사하게)\n"
-        "- background: 제안 배경을 2~3문장으로 실제 내용으로 작성\n"
-        "- proposal_date: 제안 날짜 (YYYY-MM-DD)\n"
-        "- period: 제안 기간 (예: 2026년 3월 ~ 6월)\n"
-        "- proposer: 제안사명\n"
-        "- manager_contact: 담당자 / 연락처\n"
-        "- purpose: 제안 목적 및 필요성을 3~5문장으로 실제 내용으로 작성\n"
-        "- analysis: 현황 분석을 3~5문장으로 실제 내용으로 작성\n"
-        "- content: 제안 내용을 항목별로 구체적으로 작성\n"
-        "- schedule: 추진 일정 배열. 각 항목은 {item, phase1, phase2, phase3, phase4} 형태\n"
-        "- budget: 예산 배열. 각 항목은 {item, quantity, unit_price, amount} 형태\n"
-        "- budget_total: 합계 금액\n"
-        "- expected_effect: 기대 효과를 3~5문장으로 실제 내용으로 작성\n\n"
-        "반드시 JSON만 출력하세요. 설명 텍스트나 지침 문장을 값으로 출력하지 마세요."
-    ),
+# ── 템플릿별 필드 명세 (synthesize_generate.py FIELD_SPECS와 100% 동일) ──
+
+FIELD_SPECS = {
+    "meeting_minutes": {
+        "doc_type_name": "회의록",
+        "input_label": "회의 내용",
+        "fields": [
+            ("title", "회의 주제를 반영한 구체적인 제목"),
+            ("date", "회의 날짜 (YYYY-MM-DD 형식, 없으면 오늘 날짜)"),
+            ("attendees", "참석자 이름 배열 (없으면 빈 배열)"),
+            ("summary", "회의에서 논의된 주요 내용을 파트별로 3~5문장으로 요약"),
+            ("decisions", "결정된 사항 목록 (배열, 없으면 빈 배열)"),
+            ("action_items", '후속 조치 목록 배열. 각 항목은 {"content", "assignee", "due_date"} 형태'),
+            ("risks", '리스크 목록 배열. 각 항목은 {"description", "level"(상/중/하), "regulation"} 형태'),
+        ],
+    },
+    "report": {
+        "doc_type_name": "업무보고서",
+        "input_label": "업무 내용",
+        "fields": [
+            ("title", "업무 내용을 반영한 구체적인 보고서 제목"),
+            ("author", "작성자 이름 (없으면 빈 문자열)"),
+            ("date", "작성 날짜 (YYYY-MM-DD 형식)"),
+            ("department", "부서명 (없으면 빈 문자열)"),
+            ("position", "직급 (없으면 빈 문자열)"),
+            ("report_to", "보고 대상 (없으면 빈 문자열)"),
+            ("report_type", "'일일', '주간', '월간', '수시' 중 하나"),
+            ("overview", "업무 내용을 요약한 보고 개요 (3~5문장)"),
+            ("main_content", "업무 세부 내용을 항목별로 구체적으로 작성"),
+            ("tasks", '진행 업무 목록 배열. 각 항목은 {"item", "assignee", "progress", "start_date", "end_date"} 형태'),
+            ("issues", "이슈 및 건의사항 (없으면 빈 문자열)"),
+            ("next_plan", "향후 계획 (구체적으로 작성)"),
+        ],
+    },
+    "proposal": {
+        "doc_type_name": "제안서",
+        "input_label": "제안 내용",
+        "fields": [
+            ("title", "제안 내용을 반영한 구체적인 제안서 제목"),
+            ("submit_date", "제출 날짜 (YYYY-MM-DD, 없으면 오늘 날짜)"),
+            ("submit_to", "제출처 (없으면 빈 문자열)"),
+            ("company", "제안사 이름 (없으면 빈 문자열)"),
+            ("manager", "담당자 이름 (없으면 빈 문자열)"),
+            ("contact", "연락처 (없으면 빈 문자열)"),
+            ("proposal_name", "제안명 (title과 유사하게)"),
+            ("background", "제안 배경 (2~3문장)"),
+            ("proposal_date", "제안 날짜 (YYYY-MM-DD)"),
+            ("period", "제안 기간 (예: 2026년 3월 ~ 6월)"),
+            ("proposer", "제안사명"),
+            ("manager_contact", "담당자 / 연락처"),
+            ("purpose", "제안 목적 및 필요성 (3~5문장)"),
+            ("analysis", "현황 분석 (3~5문장)"),
+            ("content", "제안 내용을 항목별로 구체적으로 작성"),
+            ("schedule", '추진 일정 배열. 각 항목은 {"item", "phase1", "phase2", "phase3", "phase4"} 형태'),
+            ("budget", '예산 배열. 각 항목은 {"item", "quantity", "unit_price", "amount"} 형태'),
+            ("budget_total", "합계 금액"),
+            ("expected_effect", "기대 효과 (3~5문장)"),
+        ],
+    },
 }
 
-USER_PROMPT_TEMPLATES = {
-    "meeting_minutes": (
-        "다음 회의 내용을 바탕으로 회의록 JSON을 작성해주세요.\n\n"
-        "[회의 내용]\n{passage}\n\n"
-        "출력 JSON 키: title, date, attendees, summary, decisions, action_items, risks"
-    ),
-    "report": (
-        "다음 업무 내용을 바탕으로 업무보고서 JSON을 작성해주세요.\n\n"
-        "[업무 내용]\n{passage}\n\n"
-        "출력 JSON 키: title, author, date, department, position, report_to, report_type, "
-        "overview, main_content, tasks, issues, next_plan"
-    ),
-    "proposal": (
-        "다음 제안 내용을 바탕으로 제안서 JSON을 작성해주세요.\n\n"
-        "[제안 내용]\n{passage}\n\n"
-        "출력 JSON 키: title, submit_date, submit_to, company, manager, contact, proposal_name, "
-        "background, proposal_date, period, proposer, manager_contact, purpose, analysis, "
-        "content, schedule, budget, budget_total, expected_effect"
-    ),
-}
+
+def build_dynamic_user_prompt(template: str, passage: str) -> str:
+    """동적 필드 명세 방식의 user prompt 생성 (synthesize_generate.py와 동일)"""
+    spec = FIELD_SPECS[template]
+    doc_type = spec["doc_type_name"]
+    input_label = spec["input_label"]
+
+    field_lines = []
+    for field_name, field_desc in spec["fields"]:
+        field_lines.append(f"- {field_name}: {field_desc}")
+    field_spec_str = "\n".join(field_lines)
+
+    return (
+        f"다음 내용을 바탕으로 문서를 JSON 형식으로 작성해주세요.\n\n"
+        f"[문서 유형] {doc_type}\n\n"
+        f"[필드 명세]\n{field_spec_str}\n\n"
+        f"[{input_label}]\n{passage}"
+    )
 
 # 필수 필드 (검증용)
 REQUIRED_FIELDS = {
@@ -173,14 +176,14 @@ FOLDER_TO_CATEGORY = {
 }
 
 # ── 템플릿별 카테고리 → 목표 수 ──
-# meeting_minutes: 40 (회의록 = 국회 속기록, GPT-4o 변환)
-# report: 210 (보고서 105 + 간행물 105)
-# proposal: 210 (보도자료 105 + 간행물(사업/정책) 105)
+# meeting_minutes: 60 (회의록 = 국회 속기록, GPT-4o 변환)
+# report: 315 (보고서 158 + 간행물 157)
+# proposal: 315 (보도자료)
 
 TEMPLATE_TARGETS = {
-    "meeting_minutes": {"회의록": 40},
-    "report": {"보고서": 105, "간행물": 105},
-    "proposal": {"보도자료": 105, "간행물": 105},
+    "meeting_minutes": {"회의록": 60},
+    "report": {"보고서": 158, "간행물": 157},
+    "proposal": {"보도자료": 315},
 }
 
 # 원문 길이 필터 (v2_generate: 더 긴 원문 필요)
@@ -219,6 +222,7 @@ def load_aihub_data(label_dir: Path, categories: list[str], limit_per_cat: int =
         limit = limit_per_cat if limit_per_cat > 0 else 500
 
         cat_docs = []
+        seen_passages = set()
         for sub_folder in sorted(cat_folder.iterdir()):
             if not sub_folder.is_dir():
                 continue
@@ -237,6 +241,12 @@ def load_aihub_data(label_dir: Path, categories: list[str], limit_per_cat: int =
                     passage = meta_refine.get("passage", "")
                     if not passage or not isinstance(passage, str):
                         continue
+
+                    # 같은 passage가 20per/2~3sent 폴더에 중복 존재 → 로딩 시 제거
+                    p_hash = hash(passage)
+                    if p_hash in seen_passages:
+                        continue
+                    seen_passages.add(p_hash)
 
                     doc = {
                         "passage": passage,
@@ -376,8 +386,7 @@ def convert_template(
     append: bool = False,
 ):
     """특정 템플릿에 대한 변환을 수행 (GPT-4o 호출)"""
-    sys_prompt = SYSTEM_PROMPTS[template]
-    user_template = USER_PROMPT_TEMPLATES[template]
+    sys_prompt = DYNAMIC_SYSTEM_PROMPT
 
     mode = "a" if append else "w"
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -388,7 +397,7 @@ def convert_template(
     with open(output_path, mode, encoding="utf-8") as f:
         for i, doc in enumerate(selected):
             passage = doc["passage"]
-            user_prompt = user_template.format(passage=passage)
+            user_prompt = build_dynamic_user_prompt(template, passage)
 
             print(f"    [{i+1}/{len(selected)}] GPT-4o 호출 중...", end=" ", flush=True)
 
@@ -433,7 +442,7 @@ def main():
     parser.add_argument("--input", type=str, default=str(TRAIN_LABEL_DIR), help="AI Hub TL1 디렉토리")
     parser.add_argument("--output", type=str, default=str(OUTPUT_DIR / "aihub_generate.jsonl"), help="출력 파일")
     parser.add_argument("--template", type=str, choices=["meeting_minutes", "report", "proposal", "all"], default="all")
-    parser.add_argument("--total", type=int, default=460, help="총 변환 목표 건수")
+    parser.add_argument("--total", type=int, default=690, help="총 변환 목표 건수")
     parser.add_argument("--model", type=str, default="gpt-4o", help="사용할 OpenAI 모델")
     parser.add_argument("--append", action="store_true", help="기존 파일에 추가")
     parser.add_argument("--seed", type=int, default=42, help="랜덤 시드")
@@ -454,16 +463,17 @@ def main():
     print(f"  입력: {args.input}")
     print(f"  출력: {args.output}")
     print(f"  모델: {args.model}")
-    print(f"  목표: {args.total}건 (meeting_minutes 40 + report 210 + proposal 210)")
+    print(f"  목표: {args.total}건 (meeting_minutes 60 + report 315 + proposal 315)")
     print(f"  DRY RUN: {'ON' if args.dry_run else 'OFF'}")
 
-    # 비율에 따른 할당
-    ratio = args.total / 460
-    template_targets_scaled = {
-        "meeting_minutes": {"회의록": max(1, int(40 * ratio))},
-        "report": {"보고서": max(1, int(105 * ratio)), "간행물": max(1, int(105 * ratio))},
-        "proposal": {"보도자료": max(1, int(105 * ratio)), "간행물": max(1, int(105 * ratio))},
-    }
+    # 비율에 따른 할당 (TEMPLATE_TARGETS 기반)
+    base_total = sum(sum(cats.values()) for cats in TEMPLATE_TARGETS.values())
+    ratio = args.total / base_total
+    template_targets_scaled = {}
+    for tmpl, cats in TEMPLATE_TARGETS.items():
+        template_targets_scaled[tmpl] = {
+            cat: max(1, int(count * ratio)) for cat, count in cats.items()
+        }
 
     templates_to_run = (
         [args.template] if args.template != "all"
@@ -478,7 +488,7 @@ def main():
     # 1. 데이터 로드 (필요한 카테고리만)
     print(f"\n[1/3] 데이터 로드 (카테고리: {', '.join(needed_categories)})")
     data_dir = Path(args.input)
-    docs = load_aihub_data(data_dir, list(needed_categories), limit_per_cat=500)
+    docs = load_aihub_data(data_dir, list(needed_categories), limit_per_cat=2000)
 
     if not docs:
         print("[오류] 로드된 데이터가 없습니다.")
@@ -491,20 +501,17 @@ def main():
 
     for tmpl in templates_to_run:
         targets = template_targets_scaled[tmpl]
-        # 템플릿마다 다른 시드로 선별 (중복 방지)
-        tmpl_seed = args.seed + hash(tmpl) % 1000
-        selected = filter_and_select(docs, tmpl, targets, args.min_len, args.max_len, tmpl_seed)
 
-        # 이전 템플릿에서 사용한 passage와 중복 제거
-        deduped = []
+        # 이미 사용된 passage를 풀에서 제거한 docs 생성
+        available_docs = [d for d in docs if hash(d["passage"]) not in used_passages]
+
+        selected = filter_and_select(available_docs, tmpl, targets, args.min_len, args.max_len, args.seed)
+
+        # 선택된 passage를 used_passages에 등록
         for doc in selected:
-            passage_hash = hash(doc["passage"][:200])
-            if passage_hash not in used_passages:
-                deduped.append(doc)
-                used_passages.add(passage_hash)
-        if len(deduped) < len(selected):
-            print(f"    [{tmpl}] 중복 제거: {len(selected)} -> {len(deduped)}건")
-        template_selected[tmpl] = deduped
+            used_passages.add(hash(doc["passage"]))
+
+        template_selected[tmpl] = selected
 
     if args.dry_run:
         print(f"\n[DRY RUN] API 호출 없이 데이터 선별 현황만 확인합니다.")

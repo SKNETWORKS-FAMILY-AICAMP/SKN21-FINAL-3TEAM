@@ -1,11 +1,11 @@
 """
 v2_summary 합성 데이터 생성 스크립트
 
-GPT-4o를 활용하여 완전 합성 요약 데이터 300개를 생성합니다.
+GPT-4o를 활용하여 완전 합성 요약 데이터 200개를 생성합니다.
 기존 AI Hub 700개를 보완하여 새로운 문서 유형(이메일, 사내공지, 계약서 등) 추가.
 
 카테고리별 배분:
-  회의록 50, 보고서 50, 간행물 30, 뉴스/보도자료 40,
+  회의록 35, 보고서 35, 간행물 20, 뉴스/보도자료 25,
   사설/연설문 30, 이메일 40, 사내공지 30, 계약서/법률문서 30
 
 2단계 파이프라인:
@@ -37,7 +37,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
 from dotenv import load_dotenv
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env", override=True)
 
 from ai.llm.prompts import DOC_SUMMARY_SLLM_PROMPT
 
@@ -49,14 +49,14 @@ SYSTEM_PROMPT = DOC_SUMMARY_SLLM_PROMPT
 # ── 카테고리별 합성 목표 ──
 
 CATEGORY_TARGETS = {
-    "회의록": 50,
-    "보고서": 50,
-    "간행물": 30,
-    "뉴스/보도자료": 40,
-    "사설/연설문": 30,
-    "이메일": 40,
-    "사내공지": 30,
-    "계약서/법률문서": 30,
+    "회의록": 35,
+    "보고서": 35,
+    "간행물": 20,
+    "뉴스/보도자료": 25,
+    "사설/연설문": 20,
+    "이메일": 25,
+    "사내공지": 20,
+    "계약서/법률문서": 20,
 }
 
 # ── 업종 풀 ──
@@ -331,7 +331,7 @@ def synthesize_all(
 def main():
     parser = argparse.ArgumentParser(description="v2_summary 합성 데이터 생성")
     parser.add_argument("--output", type=str, default=str(OUTPUT_DIR / "synthetic_summary.jsonl"))
-    parser.add_argument("--count", type=int, default=0, help="총 생성 수 (0=기본값 300)")
+    parser.add_argument("--count", type=int, default=0, help="총 생성 수 (0=기본값 200)")
     parser.add_argument("--model", type=str, default="gpt-4o")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--append", action="store_true", help="기존 파일에 추가")
@@ -344,7 +344,7 @@ def main():
 
     # 목표 수 결정
     if args.count > 0:
-        ratio = args.count / 300
+        ratio = args.count / 200
         targets = {k: max(1, int(v * ratio)) for k, v in CATEGORY_TARGETS.items()}
     else:
         targets = dict(CATEGORY_TARGETS)

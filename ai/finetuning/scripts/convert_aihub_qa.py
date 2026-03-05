@@ -71,6 +71,9 @@ if sys.platform == "win32":
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
+from dotenv import load_dotenv
+load_dotenv(BASE_DIR / ".env", override=True)
+
 from ai.llm.prompts import DOC_QA_SLLM_PROMPT
 
 # AI Hub 데이터 경로
@@ -783,12 +786,25 @@ def main():
     if args.dry_run and args.source in ("report", "all"):
         print(f"\n  [DRY RUN] 레포트 QA 생성은 건너뜁니다 (API 필요)")
 
-    # not-found 카테고리 교차 매칭 (10~15%)
+    # not-found 카테고리 교차 매칭 (12%)
+    # 목표 건수 안에 포함 (추가가 아님): 정상 88% + not-found 12% = 100%
     if all_samples:
+        target_total = args.mrc_count if args.source == "mrc" else (
+            args.report_count if args.source == "report" else args.mrc_count + args.report_count
+        )
+        nf_count = int(target_total * 0.12)
+        # 정상 데이터를 (목표 - not-found)건으로 트리밍
+        normal_target = target_total - nf_count
+        if len(all_samples) > normal_target:
+            random.seed(args.seed)
+            random.shuffle(all_samples)
+            all_samples = all_samples[:normal_target]
         not_found_samples = generate_not_found_samples(all_samples, ratio=0.12, seed=args.seed)
-        if not_found_samples:
-            all_samples.extend(not_found_samples)
-            print(f"\n  not-found 샘플 추가: {len(not_found_samples)}건")
+        # not-found 건수를 정확히 맞춤
+        if len(not_found_samples) > nf_count:
+            not_found_samples = not_found_samples[:nf_count]
+        all_samples.extend(not_found_samples)
+        print(f"\n  정상 {len(all_samples) - len(not_found_samples)}건 + not-found {len(not_found_samples)}건 = {len(all_samples)}건 (목표: {target_total})")
 
     # 저장
     if all_samples:

@@ -1,10 +1,10 @@
 """
 v2_qa 합성 데이터 생성 스크립트
 
-GPT-4o를 활용하여 완전 합성 QA 데이터 400개를 생성합니다.
+GPT-4o를 활용하여 완전 합성 QA 데이터 300개를 생성합니다.
 
 문서 유형별 배분:
-  업무보고서 100, 회의록 100, 제안서/사업계획 80, 규정/지침 60, 뉴스/보도자료 60
+  업무보고서 75, 회의록 75, 제안서/사업계획 60, 규정/지침 45, 뉴스/보도자료 45
 
 파이프라인:
   Step A: GPT-4o -> 문서 원문 + QA 쌍 동시 생성
@@ -34,7 +34,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
 from dotenv import load_dotenv
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env", override=True)
 
 from ai.llm.prompts import DOC_QA_SLLM_PROMPT
 
@@ -70,11 +70,11 @@ QA_GENERATION_SYSTEM = (
 # ── 문서 유형별 목표 ──
 
 DOC_TYPE_TARGETS = {
-    "업무보고서": 100,
-    "회의록": 100,
-    "제안서/사업계획": 80,
-    "규정/지침": 60,
-    "뉴스/보도자료": 60,
+    "업무보고서": 75,
+    "회의록": 75,
+    "제안서/사업계획": 60,
+    "규정/지침": 45,
+    "뉴스/보도자료": 45,
 }
 
 # ── 업종 풀 ──
@@ -351,7 +351,7 @@ def synthesize_all(
 def main():
     parser = argparse.ArgumentParser(description="v2_qa 합성 데이터 생성")
     parser.add_argument("--output", type=str, default=str(OUTPUT_DIR / "synthetic_qa.jsonl"))
-    parser.add_argument("--count", type=int, default=0, help="총 생성 수 (0=기본값 400)")
+    parser.add_argument("--count", type=int, default=0, help="총 생성 수 (0=기본값 300)")
     parser.add_argument("--model", type=str, default="gpt-4o")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--append", action="store_true", help="기존 파일에 추가")
@@ -365,7 +365,7 @@ def main():
 
     # 목표 수 결정
     if args.count > 0:
-        ratio = args.count / 400
+        ratio = args.count / 300
         targets = {k: max(1, int(v * ratio)) for k, v in DOC_TYPE_TARGETS.items()}
     else:
         targets = dict(DOC_TYPE_TARGETS)

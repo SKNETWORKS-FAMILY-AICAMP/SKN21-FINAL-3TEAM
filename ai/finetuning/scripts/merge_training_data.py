@@ -5,9 +5,9 @@
 중복 검사 후 목표 수에 맞게 병합합니다.
 
 최종 산출물:
-  data/training/v2_generate/aihub_generate.jsonl  <- 1,000개 (476 AI Hub + 524 합성)
-  data/training/v2_summary/aihub_summary.jsonl    <- 1,000개 (700 AI Hub + 300 합성)
-  data/training/v2_qa/aihub_qa.jsonl              <- 1,000개 (600 AI Hub + 400 합성)
+  data/training/v2_generate/merged_generate.jsonl  <- 1,500개 (690 AI Hub + 600 합성 + 210 변형)
+  data/training/v2_summary/merged_summary.jsonl    <- 1,000개 (700 AI Hub + 300 합성)
+  data/training/v2_qa/merged_qa.jsonl              <- 1,000개 (600 AI Hub + 400 합성)
 
 사용법:
     # 전체 병합
@@ -42,19 +42,22 @@ MERGE_CONFIG = {
     "v2_generate": {
         "base": DATA_DIR / "v2_generate" / "aihub_generate.jsonl",
         "synthetic": DATA_DIR / "v2_generate" / "synthetic_generate.jsonl",
-        "output": DATA_DIR / "v2_generate" / "aihub_generate.jsonl",
-        "target": 1000,
+        "output": DATA_DIR / "v2_generate" / "merged_generate.jsonl",
+        "target": 1500,
     },
     "v2_summary": {
         "base": DATA_DIR / "v2_summary" / "aihub_summary.jsonl",
         "synthetic": DATA_DIR / "v2_summary" / "synthetic_summary.jsonl",
-        "output": DATA_DIR / "v2_summary" / "aihub_summary.jsonl",
+        "output": DATA_DIR / "v2_summary" / "merged_summary.jsonl",
         "target": 1000,
     },
     "v2_qa": {
-        "base": DATA_DIR / "v2_qa" / "aihub_qa.jsonl",
+        "base": [
+            DATA_DIR / "v2_qa" / "aihub_qa.jsonl",
+            DATA_DIR / "v2_qa" / "report_qa.jsonl",
+        ],
         "synthetic": DATA_DIR / "v2_qa" / "synthetic_qa.jsonl",
-        "output": DATA_DIR / "v2_qa" / "aihub_qa.jsonl",
+        "output": DATA_DIR / "v2_qa" / "merged_qa.jsonl",
         "target": 1000,
     },
 }
@@ -94,18 +97,25 @@ def merge_adapter(
     backup: bool = False,
 ) -> dict:
     """단일 어댑터 데이터 병합"""
-    base_path = config["base"]
+    base_paths = config["base"]
     synth_path = config["synthetic"]
     output_path = config["output"]
     target = config["target"]
 
     print(f"\n  === {adapter} ===")
 
-    # 데이터 로드
-    base_data = load_jsonl(base_path)
-    synth_data = load_jsonl(synth_path)
+    # 데이터 로드 (base가 단일 Path 또는 리스트)
+    base_data = []
+    if isinstance(base_paths, list):
+        for bp in base_paths:
+            loaded = load_jsonl(bp)
+            print(f"  기존 데이터: {len(loaded)}건 ({bp.name})")
+            base_data.extend(loaded)
+    else:
+        base_data = load_jsonl(base_paths)
+        print(f"  기존 데이터: {len(base_data)}건 ({base_paths.name})")
 
-    print(f"  기존 데이터: {len(base_data)}건 ({base_path.name})")
+    synth_data = load_jsonl(synth_path)
     print(f"  합성 데이터: {len(synth_data)}건 ({synth_path.name})")
 
     if not synth_data:
@@ -202,7 +212,8 @@ def main():
         total_merged += r["merged"]
 
     print(f"  {'-' * 50}")
-    print(f"  {'합계':<15} {'':>6} {'':>6} {total_merged:>6} {3000:>6}")
+    total_target = sum(MERGE_CONFIG[a]["target"] for a in adapters)
+    print(f"  {'합계':<15} {'':>6} {'':>6} {total_merged:>6} {total_target:>6}")
 
     print(f"\n  완료!")
 

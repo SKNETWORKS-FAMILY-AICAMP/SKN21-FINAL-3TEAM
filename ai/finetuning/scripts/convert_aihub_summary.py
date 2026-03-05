@@ -37,6 +37,9 @@ if sys.platform == "win32":
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
+from dotenv import load_dotenv
+load_dotenv(BASE_DIR / ".env", override=True)
+
 from ai.llm.prompts import DOC_SUMMARY_SLLM_PROMPT
 
 # AI Hub 데이터 경로 (실제 구조에 맞춤)

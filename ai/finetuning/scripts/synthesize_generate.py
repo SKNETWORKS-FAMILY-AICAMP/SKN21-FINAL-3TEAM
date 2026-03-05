@@ -1,8 +1,8 @@
 """
 v2_generate 합성 데이터 생성 스크립트
 
-GPT-4o를 활용하여 완전 합성 데이터 524개를 생성합니다.
-- meeting_minutes: 344개
+GPT-4o를 활용하여 완전 합성 데이터 600개를 생성합니다.
+- meeting_minutes: 420개
 - report: 90개
 - proposal: 90개
 
@@ -34,7 +34,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
 from dotenv import load_dotenv
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env", override=True)
 
 from ai.llm.prompts import DOC_GENERATE_SLLM_PROMPT
 
@@ -115,6 +115,17 @@ REQUIRED_FIELDS = {
     ],
 }
 
+# ── 빈 필드 학습용: 누락 가능 필드 (title, summary 등 핵심 필드는 제외) ──
+OMITTABLE_FIELDS = {
+    "meeting_minutes": ["date", "attendees", "decisions", "action_items", "risks"],
+    "report": ["author", "department", "position", "report_to", "report_type", "issues", "next_plan"],
+    "proposal": [
+        "submit_date", "submit_to", "company", "manager", "contact",
+        "proposal_date", "period", "proposer", "manager_contact",
+        "analysis", "budget_total", "expected_effect",
+    ],
+}
+
 # ── 시나리오 다양성 풀 ──
 
 INDUSTRIES = [
@@ -157,7 +168,7 @@ PROPOSAL_TOPICS = [
 ]
 
 TEMPLATE_TARGETS = {
-    "meeting_minutes": 344,
+    "meeting_minutes": 420,
     "report": 90,
     "proposal": 90,
 }
@@ -379,11 +390,18 @@ def synthesize_template(
                 failed += 1
                 continue
 
-            # ~30% 확률로 passage 일부 정보 제거 (빈 필드 학습용)
-            if random.random() < empty_field_ratio:
-                # passage 앞부분 30% 잘라내기 (일부 정보 누락 시뮬레이션)
-                cut_point = len(passage) // 3
-                passage = passage[cut_point:]
+            # ~30% 확률로 빈 필드 학습 샘플 생성 (할루시네이션 방지)
+            is_sparse = random.random() < empty_field_ratio
+            omit_fields = []
+            if is_sparse:
+                omit_pool = OMITTABLE_FIELDS.get(template, [])
+                k = random.randint(1, min(3, len(omit_pool)))
+                omit_fields = random.sample(omit_pool, k)
+                passage += (
+                    f"\n\n[참고] 다음 정보는 원문에 포함되어 있지 않습니다: "
+                    f"{', '.join(omit_fields)}. "
+                    f"해당 필드는 빈 문자열 또는 빈 배열로 두세요."
+                )
 
             # Step B: JSON 응답 생성
             json_output = generate_response(template, passage, model=model)
@@ -392,15 +410,33 @@ def synthesize_template(
                 failed += 1
                 continue
 
-            # 검증
+            # 검증 (빈 필드 샘플은 누락 필드 허용)
             is_valid, parsed, errors = validate_json_output(json_output, template)
             if not is_valid:
                 print(f"- 검증 실패: {errors}")
                 failed += 1
                 continue
 
-            # 학습 데이터 저장
-            user_prompt = build_dynamic_user_prompt(template, passage)
+            # 빈 필드 샘플: 지정 필드가 실제로 비었는지 확인
+            sparse_ok = True
+            if is_sparse and parsed:
+                empty_count = 0
+                for field in omit_fields:
+                    val = parsed.get(field)
+                    if val in ("", [], None, {}):
+                        empty_count += 1
+                if empty_count == 0:
+                    # GPT-4o가 지시를 무시하고 다 채움 → 후처리로 강제 비움
+                    for field in omit_fields:
+                        if isinstance(parsed.get(field), list):
+                            parsed[field] = []
+                        else:
+                            parsed[field] = ""
+                    json_output = json.dumps(parsed, ensure_ascii=False)
+
+            # 학습 데이터 저장 (user prompt에는 [참고] 지시 제거 — sLLM은 이걸 볼 필요 없음)
+            clean_passage = passage.split("\n\n[참고]")[0] if is_sparse else passage
+            user_prompt = build_dynamic_user_prompt(template, clean_passage)
             sample = {
                 "messages": [
                     {"role": "system", "content": DYNAMIC_SYSTEM_PROMPT},
@@ -411,7 +447,8 @@ def synthesize_template(
 
             f.write(json.dumps(sample, ensure_ascii=False) + "\n")
             success += 1
-            print(f"- OK ({len(parsed)}키)")
+            sparse_tag = " [sparse]" if is_sparse else ""
+            print(f"- OK ({len(parsed)}키{sparse_tag})")
 
             # Rate limiting
             if (i + 1) % 10 == 0:
@@ -426,7 +463,7 @@ def main():
     parser = argparse.ArgumentParser(description="v2_generate 합성 데이터 생성")
     parser.add_argument("--output", type=str, default=str(OUTPUT_DIR / "synthetic_generate.jsonl"))
     parser.add_argument("--template", type=str, choices=["meeting_minutes", "report", "proposal", "all"], default="all")
-    parser.add_argument("--count", type=int, default=0, help="총 생성 수 (0=기본값 524)")
+    parser.add_argument("--count", type=int, default=0, help="총 생성 수 (0=기본값 600)")
     parser.add_argument("--model", type=str, default="gpt-4o")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--append", action="store_true", help="기존 파일에 추가")
@@ -442,7 +479,7 @@ def main():
     if args.count > 0 and args.template != "all":
         targets = {args.template: args.count}
     elif args.count > 0:
-        ratio = args.count / 524
+        ratio = args.count / 600
         targets = {k: max(1, int(v * ratio)) for k, v in TEMPLATE_TARGETS.items()}
     else:
         targets = dict(TEMPLATE_TARGETS)
