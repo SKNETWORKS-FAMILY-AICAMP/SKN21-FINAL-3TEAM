@@ -36,9 +36,24 @@ export default function MyPage() {
 
         setAvatarUploading(true);
         const reader = new FileReader();
-        reader.onload = () => {
-            setEditForm(f => ({ ...f, avatar: reader.result }));
-            setAvatarUploading(false);
+        reader.onload = (ev) => {
+            const img = new Image();
+            img.onload = () => {
+                const MAX = 200;
+                const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                const base64 = canvas.toDataURL('image/jpeg', 0.75);
+                setEditForm(f => ({ ...f, avatar: base64 }));
+                setAvatarUploading(false);
+            };
+            img.onerror = () => {
+                alert('이미지를 읽는데 실패했습니다.');
+                setAvatarUploading(false);
+            };
+            img.src = ev.target.result;
         };
         reader.onerror = () => {
             alert('이미지를 읽는데 실패했습니다.');
