@@ -1,14 +1,19 @@
 """
-v2_generate 합성 데이터 생성 스크립트
+v2_generate 합성 데이터 생성 스크립트 (필드 풀 랜덤 조합 방식)
 
-GPT-4o를 활용하여 완전 합성 데이터 600개를 생성합니다.
-- meeting_minutes: 420개
-- report: 90개
-- proposal: 90개
+GPT-4o를 활용하여 합성 데이터 800개를 생성합니다.
+- meeting_minutes: 400개
+- report: 200개
+- proposal: 200개
 
 2단계 파이프라인:
   Step A: GPT-4o -> 비즈니스 시나리오(passage) 생성
-  Step B: GPT-4o -> 프로덕션 프롬프트(동적 필드 방식)로 JSON 응답 생성
+  Step B: GPT-4o -> 필드 풀에서 랜덤 선택된 필드 명세로 JSON 응답 생성
+
+필드 풀 방식:
+  각 문서유형별 필드를 필수/메타/내용 3계층으로 분류.
+  매 샘플마다: 필수 전부 + 내용 풀 2~4개 + 메타 풀 1~3개 = 총 6~10개 필드.
+  sLLM이 "필드 명세를 읽고 따르는 능력" 자체를 학습.
 
 사용법:
     python ai/finetuning/scripts/synthesize_generate.py --dry-run
@@ -40,93 +45,149 @@ from ai.llm.prompts import DOC_GENERATE_SLLM_PROMPT
 
 OUTPUT_DIR = BASE_DIR / "data" / "training" / "v2_generate"
 
-# ── sLLM 시스템 프롬프트 (ai/llm/prompts.py에서 import) ──
+# -- sLLM 시스템 프롬프트 (ai/llm/prompts.py에서 import) --
 DYNAMIC_SYSTEM_PROMPT = DOC_GENERATE_SLLM_PROMPT
 
-# ── 템플릿별 필드 명세 (convert_to_dynamic_fields.py와 100% 일치) ──
+# ============================================================
+# 필드 풀 설계 (3계층: 필수 / 메타 / 내용)
+# ============================================================
+# 매 샘플: 필수 전부 + 내용 풀 2~4개 + 메타 풀 1~3개 = 총 6~10개
+# 내용 풀 최소 2개 보장 (메타만 뽑히는 무의미한 샘플 방지)
 
-FIELD_SPECS = {
+FIELD_POOLS = {
     "meeting_minutes": {
         "doc_type_name": "회의록",
         "input_label": "회의 내용",
-        "fields": [
+        "core": [
             ("title", "회의 주제를 반영한 구체적인 제목"),
             ("date", "회의 날짜 (YYYY-MM-DD 형식, 없으면 오늘 날짜)"),
             ("attendees", "참석자 이름 배열 (없으면 빈 배열)"),
-            ("summary", "회의에서 논의된 주요 내용을 파트별로 3~5문장으로 요약"),
+        ],
+        "meta": [
+            ("time", "회의 시간 (예: '14:00~15:30')"),
+            ("location", "회의 장소 (없으면 빈 문자열)"),
+            ("meeting_type", "회의 유형 ('정기', '비정기', '긴급' 중 하나)"),
+            ("author", "작성자 이름 (없으면 빈 문자열)"),
+            ("moderator", "진행자/사회자 이름 (없으면 빈 문자열)"),
+            ("department", "주관 부서명 (없으면 빈 문자열)"),
+            ("duration", "회의 소요 시간 (예: '1시간 30분')"),
+        ],
+        "content": [
+            ("summary", "회의에서 논의된 주요 내용을 3~5문장으로 요약"),
+            ("content", "회의 내용을 상세하게 기술"),
+            ("agenda", "회의 안건 목록 (배열)"),
+            ("meeting_purpose", "회의 목적 (1~2문장)"),
             ("decisions", "결정된 사항 목록 (배열, 없으면 빈 배열)"),
-            ("action_items", '후속 조치 목록 배열. 각 항목은 {"content", "assignee", "due_date"} 형태'),
-            ("risks", '리스크 목록 배열. 각 항목은 {"description", "level"(상/중/하), "regulation"} 형태'),
+            ("action_items", '후속 조치 목록 배열. 각 항목은 {"content": "내용", "assignee": "담당자", "due_date": "기한"} 형태'),
+            ("risks", '리스크 목록 배열. 각 항목은 {"description": "설명", "level": "상/중/하", "mitigation": "대응방안"} 형태'),
+            ("next_meeting", "다음 회의 일정 (없으면 빈 문자열)"),
+            ("notes", "비고 사항 (없으면 빈 문자열)"),
         ],
     },
     "report": {
         "doc_type_name": "업무보고서",
         "input_label": "업무 내용",
-        "fields": [
+        "core": [
             ("title", "업무 내용을 반영한 구체적인 보고서 제목"),
-            ("author", "작성자 이름 (없으면 빈 문자열)"),
             ("date", "작성 날짜 (YYYY-MM-DD 형식)"),
+            ("author", "작성자 이름 (없으면 빈 문자열)"),
+        ],
+        "meta": [
             ("department", "부서명 (없으면 빈 문자열)"),
             ("position", "직급 (없으면 빈 문자열)"),
             ("report_to", "보고 대상 (없으면 빈 문자열)"),
             ("report_type", "'일일', '주간', '월간', '수시' 중 하나"),
+            ("period", "보고 기간 (예: '2026년 2월 1주차')"),
+            ("audience", "보고 대상/독자 (없으면 빈 문자열)"),
+        ],
+        "content": [
             ("overview", "업무 내용을 요약한 보고 개요 (3~5문장)"),
             ("main_content", "업무 세부 내용을 항목별로 구체적으로 작성"),
-            ("tasks", '진행 업무 목록 배열. 각 항목은 {"item", "assignee", "progress", "start_date", "end_date"} 형태'),
+            ("tasks", '진행 업무 목록 배열. 각 항목은 {"item": "업무명", "assignee": "담당자", "progress": "진행률", "start_date": "시작일", "end_date": "종료일"} 형태'),
+            ("achievements", "주요 성과 목록 (배열)"),
             ("issues", "이슈 및 건의사항 (없으면 빈 문자열)"),
+            ("kpi_results", "KPI 달성 현황 (없으면 빈 문자열)"),
+            ("conclusion", "결론 및 종합 의견"),
+            ("recommendations", "권장 사항 목록 (배열)"),
             ("next_plan", "향후 계획 (구체적으로 작성)"),
         ],
     },
     "proposal": {
         "doc_type_name": "제안서",
         "input_label": "제안 내용",
-        "fields": [
+        "core": [
             ("title", "제안 내용을 반영한 구체적인 제안서 제목"),
             ("submit_date", "제출 날짜 (YYYY-MM-DD, 없으면 오늘 날짜)"),
+            ("purpose", "제안 목적 및 필요성 (3~5문장)"),
+        ],
+        "meta": [
             ("submit_to", "제출처 (없으면 빈 문자열)"),
             ("company", "제안사 이름 (없으면 빈 문자열)"),
             ("manager", "담당자 이름 (없으면 빈 문자열)"),
             ("contact", "연락처 (없으면 빈 문자열)"),
-            ("proposal_name", "제안명 (title과 유사하게)"),
+            ("proposer", "제안자/제안사명 (없으면 빈 문자열)"),
+            ("period", "제안 기간 (예: '2026년 3월 ~ 6월')"),
+        ],
+        "content": [
             ("background", "제안 배경 (2~3문장)"),
-            ("proposal_date", "제안 날짜 (YYYY-MM-DD)"),
-            ("period", "제안 기간 (예: 2026년 3월 ~ 6월)"),
-            ("proposer", "제안사명"),
-            ("manager_contact", "담당자 / 연락처"),
-            ("purpose", "제안 목적 및 필요성 (3~5문장)"),
-            ("analysis", "현황 분석 (3~5문장)"),
+            ("current_situation", "현황 분석 (3~5문장)"),
             ("content", "제안 내용을 항목별로 구체적으로 작성"),
-            ("schedule", '추진 일정 배열. 각 항목은 {"item", "phase1", "phase2", "phase3", "phase4"} 형태'),
-            ("budget", '예산 배열. 각 항목은 {"item", "quantity", "unit_price", "amount"} 형태'),
-            ("budget_total", "합계 금액"),
+            ("scope", "사업 범위 (2~3문장)"),
+            ("schedule", '추진 일정 배열. 각 항목은 {"phase": "단계", "task": "업무", "period": "기간"} 형태'),
+            ("budget", '예산 배열. 각 항목은 {"item": "항목", "amount": "금액"} 형태'),
+            ("budget_total", "합계 금액 (없으면 빈 문자열)"),
             ("expected_effect", "기대 효과 (3~5문장)"),
+            ("resources", "필요 자원 (인력, 장비 등)"),
+            ("risks", '리스크 및 대응 방안 배열. 각 항목은 {"risk": "리스크", "mitigation": "대응방안"} 형태'),
+            ("deliverables", "산출물 목록 (배열)"),
         ],
     },
 }
 
-# ── 필수 필드 (검증용) ──
 
-REQUIRED_FIELDS = {
-    "meeting_minutes": ["title", "date", "attendees", "summary", "decisions", "action_items"],
-    "report": ["title", "author", "date", "department", "report_type", "overview", "main_content", "tasks"],
-    "proposal": [
-        "title", "submit_date", "submit_to", "company", "manager",
-        "proposal_name", "background", "purpose", "content", "schedule", "budget",
-    ],
-}
+def select_random_fields(template: str, rng: random.Random) -> list[tuple[str, str]]:
+    """필드 풀에서 랜덤 조합 선택.
 
-# ── 빈 필드 학습용: 누락 가능 필드 (title, summary 등 핵심 필드는 제외) ──
-OMITTABLE_FIELDS = {
-    "meeting_minutes": ["date", "attendees", "decisions", "action_items", "risks"],
-    "report": ["author", "department", "position", "report_to", "report_type", "issues", "next_plan"],
-    "proposal": [
-        "submit_date", "submit_to", "company", "manager", "contact",
-        "proposal_date", "period", "proposer", "manager_contact",
-        "analysis", "budget_total", "expected_effect",
-    ],
-}
+    규칙: 필수 전부 + 내용 2~4개 + 메타 1~3개 = 총 6~10개
+    """
+    pool = FIELD_POOLS[template]
+    core = list(pool["core"])
+    meta = list(pool["meta"])
+    content = list(pool["content"])
 
-# ── 시나리오 다양성 풀 ──
+    # 내용 풀에서 2~4개 선택
+    n_content = rng.randint(2, min(4, len(content)))
+    selected_content = rng.sample(content, n_content)
+
+    # 메타 풀에서 1~3개 선택
+    n_meta = rng.randint(1, min(3, len(meta)))
+    selected_meta = rng.sample(meta, n_meta)
+
+    # 필수 + 메타 + 내용 합치기 (순서: 필수 → 메타 → 내용)
+    selected = core + selected_meta + selected_content
+    return selected
+
+
+def build_dynamic_user_prompt(template: str, passage: str, fields: list[tuple[str, str]]) -> str:
+    """선택된 필드로 동적 user prompt 생성."""
+    pool = FIELD_POOLS[template]
+    doc_type = pool["doc_type_name"]
+    input_label = pool["input_label"]
+
+    field_lines = []
+    for field_name, field_desc in fields:
+        field_lines.append(f"- {field_name}: {field_desc}")
+    field_spec_str = "\n".join(field_lines)
+
+    return (
+        f"다음 내용을 바탕으로 문서를 JSON 형식으로 작성해주세요.\n\n"
+        f"[문서 유형] {doc_type}\n\n"
+        f"[필드 명세]\n{field_spec_str}\n\n"
+        f"[{input_label}]\n{passage}"
+    )
+
+
+# -- 시나리오 다양성 풀 --
 
 INDUSTRIES = [
     "IT/소프트웨어", "제조업", "금융/은행", "유통/물류", "의료/헬스케어",
@@ -168,13 +229,13 @@ PROPOSAL_TOPICS = [
 ]
 
 TEMPLATE_TARGETS = {
-    "meeting_minutes": 420,
-    "report": 90,
-    "proposal": 90,
+    "meeting_minutes": 400,
+    "report": 200,
+    "proposal": 200,
 }
 
 
-# ── 시나리오 생성 프롬프트 ──
+# -- 시나리오 생성 프롬프트 --
 
 SCENARIO_SYSTEM_PROMPTS = {
     "meeting_minutes": (
@@ -210,23 +271,22 @@ SCENARIO_SYSTEM_PROMPTS = {
 }
 
 
-def build_dynamic_user_prompt(template: str, passage: str) -> str:
-    """동적 필드 명세 방식의 user prompt 생성 (convert_to_dynamic_fields.py와 동일)"""
-    spec = FIELD_SPECS[template]
-    doc_type = spec["doc_type_name"]
-    input_label = spec["input_label"]
-
-    field_lines = []
-    for field_name, field_desc in spec["fields"]:
-        field_lines.append(f"- {field_name}: {field_desc}")
-    field_spec_str = "\n".join(field_lines)
-
-    return (
-        f"다음 내용을 바탕으로 문서를 JSON 형식으로 작성해주세요.\n\n"
-        f"[문서 유형] {doc_type}\n\n"
-        f"[필드 명세]\n{field_spec_str}\n\n"
-        f"[{input_label}]\n{passage}"
-    )
+# -- 빈 필드 학습용: 누락 가능 필드 (core 필드 제외) --
+# 메타 풀 전부 + 내용 풀 중 핵심이 아닌 것들
+OMITTABLE_FIELDS = {
+    "meeting_minutes": [
+        "time", "location", "meeting_type", "author", "moderator", "department", "duration",
+        "decisions", "action_items", "risks", "next_meeting", "notes",
+    ],
+    "report": [
+        "department", "position", "report_to", "report_type", "period", "audience",
+        "achievements", "issues", "kpi_results", "recommendations",
+    ],
+    "proposal": [
+        "submit_to", "company", "manager", "contact", "proposer", "period",
+        "current_situation", "scope", "budget_total", "resources", "risks", "deliverables",
+    ],
+}
 
 
 def call_openai(
@@ -296,9 +356,9 @@ def generate_scenario(template: str, industry: str, topic: str, model: str = "gp
     )
 
 
-def generate_response(template: str, passage: str, model: str = "gpt-4o") -> str | None:
-    """Step B: 프로덕션 프롬프트로 JSON 응답 생성"""
-    user_prompt = build_dynamic_user_prompt(template, passage)
+def generate_response(template: str, passage: str, fields: list[tuple[str, str]], model: str = "gpt-4o") -> str | None:
+    """Step B: 선택된 필드 명세로 JSON 응답 생성"""
+    user_prompt = build_dynamic_user_prompt(template, passage, fields)
 
     return call_openai(
         DYNAMIC_SYSTEM_PROMPT,
@@ -310,8 +370,8 @@ def generate_response(template: str, passage: str, model: str = "gpt-4o") -> str
     )
 
 
-def validate_json_output(json_str: str, template: str) -> tuple[bool, dict | None, list[str]]:
-    """생성된 JSON 검증"""
+def validate_json_output(json_str: str, selected_fields: list[tuple[str, str]]) -> tuple[bool, dict | None, list[str]]:
+    """생성된 JSON 검증 (선택된 필드 기준)"""
     errors = []
 
     try:
@@ -327,18 +387,23 @@ def validate_json_output(json_str: str, template: str) -> tuple[bool, dict | Non
     if korean_keys:
         errors.append(f"한국어 키 발견: {korean_keys}")
 
-    # 필수 필드 체크
-    required = REQUIRED_FIELDS.get(template, [])
-    missing = [f for f in required if f not in data]
+    # 선택된 필드가 JSON에 존재하는지 체크
+    selected_names = [name for name, _ in selected_fields]
+    missing = [f for f in selected_names if f not in data]
     if missing:
-        errors.append(f"필수 필드 누락: {missing}")
+        errors.append(f"필드 누락: {missing}")
+
+    # JSON에 선택되지 않은 필드가 있는지 체크 (과잉 필드)
+    extra = [k for k in data.keys() if k not in selected_names]
+    if extra:
+        errors.append(f"과잉 필드: {extra}")
 
     return len(errors) == 0, data, errors
 
 
 def build_scenario_pool(template: str, count: int, seed: int = 42) -> list[dict]:
     """시나리오 풀 생성 (업종 x 주제 랜덤 조합)"""
-    random.seed(seed)
+    rng = random.Random(seed)
 
     topic_map = {
         "meeting_minutes": MEETING_TOPICS,
@@ -350,8 +415,8 @@ def build_scenario_pool(template: str, count: int, seed: int = 42) -> list[dict]
     pool = []
     for _ in range(count):
         pool.append({
-            "industry": random.choice(INDUSTRIES),
-            "topic": random.choice(topics),
+            "industry": rng.choice(INDUSTRIES),
+            "topic": rng.choice(topics),
         })
 
     return pool
@@ -368,7 +433,7 @@ def synthesize_template(
 ) -> int:
     """특정 템플릿의 합성 데이터 생성"""
     pool = build_scenario_pool(template, count, seed)
-    random.seed(seed)
+    rng = random.Random(seed)
 
     mode = "a" if append else "w"
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -381,7 +446,11 @@ def synthesize_template(
             industry = scenario["industry"]
             topic = scenario["topic"]
 
-            print(f"    [{i+1}/{count}] {industry} / {topic}", end=" ", flush=True)
+            # 매 샘플마다 필드 풀에서 랜덤 조합 선택
+            selected_fields = select_random_fields(template, rng)
+            field_names = [name for name, _ in selected_fields]
+
+            print(f"    [{i+1}/{count}] {industry} / {topic} ({len(selected_fields)}필드)", end=" ", flush=True)
 
             # Step A: 시나리오 생성
             passage = generate_scenario(template, industry, topic, model=model)
@@ -391,52 +460,66 @@ def synthesize_template(
                 continue
 
             # ~30% 확률로 빈 필드 학습 샘플 생성 (할루시네이션 방지)
-            is_sparse = random.random() < empty_field_ratio
+            is_sparse = rng.random() < empty_field_ratio
             omit_fields = []
             if is_sparse:
-                omit_pool = OMITTABLE_FIELDS.get(template, [])
-                k = random.randint(1, min(3, len(omit_pool)))
-                omit_fields = random.sample(omit_pool, k)
-                passage += (
-                    f"\n\n[참고] 다음 정보는 원문에 포함되어 있지 않습니다: "
-                    f"{', '.join(omit_fields)}. "
-                    f"해당 필드는 빈 문자열 또는 빈 배열로 두세요."
-                )
+                # 선택된 필드 중 OMITTABLE에 해당하는 것만 비울 수 있음
+                omittable = [f for f in field_names if f in OMITTABLE_FIELDS.get(template, [])]
+                if omittable:
+                    k = rng.randint(1, min(3, len(omittable)))
+                    omit_fields = rng.sample(omittable, k)
+                    passage += (
+                        f"\n\n[참고] 다음 정보는 원문에 포함되어 있지 않습니다: "
+                        f"{', '.join(omit_fields)}. "
+                        f"해당 필드는 빈 문자열 또는 빈 배열로 두세요."
+                    )
 
             # Step B: JSON 응답 생성
-            json_output = generate_response(template, passage, model=model)
+            json_output = generate_response(template, passage, selected_fields, model=model)
             if not json_output:
                 print("- JSON 생성 실패")
                 failed += 1
                 continue
 
-            # 검증 (빈 필드 샘플은 누락 필드 허용)
-            is_valid, parsed, errors = validate_json_output(json_output, template)
+            # 검증 (선택된 필드 기준)
+            is_valid, parsed, errors = validate_json_output(json_output, selected_fields)
+
+            # 과잉 필드는 제거하고 재검증
+            if not is_valid and parsed and errors:
+                extra_errors = [e for e in errors if "과잉 필드" in e]
+                if extra_errors and parsed:
+                    for k in list(parsed.keys()):
+                        if k not in field_names:
+                            del parsed[k]
+                    json_output = json.dumps(parsed, ensure_ascii=False)
+                    is_valid, parsed, errors = validate_json_output(json_output, selected_fields)
+
             if not is_valid:
                 print(f"- 검증 실패: {errors}")
                 failed += 1
                 continue
 
             # 빈 필드 샘플: 지정 필드가 실제로 비었는지 확인
-            sparse_ok = True
-            if is_sparse and parsed:
+            if is_sparse and parsed and omit_fields:
                 empty_count = 0
                 for field in omit_fields:
                     val = parsed.get(field)
                     if val in ("", [], None, {}):
                         empty_count += 1
-                if empty_count == 0:
-                    # GPT-4o가 지시를 무시하고 다 채움 → 후처리로 강제 비움
+                if empty_count < len(omit_fields):
+                    # GPT-4o가 지시를 무시하고 채운 필드 -> 후처리로 강제 비움
                     for field in omit_fields:
-                        if isinstance(parsed.get(field), list):
-                            parsed[field] = []
-                        else:
-                            parsed[field] = ""
+                        val = parsed.get(field)
+                        if val not in ("", [], None, {}):
+                            if isinstance(val, list):
+                                parsed[field] = []
+                            else:
+                                parsed[field] = ""
                     json_output = json.dumps(parsed, ensure_ascii=False)
 
-            # 학습 데이터 저장 (user prompt에는 [참고] 지시 제거 — sLLM은 이걸 볼 필요 없음)
+            # 학습 데이터 저장 (user prompt에는 [참고] 지시 제거)
             clean_passage = passage.split("\n\n[참고]")[0] if is_sparse else passage
-            user_prompt = build_dynamic_user_prompt(template, clean_passage)
+            user_prompt = build_dynamic_user_prompt(template, clean_passage, selected_fields)
             sample = {
                 "messages": [
                     {"role": "system", "content": DYNAMIC_SYSTEM_PROMPT},
@@ -447,7 +530,7 @@ def synthesize_template(
 
             f.write(json.dumps(sample, ensure_ascii=False) + "\n")
             success += 1
-            sparse_tag = " [sparse]" if is_sparse else ""
+            sparse_tag = " [sparse]" if is_sparse and omit_fields else ""
             print(f"- OK ({len(parsed)}키{sparse_tag})")
 
             # Rate limiting
@@ -460,15 +543,15 @@ def synthesize_template(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="v2_generate 합성 데이터 생성")
+    parser = argparse.ArgumentParser(description="v2_generate 합성 데이터 생성 (필드 풀 방식)")
     parser.add_argument("--output", type=str, default=str(OUTPUT_DIR / "synthetic_generate.jsonl"))
     parser.add_argument("--template", type=str, choices=["meeting_minutes", "report", "proposal", "all"], default="all")
-    parser.add_argument("--count", type=int, default=0, help="총 생성 수 (0=기본값 600)")
+    parser.add_argument("--count", type=int, default=0, help="총 생성 수 (0=기본값 800)")
     parser.add_argument("--model", type=str, default="gpt-4o")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--append", action="store_true", help="기존 파일에 추가")
     parser.add_argument("--empty-field-ratio", type=float, default=0.3, help="빈 필드 비율 (0.0~1.0)")
-    parser.add_argument("--dry-run", action="store_true", help="API 호출 없이 시나리오 풀만 확인")
+    parser.add_argument("--dry-run", action="store_true", help="API 호출 없이 필드 조합 미리보기")
     args = parser.parse_args()
 
     if not args.dry_run and not os.getenv("OPENAI_API_KEY"):
@@ -479,7 +562,7 @@ def main():
     if args.count > 0 and args.template != "all":
         targets = {args.template: args.count}
     elif args.count > 0:
-        ratio = args.count / 600
+        ratio = args.count / 800
         targets = {k: max(1, int(v * ratio)) for k, v in TEMPLATE_TARGETS.items()}
     else:
         targets = dict(TEMPLATE_TARGETS)
@@ -492,7 +575,7 @@ def main():
     total_target = sum(targets.get(t, 0) for t in templates_to_run)
 
     print("=" * 70)
-    print("  v2_generate 합성 데이터 생성")
+    print("  v2_generate 합성 데이터 생성 (필드 풀 랜덤 조합 방식)")
     print("=" * 70)
     print(f"  출력: {args.output}")
     print(f"  모델: {args.model}")
@@ -502,14 +585,22 @@ def main():
     print(f"  빈 필드 비율: {args.empty_field_ratio:.0%}")
 
     if args.dry_run:
-        print(f"\n[DRY RUN] 시나리오 풀 미리보기:")
+        print(f"\n[DRY RUN] 필드 조합 미리보기:")
+        rng = random.Random(args.seed)
         for tmpl in templates_to_run:
             count = targets.get(tmpl, 0)
-            pool = build_scenario_pool(tmpl, min(count, 5), args.seed)
-            print(f"\n  [{tmpl}] ({count}건 예정, 샘플 {len(pool)}건):")
-            for s in pool:
-                print(f"    - {s['industry']} / {s['topic']}")
-        est_cost = total_target * 2 * 0.025  # ~$0.025 per call
+            pool_info = FIELD_POOLS[tmpl]
+            print(f"\n  [{tmpl}] ({count}건 예정)")
+            print(f"    필수: {[f[0] for f in pool_info['core']]}")
+            print(f"    메타 풀({len(pool_info['meta'])}): {[f[0] for f in pool_info['meta']]}")
+            print(f"    내용 풀({len(pool_info['content'])}): {[f[0] for f in pool_info['content']]}")
+            print(f"    샘플 필드 조합 5개:")
+            for j in range(5):
+                fields = select_random_fields(tmpl, rng)
+                names = [f[0] for f in fields]
+                print(f"      {j+1}. ({len(names)}필드) {names}")
+
+        est_cost = total_target * 2 * 0.025
         print(f"\n  예상 API 호출: {total_target * 2}회 (시나리오 + JSON)")
         print(f"  예상 비용: ~${est_cost:.1f}")
         return
@@ -542,6 +633,7 @@ def main():
 
         template_dist = {"meeting_minutes": 0, "report": 0, "proposal": 0}
         json_valid = 0
+        field_count_dist = {}
         for line in lines:
             sample = json.loads(line)
             user_content = sample["messages"][1]["content"]
@@ -555,14 +647,17 @@ def main():
                 template_dist["report"] += 1
 
             try:
-                json.loads(assistant_content)
+                parsed = json.loads(assistant_content)
                 json_valid += 1
+                n_keys = len(parsed)
+                field_count_dist[n_keys] = field_count_dist.get(n_keys, 0) + 1
             except json.JSONDecodeError:
                 pass
 
         pct = json_valid / len(lines) * 100 if lines else 0
         print(f"  템플릿 분포: {template_dist}")
         print(f"  JSON 유효율: {json_valid}/{len(lines)} ({pct:.1f}%)")
+        print(f"  필드 수 분포: {dict(sorted(field_count_dist.items()))}")
 
     print(f"\n  완료! 총 성공: {total_success}건")
 
