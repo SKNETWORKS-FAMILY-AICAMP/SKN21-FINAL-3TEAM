@@ -237,7 +237,7 @@ export default function ApprovalQueueWidget() {
           </button>
           <button
             className="text-xs font-bold text-primary-600 hover:text-primary-700 transition-colors"
-            onClick={(e) => { e.stopPropagation(); navigate('/tasks'); }}
+            onClick={(e) => { e.stopPropagation(); navigate('/approvals'); }}
           >
             View All
           </button>

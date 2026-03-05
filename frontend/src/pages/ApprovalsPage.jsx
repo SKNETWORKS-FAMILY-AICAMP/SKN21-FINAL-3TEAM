@@ -1,0 +1,336 @@
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Check, X, Clock, Coffee, GitPullRequest, FileText, FileSignature,
+  Filter, Search, BellRing, CheckCircle2, XCircle
+} from 'lucide-react';
+import { listApprovals, createApproval, approveRequest, rejectRequest } from '../api/approvals';
+import client from '../api/client';
+
+const typeConfig = {
+  leave:  { icon: Coffee, color: 'text-orange-500 bg-orange-100 dark:bg-orange-900/30', label: '연차 신청' },
+  review: { icon: GitPullRequest, color: 'text-blue-500 bg-blue-100 dark:bg-blue-900/30', label: 'PR 리뷰' },
+  budget: { icon: FileText, color: 'text-purple-500 bg-purple-100 dark:bg-purple-900/30', label: '결재 요청' },
+};
+const defaultTypeConfig = { icon: FileSignature, color: 'text-gray-500 bg-gray-100 dark:bg-gray-900/30', label: '요청' };
+
+const statusConfig = {
+  pending:  { label: 'Pending',  color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', icon: Clock },
+  approved: { label: 'Approved', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle2 },
+  rejected: { label: 'Rejected', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', icon: XCircle },
+};
+
+export default function ApprovalsPage() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all'); // all / pending / approved / rejected
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({ type: 'leave', title: '', detail: '' });
+  const [submitting, setSubmitting] = useState(false);
+
+  const loadAll = async () => {
+    setLoading(true);
+    try {
+      // status별로 나눠서 요청 (pending은 기본, approved/rejected도 가져오기)
+      const [pendingRes, approvedRes, rejectedRes] = await Promise.all([
+        client.get('/approvals/', { params: { status: 'pending' } }).catch(() => ({ data: [] })),
+        client.get('/approvals/history', { params: { status: 'approved' } }).catch(() => ({ data: [] })),
+        client.get('/approvals/history', { params: { status: 'rejected' } }).catch(() => ({ data: [] })),
+      ]);
+      const all = [
+        ...(Array.isArray(pendingRes.data) ? pendingRes.data : []),
+        ...(Array.isArray(approvedRes.data) ? approvedRes.data : []),
+        ...(Array.isArray(rejectedRes.data) ? rejectedRes.data : []),
+      ];
+      setItems(all);
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadAll(); }, []);
+
+  const handleApproval = async (id, approve) => {
+    try {
+      if (approve) await approveRequest(id);
+      else await rejectRequest(id);
+      await loadAll();
+    } catch (err) {
+      console.error('Action failed', err);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.title.trim()) return;
+    setSubmitting(true);
+    try {
+      await createApproval({ type: formData.type, title: formData.title.trim(), detail: formData.detail.trim() || null });
+      setShowModal(false);
+      setFormData({ type: 'leave', title: '', detail: '' });
+      await loadAll();
+    } catch {
+      alert('요청 생성에 실패했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const filtered = items.filter(i => {
+    if (filter !== 'all' && i.status !== filter) return false;
+    if (typeFilter !== 'all' && i.type !== typeFilter) return false;
+    if (search && !i.title.toLowerCase().includes(search.toLowerCase()) && !(i.requester_name || '').toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const counts = {
+    all: items.length,
+    pending: items.filter(i => i.status === 'pending').length,
+    approved: items.filter(i => i.status === 'approved').length,
+    rejected: items.filter(i => i.status === 'rejected').length,
+  };
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-neutral-main flex items-center gap-3">
+            <BellRing className="text-accent-500" size={28} />
+            Approval Requests
+          </h1>
+          <p className="text-sm text-neutral-muted mt-1">모든 결재/승인 요청을 확인하고 관리합니다</p>
+        </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="px-4 py-2.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+        >
+          + 새 요청
+        </button>
+      </div>
+
+      {/* Status Tabs */}
+      <div className="flex gap-2">
+        {[
+          { key: 'all', label: '전체' },
+          { key: 'pending', label: 'Pending' },
+          { key: 'approved', label: 'Approved' },
+          { key: 'rejected', label: 'Rejected' },
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setFilter(tab.key)}
+            className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
+              filter === tab.key
+                ? 'bg-primary-500 text-white shadow-sm'
+                : 'bg-white dark:bg-neutral-800 text-neutral-sub hover:bg-neutral-50 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700'
+            }`}
+          >
+            {tab.label}
+            <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
+              filter === tab.key ? 'bg-white/20' : 'bg-neutral-100 dark:bg-neutral-700'
+            }`}>
+              {counts[tab.key]}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Filters Row */}
+      <div className="flex gap-3">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-muted" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="제목 또는 요청자 검색..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Filter size={16} className="text-neutral-muted" />
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm"
+          >
+            <option value="all">모든 유형</option>
+            <option value="leave">연차 신청</option>
+            <option value="review">PR 리뷰</option>
+            <option value="budget">품의서 결재</option>
+          </select>
+        </div>
+      </div>
+
+      {/* List */}
+      {loading ? (
+        <div className="flex items-center justify-center h-40 text-neutral-muted">
+          <Clock className="animate-spin mr-2" size={20} /> 로딩 중...
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-40 text-neutral-muted">
+          <Check className="mb-2 opacity-50" size={32} />
+          <p className="text-sm">표시할 요청이 없습니다</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <AnimatePresence>
+            {filtered.map((item, idx) => {
+              const cfg = typeConfig[item.type] || defaultTypeConfig;
+              const stCfg = statusConfig[item.status] || statusConfig.pending;
+              const IconComp = cfg.icon;
+              const StatusIcon = stCfg.icon;
+              return (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2, delay: idx * 0.03 }}
+                  className="bg-white dark:bg-neutral-800 p-5 rounded-2xl border border-neutral-100 dark:border-neutral-700 shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    {/* Left: Info */}
+                    <div className="flex items-start gap-4 flex-1 min-w-0">
+                      <div className={`p-2.5 rounded-xl shrink-0 ${cfg.color}`}>
+                        <IconComp size={20} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold text-neutral-sub px-2 py-0.5 bg-neutral-50 dark:bg-neutral-700 rounded-full">
+                            {cfg.label}
+                          </span>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${stCfg.color}`}>
+                            <StatusIcon size={12} />
+                            {stCfg.label}
+                          </span>
+                        </div>
+                        <h3 className="text-sm font-semibold text-neutral-main truncate">{item.title}</h3>
+                        {item.detail && (
+                          <p className="text-xs text-neutral-muted mt-0.5">{item.detail}</p>
+                        )}
+                        <div className="flex items-center gap-2 mt-2">
+                          {item.requester_avatar ? (
+                            <img src={item.requester_avatar} alt="" className="w-5 h-5 rounded-full" />
+                          ) : (
+                            <div className="w-5 h-5 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-[10px] font-bold text-primary-600">
+                              {(item.requester_name || '?')[0]}
+                            </div>
+                          )}
+                          <span className="text-xs text-neutral-sub">{item.requester_name || '알 수 없음'}</span>
+                          {item.target_team && (
+                            <span className="text-xs text-neutral-muted">· {item.target_team}</span>
+                          )}
+                          {item.created_at && (
+                            <span className="text-xs text-neutral-muted">· {new Date(item.created_at).toLocaleDateString('ko-KR')}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Actions (only for pending) */}
+                    {item.status === 'pending' && (
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          onClick={() => handleApproval(item.id, true)}
+                          className="flex items-center gap-1 px-3 py-2 bg-green-50 hover:bg-green-500 text-green-600 hover:text-white text-xs font-semibold rounded-lg transition-all"
+                        >
+                          <Check size={14} /> Approve
+                        </button>
+                        <button
+                          onClick={() => handleApproval(item.id, false)}
+                          className="flex items-center gap-1 px-3 py-2 bg-red-50 hover:bg-red-500 text-red-600 hover:text-white text-xs font-semibold rounded-lg transition-all"
+                        >
+                          <X size={14} /> Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* 새 요청 모달 */}
+      <AnimatePresence>
+        {showModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            onClick={() => setShowModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl p-6 w-full max-w-md mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-bold text-neutral-main mb-4">새 요청 올리기</h3>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-main mb-1">유형</label>
+                  <select
+                    value={formData.type}
+                    onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm"
+                  >
+                    <option value="leave">연차 신청</option>
+                    <option value="review">PR 리뷰 요청</option>
+                    <option value="budget">품의서 결재</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-main mb-1">제목</label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="요청 제목을 입력하세요"
+                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-main mb-1">상세 내용</label>
+                  <textarea
+                    value={formData.detail}
+                    onChange={(e) => setFormData(prev => ({ ...prev, detail: e.target.value }))}
+                    placeholder="상세 내용을 입력하세요 (선택)"
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm resize-none"
+                  />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {submitting ? '제출 중...' : '요청 제출'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 text-sm font-semibold rounded-lg transition-colors dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:text-neutral-300"
+                  >
+                    취소
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

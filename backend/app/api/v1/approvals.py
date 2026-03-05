@@ -66,6 +66,47 @@ async def list_approvals(
     ]
 
 
+@router.get("/history")
+async def list_approval_history(
+    status: str = "approved",
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """처리 완료된 요청 목록 (approved / rejected)"""
+    if status not in ("approved", "rejected"):
+        status = "approved"
+    query = (
+        select(ApprovalRequest)
+        .where(ApprovalRequest.status == status)
+        .order_by(ApprovalRequest.updated_at.desc())
+    )
+    result = await db.execute(query)
+    items = result.scalars().all()
+
+    user_ids = list({i.requester_id for i in items})
+    users_map = {}
+    if user_ids:
+        users_result = await db.execute(select(User).where(User.id.in_(user_ids)))
+        for u in users_result.scalars().all():
+            users_map[u.id] = u
+
+    return [
+        {
+            "id": i.id,
+            "type": i.type,
+            "title": i.title,
+            "detail": i.detail,
+            "status": i.status,
+            "requester_id": i.requester_id,
+            "requester_name": users_map.get(i.requester_id, None) and users_map[i.requester_id].name,
+            "requester_avatar": users_map.get(i.requester_id, None) and users_map[i.requester_id].avatar,
+            "target_team": i.target_team,
+            "created_at": i.created_at.isoformat() if i.created_at else None,
+        }
+        for i in items
+    ]
+
+
 @router.post("/", status_code=201)
 async def create_approval(
     req: ApprovalCreate,
