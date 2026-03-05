@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, ChevronUp, ChevronDown } from 'lucide-react';
 
-const HOURS = ['08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18'];
 
 const BLOCK_COLORS = [
     'bg-[#7A90A4]', // Meeting (Muted Blue-gray)
@@ -23,6 +22,22 @@ function timeToFraction(timeStr) {
 
 export default function ScheduleTimelineWidget({ meetings = [] }) {
     const [isCollapsed, setIsCollapsed] = useState(false);
+
+    // 기본 09~18, 범위 밖 일정이 있으면 자동 확장
+    const { dayStart, dayRange, hours } = (() => {
+        const DEFAULT_START = 9;
+        const DEFAULT_END = 18;
+        if (meetings.length === 0) {
+            const hrs = Array.from({ length: DEFAULT_END - DEFAULT_START + 1 }, (_, i) => String(DEFAULT_START + i).padStart(2, '0'));
+            return { dayStart: DEFAULT_START, dayRange: DEFAULT_END - DEFAULT_START, hours: hrs };
+        }
+        const startHours = meetings.map(m => m.start_time ? new Date(m.start_time).getHours() + new Date(m.start_time).getMinutes() / 60 : DEFAULT_START);
+        const endHours = meetings.map(m => m.end_time ? new Date(m.end_time).getHours() + new Date(m.end_time).getMinutes() / 60 : (m.start_time ? new Date(m.start_time).getHours() + 1 : DEFAULT_END));
+        const start = Math.min(DEFAULT_START, Math.floor(Math.min(...startHours)));
+        const end = Math.max(DEFAULT_END, Math.ceil(Math.max(...endHours)));
+        const hrs = Array.from({ length: end - start + 1 }, (_, i) => String(start + i).padStart(2, '0'));
+        return { dayStart: start, dayRange: end - start, hours: hrs };
+    })();
 
     const blocks = meetings.map((m, idx) => {
         let startH = 9;
@@ -69,7 +84,7 @@ export default function ScheduleTimelineWidget({ meetings = [] }) {
                     {/* Time axis */}
                     <div className="relative min-w-[600px]">
                         <div className="flex items-center border-b border-neutral-200 dark:border-neutral-700 pb-1 mb-3">
-                            {HOURS.map(h => (
+                            {hours.map(h => (
                                 <div key={h} className="flex-1 text-center text-[10px] font-mono text-neutral-muted">
                                     {h}:00
                                 </div>
@@ -80,18 +95,16 @@ export default function ScheduleTimelineWidget({ meetings = [] }) {
                         {(() => {
                             const now = new Date();
                             const currentH = now.getHours() + now.getMinutes() / 60;
-                            if (currentH >= 8 && currentH <= 18) {
-                                const leftPct = ((currentH - 8) / 10) * 100;
-                                return (
-                                    <div
-                                        className="absolute top-6 bottom-0 w-0.5 bg-red-500 z-10"
-                                        style={{ left: `${leftPct}%` }}
-                                    >
-                                        <div className="absolute -top-1 -left-1.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white dark:border-neutral-800" />
-                                    </div>
-                                );
-                            }
-                            return null;
+                            if (currentH < dayStart || currentH > dayStart + dayRange) return null;
+                            const leftPct = ((currentH - dayStart) / dayRange) * 100;
+                            return (
+                                <div
+                                    className="absolute top-6 bottom-0 w-0.5 bg-red-500 z-10"
+                                    style={{ left: `${leftPct}%` }}
+                                >
+                                    <div className="absolute -top-1 -left-1.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white dark:border-neutral-800" />
+                                </div>
+                            );
                         })()}
 
                         {/* Schedule blocks */}
@@ -133,8 +146,8 @@ export default function ScheduleTimelineWidget({ meetings = [] }) {
                             return (
                                 <div className="relative" style={{ height: `${rowCount * (rowH + gap)}px` }}>
                                     {blocks.map((block, idx) => {
-                                        const startPct = Math.max(0, ((block.startH - 8) / 10) * 100);
-                                        const widthPct = (block.duration / 10) * 100;
+                                        const startPct = Math.max(0, ((block.startH - dayStart) / dayRange) * 100);
+                                        const widthPct = (block.duration / dayRange) * 100;
                                         const row = rowAssign.get(block) || 0;
                                         return (
                                             <motion.div
