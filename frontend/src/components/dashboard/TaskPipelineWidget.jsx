@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     GitMerge, Clock, CheckCircle2, AlertTriangle,
-    ArrowRight, Plus, Share
+    ArrowRight, Plus, Share, X, Mail, Phone, Briefcase
 } from 'lucide-react';
 import { listPipelineTasks, updatePipelineTask } from '../../api/tasks';
+import client from '../../api/client';
 
 const priorityColors = {
     high: 'bg-error-bg text-error dark:bg-red-900/40 dark:text-red-400',
@@ -24,6 +25,8 @@ export default function TaskPipelineWidget() {
     const navigate = useNavigate();
     const [tasks, setTasks] = useState([]);
     const [draggingId, setDraggingId] = useState(null);
+    const [members, setMembers] = useState([]);
+    const [profilePopup, setProfilePopup] = useState(null); // member object or null
 
     const fetchTasks = async () => {
         try {
@@ -35,6 +38,12 @@ export default function TaskPipelineWidget() {
     };
 
     useEffect(() => { fetchTasks(); }, []);
+
+    useEffect(() => {
+        client.get('/auth/team-members')
+            .then(res => setMembers(res.data || []))
+            .catch(() => setMembers([]));
+    }, []);
 
     const handleDragStart = (e, id) => {
         setDraggingId(id);
@@ -64,10 +73,19 @@ export default function TaskPipelineWidget() {
     };
 
     // 팀원 아바타 목록 (각 팀원이 가진 태스크 개수 계산)
-    const teamStats = [...new Map(tasks.filter(t => t.assignee).map(t => [t.assignee, t])).values()].map(t => ({
-        name: t.assignee,
-        avatar: t.assigneeAvatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(t.assignee)}`,
-        count: tasks.filter(task => task.assignee === t.assignee).length
+    const getAvatar = (name) => {
+        const member = members.find(m => m.name === name);
+        return member?.avatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(name)}`;
+    };
+    const openProfile = (name) => {
+        const member = members.find(m => m.name === name);
+        if (member) setProfilePopup(member);
+    };
+
+    const teamStats = [...new Set(tasks.filter(t => t.assignee).map(t => t.assignee))].map(name => ({
+        name,
+        avatar: getAvatar(name),
+        count: tasks.filter(task => task.assignee === name).length
     }));
 
     return (
@@ -88,6 +106,7 @@ export default function TaskPipelineWidget() {
                                     alt={member.name}
                                     className="w-9 h-9 rounded-full border-2 border-surface-card shadow-sm transition-transform group-hover:scale-110 cursor-pointer"
                                     title={member.name}
+                                    onClick={() => openProfile(member.name)}
                                 />
                                 <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 min-w-[18px] h-[18px] px-1 rounded-full bg-accent-500 flex items-center justify-center text-[9px] font-bold text-white border border-surface-card shadow-sm">
                                     {member.count}
@@ -176,20 +195,21 @@ export default function TaskPipelineWidget() {
                                                 </div>
                                             )}
 
-                                            <div className="flex items-center justify-between mt-auto pt-3 border-t border-neutral-divider">
+                                            <div
+                                                className={`flex items-center justify-between mt-auto pt-3 border-t border-neutral-50 rounded-xl px-1 -mx-1 ${task.assignee ? 'cursor-pointer hover:bg-primary-50/50 transition-colors' : ''}`}
+                                                onClick={(e) => { if (task.assignee) { e.stopPropagation(); openProfile(task.assignee); } }}
+                                            >
                                                 <div className="flex items-center gap-2">
                                                     {task.assignee && (
                                                         <img
-                                                            src={task.assigneeAvatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(task.assignee)}`}
+                                                            src={getAvatar(task.assignee)}
                                                             alt={task.assignee}
                                                             className="w-7 h-7 rounded-full border-2 border-surface-card shadow-sm"
                                                         />
                                                     )}
                                                     <span className="text-xs text-neutral-sub font-bold">{task.assignee || '미지정'}</span>
                                                 </div>
-                                                <button className="text-neutral-muted hover:text-primary-500 transition-colors">
-                                                    <ArrowRight size={16} />
-                                                </button>
+                                                <ArrowRight size={16} className="text-neutral-muted" />
                                             </div>
                                         </motion.div>
                                     ))}
@@ -206,8 +226,100 @@ export default function TaskPipelineWidget() {
                 </div>
             </div>
 
-            <div className="mt-5 flex items-center gap-3 bg-surface-hover p-3 rounded-2xl border border-neutral-divider">
-                <div className="flex-1 h-1.5 bg-neutral-divider rounded-full overflow-hidden">
+            {/* Profile Popup */}
+            <AnimatePresence>
+                {profilePopup && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+                        onClick={() => setProfilePopup(null)}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            transition={{ type: 'spring', duration: 0.35 }}
+                            className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-[340px] overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Header banner */}
+                            <div className="h-20 bg-gradient-to-br from-primary-400 to-accent-500 relative">
+                                <button
+                                    onClick={() => setProfilePopup(null)}
+                                    className="absolute top-3 right-3 w-7 h-7 rounded-full bg-black/15 hover:bg-black/30 flex items-center justify-center text-neutral-700 dark:text-gray-200 transition-colors"
+                                >
+                                    <X size={14} />
+                                </button>
+                            </div>
+
+                            {/* Avatar */}
+                            <div className="flex justify-center -mt-10">
+                                <img
+                                    src={profilePopup.avatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(profilePopup.name)}`}
+                                    alt={profilePopup.name}
+                                    className="w-20 h-20 rounded-full border-4 border-white dark:border-gray-800 shadow-lg object-cover bg-white"
+                                />
+                            </div>
+
+                            {/* Info */}
+                            <div className="px-6 pt-3 pb-6 text-center">
+                                <h3 className="text-lg font-bold text-neutral-main dark:text-white">{profilePopup.name}</h3>
+                                {profilePopup.role && (
+                                    <span className="inline-block mt-1 text-xs font-semibold text-primary-600 bg-primary-50 dark:bg-primary-900/30 dark:text-primary-300 px-3 py-0.5 rounded-full">
+                                        {profilePopup.role}
+                                    </span>
+                                )}
+                                {profilePopup.team && (
+                                    <p className="text-xs text-neutral-muted mt-2">Team: {profilePopup.team}</p>
+                                )}
+
+                                <div className="mt-5 space-y-2.5 text-left">
+                                    {profilePopup.email && (
+                                        <div className="flex items-center gap-3 px-4 py-2.5 bg-neutral-50 dark:bg-gray-700/50 rounded-xl">
+                                            <Mail size={14} className="text-neutral-400 shrink-0" />
+                                            <span className="text-xs text-neutral-sub dark:text-gray-300 truncate">{profilePopup.email}</span>
+                                        </div>
+                                    )}
+                                    {profilePopup.phone && (
+                                        <div className="flex items-center gap-3 px-4 py-2.5 bg-neutral-50 dark:bg-gray-700/50 rounded-xl">
+                                            <Phone size={14} className="text-neutral-400 shrink-0" />
+                                            <span className="text-xs text-neutral-sub dark:text-gray-300">{profilePopup.phone}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Task stats for this member */}
+                                {(() => {
+                                    const memberTasks = tasks.filter(t => t.assignee === profilePopup.name);
+                                    if (memberTasks.length === 0) return null;
+                                    const byStage = stageConfig.map(s => ({
+                                        ...s,
+                                        count: memberTasks.filter(t => t.stage === s.id).length
+                                    }));
+                                    return (
+                                        <div className="mt-5 pt-4 border-t border-neutral-100 dark:border-gray-600">
+                                            <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider mb-3">담당 태스크</p>
+                                            <div className="grid grid-cols-4 gap-2">
+                                                {byStage.map(s => (
+                                                    <div key={s.id} className="text-center">
+                                                        <div className="text-lg font-extrabold text-neutral-main dark:text-white">{s.count}</div>
+                                                        <div className="text-[10px] text-neutral-muted">{s.label}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <div className="mt-5 flex items-center gap-3 bg-neutral-50/50 p-3 rounded-2xl border border-neutral-100">
+                <div className="flex-1 h-1.5 bg-neutral-200/50 rounded-full overflow-hidden">
                     {(() => {
                         const doneCount = tasks.filter(t => t.stage === 'done').length;
                         const donePct = tasks.length > 0 ? (doneCount / tasks.length) * 100 : 0;

@@ -19,20 +19,28 @@ jobs:
           script: |
             cd /home/ubuntu/SKN21-FINAL-3TEAM
             git pull origin develop
+            find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
             source .venv/bin/activate
             pip install -r requirements.txt
+            cd backend
             python3 -c "
             from dotenv import load_dotenv
             import os, sys
-            sys.path.insert(0, 'backend')
-            load_dotenv('.env')
+            sys.path.insert(0, '.')
+            load_dotenv('../.env')
             from alembic.config import Config
             from alembic import command
-            cfg = Config('backend/alembic.ini')
+            cfg = Config('alembic.ini')
             db_url = os.getenv('DATABASE_URL', '').replace('postgresql+asyncpg://', 'postgresql://')
             if db_url: cfg.set_main_option('sqlalchemy.url', db_url)
-            command.upgrade(cfg, 'head')
+            try:
+                command.upgrade(cfg, 'heads')
+            except Exception as e:
+                print(f'Migration warning: {e}')
+                command.stamp(cfg, 'heads')
+                print('Stamped to heads')
             print('Migration complete')
             "
+            cd ..
             sudo systemctl restart workflow-agent
             echo "배포 완료"

@@ -93,6 +93,22 @@ async def startup_migrate_team_column():
 
 
 @app.on_event("startup")
+async def startup_migrate_avatar_column():
+    """users.avatar 컬럼을 Text 타입으로 변경 (base64 이미지 저장용)"""
+    try:
+        from app.db.session import engine
+        from sqlalchemy import text
+
+        async with engine.begin() as conn:
+            await conn.execute(text(
+                "ALTER TABLE users ALTER COLUMN avatar TYPE TEXT"
+            ))
+        print("[Startup] users.avatar 컬럼 TEXT 변환 완료")
+    except Exception as _e:
+        print(f"[Startup] users.avatar TEXT 변환 실패 (무시하고 계속): {_e}")
+
+
+@app.on_event("startup")
 async def startup_migrate_slack_column():
     """users.slack_enabled 컬럼 추가"""
     try:
