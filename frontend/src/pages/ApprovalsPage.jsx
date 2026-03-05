@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Check, X, Clock, Coffee, GitPullRequest, FileText, FileSignature,
-  Filter, Search, BellRing, CheckCircle2, XCircle
+  Filter, Search, BellRing, CheckCircle2, XCircle, Trash2
 } from 'lucide-react';
-import { listApprovals, createApproval, approveRequest, rejectRequest } from '../api/approvals';
+import { listApprovals, createApproval, approveRequest, rejectRequest, deleteApproval } from '../api/approvals';
 import client from '../api/client';
 
 const typeConfig = {
@@ -61,6 +61,17 @@ export default function ApprovalsPage() {
       await loadAll();
     } catch (err) {
       console.error('Action failed', err);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('이 요청을 삭제하시겠습니까?')) return;
+    try {
+      await deleteApproval(id);
+      await loadAll();
+    } catch (err) {
+      const msg = err.response?.data?.detail || '삭제에 실패했습니다.';
+      alert(msg);
     }
   };
 
@@ -233,23 +244,32 @@ export default function ApprovalsPage() {
                       </div>
                     </div>
 
-                    {/* Right: Actions (only for pending) */}
-                    {item.status === 'pending' && (
-                      <div className="flex gap-2 shrink-0">
-                        <button
-                          onClick={() => handleApproval(item.id, true)}
-                          className="flex items-center gap-1 px-3 py-2 bg-green-50 hover:bg-green-500 text-green-600 hover:text-white text-xs font-semibold rounded-lg transition-all"
-                        >
-                          <Check size={14} /> Approve
-                        </button>
-                        <button
-                          onClick={() => handleApproval(item.id, false)}
-                          className="flex items-center gap-1 px-3 py-2 bg-red-50 hover:bg-red-500 text-red-600 hover:text-white text-xs font-semibold rounded-lg transition-all"
-                        >
-                          <X size={14} /> Reject
-                        </button>
-                      </div>
-                    )}
+                    {/* Right: Actions */}
+                    <div className="flex gap-2 shrink-0">
+                      {item.status === 'pending' && (
+                        <>
+                          <button
+                            onClick={() => handleApproval(item.id, true)}
+                            className="flex items-center gap-1 px-3 py-2 bg-green-50 hover:bg-green-500 text-green-600 hover:text-white text-xs font-semibold rounded-lg transition-all"
+                          >
+                            <Check size={14} /> Approve
+                          </button>
+                          <button
+                            onClick={() => handleApproval(item.id, false)}
+                            className="flex items-center gap-1 px-3 py-2 bg-red-50 hover:bg-red-500 text-red-600 hover:text-white text-xs font-semibold rounded-lg transition-all"
+                          >
+                            <X size={14} /> Reject
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="flex items-center gap-1 px-2.5 py-2 bg-neutral-50 hover:bg-red-500 text-neutral-400 hover:text-white text-xs font-semibold rounded-lg transition-all dark:bg-neutral-700 dark:hover:bg-red-500"
+                        title="삭제"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               );
