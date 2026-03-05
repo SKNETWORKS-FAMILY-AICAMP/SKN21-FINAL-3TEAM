@@ -10,7 +10,7 @@ import useChatStore from '../store/chatStore';
 import { listDocuments } from '../api/documents';
 import { listSchedules } from '../api/schedules';
 import { listSessions } from '../api/chat';
-import { uploadAvatar, updateProfile } from '../api/auth';
+import { updateProfile } from '../api/auth';
 
 export default function MyPage() {
     const user = useAuthStore((s) => s.user);
@@ -30,27 +30,21 @@ export default function MyPage() {
 
     const [avatarUploading, setAvatarUploading] = useState(false);
 
-    const handleAvatarFileChange = async (e) => {
+    const handleAvatarFileChange = (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // 미리보기용 임시 로컬 URL
-        const previewUrl = URL.createObjectURL(file);
-        setEditForm(f => ({ ...f, avatar: previewUrl }));
-
         setAvatarUploading(true);
-        try {
-            const { data } = await uploadAvatar(file);
-            setEditForm(f => ({ ...f, avatar: data.avatar_url }));
-            URL.revokeObjectURL(previewUrl);
-        } catch (err) {
-            console.error('아바타 업로드 실패:', err);
-            alert('이미지 업로드에 실패했습니다.');
-            setEditForm(f => ({ ...f, avatar: user?.avatar || '' }));
-            URL.revokeObjectURL(previewUrl);
-        } finally {
+        const reader = new FileReader();
+        reader.onload = () => {
+            setEditForm(f => ({ ...f, avatar: reader.result }));
             setAvatarUploading(false);
-        }
+        };
+        reader.onerror = () => {
+            alert('이미지를 읽는데 실패했습니다.');
+            setAvatarUploading(false);
+        };
+        reader.readAsDataURL(file);
     };
 
     useEffect(() => {
