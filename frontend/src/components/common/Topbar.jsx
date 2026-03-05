@@ -504,14 +504,14 @@ export default function Topbar({ isScrolled = false }) {
         {!topbarScheduleHidden && (
           <div className={`flex justify-center w-full px-4 md:px-10 transition-all duration-300 ease-in-out transform origin-top ${isScrolled ? 'hidden md:flex opacity-100 scale-[0.9] pointer-events-auto h-[48px] mb-0 mt-1' : 'opacity-100 scale-100 h-[48px] mb-8'}`}>
             <div className="hidden md:flex justify-center w-[650px] xl:w-[800px]">
-              <div className={`border text-neutral-800 dark:text-neutral-100 rounded-[32px] flex items-center p-1.5 w-full transition-all duration-300 ${isScrolled ? 'bg-white/60 dark:bg-[#111317]/60 backdrop-blur-lg border-neutral-200/50 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.08)]' : 'bg-white/30 dark:bg-black/10 border-neutral-200/30 dark:border-white/5 shadow-sm'}`}>
+              <div className={`border text-primary-800 dark:text-neutral-100 rounded-[32px] flex items-center p-1.5 w-full transition-all duration-300 ${isScrolled ? 'bg-white/60 dark:bg-[#111317]/60 backdrop-blur-lg border-neutral-200/50 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.08)]' : 'bg-white/30 dark:bg-black/10 border-neutral-200/30 dark:border-white/5 shadow-sm'}`}>
 
                 {/* 왼쪽 Label section */}
                 <div className="flex items-center gap-3 pl-5 pr-3 whitespace-nowrap border-r border-neutral-200/50 dark:border-white/10">
-                  <span className="text-sm font-bold tracking-tight text-neutral-900 dark:text-white">Your Schedule</span>
+                  <span className="text-sm font-bold tracking-tight text-primary-900 dark:text-white">Your Schedule</span>
                   <div className="bg-white/40 dark:bg-white/10 rounded-full px-3 py-1.5 flex items-center gap-2 border border-neutral-200/30 dark:border-white/10">
-                    <Calendar size={13} className="text-neutral-600 dark:text-neutral-300" />
-                    <span className="text-[11px] text-neutral-700 dark:text-neutral-200 font-bold">{dayjs().format('DD MMMM')}</span>
+                    <Calendar size={13} className="text-primary-600 dark:text-neutral-300" />
+                    <span className="text-[11px] text-primary-700 dark:text-neutral-200 font-bold">{dayjs().format('DD MMMM')}</span>
                   </div>
                 </div>
 
@@ -615,18 +615,18 @@ export default function Topbar({ isScrolled = false }) {
                   {/* Fixed Playhead (Now Indicator) - Outside of hidden mask */}
                   {eventLayouts.length > 0 && (
                     <div className="absolute top-0 bottom-0 z-50 pointer-events-none flex flex-col items-center" style={{ left: `${PLAYHEAD_X_PCT}%`, transform: 'translateX(-50%)' }}>
-                      <div className="absolute -top-[14px] bg-neutral-900 dark:bg-neutral-800 text-white text-[10px] xl:text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1.5 whitespace-nowrap">
+                      <div className="absolute -top-[14px] bg-primary-900 dark:bg-primary-800 text-white text-[10px] xl:text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1.5 whitespace-nowrap">
                         <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_4px_#4ade80]" />
                         {currentTime.format('h:mm A')}
                       </div>
                       {/* 작대기 (Vertical line) */}
-                      <div className="w-[3px] h-full mt-2 bg-neutral-900/40 dark:bg-white/40 rounded-full shadow-sm" />
+                      <div className="w-[3px] h-full mt-2 bg-primary-900/40 dark:bg-white/40 rounded-full shadow-sm" />
                     </div>
                   )}
                 </div>
 
                 {/* 더보기 버튼 */}
-                <Link to="/schedules" className="w-[36px] h-[36px] ml-1 mr-1 rounded-full bg-neutral-900 dark:bg-white/10 flex items-center justify-center hover:bg-neutral-800 dark:hover:bg-white/20 transition-colors text-white focus:outline-none flex-shrink-0 shadow-sm">
+                <Link to="/schedules" className="w-[36px] h-[36px] ml-1 mr-1 rounded-full bg-primary-900 dark:bg-white/10 flex items-center justify-center hover:bg-primary-700 dark:hover:bg-white/20 transition-colors text-white focus:outline-none flex-shrink-0 shadow-sm">
                   <ArrowUpRight size={16} strokeWidth={2.5} />
                 </Link>
               </div>
@@ -659,9 +659,9 @@ export default function Topbar({ isScrolled = false }) {
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-bold transition-all duration-200 ${isActive
-                    ? 'bg-neutral-900 text-white shadow-sm dark:bg-white dark:text-neutral-900'
-                    : 'text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200/50 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-white/10'
+                  `flex items-center gap-2 px-4 py-2 text-[13px] font-bold transition-all duration-200 border-b-2 ${isActive
+                    ? 'text-primary-900 border-primary-700 dark:text-white dark:border-white'
+                    : 'text-neutral-500 border-transparent hover:text-primary-900 dark:text-neutral-400 dark:hover:text-white'
                   }`
                 }
               >
