@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useOutletContext } from 'react-router-dom';
+
 import UserManagement from '../components/admin/UserManagement';
 import RegulationManagement from '../components/admin/RegulationManagement';
 import SystemStats from '../components/admin/SystemStats';
@@ -8,7 +8,7 @@ import { TEAMS } from '../utils/constants';
 import { SkeletonCard, SkeletonTable } from '../components/common/Skeleton';
 
 export default function AdminPage() {
-  const { isScrolled } = useOutletContext();
+
   const [users, setUsers] = useState([]);
   const [regulations, setRegulations] = useState([]);
   const [stats, setStats] = useState({ today_queries: 0, processed_meetings: 0, completed_action_items: 0, risk_alerts: 0 });
@@ -66,9 +66,9 @@ export default function AdminPage() {
 
   return (
     <div>
-      <header className={`sticky top-0 bg-surface-main z-10 flex flex-col justify-center overflow-hidden transition-all duration-300 ${isScrolled ? 'h-[56px]' : 'h-[100px]'}`}>
-        <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-2xl'}`}>관리자 설정</h1>
-        <p className={`text-neutral-sub transition-all duration-300 overflow-hidden ${isScrolled ? 'text-xs mt-0 max-h-0 opacity-0' : 'text-sm mt-1 max-h-6 opacity-100'}`}>시스템 설정 및 사용자를 관리합니다</p>
+      <header className="bg-surface-main flex flex-col justify-center overflow-hidden h-[100px]">
+        <h1 className="font-bold text-2xl">관리자 설정</h1>
+        <p className="text-neutral-sub text-sm mt-1">시스템 설정 및 사용자를 관리합니다</p>
       </header>
 
       {loading ? (

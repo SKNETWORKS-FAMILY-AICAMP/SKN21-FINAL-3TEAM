@@ -15,6 +15,7 @@ const DEFAULT_DASHBOARD = {
   leftColumn: ['ScheduleTimelineWidget', 'TodaySchedule', 'TaskPipelineWidget'],
   rightColumn: ['CalendarWidget', 'ApprovalQueueWidget', 'TeamMembersWidget', 'WhatsOnWidget'],
   hidden: ['ActivityTimeline', 'RecentDocs', 'EmployeeTableWidget', 'AIChatWidget'],
+  topbarScheduleHidden: false,
 }
 
 function loadDashboard() {
@@ -22,7 +23,12 @@ function loadDashboard() {
     const saved = JSON.parse(localStorage.getItem(DASHBOARD_KEY))
     const all = [...saved.leftColumn, ...saved.rightColumn, ...saved.hidden]
     const expected = [...DEFAULT_DASHBOARD.leftColumn, ...DEFAULT_DASHBOARD.rightColumn]
-    if (expected.every(w => all.includes(w)) && all.length === expected.length) return saved
+    if (expected.every(w => all.includes(w)) && all.length === expected.length) {
+      if (saved.topbarScheduleHidden === undefined) {
+        saved.topbarScheduleHidden = DEFAULT_DASHBOARD.topbarScheduleHidden;
+      }
+      return saved
+    }
   } catch { /* ignore */ }
   return DEFAULT_DASHBOARD
 }
@@ -114,6 +120,15 @@ const useUIStore = create((set) => ({
   editMode: false,
 
   toggleEditMode: () => set((state) => ({ editMode: !state.editMode })),
+
+  toggleTopbarSchedule: () => set((state) => {
+    const next = {
+      ...state.dashboard,
+      topbarScheduleHidden: !state.dashboard.topbarScheduleHidden
+    }
+    saveDashboard(next)
+    return { dashboard: next }
+  }),
 
   setLeftColumn: (order) => set((state) => {
     const next = { ...state.dashboard, leftColumn: order }
