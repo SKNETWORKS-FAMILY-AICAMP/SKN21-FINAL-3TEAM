@@ -201,7 +201,7 @@ export default function TaskPipelineWidget() {
                             <div className="flex items-center gap-2 mb-3 bg-surface-hover p-2.5 rounded-2xl shadow-sm border border-neutral-divider backdrop-blur-sm">
                                 <stage.icon className={`${stage.color}`} size={16} />
                                 <span className="font-bold text-sm text-neutral-main">{stage.label}</span>
-                                <span className="ml-auto text-xs font-bold text-primary-700 bg-primary-50 px-2.5 py-0.5 rounded-full">
+                                <span className="ml-auto text-xs font-bold text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/50 px-2.5 py-0.5 rounded-full">
                                     {tasks.filter(t => t.stage === stage.id).length}
                                 </span>
                             </div>
@@ -245,7 +245,7 @@ export default function TaskPipelineWidget() {
                                             )}
 
                                             <div
-                                                className={`flex items-center justify-between mt-auto pt-3 border-t border-neutral-50 rounded-xl px-1 -mx-1 ${task.assignee ? 'cursor-pointer hover:bg-primary-50/50 transition-colors' : ''}`}
+                                                className={`flex items-center justify-between mt-auto pt-3 border-t border-neutral-100 dark:border-white/10 rounded-xl px-1 -mx-1 ${task.assignee ? 'cursor-pointer hover:bg-primary-50/50 dark:hover:bg-white/[0.04] transition-colors' : ''}`}
                                                 onClick={(e) => { if (task.assignee) { e.stopPropagation(); openProfile(task.assignee); } }}
                                             >
                                                 <div className="flex items-center gap-2">
@@ -445,20 +445,20 @@ export default function TaskPipelineWidget() {
                 )}
             </AnimatePresence>
 
-            <div className="mt-5 flex items-center gap-3 bg-neutral-50/50 p-3 rounded-2xl border border-neutral-100">
-                <div className="flex-1 h-1.5 bg-neutral-200/50 rounded-full overflow-hidden">
+            <div className="mt-5 flex items-center gap-3 bg-neutral-50/50 dark:bg-white/[0.05] p-3 rounded-2xl border border-neutral-100 dark:border-white/10">
+                <div className="flex-1 h-1.5 bg-neutral-200/50 dark:bg-white/10 rounded-full overflow-hidden">
                     {(() => {
                         const doneCount = tasks.filter(t => t.stage === 'done').length;
                         const donePct = tasks.length > 0 ? (doneCount / tasks.length) * 100 : 0;
                         return (
                             <div
-                                className="h-full bg-primary-500 transition-all duration-700 ease-out"
+                                className="h-full bg-primary-500 dark:bg-primary-400 transition-all duration-700 ease-out"
                                 style={{ width: `${donePct}%` }}
                             />
                         );
                     })()}
                 </div>
-                <span className="text-[11px] font-extrabold text-neutral-muted whitespace-nowrap">
+                <span className="text-[11px] font-extrabold text-neutral-sub dark:text-neutral-300 whitespace-nowrap">
                     {tasks.length > 0 ? Math.round((tasks.filter(t => t.stage === 'done').length / tasks.length) * 100) : 0}% COMPLETE
                 </span>
             </div>
