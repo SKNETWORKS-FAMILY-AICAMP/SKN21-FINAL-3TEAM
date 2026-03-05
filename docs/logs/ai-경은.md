@@ -830,7 +830,68 @@ MakerBot METHOD 매뉴얼처럼 `1장 소개`, `## 안전 경고 기호`, `**무
 | `data/training/v1_judgment/backup/` | 백업 파일 추가 |
 
 **다음 할 일:**
-- CONTENT_MISMATCH 경고 샘플링 검수 (교차규정 패턴으로 인한 예상 경고 확인)
-- 중복 의심 8쌍 검토 (이름만 다른 거의 동일한 질문)
-- RunPod에서 리밸런싱된 데이터로 QLoRA 파인튜닝 baseline 실행
+- ~~RunPod에서 리밸런싱된 데이터로 QLoRA 파인튜닝 baseline 실행~~ ✅ 완료 (3/5)
 - baseline 성능 확인 후 추가 데이터 방향 결정
+
+---
+
+## 2026-03-05 (수) — LoRA v1 파인튜닝 실행 및 평가
+
+### RunPod에서 QLoRA 파인튜닝 실행 (A100)
+
+**학습 설정:**
+
+| 항목 | 값 |
+|------|-----|
+| 베이스 모델 | kakaocorp/kanana-1.5-8b-instruct-2505 |
+| LoRA | r=16, alpha=32, target=q/k/v/o_proj, dropout=0.05 |
+| 데이터 | Train 2,949건 / Eval 328건 |
+| 학습 | 3 epochs, batch=4, accum=4, lr=2e-4 (cosine) |
+| 정밀도 | bf16, 4-bit QLoRA |
+| 총 학습 시간 | **1시간 47분** (555 steps) |
+| VRAM | 5.7GB (학습) / 11.5GB (추론) |
+
+**학습 곡선:**
+
+| Epoch | Train Loss | Token Accuracy | Eval Loss | Eval Token Accuracy |
+|-------|-----------|----------------|-----------|---------------------|
+| 0.05 | 1.675 | 66.5% | - | - |
+| 0.33 | 0.506 | 87.2% | - | - |
+| 1.0 | 0.136 | 96.6% | 0.131 | 96.6% |
+| 2.0 | 0.111 | 97.0% | 0.112 | 97.0% |
+| 3.0 | 0.108 | 97.1% | 0.110 | 97.1% |
+
+→ 과적합 없이 안정적 수렴 (train/eval loss 차이 0.002 이내)
+
+### 평가 결과
+
+| 지표 | 결과 |
+|------|------|
+| **JSON 유효율** | **98.2%** (322/328) |
+| **판단 정확도** | **83.5%** (274/328) |
+
+**카테고리별 정확도:**
+
+| 카테고리 | 정확도 | 건수 |
+|----------|--------|------|
+| no_regulation | **97.0%** | 67건 |
+| yes | **85.0%** | 100건 |
+| no | **80.3%** | 61건 |
+| conditional | **75.0%** | 100건 |
+
+### 결과물 GitHub push 완료
+
+- `outputs/v1_judgment/final/` — LoRA 어댑터 (adapter_model.safetensors 52MB)
+- `train_log.txt` — 학습 로그
+- 체크포인트 3개 (checkpoint-185, 370, 555)는 용량 문제로 RunPod에만 보관
+
+### 프론트엔드 UI 수정 커밋 & develop 머지
+
+- Topbar 리팩토링, 페이지 레이아웃 수정 등 9개 파일 수정
+- `feat/ai-yoon` → push → `develop` 머지 완료 (Topbar.jsx 충돌 해결)
+
+**다음 할 일:**
+- conditional 오답 패턴 분석 → 데이터 보강 또는 프롬프트 개선으로 정확도 향상
+- vLLM 서빙 환경 구축 (#11) — LoRA 어댑터 실 서빙
+- sLLM 교체 후 judgment_agent E2E 테스트
+- 성능 평가 리포트 (#13) — 파인튜닝 전/후 비교
