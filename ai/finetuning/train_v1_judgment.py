@@ -174,7 +174,7 @@ def train(config: dict):
 
     train_cfg = config["training"]
     output_dir = str(OUTPUT_BASE / "checkpoints")
-    training_args = SFTConfig(dataset_text_field="text", max_length=2048,
+    training_args = SFTConfig(dataset_text_field="text", max_seq_length=2048,
         output_dir=output_dir,
         num_train_epochs=train_cfg["num_epochs"],
         per_device_train_batch_size=train_cfg["batch_size"],
