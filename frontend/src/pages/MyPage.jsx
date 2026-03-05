@@ -29,6 +29,7 @@ export default function MyPage() {
     const fileInputRef = useRef(null);
 
     const [avatarUploading, setAvatarUploading] = useState(false);
+    const [saveError, setSaveError] = useState('');
 
     const handleAvatarFileChange = (e) => {
         const file = e.target.files?.[0];
@@ -36,7 +37,7 @@ export default function MyPage() {
 
         setAvatarUploading(true);
         const reader = new FileReader();
-        reader.onload = (ev) => {
+        reader.onload = (evt) => {
             const img = new Image();
             img.onload = () => {
                 const MAX = 200;
@@ -50,13 +51,13 @@ export default function MyPage() {
                 setAvatarUploading(false);
             };
             img.onerror = () => {
-                alert('이미지를 읽는데 실패했습니다.');
+                setSaveError('이미지를 읽는데 실패했습니다.');
                 setAvatarUploading(false);
             };
-            img.src = ev.target.result;
+            img.src = evt.target.result;
         };
         reader.onerror = () => {
-            alert('이미지를 읽는데 실패했습니다.');
+            setSaveError('이미지를 읽는데 실패했습니다.');
             setAvatarUploading(false);
         };
         reader.readAsDataURL(file);
@@ -110,13 +111,20 @@ export default function MyPage() {
 
     const handleUpdateProfile = async () => {
         setSaving(true);
+        setSaveError('');
         try {
             const { data } = await updateProfile(editForm);
             setAuth(data, token);
             setShowEditModal(false);
         } catch (e) {
             console.error('Failed to update profile:', e);
-            alert('프로필 업데이트에 실패했습니다.');
+            const detail = e.response?.data?.detail;
+            const msg = typeof detail === 'string'
+                ? detail
+                : Array.isArray(detail)
+                    ? detail.map(d => d.msg || JSON.stringify(d)).join(', ')
+                    : e.message || '알 수 없는 오류가 발생했습니다.';
+            setSaveError(`저장 실패 (${e.response?.status ?? 'network'}): ${msg}`);
         } finally {
             setSaving(false);
         }
@@ -143,8 +151,8 @@ export default function MyPage() {
                         </span>
                     </div>
                 </div>
-                <button 
-                  onClick={() => setShowEditModal(true)}
+                <button
+                  onClick={() => { setShowEditModal(true); setSaveError(''); }}
                   className="px-6 py-2.5 bg-primary-700 text-white rounded-xl text-sm font-semibold hover:bg-primary-900 transition-all shrink-0"
                 >
                     프로필 수정
@@ -413,9 +421,14 @@ export default function MyPage() {
                                 </div>
                             </div>
                         </div>
+                        {saveError && (
+                            <div className="mx-6 mb-0 px-4 py-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-400 break-all">
+                                {saveError}
+                            </div>
+                        )}
                         <div className="p-6 bg-surface-hover border-t border-neutral-divider flex gap-3">
                             <button
-                                onClick={() => setShowEditModal(false)}
+                                onClick={() => { setShowEditModal(false); setSaveError(''); }}
                                 className="flex-1 py-3 border border-neutral-divider bg-surface-card text-neutral-sub rounded-xl text-sm font-bold hover:bg-surface-hover transition-all"
                             >
                                 취소
@@ -423,7 +436,7 @@ export default function MyPage() {
                             <button
                                 onClick={handleUpdateProfile}
                                 disabled={saving}
-                                className="flex-1 py-3 bg-primary-600 text-white rounded-xl text-sm font-bold hover:bg-primary-700 transition-all disabled:opacity-50 shadow-sm flex items-center justify-center gap-2"
+                                className="flex-1 py-3 bg-primary-700 text-white rounded-xl text-sm font-bold hover:bg-primary-900 transition-all disabled:opacity-50 shadow-sm flex items-center justify-center gap-2"
                             >
                                 {saving ? <Zap size={16} className="animate-spin" /> : <Save size={16} />}
                                 저장하기
