@@ -166,6 +166,7 @@ export default function MessagesPage() {
             {filtered.map((item, idx) => {
               const isExpanded = expandedId === item.id;
               const personName = box === 'inbox' ? item.sender_name : item.receiver_name;
+              const personTeam = box === 'inbox' ? item.sender_team : item.receiver_team;
               const personAvatar = box === 'inbox' ? item.sender_avatar : item.receiver_avatar;
               return (
                 <motion.div
@@ -197,7 +198,7 @@ export default function MessagesPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className={`text-sm ${!item.is_read && box === 'inbox' ? 'font-bold text-neutral-main' : 'font-medium text-neutral-sub'}`}>
-                          {personName || '알 수 없음'}
+                          {personName || '알 수 없음'}{personTeam ? ` (${personTeam})` : ''}
                         </span>
                         {!item.is_read && box === 'inbox' && (
                           <span className="w-2 h-2 rounded-full bg-primary-500 shrink-0" />
@@ -236,9 +237,9 @@ export default function MessagesPage() {
                             {item.content}
                           </div>
                           <div className="flex items-center gap-3 mt-3 text-xs text-neutral-muted">
-                            <span>보낸 사람: {item.sender_name || '알 수 없음'}</span>
+                            <span>보낸 사람: {item.sender_name || '알 수 없음'}{item.sender_team ? ` (${item.sender_team})` : ''}</span>
                             <span>·</span>
-                            <span>받는 사람: {item.receiver_name || '알 수 없음'}</span>
+                            <span>받는 사람: {item.receiver_name || '알 수 없음'}{item.receiver_team ? ` (${item.receiver_team})` : ''}</span>
                             {item.is_read && (
                               <>
                                 <span>·</span>

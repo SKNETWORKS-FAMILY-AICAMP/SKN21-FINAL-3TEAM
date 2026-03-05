@@ -9,7 +9,7 @@ import {
 import useAuthStore from '../store/authStore';
 import useUIStore from '../store/uiStore';
 import useChatStore from '../store/chatStore';
-import { listDocuments } from '../api/documents';
+import { listDocuments, getDocument, downloadDocument } from '../api/documents';
 import { listSchedules } from '../api/schedules';
 import { listSessions } from '../api/chat';
 import { updateProfile, changePassword } from '../api/auth';
@@ -36,6 +36,7 @@ const [showEditModal, setShowEditModal] = useState(false);
     const [allSessions, setAllSessions] = useState([]);
     const [allDocs, setAllDocs] = useState([]);
     const [allSchedules, setAllSchedules] = useState([]);
+    const [docPreview, setDocPreview] = useState(null); // { title, content, file_type, created_at, loading }
     const [showPwModal, setShowPwModal] = useState(false);
     const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
     const [pwShow, setPwShow] = useState({ current: false, next: false, confirm: false });
@@ -152,6 +153,31 @@ const [showEditModal, setShowEditModal] = useState(false);
             });
         }
     }, [user]);
+
+    const handleDocPreview = async (doc) => {
+        setDocPreview({ title: doc.title || doc.file_name || '제목 없음', content: null, file_type: doc.file_type, created_at: doc.created_at, loading: true });
+        try {
+            const res = await getDocument(doc.id);
+            const d = res.data;
+            setDocPreview(prev => ({ ...prev, content: d.content || d.generated_content || '내용을 불러올 수 없습니다.', loading: false }));
+        } catch {
+            setDocPreview(prev => ({ ...prev, content: '문서를 불러오는데 실패했습니다.', loading: false }));
+        }
+    };
+
+    const handleDocDownload = async (doc) => {
+        try {
+            const res = await downloadDocument(doc.id);
+            const url = URL.createObjectURL(res.data);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${doc.title || 'document'}.docx`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch {
+            alert('다운로드에 실패했습니다.');
+        }
+    };
 
     const handleUpdateProfile = async () => {
         setSaving(true);
@@ -271,7 +297,7 @@ const [showEditModal, setShowEditModal] = useState(false);
                             <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar">
                                 {allDocs.length === 0 && <p className="text-xs text-neutral-muted text-center py-4">문서가 없습니다.</p>}
                                 {allDocs.map(d => (
-                                    <div key={d.id} className="flex items-center justify-between p-3 bg-surface-hover rounded-xl">
+                                    <div key={d.id} className="flex items-center justify-between p-3 bg-surface-hover rounded-xl cursor-pointer hover:bg-surface-main transition-colors" onClick={() => handleDocPreview(d)}>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-sm font-medium text-neutral-main truncate">{d.title || d.file_name || '제목 없음'}</div>
                                             <div className="flex items-center gap-2 mt-0.5">
@@ -279,6 +305,7 @@ const [showEditModal, setShowEditModal] = useState(false);
                                                 {d.file_type && <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent-50 text-accent-600 font-bold">{d.file_type}</span>}
                                             </div>
                                         </div>
+                                        <Eye size={16} className="text-neutral-muted hover:text-primary-500 shrink-0 ml-2" />
                                     </div>
                                 ))}
                             </div>
@@ -352,12 +379,12 @@ const [showEditModal, setShowEditModal] = useState(false);
                                         <FileText size={12} /> 최근 생성 문서
                                     </h3>
                                     {recentDocs.map(d => (
-                                        <div key={d.id} className="p-3 bg-surface-hover rounded-xl border border-transparent hover:border-neutral-divider transition-all flex items-center justify-between">
+                                        <div key={d.id} onClick={() => handleDocPreview(d)} className="p-3 bg-surface-hover rounded-xl border border-transparent hover:border-neutral-divider transition-all flex items-center justify-between cursor-pointer">
                                             <div className="truncate flex-1">
-                                                <div className="text-sm font-medium text-neutral-main truncate">{d.name}</div>
+                                                <div className="text-sm font-medium text-neutral-main truncate">{d.title || d.file_name || d.name}</div>
                                                 <div className="text-[10px] text-neutral-muted mt-1">{new Date(d.created_at).toLocaleDateString()}</div>
                                             </div>
-                                            <ChevronRight size={14} className="text-neutral-muted" />
+                                            <Eye size={14} className="text-neutral-muted shrink-0" />
                                         </div>
                                     ))}
                                     {recentDocs.length === 0 && <div className="text-xs text-neutral-muted py-4 text-center border border-dashed border-neutral-divider rounded-xl">문서 기록이 없습니다.</div>}
@@ -377,6 +404,9 @@ const [showEditModal, setShowEditModal] = useState(false);
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     {memos.slice(0, 4).map(m => (
                                         <div key={m.id} className="group relative bg-[#fffbe6] dark:bg-[#2c2c1e] p-4 rounded-xl border border-[#ffe58f] dark:border-[#595912] shadow-sm">
+                                            <div className="text-[10px] text-neutral-muted/70 mb-1">
+                                                {m.createdAt ? new Date(m.createdAt).toLocaleString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                                            </div>
                                             <textarea
                                                 value={m.text}
                                                 onChange={(e) => updateMemo(m.id, e.target.value)}
@@ -653,6 +683,39 @@ const [showEditModal, setShowEditModal] = useState(false);
                                 {pwSaving ? <Zap size={16} className="animate-spin" /> : <Save size={16} />}
                                 변경하기
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* 문서 미리보기 모달 */}
+            {docPreview && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60]" onClick={() => setDocPreview(null)}>
+                    <div className="bg-surface-card rounded-2xl border border-neutral-divider shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col" onClick={e => e.stopPropagation()}>
+                        {/* 헤더 */}
+                        <div className="p-5 border-b border-neutral-divider flex items-center justify-between bg-surface-hover shrink-0">
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-base font-bold text-neutral-main truncate">{docPreview.title}</h3>
+                                <div className="flex items-center gap-2 mt-1">
+                                    {docPreview.file_type && <span className="text-[10px] px-2 py-0.5 rounded bg-accent-50 text-accent-600 font-bold">{docPreview.file_type}</span>}
+                                    {docPreview.created_at && <span className="text-[10px] text-neutral-muted">{new Date(docPreview.created_at).toLocaleString('ko-KR')}</span>}
+                                </div>
+                            </div>
+                            <button onClick={() => setDocPreview(null)} className="text-neutral-sub hover:text-neutral-main transition-colors ml-3">
+                                <Plus size={20} className="rotate-45" />
+                            </button>
+                        </div>
+                        {/* 내용 */}
+                        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                            {docPreview.loading ? (
+                                <div className="flex items-center justify-center py-12">
+                                    <Zap size={20} className="animate-spin text-primary-500" />
+                                    <span className="ml-2 text-sm text-neutral-muted">문서를 불러오는 중...</span>
+                                </div>
+                            ) : (
+                                <div className="text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">
+                                    {docPreview.content}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

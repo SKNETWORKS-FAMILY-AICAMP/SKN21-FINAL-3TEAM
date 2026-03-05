@@ -179,6 +179,7 @@ export default function MessagePopup() {
                     <div className="divide-y divide-neutral-50 dark:divide-neutral-800">
                       {items.map(msg => {
                         const name = box === 'inbox' ? msg.sender_name : msg.receiver_name;
+                        const team = box === 'inbox' ? msg.sender_team : msg.receiver_team;
                         const avatar = box === 'inbox' ? msg.sender_avatar : msg.receiver_avatar;
                         return (
                           <div
@@ -198,7 +199,7 @@ export default function MessagePopup() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5">
                                 <span className={`text-xs ${!msg.is_read && box === 'inbox' ? 'font-bold text-neutral-main' : 'font-medium text-neutral-sub'}`}>
-                                  {name || '알 수 없음'}
+                                  {name || '알 수 없음'}{team ? ` (${team})` : ''}
                                 </span>
                                 {!msg.is_read && box === 'inbox' && (
                                   <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
@@ -229,7 +230,7 @@ export default function MessagePopup() {
                     )}
                     <div>
                       <div className="text-xs font-semibold text-neutral-main">
-                        {box === 'inbox' ? selectedMsg.sender_name : selectedMsg.receiver_name}
+                        {box === 'inbox' ? selectedMsg.sender_name : selectedMsg.receiver_name}{(box === 'inbox' ? selectedMsg.sender_team : selectedMsg.receiver_team) ? ` (${box === 'inbox' ? selectedMsg.sender_team : selectedMsg.receiver_team})` : ''}
                       </div>
                       <div className="text-[10px] text-neutral-muted">
                         {selectedMsg.created_at && new Date(selectedMsg.created_at).toLocaleString('ko-KR')}
@@ -240,7 +241,7 @@ export default function MessagePopup() {
                     {selectedMsg.content}
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-neutral-muted">
-                    <span>보낸 사람: {selectedMsg.sender_name} → 받는 사람: {selectedMsg.receiver_name}</span>
+                    <span>보낸 사람: {selectedMsg.sender_name}{selectedMsg.sender_team ? ` (${selectedMsg.sender_team})` : ''} → 받는 사람: {selectedMsg.receiver_name}{selectedMsg.receiver_team ? ` (${selectedMsg.receiver_team})` : ''}</span>
                     {selectedMsg.is_read && <span className="flex items-center gap-0.5 text-green-500"><Eye size={10} /> 읽음</span>}
                   </div>
                   <button
