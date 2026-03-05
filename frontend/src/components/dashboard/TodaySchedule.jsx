@@ -43,8 +43,8 @@ export default function TodaySchedule({ meetings = [], actions = [] }) {
           <Link key={i} to="/schedules" className="group flex items-center gap-3 p-3 rounded-2xl border border-transparent bg-white/40 hover:border-primary-200 hover:shadow-soft transition-all duration-300 relative overflow-hidden">
             <div className="absolute inset-0 bg-primary-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             <div className="relative z-10 text-center flex-shrink-0 bg-primary-50 w-12 h-12 rounded-xl flex flex-col items-center justify-center">
-              <div className="font-display text-base font-bold text-primary-700 leading-none">{m.time.split(' ')[0]}</div>
-              <div className="text-[9px] text-primary-500 font-bold mt-0.5">{m.period || 'AM'}</div>
+              <div className="font-display text-base font-bold text-primary-700 leading-none">{m.isAllDay ? '종일' : m.time.split(' ')[0]}</div>
+              {!m.isAllDay && <div className="text-[9px] text-primary-500 font-bold mt-0.5">{m.period || 'AM'}</div>}
             </div>
             <div className="relative z-10 flex-1">
               <div className="text-[13px] font-bold text-neutral-main flex items-center gap-2">

@@ -65,8 +65,8 @@ function AgentBar({ activeIntent, isStreaming }) {
           <div
             key={agent.key}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300 select-none ${isActive
-                ? 'bg-primary-700 text-white shadow-md scale-105'
-                : 'bg-surface-hover text-neutral-sub'
+              ? 'bg-primary-700 text-white shadow-md scale-105'
+              : 'bg-surface-hover text-neutral-sub'
               }`}
           >
             <Icon size={14} className={isActive && isStreaming ? 'animate-pulse' : ''} />
@@ -78,7 +78,7 @@ function AgentBar({ activeIntent, isStreaming }) {
   );
 }
 
-export default function ChatWindow({ messages, onSend, selectedDocumentName, onClearDocument, activeIntent, isStreaming, panelOpen, children }) {
+export default function ChatWindow({ messages, onSend, selectedDocumentName, onClearDocument, activeIntent, isStreaming, panelOpen, onScrollChange, children }) {
   const [input, setInput] = useState('');
   const [files, setFiles] = useState([]);
   const [dragOver, setDragOver] = useState(false);
@@ -198,7 +198,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       )}
 
 
-      <div className="flex-1 min-h-0 overflow-y-auto py-4 px-4" data-main-scroll="">{children}<div ref={bottomRef} /></div>
+      <div className="flex-1 min-h-0 overflow-y-auto py-4 px-4" data-main-scroll="" onScroll={(e) => onScrollChange?.(e.target.scrollTop > 20)}>{children}<div ref={bottomRef} /></div>
 
       {/* 선택 문서 칩 & 파일 칩 & 에러 */}
       {(selectedDocumentName || files.length > 0 || fileError) && (
