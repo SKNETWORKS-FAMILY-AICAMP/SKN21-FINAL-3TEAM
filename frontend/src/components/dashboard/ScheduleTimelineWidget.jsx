@@ -31,10 +31,20 @@ export default function ScheduleTimelineWidget({ meetings = [] }) {
             const hrs = Array.from({ length: DEFAULT_END - DEFAULT_START + 1 }, (_, i) => String(DEFAULT_START + i).padStart(2, '0'));
             return { dayStart: DEFAULT_START, dayRange: DEFAULT_END - DEFAULT_START, hours: hrs };
         }
-        const startHours = meetings.map(m => m.start_time ? new Date(m.start_time).getHours() + new Date(m.start_time).getMinutes() / 60 : DEFAULT_START);
-        const endHours = meetings.map(m => m.end_time ? new Date(m.end_time).getHours() + new Date(m.end_time).getMinutes() / 60 : (m.start_time ? new Date(m.start_time).getHours() + 1 : DEFAULT_END));
-        const start = Math.min(DEFAULT_START, Math.floor(Math.min(...startHours)));
-        const end = Math.max(DEFAULT_END, Math.ceil(Math.max(...endHours)));
+        const startHours = meetings.map(m => {
+            if (m.isAllDay) return DEFAULT_START;
+            return m.start_time ? new Date(m.start_time).getHours() + new Date(m.start_time).getMinutes() / 60 : DEFAULT_START;
+        });
+        const endHours = meetings.map(m => {
+            if (m.isAllDay) return DEFAULT_END;
+            return m.end_time ? new Date(m.end_time).getHours() + new Date(m.end_time).getMinutes() / 60 : (m.start_time ? new Date(m.start_time).getHours() + 1 : DEFAULT_END);
+        });
+        const validStartHours = startHours.filter(h => !isNaN(h));
+        const validEndHours = endHours.filter(h => !isNaN(h));
+
+        const start = validStartHours.length > 0 ? Math.min(DEFAULT_START, Math.floor(Math.min(...validStartHours))) : DEFAULT_START;
+        const end = validEndHours.length > 0 ? Math.max(DEFAULT_END, Math.ceil(Math.max(...validEndHours))) : DEFAULT_END;
+
         const hrs = Array.from({ length: end - start + 1 }, (_, i) => String(start + i).padStart(2, '0'));
         return { dayStart: start, dayRange: end - start, hours: hrs };
     })();
@@ -43,17 +53,22 @@ export default function ScheduleTimelineWidget({ meetings = [] }) {
         let startH = 9;
         let duration = 1;
 
-        if (m.start_time) {
-            const d = new Date(m.start_time);
-            startH = d.getHours() + d.getMinutes() / 60;
-        }
+        if (m.isAllDay) {
+            startH = dayStart;
+            duration = dayRange;
+        } else {
+            if (m.start_time) {
+                const d = new Date(m.start_time);
+                startH = d.getHours() + d.getMinutes() / 60;
+            }
 
-        if (m.end_time && m.start_time) {
-            const ds = new Date(m.start_time);
-            const de = new Date(m.end_time);
-            const diffMs = de.getTime() - ds.getTime();
-            duration = Math.max(diffMs / 3600000, 0.5); // minimum 30 min
-            if (duration > 10) duration = 1; // fallback if end_time wraps past midnight
+            if (m.end_time && m.start_time) {
+                const ds = new Date(m.start_time);
+                const de = new Date(m.end_time);
+                const diffMs = de.getTime() - ds.getTime();
+                duration = Math.max(diffMs / 3600000, 0.5); // minimum 30 min
+                if (duration > 10) duration = 1; // fallback if end_time wraps past midnight
+            }
         }
 
         return {
@@ -158,8 +173,8 @@ export default function ScheduleTimelineWidget({ meetings = [] }) {
                                                 title={`${block.title} (${block.time} ${block.period})`}
                                                 className={`absolute ${block.color} rounded-lg px-2 py-1 text-white text-[11px] font-semibold overflow-hidden cursor-default shadow-sm hover:shadow-md hover:z-20 transition-shadow`}
                                                 style={{
-                                                    left: `${startPct}%`,
-                                                    width: `${Math.max(widthPct, 8)}%`,
+                                                    left: `${block.isAllDay ? 0 : startPct}%`,
+                                                    width: `${block.isAllDay ? 100 : Math.max(widthPct, 8)}%`,
                                                     top: `${row * (rowH + gap)}px`,
                                                     height: `${rowH}px`,
                                                     transformOrigin: 'left',
