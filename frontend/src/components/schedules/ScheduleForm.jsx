@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, Users } from 'lucide-react';
+import { ChevronDown, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import useGoogleServices from '../../hooks/useGoogleServices';
 import useScheduleTypeStore, { DEFAULT_TYPES } from '../../store/scheduleTypeStore';
 import useAuthStore from '../../store/authStore';
@@ -9,7 +9,7 @@ import DatePicker from '../common/DatePicker';
 // 00:00 ~ 23:50 (10분 간격) 타임 옵션 생성
 const timeOptions = [];
 for (let h = 0; h < 24; h++) {
-  for (let m = 0; m < 60; m += 10) {
+  for (let m = 0; m < 60; m += 15) {
     const val = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     timeOptions.push(val);
   }
@@ -94,6 +94,95 @@ function TimeSelect({ value, onChange }) {
   );
 }
 
+const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+const MONTHS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+
+function RangePicker({ startDate, endDate, onChange }) {
+  const today = new Date();
+  const [viewDate, setViewDate] = useState(() => startDate ? new Date(startDate) : today);
+  const [selecting, setSelecting] = useState('start');
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const lastDate = new Date(year, month + 1, 0).getDate();
+  const cells = [...Array(firstDay).fill(null), ...Array.from({ length: lastDate }, (_, i) => i + 1)];
+
+  const toStr = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+  const handleSelect = (day) => {
+    const selected = toStr(year, month, day);
+    if (selecting === 'start') {
+      onChange(selected, '');
+      setSelecting('end');
+    } else {
+      if (selected < startDate) {
+        onChange(selected, startDate);
+      } else {
+        onChange(startDate, selected);
+      }
+      setSelecting('start');
+    }
+  };
+
+  const isStart = (day) => toStr(year, month, day) === startDate;
+  const isEnd = (day) => toStr(year, month, day) === endDate;
+  const isInRange = (day) => {
+    if (!startDate || !endDate) return false;
+    const d = toStr(year, month, day);
+    return d > startDate && d < endDate;
+  };
+  const isTodayCell = (day) => day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+
+  return (
+    <div className="border border-neutral-border rounded-lg p-2 bg-surface-card">
+      <div className="flex items-center justify-between mb-1.5">
+        <button type="button" onClick={() => setViewDate(new Date(year, month - 1, 1))} className="p-1 hover:bg-surface-hover rounded transition">
+          <ChevronLeft size={13} />
+        </button>
+        <span className="text-xs font-semibold text-neutral-main">{year}년 {MONTHS[month]}</span>
+        <button type="button" onClick={() => setViewDate(new Date(year, month + 1, 1))} className="p-1 hover:bg-surface-hover rounded transition">
+          <ChevronRight size={13} />
+        </button>
+      </div>
+      <div className="flex gap-1.5 mb-1.5 text-[0.6875rem]">
+        <div className={`flex-1 text-center py-1 rounded border transition ${selecting === 'start' ? 'bg-primary-50 text-primary-700 font-semibold border-primary-300' : 'bg-surface-hover text-neutral-sub border-transparent'}`}>
+          시작: {startDate || '선택'}
+        </div>
+        <div className={`flex-1 text-center py-1 rounded border transition ${selecting === 'end' ? 'bg-primary-50 text-primary-700 font-semibold border-primary-300' : 'bg-surface-hover text-neutral-sub border-transparent'}`}>
+          종료: {endDate || '선택'}
+        </div>
+      </div>
+      <div className="grid grid-cols-7">
+        {DAYS.map((d, i) => (
+          <div key={d} className={`text-center text-[0.625rem] font-medium py-0.5 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-neutral-muted'}`}>{d}</div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7">
+        {cells.map((day, idx) => day ? (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => handleSelect(day)}
+            className={[
+              'w-full h-7 flex items-center justify-center text-[0.6875rem] transition',
+              isStart(day) || isEnd(day) ? 'bg-primary-700 text-white font-semibold rounded' :
+              isInRange(day) ? 'bg-primary-100 text-primary-800' :
+              isTodayCell(day) ? 'border border-primary-400 text-primary-700 font-semibold hover:bg-primary-50 rounded' :
+              idx % 7 === 0 ? 'text-red-400 hover:bg-surface-hover rounded' :
+              idx % 7 === 6 ? 'text-blue-400 hover:bg-surface-hover rounded' :
+              'text-neutral-main hover:bg-surface-hover rounded',
+              isInRange(day) ? 'rounded-none' : '',
+            ].join(' ')}
+          >
+            {day}
+          </button>
+        ) : <div key={idx} />)}
+      </div>
+    </div>
+  );
+}
+
 function addOneHour(timeStr) {
   const [h, m] = timeStr.split(':').map(Number);
   const totalMin = h * 60 + m + 60;
@@ -111,6 +200,7 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
   const [form, setForm] = useState({
     title: initialData?.title || '',
     date: initialData?.date || '',
+    endDate: initialData?.endDate || '',
     startTime: initialData?.startTime || '09:00',
     endTime: initialData?.endTime || '10:00',
     type: initialData?.type || 'meeting',
@@ -214,11 +304,14 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
 
         {/* 날짜 */}
         <div>
-          <label className="text-[0.8125rem] font-semibold block mb-1">날짜</label>
-          <DatePicker
-            value={form.date}
-            onChange={(dateStr) => { setForm({ ...form, date: dateStr }); setErrors((p) => ({ ...p, date: undefined })); }}
-            placeholder="날짜 선택..."
+          <label className="text-[0.8125rem] font-semibold block mb-2">날짜</label>
+          <RangePicker
+            startDate={form.date}
+            endDate={form.endDate}
+            onChange={(start, end) => {
+              setForm(f => ({ ...f, date: start, endDate: end }));
+              setErrors((p) => ({ ...p, date: undefined }));
+            }}
           />
           {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
         </div>
@@ -236,23 +329,25 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
 
         {/* 시작 / 종료 시간 */}
         {!form.allDay && (
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[0.8125rem] font-semibold block mb-1">시작 시간</label>
-              <TimeSelect
-                value={form.startTime}
-                onChange={(t) => setForm({ ...form, startTime: t, endTime: addOneHour(t) })}
-              />
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[0.8125rem] font-semibold block mb-1">시작 시간</label>
+                <TimeSelect
+                  value={form.startTime}
+                  onChange={(t) => setForm({ ...form, startTime: t, endTime: addOneHour(t) })}
+                />
+              </div>
+              <div>
+                <label className="text-[0.8125rem] font-semibold block mb-1">종료 시간</label>
+                <TimeSelect
+                  value={form.endTime}
+                  onChange={(t) => { setForm({ ...form, endTime: t }); setErrors((p) => ({ ...p, endTime: undefined })); }}
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-[0.8125rem] font-semibold block mb-1">종료 시간</label>
-              <TimeSelect
-                value={form.endTime}
-                onChange={(t) => { setForm({ ...form, endTime: t }); setErrors((p) => ({ ...p, endTime: undefined })); }}
-              />
-              {errors.endTime && <p className="text-xs text-red-500 mt-1">{errors.endTime}</p>}
-            </div>
-          </div>
+            {errors.endTime && <p className="text-xs text-red-500 mt-1 whitespace-nowrap">{errors.endTime}</p>}
+          </>
         )}
 
         {/* Google Meet 토글 */}
