@@ -4,8 +4,11 @@ import { Mail, Send, Inbox, X, Trash2, Eye, ArrowLeft, Clock } from 'lucide-reac
 import { listMessages, sendMessage, markAsRead, deleteMessage, getUnreadCount } from '../../api/messages';
 import client from '../../api/client';
 
-export default function MessagePopup() {
-  const [open, setOpen] = useState(false);
+export default function MessagePopup({ open: externalOpen, onClose }) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = onClose || setInternalOpen;
+
   const [view, setView] = useState('list'); // list | compose | detail
   const [box, setBox] = useState('inbox');
   const [items, setItems] = useState([]);
@@ -17,7 +20,7 @@ export default function MessagePopup() {
   const [submitting, setSubmitting] = useState(false);
 
   const fetchUnread = async () => {
-    try { setUnread(await getUnreadCount()); } catch {}
+    try { setUnread(await getUnreadCount()); } catch { }
   };
 
   const loadMessages = async () => {
@@ -54,7 +57,7 @@ export default function MessagePopup() {
       markAsRead(msg.id).then(() => {
         setItems(prev => prev.map(m => m.id === msg.id ? { ...m, is_read: true } : m));
         setUnread(prev => Math.max(0, prev - 1));
-      }).catch(() => {});
+      }).catch(() => { });
     }
   };
 
@@ -86,28 +89,15 @@ export default function MessagePopup() {
 
   return (
     <>
-      {/* Floating Button */}
-      <button
-        onClick={() => setOpen(!open)}
-        className="fixed bottom-24 right-8 z-50 w-12 h-12 rounded-full bg-white dark:bg-neutral-900 border-2 border-primary-500 text-primary-600 shadow-lg flex items-center justify-center transition-all hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:scale-105 active:scale-95"
-      >
-        <Mail size={20} />
-        {unread > 0 && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-            {unread > 99 ? '99+' : unread}
-          </span>
-        )}
-      </button>
-
       {/* Popup */}
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            initial={{ opacity: 0, x: 20, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-[8.5rem] right-8 z-50 w-80 h-[28rem] bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 flex flex-col overflow-hidden"
+            className="fixed bottom-32 right-16 z-50 w-80 h-[28rem] bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 flex flex-col overflow-hidden origin-right"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800">
@@ -150,11 +140,10 @@ export default function MessagePopup() {
                       <button
                         key={tab.key}
                         onClick={() => setBox(tab.key)}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition-colors ${
-                          box === tab.key
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition-colors ${box === tab.key
                             ? 'text-primary-500 border-b-2 border-primary-500'
                             : 'text-neutral-muted hover:text-neutral-sub'
-                        }`}
+                          }`}
                       >
                         <tab.icon size={12} />
                         {tab.label}
@@ -185,9 +174,8 @@ export default function MessagePopup() {
                           <div
                             key={msg.id}
                             onClick={() => handleOpen(msg)}
-                            className={`flex items-center gap-2.5 px-4 py-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors ${
-                              !msg.is_read && box === 'inbox' ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''
-                            }`}
+                            className={`flex items-center gap-2.5 px-4 py-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors ${!msg.is_read && box === 'inbox' ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''
+                              }`}
                           >
                             {avatar ? (
                               <img src={avatar} alt="" className="w-7 h-7 rounded-full shrink-0" />

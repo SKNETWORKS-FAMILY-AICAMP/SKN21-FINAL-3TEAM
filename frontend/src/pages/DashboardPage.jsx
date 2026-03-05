@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Minus, Pencil, Check, RotateCcw } from 'lucide-react';
+import { X, Plus, Minus, Pencil, Check, RotateCcw, ArrowUp } from 'lucide-react';
 import GreetingBanner from '../components/dashboard/GreetingBanner';
 import TodaySchedule from '../components/dashboard/TodaySchedule';
 import AIChatWidget from '../components/dashboard/AIChatWidget';
@@ -393,6 +393,33 @@ export default function DashboardPage() {
 
   const [dragId, setDragId] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    // Layout.jsx에서 `<main>` 태그가 스크롤을 담당하고 있음.
+    const mainContent = document.querySelector('main');
+
+    if (!mainContent) return;
+
+    const handleScroll = (e) => {
+      // main 태그의 scrollTop 속성으로 스크롤 위치 감지
+      if (e.target.scrollTop > 300) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+
+    mainContent.addEventListener('scroll', handleScroll, { passive: true });
+    return () => mainContent.removeEventListener('scroll', handleScroll, { passive: true });
+  }, []);
+
+  const scrollToTop = () => {
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+      mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const handleDragStart = (id) => setDragId(id);
   const handleDragEnd = () => { setDragId(null); setDropTarget(null); };
@@ -480,6 +507,18 @@ export default function DashboardPage() {
             <RotateCcw size={14} /> 초기화
           </button>
         )}
+      </div>
+      {/* 하단 스크롤 투 탑 버튼 (플로팅) */}
+      <div
+        className={`fixed bottom-[30px] left-[30px] z-50 transition-all duration-300 transform ${showScrollTop ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'}`}
+      >
+        <button
+          onClick={scrollToTop}
+          className="w-12 h-12 bg-surface-card border border-neutral-border text-neutral-main hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-full shadow-lg flex items-center justify-center transition-colors focus:outline-none"
+          title="맨 위로 가기"
+        >
+          <ArrowUp size={20} className="text-primary-600 dark:text-primary-400 font-bold stroke-[3px]" />
+        </button>
       </div>
     </div>
   );

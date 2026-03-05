@@ -7,6 +7,7 @@ import AIDock from './AIDock';
 import ErrorBoundary from './ErrorBoundary';
 import AIChatPopup from '../chat/AIChatPopup';
 import MessagePopup from '../messages/MessagePopup';
+import RightSidebar from './RightSidebar';
 
 const pageVariants = {
   initial: { opacity: 0, y: 8 },
@@ -19,6 +20,9 @@ export default function Layout() {
   const isChatPage = location.pathname === '/chat';
   const topbarScheduleHidden = useUIStore((s) => s.dashboard?.topbarScheduleHidden);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [messageOpen, setMessageOpen] = useState(false);
+
   const mainRef = useRef(null);
   // handleScroll 클로저에서 최신 isChatPage 값을 참조하기 위한 ref
   const isChatPageRef = useRef(isChatPage);
@@ -119,8 +123,8 @@ export default function Layout() {
         ref={mainRef}
         onScrollCapture={handleScroll}
         className={`flex-1 min-h-0 relative transition-[padding] duration-300 ease-in-out ${isChatPage
-            ? `overflow-hidden flex flex-col ${isScrolled ? 'pt-[76px]' : (topbarScheduleHidden ? 'pt-[96px]' : 'pt-[180px]')}`
-            : `overflow-y-auto overflow-x-hidden ${topbarScheduleHidden ? 'pt-[100px]' : 'pt-[180px]'} px-4 md:px-8 pb-20`
+          ? `overflow-hidden flex flex-col ${isScrolled ? 'pt-[76px]' : (topbarScheduleHidden ? 'pt-[96px]' : 'pt-[180px]')}`
+          : `overflow-y-auto overflow-x-hidden ${topbarScheduleHidden ? 'pt-[100px]' : 'pt-[180px]'} px-4 md:px-8 pb-20`
           }`}
       >
         <AnimatePresence mode="wait">
@@ -140,8 +144,19 @@ export default function Layout() {
         </AnimatePresence>
       </main>
       {!isChatPage && <AIDock />}
-      {!isChatPage && <AIChatPopup />}
-      <MessagePopup />
+
+      {!isChatPage && (
+        <RightSidebar
+          chatOpen={chatOpen}
+          setChatOpen={setChatOpen}
+          messageOpen={messageOpen}
+          setMessageOpen={setMessageOpen}
+        />
+      )}
+
+      {!isChatPage && <AIChatPopup isOpen={chatOpen} onClose={() => setChatOpen(false)} />}
+      <MessagePopup open={messageOpen} onClose={() => setMessageOpen(false)} />
     </div>
   );
 }
+

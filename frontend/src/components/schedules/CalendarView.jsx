@@ -110,7 +110,7 @@ function DayDetailPopup({ day, month, year, events, typeColorMap, typeLabelMap, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
-      <div ref={ref} className="bg-surface-card rounded-lg border border-neutral-border shadow-md w-[540px] h-[300px] max-h-[1000px] overflow-hidden">
+      <div ref={ref} className="bg-surface-card rounded-lg border border-neutral-border shadow-md w-[540px] max-h-[80vh] flex flex-col overflow-hidden">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-divider">
           <span className="text-sm font-bold text-neutral-main">{year}년 {month}월 {day}일</span>
@@ -118,7 +118,7 @@ function DayDetailPopup({ day, month, year, events, typeColorMap, typeLabelMap, 
         </div>
 
         {/* 일정 목록 */}
-        <div className="px-4 py-3 overflow-y-auto max-h-[320px]">
+        <div className="px-4 py-3 overflow-y-auto flex-1 custom-scrollbar">
           {events.length === 0 ? (
             <p className="text-sm text-neutral-muted text-center py-6">등록된 일정이 없습니다</p>
           ) : (
@@ -185,8 +185,8 @@ function DayDetailPopup({ day, month, year, events, typeColorMap, typeLabelMap, 
 
 // 연간 뷰 — 12개월 미니 캘린더
 function YearView({ year, events, todayYear, todayMonth, todayDate, onMonthClick }) {
-  const monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-  const dayNamesShort = ['일','월','화','수','목','금','토'];
+  const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+  const dayNamesShort = ['일', '월', '화', '수', '목', '금', '토'];
 
   return (
     <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
@@ -209,9 +209,8 @@ function YearView({ year, events, todayYear, todayMonth, todayDate, onMonthClick
             <div className="text-sm font-bold text-neutral-main mb-2 text-center">{name}</div>
             <div className="grid grid-cols-7 gap-px">
               {dayNamesShort.map((d, idx) => (
-                <div key={d} className={`text-[0.625rem] text-center pb-1 ${
-                  idx === 0 ? 'text-red-500' : idx === 6 ? 'text-blue-500' : 'text-neutral-muted'
-                }`}>{d}</div>
+                <div key={d} className={`text-[0.625rem] text-center pb-1 ${idx === 0 ? 'text-red-500' : idx === 6 ? 'text-blue-500' : 'text-neutral-muted'
+                  }`}>{d}</div>
               ))}
               {cells.map((d, i) => {
                 const isToday = d && year === todayYear && month === todayMonth && d === todayDate;
@@ -349,11 +348,10 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
           <div className="flex items-center gap-1 flex-wrap">
             <button
               onClick={() => setHiddenTypes(new Set())}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium border transition ${
-                showAll
+              className={`px-2.5 py-1 rounded-md text-xs font-medium border transition ${showAll
                   ? 'border-primary-500 bg-primary-50 text-primary-700'
                   : 'border-neutral-divider bg-surface-card text-neutral-main opacity-40'
-              }`}
+                }`}
             >
               전체
             </button>
@@ -363,11 +361,10 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
                 <button
                   key={id}
                   onClick={() => toggleType(id)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition ${
-                    active
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition ${active
                       ? 'border-neutral-border bg-surface-card text-neutral-main'
                       : 'border-neutral-divider bg-surface-card text-neutral-main opacity-40'
-                  }`}
+                    }`}
                 >
                   <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: active ? color : '#9CA3AF' }} />
                   {label}
@@ -398,51 +395,48 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
             onMonthClick={handleYearMonthClick}
           />
         ) : (
-        <div className="grid grid-cols-7 gap-1">
-          {dayNames.map((d, idx) => (
-            <div key={d} className={`text-[0.6875rem] font-semibold py-2 text-center ${
-              idx === 0 ? 'text-red-500' : idx === 6 ? 'text-blue-500' : 'text-neutral-muted'
-            }`}>{d}</div>
-          ))}
-          {displayDays.map((d, i) => {
-            const dayEvents = mergedEvents.filter((e) => e.day === d.day && e.month === currentMonth && !d.other);
-            const isToday = !d.other && d.day === todayDate && currentYear === todayYear && currentMonth === todayMonth;
-            const isHoliday = dayEvents.some((e) => e.type === 'holiday');
-            return (
-              <div
-                key={i}
-                onClick={() => handleDayClick(d)}
-                className={`${view === 'week' ? 'min-h-[320px]' : 'min-h-[150px]'} bg-surface-card border border-neutral-divider rounded-sm p-1.5 text-xs transition hover:border-primary-300 cursor-pointer ${
-                  isToday ? 'border-primary-700 border-2' : ''
-                } ${selectedDay === d.day && !d.other ? 'ring-2 ring-primary-500' : ''}`}
-              >
-                <div className={`font-semibold mb-1 ${
-                  d.other ? 'text-neutral-muted'
-                  : (i % 7 === 0 || isHoliday) ? 'text-red-500'
-                  : i % 7 === 6 ? 'text-blue-500'
-                  : 'text-neutral-main'
-                }`}>{d.day}</div>
-                {dayEvents.map((e, j) => {
-                  const builtInStyle = DEFAULT_TYPE_STYLES[e.type];
-                  const color = typeColorMap[e.type];
-                  return (
-                    <div key={j} className="mb-0.5">
-                      <div
-                        className={`text-[0.625rem] px-1.5 py-0.5 rounded font-medium truncate ${builtInStyle || ''}`}
-                        style={!builtInStyle && color ? {
-                          backgroundColor: hexToRgba(color, 0.15),
-                          color,
-                        } : {}}
-                      >
-                        {e.label}
+          <div className="grid grid-cols-7 gap-1">
+            {dayNames.map((d, idx) => (
+              <div key={d} className={`text-[0.6875rem] font-semibold py-2 text-center ${idx === 0 ? 'text-red-500' : idx === 6 ? 'text-blue-500' : 'text-neutral-muted'
+                }`}>{d}</div>
+            ))}
+            {displayDays.map((d, i) => {
+              const dayEvents = mergedEvents.filter((e) => e.day === d.day && e.month === currentMonth && !d.other);
+              const isToday = !d.other && d.day === todayDate && currentYear === todayYear && currentMonth === todayMonth;
+              const isHoliday = dayEvents.some((e) => e.type === 'holiday');
+              return (
+                <div
+                  key={i}
+                  onClick={() => handleDayClick(d)}
+                  className={`${view === 'week' ? 'min-h-[320px]' : 'min-h-[150px]'} bg-surface-card border border-neutral-divider rounded-sm p-1.5 text-xs transition hover:border-primary-300 cursor-pointer ${isToday ? 'border-primary-700 border-2' : ''
+                    } ${selectedDay === d.day && !d.other ? 'ring-2 ring-primary-500' : ''}`}
+                >
+                  <div className={`font-semibold mb-1 ${d.other ? 'text-neutral-muted'
+                      : (i % 7 === 0 || isHoliday) ? 'text-red-500'
+                        : i % 7 === 6 ? 'text-blue-500'
+                          : 'text-neutral-main'
+                    }`}>{d.day}</div>
+                  {dayEvents.map((e, j) => {
+                    const builtInStyle = DEFAULT_TYPE_STYLES[e.type];
+                    const color = typeColorMap[e.type];
+                    return (
+                      <div key={j} className="mb-0.5">
+                        <div
+                          className={`text-[0.625rem] px-1.5 py-0.5 rounded font-medium truncate ${builtInStyle || ''}`}
+                          style={!builtInStyle && color ? {
+                            backgroundColor: hexToRgba(color, 0.15),
+                            color,
+                          } : {}}
+                        >
+                          {e.label}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
