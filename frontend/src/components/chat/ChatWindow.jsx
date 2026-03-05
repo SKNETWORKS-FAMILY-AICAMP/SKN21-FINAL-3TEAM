@@ -198,7 +198,20 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       )}
 
 
-      <div className="flex-1 min-h-0 overflow-y-auto py-4 px-4" data-main-scroll="" onScroll={(e) => onScrollChange?.(e.target.scrollTop > 20)}>{children}<div ref={bottomRef} /></div>
+      <div
+        className="flex-1 min-h-0 overflow-y-auto py-4 px-4 scroll-smooth custom-scrollbar"
+        data-main-scroll=""
+        onScroll={(e) => {
+          if (e.target.scrollTop > 100) {
+            onScrollChange?.(true);
+          } else if (e.target.scrollTop < 20) {
+            onScrollChange?.(false);
+          }
+        }}
+      >
+        {children}
+        <div ref={bottomRef} />
+      </div>
 
       {/* 선택 문서 칩 & 파일 칩 & 에러 */}
       {(selectedDocumentName || files.length > 0 || fileError) && (
