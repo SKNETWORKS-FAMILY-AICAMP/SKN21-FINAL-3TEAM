@@ -32,21 +32,57 @@ async def list_approvals(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """내 팀의 pending 요청 목록"""
+    """모든 pending 요청 목록 (팀 구분 없이 전체 조회)"""
     query = (
         select(ApprovalRequest)
         .where(ApprovalRequest.status == "pending")
         .order_by(ApprovalRequest.created_at.desc())
     )
-    if current_user.team:
-        query = query.where(ApprovalRequest.target_team == current_user.team)
-    else:
-        query = query.where(ApprovalRequest.requester_id == current_user.id)
-
     result = await db.execute(query)
     items = result.scalars().all()
 
     # requester 이름/아바타 조회를 위해 user id 수집
+    user_ids = list({i.requester_id for i in items})
+    users_map = {}
+    if user_ids:
+        users_result = await db.execute(select(User).where(User.id.in_(user_ids)))
+        for u in users_result.scalars().all():
+            users_map[u.id] = u
+
+    return [
+        {
+            "id": i.id,
+            "type": i.type,
+            "title": i.title,
+            "detail": i.detail,
+            "status": i.status,
+            "requester_id": i.requester_id,
+            "requester_name": users_map.get(i.requester_id, None) and users_map[i.requester_id].name,
+            "requester_avatar": users_map.get(i.requester_id, None) and users_map[i.requester_id].avatar,
+            "target_team": i.target_team,
+            "created_at": i.created_at.isoformat() if i.created_at else None,
+        }
+        for i in items
+    ]
+
+
+@router.get("/history")
+async def list_approval_history(
+    status: str = "approved",
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """처리 완료된 요청 목록 (approved / rejected)"""
+    if status not in ("approved", "rejected"):
+        status = "approved"
+    query = (
+        select(ApprovalRequest)
+        .where(ApprovalRequest.status == status)
+        .order_by(ApprovalRequest.updated_at.desc())
+    )
+    result = await db.execute(query)
+    items = result.scalars().all()
+
     user_ids = list({i.requester_id for i in items})
     users_map = {}
     if user_ids:
@@ -132,6 +168,25 @@ async def reject_request(
     approval.status = "rejected"
     await db.flush()
     return {"id": approval.id, "status": "rejected"}
+
+
+@router.delete("/{approval_id}")
+async def delete_approval(
+    approval_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """요청 삭제 (본인이 올린 요청만)"""
+    result = await db.execute(select(ApprovalRequest).where(ApprovalRequest.id == approval_id))
+    approval = result.scalar_one_or_none()
+    if not approval:
+        raise HTTPException(status_code=404, detail="요청을 찾을 수 없습니다")
+    if approval.requester_id != current_user.id:
+        raise HTTPException(status_code=403, detail="본인이 올린 요청만 삭제할 수 있습니다")
+
+    await db.delete(approval)
+    await db.flush()
+    return {"deleted": True, "id": approval_id}
 
 
 @router.post("/seed", status_code=201)
