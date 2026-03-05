@@ -152,12 +152,12 @@ function MemoPanel() {
       <button
         onClick={() => setOpen((o) => !o)}
         title="메모"
-        className={`w-8 h-8 flex items-center justify-center rounded-md transition relative ${open
-          ? 'bg-primary-50 text-primary-900'
-          : 'text-primary-700 hover:text-primary-900 hover:bg-primary-50'
+        className={`w-10 h-10 rounded-full bg-white/40 dark:bg-white/10 shadow-sm border border-neutral-100/50 dark:border-white/10 flex items-center justify-center transition-colors relative ${open
+          ? 'text-primary-900 border-primary-200 bg-white/60'
+          : 'text-neutral-600 dark:text-neutral-300 hover:bg-white/60 dark:hover:bg-white/20'
           }`}
       >
-        <StickyNote size={16} />
+        <FileText size={18} />
       </button>
 
       {/* 플로팅 메모 패널 */}
@@ -502,23 +502,23 @@ export default function Topbar({ isScrolled = false }) {
 
         {/* === Row 1: Schedule Timeline (Top) === */}
         {!topbarScheduleHidden && (
-          <div className={`flex justify-center w-full px-4 md:px-10 transition-all duration-300 ease-in-out transform origin-top ${isScrolled ? 'hidden md:flex opacity-100 scale-[0.9] pointer-events-auto h-[48px] mb-0 mt-1' : 'opacity-100 scale-100 h-[48px] mb-8'}`}>
-            <div className="hidden md:flex justify-center w-[650px] xl:w-[800px]">
-              <div className={`border text-primary-800 dark:text-neutral-100 rounded-[32px] flex items-center p-1.5 w-full transition-all duration-300 ${isScrolled ? 'bg-white/60 dark:bg-[#111317]/60 backdrop-blur-lg border-neutral-200/50 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.08)]' : 'bg-white/30 dark:bg-black/10 border-neutral-200/30 dark:border-white/5 shadow-sm'}`}>
+          <div className={`flex justify-center w-full px-4 md:px-10 transition-all duration-300 ease-in-out transform origin-top ${isScrolled ? 'hidden md:flex opacity-100 scale-[0.9] pointer-events-auto h-[56px] mb-0 mt-1' : 'opacity-100 scale-100 h-[56px] mb-4'}`}>
+            <div className="hidden md:flex justify-center w-[580px] xl:w-[720px]">
+              <div className={`border text-primary-800 dark:text-neutral-100 rounded-[32px] flex items-center p-1.5 w-full transition-all duration-300 ${isScrolled ? 'bg-white/40 dark:bg-[#111317]/40 backdrop-blur-lg border-neutral-200/50 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.08)]' : 'bg-white/10 dark:bg-black/10 border-neutral-200/20 dark:border-white/5 shadow-sm'}`}>
 
                 {/* 왼쪽 Label section */}
                 <div className="flex items-center gap-3 pl-5 pr-3 whitespace-nowrap border-r border-neutral-200/50 dark:border-white/10">
                   <span className="text-sm font-bold tracking-tight text-primary-900 dark:text-white">Your Schedule</span>
-                  <div className="bg-white/40 dark:bg-white/10 rounded-full px-3 py-1.5 flex items-center gap-2 border border-neutral-200/30 dark:border-white/10">
+                  <div className="bg-white/20 dark:bg-white/5 rounded-full px-3 py-1.5 flex items-center gap-2 border border-neutral-200/20 dark:border-white/10">
                     <Calendar size={13} className="text-primary-600 dark:text-neutral-300" />
                     <span className="text-[11px] text-primary-700 dark:text-neutral-200 font-bold">{dayjs().format('DD MMMM')}</span>
                   </div>
                 </div>
 
                 {/* 타임라인 영역 (Outer: visible, Inner: hidden) */}
-                <div className="flex-1 relative h-[48px] mx-1 rounded-[24px]">
+                <div className="flex-1 relative h-[56px] mx-1 rounded-[28px]">
                   {/* 둥근 테두리 및 마스크 레이어 */}
-                  <div className="absolute inset-0 overflow-hidden rounded-[24px] border border-neutral-200/50 dark:border-white/10 shadow-inner bg-transparent">
+                  <div className="absolute inset-0 overflow-hidden rounded-[28px] border border-neutral-200/50 dark:border-white/10 shadow-inner bg-transparent">
                     {eventLayouts.length > 0 ? (
                       <div
                         className="absolute top-0 bottom-0 transition-transform duration-1000 ease-linear"
@@ -527,11 +527,14 @@ export default function Topbar({ isScrolled = false }) {
                           transform: `translateX(-${nowPixelX}px)`
                         }}
                       >
-                        {eventLayouts.map(({ event, left, staggerLayer, width, bgColor, isTeamEvent, isActive }) => {
+                        {eventLayouts.map(({ event, left, staggerLayer, width, bgColor, isTeamEvent, isActive, isPast }) => {
                           const isHovered = hoveredEventId === event.id;
-                          // 기본 zIndex는 현재 시간에 진행중인 것을 30, 레이어가 낮을수록 20, 19...
-                          // 호버 시 가장 위로(50)
-                          const baseZ = isActive ? 30 : 20 - staggerLayer;
+                          // zIndex 우선순위 (값이 클수록 위에 표시):
+                          // 1. Hover 시: 50
+                          // 2. 현재 시간 포함(isActive): 30 - staggerLayer (동시에 진행중일 때 일찍 시작한 게 위)
+                          // 3. 미래(앞으로 올) 일정: 20 - staggerLayer
+                          // 4. 지난 과거 일정(isPast): 10 - staggerLayer (가장 멀리 배치)
+                          const baseZ = isActive ? 30 - staggerLayer : isPast ? 10 - staggerLayer : 20 - staggerLayer;
                           const finalZ = isHovered ? 50 : baseZ;
 
                           return (
@@ -615,19 +618,18 @@ export default function Topbar({ isScrolled = false }) {
                   {/* Fixed Playhead (Now Indicator) - Outside of hidden mask */}
                   {eventLayouts.length > 0 && (
                     <div className="absolute top-0 bottom-0 z-50 pointer-events-none flex flex-col items-center" style={{ left: `${PLAYHEAD_X_PCT}%`, transform: 'translateX(-50%)' }}>
-                      <div className="absolute -top-[14px] bg-primary-900 dark:bg-primary-800 text-white text-[10px] xl:text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1.5 whitespace-nowrap">
+                      <div className="absolute -top-[14px] z-10 bg-primary-900 dark:bg-primary-800 text-white text-[10px] xl:text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1.5 whitespace-nowrap">
                         <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_4px_#4ade80]" />
                         {currentTime.format('h:mm A')}
                       </div>
-                      {/* 작대기 (Vertical line) */}
-                      <div className="w-[3px] h-full mt-2 bg-primary-900/40 dark:bg-white/40 rounded-full shadow-sm" />
+                      <div className="absolute top-[4px] bottom-0 w-[1.5px] bg-primary-900 dark:bg-primary-400/80 z-0 shadow-sm" />
                     </div>
                   )}
                 </div>
 
                 {/* 더보기 버튼 */}
-                <Link to="/schedules" className="w-[36px] h-[36px] ml-1 mr-1 rounded-full bg-primary-900 dark:bg-white/10 flex items-center justify-center hover:bg-primary-700 dark:hover:bg-white/20 transition-colors text-white focus:outline-none flex-shrink-0 shadow-sm">
-                  <ArrowUpRight size={16} strokeWidth={2.5} />
+                <Link to="/schedules" className="w-[44px] h-[44px] ml-1 mr-1 rounded-full bg-primary-900 dark:bg-white/10 flex items-center justify-center hover:bg-primary-700 dark:hover:bg-white/20 transition-colors text-white focus:outline-none flex-shrink-0 shadow-sm">
+                  <ArrowUpRight size={18} strokeWidth={2.5} />
                 </Link>
               </div>
             </div>
@@ -638,9 +640,9 @@ export default function Topbar({ isScrolled = false }) {
         <div className={`flex items-center justify-between px-4 md:px-10 flex-shrink-0 transition-all duration-300 ease-in-out ${isScrolled ? 'opacity-100 md:opacity-0 pointer-events-auto md:pointer-events-none h-[60px] md:h-0 overflow-hidden bg-white/80 dark:bg-[#20232A]/80 backdrop-blur-md md:bg-transparent shadow-sm md:shadow-none' : 'opacity-100 h-[60px] pointer-events-auto'}`}>
 
           {/* 좌측 - 로고 */}
-          <div className="flex items-center shrink-0 w-[200px]">
+          <div className="flex items-center shrink-0 w-[200px] -mt-5">
             <Link to="/dashboard" className="flex items-center gap-3">
-              <img src="/logo.png" alt="Logo" className={`object-contain transition-all py-1 ${isScrolled ? 'w-16' : 'w-20'}`} />
+              <img src="/logo.png" alt="Logo" className={`object-contain transition-all py-1 ${isScrolled ? 'w-24' : 'w-28'}`} />
             </Link>
           </div>
 
@@ -675,7 +677,7 @@ export default function Topbar({ isScrolled = false }) {
           </nav>
 
           {/* 우측 - 유틸리티 (데스크톱) */}
-          <div className={`hidden md:flex items-center justify-end gap-3 w-[200px] transition-opacity duration-300`}>
+          <div className={`hidden md:flex items-center justify-end gap-3 w-auto -mt-5 transition-opacity duration-300`}>
             <ThemeToggle />
             <MemoPanel />
 
