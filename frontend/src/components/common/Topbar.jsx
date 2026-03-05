@@ -14,6 +14,18 @@ import { listSchedules } from '../../api/schedules';
 import { listCalendarEvents } from '../../api/google';
 import dayjs from 'dayjs';
 
+const FILTER_CONFIG = [
+  { key: 'meeting', label: '회의', color: '#7A90A4' },
+  { key: 'personal', label: '개인', color: '#8FB18E' },
+  { key: 'google', label: 'Google', color: '#CBAA85' },
+];
+
+function getCategory(event) {
+  if (event._source === 'google' || event.schedule_type === 'google') return 'google';
+  if (event.schedule_type === 'meeting') return 'meeting';
+  return 'personal';
+}
+
 const BLOCK_COLORS = [
   '#8EA1B1', // Blueish
   '#9DB099', // Greenish
@@ -289,6 +301,15 @@ export default function Topbar({ isScrolled = false }) {
   const [currentTime, setCurrentTime] = useState(dayjs());
   const [teamMembers, setTeamMembers] = useState([]);
   const [hoveredEventId, setHoveredEventId] = useState(null);
+  const [activeFilters, setActiveFilters] = useState(new Set(['meeting', 'personal', 'google']));
+
+  const toggleFilter = (key) => {
+    setActiveFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
 
   // 1분마다 현재 시간 업데이트
   useEffect(() => {
@@ -306,7 +327,8 @@ export default function Topbar({ isScrolled = false }) {
   const PLAYHEAD_X_PCT = 35; // 35% from left
 
   const { eventLayouts, nowPixelX } = useMemo(() => {
-    if (!todaySchedules || todaySchedules.length === 0) {
+    const filteredSchedules = todaySchedules.filter(e => activeFilters.has(getCategory(e)));
+    if (!filteredSchedules || filteredSchedules.length === 0) {
       return { eventLayouts: [], nowPixelX: 0 };
     }
 
@@ -316,7 +338,7 @@ export default function Topbar({ isScrolled = false }) {
     const layouts = [];
 
     // 1. 모든 일정을 시간 비례로 매핑
-    todaySchedules.forEach((event, idx) => {
+    filteredSchedules.forEach((event, idx) => {
       const startTime = dayjs(event.start_time);
       const endTime = event.end_time ? dayjs(event.end_time) : dayjs(event.start_time).add(1, 'hour');
       
@@ -376,7 +398,7 @@ export default function Topbar({ isScrolled = false }) {
     const computedNowPixelX = currentMins * PX_PER_MIN;
 
     return { eventLayouts: layouts, nowPixelX: computedNowPixelX };
-  }, [todaySchedules, currentTime]);
+  }, [todaySchedules, currentTime, activeFilters]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -486,10 +508,10 @@ export default function Topbar({ isScrolled = false }) {
               
               {/* 왼쪽 Label section */}
               <div className="flex items-center gap-3 pl-5 pr-3 whitespace-nowrap border-r border-neutral-200/50 dark:border-white/10">
-                <span className="text-sm font-bold tracking-tight text-neutral-900 dark:text-white">Your Schedule</span>
+                <span className="text-sm font-bold tracking-tight text-neutral-main dark:text-white">Your Schedule</span>
                 <div className="bg-white/40 dark:bg-white/10 rounded-full px-3 py-1.5 flex items-center gap-2 border border-neutral-200/30 dark:border-white/10">
-                  <Calendar size={13} className="text-neutral-600 dark:text-neutral-300" />
-                  <span className="text-[11px] text-neutral-700 dark:text-neutral-200 font-bold">{dayjs().format('DD MMMM')}</span>
+                  <Calendar size={13} className="text-primary-700 dark:text-primary-300" />
+                  <span className="text-[11px] text-primary-900 dark:text-primary-100 font-bold">{dayjs().format('DD MMMM')}</span>
                 </div>
               </div>
               
@@ -536,48 +558,15 @@ export default function Topbar({ isScrolled = false }) {
                               className={`absolute inset-0 rounded-[21px] overflow-hidden border ${isActive ? 'border-white/40' : 'border-white/20'}`} 
                               style={{ backgroundColor: bgColor }}
                             >
-                              <div className="flex items-center gap-3 w-full h-full px-4 min-w-0">
-                                {/* 참석자 아바타 (모든 일정에 형태 유지) */}
-                                <div className="flex -space-x-1.5 items-center shrink-0">
-                                <div className="h-6 w-6 rounded-full bg-white shadow-sm border-2 flex items-center justify-center overflow-hidden z-30" style={{ borderColor: bgColor }}>
-                                  {user?.profile_image || user?.profile_picture || user?.avatar || user?.avatar_url ? (
-                                    <img src={user?.profile_image || user?.profile_picture || user?.avatar || user?.avatar_url} alt={user.name} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <img src={`https://randomuser.me/api/portraits/women/44.jpg`} alt="Me" className="w-full h-full object-cover" />
-                                  )}
-                                </div>
-                                {isTeamEvent && (
-                                  <>
-                                    {teamMembers.slice(0, 1).map((member, idx) => {
-                                      const zClass = idx === 0 ? 'z-20' : 'z-10';
-                                      return (
-                                        <div key={member.id} className={`h-6 w-6 rounded-full shadow-sm border-2 bg-white flex items-center justify-center overflow-hidden ${zClass}`} style={{ borderColor: bgColor }}>
-                                          {member.profile_image || member.profile_picture || member.avatar || member.avatar_url ? (
-                                            <img src={member.profile_image || member.profile_picture || member.avatar || member.avatar_url} alt={member.name} className="w-full h-full object-cover" />
-                                          ) : (
-                                            <img src={`https://randomuser.me/api/portraits/${idx % 2 === 0 ? 'women' : 'men'}/${(idx + 5) * 10}.jpg`} alt={member.name || 'Team Member'} className="w-full h-full object-cover" />
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                    {teamMembers.length > 1 && (
-                                      <div className="h-6 w-6 rounded-full bg-white/30 shadow-sm border-2 border-white/50 flex items-center justify-center z-0 backdrop-blur-sm">
-                                        <span className="text-[9px] font-bold text-white">+{teamMembers.length - 1}</span>
-                                      </div>
-                                    )}
-                                  </>
-                                )}
+                              <div className="flex items-center gap-2 w-full h-full px-3 min-w-0">
+                                <span className="text-[11px] font-bold text-white whitespace-nowrap flex-shrink-0">
+                                  {dayjs(event.start_time).format('H:mm')}
+                                  <span className="text-white/60 mx-1">-</span>
+                                  {dayjs(event.end_time || dayjs(event.start_time).add(1,'hour')).format('H:mm')}
+                                </span>
+                                <div className="w-px h-4 bg-white/30 flex-shrink-0" />
+                                <span className="text-[12px] font-bold truncate text-white">{event.title}</span>
                               </div>
-                       
-                              <div className="flex items-center gap-2 flex-1 min-w-0 pr-1">
-                                <div className="font-bold text-[12px] text-white whitespace-nowrap pr-2 border-r border-white/30 truncate">
-                                  {dayjs(event.start_time).format('h:mm')} <span className="text-white/60 mx-0.5">-</span> <span className="text-[10px] font-normal text-white/80">{dayjs(event.end_time || dayjs(event.start_time).add(1,'hour')).format('h:mm')}</span>
-                                </div>
-                                <div className="flex-1 flex justify-start pl-1 min-w-0">
-                                  <span className="text-[12px] font-bold truncate text-white shrink leading-none pt-0.5 tracking-wide">{event.title}</span>
-                                </div>
-                              </div>
-                            </div>
                             </div>
                            </div>
                         );
@@ -585,7 +574,7 @@ export default function Topbar({ isScrolled = false }) {
                     </div>
                   ) : (
                     <div className="flex w-full h-full items-center justify-center">
-                      <span className="text-[13px] font-bold text-neutral-500 dark:text-neutral-300">No scheduled events today</span>
+                      <span className="text-[13px] font-bold text-neutral-sub dark:text-neutral-400">No scheduled events today</span>
                     </div>
                   )}
                 </div>
@@ -593,18 +582,18 @@ export default function Topbar({ isScrolled = false }) {
                 {/* Fixed Playhead (Now Indicator) - Outside of hidden mask */}
                 {eventLayouts.length > 0 && (
                   <div className="absolute top-0 bottom-0 z-50 pointer-events-none flex flex-col items-center" style={{ left: `${PLAYHEAD_X_PCT}%`, transform: 'translateX(-50%)' }}>
-                    <div className="absolute -top-[14px] bg-neutral-900 dark:bg-neutral-800 text-white text-[10px] xl:text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1.5 whitespace-nowrap">
+                    <div className="absolute -top-[14px] bg-primary-900 dark:bg-primary-300 text-white dark:text-primary-900 text-[10px] xl:text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1.5 whitespace-nowrap">
                       <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_4px_#4ade80]" />
                       {currentTime.format('h:mm A')}
                     </div>
                     {/* 작대기 (Vertical line) */}
-                    <div className="w-[3px] h-full mt-2 bg-neutral-900/40 dark:bg-white/40 rounded-full shadow-sm" />
+                    <div className="w-[3px] h-full mt-2 bg-primary-900/40 dark:bg-white/40 rounded-full shadow-sm" />
                   </div>
                 )}
               </div>
 
               {/* 더보기 버튼 */}
-              <Link to="/schedules" className="w-[36px] h-[36px] ml-1 mr-1 rounded-full bg-neutral-900 dark:bg-white/10 flex items-center justify-center hover:bg-neutral-800 dark:hover:bg-white/20 transition-colors text-white focus:outline-none flex-shrink-0 shadow-sm">
+              <Link to="/schedules" className="w-[36px] h-[36px] ml-1 mr-1 rounded-full bg-primary-900 dark:bg-white/10 flex items-center justify-center hover:bg-primary-700 dark:hover:bg-white/20 transition-colors text-white focus:outline-none flex-shrink-0 shadow-sm">
                 <ArrowUpRight size={16} strokeWidth={2.5} />
               </Link>
             </div>
@@ -639,8 +628,8 @@ export default function Topbar({ isScrolled = false }) {
                 className={({ isActive }) =>
                   `flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-bold transition-all duration-200 ${
                     isActive
-                      ? 'bg-neutral-900 text-white shadow-sm dark:bg-white dark:text-neutral-900'
-                      : 'text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200/50 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-white/10'
+                      ? 'text-primary-900 dark:text-primary-300 font-bold relative after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:w-4/5 after:h-[2px] after:rounded-full after:bg-primary-700 dark:after:bg-primary-300'
+                      : 'text-neutral-sub hover:text-neutral-main hover:bg-primary-50 dark:text-neutral-400 dark:hover:text-white dark:hover:bg-white/10'
                   }`
                 }
               >

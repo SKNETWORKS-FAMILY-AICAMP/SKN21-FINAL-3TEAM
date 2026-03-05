@@ -118,7 +118,7 @@ export default function CalendarWidget({ allSchedules = [] }) {
   };
 
   return (
-    <div className="rounded-2xl border border-neutral-border bg-white/60 dark:bg-surface-card shadow-md transition-all duration-300 overflow-visible">
+    <div className="card transition-all duration-300 !overflow-visible">
       <div
         className="cursor-pointer flex justify-between items-center py-4 px-5"
         onClick={() => setIsCollapsed(!isCollapsed)}

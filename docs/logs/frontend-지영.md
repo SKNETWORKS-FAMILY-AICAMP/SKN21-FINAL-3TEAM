@@ -954,6 +954,24 @@
 - 시작/종료 상태 표시 바 추가 (현재 선택 중인 항목 강조)
 - 달력 셀 크기·패딩·폰트 축소로 팝업 한 화면에 저장·취소 버튼까지 표시
 
+#### 11) 상단바(Topbar) 색상 테마 통일
+- 활성 메뉴: `bg-neutral-900` → `bg-primary-900` (블루그레이) + 하단 언더라인 스타일로 변경
+- 비활성 메뉴 텍스트: `text-neutral-500` → `text-neutral-sub` (테마 색상)
+- "Your Schedule" 텍스트, 날짜 배지, 현재 시간 배지, 더보기 버튼 등 전체 primary 팔레트 통일
+
+#### 12) Your Schedule 이벤트 카드 정리
+- 참석자 아바타(프로필 사진) 전체 제거
+- 카드 내용: `시작시간 - 종료시간 | 제목` 형식으로 단순화
+
+#### 13) 대시보드 컴포넌트 border 통일
+- `ActivityTimeline`, `AIChatWidget`, `CalendarWidget`, `GreetingBanner` — 각자 다른 커스텀 border에서 `card` 클래스로 통일
+- border: `border-white/20` → `border-neutral-divider` (은은한 회색 구분선)
+
+#### 4) 채팅 페이지 스크롤 시 헤더 축소 구현
+- `Layout.jsx`: 채팅 페이지 `main` pt 값을 `isScrolled` 상태에 반응하도록 수정
+  - 기본: `pt-[180px]`, 스케줄 바 숨김: `pt-[96px]`, 스크롤 시: `pt-[76px]`
+- `transition-[padding] duration-300` 으로 부드럽게 애니메이션
+
 ### 다음 할 일
 - 전체 E2E 테스트
 - 판단 Agent 스트리밍 디버깅
