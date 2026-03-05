@@ -162,8 +162,11 @@ export default function TasksPage() {
   };
 
   /* ── Due badge ── */
-  const getDueBadge = (dueDate) => {
+  const getDueBadge = (dueDate, stage) => {
     if (!dueDate) return null;
+    if (stage === 'todo' || stage === 'done') {
+      return { text: dueDate, cls: 'text-gray-500 dark:text-gray-400' };
+    }
     const diff = Math.ceil((new Date(dueDate) - new Date()) / 86400000);
     if (diff < 0) return { text: `${Math.abs(diff)}일 초과`, cls: 'text-red-500' };
     if (diff <= 2) return { text: `D-${diff}`, cls: 'text-orange-500 font-bold' };
@@ -211,7 +214,7 @@ export default function TasksPage() {
                 <div className={`flex-1 space-y-3 p-3 rounded-xl transition-all duration-200 ${isOver ? 'bg-primary-50/40 dark:bg-primary-900/10 border-2 border-dashed border-primary-300' : 'bg-neutral-50/30 dark:bg-gray-800/20 border-2 border-transparent'}`}>
                   <AnimatePresence>
                     {stageTasks.map((task) => {
-                      const due = getDueBadge(task.dueDate);
+                      const due = getDueBadge(task.dueDate, task.stage);
                       const memberMatch = members.find(m => m.name === task.assignee);
                       const avatarSrc = task.assignee
                         ? (memberMatch?.avatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(task.assignee)}`)

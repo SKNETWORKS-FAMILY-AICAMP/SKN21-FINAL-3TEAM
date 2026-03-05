@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { MessageSquarePlus, Menu, CheckCircle, XCircle, AlertTriangle, HelpCircle, ShieldCheck, FileText } from 'lucide-react';
 import ChatWindow from '../components/chat/ChatWindow';
 import MessageBubble from '../components/chat/MessageBubble';
@@ -333,9 +333,11 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
 
 export default function ChatPage() {
   const { isScrolled } = useOutletContext();
+  const [searchParams] = useSearchParams();
   const { messages, isStreaming, currentIntent, currentStatus, sendMessage } = useChat();
   const clearMessages = useChatStore((s) => s.clearMessages);
   const initSession = useChatStore((s) => s.initSession);
+  const switchSession = useChatStore((s) => s.switchSession);
   const startNewSession = useChatStore((s) => s.startNewSession);
   const pendingQuestion = useChatStore((s) => s.pendingQuestion);
   const clearPendingQuestion = useChatStore((s) => s.clearPendingQuestion);
@@ -362,8 +364,12 @@ export default function ChatPage() {
     if (mountedRef.current) return;
     mountedRef.current = true;
 
+    const sessionParam = searchParams.get('session');
     const q = useChatStore.getState().pendingQuestion;
-    if (q) {
+    if (sessionParam) {
+      // URL에서 세션 ID로 직접 전환 (마이페이지 등에서 클릭)
+      switchSession(sessionParam);
+    } else if (q) {
       // 대시보드에서 질문 클릭 → 새 세션 시작 후 자동 전송 (세션은 sendMessage에서 생성)
       clearPendingQuestion();
       setLastInput(q);

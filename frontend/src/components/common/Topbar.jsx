@@ -617,9 +617,9 @@ export default function Topbar({ isScrolled = false }) {
           
           {/* 좌측 - 로고 */}
           <div className="flex items-center shrink-0 w-[200px]">
-            <a href="/dashboard" className="flex items-center gap-3">
+            <Link to="/dashboard" className="flex items-center gap-3">
               <img src="/logo.png" alt="Logo" className={`object-contain transition-all py-1 ${isScrolled ? 'w-16' : 'w-20'}`} />
-            </a>
+            </Link>
           </div>
 
           {/* 모바일 햄버거 */}

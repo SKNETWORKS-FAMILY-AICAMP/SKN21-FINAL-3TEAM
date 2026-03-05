@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Check, X, Clock, AlertTriangle, UserX, CalendarClock,
   BellRing, ChevronUp, ChevronDown, ArrowRight, Plus,
-  Coffee, FileSignature, HelpCircle, FileText, GitPullRequest
+  Coffee, FileSignature, HelpCircle, FileText, GitPullRequest,
+  Home, DoorOpen, Palette, Award, Receipt, Rocket, Server, ShieldCheck
 } from 'lucide-react';
 import { listPipelineTasks } from '../../api/tasks';
 import { listApprovals, createApproval, approveRequest, rejectRequest, seedApprovals } from '../../api/approvals';
@@ -17,9 +18,16 @@ import client from '../../api/client';
  */
 
 const typeConfig = {
-  leave:   { icon: Coffee,         color: 'text-orange-500 bg-orange-100 dark:bg-orange-900/30', label: '연차 신청' },
-  review:  { icon: GitPullRequest, color: 'text-blue-500 bg-blue-100 dark:bg-blue-900/30',   label: 'PR 리뷰' },
-  budget:  { icon: FileText,       color: 'text-purple-500 bg-purple-100 dark:bg-purple-900/30', label: '결재 요청' },
+  leave:      { icon: Coffee,         color: 'text-orange-500 bg-orange-100 dark:bg-orange-900/30', label: '연차/반차 신청' },
+  remote:     { icon: Home,           color: 'text-teal-500 bg-teal-100 dark:bg-teal-900/30',      label: '재택근무 신청' },
+  room:       { icon: DoorOpen,       color: 'text-indigo-500 bg-indigo-100 dark:bg-indigo-900/30', label: '회의실 예약' },
+  design:     { icon: Palette,        color: 'text-pink-500 bg-pink-100 dark:bg-pink-900/30',      label: '디자인 에셋 요청' },
+  certificate:{ icon: Award,          color: 'text-yellow-500 bg-yellow-100 dark:bg-yellow-900/30', label: '증명서 발급 요청' },
+  budget:     { icon: Receipt,        color: 'text-purple-500 bg-purple-100 dark:bg-purple-900/30', label: '결재 요청' },
+  review:     { icon: GitPullRequest, color: 'text-blue-500 bg-blue-100 dark:bg-blue-900/30',      label: 'PR 리뷰 요청' },
+  deploy:     { icon: Rocket,         color: 'text-green-500 bg-green-100 dark:bg-green-900/30',   label: '배포 승인 요청' },
+  infra:      { icon: Server,         color: 'text-slate-500 bg-slate-100 dark:bg-slate-900/30',   label: '인프라/권한 신청' },
+  security:   { icon: ShieldCheck,    color: 'text-red-500 bg-red-100 dark:bg-red-900/30',        label: '보안 예외 처리' },
 };
 
 const defaultTypeConfig = { icon: FileSignature, color: 'text-gray-500 bg-gray-100 dark:bg-gray-900/30', label: '요청' };
@@ -195,9 +203,16 @@ export default function ApprovalQueueWidget() {
     due_soon: '마감 임박',
     unassigned: '미지정',
     stale_review: '리뷰 정체',
-    leave: '연차 신청',
-    review: 'PR 리뷰',
+    leave: '연차/반차 신청',
+    remote: '재택근무 신청',
+    room: '회의실 예약',
+    design: '디자인 에셋 요청',
+    certificate: '증명서 발급 요청',
     budget: '결재 요청',
+    review: 'PR 리뷰 요청',
+    deploy: '배포 승인 요청',
+    infra: '인프라/권한 신청',
+    security: '보안 예외 처리',
   };
 
   const badgeStyle = (item) => {
@@ -374,9 +389,16 @@ export default function ApprovalQueueWidget() {
                     onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
                     className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm"
                   >
-                    <option value="leave">연차 신청</option>
+                    <option value="leave">연차/반차 신청</option>
+                    <option value="remote">재택근무 신청</option>
+                    <option value="room">회의실 예약</option>
+                    <option value="design">디자인 에셋 요청</option>
+                    <option value="certificate">증명서 발급 요청</option>
+                    <option value="budget">결재 요청</option>
                     <option value="review">PR 리뷰 요청</option>
-                    <option value="budget">품의서 결재</option>
+                    <option value="deploy">배포 승인 요청</option>
+                    <option value="infra">인프라/권한 신청</option>
+                    <option value="security">보안 예외 처리</option>
                   </select>
                 </div>
                 <div>

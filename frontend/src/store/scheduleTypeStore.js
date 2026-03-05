@@ -5,6 +5,7 @@ const STORAGE_KEY = 'schedule-custom-types';
 export const DEFAULT_TYPES = [
   { id: 'meeting', label: '회의', color: '#6E87A0', isDefault: true },
   { id: 'deadline', label: '마감일', color: '#C06060', isDefault: true },
+  { id: 'project', label: '프로젝트', color: '#7C6BC4', isDefault: true },
   { id: 'google', label: '개인 일정', color: '#5B9A6F', isDefault: true },
 ];
 

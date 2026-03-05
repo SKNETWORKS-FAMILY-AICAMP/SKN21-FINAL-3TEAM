@@ -28,19 +28,23 @@ export default function MessagePopup() {
 
   const loadTeamMembers = async () => {
     try {
-      const res = await client.get('/auth/team-members');
+      const res = await client.get('/auth/all-members');
       setTeamMembers(res.data || []);
-    } catch {}
+    } catch (err) {
+      console.error('멤버 목록 로드 실패:', err?.response?.status, err?.message);
+    }
   };
 
+  // 마운트 시 멤버 목록 미리 로드
   useEffect(() => {
     fetchUnread();
+    loadTeamMembers();
     const interval = setInterval(fetchUnread, 30000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    if (open) { loadMessages(); loadTeamMembers(); }
+    if (open) { loadMessages(); if (teamMembers.length === 0) loadTeamMembers(); }
   }, [open, box]);
 
   const handleOpen = (msg) => {

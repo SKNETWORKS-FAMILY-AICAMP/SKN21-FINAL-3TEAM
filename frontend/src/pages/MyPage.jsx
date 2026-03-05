@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import {
     Mail, Users, MessageSquare, FileText, Calendar,
     StickyNote, Zap, ChevronRight,
@@ -21,7 +22,6 @@ export default function MyPage() {
     const [stats, setStats] = useState({ chats: 0, docs: 0, schedules: 0 });
     const [recentDocs, setRecentDocs] = useState([]);
     const [recentSchedules, setRecentSchedules] = useState([]);
-    const [upcomingSchedules, setUpcomingSchedules] = useState([]);
 const [showEditModal, setShowEditModal] = useState(false);
     const [editForm, setEditForm] = useState({ name: '', team: '', avatar: '', phone: '', address: '' });
     const [saving, setSaving] = useState(false);
@@ -32,6 +32,10 @@ const [showEditModal, setShowEditModal] = useState(false);
     const [avatarUploading, setAvatarUploading] = useState(false);
     const [saveError, setSaveError] = useState('');
 
+    const [statDetail, setStatDetail] = useState(null); // 'chats' | 'docs' | 'schedules' | null
+    const [allSessions, setAllSessions] = useState([]);
+    const [allDocs, setAllDocs] = useState([]);
+    const [allSchedules, setAllSchedules] = useState([]);
     const [showPwModal, setShowPwModal] = useState(false);
     const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
     const [pwShow, setPwShow] = useState({ current: false, next: false, confirm: false });
@@ -103,25 +107,32 @@ const [showEditModal, setShowEditModal] = useState(false);
             try {
                 const [docsResp, schedsResp, sessResp] = await Promise.all([
                     listDocuments(),
-                    listSchedules(),
+                    listSchedules({ include_team: true }),
                     listSessions()
                 ]);
 
-                setStats({
-                    docs: docsResp.data?.length || 0,
-                    schedules: schedsResp.data?.length || 0,
-                    chats: sessResp?.length || 0
-                });
-
-                setRecentDocs(docsResp.data?.slice(0, 3) || []);
-                setRecentSchedules(schedsResp.data?.slice(0, 3) || []);
+                const docsData = docsResp.data || [];
+                const schedsData = schedsResp.data || [];
+                const sessData = sessResp || [];
 
                 const now = new Date();
-                const upcoming = (schedsResp.data || [])
-                    .filter(s => new Date(s.start_time) >= now)
-                    .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
-                    .slice(0, 4);
-                setUpcomingSchedules(upcoming);
+                const oneWeekLater = new Date(now.getTime() + 7 * 86400000);
+                const upcoming = schedsData.filter(s => {
+                    const t = new Date(s.start_time);
+                    return t >= now && t <= oneWeekLater;
+                });
+                console.log('[MyPage] 전체 일정:', schedsData.length, '/ 일주일 내:', upcoming.length, '/ 샘플:', schedsData.slice(0, 2).map(s => s.start_time));
+                setStats({
+                    docs: docsData.length,
+                    schedules: upcoming.length,
+                    chats: sessData.length,
+                });
+
+                setAllDocs(docsData);
+                setAllSchedules(schedsData);
+                setAllSessions(sessData);
+                setRecentDocs(docsData.slice(0, 3));
+                setRecentSchedules(schedsData.slice(0, 3));
             } catch (e) {
                 console.error('Failed to load MyPage data:', e);
             }
@@ -201,12 +212,16 @@ const [showEditModal, setShowEditModal] = useState(false);
                     {/* 2. 활동 요약 대시보드 */}
                     <div className="grid grid-cols-3 gap-4">
                         {[
-                            { label: 'AI 대화', value: stats.chats, icon: MessageSquare, color: 'text-primary-600', bg: 'bg-primary-50' },
-                            { label: '문서 생성', value: stats.docs, icon: FileText, color: 'text-accent-600', bg: 'bg-accent-50' },
-                            { label: '남은 일정', value: stats.schedules, icon: Calendar, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                            { label: 'AI 대화', value: stats.chats, icon: MessageSquare, color: 'text-primary-600', bg: 'bg-primary-50', key: 'chats' },
+                            { label: '문서 생성', value: stats.docs, icon: FileText, color: 'text-accent-600', bg: 'bg-accent-50', key: 'docs' },
+                            { label: '남은 일정', value: stats.schedules, icon: Calendar, color: 'text-indigo-600', bg: 'bg-indigo-50', key: 'schedules' },
                         ].map((stat, i) => (
-                            <div key={i} className="bg-surface-card p-6 rounded-2xl border border-neutral-divider shadow-sm hover:shadow-md transition-all">
-                                <div className={`w-10 h-10 ${stat.bg} ${stat.color} rounded-xl flex items-center justify-center mb-4`}>
+                            <div
+                                key={i}
+                                onClick={() => setStatDetail(statDetail === stat.key ? null : stat.key)}
+                                className={`bg-surface-card p-6 rounded-2xl border shadow-sm hover:shadow-md cursor-pointer transition-all group ${statDetail === stat.key ? 'border-primary-300 ring-1 ring-primary-200' : 'border-neutral-divider hover:border-primary-200'}`}
+                            >
+                                <div className={`w-10 h-10 ${stat.bg} ${stat.color} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                                     <stat.icon size={20} />
                                 </div>
                                 <div className="text-2xl font-bold text-neutral-main">{stat.value}<span className="text-sm font-normal text-neutral-sub ml-1">건</span></div>
@@ -214,6 +229,97 @@ const [showEditModal, setShowEditModal] = useState(false);
                             </div>
                         ))}
                     </div>
+
+                    {/* 카드 클릭 시 상세 리스트 */}
+                    {statDetail === 'chats' && (
+                        <section className="bg-surface-card rounded-2xl border border-primary-200 shadow-sm p-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-bold text-neutral-main flex items-center gap-2">
+                                    <MessageSquare size={16} className="text-primary-600" /> AI 대화 목록
+                                </h3>
+                                <button onClick={() => setStatDetail(null)} className="text-neutral-muted hover:text-neutral-main">
+                                    <Plus size={16} className="rotate-45" />
+                                </button>
+                            </div>
+                            <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                {allSessions.length === 0 && <p className="text-xs text-neutral-muted text-center py-4">대화 기록이 없습니다.</p>}
+                                {allSessions.map(s => (
+                                    <Link key={s.session_id} to={`/chat?session=${s.session_id}`} className="flex items-center justify-between p-3 bg-surface-hover rounded-xl hover:bg-primary-50/50 transition-all">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-medium text-neutral-main truncate">{s.name || '새 대화'}</div>
+                                            <div className="text-[10px] text-neutral-muted mt-0.5">
+                                                {s.updated_at ? new Date(s.updated_at).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                                            </div>
+                                        </div>
+                                        <ChevronRight size={14} className="text-neutral-muted shrink-0" />
+                                    </Link>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    {statDetail === 'docs' && (
+                        <section className="bg-surface-card rounded-2xl border border-accent-200 shadow-sm p-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-bold text-neutral-main flex items-center gap-2">
+                                    <FileText size={16} className="text-accent-600" /> 문서 목록
+                                </h3>
+                                <button onClick={() => setStatDetail(null)} className="text-neutral-muted hover:text-neutral-main">
+                                    <Plus size={16} className="rotate-45" />
+                                </button>
+                            </div>
+                            <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                {allDocs.length === 0 && <p className="text-xs text-neutral-muted text-center py-4">문서가 없습니다.</p>}
+                                {allDocs.map(d => (
+                                    <div key={d.id} className="flex items-center justify-between p-3 bg-surface-hover rounded-xl">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-medium text-neutral-main truncate">{d.title || d.file_name || '제목 없음'}</div>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-[10px] text-neutral-muted">{d.created_at ? new Date(d.created_at).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                                                {d.file_type && <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent-50 text-accent-600 font-bold">{d.file_type}</span>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    {statDetail === 'schedules' && (
+                        <section className="bg-surface-card rounded-2xl border border-indigo-200 shadow-sm p-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-bold text-neutral-main flex items-center gap-2">
+                                    <Calendar size={16} className="text-indigo-600" /> 일정 목록
+                                </h3>
+                                <button onClick={() => setStatDetail(null)} className="text-neutral-muted hover:text-neutral-main">
+                                    <Plus size={16} className="rotate-45" />
+                                </button>
+                            </div>
+                            <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                {allSchedules.length === 0 && <p className="text-xs text-neutral-muted text-center py-4">일정이 없습니다.</p>}
+                                {(() => { const now = new Date(); const wk = new Date(now.getTime() + 7 * 86400000); return allSchedules.filter(s => { const t = new Date(s.start_time); return t >= now && t <= wk; }); })()
+                                    .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+                                    .map(s => {
+                                        const d = new Date(s.start_time);
+                                        const typeLabel = { meeting: '회의', task: '업무', deadline: '마감' }[s.schedule_type] || s.schedule_type || '';
+                                        const typeColor = { meeting: 'bg-blue-50 text-blue-600', task: 'bg-green-50 text-green-600', deadline: 'bg-red-50 text-red-600' }[s.schedule_type] || 'bg-neutral-50 text-neutral-600';
+                                        return (
+                                            <div key={s.id} className="flex items-center justify-between p-3 bg-surface-hover rounded-xl">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-sm font-medium text-neutral-main truncate">{s.title}</div>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <span className="text-[10px] text-neutral-muted">
+                                                            {d.toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                        {typeLabel && <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${typeColor}`}>{typeLabel}</span>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                        </section>
+                    )}
 
                     {/* 3. 최근 작업 히스토리 */}
                     <section className="bg-surface-card rounded-2xl border border-neutral-divider shadow-sm p-6">
@@ -232,10 +338,10 @@ const [showEditModal, setShowEditModal] = useState(false);
                                         <MessageCircle size={12} /> 최근 AI 대화
                                     </h3>
                                     {sessions.slice(0, 3).map(s => (
-                                        <a key={s.session_id} href={`/chat?session=${s.session_id}`} className="block p-3 bg-surface-hover rounded-xl border border-transparent hover:border-neutral-divider transition-all">
+                                        <Link key={s.session_id} to={`/chat?session=${s.session_id}`} className="block p-3 bg-surface-hover rounded-xl border border-transparent hover:border-neutral-divider transition-all">
                                             <div className="text-sm font-medium text-neutral-main truncate">{s.name}</div>
                                             <div className="text-[10px] text-neutral-muted mt-1">{new Date(s.updated_at).toLocaleDateString()}</div>
-                                        </a>
+                                        </Link>
                                     ))}
                                     {sessions.length === 0 && <div className="text-xs text-neutral-muted py-4 text-center border border-dashed border-neutral-divider rounded-xl">대화 기록이 없습니다.</div>}
                                 </div>
@@ -294,47 +400,7 @@ const [showEditModal, setShowEditModal] = useState(false);
                 {/* 오른쪽: 설정 */}
                 <div className="space-y-8">
 
-                    {/* 4. 다가오는 일정 */}
-                    <section className="bg-surface-card rounded-2xl border border-neutral-divider shadow-sm p-6">
-                        <div className="flex items-center justify-between mb-5">
-                            <h2 className="text-lg font-bold text-neutral-main flex items-center gap-2">
-                                <Calendar size={18} className="text-indigo-500" /> 다가오는 일정
-                            </h2>
-                            <a href="/schedules" className="text-xs text-primary-600 font-medium hover:underline">전체 보기</a>
-                        </div>
-                        <div className="space-y-3">
-                            {upcomingSchedules.length === 0 && (
-                                <div className="text-xs text-neutral-muted py-6 text-center border border-dashed border-neutral-divider rounded-xl">
-                                    다가오는 일정이 없습니다.
-                                </div>
-                            )}
-                            {upcomingSchedules.map(s => {
-                                const typeConfig = {
-                                    meeting: { color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400', label: '회의' },
-                                    task: { color: 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400', label: '업무' },
-                                    deadline: { color: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400', label: '마감' },
-                                }[s.schedule_type] || { color: 'bg-neutral-100 text-neutral-600', label: s.schedule_type };
-                                const priorityDot = { high: 'bg-red-500', medium: 'bg-yellow-400', low: 'bg-green-400' }[s.priority] || 'bg-neutral-300';
-                                const d = new Date(s.start_time);
-                                const dateStr = `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-                                return (
-                                    <div key={s.id} className="flex items-start gap-3 p-3 bg-surface-hover rounded-xl border border-transparent hover:border-neutral-divider transition-all">
-                                        <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${priorityDot}`} />
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-sm font-medium text-neutral-main truncate">{s.title}</div>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <Clock size={10} className="text-neutral-muted" />
-                                                <span className="text-[10px] text-neutral-muted">{dateStr}</span>
-                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${typeConfig.color}`}>{typeConfig.label}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </section>
-
-                    {/* 5. AI 활용 통계 */}
+                    {/* AI 활용 통계 */}
                     <section className="bg-surface-card rounded-2xl border border-neutral-divider shadow-sm p-6">
                         <h2 className="text-lg font-bold text-neutral-main flex items-center gap-2 mb-5">
                             <TrendingUp size={18} className="text-primary-600" /> AI 활용 통계

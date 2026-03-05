@@ -31,9 +31,10 @@ export default function MessagesPage() {
 
   const loadTeamMembers = async () => {
     try {
-      const res = await client.get('/auth/team-members');
+      const res = await client.get('/auth/all-members');
       setTeamMembers(res.data || []);
-    } catch {
+    } catch (err) {
+      console.error('멤버 목록 로드 실패:', err?.response?.status, err?.message);
       setTeamMembers([]);
     }
   };

@@ -634,7 +634,96 @@
 - `dayjs` 누락 → `npm install dayjs` (이미 package.json에 있었으나 node_modules에 미설치)
 - 로컬 git 깨짐(SIGBUS) → 새 clone으로 교체
 
+**Approval Request 시스템 구현 (백엔드 + 프론트엔드)**
+- `backend/app/models/approval_request.py` 신규: ApprovalRequest ORM 모델 (type, title, detail, status, requester_id, target_team)
+- `backend/app/api/v1/approvals.py` 신규: 7개 엔드포인트
+  - `GET /approvals/` — pending 요청 목록
+  - `GET /approvals/history` — 처리 완료 요청 (approved/rejected)
+  - `POST /approvals/` — 새 요청 생성
+  - `PUT /approvals/{id}/approve` — 승인
+  - `PUT /approvals/{id}/reject` — 거절
+  - `DELETE /approvals/{id}` — 삭제 (본인 요청만)
+  - `POST /approvals/seed` — 샘플 데이터 시드
+- `frontend/src/api/approvals.js` 신규: API 클라이언트 함수
+- `frontend/src/pages/ApprovalsPage.jsx` 신규: Approvals 전용 페이지
+  - 전체/Pending/Approved/Rejected 필터 탭 + 카운트 뱃지
+  - 유형별 필터 + 검색 (제목/요청자)
+  - 요청별 아이콘/상태 뱃지 + 승인/거절/삭제 액션
+  - 새 요청 올리기 모달
+- `frontend/src/App.jsx` 수정: `/approvals` 라우트 추가
+- `frontend/src/components/dashboard/ApprovalQueueWidget.jsx` 수정: 대시보드 위젯 연동
+- 팀 필터 제거 — 모든 사용자가 전체 요청 확인 가능
+- 요청 올리기 텍스트 → Plus 아이콘 버튼으로 교체
+
+**Approval Requests 유형 확장 (3종 → 10종)**
+- `frontend/src/components/dashboard/ApprovalQueueWidget.jsx` 수정:
+  - typeConfig 3종(leave, review, budget) → 10종으로 확장 (remote, room, design, certificate, deploy, infra, security 추가)
+  - 각 유형별 아이콘/컬러 매핑 (Home, DoorOpen, Palette, Award, Receipt, Rocket, Server, ShieldCheck)
+  - 새 요청 모달 select에 10종 옵션 추가
+  - 필터 라벨도 10종으로 확장
+- `frontend/src/pages/ApprovalsPage.jsx` 수정:
+  - typeConfig 동일하게 10종 확장
+  - 유형 필터 select + 새 요청 모달 select 10종 옵션 추가
+
+**일정 타입 추가**
+- `frontend/src/store/scheduleTypeStore.js` 수정: DEFAULT_TYPES에 '프로젝트' 타입 추가 (#7C6BC4)
+
 ### 다음 할 일
+- Slack 연동 확장
+- AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
+- vLLM 백엔드 연동 + sLLM 교체 및 평가
+
+---
+
+## 2026-03-05 (세션 15) — 쪽지 기능 + 인증 세션 분리
+
+### 한 일
+
+**쪽지(메시지) 기능 전체 구현**
+- `backend/app/models/message.py` 신규: Message ORM 모델 (sender_id, receiver_id, content, is_read, timestamps)
+- `backend/app/api/v1/messages.py` 신규: 5개 엔드포인트
+  - `GET /messages/` — 받은/보낸 쪽지 목록 (box=inbox|sent)
+  - `GET /messages/unread-count` — 안 읽은 쪽지 수
+  - `POST /messages/` — 쪽지 보내기 (본인에게 보내기 방지, 수신자 존재 확인)
+  - `PUT /messages/{id}/read` — 읽음 처리
+  - `DELETE /messages/{id}` — 삭제 (본인 관련 쪽지만)
+- `backend/app/models/__init__.py` 수정: Message import 추가
+- `backend/app/api/v1/router.py` 수정: messages router 등록
+- Alembic 마이그레이션: merge heads + messages 테이블 생성 및 적용
+
+**프론트엔드 — 플로팅 팝업 + 전체 페이지**
+- `frontend/src/components/messages/MessagePopup.jsx` 신규: 오른쪽 하단 플로팅 아이콘 + 작은 팝업
+  - 받은/보낸 쪽지 탭, 쪽지 목록, 상세 보기 (클릭 시 자동 읽음 처리)
+  - 쪽지 보내기 (전체 사용자 드롭다운), 삭제
+  - 30초마다 안 읽은 수 자동 갱신, 뱃지 표시
+- `frontend/src/pages/MessagesPage.jsx` 신규: 전체 페이지 뷰 (사이드바에서 접근)
+- `frontend/src/api/messages.js` 신규: API 클라이언트 함수 5개
+- `frontend/src/App.jsx` 수정: `/messages` 라우트 추가
+- `frontend/src/components/common/Layout.jsx` 수정: `<MessagePopup />` 추가 (모든 페이지에서 표시)
+- `frontend/src/components/common/Sidebar.jsx` 수정: 쪽지함 메뉴 추가
+
+**플로팅 아이콘 정렬 + 스타일 통일**
+- 쪽지 아이콘: `bottom-24 right-8` (위), AI 챗봇 아이콘: `bottom-8 right-8` (아래)
+- 두 아이콘 동일 사이즈 (w-12 h-12) + 동일 스타일 (흰 배경 + primary 테두리)
+- `AIChatPopup.jsx` 수정: 아이콘 크기 w-14→w-12, filled→outline 스타일로 변경
+
+**쪽지 기능 — Approvals 위젯 옆 배치 (`ApprovalQueueWidget` 참고)**
+- `frontend/src/components/common/Sidebar.jsx` 수정: 관리 섹션에 쪽지함(Mail 아이콘) 네비게이션 추가
+
+**수신자 목록 전체 사용자로 변경**
+- `MessagePopup.jsx`, `MessagesPage.jsx`: `/auth/team-members` → `/auth/all-members`로 변경
+- 팀 소속 관계없이 전체 사용자에게 쪽지 보내기 가능
+
+**인증 세션 탭 독립 분리**
+- 문제: 다른 탭에서 로그인하면 기존 탭도 동기화됨 (localStorage 공유 문제)
+- 해결: `access_token` 저장소를 `localStorage` → `sessionStorage`로 변경
+- 수정 파일 7개:
+  - `store/authStore.js`, `pages/LoginPage.jsx`, `hooks/useAuth.js`
+  - `hooks/useSSE.js`, `hooks/useChat.js`, `api/client.js`
+- 이제 각 탭/창이 독립적인 로그인 세션 유지
+
+### 다음 할 일
+- EC2 서버 재배포 (messages API 반영)
 - Slack 연동 확장
 - AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
 - vLLM 백엔드 연동 + sLLM 교체 및 평가

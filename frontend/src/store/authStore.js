@@ -8,17 +8,17 @@ import useGoogleStore from './googleStore'
 
 const useAuthStore = create((set, get) => ({
   user: null,
-  token: localStorage.getItem('access_token'),
-  isAuthenticated: !!localStorage.getItem('access_token'),
+  token: sessionStorage.getItem('access_token'),
+  isAuthenticated: !!sessionStorage.getItem('access_token'),
   initialized: false,
 
   setAuth: (user, token) => {
-    localStorage.setItem('access_token', token)
+    sessionStorage.setItem('access_token', token)
     set({ user, token, isAuthenticated: true })
   },
 
   logout: () => {
-    localStorage.removeItem('access_token')
+    sessionStorage.removeItem('access_token')
     useChatStore.getState().reset()
     useGoogleStore.setState({
       connected: false, email: null, scopes: [],
@@ -32,7 +32,7 @@ const useAuthStore = create((set, get) => ({
 
   // 앱 시작 시 토큰이 있으면 /auth/me로 유저 정보 복원
   initialize: async () => {
-    const token = localStorage.getItem('access_token')
+    const token = sessionStorage.getItem('access_token')
     if (!token) {
       set({ initialized: true })
       return
@@ -43,7 +43,7 @@ const useAuthStore = create((set, get) => ({
     } catch (err) {
       // 401(토큰 만료/무효)일 때만 로그아웃, 그 외(네트워크 오류 등)는 토큰 유지
       if (err.response?.status === 401) {
-        localStorage.removeItem('access_token')
+        sessionStorage.removeItem('access_token')
         set({ user: null, token: null, isAuthenticated: false, initialized: true })
       } else {
         // 서버 오류/네트워크 오류 → 토큰은 유지하고 인증 상태만 복원

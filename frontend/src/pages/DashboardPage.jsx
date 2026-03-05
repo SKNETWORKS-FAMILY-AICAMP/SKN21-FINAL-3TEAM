@@ -67,24 +67,44 @@ function useDashboardData() {
   const [loading, setLoading] = useState(true);
   const calendarEvents = useGoogleStore((s) => s.calendarEvents);
   const googleConnected = useGoogleStore((s) => s.connected);
+  const fetchCalendarEvents = useGoogleStore((s) => s.fetchCalendarEvents);
+  const fetchGoogleStatus = useGoogleStore((s) => s.fetchStatus);
 
+  const fetchAll = async (setCancelled) => {
+    const results = await Promise.allSettled([
+      listSchedules({ include_team: true }).then(r => r.data),
+      listDocuments().then(r => r.data),
+      listSessions(),
+    ]);
+    if (setCancelled?.()) return;
+    if (results[0].status === 'fulfilled') setSchedules(results[0].value || []);
+    if (results[1].status === 'fulfilled') setDocs(results[1].value || []);
+    if (results[2].status === 'fulfilled') setSessions(results[2].value || []);
+    setLoading(false);
+  };
+
+  // 마운트 시 DB 데이터 + Google 연결 상태 로드
   useEffect(() => {
     let cancelled = false;
-    async function fetchAll() {
-      const results = await Promise.allSettled([
-        listSchedules({ include_team: true }).then(r => r.data),
-        listDocuments().then(r => r.data),
-        listSessions(),
-      ]);
-      if (cancelled) return;
-      if (results[0].status === 'fulfilled') setSchedules(results[0].value || []);
-      if (results[1].status === 'fulfilled') setDocs(results[1].value || []);
-      if (results[2].status === 'fulfilled') setSessions(results[2].value || []);
-      setLoading(false);
-    }
-    fetchAll();
+    fetchAll(() => cancelled);
+    fetchGoogleStatus();
     return () => { cancelled = true; };
   }, []);
+
+  // Google 연결 상태 변경 시 캘린더 이벤트 fetch
+  useEffect(() => {
+    if (googleConnected) fetchCalendarEvents();
+  }, [googleConnected]);
+
+  // 탭 포커스 시 데이터 리페치 (다른 페이지에서 일정 변경 후 돌아올 때)
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchAll();
+      if (googleConnected) fetchCalendarEvents();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [googleConnected]);
 
   // Google Calendar 전체 이벤트를 schedule 형식으로 변환 (연결된 경우만)
   const googleSchedules = (!googleConnected ? [] : (calendarEvents || []))
@@ -131,22 +151,21 @@ function useDashboardData() {
       };
     });
 
-  // 마감 임박 (7일 이내 deadline 일정)
+  // 내일 일정
   const upcomingActions = mergedSchedules
     .filter(s => {
-      if (s.schedule_type === 'meeting' && isToday(s.start_time)) return false;
-      const d = daysUntil(s.end_time || s.start_time);
-      return d !== null && d >= 0 && d <= 7;
+      const d = daysUntil(s.start_time);
+      return d === 1;
     })
-    .sort((a, b) => new Date(a.end_time || a.start_time) - new Date(b.end_time || b.start_time))
+    .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
     .slice(0, 5)
     .map(s => {
-      const d = daysUntil(s.end_time || s.start_time);
+      const { time, period } = formatTime12(s.start_time);
       return {
         title: s.title,
-        assignee: '',
-        deadline: d === 0 ? 'D-Day' : `D-${d}`,
-        priority: d <= 1 ? 'high' : d <= 3 ? 'medium' : 'low',
+        assignee: s.schedule_type || '',
+        deadline: time ? `${period} ${time}` : '종일',
+        priority: 'low',
       };
     });
 

@@ -26,7 +26,7 @@ export default function LoginPage() {
 
     if (token) {
       (async () => {
-        localStorage.setItem('access_token', token);
+        sessionStorage.setItem('access_token', token);
         const { data: me } = await client.get('/auth/me').catch(() => ({ data: { name: userName || '' } }));
         setAuth(me, token);
         navigate('/dashboard', { replace: true });

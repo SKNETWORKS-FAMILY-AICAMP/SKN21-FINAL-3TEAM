@@ -29,7 +29,7 @@ export default function useChat() {
     } catch (err) {
       // 401 → 로그인 페이지로 리다이렉트
       if (err.status === 401) {
-        localStorage.removeItem('access_token')
+        sessionStorage.removeItem('access_token')
         window.location.href = '/login'
       }
     }

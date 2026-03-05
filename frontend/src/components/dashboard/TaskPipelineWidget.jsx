@@ -5,7 +5,7 @@ import {
     GitMerge, Clock, CheckCircle2, AlertTriangle,
     ArrowRight, Plus, Share, X, Mail, Phone, Briefcase
 } from 'lucide-react';
-import { listPipelineTasks, updatePipelineTask } from '../../api/tasks';
+import { listPipelineTasks, updatePipelineTask, createPipelineTask } from '../../api/tasks';
 import client from '../../api/client';
 
 const priorityColors = {
@@ -27,6 +27,10 @@ export default function TaskPipelineWidget() {
     const [draggingId, setDraggingId] = useState(null);
     const [members, setMembers] = useState([]);
     const [profilePopup, setProfilePopup] = useState(null); // member object or null
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [addForm, setAddForm] = useState({ title: '', assignee: '', priority: 'medium' });
+    const [addSubmitting, setAddSubmitting] = useState(false);
+    const [shareToast, setShareToast] = useState(false);
 
     const fetchTasks = async () => {
         try {
@@ -82,6 +86,41 @@ export default function TaskPipelineWidget() {
         if (member) setProfilePopup(member);
     };
 
+    const handleAddTask = async (e) => {
+        e.preventDefault();
+        if (!addForm.title.trim()) return;
+        setAddSubmitting(true);
+        try {
+            await createPipelineTask({
+                title: addForm.title.trim(),
+                assignee: addForm.assignee || null,
+                priority: addForm.priority,
+                stage: 'todo',
+            });
+            setShowAddModal(false);
+            setAddForm({ title: '', assignee: '', priority: 'medium' });
+            fetchTasks();
+        } catch {
+            alert('태스크 추가에 실패했습니다.');
+        } finally {
+            setAddSubmitting(false);
+        }
+    };
+
+    const handleShare = () => {
+        const summary = stageConfig.map(s => {
+            const count = tasks.filter(t => t.stage === s.id).length;
+            return `${s.label}: ${count}건`;
+        }).join(' | ');
+        const doneCount = tasks.filter(t => t.stage === 'done').length;
+        const pct = tasks.length > 0 ? Math.round((doneCount / tasks.length) * 100) : 0;
+        const text = `📋 Task Pipeline\n${summary}\n✅ 진행률: ${pct}%`;
+        navigator.clipboard.writeText(text).then(() => {
+            setShareToast(true);
+            setTimeout(() => setShareToast(false), 2000);
+        });
+    };
+
     const teamStats = [...new Set(tasks.filter(t => t.assignee).map(t => t.assignee))].map(name => ({
         name,
         avatar: getAvatar(name),
@@ -113,20 +152,30 @@ export default function TaskPipelineWidget() {
                                 </div>
                             </div>
                         ))}
-                        <button className="w-9 h-9 rounded-full bg-surface-hover hover:bg-neutral-divider flex items-center justify-center text-neutral-sub transition-colors shadow-sm border border-neutral-divider">
-                            <Plus size={16} />
-                        </button>
                     </div>
                 )}
 
                 {/* Right: Utility Buttons & View All */}
                 <div className="flex-1 flex justify-end gap-2 items-center">
                     <div className="flex gap-1.5 mr-3">
-                        <button className="w-9 h-9 rounded-full bg-surface-hover hover:bg-neutral-divider flex items-center justify-center text-neutral-sub shadow-sm border border-neutral-divider transition-all">
+                        <button
+                            onClick={() => setShowAddModal(true)}
+                            title="태스크 추가"
+                            className="w-9 h-9 rounded-full bg-surface-hover hover:bg-primary-50 hover:text-primary-600 flex items-center justify-center text-neutral-sub shadow-sm border border-neutral-divider transition-all"
+                        >
                             <Plus size={16} />
                         </button>
-                        <button className="w-9 h-9 rounded-full bg-surface-hover hover:bg-neutral-divider flex items-center justify-center text-neutral-sub shadow-sm border border-neutral-divider transition-all">
+                        <button
+                            onClick={handleShare}
+                            title="현황 복사"
+                            className="w-9 h-9 rounded-full bg-surface-hover hover:bg-primary-50 hover:text-primary-600 flex items-center justify-center text-neutral-sub shadow-sm border border-neutral-divider transition-all relative"
+                        >
                             <Share size={14} />
+                            {shareToast && (
+                                <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded-lg whitespace-nowrap shadow">
+                                    복사됨!
+                                </span>
+                            )}
                         </button>
                     </div>
                     <button
@@ -313,6 +362,84 @@ export default function TaskPipelineWidget() {
                                     );
                                 })()}
                             </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Add Task Modal */}
+            <AnimatePresence>
+                {showAddModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+                        onClick={() => setShowAddModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <h3 className="text-base font-bold text-neutral-main mb-4">태스크 추가</h3>
+                            <form onSubmit={handleAddTask} className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-neutral-main mb-1">제목</label>
+                                    <input
+                                        type="text"
+                                        value={addForm.title}
+                                        onChange={(e) => setAddForm(p => ({ ...p, title: e.target.value }))}
+                                        placeholder="태스크 제목"
+                                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm"
+                                        required
+                                        autoFocus
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-neutral-main mb-1">담당자</label>
+                                    <select
+                                        value={addForm.assignee}
+                                        onChange={(e) => setAddForm(p => ({ ...p, assignee: e.target.value }))}
+                                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm"
+                                    >
+                                        <option value="">미지정</option>
+                                        {members.map(m => (
+                                            <option key={m.id} value={m.name}>{m.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-neutral-main mb-1">우선순위</label>
+                                    <select
+                                        value={addForm.priority}
+                                        onChange={(e) => setAddForm(p => ({ ...p, priority: e.target.value }))}
+                                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm"
+                                    >
+                                        <option value="low">Low</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="high">High</option>
+                                    </select>
+                                </div>
+                                <div className="flex gap-2 pt-2">
+                                    <button
+                                        type="submit"
+                                        disabled={addSubmitting}
+                                        className="flex-1 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                                    >
+                                        {addSubmitting ? '추가 중...' : '추가'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddModal(false)}
+                                        className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 text-sm font-semibold rounded-lg transition-colors dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:text-neutral-300"
+                                    >
+                                        취소
+                                    </button>
+                                </div>
+                            </form>
                         </motion.div>
                     </motion.div>
                 )}
