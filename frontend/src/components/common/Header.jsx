@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import useAuthStore from '../../store/authStore';
-import { Bell, Calendar, Video, ArrowUpRight, LogOut, User, Key, ChevronDown } from 'lucide-react';
+import { Bell, Calendar, Video, ArrowUpRight, LogOut, User, ChevronDown } from 'lucide-react';
 import { listSchedules } from '../../api/schedules';
 import dayjs from 'dayjs';
 
@@ -26,18 +26,13 @@ export default function Header() {
   useEffect(() => {
     const fetchTodaySchedules = async () => {
       try {
+        const res = await listSchedules({ include_team: true });
+        const all = res.data || [];
         const todayStr = dayjs().format('YYYY-MM-DD');
-        const endOfDayStr = dayjs().add(1, 'day').format('YYYY-MM-DD');
-        const res = await listSchedules({
-          start_time_gte: `${todayStr}T00:00:00`,
-          start_time_lt: `${endOfDayStr}T00:00:00`,
-          include_team: true,
-          skip: 0,
-        });
-        
-        let schedules = (res.items || res.data || []);
-        schedules.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
-        setTodaySchedules(schedules);
+        const todays = all
+          .filter(s => dayjs(s.start_time).format('YYYY-MM-DD') === todayStr)
+          .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+        setTodaySchedules(todays);
       } catch (err) {
         console.error('Failed to fetch schedules', err);
       }
@@ -171,14 +166,6 @@ export default function Header() {
                 >
                   <User size={16} className="text-neutral-400" /> 마이페이지
                 </Link>
-                <Link 
-                  to="/mypage?tab=security" 
-                  onClick={() => setIsProfileOpen(false)}
-                  className="w-full text-left px-5 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-primary-50 hover:text-primary-700 flex items-center gap-3 transition-colors"
-                >
-                  <Key size={16} className="text-neutral-400" /> 비밀번호 변경
-                </Link>
-                
                 <div className="my-1.5 border-t border-neutral-100" />
                 
                 <button 
