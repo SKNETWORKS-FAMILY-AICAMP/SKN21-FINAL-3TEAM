@@ -230,10 +230,11 @@ export default function ApprovalQueueWidget() {
         </h3>
         <div className="flex items-center gap-3">
           <button
-            className="flex items-center gap-1 text-xs font-bold text-primary-600 hover:text-primary-700 transition-colors"
+            className="p-1.5 rounded-lg text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 transition-all"
             onClick={(e) => { e.stopPropagation(); setShowModal(true); }}
+            title="새 요청 올리기"
           >
-            <Plus size={14} /> 요청 올리기
+            <Plus size={18} />
           </button>
           <button
             className="text-xs font-bold text-primary-600 hover:text-primary-700 transition-colors"
