@@ -987,9 +987,43 @@
   - `create_with_google_services` 기본값 `"task"` → `"google"` 변경
 - **수정 파일**: `ai/agents/schedule_agent.py`, `backend/app/services/schedule_service.py`
 
+#### 16) 다크모드 전체 색상 시스템 개편 (`globals.css`)
+- 상단바 배경: `#20232A` → `dark:bg-transparent` (페이지 배경과 동일하게 자연스럽게 녹아듦)
+- 다크모드 body 배경: 네이비 계열 그라디언트 → **Zinc 팔레트** (`#18181B` 단색) 적용
+  - 5가지 팔레트(Slate / Zinc / Charcoal Navy / Slate Mist / Warm Gray) HTML 미리보기 파일 생성해 비교 후 Zinc 확정
+- CSS 변수 전체 교체: surface, neutral, primary, sidebar 계열 → Zinc 기반 무채색 계열
+  - `surface-card: #27272A`, `surface-hover: #3F3F44`, `neutral-main: #FAFAFA`
+
+#### 17) 대시보드 다크모드 가시성 추가 개선
+
+- **`TodaySchedule.jsx`**
+  - 미팅·액션 카드: `dark:bg-white/[0.06] dark:border-white/[0.08]` 추가
+  - 시간 박스: `dark:bg-white/10`, 시간 텍스트 `dark:text-neutral-main` (`#FAFAFA`)
+  - 오늘 일정 상태 뱃지 **실시간 반영**: 하드코딩 `"예정"` → 현재 시간 기준 동적 계산
+    - 완료(종료 후) / 진행중(시작~종료) / 예정(시작 전), 1분마다 자동 갱신
+
+- **`TaskPipelineWidget.jsx`**
+  - `% COMPLETE` 바 영역, 진행 바, 스테이지 카운트 배지, 태스크 카드 구분선 다크모드 대응
+
+- **`TeamMembersWidget.jsx`**
+  - 멤버 카드, `See Details` 버튼, 팀 배지 `teamColors` 전체 다크모드 텍스트 가시성 개선
+
+#### 18) AI 챗봇 페이지 스크롤 헤더 제어 개선 (`ChatWindow.jsx`)
+- **문제**: 스크롤 시 상단 헤더(나에게 물어봐)가 떨리고, 위로 올려도 헤더가 안 나타남 / 답변 스트리밍 시 페이지 상단으로 튀는 현상
+- **원인**:
+  - `onScroll`이 픽셀마다 발생해 `isChatScrolled` state 빠르게 토글 → 레이아웃 흔들림
+  - `scrollIntoView`가 부모 컨테이너까지 스크롤 → 페이지 상단으로 튀는 현상
+  - 새 메시지 자동 스크롤이 "아래로 스크롤" 이벤트로 인식 → 헤더 숨김 유지
+- **수정**:
+  - `scrollContainerRef` 추가 → `scrollIntoView` 제거, `scrollTop = scrollHeight`로 대체 (컨테이너 내부 스크롤만)
+  - `programmaticScrollRef` 플래그 도입 → 자동 스크롤 구간 이벤트 무시 (500ms)
+  - 스크롤 방향 감지: `scrollTop < prev` 비교 방식으로 변경, 위로 스크롤 시 즉시 헤더 표시
+  - 마운트 초기 600ms 유예 유지 (초기 자동 스크롤 무시)
+
 ### 다음 할 일
 - 전체 E2E 테스트
 - 판단 Agent 스트리밍 디버깅
+- 챗봇 페이지 기타 UI 버그 확인
 
 ---
 

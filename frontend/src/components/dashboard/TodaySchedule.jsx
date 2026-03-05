@@ -2,13 +2,38 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Badge from '../common/Badge';
 import { Calendar, MapPin, Users, ListChecks, User, ChevronUp, ChevronDown } from 'lucide-react';
+import dayjs from 'dayjs';
+
+const getMeetingStatus = (m) => {
+  const now = dayjs();
+  // m.start_time / m.end_time 가 있으면 사용, 없으면 m.time(HH:mm) 파싱
+  const startTime = m.start_time
+    ? dayjs(m.start_time)
+    : dayjs(`${dayjs().format('YYYY-MM-DD')} ${m.time}`);
+  const endTime = m.end_time
+    ? dayjs(m.end_time)
+    : m.duration
+      ? startTime.add(m.duration, 'minute')
+      : startTime.add(60, 'minute');
+
+  if (now.isAfter(endTime)) return { variant: 'status-completed', label: '완료' };
+  if (now.isAfter(startTime)) return { variant: 'status-in-progress', label: '진행중' };
+  return { variant: 'status-scheduled', label: '예정' };
+};
 
 export default function TodaySchedule({ meetings = [], actions = [] }) {
   const [actionData, setActionData] = useState(actions);
+  const [now, setNow] = useState(dayjs());
 
   useEffect(() => {
     setActionData(actions);
   }, [actions]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(dayjs()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const toggleDone = (i) => {
@@ -40,11 +65,11 @@ export default function TodaySchedule({ meetings = [], actions = [] }) {
           <p className="text-sm font-bold text-neutral-muted py-2 text-center mt-4">오늘 예정된 회의가 없습니다.</p>
         )}
         {displayMeetings.map((m, i) => (
-          <Link key={i} to="/schedules" className="group flex items-center gap-3 p-3 rounded-2xl border border-transparent bg-white/40 hover:border-primary-200 hover:shadow-soft transition-all duration-300 relative overflow-hidden">
-            <div className="absolute inset-0 bg-primary-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-            <div className="relative z-10 text-center flex-shrink-0 bg-primary-50 w-12 h-12 rounded-xl flex flex-col items-center justify-center">
-              <div className="font-display text-base font-bold text-primary-700 leading-none">{m.isAllDay ? '종일' : m.time.split(' ')[0]}</div>
-              {!m.isAllDay && <div className="text-[9px] text-primary-500 font-bold mt-0.5">{m.period || 'AM'}</div>}
+          <Link key={i} to="/schedules" className="group flex items-center gap-3 p-3 rounded-2xl border border-transparent bg-white/40 dark:bg-white/[0.06] dark:border-white/[0.08] hover:border-primary-200 dark:hover:border-white/20 hover:shadow-soft transition-all duration-300 relative overflow-hidden">
+            <div className="absolute inset-0 bg-primary-50 dark:bg-white/[0.04] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+            <div className="relative z-10 text-center flex-shrink-0 bg-primary-50 dark:bg-white/10 w-12 h-12 rounded-xl flex flex-col items-center justify-center">
+              <div className="font-display text-base font-bold text-primary-700 dark:text-neutral-main leading-none">{m.isAllDay ? '종일' : m.time.split(' ')[0]}</div>
+              {!m.isAllDay && <div className="text-[9px] text-primary-500 dark:text-neutral-sub font-bold mt-0.5">{m.period || 'AM'}</div>}
             </div>
             <div className="relative z-10 flex-1">
               <div className="text-[13px] font-bold text-neutral-main flex items-center gap-2">
@@ -58,7 +83,7 @@ export default function TodaySchedule({ meetings = [], actions = [] }) {
               </div>
             </div>
             <div className="relative z-10">
-              <Badge variant="status-scheduled">예정</Badge>
+              {(() => { const s = getMeetingStatus(m); return <Badge variant={s.variant}>{s.label}</Badge>; })()}
             </div>
           </Link>
         ))}
@@ -83,12 +108,12 @@ export default function TodaySchedule({ meetings = [], actions = [] }) {
             {actionData.map((item, i) => (
               <div
                 key={i}
-                className={`group flex items-center gap-3 p-3 rounded-2xl border border-transparent bg-white/40 hover:border-primary-200 hover:shadow-soft transition-all duration-300 relative overflow-hidden ${item.priority === 'high' ? 'bg-error-bg/30' :
-                  item.priority === 'medium' ? 'bg-warning-bg/30' :
+                className={`group flex items-center gap-3 p-3 rounded-2xl border border-transparent bg-white/40 dark:bg-white/[0.06] dark:border-white/[0.08] hover:border-primary-200 dark:hover:border-white/20 hover:shadow-soft transition-all duration-300 relative overflow-hidden ${item.priority === 'high' ? 'bg-error-bg/30 dark:bg-error-bg/20' :
+                  item.priority === 'medium' ? 'bg-warning-bg/30 dark:bg-warning-bg/20' :
                     ''
                   }`}
               >
-                <div className="absolute inset-0 bg-primary-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                <div className="absolute inset-0 bg-primary-50 dark:bg-white/[0.04] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                 <button
                   aria-label={`${item.title} 완료 체크`}
                   className={`relative z-10 w-5 h-5 rounded-[6px] border-[1.5px] border-primary-300 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 transition-colors ${item.done ? 'bg-success border-success' : 'hover:bg-primary-50'

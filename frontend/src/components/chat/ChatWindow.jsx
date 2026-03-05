@@ -84,21 +84,52 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
   const [dragOver, setDragOver] = useState(false);
   const [fileError, setFileError] = useState(null);
   const bottomRef = useRef(null);
+  const scrollContainerRef = useRef(null);
   const fileInputRef = useRef(null);
   const dragCounterRef = useRef(0);
   const mountedRef = useRef(false);
+  const headerHiddenRef = useRef(false);
+  const lastScrollTopRef = useRef(0);
+  const programmaticScrollRef = useRef(false);
+  const programmaticTimerRef = useRef(null);
+
+  const markProgrammaticScroll = () => {
+    programmaticScrollRef.current = true;
+    clearTimeout(programmaticTimerRef.current);
+    programmaticTimerRef.current = setTimeout(() => {
+      programmaticScrollRef.current = false;
+    }, 500);
+  };
+
+  const handleScroll = (e) => {
+    if (programmaticScrollRef.current) return;
+
+    const scrollTop = e.target.scrollTop;
+    const prev = lastScrollTopRef.current;
+    lastScrollTopRef.current = scrollTop;
+
+    if (scrollTop < prev && headerHiddenRef.current) {
+      headerHiddenRef.current = false;
+      onScrollChange?.(false);
+    } else if (scrollTop > prev && scrollTop > 80 && !headerHiddenRef.current) {
+      headerHiddenRef.current = true;
+      onScrollChange?.(true);
+    }
+  };
 
   useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
     if (!mountedRef.current) {
-      // 초기 마운트: 메시지가 있을 때만 하단으로 스크롤 (없으면 welcome 화면 상단 표시)
       mountedRef.current = true;
       if (messages && messages.length > 0) {
-        const container = bottomRef.current?.closest('[data-main-scroll]');
-        if (container) container.scrollTop = container.scrollHeight;
+        markProgrammaticScroll();
+        container.scrollTop = container.scrollHeight;
       }
     } else {
-      // 이후 메시지 추가: smooth scroll
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      markProgrammaticScroll();
+      container.scrollTop = container.scrollHeight;
     }
   }, [messages, isStreaming]);
 
@@ -198,7 +229,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       )}
 
 
-      <div className="flex-1 min-h-0 overflow-y-auto py-4 px-4" data-main-scroll="" onScroll={(e) => onScrollChange?.(e.target.scrollTop > 20)}>{children}<div ref={bottomRef} /></div>
+      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto py-4 px-4" data-main-scroll="" onScroll={handleScroll}>{children}<div ref={bottomRef} /></div>
 
       {/* 선택 문서 칩 & 파일 칩 & 에러 */}
       {(selectedDocumentName || files.length > 0 || fileError) && (
