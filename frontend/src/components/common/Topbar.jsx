@@ -314,7 +314,9 @@ export default function Topbar({ isScrolled = false }) {
 
   return (
     <>
-      <header className={`flex-shrink-0 z-20 transition-all duration-300 ease-in-out ${isScrolled ? 'h-[60px] bg-transparent pointer-events-none -mb-[60px]' : 'h-[100px] bg-white/60 dark:bg-neutral-900/80 backdrop-blur-xl border-b border-neutral-200 dark:border-white/5'}`}>
+  return (
+    <>
+      <header className={`flex-shrink-0 z-20 transition-all duration-300 ease-in-out ${isScrolled ? 'h-[60px] bg-transparent pointer-events-none -mb-[60px]' : 'h-[100px] bg-[#F4F5F7] dark:bg-[#20232A]'}`}>
         <div className={`flex items-center justify-between px-4 md:grid md:grid-cols-[1fr_auto_1fr] md:px-10 h-full transition-all duration-300 ease-in-out ${isScrolled ? 'pointer-events-auto' : ''}`}>
 
           {/* 좌측 - 로고 */}
@@ -334,19 +336,19 @@ export default function Topbar({ isScrolled = false }) {
 
           {/* 중앙 - Your Schedule Timeline (데스크톱) */}
           <div className="hidden md:flex justify-center w-[650px] xl:w-[800px]">
-            <div className={`bg-white/40 dark:bg-white/5 backdrop-blur-md border border-neutral-200/50 dark:border-white/10 text-neutral-800 dark:text-neutral-100 rounded-[32px] flex items-center p-1.5 w-full shadow-sm transition-transform duration-300 transform origin-center ${isScrolled ? 'scale-[0.88]' : 'scale-100'}`}>
+            <div className={`bg-white/30 dark:bg-black/10 border border-neutral-200/30 dark:border-white/5 text-neutral-800 dark:text-neutral-100 rounded-[32px] flex items-center p-1.5 w-full shadow-sm transition-transform duration-300 transform origin-center ${isScrolled ? 'scale-[0.88]' : 'scale-100'}`}>
               
               {/* 왼쪽 Label section */}
-              <div className="flex items-center gap-3 pl-5 pr-3 whitespace-nowrap border-r border-neutral-200 dark:border-white/10">
+              <div className="flex items-center gap-3 pl-5 pr-3 whitespace-nowrap border-r border-neutral-200/50 dark:border-white/10">
                 <span className="text-sm font-bold tracking-tight text-neutral-900 dark:text-white">Your Schedule</span>
-                <div className="bg-neutral-100 dark:bg-white/10 rounded-full px-3 py-1.5 flex items-center gap-2 border border-neutral-200 dark:border-white/10">
+                <div className="bg-white/40 dark:bg-white/10 rounded-full px-3 py-1.5 flex items-center gap-2 border border-neutral-200/30 dark:border-white/10">
                   <Calendar size={13} className="text-neutral-600 dark:text-neutral-300" />
                   <span className="text-[11px] text-neutral-700 dark:text-neutral-200 font-bold">{dayjs().format('DD MMMM')}</span>
                 </div>
               </div>
               
               {/* 타임라인 영역 */}
-              <div className="flex-1 bg-neutral-50/30 dark:bg-black/20 rounded-full flex items-center px-1 mx-1 h-[48px] relative overflow-visible border border-neutral-100 dark:border-white/5 shadow-inner">
+              <div className="flex-1 bg-transparent rounded-full flex items-center px-1 mx-1 h-[48px] relative overflow-visible border border-neutral-100/30 dark:border-white/5 shadow-inner">
                 {todaySchedules.length > 0 ? (() => {
                   const currentEvent = todaySchedules[0];
                   const isTeamEvent = currentEvent.schedule_type === 'meeting' || currentEvent.is_team_visible;
