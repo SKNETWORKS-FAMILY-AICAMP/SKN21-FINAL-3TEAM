@@ -15,14 +15,14 @@ const statusColors = {
 
 // 팀 이름별 뱃지 색상 (관리자 페이지에 있는 실제 팀 기준)
 const teamColors = {
-    '개발': 'bg-[#7A90A4]/20 text-[#4D657A] border-[#7A90A4]/30',
-    'QA기획': 'bg-[#D0B16D]/20 text-[#8C7642] border-[#D0B16D]/30',
-    'UI/UX': 'bg-[#B0D0C8]/20 text-[#5E8C83] border-[#B0D0C8]/30',
-    '영업': 'bg-[#B197B1]/20 text-[#7D667D] border-[#B197B1]/30',
-    '마케팅': 'bg-[#CA8A8A]/20 text-[#A66161] border-[#CA8A8A]/30',
-    'CS': 'bg-[#90B2B2]/20 text-[#5A7A7A] border-[#90B2B2]/30',
-    'HR': 'bg-[#CBAA85]/20 text-[#9E7D56] border-[#CBAA85]/30',
-    '경영': 'bg-[#A5B38B]/20 text-[#6B7A56] border-[#A5B38B]/30',
+    '개발': 'bg-[#7A90A4]/20 dark:bg-[#7A90A4]/30 text-[#4D657A] dark:text-[#9BB5CC] border-[#7A90A4]/30 dark:border-[#7A90A4]/50',
+    'QA기획': 'bg-[#D0B16D]/20 dark:bg-[#D0B16D]/30 text-[#8C7642] dark:text-[#D4BB7A] border-[#D0B16D]/30 dark:border-[#D0B16D]/50',
+    'UI/UX': 'bg-[#B0D0C8]/20 dark:bg-[#B0D0C8]/30 text-[#5E8C83] dark:text-[#90C8BF] border-[#B0D0C8]/30 dark:border-[#B0D0C8]/50',
+    '영업': 'bg-[#B197B1]/20 dark:bg-[#B197B1]/30 text-[#7D667D] dark:text-[#C4AAC4] border-[#B197B1]/30 dark:border-[#B197B1]/50',
+    '마케팅': 'bg-[#CA8A8A]/20 dark:bg-[#CA8A8A]/30 text-[#A66161] dark:text-[#D4A0A0] border-[#CA8A8A]/30 dark:border-[#CA8A8A]/50',
+    'CS': 'bg-[#90B2B2]/20 dark:bg-[#90B2B2]/30 text-[#5A7A7A] dark:text-[#90BABA] border-[#90B2B2]/30 dark:border-[#90B2B2]/50',
+    'HR': 'bg-[#CBAA85]/20 dark:bg-[#CBAA85]/30 text-[#9E7D56] dark:text-[#D4B88A] border-[#CBAA85]/30 dark:border-[#CBAA85]/50',
+    '경영': 'bg-[#A5B38B]/20 dark:bg-[#A5B38B]/30 text-[#6B7A56] dark:text-[#B8C8A0] border-[#A5B38B]/30 dark:border-[#A5B38B]/50',
 };
 
 export default function TeamMembersWidget() {
@@ -72,7 +72,7 @@ export default function TeamMembersWidget() {
                 </h3>
                 <div className="flex items-center gap-3">
                     <button
-                        className="text-xs font-bold text-primary-600 hover:text-white bg-primary-50 hover:bg-primary-500 px-4 py-2 rounded-full transition-colors"
+                        className="text-xs font-bold text-primary-600 dark:text-primary-300 hover:text-white bg-primary-50 dark:bg-primary-900/50 hover:bg-primary-500 dark:hover:bg-primary-700 px-4 py-2 rounded-full transition-colors"
                         onClick={(e) => e.stopPropagation()}
                     >
                         See Details
@@ -100,10 +100,10 @@ export default function TeamMembersWidget() {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.06 }}
-                            className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-transparent bg-white/40 hover:border-primary-200 hover:shadow-soft transition-all duration-300 relative overflow-hidden"
+                            className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-transparent bg-white/40 dark:bg-white/[0.06] dark:border-white/[0.08] hover:border-primary-200 dark:hover:border-white/20 hover:shadow-soft transition-all duration-300 relative overflow-hidden"
                         >
                             {/* Soft background hover effect */}
-                            <div className="absolute inset-0 bg-primary-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                            <div className="absolute inset-0 bg-primary-50 dark:bg-white/[0.04] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
                             {/* User Info */}
                             <div className="relative z-10 flex items-center gap-4 mb-2 sm:mb-0">
@@ -143,7 +143,7 @@ export default function TeamMembersWidget() {
 
                             {/* Team badge */}
                             <div className="relative z-10 flex items-center justify-end pl-14 sm:pl-0">
-                                <span className={`text-[11px] font-bold px-3 py-1 rounded-full border ${teamColors[member.team] || 'bg-neutral-100 text-neutral-600 border-neutral-200'}`}>
+                                <span className={`text-[11px] font-bold px-3 py-1 rounded-full border ${teamColors[member.team] || 'bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-white/20'}`}>
                                     {member.team}
                                 </span>
                             </div>
