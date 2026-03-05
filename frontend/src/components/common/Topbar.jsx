@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { NavLink, useNavigate, Link } from 'react-router-dom';
 import {
   LayoutDashboard, MessageSquare, FilePlus, FileText,
-  Calendar, Settings, LogOut, KeyRound,
+  Calendar, Settings, LogOut, KeyRound, Video, ArrowUpRight,
   StickyNote, Plus, Trash2, ArrowLeft, Check, User, Menu, X as XIcon
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
@@ -10,7 +10,24 @@ import useUIStore from '../../store/uiStore';
 import useChatStore from '../../store/chatStore';
 import ThemeToggle from './ThemeToggle';
 import { changePassword, getTeamMembers } from '../../api/auth';
+import { listSchedules } from '../../api/schedules';
+import { listCalendarEvents } from '../../api/google';
 import dayjs from 'dayjs';
+
+const BLOCK_COLORS = [
+  '#8EA1B1', // Blueish
+  '#9DB099', // Greenish
+  '#B1C9C2', // Mint
+  '#C58B8B', // Rose
+  '#C5A58B', // Tan
+  '#C5B173', // Yellow/Gold
+  '#C5919F', // Pink
+  '#9F91C5', // Lavender
+  '#A5A173', // Olive
+  '#73A5A1', // Teal
+  '#A19F83', // Khaki
+  '#9FA183', // Moss
+];
 
 const getNavItems = (isAdmin) => [
   { to: '/dashboard', icon: LayoutDashboard, label: '대시보드' },
@@ -188,7 +205,25 @@ export default function Topbar({ isScrolled = false }) {
   const [pwSaving, setPwSaving] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const [allDayMeetings, setAllDayMeetings] = useState([]);
+  const [currentTime, setCurrentTime] = useState(dayjs());
   const [teamMembers, setTeamMembers] = useState([]);
+
+  // 1분마다 현재 시간 업데이트
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(dayjs());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // 현재 시간에 활성화된 일정만 필터링 (useMemo로 실시간성 확보)
+  const todaySchedules = useMemo(() => {
+    return allDayMeetings.filter(s => {
+      const endTime = s.end_time ? dayjs(s.end_time) : dayjs(s.start_time).add(1, 'hour');
+      return endTime.isAfter(currentTime);
+    });
+  }, [allDayMeetings, currentTime]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -225,6 +260,8 @@ export default function Topbar({ isScrolled = false }) {
           .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
         
         todayAllMeetings.forEach((s, i) => s.originalIndex = i);
+
+        setAllDayMeetings(todayAllMeetings);
 
         const members = teamRes.data || teamRes || [];
         setTeamMembers((Array.isArray(members) ? members : []).filter(m => m.id !== user?.id));
@@ -277,38 +314,167 @@ export default function Topbar({ isScrolled = false }) {
 
   return (
     <>
-      <header className={`bg-surface-main flex-shrink-0 z-20 transition-all duration-300 ease-in-out ${isScrolled ? 'h-[56px] shadow-sm' : 'h-[100px]'}`}>
-        <div className={`grid grid-cols-[1fr_auto_1fr] items-center px-10 h-full transition-all duration-300 ease-in-out ${isScrolled ? 'py-2.5' : 'py-[30px]'}`}>
+      <header className={`flex-shrink-0 z-20 transition-all duration-300 ease-in-out ${isScrolled ? 'h-[60px] bg-transparent pointer-events-none -mb-[60px]' : 'h-[100px] bg-white/40 backdrop-blur-md border-b border-white/20'}`}>
+        <div className={`flex items-center justify-between px-4 md:grid md:grid-cols-[1fr_auto_1fr] md:px-10 h-full transition-all duration-300 ease-in-out ${isScrolled ? 'pointer-events-auto' : ''}`}>
 
           {/* 좌측 - 로고 */}
-          <div className="flex items-center">
-            <a href="/dashboard" className="flex items-center gap-2.5">
-              <img src="/logo.png" alt="Logo" className={`object-contain transition-all ${isScrolled ? 'h-7' : 'h-10'}`} />
-              <span className={`font-display font-bold text-primary-700 tracking-tight transition-all duration-300 ease-in-out ${isScrolled ? 'text-xl' : 'text-2xl'}`}>WorkFlow</span>
+          <div className={`flex items-center transition-opacity duration-300 ${isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+            <a href="/dashboard" className="flex items-center gap-3">
+              <img src="/logo.png" alt="Logo" className={`object-contain transition-all py-1 ${isScrolled ? 'w-14' : 'w-24'}`} />
             </a>
           </div>
 
-          {/* 중앙 - 네비게이션 */}
-          <nav className="flex items-center gap-0">
-            {getNavItems(user?.is_admin).map(item => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `font-medium whitespace-nowrap border-b-2 transition-all duration-300 ease-in-out ${isScrolled ? 'px-4 pb-1.5 text-sm' : 'px-5 pb-3 text-base'
-                  } ${isActive
-                    ? 'text-primary-900 border-primary-700'
-                    : 'text-primary-700 border-transparent hover:text-primary-900 hover:border-primary-700'
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
+          {/* 모바일 햄버거 */}
+          <button
+            className="md:hidden p-2 rounded-md text-primary-700 hover:bg-primary-50 transition"
+            onClick={() => setMobileMenuOpen((o) => !o)}
+          >
+            {mobileMenuOpen ? <XIcon size={22} /> : <Menu size={22} />}
+          </button>
 
-          {/* 우측 - 유틸리티 */}
-          <div className="flex items-center justify-end gap-3">
+          {/* 중앙 - Your Schedule Timeline (데스크톱) */}
+          <div className="hidden md:flex justify-center w-[650px] xl:w-[800px]">
+            <div className={`bg-white/80 dark:bg-neutral-900/40 backdrop-blur-md border border-neutral-200 dark:border-white/10 text-neutral-800 dark:text-neutral-100 rounded-[32px] flex items-center p-1.5 w-full shadow-sm transition-transform duration-300 transform origin-center ${isScrolled ? 'scale-[0.88]' : 'scale-100'}`}>
+              
+              {/* 왼쪽 Label section */}
+              <div className="flex items-center gap-3 pl-5 pr-3 whitespace-nowrap border-r border-neutral-200 dark:border-white/10">
+                <span className="text-sm font-extrabold tracking-tight text-neutral-800 dark:text-neutral-100">Your Schedule</span>
+                <div className="bg-neutral-50 dark:bg-white/5 rounded-full px-3 py-1.5 flex items-center gap-2 border border-neutral-200 dark:border-white/10">
+                  <Calendar size={13} className="text-neutral-500 dark:text-neutral-400" />
+                  <span className="text-[11px] text-neutral-600 dark:text-neutral-300 font-semibold">{dayjs().format('DD MMMM')}</span>
+                </div>
+              </div>
+              
+              {/* 타임라인 영역 */}
+              <div className="flex-1 bg-neutral-50/50 dark:bg-white/5 rounded-full flex items-center px-1 mx-1 h-[48px] relative overflow-visible border border-neutral-100 dark:border-white/5 shadow-inner">
+                {todaySchedules.length > 0 ? (() => {
+                  const currentEvent = todaySchedules[0];
+                  const isTeamEvent = currentEvent.schedule_type === 'meeting' || currentEvent.is_team_visible;
+                  const activeBgColor = BLOCK_COLORS[(currentEvent.originalIndex || 0) % BLOCK_COLORS.length];
+
+                  return (
+                    <div className="flex w-full items-center relative group cursor-default">
+                      {/* Active Event Block */}
+                      <div className="h-[42px] rounded-[21px] flex items-center justify-between text-white px-3 min-w-[320px] max-w-[65%] w-full relative z-20 shadow-sm overflow-visible flex-shrink-0 border border-white/10 transition-colors" style={{ backgroundColor: activeBgColor }}>
+                      
+                        <div className="flex items-center gap-3 w-full">
+                          {/* 참석자 아바타 */}
+                          <div className="flex -space-x-1.5 items-center pl-1">
+                            <div className="h-7 w-7 rounded-full bg-white shadow-sm border-2 flex items-center justify-center overflow-hidden z-30" style={{ borderColor: activeBgColor }}>
+                              {user?.profile_image || user?.profile_picture || user?.avatar || user?.avatar_url ? (
+                                <img src={user?.profile_image || user?.profile_picture || user?.avatar || user?.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-[10px] font-bold" style={{ color: activeBgColor }}>{user?.name?.[0] || 'Me'}</span>
+                              )}
+                            </div>
+                            {isTeamEvent && (
+                              <>
+                                {teamMembers.slice(0, 2).map((member, idx) => {
+                                  const zClass = idx === 0 ? 'z-20' : 'z-10';
+                                  return (
+                                    <div key={member.id} className={`h-7 w-7 rounded-full shadow-sm border-2 bg-white flex items-center justify-center overflow-hidden ${zClass}`} style={{ borderColor: activeBgColor }}>
+                                      {member.profile_image || member.profile_picture || member.avatar || member.avatar_url ? (
+                                        <img src={member.profile_image || member.profile_picture || member.avatar || member.avatar_url} alt={member.name} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <span className="text-[10px] font-bold" style={{ color: activeBgColor }}>{member.name?.[0] || 'T'}</span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                                {teamMembers.length > 2 && (
+                                  <div className="h-7 w-7 rounded-full bg-white/30 shadow-sm border-2 border-white/50 flex items-center justify-center z-0 backdrop-blur-sm">
+                                    <span className="text-[10px] font-bold text-white">+{teamMembers.length - 2}</span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                   
+                          <div className="flex items-center gap-2 flex-1 min-w-0 pr-2">
+                            <div className="text-white/40">
+                              <ArrowUpRight size={14} strokeWidth={3} />
+                            </div>
+                            <div className="font-bold text-[13px] text-white whitespace-nowrap pl-1 pr-3 border-r border-white/30 truncate" title={dayjs(currentEvent.start_time).format('h:mm A')}>
+                              {dayjs(currentEvent.start_time).format('h:mm A')}
+                            </div>
+                            <div className="flex-1 flex justify-start pl-2 min-w-0" title={currentEvent.title}>
+                              <span className="text-[13px] font-extrabold truncate text-white shrink leading-none pt-0.5 tracking-wide">{currentEvent.title}</span>
+                            </div>
+                          </div>
+
+                          {/* 우측 아이콘 */}
+                          <div className="flex gap-1.5 shrink-0">
+                            {currentEvent.meet_link && (
+                              <a href={currentEvent.meet_link} target="_blank" rel="noreferrer" className="w-6 h-6 flex items-center justify-center bg-white hover:bg-neutral-100 rounded-full transition-all shadow-sm" style={{ color: activeBgColor }}>
+                                <Video size={12} strokeWidth={2.5} />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      
+                        {/* Current Time Indicator */}
+                        <div className="absolute -top-4 right-1/4 bg-neutral-800 dark:bg-neutral-700 text-white text-[9px] font-bold px-2 py-0.5 rounded-full z-50 shadow-md flex items-center gap-1.5 border border-neutral-700/50 dark:border-white/10">
+                          <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_4px_#4ade80]" />
+                          {currentTime.format('h:mm A')}
+                        </div>
+                      </div>
+                    
+                      {/* Upcoming Next Event (Overlapping) */}
+                      {todaySchedules.length > 1 && (() => {
+                        const nextEvent = todaySchedules[1];
+                        const nextBgColor = BLOCK_COLORS[(nextEvent.originalIndex || 0) % BLOCK_COLORS.length];
+                        const isNextTeamEvent = nextEvent.schedule_type === 'meeting' || nextEvent.is_team_visible;
+
+                        return (
+                          <div 
+                            className="h-[42px] rounded-[21px] flex items-center justify-between text-white/90 px-3 pl-8 -ml-6 flex-shrink-0 w-[30%] min-w-[120px] border border-white/10 shadow-inner overflow-hidden relative z-10 transition-all hover:scale-[1.02] cursor-default" 
+                            style={{ backgroundColor: nextBgColor }}
+                          >
+                            <div className="flex items-center gap-2 w-full">
+                              <div className="font-bold text-[11px] whitespace-nowrap border-r border-white/20 pr-2">
+                                {dayjs(nextEvent.start_time).format('h:mm A')}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-[11px] font-extrabold truncate block" title={nextEvent.title}>
+                                  {nextEvent.title}
+                                </span>
+                              </div>
+                              {/* Small Avatar for Next Event */}
+                              <div className="flex -space-x-1 items-center grayscale-[0.3] opacity-80 scale-90">
+                                <div className="h-5 w-5 rounded-full bg-white/20 border border-white/30 flex items-center justify-center overflow-hidden">
+                                  {user?.profile_image || user?.profile_picture || user?.avatar || user?.avatar_url ? (
+                                    <img src={user?.profile_image || user?.profile_picture || user?.avatar || user?.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <span className="text-[8px] font-bold text-white">{user?.name?.[0] || 'Me'}</span>
+                                  )}
+                                </div>
+                                {isNextTeamEvent && (
+                                  <div className="h-5 w-5 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">
+                                    <span className="text-[8px] font-bold text-white/70">T</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ); })() : (
+                    <div className="flex w-full h-full items-center justify-center">
+                      <span className="text-[13px] font-bold text-neutral-400 dark:text-neutral-500">No scheduled events today</span>
+                    </div>
+                  )}
+              </div>
+
+              {/* 더보기 버튼 */}
+              <Link to="/schedules" className="w-[36px] h-[36px] ml-1 mr-1 rounded-full bg-neutral-900 dark:bg-white/10 flex items-center justify-center hover:bg-neutral-800 dark:hover:bg-white/20 transition-colors text-white focus:outline-none flex-shrink-0 shadow-sm">
+                <ArrowUpRight size={16} strokeWidth={2.5} />
+              </Link>
+            </div>
+          </div>
+
+          {/* 우측 - 유틸리티 (데스크톱) */}
+          <div className={`hidden md:flex items-center justify-end gap-3 transition-opacity duration-300 ${isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
             <ThemeToggle />
             <MemoPanel />
 
