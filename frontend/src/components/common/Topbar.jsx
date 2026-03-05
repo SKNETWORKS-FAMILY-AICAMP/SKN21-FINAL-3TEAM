@@ -314,7 +314,7 @@ export default function Topbar({ isScrolled = false }) {
 
   return (
     <>
-      <header className={`flex-shrink-0 z-20 transition-all duration-300 ease-in-out ${isScrolled ? 'h-[60px] bg-transparent pointer-events-none -mb-[60px]' : 'h-[100px] bg-white/40 backdrop-blur-md border-b border-white/20'}`}>
+      <header className={`flex-shrink-0 z-20 transition-all duration-300 ease-in-out ${isScrolled ? 'h-[60px] bg-transparent pointer-events-none -mb-[60px]' : 'h-[100px] bg-white/60 dark:bg-neutral-900/80 backdrop-blur-xl border-b border-neutral-200 dark:border-white/5'}`}>
         <div className={`flex items-center justify-between px-4 md:grid md:grid-cols-[1fr_auto_1fr] md:px-10 h-full transition-all duration-300 ease-in-out ${isScrolled ? 'pointer-events-auto' : ''}`}>
 
           {/* 좌측 - 로고 */}
@@ -326,7 +326,7 @@ export default function Topbar({ isScrolled = false }) {
 
           {/* 모바일 햄버거 */}
           <button
-            className="md:hidden p-2 rounded-md text-primary-700 hover:bg-primary-50 transition"
+            className="md:hidden p-2 rounded-md text-primary-700 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-white/5 transition"
             onClick={() => setMobileMenuOpen((o) => !o)}
           >
             {mobileMenuOpen ? <XIcon size={22} /> : <Menu size={22} />}
@@ -334,19 +334,19 @@ export default function Topbar({ isScrolled = false }) {
 
           {/* 중앙 - Your Schedule Timeline (데스크톱) */}
           <div className="hidden md:flex justify-center w-[650px] xl:w-[800px]">
-            <div className={`bg-white/80 dark:bg-neutral-900/40 backdrop-blur-md border border-neutral-200 dark:border-white/10 text-neutral-800 dark:text-neutral-100 rounded-[32px] flex items-center p-1.5 w-full shadow-sm transition-transform duration-300 transform origin-center ${isScrolled ? 'scale-[0.88]' : 'scale-100'}`}>
+            <div className={`bg-white/40 dark:bg-white/5 backdrop-blur-md border border-neutral-200/50 dark:border-white/10 text-neutral-800 dark:text-neutral-100 rounded-[32px] flex items-center p-1.5 w-full shadow-sm transition-transform duration-300 transform origin-center ${isScrolled ? 'scale-[0.88]' : 'scale-100'}`}>
               
               {/* 왼쪽 Label section */}
               <div className="flex items-center gap-3 pl-5 pr-3 whitespace-nowrap border-r border-neutral-200 dark:border-white/10">
-                <span className="text-sm font-extrabold tracking-tight text-neutral-800 dark:text-neutral-100">Your Schedule</span>
-                <div className="bg-neutral-50 dark:bg-white/5 rounded-full px-3 py-1.5 flex items-center gap-2 border border-neutral-200 dark:border-white/10">
-                  <Calendar size={13} className="text-neutral-500 dark:text-neutral-400" />
-                  <span className="text-[11px] text-neutral-600 dark:text-neutral-300 font-semibold">{dayjs().format('DD MMMM')}</span>
+                <span className="text-sm font-bold tracking-tight text-neutral-900 dark:text-white">Your Schedule</span>
+                <div className="bg-neutral-100 dark:bg-white/10 rounded-full px-3 py-1.5 flex items-center gap-2 border border-neutral-200 dark:border-white/10">
+                  <Calendar size={13} className="text-neutral-600 dark:text-neutral-300" />
+                  <span className="text-[11px] text-neutral-700 dark:text-neutral-200 font-bold">{dayjs().format('DD MMMM')}</span>
                 </div>
               </div>
               
               {/* 타임라인 영역 */}
-              <div className="flex-1 bg-neutral-50/50 dark:bg-white/5 rounded-full flex items-center px-1 mx-1 h-[48px] relative overflow-visible border border-neutral-100 dark:border-white/5 shadow-inner">
+              <div className="flex-1 bg-neutral-50/30 dark:bg-black/20 rounded-full flex items-center px-1 mx-1 h-[48px] relative overflow-visible border border-neutral-100 dark:border-white/5 shadow-inner">
                 {todaySchedules.length > 0 ? (() => {
                   const currentEvent = todaySchedules[0];
                   const isTeamEvent = currentEvent.schedule_type === 'meeting' || currentEvent.is_team_visible;
@@ -355,7 +355,7 @@ export default function Topbar({ isScrolled = false }) {
                   return (
                     <div className="flex w-full items-center relative group cursor-default">
                       {/* Active Event Block */}
-                      <div className="h-[42px] rounded-[21px] flex items-center justify-between text-white px-3 min-w-[320px] max-w-[65%] w-full relative z-20 shadow-sm overflow-visible flex-shrink-0 border border-white/10 transition-colors" style={{ backgroundColor: activeBgColor }}>
+                      <div className="h-[42px] rounded-[21px] flex items-center justify-between text-white px-3 min-w-[320px] max-w-[65%] w-full relative z-20 shadow-md overflow-visible flex-shrink-0 border border-white/20 transition-all" style={{ backgroundColor: activeBgColor }}>
                       
                         <div className="flex items-center gap-3 w-full">
                           {/* 참석자 아바타 */}
@@ -391,14 +391,14 @@ export default function Topbar({ isScrolled = false }) {
                           </div>
                    
                           <div className="flex items-center gap-2 flex-1 min-w-0 pr-2">
-                            <div className="text-white/40">
+                            <div className="text-white/60">
                               <ArrowUpRight size={14} strokeWidth={3} />
                             </div>
                             <div className="font-bold text-[13px] text-white whitespace-nowrap pl-1 pr-3 border-r border-white/30 truncate" title={dayjs(currentEvent.start_time).format('h:mm A')}>
                               {dayjs(currentEvent.start_time).format('h:mm A')}
                             </div>
                             <div className="flex-1 flex justify-start pl-2 min-w-0" title={currentEvent.title}>
-                              <span className="text-[13px] font-extrabold truncate text-white shrink leading-none pt-0.5 tracking-wide">{currentEvent.title}</span>
+                              <span className="text-[13px] font-bold truncate text-white shrink leading-none pt-0.5 tracking-wide">{currentEvent.title}</span>
                             </div>
                           </div>
 
@@ -413,7 +413,7 @@ export default function Topbar({ isScrolled = false }) {
                         </div>
                       
                         {/* Current Time Indicator */}
-                        <div className="absolute -top-4 right-1/4 bg-neutral-800 dark:bg-neutral-700 text-white text-[9px] font-bold px-2 py-0.5 rounded-full z-50 shadow-md flex items-center gap-1.5 border border-neutral-700/50 dark:border-white/10">
+                        <div className="absolute -top-4 right-1/4 bg-neutral-900 dark:bg-neutral-800 text-white text-[9px] font-bold px-2 py-0.5 rounded-full z-50 shadow-lg flex items-center gap-1.5 border border-white/10">
                           <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_4px_#4ade80]" />
                           {currentTime.format('h:mm A')}
                         </div>
@@ -435,7 +435,7 @@ export default function Topbar({ isScrolled = false }) {
                                 {dayjs(nextEvent.start_time).format('h:mm A')}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <span className="text-[11px] font-extrabold truncate block" title={nextEvent.title}>
+                                <span className="text-[11px] font-bold truncate block" title={nextEvent.title}>
                                   {nextEvent.title}
                                 </span>
                               </div>
@@ -461,7 +461,7 @@ export default function Topbar({ isScrolled = false }) {
                     </div>
                   ); })() : (
                     <div className="flex w-full h-full items-center justify-center">
-                      <span className="text-[13px] font-bold text-neutral-400 dark:text-neutral-500">No scheduled events today</span>
+                      <span className="text-[13px] font-bold text-neutral-500 dark:text-neutral-300">No scheduled events today</span>
                     </div>
                   )}
               </div>
