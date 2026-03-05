@@ -212,8 +212,9 @@ export default function TasksPage() {
                   <AnimatePresence>
                     {stageTasks.map((task) => {
                       const due = getDueBadge(task.dueDate);
+                      const memberMatch = members.find(m => m.name === task.assignee);
                       const avatarSrc = task.assignee
-                        ? `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(task.assignee)}`
+                        ? (memberMatch?.avatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(task.assignee)}`)
                         : null;
                       return (
                         <motion.div
