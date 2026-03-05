@@ -18,9 +18,8 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             cd /home/ubuntu/SKN21-FINAL-3TEAM
-            git stash 2>/dev/null || true
-            git checkout develop
-            git pull origin develop
+            git fetch origin develop
+            git reset --hard origin/develop
             find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
             source .venv/bin/activate
             pip install -r requirements.txt
@@ -44,12 +43,6 @@ jobs:
             print('Migration complete')
             "
             cd ..
-            echo "=== 파일 확인 ==="
-            ls -la backend/app/api/v1/approvals.py 2>&1 || echo "approvals.py 파일 없음!"
-            head -5 backend/app/api/v1/router.py
-            echo "=== git log ==="
-            git log --oneline -3
-            echo "=== 서버 재시작 ==="
             sudo systemctl restart workflow-agent
             sleep 5
             sudo systemctl status workflow-agent --no-pager || true
