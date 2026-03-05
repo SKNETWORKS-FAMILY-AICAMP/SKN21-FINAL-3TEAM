@@ -349,13 +349,6 @@ export default function Topbar({ isScrolled = false }) {
                     마이페이지
                   </button>
                   <button
-                    onClick={openPwModal}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-neutral-sub hover:text-neutral-main hover:bg-neutral-divider transition-all"
-                  >
-                    <KeyRound size={12} />
-                    비밀번호 변경
-                  </button>
-                  <button
                     onClick={handleLogout}
                     className="w-full flex items-center gap-2 px-3 py-2 text-xs text-neutral-sub hover:text-error hover:bg-neutral-divider transition-all"
                   >

@@ -857,16 +857,9 @@
 #### 1) 다크모드 UI 가시성 전반 개선
 
 - **`globals.css`** — 다크모드 surface/border 색상 전체 밝기 상향 조정
-  - `surface-main` `#262A32` → `#2E3240`, `surface-card` `#30343E` → `#3C4052` 등 전체 surface 계열 +8~12 밝기
-  - `neutral-border` `#484C58` → `#5C6070`, `neutral-divider` `#3C4050` → `#4E5264` (보더 가시성 개선)
-  - `.dark .card` 보더 `rgba(white, 0.1)` → `rgba(white, 0.2)`, hover `0.2` → `0.3`
   - body 배경 그라디언트 및 sidebar 배경도 동일 밝기로 조정
 
 - **`MyPage.jsx`** — 다크모드에서 안 보이던 요소 전면 수정
-  - 프로필 헤더 섹션: `bg-white` → `bg-surface-card`
-  - 프로필 수정 버튼: `bg-neutral-main` → `bg-primary-700` (다크모드에서 `neutral-main`이 밝아져 흰 텍스트 구분 불가 문제 해결)
-  - 프로필 수정 모달: `bg-white` → `bg-surface-card`, 헤더/푸터 `bg-neutral-50/50` → `bg-surface-hover`
-  - 모달 input 필드: `bg-neutral-50 focus:bg-white` → `bg-surface-hover focus:bg-surface-card` + `text-neutral-main` 추가
   - AI 스타일 토글 선택 버튼: `bg-white` → `bg-surface-card`
 
 - **`TaskPipelineWidget.jsx`** — 하드코딩된 `bg-white`/`bg-white/60` 전면 제거
@@ -875,7 +868,6 @@
 - **`AIChatWidget.jsx`, `CalendarWidget.jsx`** — `border border-white/60` → `border border-neutral-border`, 배경 `dark:bg-surface-card`로 교체
 
 - **`GreetingBanner.jsx`** — 인라인 스타일(`rgba(255,255,255,0.45)`) 제거 → `bg-white/50 dark:bg-surface-card border-neutral-border` Tailwind 클래스로 교체
-  - CSS 변수 기반 색상에 `/80` 투명도 수식어 미동작 버그 발견 및 solid 색상으로 수정
 
 #### 2) 마이페이지 프로필 사진 업로드 기능 구현
 
@@ -897,6 +889,59 @@
   - 파일 선택 즉시 `createObjectURL`로 미리보기 → 백엔드 업로드 → 영구 URL로 교체
   - 업로드 중 스피너 표시 + 버튼 비활성화, 실패 시 이전 아바타로 복원
   - URL 입력칸 제거, 안내 텍스트로 대체
+
+#### 3) 마이페이지 프로필 저장 버그 수정
+
+- **문제**: 프로필 수정 모달에서 "저장하기" 버튼 클릭 시 500 에러 발생, 사진 미리보기는 되나 저장 안 됨
+- **원인 분석**:
+  - `a1b2c3d4e5f6_avatar_column_to_text.py` 마이그레이션의 `down_revision`이 존재하지 않는 `8c278366604b`를 참조 → 마이그레이션이 DB에 실제 적용되지 않은 상태
+  - DB의 `avatar` 컬럼이 `VARCHAR(255)`로 남아 있어 base64 문자열 저장 시 overflow → 500
+- **수정 (백엔드)**:
+  - `backend/alembic/versions/a1b2c3d4e5f6_avatar_column_to_text.py` — `down_revision` 수정 (`8c278366604b` → `7939e09c25f2`)
+  - develop push로 자동 배포
+- **수정 (프론트엔드)**:
+  - `handleAvatarFileChange` — canvas 리사이즈 방식 복구 (최대 200px, JPEG 75%)
+  - `saveError` state 추가, 모달 열기/닫기 시 에러 초기화
+
+#### 4) 마이페이지 개인화 설정 → 3개 신규 섹션으로 교체 (`MyPage.jsx`)
+
+- **개인화 설정 섹션 제거** — AI 답변 스타일 토글, 시스템 알림 토글, 단축키 관리 버튼 삭제
+- **다가오는 일정 미리보기** 섹션 추가
+  - 오늘 이후 일정을 날짜순 정렬 후 최대 4개 표시
+  - 일정 타입(회의/업무/마감) 뱃지 + 우선순위 컬러 도트(high=빨강, medium=노랑, low=초록)
+  - "전체 보기" 링크 → `/schedules`
+- **AI 활용 통계** 섹션 추가
+  - AI 대화 / 생성 문서 / 등록 일정 수를 프로그레스 바로 시각화
+  - 가입 이후 전체 누적 사용량 표시
+- **계정 보안** 섹션 추가
+  - 이메일, 계정 권한, 가입일 표시
+  - 비밀번호 변경 버튼 → 모달 오픈 (현재/새/확인 입력, 눈 아이콘 토글, 8자 미만·불일치 유효성 검사, 성공 시 1.5초 후 자동 닫힘)
+
+#### 5) 상단바 드롭다운 "비밀번호 변경" 항목 제거 (`Topbar.jsx`, `Header.jsx`)
+
+- `Topbar.jsx` — 드롭다운 메뉴에서 "비밀번호 변경" 버튼 제거
+- `Header.jsx` — 동일하게 제거 (기존에 수정됨), `Key` import 정리
+- 비밀번호 변경은 마이페이지 → 계정 보안 섹션에서 일원화
+
+#### 6) 대시보드 Today Schedule 타임라인 시간 범위 자동 맞춤 (`ScheduleTimelineWidget.jsx`)
+
+- **기존**: 08~18 하드코딩
+- **변경**: 기본 09~18 표시, 범위 밖 일정이 있을 때만 자동 확장
+  - 가장 이른 시작보다 1시간 앞 / 가장 늦은 종료보다 1시간 뒤로 범위 조정
+  - 현재 시간 바도 표시 범위 기준으로 재계산, 범위 밖이면 숨김
+
+#### 7) Header.jsx Today Schedule 날짜 필터 수정 (`Header.jsx`)
+
+- 기존: `start_time_gte`/`start_time_lt` 쿼리 파라미터로 필터 시도 → 백엔드가 해당 파라미터를 지원하지 않아 무시됨
+- 변경: 전체 일정 수신 후 프론트에서 오늘 날짜(`YYYY-MM-DD`) 기준으로 직접 필터링
+
+#### 8) 일정 추가 시 종료 시간 자동 설정 + 유효성 검사 (`ScheduleForm.jsx`)
+
+- 시작 시간 선택 시 종료 시간을 자동으로 +1시간으로 설정
+- 23:10 이후는 23:50으로 고정 (범위 초과 방지)
+- 이후 종료 시간 드롭다운에서 수동 수정 가능
+- 종료 시간이 시작 시간 이하면 등록 차단 — "종료 시간은 시작 시간보다 늦어야 합니다" 에러 표시
+- 종일 일정은 시간 검사 제외
 
 ### 다음 할 일
 - 전체 E2E 테스트

@@ -94,6 +94,13 @@ function TimeSelect({ value, onChange }) {
   );
 }
 
+function addOneHour(timeStr) {
+  const [h, m] = timeStr.split(':').map(Number);
+  const totalMin = h * 60 + m + 60;
+  if (totalMin >= 24 * 60) return '23:50';
+  return `${String(Math.floor(totalMin / 60)).padStart(2, '0')}:${String(totalMin % 60).padStart(2, '0')}`;
+}
+
 export default function ScheduleForm({ onSubmit, onClose, initialData }) {
   const isEditMode = !!initialData;
   const { connected, hasScope } = useGoogleServices();
@@ -122,6 +129,7 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
     const newErrors = {};
     if (!form.title.trim()) newErrors.title = '제목을 입력하세요';
     if (!form.date) newErrors.date = '날짜를 선택하세요';
+    if (!form.allDay && form.endTime <= form.startTime) newErrors.endTime = '종료 시간은 시작 시간보다 늦어야 합니다';
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -233,15 +241,16 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
               <label className="text-[0.8125rem] font-semibold block mb-1">시작 시간</label>
               <TimeSelect
                 value={form.startTime}
-                onChange={(t) => setForm({ ...form, startTime: t })}
+                onChange={(t) => setForm({ ...form, startTime: t, endTime: addOneHour(t) })}
               />
             </div>
             <div>
               <label className="text-[0.8125rem] font-semibold block mb-1">종료 시간</label>
               <TimeSelect
                 value={form.endTime}
-                onChange={(t) => setForm({ ...form, endTime: t })}
+                onChange={(t) => { setForm({ ...form, endTime: t }); setErrors((p) => ({ ...p, endTime: undefined })); }}
               />
+              {errors.endTime && <p className="text-xs text-red-500 mt-1">{errors.endTime}</p>}
             </div>
           </div>
         )}
