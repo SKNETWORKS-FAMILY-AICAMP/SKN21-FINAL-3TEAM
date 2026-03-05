@@ -61,16 +61,16 @@
   --color-accent-100: #4A4238;
   --color-accent-50: #3A332C;
 
-  --color-surface-main: #262A32;
-  --color-surface-sub: #2E3240;
-  --color-surface-card: #30343E;
-  --color-surface-hover: #383C48;
+  --color-surface-main: #2E3240;
+  --color-surface-sub: #363A4C;
+  --color-surface-card: #3C4052;
+  --color-surface-hover: #444858;
 
   --color-neutral-main: #E8EAEE;
   --color-neutral-sub: #A8B0BC;
   --color-neutral-muted: #78828F;
-  --color-neutral-border: #484C58;
-  --color-neutral-divider: #3C4050;
+  --color-neutral-border: #5C6070;
+  --color-neutral-divider: #4E5264;
 
   --color-success: #6DB87F;
   --color-success-bg: #243528;
@@ -81,9 +81,9 @@
   --color-info: #7FA3C0;
   --color-info-bg: #283D50;
 
-  --color-sidebar-bg: #22262E;
-  --color-sidebar-active: #383C48;
-  --color-sidebar-border: #484C58;
+  --color-sidebar-bg: #2A2E38;
+  --color-sidebar-active: #444858;
+  --color-sidebar-border: #525668;
   --color-sidebar-text: #E8EAEE;
   --color-sidebar-text-muted: #7A8490;
 }
@@ -96,7 +96,7 @@
   }
 
   .dark body {
-    background: linear-gradient(160deg, #20232A 0%, #252830 55%, #1E2128 100%);
+    background: linear-gradient(160deg, #2A2E38 0%, #2F3342 55%, #282C38 100%);
   }
 }
 
@@ -143,12 +143,12 @@
 
   .dark .card {
     background: rgba(30, 34, 42, 0.4);
-    border-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
   }
 
   .dark .card:hover {
     background: rgba(30, 34, 42, 0.55);
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
   }
 
   .card-header {

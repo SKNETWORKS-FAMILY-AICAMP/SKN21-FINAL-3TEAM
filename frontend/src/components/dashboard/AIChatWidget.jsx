@@ -44,7 +44,7 @@ export default function AIChatWidget() {
   };
 
   return (
-    <div className="rounded-2xl border border-white/60 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md shadow-md transition-all duration-300">
+    <div className="rounded-2xl border border-neutral-border bg-white/60 dark:bg-surface-card shadow-md transition-all duration-300">
       <div
         className="card-header cursor-pointer flex justify-between items-center"
         onClick={() => setIsCollapsed(!isCollapsed)}

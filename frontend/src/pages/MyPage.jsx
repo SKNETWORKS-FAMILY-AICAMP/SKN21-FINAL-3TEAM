@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     User, Mail, Users, MessageSquare, FileText, Calendar,
     Clock, StickyNote, Settings, Bell, Zap, ChevronRight,
-    Trash2, Plus, Save, History, MessageCircle
+    Trash2, Plus, Save, History, MessageCircle, Camera
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import useUIStore from '../store/uiStore';
@@ -10,6 +10,7 @@ import useChatStore from '../store/chatStore';
 import { listDocuments } from '../api/documents';
 import { listSchedules } from '../api/schedules';
 import { listSessions } from '../api/chat';
+import { uploadAvatar, updateProfile } from '../api/auth';
 
 export default function MyPage() {
     const user = useAuthStore((s) => s.user);
@@ -25,6 +26,32 @@ export default function MyPage() {
     const [saving, setSaving] = useState(false);
     const setAuth = useAuthStore((s) => s.setAuth);
     const token = useAuthStore((s) => s.token);
+    const fileInputRef = useRef(null);
+
+    const [avatarUploading, setAvatarUploading] = useState(false);
+
+    const handleAvatarFileChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // 미리보기용 임시 로컬 URL
+        const previewUrl = URL.createObjectURL(file);
+        setEditForm(f => ({ ...f, avatar: previewUrl }));
+
+        setAvatarUploading(true);
+        try {
+            const { data } = await uploadAvatar(file);
+            setEditForm(f => ({ ...f, avatar: data.avatar_url }));
+            URL.revokeObjectURL(previewUrl);
+        } catch (err) {
+            console.error('아바타 업로드 실패:', err);
+            alert('이미지 업로드에 실패했습니다.');
+            setEditForm(f => ({ ...f, avatar: user?.avatar || '' }));
+            URL.revokeObjectURL(previewUrl);
+        } finally {
+            setAvatarUploading(false);
+        }
+    };
 
     useEffect(() => {
         const loadStats = async () => {
@@ -75,7 +102,7 @@ export default function MyPage() {
     const handleUpdateProfile = async () => {
         setSaving(true);
         try {
-            const { data } = await client.put('/auth/me', editForm);
+            const { data } = await updateProfile(editForm);
             setAuth(data, token);
             setShowEditModal(false);
         } catch (e) {
@@ -89,7 +116,7 @@ export default function MyPage() {
     return (
         <div className="max-w-6xl mx-auto py-8 px-4 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* 1. 프로필 헤더 */}
-            <section className="bg-white rounded-2xl border border-neutral-divider shadow-sm p-8 flex flex-col md:flex-row items-center gap-8">
+            <section className="bg-surface-card rounded-2xl border border-neutral-divider shadow-sm p-8 flex flex-col md:flex-row items-center gap-8">
                 <div className="w-24 h-24 rounded-2xl bg-accent-500 border border-white/20 flex items-center justify-center text-3xl font-bold text-white shadow-sm shrink-0 overflow-hidden">
                     {user?.avatar ? (
                         <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
@@ -109,7 +136,7 @@ export default function MyPage() {
                 </div>
                 <button 
                   onClick={() => setShowEditModal(true)}
-                  className="px-6 py-2.5 bg-neutral-main text-white rounded-xl text-sm font-semibold hover:bg-neutral-dark transition-all shrink-0"
+                  className="px-6 py-2.5 bg-primary-700 text-white rounded-xl text-sm font-semibold hover:bg-primary-900 transition-all shrink-0"
                 >
                     프로필 수정
                 </button>
@@ -230,13 +257,13 @@ export default function MyPage() {
                                 <div className="flex p-1 bg-surface-hover rounded-xl border border-neutral-divider">
                                     <button
                                         onClick={() => updateSettings({ aiStyle: 'concise' })}
-                                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition-all ${settings.aiStyle === 'concise' ? 'bg-white text-primary-700 shadow-sm' : 'text-neutral-sub hover:text-neutral-main'}`}
+                                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition-all ${settings.aiStyle === 'concise' ? 'bg-surface-card text-primary-700 shadow-sm' : 'text-neutral-sub hover:text-neutral-main'}`}
                                     >
                                         간결하게
                                     </button>
                                     <button
                                         onClick={() => updateSettings({ aiStyle: 'detailed' })}
-                                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition-all ${settings.aiStyle === 'detailed' ? 'bg-white text-primary-700 shadow-sm' : 'text-neutral-sub hover:text-neutral-main'}`}
+                                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition-all ${settings.aiStyle === 'detailed' ? 'bg-surface-card text-primary-700 shadow-sm' : 'text-neutral-sub hover:text-neutral-main'}`}
                                     >
                                         상세하게
                                     </button>
@@ -286,8 +313,8 @@ export default function MyPage() {
             {/* 프로필 수정 모달 */}
             {showEditModal && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60]" onClick={() => setShowEditModal(false)}>
-                    <div className="bg-white rounded-2xl border border-neutral-divider shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="p-6 border-b border-neutral-divider flex items-center justify-between bg-neutral-50/50">
+                    <div className="bg-surface-card rounded-2xl border border-neutral-divider shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 border-b border-neutral-divider flex items-center justify-between bg-surface-hover">
                             <h3 className="text-lg font-bold text-neutral-main">프로필 수정</h3>
                             <button onClick={() => setShowEditModal(false)} className="text-neutral-sub hover:text-neutral-main transition-colors">
                                 <Plus size={20} className="rotate-45" />
@@ -296,16 +323,32 @@ export default function MyPage() {
                         <div className="p-6 space-y-4">
                             <div className="flex justify-center mb-6">
                                 <div className="relative group">
-                                    <div className="w-24 h-24 rounded-2xl bg-accent-500 border-2 border-white shadow-md flex items-center justify-center text-3xl font-bold text-white overflow-hidden">
+                                    <div className="w-24 h-24 rounded-2xl bg-accent-500 border-2 border-surface-card shadow-md flex items-center justify-center text-3xl font-bold text-white overflow-hidden">
                                         {editForm.avatar ? (
                                             <img src={editForm.avatar} alt="Preview" className="w-full h-full object-cover" />
                                         ) : (
                                             editForm.name?.[0] || '?'
                                         )}
                                     </div>
-                                    <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full border border-neutral-divider shadow-sm flex items-center justify-center text-primary-600">
-                                        <Zap size={14} />
-                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => !avatarUploading && fileInputRef.current?.click()}
+                                        className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary-700 hover:bg-primary-900 rounded-full border-2 border-surface-card shadow-sm flex items-center justify-center text-white transition-colors disabled:opacity-50"
+                                        title="사진 변경"
+                                        disabled={avatarUploading}
+                                    >
+                                        {avatarUploading
+                                            ? <Zap size={14} className="animate-spin" />
+                                            : <Camera size={14} />
+                                        }
+                                    </button>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={handleAvatarFileChange}
+                                    />
                                 </div>
                             </div>
 
@@ -316,19 +359,16 @@ export default function MyPage() {
                                         type="text"
                                         value={editForm.name}
                                         onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-divider rounded-xl text-sm focus:border-primary-500 focus:bg-white outline-none transition-all"
+                                        className="w-full px-4 py-2.5 bg-surface-hover border border-neutral-divider rounded-xl text-sm text-neutral-main focus:border-primary-500 focus:bg-surface-card outline-none transition-all"
                                         placeholder="이름을 입력하세요"
                                     />
                                 </div>
-                                <div>
-                                    <label className="text-xs font-bold text-neutral-sub uppercase tracking-wider mb-1.5 block">프로필 이미지 URL</label>
-                                    <input
-                                        type="text"
-                                        value={editForm.avatar}
-                                        onChange={e => setEditForm({ ...editForm, avatar: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-divider rounded-xl text-sm focus:border-primary-500 focus:bg-white outline-none transition-all"
-                                        placeholder="이미지 URL을 입력하세요"
-                                    />
+                                <div className="flex items-center justify-center">
+                                    <p className="text-xs text-neutral-muted">
+                                        {avatarUploading
+                                            ? '업로드 중...'
+                                            : '카메라 버튼을 눌러 사진을 변경하세요'}
+                                    </p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -337,7 +377,7 @@ export default function MyPage() {
                                             type="text"
                                             value={editForm.team}
                                             onChange={e => setEditForm({ ...editForm, team: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-divider rounded-xl text-sm focus:border-primary-500 focus:bg-white outline-none transition-all"
+                                            className="w-full px-4 py-2.5 bg-surface-hover border border-neutral-divider rounded-xl text-sm text-neutral-main focus:border-primary-500 focus:bg-surface-card outline-none transition-all"
                                             placeholder="팀명"
                                         />
                                     </div>
@@ -347,7 +387,7 @@ export default function MyPage() {
                                             type="text"
                                             value={editForm.phone}
                                             onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-divider rounded-xl text-sm focus:border-primary-500 focus:bg-white outline-none transition-all"
+                                            className="w-full px-4 py-2.5 bg-surface-hover border border-neutral-divider rounded-xl text-sm text-neutral-main focus:border-primary-500 focus:bg-surface-card outline-none transition-all"
                                             placeholder="010-0000-0000"
                                         />
                                     </div>
@@ -358,16 +398,16 @@ export default function MyPage() {
                                         type="text"
                                         value={editForm.address}
                                         onChange={e => setEditForm({ ...editForm, address: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-divider rounded-xl text-sm focus:border-primary-500 focus:bg-white outline-none transition-all"
+                                        className="w-full px-4 py-2.5 bg-surface-hover border border-neutral-divider rounded-xl text-sm text-neutral-main focus:border-primary-500 focus:bg-surface-card outline-none transition-all"
                                         placeholder="주소를 입력하세요"
                                     />
                                 </div>
                             </div>
                         </div>
-                        <div className="p-6 bg-neutral-50/50 border-t border-neutral-divider flex gap-3">
+                        <div className="p-6 bg-surface-hover border-t border-neutral-divider flex gap-3">
                             <button
                                 onClick={() => setShowEditModal(false)}
-                                className="flex-1 py-3 border border-neutral-divider bg-white text-neutral-sub rounded-xl text-sm font-bold hover:bg-neutral-50 transition-all"
+                                className="flex-1 py-3 border border-neutral-divider bg-surface-card text-neutral-sub rounded-xl text-sm font-bold hover:bg-surface-hover transition-all"
                             >
                                 취소
                             </button>
