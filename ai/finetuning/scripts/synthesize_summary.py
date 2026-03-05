@@ -144,21 +144,9 @@ CATEGORY_SPECIFIC_REQUESTS = {
 
 # ── 요약 생성 프롬프트 ──
 
-SUMMARY_GENERATION_SYSTEM = (
-    "주어진 문서를 요약하세요.\n\n"
-    "출력 형식 (반드시 이 형식을 따르세요):\n"
-    "1. 핵심 요약 2-3문장\n"
-    "2. 빈 줄\n"
-    "3. ## 주요 포인트\n"
-    "4. - 불릿 포인트 3~5개\n"
-    "5. 빈 줄\n"
-    "6. ## 키워드\n"
-    "7. 키워드1, 키워드2, 키워드3, 키워드4, 키워드5\n\n"
-    "규칙:\n"
-    "- 원문에 없는 내용을 추가하지 마세요.\n"
-    "- 키워드는 명사/명사구만 (조사, 어미 제거).\n"
-    "- 마크다운 형식 외 다른 설명을 포함하지 마세요."
-)
+# Step B에서도 sLLM 시스템 프롬프트를 그대로 사용
+# → GPT-4o가 sLLM과 동일한 형식으로 요약 생성
+SUMMARY_GENERATION_SYSTEM = DOC_SUMMARY_SLLM_PROMPT
 
 
 def call_openai(
@@ -234,12 +222,35 @@ def validate_summary(summary: str) -> tuple[bool, list[str]]:
     if "- " not in summary:
         errors.append("불릿 포인트 없음")
 
-    # 키워드 섹션 확인
+    # 포인트 개수 검증 (3~5개)
+    if "## 주요 포인트" in summary and "## 키워드" in summary:
+        points_section = summary.split("## 주요 포인트")[1].split("## 키워드")[0]
+        bullets = [line.strip() for line in points_section.strip().splitlines() if line.strip().startswith("- ")]
+        if len(bullets) < 3 or len(bullets) > 5:
+            errors.append(f"포인트 개수 부적합: {len(bullets)}개 (3~5개 필요)")
+
+    # 키워드 개수 검증 (3~7개)
     if "## 키워드" in summary:
         kw_part = summary.split("## 키워드")[-1].strip()
         keywords = [kw.strip() for kw in kw_part.split(",") if kw.strip()]
-        if len(keywords) < 3:
-            errors.append(f"키워드 부족: {len(keywords)}개")
+        if len(keywords) < 3 or len(keywords) > 7:
+            errors.append(f"키워드 개수 부적합: {len(keywords)}개 (3~7개 필요)")
+
+    # 메타 지시문 복사 감지
+    meta_patterns = [
+        "핵심 요약 2-3문장",
+        "빈 줄",
+        "불릿(-)",
+        "명사/명사구",
+        "쉼표로 구분",
+    ]
+    for pattern in meta_patterns:
+        if pattern in summary:
+            errors.append(f"메타 지시문 복사: '{pattern}'")
+            break
+    # "포인트" + "작성하세요" 동시 존재
+    if "포인트" in summary and "작성하세요" in summary:
+        errors.append("메타 지시문 복사: '포인트'+'작성하세요'")
 
     return len(errors) == 0, errors
 

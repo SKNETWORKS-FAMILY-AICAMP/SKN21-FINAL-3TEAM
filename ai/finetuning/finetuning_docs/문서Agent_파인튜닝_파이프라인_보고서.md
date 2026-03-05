@@ -130,19 +130,19 @@ LLM API(GPT/Claude) 기반으로 구현된 기능을 **Qwen3-8B + QLoRA 어댑�
 
 | 항목 | 내용 |
 |------|------|
-| 소스 | SN 582 전 카테고리 (10종) |
-| 변환 방식 | 규칙 기반 (API 불필요) + GPT-4o-mini 키워드 보강 |
+| 소스 | SN 582 선별 카테고리 (5종: 뉴스, 보도자료, 보고서, 간행물, 사설) |
+| 변환 방식 | AI Hub passage → GPT-4o 요약 생성 (DOC_SUMMARY_SLLM_PROMPT) |
 | 원문 필터 | 300~3,000자 |
-| 비용 | ~$0.7 (키워드 보강만) |
+| 비용 | ~$7 (GPT-4o 700건) |
+
+> **카테고리 선별 이유**: 회의록(국회 속기록), 연설문, 역사기록물, 문학, 나레이션은 기업 문서 도메인과 부적합하여 제외. 정보 밀도가 높고 구조화된 텍스트만 선별.
 
 **변환 로직:**
 ```
 AI Hub 원본                    →  학습 데이터
 ─────────────────────────────────────────────
 passage (원문)                 →  user: "다음 문서를 요약해주세요.\n\n사용자 요청: {랜덤}\n\n문서 내용:\n{passage}"
-summary2 (2~3문장 추출요약)    →  assistant 핵심 요약 파트
-summary3 (20% 추출요약)        →  주요 포인트 불릿 추출
-GPT-4o-mini 키워드 추출        →  ## 키워드 파트
+GPT-4o 요약 생성               →  assistant: 핵심 요약 + ## 주요 포인트 + ## 키워드
 ```
 
 **assistant 출력 형식 (마크다운):**
@@ -160,28 +160,13 @@ GPT-4o-mini 키워드 추출        →  ## 키워드 파트
 
 **카테고리별 배분 (700건):**
 
-| 카테고리 | 건수 | 비율 |
-|----------|:----:|:----:|
-| 회의록 | 180 | 25.7% |
-| 보고서 | 100 | 14.3% |
-| 뉴스 | 100 | 14.3% |
-| 보도자료 | 90 | 12.9% |
-| 간행물 | 80 | 11.4% |
-| 연설문 | 60 | 8.6% |
-| 사설 | 50 | 7.1% |
-| 역사기록물 | 20 | 2.9% |
-| 나레이션 | 15 | 2.1% |
-| 문학 | 5 | 0.7% |
-
-**키워드 품질 개선:**
-
-| 방법 | 예시 결과 | 비용 |
-|------|-----------|------|
-| TF 기반 (초기) | `씨는, 시스템에, 전표, 사내, 하지만` | $0 |
-| 형태소 분석 (Okt) | `전표, 시스템, 사무실, 챗봇, 사내` | $0 |
-| **GPT-4o-mini (채택)** | **`RPA, 챗봇, 업무자동화, KT, 딥러닝`** | **$0.7** |
-
-→ GPT-4o-mini가 **의미적 핵심 키워드**를 정확하게 추출하여 채택.
+| 카테고리 | 건수 | 비율 | 선별 이유 |
+|----------|:----:|:----:|-----------|
+| 뉴스 | 180 | 25.7% | 육하원칙 구조, 핵심→세부 전개 |
+| 보도자료 | 160 | 22.9% | 팩트 중심, 정보 밀도 높음 |
+| 보고서 | 160 | 22.9% | 실적/현황/이슈 구조, 기업 문서와 유사 |
+| 간행물 | 100 | 14.3% | 분석/데이터 중심, 긴 문서 요약 |
+| 사설 | 100 | 14.3% | 주장+논거 구조, 논점 파악 |
 
 ---
 
@@ -205,6 +190,7 @@ answers.text                   →  {"answer": "...", "citations": [{"content": 
 
 - span_extraction (추출형) 60% + span_extraction_how (절차형) 40% 비율 혼합
 - context 150~800자, answer 5자 이상 필터링
+- **단답 보강 (2026-03-05)**: 15자 미만 단답(152건, 34%)을 GPT-4o로 서술형 답변으로 재생성 (150건 성공)
 
 **소스 2: SN 582 → GPT-4o QA 생성**
 ```
@@ -299,6 +285,7 @@ GPT-4o 생성 answer + citation  →  {"answer": "...", "citations": [{"content"
 |--------|:----:|:------:|:------------------:|
 | v2_summary | **1,000** | 700 (70%) | 300 (30%) |
 | v2_qa | **1,000** | 600 (60%) | 400 (40%) |
+
 | v2_generate | **1,500** | 700 (47%) | 800 (53%) |
 | **합계** | **3,500** | **2,000 (57%)** | **1,500 (43%)** |
 
@@ -306,15 +293,16 @@ GPT-4o 생성 answer + citation  →  {"answer": "...", "citations": [{"content"
 
 ### 4.2 비율 설계 근거
 
-**v2_summary — AI Hub 70%로 높은 이유:**
-- SN 582에 summary2/summary3가 직접 제공되어 변환 품질이 높음
-- 단, 80%→70%로 낮춘 이유: 추출요약(extractive) 편향 방지
-- 합성 20%로 추상형(abstractive) 마크다운 모범답안 보충
+**v2_summary — AI Hub 70% + 합성 30%:**
+- AI Hub 5개 카테고리(뉴스/보도자료/보고서/간행물/사설) passage → GPT-4o가 요약
+- 실제 문서 원문 기반이라 문체/구조 다양성이 합성보다 우월
+- 합성 30%로 기업 도메인(이메일, 사내공지, 계약서 등) 보완
+- 요약 태스크는 도메인에 덜 민감 → 7:3 비율 적절
 
 **v2_qa — AI Hub 60%:**
 - SN 569 MRC 300건 (정형화된 QA, 품질 안정적)
 - SN 582 기반 GPT-4o 생성 300건 (업무 문서 도메인 QA)
-- 합성 30%로 다양한 질문 패턴 보충
+- 합성 40%로 다양한 질문 패턴 + 기업 도메인 보충
 
 **v2_generate — 1,500건 (필드 풀 방식):**
 - 3개 문서 유형(회의록/보고서/제안서) 균등 배분 → 타입당 500건
@@ -326,11 +314,12 @@ GPT-4o 생성 answer + citation  →  {"answer": "...", "citations": [{"content"
 
 | 항목 | 모델 | 건수 | 비용 |
 |------|------|-----:|-----:|
-| v2_summary 키워드 보강 | GPT-4o-mini | 700 | ~$0.7 |
+| v2_summary AI Hub 요약 생성 | GPT-4o | 700 | ~$7.0 |
 | v2_qa Report QA 생성 | GPT-4o | 300 | ~$7.5 |
-| v2_generate JSON 생성 | GPT-4o | 690 | ~$27.6 |
-| 합성 데이터 생성 (예정) | GPT-4o / Claude | 1,100 | ~$22.0 |
-| **합계** | | | **~$57.8** |
+| v2_generate JSON 생성 | GPT-4o | 1,500 | ~$37.5 |
+| v2_summary 합성 데이터 | GPT-4o | 300 | ~$6.0 |
+| v2_qa 합성 데이터 | GPT-4o | 400 | ~$4.0 |
+| **합계** | | | **~$62.0** |
 
 ---
 
@@ -545,12 +534,12 @@ response = await vllm_client.chat.completions.create(
 
 | 스크립트 | 용도 | API 필요 |
 |----------|------|:--------:|
-| `convert_aihub_summary.py` | SN 582 → v2_summary 700건 | GPT-4o-mini (키워드만) |
-| `convert_aihub_qa.py` | SN 569 MRC 300건 + SN 582 Report QA 300건 | GPT-4o (Report만) |
-| `convert_aihub_generate.py` | SN 582 → v2_generate 690건 (동적 필드) | GPT-4o |
-| `synthesize_generate.py` | v2_generate 합성 600건 | GPT-4o |
-| `synthesize_qa.py` | v2_qa 합성 300건 | GPT-4o |
-| `synthesize_summary.py` | v2_summary 합성 200건 | GPT-4o |
+| `convert_aihub_summary.py` | SN 582 → v2_summary 700건 (GPT-4o 요약 생성) | GPT-4o |
+| `convert_aihub_qa.py` | SN 569 MRC 300건 + SN 582 Report QA 300건 + 단답 보강 | GPT-4o |
+| `convert_aihub_generate.py` | SN 582 → v2_generate 700건 (동적 필드) | GPT-4o |
+| `synthesize_generate.py` | v2_generate 합성 800건 | GPT-4o |
+| `synthesize_qa.py` | v2_qa 합성 400건 | GPT-4o |
+| `synthesize_summary.py` | v2_summary 합성 300건 | GPT-4o |
 | `merge_training_data.py` | 소스별 병합 → merged_*.jsonl | 불필요 |
 | `validate_v2_data.py` | 3개 어댑터 데이터 통합 검증 | 불필요 |
 
@@ -560,7 +549,7 @@ response = await vllm_client.chat.completions.create(
 
 ```bash
 # Phase 1: AI Hub 변환
-python ai/finetuning/scripts/convert_aihub_summary.py --total 700 --llm-enhance
+python ai/finetuning/scripts/convert_aihub_summary.py --total 700
 python ai/finetuning/scripts/convert_aihub_qa.py --source mrc --mrc-count 300
 python ai/finetuning/scripts/convert_aihub_qa.py --source report --report-count 300 --output data/training/v2_qa/report_qa.jsonl
 python ai/finetuning/scripts/convert_aihub_generate.py
@@ -586,13 +575,13 @@ python ai/finetuning/validate_v2_data.py --split
 
 | 어댑터 | 소스 | 목표 | 완료 | 상태 |
 |--------|------|:----:|:----:|:----:|
-| v2_summary | AI Hub 변환 | 700 | 700 | ✅ |
-| v2_qa | AI Hub MRC | 300 | 300 | ✅ |
+| v2_summary | AI Hub + GPT-4o 요약 | 700 | 0 | ⏳ 스크립트 준비 완료, 재생성 대기 |
+| v2_qa | AI Hub MRC | 300 | 300 | ✅ (단답 150건 GPT-4o 보강) |
 | v2_qa | AI Hub Report QA | 300 | 300 | ✅ |
-| v2_generate | AI Hub 변환 (필드 풀) | 700 | 0 | ⏳ 재작업 (고정필드→필드풀) |
-| v2_generate | 합성 (필드 풀) | 800 | 0 | ⏳ 재작업 (고정필드→필드풀) |
-| v2_qa | 합성 | 300 | 336 | ✅ |
-| v2_summary | 합성 | 200 | 200 | ✅ |
+| v2_generate | AI Hub 변환 (필드 풀) | 700 | - | ⏳ 생성 중 |
+| v2_generate | 합성 (필드 풀) | 800 | - | ⏳ 생성 중 |
+| v2_qa | 합성 | 400 | 400 | ✅ (12% not-found 포함) |
+| v2_summary | 합성 | 300 | 0 | ⏳ 프롬프트 수정 완료, 재생성 대기 |
 
 ### 전체 파이프라인
 
@@ -605,7 +594,7 @@ python ai/finetuning/validate_v2_data.py --split
 | 5 | v2_generate 필드 풀 방식 재설계 (고정필드 폐기) | ✅ |
 | 6 | v2_generate AI Hub 700건 변환 (필드 풀 + GPT-4o) | ⏳ |
 | 6.5 | v2_generate 합성 800건 생성 (필드 풀 + GPT-4o) | ⏳ |
-| 7 | v2_qa/summary 합성 데이터 생성 | ✅ |
+| 7 | v2_qa 합성 데이터 생성 (400건 완료) + v2_summary 합성 대기 | ⏳ |
 | 8 | 전체 데이터 검증 + 중복 제거 | ⏳ |
 | 9 | Train/Eval 분할 | ⏳ |
 | 10 | QLoRA 파인튜닝 (3개 어댑터) | ⏳ |
@@ -646,7 +635,7 @@ python ai/finetuning/validate_v2_data.py --split
 </details>
 
 <details>
-<summary>2026-03-05 (스크립트 QA + 정합성 수정)</summary>
+<summary>2026-03-05 오전 (스크립트 QA + 정합성 수정)</summary>
 
 | 작업 | 파일 |
 |------|------|
@@ -658,6 +647,21 @@ python ai/finetuning/validate_v2_data.py --split
 | v2_qa not-found 목표 건수 안에 포함하도록 로직 수정 | `convert_aihub_qa.py` |
 | v2_qa 데이터 트리밍 (324→300, 336→300) | `aihub_qa.jsonl`, `report_qa.jsonl` |
 | 문서 통합: 보고서를 정본으로, 계획서 deprecated | 보고서, 계획서 |
+
+</details>
+
+<details>
+<summary>2026-03-05 오후 (데이터 품질 검증 + 스크립트 재설계)</summary>
+
+| 작업 | 파일 |
+|------|------|
+| 3개 어댑터 데이터 품질 심층 검증 (JSON, 필드, 길이분포, 도메인 오염) | 전체 데이터 파일 |
+| v2_summary 스크립트 전면 재설계: 규칙기반→GPT-4o 요약 생성 | `convert_aihub_summary.py` |
+| v2_summary 카테고리 선별: 10종→5종 (뉴스/보도/보고서/간행물/사설) | `convert_aihub_summary.py` |
+| v2_summary 합성 프롬프트: SUMMARY_GENERATION_SYSTEM→DOC_SUMMARY_SLLM_PROMPT | `synthesize_summary.py` |
+| v2_summary 메타지시문 복사 감지 validate_summary() 추가 | `synthesize_summary.py` |
+| aihub_qa 단답 보강: 15자 미만 152건→GPT-4o 서술형 재생성 (150건 성공) | `convert_aihub_qa.py` |
+| synthetic_qa 400건 조정 + not-found 12% 정확 매칭 (48/400) | `synthetic_qa.jsonl` |
 
 </details>
 
@@ -694,7 +698,7 @@ python ai/finetuning/validate_v2_data.py --split
 | Solar API보다 성능 하락 | Solar API를 fallback으로 유지. 설정 플래그로 전환 |
 | RTX 5090 32GB VRAM 부족 | batch_size 2로 축소 + grad_accum 8로 조정. 또는 A100 전환 |
 | 합성 데이터 품질 부족 | 3단계 검증: 자동검증 → LLM 교차검증 → 수동 샘플링(150개) |
-| AI Hub summary2가 추출형 | GPT-4o mini로 마크다운 구조 변환 + 합성 20%로 추상형 모범답안 확보 |
+| AI Hub summary 카테고리 부적합 | 10종→5종 선별 (회의록/연설문/역사/문학/나레이션 제외), GPT-4o로 요약 재생성 |
 
 ---
 
@@ -709,8 +713,8 @@ data/
 │   └── 016.행정 문서 대상 기계독해 데이터/ ← SN 569
 ├── training/
 │   ├── v2_summary/
-│   │   ├── aihub_summary.jsonl             ← AI Hub 변환 (700건) ✅
-│   │   ├── synthetic_summary.jsonl         ← 합성 (200건) ✅
+│   │   ├── aihub_summary.jsonl             ← AI Hub + GPT-4o 요약 (700건) [재생성]
+│   │   ├── synthetic_summary.jsonl         ← 합성 (300건) [재생성]
 │   │   ├── variant_summary.jsonl           ← 변형 (100건) [예정]
 │   │   ├── merged_summary.jsonl            ← 병합 (분할 전) [예정]
 │   │   ├── train.jsonl                     ← 학습용 (850건) [분할 후]
@@ -718,7 +722,7 @@ data/
 │   ├── v2_qa/
 │   │   ├── aihub_qa.jsonl                  ← AI Hub MRC (300건) ✅
 │   │   ├── report_qa.jsonl                 ← AI Hub Report QA (300건) ✅
-│   │   ├── synthetic_qa.jsonl              ← 합성 (300건) ✅
+│   │   ├── synthetic_qa.jsonl              ← 합성 (400건, 12% not-found) ✅
 │   │   ├── variant_qa.jsonl                ← 변형 (100건) [예정]
 │   │   ├── merged_qa.jsonl                 ← 병합 (분할 전) [예정]
 │   │   ├── train.jsonl                     ← 학습용 (900건) [분할 후]

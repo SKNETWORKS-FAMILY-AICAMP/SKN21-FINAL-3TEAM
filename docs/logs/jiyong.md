@@ -862,3 +862,67 @@ v2_generate AI Hub 데이터 탈락:
 4. 변형 데이터 410건 (규칙 기반, $0)
 5. v2_summary 키워드 보강 — 전체 1,000건 (GPT-4o-mini, ~$0.7)
 6. 전체 검증 + train/eval 분할
+
+---
+
+## 2026-03-05 (수)
+
+**v2_generate 필드 풀 방식 재설계 (다른 PC에서 작업 후 pull):**
+- 기존 고정 필드 방식 폐기 → 필드 풀 랜덤 조합 방식으로 전환
+- 문서유형별 15~20개 필드 풀 정의, 매 샘플 6~10개 랜덤 선택
+- aihub_generate.jsonl + synthetic_generate.jsonl 삭제 후 재생성 중
+
+**3개 어댑터 데이터 품질 심층 검증:**
+- v2_generate: 필드 풀 방식 정상 동작 확인
+- v2_qa: aihub_qa에서 34% 단답 문제 발견 (10자 미만)
+- v2_summary: aihub + synthetic 양쪽 모두 품질 문제 발견
+  - aihub: 규칙 기반 build_assistant_response()가 국회 속기록에서 쓰레기 생성
+  - synthetic: SUMMARY_GENERATION_SYSTEM 번호 형식을 GPT가 메타지시문 그대로 복사
+
+**v2_summary 스크립트 전면 재설계:**
+- `convert_aihub_summary.py`:
+  - 카테고리 10종→5종 선별 (뉴스180/보도160/보고서160/간행물100/사설100)
+  - 제외: 회의록(국회속기록), 연설문, 역사기록물, 문학, 나레이션
+  - build_assistant_response() 삭제 → GPT-4o 요약 생성으로 교체
+  - validate_summary() 메타지시문 복사 감지 추가
+- `synthesize_summary.py`:
+  - SUMMARY_GENERATION_SYSTEM → DOC_SUMMARY_SLLM_PROMPT 교체
+  - validate_summary()에 메타지시문 복사 감지 추가
+
+**aihub_qa 단답 보강:**
+- `convert_aihub_qa.py`에 `enhance_short_answers()` 함수 추가
+- 15자 미만 단답 152건 → GPT-4o로 서술형 답변 재생성
+- 결과: 150건 성공, 2건 영구 실패 (허용 범위)
+- `--enhance-short`, `--min-answer-len` CLI 옵션 추가
+
+**synthetic_qa 400건 조정:**
+- synthesize_qa.py --append --count 64 실행 → 69건 추가 (not-found 7건 자동 추가)
+- 405건→400건 트리밍
+- not-found 비율 9.5%→12.0% 조정 (카테고리 교차 매칭으로 10건 추가 생성)
+- 최종: 352 normal + 48 not-found = 400건 (12.0%)
+
+**보고서 업데이트:**
+- v2_qa 완료 반영 (synthetic 300→400건, aihub 단답 보강)
+- v2_summary 재설계 반영 (카테고리 선별, GPT-4o 요약)
+- 스크립트 테이블 건수 업데이트
+- 리스크 섹션 summary 행 업데이트
+- 구현 이력 2026-03-05 오후 섹션 추가
+
+**현재 데이터 현황:**
+
+| 어댑터 | AI Hub | 합성 | 상태 |
+|--------|:------:|:----:|:----:|
+| v2_qa | 600/600 ✅ | 400/400 ✅ | **완료** (병합 대기) |
+| v2_summary | 0/700 | 0/300 | 스크립트 준비 완료, 재생성 대기 |
+| v2_generate | 생성 중 | 생성 중 | 다른 PC에서 작업 중 |
+
+**다음 할 일:**
+- v2_summary 데이터 생성:
+  ```bash
+  rm data/training/v2_summary/aihub_summary.jsonl
+  rm data/training/v2_summary/synthetic_summary.jsonl
+  python ai/finetuning/scripts/convert_aihub_summary.py
+  python ai/finetuning/scripts/synthesize_summary.py --count 300
+  ```
+- v2_generate 생성 완료 대기
+- 전체 병합 + 검증 + train/eval 분할

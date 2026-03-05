@@ -690,6 +690,113 @@ def generate_not_found_samples(
     return not_found_samples
 
 
+# ── 단답 재생성 ──
+
+
+def enhance_short_answers(
+    input_path: Path,
+    output_path: Path,
+    min_answer_len: int = 15,
+    model: str = "gpt-4o",
+) -> dict:
+    """aihub_qa.jsonl에서 단답형 answer를 GPT-4o로 서술형으로 재생성.
+
+    - answer가 min_answer_len 미만인 샘플만 대상
+    - context + question을 GPT-4o에 넘겨서 DOC_QA_SLLM_PROMPT 형식으로 재생성
+    - 나머지는 그대로 유지
+    """
+    try:
+        from openai import OpenAI
+    except ImportError:
+        print("[오류] openai 패키지가 필요합니다: pip install openai")
+        sys.exit(1)
+
+    client = OpenAI()
+
+    # 기존 데이터 로드
+    samples = []
+    with open(input_path, encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                samples.append(json.loads(line))
+
+    total = len(samples)
+    short_count = 0
+    enhanced = 0
+    failed = 0
+
+    # 단답 필터링 및 재생성
+    for i, sample in enumerate(samples):
+        assistant_content = sample["messages"][2]["content"]
+        parsed = json.loads(assistant_content)
+
+        # not-found는 건너뜀
+        if parsed.get("citations") == []:
+            continue
+
+        answer = parsed.get("answer", "")
+        if len(answer) >= min_answer_len:
+            continue
+
+        short_count += 1
+        user_content = sample["messages"][1]["content"]
+
+        print(f"  [{short_count}] ({len(answer)}자) \"{answer[:30]}\" → ", end="", flush=True)
+
+        # GPT-4o로 서술형 answer 재생성
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_content},
+                ],
+                temperature=0.7,
+                max_tokens=512,
+                response_format={"type": "json_object"},
+            )
+            new_content = response.choices[0].message.content.strip()
+            new_parsed = json.loads(new_content)
+
+            new_answer = new_parsed.get("answer", "")
+            new_citations = new_parsed.get("citations", [])
+
+            if len(new_answer) >= min_answer_len and new_citations:
+                sample["messages"][2]["content"] = json.dumps(
+                    {"answer": new_answer, "citations": new_citations},
+                    ensure_ascii=False,
+                )
+                enhanced += 1
+                print(f"({len(new_answer)}자) OK")
+            else:
+                print(f"품질 부족 (answer {len(new_answer)}자)")
+                failed += 1
+
+        except Exception as e:
+            print(f"API 에러: {e}")
+            failed += 1
+
+        # Rate limiting
+        if short_count % 10 == 0:
+            time.sleep(1)
+
+    # 저장
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        for sample in samples:
+            f.write(json.dumps(sample, ensure_ascii=False) + "\n")
+
+    stats = {
+        "total": total,
+        "short": short_count,
+        "enhanced": enhanced,
+        "failed": failed,
+    }
+    print(f"\n  단답 재생성 완료: {short_count}건 중 {enhanced}건 성공, {failed}건 실패")
+    print(f"  저장: {output_path}")
+    return stats
+
+
 # ── 메인 ──
 
 def save_training_data(samples: list[dict], output_path: Path, append: bool = False):
@@ -753,7 +860,29 @@ def main():
     parser.add_argument("--model", type=str, default="gpt-4o", help="QA 생성용 모델")
     parser.add_argument("--seed", type=int, default=42, help="랜덤 시드")
     parser.add_argument("--dry-run", action="store_true", help="API 호출 없이 MRC 변환만 수행")
+    parser.add_argument("--enhance-short", action="store_true", help="기존 aihub_qa.jsonl에서 단답(15자 미만) GPT-4o로 서술형 재생성")
+    parser.add_argument("--min-answer-len", type=int, default=15, help="단답 기준 길이 (기본: 15자)")
     args = parser.parse_args()
+
+    # 단답 재생성 모드
+    if args.enhance_short:
+        input_path = Path(args.output)
+        if not input_path.exists():
+            print(f"[오류] 파일 없음: {input_path}")
+            sys.exit(1)
+        if not os.getenv("OPENAI_API_KEY"):
+            print("[오류] OPENAI_API_KEY 환경변수가 설정되지 않았습니다.")
+            sys.exit(1)
+        print("=" * 70)
+        print("  aihub_qa 단답 → 서술형 재생성")
+        print("=" * 70)
+        print(f"  입력: {input_path}")
+        print(f"  기준: answer {args.min_answer_len}자 미만")
+        print(f"  모델: {args.model}")
+        enhance_short_answers(input_path, input_path, args.min_answer_len, args.model)
+        validate_output(input_path)
+        print(f"\n  완료!")
+        return
 
     print("=" * 70)
     print("  AI Hub → v2_qa 변환")
