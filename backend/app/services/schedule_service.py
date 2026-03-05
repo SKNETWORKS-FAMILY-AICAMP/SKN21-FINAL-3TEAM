@@ -267,7 +267,7 @@ async def create_with_google_services(
         description=schedule_data.get("description"),
         start_time=schedule_data["start_time"],
         end_time=schedule_data.get("end_time"),
-        schedule_type=schedule_data.get("schedule_type", "task"),
+        schedule_type=schedule_data.get("schedule_type", "google"),
         priority=schedule_data.get("priority", "medium"),
         include_meet=include_meet,
         attendee_emails=attendee_emails or [],

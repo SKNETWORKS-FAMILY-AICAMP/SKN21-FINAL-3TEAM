@@ -169,7 +169,7 @@ async def _register_schedule(parsed: dict, user_id: int) -> dict:
             "start_time": start_dt,
             "end_time": end_dt,
             "description": parsed.get("description", ""),
-            "schedule_type": "task",
+            "schedule_type": parsed.get("schedule_type", "google"),
         }
 
         async with async_session() as db:
@@ -380,6 +380,7 @@ async def _handle_clarify_response(user_input: str, user_id: int, clarify_schedu
         "end_time": end_dt.strftime("%Y-%m-%dT%H:%M:%S"),
         "description": clarify_schedule.get("description", ""),
         "include_meet": clarify_schedule.get("include_meet", False),
+        "schedule_type": clarify_schedule.get("schedule_type", "google"),
     }
 
     return await _register_schedule(completed, user_id)
@@ -536,10 +537,13 @@ async def _parse_schedule_input(user_input: str) -> dict:
 
 예시:
 입력: "내일 오후 3시 점심 회의"
-출력: {{"title": "점심 회의", "start_time": "{tomorrow}T15:00:00", "end_time": "{tomorrow}T16:00:00", "description": "", "include_meet": true}}
+출력: {{"title": "점심 회의", "start_time": "{tomorrow}T15:00:00", "end_time": "{tomorrow}T16:00:00", "description": "", "include_meet": true, "schedule_type": "meeting"}}
 
 입력: "오늘 저녁 6시 팀 식사"
-출력: {{"title": "팀 식사", "start_time": "{today}T18:00:00", "end_time": "{today}T19:00:00", "description": "", "include_meet": false}}
+출력: {{"title": "팀 식사", "start_time": "{today}T18:00:00", "end_time": "{today}T19:00:00", "description": "", "include_meet": false, "schedule_type": "google"}}
+
+입력: "다음주 금요일까지 보고서 마감"
+출력: {{"title": "보고서 마감", "start_time": "...", "end_time": "...", "description": "", "include_meet": false, "schedule_type": "deadline"}}
 
 규칙:
 - "내일"은 {tomorrow}
@@ -549,6 +553,7 @@ async def _parse_schedule_input(user_input: str) -> dict:
 - "오후", "저녁" 같은 모호한 표현만 있고 구체적 시간이 없으면 start_time을 null로 설정
 - "오후 N시"는 N+12시 (오후 3시 = 15:00)
 - include_meet: "회의", "미팅", "meeting" 키워드가 있으면 true, 아니면 false
+- schedule_type: "회의"/"미팅"/"meeting"/"스탠드업"/"킥오프" → "meeting", "마감"/"데드라인"/"deadline"/"제출" → "deadline", 그 외 → "google"
 - 반드시 유효한 JSON만 출력하세요. 실제 날짜를 넣으세요."""
 
     user_prompt = f"일정 입력: {user_input}"
@@ -559,6 +564,18 @@ async def _parse_schedule_input(user_input: str) -> dict:
     except json.JSONDecodeError:
         logger.error(f"일정 파싱 실패 (JSON 에러): {result_str}")
         parsed = {}
+
+    # LLM 반환값과 무관하게 user_input에서 schedule_type 확정
+    valid_types = {"meeting", "deadline", "google"}
+    if parsed.get("schedule_type") not in valid_types:
+        _meeting_kw = ("회의", "미팅", "meeting", "스탠드업", "킥오프")
+        _deadline_kw = ("마감", "데드라인", "deadline", "제출")
+        if any(kw in user_input for kw in _meeting_kw):
+            parsed["schedule_type"] = "meeting"
+        elif any(kw in user_input for kw in _deadline_kw):
+            parsed["schedule_type"] = "deadline"
+        else:
+            parsed["schedule_type"] = "google"
 
     # LLM이 null로 반환한 경우 → 시간 불명확, 그대로 둠 (되물어보기 트리거)
     start_time = parsed.get("start_time")
@@ -635,6 +652,18 @@ def _fallback_parse(user_input: str, title_hint: str = "") -> dict:
         hour = 12
     # "오후", "저녁" 등만 있고 구체적 시간 없으면 hour는 None 유지
 
+    # schedule_type 추론
+    meeting_kw = ("회의", "미팅", "meeting", "스탠드업", "킥오프")
+    deadline_kw = ("마감", "데드라인", "deadline", "제출")
+    if any(kw in text for kw in meeting_kw):
+        schedule_type = "meeting"
+    elif any(kw in text for kw in deadline_kw):
+        schedule_type = "deadline"
+    else:
+        schedule_type = "google"
+
+    include_meet = any(kw in text for kw in ("회의", "미팅", "meeting", "미트"))
+
     if hour is None:
         # 시간 불명확 → start_time을 None으로
         return {
@@ -642,14 +671,12 @@ def _fallback_parse(user_input: str, title_hint: str = "") -> dict:
             "start_time": None,
             "end_time": None,
             "description": "",
-            "include_meet": any(kw in text for kw in ("회의", "미팅", "meeting", "미트")),
+            "include_meet": include_meet,
+            "schedule_type": schedule_type,
         }
 
     start = date.replace(hour=hour, minute=minute, second=0, microsecond=0)
     end = start + timedelta(hours=1)
-
-    # include_meet 판단
-    include_meet = any(kw in text for kw in ("회의", "미팅", "meeting", "미트"))
 
     return {
         "title": title,
@@ -657,6 +684,7 @@ def _fallback_parse(user_input: str, title_hint: str = "") -> dict:
         "end_time": end.strftime("%Y-%m-%dT%H:%M:%S"),
         "description": "",
         "include_meet": include_meet,
+        "schedule_type": schedule_type,
     }
 
 
