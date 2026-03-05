@@ -18,6 +18,8 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             cd /home/ubuntu/SKN21-FINAL-3TEAM
+            git stash 2>/dev/null || true
+            git checkout develop
             git pull origin develop
             find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
             source .venv/bin/activate
@@ -43,4 +45,7 @@ jobs:
             "
             cd ..
             sudo systemctl restart workflow-agent
+            sleep 5
+            sudo systemctl status workflow-agent --no-pager || true
+            curl -s http://localhost:8000/health || echo "서버 시작 대기 중..."
             echo "배포 완료"
