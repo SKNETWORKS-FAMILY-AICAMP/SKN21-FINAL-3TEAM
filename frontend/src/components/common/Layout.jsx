@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react';
+import useUIStore from '../../store/uiStore';
 import Topbar from './Topbar';
 import AIDock from './AIDock';
 import ErrorBoundary from './ErrorBoundary';
@@ -15,6 +16,7 @@ const pageVariants = {
 export default function Layout() {
   const location = useLocation();
   const isChatPage = location.pathname === '/chat';
+  const topbarScheduleHidden = useUIStore((s) => s.dashboard?.topbarScheduleHidden);
   const [isScrolled, setIsScrolled] = useState(false);
   const mainRef = useRef(null);
   // handleScroll 클로저에서 최신 isChatPage 값을 참조하기 위한 ref
@@ -115,9 +117,9 @@ export default function Layout() {
       <main
         ref={mainRef}
         onScrollCapture={handleScroll}
-        className={`flex-1 min-h-0 ${isChatPage
-            ? 'overflow-hidden flex flex-col'
-            : 'overflow-y-auto overflow-x-hidden px-4 md:px-8 pb-20'
+        className={`flex-1 min-h-0 relative ${isChatPage
+            ? 'overflow-hidden flex flex-col pt-[180px]'
+            : `overflow-y-auto overflow-x-hidden ${topbarScheduleHidden ? 'pt-[100px]' : 'pt-[180px]'} px-4 md:px-8 pb-20`
           }`}
       >
         <AnimatePresence mode="wait">

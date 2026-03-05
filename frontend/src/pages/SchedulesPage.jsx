@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useOutletContext, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import useGoogleServices from '../hooks/useGoogleServices';
 import useAuthStore from '../store/authStore';
 import { sendMeetingInvite } from '../api/google';
@@ -14,7 +14,7 @@ import SheetsDashboard from '../components/schedules/SheetsDashboard';
 import useScheduleTypeStore, { DEFAULT_TYPES } from '../store/scheduleTypeStore';
 
 export default function SchedulesPage() {
-  const { isScrolled } = useOutletContext();
+
   const [searchParams] = useSearchParams();
   const { connected, calendarEvents, calendarLoading, calendarError, fetchCalendarEvents, hasScope, syncEventToGoogle, createEventWithMeet, deleteCalendarEvent } = useGoogleServices();
   const { customTypes } = useScheduleTypeStore();
@@ -324,10 +324,10 @@ export default function SchedulesPage() {
   return (
     <div>
       {/* 헤더 */}
-      <header className={`flex justify-between items-center sticky top-0 bg-surface-main z-10 overflow-hidden transition-all duration-300 ${isScrolled ? 'h-[56px]' : 'h-[100px]'}`}>
+      <header className="flex justify-between items-center bg-surface-main overflow-hidden h-[100px]">
         <div>
-          <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-2xl'}`}>일정 관리</h1>
-          <p className={`text-neutral-sub transition-all duration-300 overflow-hidden ${isScrolled ? 'text-xs mt-0 max-h-0 opacity-0' : 'text-sm mt-1 max-h-6 opacity-100'}`}>Action Item과 회의 일정을 통합 관리합니다</p>
+          <h1 className="font-bold text-2xl">일정 관리</h1>
+          <p className="text-neutral-sub text-sm mt-1">Action Item과 회의 일정을 통합 관리합니다</p>
         </div>
       </header>
 

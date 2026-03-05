@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useOutletContext } from 'react-router-dom';
+
 import DocumentUpload from '../components/documents/DocumentUpload';
 import CustomSelect from '../components/common/CustomSelect';
 import DatePicker from '../components/common/DatePicker';
@@ -22,7 +22,7 @@ const SEARCH_PLACEHOLDERS = {
 };
 
 export default function DocumentsPage() {
-  const { isScrolled } = useOutletContext();
+
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -203,10 +203,10 @@ export default function DocumentsPage() {
 
   return (
     <div>
-      <header className={`flex justify-between items-center sticky top-0 bg-surface-main z-10 transition-all duration-300 ${isScrolled ? 'h-[56px]' : 'h-[100px]'}`}>
+      <header className="flex justify-between items-center bg-surface-main h-[100px]">
         <div>
-          <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-2xl'}`}>문서 관리</h1>
-          <p className={`text-neutral-sub transition-all duration-300 overflow-hidden ${isScrolled ? 'text-xs mt-0 max-h-0 opacity-0' : 'text-sm mt-1 max-h-6 opacity-100'}`}>회사 규정 및 문서를 관리합니다</p>
+          <h1 className="font-bold text-2xl">문서 관리</h1>
+          <p className="text-neutral-sub text-sm mt-1">회사 규정 및 문서를 관리합니다</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">

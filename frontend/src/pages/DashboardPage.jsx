@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Pencil, Check, RotateCcw } from 'lucide-react';
+import { X, Plus, Minus, Pencil, Check, RotateCcw } from 'lucide-react';
 import GreetingBanner from '../components/dashboard/GreetingBanner';
 import TodaySchedule from '../components/dashboard/TodaySchedule';
 import AIChatWidget from '../components/dashboard/AIChatWidget';
@@ -333,6 +333,7 @@ export default function DashboardPage() {
   const {
     dashboard, editMode, toggleEditMode,
     hideWidget, restoreWidget, resetDashboard, moveWidget,
+    toggleTopbarSchedule,
   } = useUIStore();
 
   const { leftColumn, rightColumn, hidden } = dashboard;
@@ -398,15 +399,38 @@ export default function DashboardPage() {
         <WidgetColumn col="rightColumn" items={rightColumn} editMode={editMode} onHide={hideWidget} {...dragProps} widgetProps={widgetProps} />
       </div>
 
-      {/* 숨긴 위젯 영역 */}
-      {editMode && hidden.length > 0 && (
-        <div className="mt-5">
-          <p className="text-xs text-neutral-muted mb-2 font-medium">숨긴 위젯 (클릭하여 복원)</p>
-          <div className="flex flex-wrap gap-3">
-            {hidden.map(id => (
-              <HiddenWidgetCard key={id} id={id} onRestore={restoreWidget} />
-            ))}
+      {/* 숨긴 위젯 영역 및 레이아웃 제어 */}
+      {editMode && (
+        <div className="mt-5 space-y-4">
+          {/* 상단 레이아웃 제어 */}
+          <div>
+            <p className="text-xs text-neutral-muted mb-2 font-medium">상단 레이아웃 제어</p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={toggleTopbarSchedule}
+                className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed transition-colors ${
+                  dashboard.topbarScheduleHidden 
+                    ? 'border-neutral-300 dark:border-neutral-600 text-neutral-sub hover:border-primary-400 hover:text-primary-700 dark:hover:border-primary-500 dark:hover:text-primary-400' 
+                    : 'border-primary-300 text-primary-700 bg-primary-50 dark:border-primary-700 dark:text-primary-300 dark:bg-primary-900/20 hover:border-error hover:text-error hover:bg-error-bg'
+                }`}
+              >
+                {dashboard.topbarScheduleHidden ? <Plus size={16} /> : <Minus size={16} className="text-error" />}
+                <span className="text-sm font-medium">상단 스케줄 바 {dashboard.topbarScheduleHidden ? '복원' : '숨기기'}</span>
+              </button>
+            </div>
           </div>
+
+          {/* 숨긴 위젯 요소가 있을 경우만 렌더링 */}
+          {hidden.length > 0 && (
+            <div>
+              <p className="text-xs text-neutral-muted mb-2 font-medium">숨긴 위젯 (클릭하여 복원)</p>
+              <div className="flex flex-wrap gap-3">
+                {hidden.map(id => (
+                  <HiddenWidgetCard key={id} id={id} onRestore={restoreWidget} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
