@@ -334,19 +334,19 @@ export default function Topbar({ isScrolled = false }) {
 
           {/* 중앙 - Your Schedule Timeline (데스크톱) */}
           <div className="hidden md:flex justify-center w-[650px] xl:w-[800px]">
-            <div className={`bg-white border border-neutral-200 text-neutral-800 rounded-[32px] flex items-center p-1.5 w-full shadow-sm transition-transform duration-300 transform origin-center ${isScrolled ? 'scale-[0.88]' : 'scale-100'}`}>
+            <div className={`bg-white/80 dark:bg-neutral-900/40 backdrop-blur-md border border-neutral-200 dark:border-white/10 text-neutral-800 dark:text-neutral-100 rounded-[32px] flex items-center p-1.5 w-full shadow-sm transition-transform duration-300 transform origin-center ${isScrolled ? 'scale-[0.88]' : 'scale-100'}`}>
               
               {/* 왼쪽 Label section */}
-              <div className="flex items-center gap-3 pl-5 pr-3 whitespace-nowrap border-r border-neutral-200">
-                <span className="text-sm font-extrabold tracking-tight text-neutral-800">Your Schedule</span>
-                <div className="bg-neutral-50 rounded-full px-3 py-1.5 flex items-center gap-2 border border-neutral-200">
-                  <Calendar size={13} className="text-neutral-500" />
-                  <span className="text-[11px] text-neutral-600 font-semibold">{dayjs().format('DD MMMM')}</span>
+              <div className="flex items-center gap-3 pl-5 pr-3 whitespace-nowrap border-r border-neutral-200 dark:border-white/10">
+                <span className="text-sm font-extrabold tracking-tight text-neutral-800 dark:text-neutral-100">Your Schedule</span>
+                <div className="bg-neutral-50 dark:bg-white/5 rounded-full px-3 py-1.5 flex items-center gap-2 border border-neutral-200 dark:border-white/10">
+                  <Calendar size={13} className="text-neutral-500 dark:text-neutral-400" />
+                  <span className="text-[11px] text-neutral-600 dark:text-neutral-300 font-semibold">{dayjs().format('DD MMMM')}</span>
                 </div>
               </div>
               
               {/* 타임라인 영역 */}
-              <div className="flex-1 bg-neutral-50/50 rounded-full flex items-center px-1 mx-1 h-[48px] relative overflow-visible border border-neutral-100 shadow-inner">
+              <div className="flex-1 bg-neutral-50/50 dark:bg-white/5 rounded-full flex items-center px-1 mx-1 h-[48px] relative overflow-visible border border-neutral-100 dark:border-white/5 shadow-inner">
                 {todaySchedules.length > 0 ? (() => {
                   const currentEvent = todaySchedules[0];
                   const isTeamEvent = currentEvent.schedule_type === 'meeting' || currentEvent.is_team_visible;
@@ -413,7 +413,7 @@ export default function Topbar({ isScrolled = false }) {
                         </div>
                       
                         {/* Current Time Indicator */}
-                        <div className="absolute -top-4 right-1/4 bg-neutral-800 text-white text-[9px] font-bold px-2 py-0.5 rounded-full z-50 shadow-md flex items-center gap-1.5 border border-neutral-700/50">
+                        <div className="absolute -top-4 right-1/4 bg-neutral-800 dark:bg-neutral-700 text-white text-[9px] font-bold px-2 py-0.5 rounded-full z-50 shadow-md flex items-center gap-1.5 border border-neutral-700/50 dark:border-white/10">
                           <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_4px_#4ade80]" />
                           {currentTime.format('h:mm A')}
                         </div>
@@ -461,13 +461,13 @@ export default function Topbar({ isScrolled = false }) {
                     </div>
                   ); })() : (
                     <div className="flex w-full h-full items-center justify-center">
-                      <span className="text-[13px] font-bold text-neutral-400">No scheduled events today</span>
+                      <span className="text-[13px] font-bold text-neutral-400 dark:text-neutral-500">No scheduled events today</span>
                     </div>
                   )}
               </div>
 
               {/* 더보기 버튼 */}
-              <Link to="/schedules" className="w-[36px] h-[36px] ml-1 mr-1 rounded-full bg-neutral-900 flex items-center justify-center hover:bg-neutral-800 transition-colors text-white focus:outline-none flex-shrink-0 shadow-sm">
+              <Link to="/schedules" className="w-[36px] h-[36px] ml-1 mr-1 rounded-full bg-neutral-900 dark:bg-white/10 flex items-center justify-center hover:bg-neutral-800 dark:hover:bg-white/20 transition-colors text-white focus:outline-none flex-shrink-0 shadow-sm">
                 <ArrowUpRight size={16} strokeWidth={2.5} />
               </Link>
             </div>
