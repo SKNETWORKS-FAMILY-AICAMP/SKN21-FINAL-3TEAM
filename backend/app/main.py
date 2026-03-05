@@ -4,7 +4,7 @@ FastAPI 메인 앱 (팀원 A 관리)
 import sys
 import os
 import warnings
-from pathlib import Path
+from pathlib import Path  # noqa: E402
 
 # 경고 메시지 억제
 warnings.filterwarnings("ignore")
@@ -21,6 +21,7 @@ if str(project_root) not in sys.path:
 
 from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.staticfiles import StaticFiles  # noqa: E402
 
 from app.config import get_settings  # noqa: E402
 from app.api.v1.router import api_router  # noqa: E402
@@ -45,6 +46,11 @@ app.add_middleware(
 
 # API 라우터 등록
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+
+# 업로드 파일 정적 서빙 (/uploads/avatars/... 접근 가능)
+_upload_dir = str(Path(__file__).resolve().parent.parent / "uploads")
+os.makedirs(_upload_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=_upload_dir), name="uploads")
 
 
 @app.on_event("startup")
