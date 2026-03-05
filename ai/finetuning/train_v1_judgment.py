@@ -38,7 +38,7 @@ from transformers import (
     BitsAndBytesConfig,
     TrainingArguments,
 )
-from trl import SFTTrainer
+from trl import SFTTrainer, SFTConfig
 
 # ── 경로 ──
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -174,7 +174,7 @@ def train(config: dict):
 
     train_cfg = config["training"]
     output_dir = str(OUTPUT_BASE / "checkpoints")
-    training_args = TrainingArguments(
+    training_args = SFTConfig(dataset_text_field="text", max_length=2048,
         output_dir=output_dir,
         num_train_epochs=train_cfg["num_epochs"],
         per_device_train_batch_size=train_cfg["batch_size"],
@@ -200,8 +200,6 @@ def train(config: dict):
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         peft_config=lora_config,
-        max_seq_length=train_cfg["max_length"],
-        dataset_text_field="text",
     )
 
     trainer.train()
