@@ -917,12 +917,55 @@ v2_generate AI Hub 데이터 탈락:
 | v2_generate | 생성 중 | 생성 중 | 다른 PC에서 작업 중 |
 
 **다음 할 일:**
-- v2_summary 데이터 생성:
-  ```bash
-  rm data/training/v2_summary/aihub_summary.jsonl
-  rm data/training/v2_summary/synthetic_summary.jsonl
-  python ai/finetuning/scripts/convert_aihub_summary.py
-  python ai/finetuning/scripts/synthesize_summary.py --count 300
-  ```
-- v2_generate 생성 완료 대기
-- 전체 병합 + 검증 + train/eval 분할
+- 아래 야간 세션에서 이어서 진행
+
+---
+
+## 2026-03-05 (수) — 야간 세션
+
+**v2_summary 데이터 생성 완료:**
+- `convert_aihub_summary.py`: 702건 생성 (목표 700, +2건 초과)
+  - 컴퓨터 꺼짐 → `--append` 옵션 추가하여 이어서 생성 (JSONL 포맷 덕분에 데이터 유실 없음)
+- `synthesize_summary.py`: 305건 생성 (목표 300, +5건 초과)
+- validate_summary() 검증 강화: 포인트 3~5개, 키워드 3~7개, 메타지시문 5패턴 감지
+
+**v2_generate 데이터 생성 완료:**
+- synthetic_generate.jsonl: 801건 (목표 800)
+- aihub_generate.jsonl: 700건 (기존 완료)
+
+**validate_v2_data.py 검증 스크립트 전면 개선:**
+- v2_generate: 고정 필드 검증 → 동적 `[필드 명세]` 파싱 기반 검증으로 변경
+- v2_summary: 포인트/키워드 개수 + 메타지시문 감지 추가
+- `_detect_task()`: 동적 필드 프롬프트 감지 키워드 추가
+- 중복 체크: assistant만 비교 → user+assistant 쌍 비교 (not-found 오탐 해결)
+
+**전체 데이터 검증 실행:**
+```
+총 샘플: 3,508건 | 에러: 0건 | 경고: 178건 | 중복: 0건 | 판정: PASS
+```
+- 경고 178건: 전부 조사 포함 키워드 오탐 (정규식 과탐, 실제 품질 문제 아님)
+
+**보고서 업데이트:**
+- Section 4: 실제 데이터 수량 반영 (3,508건)
+- Section 5: 검증 결과 기록 (에러 0건)
+- Section 6: Train/Eval 분할 수치 실제 데이터에 맞게 수정
+- Section 13: Solar API → LLM API fallback으로 수정
+- 부록 A: variant 파일 제거, 건수/상태 최신화
+
+**데이터 생성 과정 기록 문서 작성:**
+- `ai/finetuning/finetuning_docs/데이터_생성_과정_기록.md` 신규 생성
+- 8단계 타임라인 + 최종 데이터 현황 + 데이터 구조 + 핵심 설계 결정 기록
+
+**최종 데이터 현황:**
+
+| 어댑터 | AI Hub | 합성 | 합계 | 상태 |
+|--------|:------:|:----:|:----:|:----:|
+| v2_summary | 702 | 305 | 1,007 | 완료 |
+| v2_qa | 600 | 400 | 1,000 | 완료 |
+| v2_generate | 700 | 801 | 1,501 | 완료 |
+| **합계** | **2,002** | **1,506** | **3,508** | **완료** |
+
+**다음 할 일:**
+- 토큰 길이 분석 (max_length=2048 충분한지 확인)
+- Train/Eval 분할 (`validate_v2_data.py --split`)
+- GPU 환경 준비 → 3개 모델 비교 학습

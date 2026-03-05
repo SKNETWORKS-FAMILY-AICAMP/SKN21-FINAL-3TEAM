@@ -8,16 +8,18 @@ v2 Document 학습 데이터 검증 스크립트
     3. 길이 분포 통계
   v2_generate:
     4. assistant JSON 파싱, 한국어 키 혼입 방지
-    5. 템플릿별 필수 필드 존재
+    5. 동적 필드 명세 기반 필드 존재/과잉 검증
   v2_qa:
-    6. assistant JSON 파싱 (answer, citations, confidence)
-    7. confidence 범위 0.0~1.0, relevance 값 검증
-    8. citations 배열 비어있는지
+    6. assistant JSON 파싱 (answer, citations)
+    7. deprecated 필드 거부 (confidence, relevance, source)
+    8. citations 배열 구조 검증
   v2_summary:
     9. 마크다운 구조 (## 주요 포인트, ## 키워드)
-    10. 키워드 품질 (조사/어미 포함 여부)
+    10. 포인트 개수 (3~5), 키워드 개수 (3~7)
+    11. 키워드 품질 (조사/어미 포함 여부)
+    12. 메타지시문 복사 감지
   중복:
-    11. 간이 중복 체크 (Jaccard trigram similarity)
+    13. 간이 중복 체크 (Jaccard trigram similarity)
 
 사용법:
     # 전체 검증
@@ -57,24 +59,16 @@ ADAPTER_DIRS = {
     "v2_summary": BASE_DIR / "data" / "training" / "v2_summary",
 }
 
-# ── 필수 필드 정의 ──
-
-GENERATE_FIELDS = {
-    "meeting_minutes": {
-        "required": ["title", "date", "attendees", "summary", "decisions", "action_items"],
-    },
-    "report": {
-        "required": ["title", "author", "date", "department", "report_type", "overview", "main_content", "tasks"],
-    },
-    "proposal": {
-        "required": [
-            "title", "submit_date", "submit_to", "company", "manager",
-            "proposal_name", "background", "purpose", "content", "schedule", "budget",
-        ],
-    },
-}
-
 QA_FIELDS = ["answer", "citations"]
+
+# 메타지시문 복사 패턴 (summary용)
+SUMMARY_META_PATTERNS = [
+    "핵심 요약 2-3문장",
+    "빈 줄",
+    "불릿(-)",
+    "명사/명사구",
+    "쉼표로 구분",
+]
 
 KOREAN_KEY_PATTERN = re.compile(r"[\uac00-\ud7a3]")
 REPETITION_PATTERN = re.compile(r"(.{10,})\1{2,}")
@@ -93,14 +87,17 @@ def _detect_task(messages: list) -> str:
     sys_content = ""
     for msg in messages:
         if msg.get("role") == "system":
-            sys_content = msg.get("content", "").lower()
+            sys_content = msg.get("content", "")
             break
 
-    if any(kw in sys_content for kw in ("회의록 작성", "보고서 작성", "제안서 작성", "필드 명세")):
+    sys_lower = sys_content.lower()
+
+    # 동적 필드 방식: "필드 명세" or "기업 문서 작성 전문가"
+    if any(kw in sys_lower for kw in ("필드 명세", "기업 문서 작성 전문가", "json으로 생성")):
         return "doc_generate"
-    if any(kw in sys_content for kw in ("질의응답", "citation", "citations")):
+    if any(kw in sys_lower for kw in ("질의응답", "citation", "citations")):
         return "doc_qa"
-    if any(kw in sys_content for kw in ("요약", "summary")):
+    if any(kw in sys_lower for kw in ("요약", "summary", "주요 포인트", "키워드")):
         return "doc_summary"
     return "unknown"
 
@@ -196,8 +193,27 @@ def validate_sample(sample: dict, idx: int) -> tuple[list[str], list[str]]:
     return errors, warnings
 
 
+def _parse_field_spec(user_content: str) -> list[str]:
+    """user prompt의 [필드 명세]에서 필드 이름 목록 추출"""
+    fields = []
+    in_spec = False
+    for line in user_content.split("\n"):
+        stripped = line.strip()
+        if "[필드 명세]" in stripped:
+            in_spec = True
+            continue
+        if in_spec:
+            if stripped.startswith("[") and "필드" not in stripped:
+                break  # 다음 섹션 시작
+            if stripped.startswith("- ") and ":" in stripped:
+                field_name = stripped[2:].split(":")[0].strip()
+                if field_name:
+                    fields.append(field_name)
+    return fields
+
+
 def _validate_generate(content: str, messages: list, idx: int, errors: list, warnings: list):
-    """v2_generate 검증"""
+    """v2_generate 검증 (동적 필드 명세 기반)"""
     parsed = _safe_parse_json(content)
     if parsed is None:
         errors.append(f"[{idx}] (generate) JSON 파싱 실패")
@@ -208,16 +224,24 @@ def _validate_generate(content: str, messages: list, idx: int, errors: list, war
     if korean_keys:
         errors.append(f"[{idx}] (generate) 한국어 키: {korean_keys}")
 
-    # 필수 필드
-    template = _detect_template(messages)
-    fields_spec = GENERATE_FIELDS.get(template, {})
-    required = fields_spec.get("required", [])
-    missing = [f for f in required if f not in parsed]
-    if missing:
-        errors.append(f"[{idx}] (generate/{template}) 필수 필드 누락: {missing}")
+    # 동적 필드 명세에서 요청된 필드 파싱
+    user_content = messages[1].get("content", "") if len(messages) > 1 else ""
+    expected_fields = _parse_field_spec(user_content)
 
-    # 빈 필수 필드는 정상 (원문에 없는 정보는 비워두는 게 올바른 학습 데이터)
-    # 할루시네이션 방지를 위해 빈 필드 허용
+    if expected_fields:
+        # 누락 필드 체크
+        missing = [f for f in expected_fields if f not in parsed]
+        if missing:
+            errors.append(f"[{idx}] (generate) 필드 누락: {missing}")
+
+        # 과잉 필드 체크
+        extra = [k for k in parsed.keys() if k not in expected_fields]
+        if extra:
+            warnings.append(f"[{idx}] (generate) 과잉 필드: {extra}")
+    else:
+        # 필드 명세 파싱 실패 시 기본 체크만
+        if len(parsed) == 0:
+            errors.append(f"[{idx}] (generate) JSON 키 없음")
 
 
 def _validate_qa(content: str, idx: int, errors: list, warnings: list):
@@ -274,31 +298,42 @@ def _validate_summary(content: str, idx: int, errors: list, warnings: list):
     if not has_keywords:
         errors.append(f"[{idx}] (summary) '## 키워드' 없음")
 
-    # 주요 포인트 불릿 개수
-    if has_points:
-        points_section = content.split("## 주요 포인트")[1]
-        if "## 키워드" in points_section:
-            points_section = points_section.split("## 키워드")[0]
-        bullet_count = points_section.count("\n- ")
-        if bullet_count == 0:
+    # 주요 포인트 불릿 개수 (3~5개)
+    if has_points and has_keywords:
+        points_section = content.split("## 주요 포인트")[1].split("## 키워드")[0]
+        bullets = [line.strip() for line in points_section.strip().splitlines() if line.strip().startswith("- ")]
+        if len(bullets) == 0:
             errors.append(f"[{idx}] (summary) 주요 포인트 불릿 없음")
-        elif bullet_count < 3:
-            errors.append(f"[{idx}] (summary) 주요 포인트 {bullet_count}개 (3개 이상 필수)")
+        elif len(bullets) < 3 or len(bullets) > 5:
+            errors.append(f"[{idx}] (summary) 주요 포인트 {len(bullets)}개 (3~5개 필요)")
+    elif has_points:
+        points_section = content.split("## 주요 포인트")[1]
+        bullets = [line.strip() for line in points_section.strip().splitlines() if line.strip().startswith("- ")]
+        if len(bullets) == 0:
+            errors.append(f"[{idx}] (summary) 주요 포인트 불릿 없음")
 
-    # 키워드 품질
+    # 키워드 개수 (3~7개) + 품질
     if has_keywords:
-        kw_section = content.split("## 키워드\n")[-1].strip()
+        kw_section = content.split("## 키워드")[-1].strip()
         keywords = [kw.strip() for kw in kw_section.split(",") if kw.strip()]
 
         if len(keywords) == 0:
             errors.append(f"[{idx}] (summary) 키워드 비어있음")
-        elif len(keywords) < 3:
-            warnings.append(f"[{idx}] (summary) 키워드 {len(keywords)}개 (3개 이상 권장)")
+        elif len(keywords) < 3 or len(keywords) > 7:
+            errors.append(f"[{idx}] (summary) 키워드 {len(keywords)}개 (3~7개 필요)")
 
         # 조사/어미 붙은 키워드 체크
         bad_kws = [kw for kw in keywords if BAD_KEYWORD_ENDINGS.search(kw)]
         if bad_kws:
             warnings.append(f"[{idx}] (summary) 조사 포함 키워드: {bad_kws}")
+
+    # 메타지시문 복사 감지
+    for pattern in SUMMARY_META_PATTERNS:
+        if pattern in content:
+            errors.append(f"[{idx}] (summary) 메타지시문 복사: '{pattern}'")
+            break
+    if "포인트" in content and "작성하세요" in content:
+        errors.append(f"[{idx}] (summary) 메타지시문 복사: '포인트'+'작성하세요'")
 
 
 # ── 파일/디렉토리 검증 ──
@@ -454,8 +489,10 @@ def check_duplicates(filepaths: list[Path], threshold: float = 0.95):
                     sample = json.loads(line)
                     msgs = sample.get("messages", [])
                     if len(msgs) >= 3:
+                        # user + assistant 쌍으로 비교 (not-found처럼 assistant만 같은 경우 제외)
+                        user = msgs[1].get("content", "")
                         asst = msgs[2].get("content", "")
-                        all_texts.append((filepath.name, line_num, asst))
+                        all_texts.append((filepath.name, line_num, user + asst))
                 except json.JSONDecodeError:
                     pass
 

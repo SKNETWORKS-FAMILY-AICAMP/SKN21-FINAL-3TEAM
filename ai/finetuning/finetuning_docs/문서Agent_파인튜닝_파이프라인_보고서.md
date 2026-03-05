@@ -279,17 +279,14 @@ GPT-4o 생성 answer + citation  →  {"answer": "...", "citations": [{"content"
 
 ## 4. 데이터 전체 수량
 
-### 4.1 어댑터별 데이터 구성
+### 4.1 어댑터별 데이터 구성 (최종 확정)
 
-| 어댑터 | 총량 | AI Hub | 합성 (GPT/Claude) |
+| 어댑터 | 총량 | AI Hub | 합성 (GPT-4o) |
 |--------|:----:|:------:|:------------------:|
-| v2_summary | **1,000** | 700 (70%) | 300 (30%) |
+| v2_summary | **1,007** | 702 (70%) | 305 (30%) |
 | v2_qa | **1,000** | 600 (60%) | 400 (40%) |
-
-| v2_generate | **1,500** | 700 (47%) | 800 (53%) |
-| **합계** | **3,500** | **2,000 (57%)** | **1,500 (43%)** |
-
-> v2_generate의 "변형" 카테고리는 삭제됨 — 필드 풀 랜덤 조합이 모든 샘플에 내장되므로 별도 불필요.
+| v2_generate | **1,501** | 700 (47%) | 801 (53%) |
+| **합계** | **3,508** | **2,002 (57%)** | **1,506 (43%)** |
 
 ### 4.2 비율 설계 근거
 
@@ -325,7 +322,7 @@ GPT-4o 생성 answer + citation  →  {"answer": "...", "citations": [{"content"
 
 ## 5. 데이터 검증
 
-### 5.1 자동 검증 (validate_v2_data.py)
+### 5.1 자동 검증 항목 (validate_v2_data.py)
 
 | 검증 항목 | v2_summary | v2_qa | v2_generate |
 |-----------|:----------:|:-----:|:-----------:|
@@ -334,45 +331,85 @@ GPT-4o 생성 answer + citation  →  {"answer": "...", "citations": [{"content"
 | content 비어있는지 | ✅ | ✅ | ✅ |
 | 반복 패턴 탐지 | ✅ | ✅ | ✅ |
 | 마크다운 구조 (## 주요 포인트, ## 키워드) | ✅ | - | - |
+| 포인트 개수 검증 (3~5개) | ✅ | - | - |
+| 키워드 개수 검증 (3~7개) | ✅ | - | - |
 | 키워드 품질 (조사/어미 포함 여부) | ✅ | - | - |
+| 메타지시문 복사 감지 (5패턴) | ✅ | - | - |
 | JSON 파싱 (assistant 응답) | - | ✅ | ✅ |
-| 필수 필드 존재 | - | ✅ | ✅ |
+| 동적 필드 명세 기반 누락/과잉 검증 | - | - | ✅ |
 | 한국어 키 혼입 방지 | - | ✅ | ✅ |
-| citations 배열 검증 (content 필드) | - | ✅ | - |
+| deprecated 필드 거부 (confidence 등) | - | ✅ | - |
+| citations 배열 구조 검증 (content 필드) | - | ✅ | - |
 | citations 길이 분포 리포트 | - | ✅ | - |
 | not-found 비율 (10~15%) | - | ✅ | - |
-| 템플릿별 필수 필드 | - | - | ✅ |
 
-### 5.2 품질 기준
+### 5.2 검증 결과 (2026-03-05 최종)
 
-| 지표 | 기준 | 조치 |
-|------|:----:|------|
-| 에러율 < 5% | ✅ PASS | 그대로 사용 |
-| 에러율 5~15% | ⚠️ REVIEW | 에러 샘플 수동 검수 후 수정/제거 |
-| 에러율 > 15% | ❌ FAIL | 변환 로직 재점검 필요 |
+```
+총 샘플: 3,508건 | 에러: 0건 | 경고: 178건 | 판정: ✅ PASS
+```
 
-### 5.3 중복 검사
+#### v2_generate (1,501건)
 
-- **소규모** (< 2,000건): Jaccard trigram similarity (threshold ≥ 0.95)
-- **대규모** (≥ 2,000건): 해시 기반 exact duplicate 체크
-- 어댑터 간 교차 중복도 검사 (같은 passage가 다른 어댑터에 사용된 경우)
+| 파일 | 건수 | JSON유효 | 에러 | 경고 |
+|------|:----:|:--------:|:----:|:----:|
+| aihub_generate.jsonl | 700 | 100% | 0 | 0 |
+| synthetic_generate.jsonl | 801 | 100% | 0 | 0 |
 
-### 5.4 수동 검수
+- 템플릿 분포: 회의록 655 / 보고서 423 / 제안서 423
+- 동적 필드 명세 기반 누락/과잉 필드: 0건
+- 한국어 키 혼입: 0건
+- user 평균 길이: aihub 1,167자 / synthetic 1,698자
+- assistant 평균 길이: aihub 725자 / synthetic 867자
 
-각 어댑터별 랜덤 샘플 30건 (약 3~5%) 수동 검수:
-- 답변이 원문에 근거하는지
-- JSON 필드 값이 의미적으로 정확한지
-- 마크다운 형식이 일관적인지
+#### v2_qa (1,000건)
+
+| 파일 | 건수 | JSON유효 | not-found | 에러 |
+|------|:----:|:--------:|:---------:|:----:|
+| aihub_qa.jsonl | 300 | 100% | 36건 (12.0%) | 0 |
+| report_qa.jsonl | 300 | 100% | 36건 (12.0%) | 0 |
+| synthetic_qa.jsonl | 400 | 100% | 48건 (12.0%) | 0 |
+
+- citations 길이 분포: 0개=120건(12%), 1개=847건, 2개=29건, 3개=4건
+- deprecated 필드 (confidence/relevance/source): 0건
+- 단답(20자 미만): 3건 (고유명사/수치, 정상)
+
+#### v2_summary (1,007건)
+
+| 파일 | 건수 | 형식적합 | 에러 | 경고 |
+|------|:----:|:--------:|:----:|:----:|
+| aihub_summary.jsonl | 702 | 100% | 0 | 137 |
+| synthetic_summary.jsonl | 305 | 100% | 0 | 41 |
+
+- 경고 178건: 전부 **조사 포함 키워드 오탐** (예: "김정은"→"은", "제도"→"도")
+  - 정상 키워드를 정규식이 과탐한 것으로, 실제 품질 문제 아님
+- 포인트 개수 위반 (3~5개 범위 밖): 0건
+- 키워드 개수 위반 (3~7개 범위 밖): 0건
+- 메타지시문 복사: 0건
+
+### 5.3 중복 검사 결과
+
+- **방식**: user + assistant 쌍 기준 해시 비교 (3,508건)
+- **완전 중복: 0건**
+- 참고: assistant만 비교 시 not-found 응답 120건이 동일하나, user prompt(Context+Question)는 전부 다름 → 정상
+
+### 5.4 품질 기준
+
+| 지표 | 기준 | 결과 | 조치 |
+|------|:----:|:----:|------|
+| 에러율 < 5% | ✅ PASS | **0.0%** | 그대로 사용 |
+| 에러율 5~15% | ⚠️ REVIEW | - | - |
+| 에러율 > 15% | ❌ FAIL | - | - |
 
 ---
 
 ## 6. 학습 데이터 분할
 
-| 어댑터 | Train | Eval | Eval 비율 |
-|--------|------:|-----:|:---------:|
-| v2_summary | 850 | 150 | 15% |
-| v2_qa | 900 | 100 | 10% |
-| v2_generate | 1,350 | 150 | 10% |
+| 어댑터 | 총량 | Train | Eval | Eval 비율 |
+|--------|-----:|------:|-----:|:---------:|
+| v2_summary | 1,007 | 857 | 150 | 14.9% |
+| v2_qa | 1,000 | 900 | 100 | 10.0% |
+| v2_generate | 1,501 | 1,351 | 150 | 10.0% |
 
 ```bash
 # 분할 실행
@@ -569,33 +606,32 @@ python ai/finetuning/validate_v2_data.py --split
 
 ---
 
-## 11. 진행 현황 (2026-03-05 업데이트)
+## 11. 진행 현황 (2026-03-05 최종)
 
 ### 데이터 수집 현황
 
 | 어댑터 | 소스 | 목표 | 완료 | 상태 |
 |--------|------|:----:|:----:|:----:|
-| v2_summary | AI Hub + GPT-4o 요약 | 700 | 0 | ⏳ 스크립트 준비 완료, 재생성 대기 |
-| v2_qa | AI Hub MRC | 300 | 300 | ✅ (단답 150건 GPT-4o 보강) |
+| v2_summary | AI Hub + GPT-4o 요약 | 700 | 702 | ✅ |
+| v2_summary | 합성 (GPT-4o) | 300 | 305 | ✅ |
+| v2_qa | AI Hub MRC | 300 | 300 | ✅ |
 | v2_qa | AI Hub Report QA | 300 | 300 | ✅ |
-| v2_generate | AI Hub 변환 (필드 풀) | 700 | - | ⏳ 생성 중 |
-| v2_generate | 합성 (필드 풀) | 800 | - | ⏳ 생성 중 |
-| v2_qa | 합성 | 400 | 400 | ✅ (12% not-found 포함) |
-| v2_summary | 합성 | 300 | 0 | ⏳ 프롬프트 수정 완료, 재생성 대기 |
+| v2_qa | 합성 (GPT-4o) | 400 | 400 | ✅ (12% not-found 포함) |
+| v2_generate | AI Hub 변환 (필드 풀) | 700 | 700 | ✅ |
+| v2_generate | 합성 (필드 풀) | 800 | 801 | ✅ |
 
 ### 전체 파이프라인
 
 | 단계 | 내용 | 상태 |
 |:----:|------|:----:|
 | 1 | AI Hub 데이터 다운로드 (SN 582 + SN 569) | ✅ |
-| 2 | AI Hub → 학습 형식 변환 (v2_summary 700 + v2_qa 600) | ✅ |
+| 2 | AI Hub → 학습 형식 변환 (v2_summary 702 + v2_qa 600 + v2_generate 700) | ✅ |
 | 3 | 프롬프트 v2 수정 + sLLM 상수 분리 | ✅ |
 | 4 | 스크립트 QA + 계획서 수치 일관성 검증 | ✅ |
 | 5 | v2_generate 필드 풀 방식 재설계 (고정필드 폐기) | ✅ |
-| 6 | v2_generate AI Hub 700건 변환 (필드 풀 + GPT-4o) | ⏳ |
-| 6.5 | v2_generate 합성 800건 생성 (필드 풀 + GPT-4o) | ⏳ |
-| 7 | v2_qa 합성 데이터 생성 (400건 완료) + v2_summary 합성 대기 | ⏳ |
-| 8 | 전체 데이터 검증 + 중복 제거 | ⏳ |
+| 6 | 합성 데이터 생성 (v2_generate 801 + v2_summary 305 + v2_qa 400) | ✅ |
+| 7 | validate_summary() 검증 강화 (포인트/키워드/메타지시문) | ✅ |
+| 8 | 전체 데이터 검증 (3,508건, 에러 0건, 중복 0건) | ✅ |
 | 9 | Train/Eval 분할 | ⏳ |
 | 10 | QLoRA 파인튜닝 (3개 어댑터) | ⏳ |
 | 11 | 3개 모델 비교 → 1개 모델 선정 | ⏳ |
@@ -665,27 +701,46 @@ python ai/finetuning/validate_v2_data.py --split
 
 </details>
 
+<details>
+<summary>2026-03-05 야간 (데이터 생성 완료 + 검증 최종)</summary>
+
+| 작업 | 파일 |
+|------|------|
+| validate_summary() 검증 강화: 포인트 3~5개, 키워드 3~7개, 메타지시문 5패턴 | `convert_aihub_summary.py`, `synthesize_summary.py` |
+| convert_aihub_summary.py에 --append 옵션 추가 | `convert_aihub_summary.py` |
+| v2_summary aihub 702건 생성 완료 | `aihub_summary.jsonl` |
+| v2_summary synthetic 305건 생성 완료 | `synthetic_summary.jsonl` |
+| v2_generate synthetic 801건 생성 완료 | `synthetic_generate.jsonl` |
+| validate_v2_data.py 검증 스크립트 전면 개선 | `validate_v2_data.py` |
+| - v2_generate: 고정 필드 → 동적 [필드 명세] 파싱 기반 검증 | |
+| - v2_summary: 포인트/키워드 개수 + 메타지시문 감지 추가 | |
+| - _detect_task: 동적 필드 프롬프트 감지 추가 | |
+| - 중복 체크: assistant만 → user+assistant 쌍 비교 | |
+| 전체 검증 실행: 3,508건, 에러 0건, 중복 0건, ✅ PASS | 전체 |
+| 데이터 생성 과정 기록 문서 작성 | `데이터_생성_과정_기록.md` |
+
+</details>
+
 ---
 
 ## 12. TODO
 
-### 데이터 수집 (PM 단독 진행)
+### 전처리 + 분할
 
-| STEP | 작업 |
-|------|------|
-| 6 | v2_generate 스크립트 수정 (필드 풀 랜덤 조합 방식) |
-| 7 | v2_generate AI Hub 700건 변환 (필드 풀 + GPT-4o) |
-| 8 | v2_generate 합성 800건 생성 (필드 풀 + GPT-4o) |
-| 9 | 전체 검증 + 중복 제거 + Train/Eval 분할 |
+| STEP | 작업 | 상태 |
+|------|------|:----:|
+| 1 | Train/Eval 분할 (`--split`) | ⏳ |
+| 2 | 토큰 길이 분석 (max_length 설정 확인) | ⏳ |
 
 ### 학습 + 평가
 
-| STEP | 작업 |
-|------|------|
-| 9 | RunPod RTX 5090에서 3개 모델 비교 학습 (v2_generate 기준) |
-| 10 | 평가 결과 비교 → **1개 모델로 통일** 선정 |
-| 11 | 선정 모델로 v2_qa, v2_summary 추가 학습 |
-| 12 | vLLM 서버 배포 + Agent 연동 + E2E 테스트 |
+| STEP | 작업 | 상태 |
+|------|------|:----:|
+| 3 | GPU 환경 준비 (RTX 5090 or RunPod) | ⏳ |
+| 4 | 3개 모델 비교 학습 (Qwen3-8B / EXAONE / Kanana) | ⏳ |
+| 5 | 평가 결과 비교 → **1개 모델로 통일** 선정 | ⏳ |
+| 6 | 선정 모델로 v2_qa, v2_summary, v2_generate 학습 | ⏳ |
+| 7 | vLLM 서버 배포 + Agent 연동 + E2E 테스트 | ⏳ |
 
 ---
 
@@ -695,7 +750,7 @@ python ai/finetuning/validate_v2_data.py --split
 |--------|------|
 | 제안서(6~10 랜덤필드) JSON 깨짐 | 10개 샘플 선행 테스트. 실패 10%+ 시 rank→48 또는 EXAONE 전환 |
 | AI Hub 데이터 도메인 불일치 (국회 회의록 등) | meeting_minutes는 합성 중심으로 전환 완료. report/proposal은 적합 확인 |
-| Solar API보다 성능 하락 | Solar API를 fallback으로 유지. 설정 플래그로 전환 |
+| LLM API보다 성능 하락 | LLM API(GPT/Claude)를 fallback으로 유지. factory.py provider 전환으로 즉시 복구 |
 | RTX 5090 32GB VRAM 부족 | batch_size 2로 축소 + grad_accum 8로 조정. 또는 A100 전환 |
 | 합성 데이터 품질 부족 | 3단계 검증: 자동검증 → LLM 교차검증 → 수동 샘플링(150개) |
 | AI Hub summary 카테고리 부적합 | 10종→5종 선별 (회의록/연설문/역사/문학/나레이션 제외), GPT-4o로 요약 재생성 |
@@ -713,26 +768,23 @@ data/
 │   └── 016.행정 문서 대상 기계독해 데이터/ ← SN 569
 ├── training/
 │   ├── v2_summary/
-│   │   ├── aihub_summary.jsonl             ← AI Hub + GPT-4o 요약 (700건) [재생성]
-│   │   ├── synthetic_summary.jsonl         ← 합성 (300건) [재생성]
-│   │   ├── variant_summary.jsonl           ← 변형 (100건) [예정]
+│   │   ├── aihub_summary.jsonl             ← AI Hub + GPT-4o 요약 (702건) ✅
+│   │   ├── synthetic_summary.jsonl         ← 합성 (305건) ✅
 │   │   ├── merged_summary.jsonl            ← 병합 (분할 전) [예정]
-│   │   ├── train.jsonl                     ← 학습용 (850건) [분할 후]
+│   │   ├── train.jsonl                     ← 학습용 (857건) [분할 후]
 │   │   └── eval.jsonl                      ← 검증용 (150건) [분할 후]
 │   ├── v2_qa/
 │   │   ├── aihub_qa.jsonl                  ← AI Hub MRC (300건) ✅
 │   │   ├── report_qa.jsonl                 ← AI Hub Report QA (300건) ✅
 │   │   ├── synthetic_qa.jsonl              ← 합성 (400건, 12% not-found) ✅
-│   │   ├── variant_qa.jsonl                ← 변형 (100건) [예정]
 │   │   ├── merged_qa.jsonl                 ← 병합 (분할 전) [예정]
 │   │   ├── train.jsonl                     ← 학습용 (900건) [분할 후]
 │   │   └── eval.jsonl                      ← 검증용 (100건) [분할 후]
 │   └── v2_generate/
-│       ├── aihub_generate.jsonl            ← AI Hub 변환 (700건, 필드 풀) [재작업]
-│       ├── synthetic_generate.jsonl        ← 합성 (800건, 필드 풀 + 부분 누락 240건) [재작업]
-│       ├── (variant 삭제 — 필드 변형이 모든 샘플에 내장)
+│       ├── aihub_generate.jsonl            ← AI Hub 변환 (700건, 필드 풀) ✅
+│       ├── synthetic_generate.jsonl        ← 합성 (801건, 필드 풀 + 부분 누락 240건) ✅
 │       ├── merged_generate.jsonl           ← 병합 (분할 전) [예정]
-│       ├── train.jsonl                     ← 학습용 (1,350건) [분할 후]
+│       ├── train.jsonl                     ← 학습용 (1,351건) [분할 후]
 │       └── eval.jsonl                      ← 검증용 (150건) [분할 후]
 ```
 
