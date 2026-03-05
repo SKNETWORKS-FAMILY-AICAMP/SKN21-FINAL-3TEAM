@@ -12,7 +12,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -152,7 +152,6 @@ _IMAGE_EXTENSIONS = {
 
 @router.post("/me/avatar")
 async def upload_avatar(
-    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -173,8 +172,7 @@ async def upload_avatar(
     with open(save_path, "wb") as f:
         f.write(content)
 
-    base_url = str(request.base_url).rstrip("/")
-    avatar_url = f"{base_url}/uploads/avatars/{filename}"
+    avatar_url = f"/uploads/avatars/{filename}"
 
     current_user.avatar = avatar_url
     await db.commit()
