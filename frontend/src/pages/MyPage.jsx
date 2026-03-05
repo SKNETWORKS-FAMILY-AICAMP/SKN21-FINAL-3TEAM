@@ -4,7 +4,7 @@ import {
     Mail, Users, MessageSquare, FileText, Calendar,
     StickyNote, Zap, ChevronRight,
     Trash2, Plus, Save, History, MessageCircle, Camera,
-    TrendingUp, Shield, Lock, CheckSquare, AlertCircle, Clock, Eye, EyeOff
+    Shield, Lock, CheckSquare, AlertCircle, Clock, Eye, EyeOff
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import useUIStore from '../store/uiStore';
@@ -430,40 +430,7 @@ const [showEditModal, setShowEditModal] = useState(false);
                 {/* 오른쪽: 설정 */}
                 <div className="space-y-8">
 
-                    {/* AI 활용 통계 */}
-                    <section className="bg-surface-card rounded-2xl border border-neutral-divider shadow-sm p-6">
-                        <h2 className="text-lg font-bold text-neutral-main flex items-center gap-2 mb-5">
-                            <TrendingUp size={18} className="text-primary-600" /> AI 활용 통계
-                        </h2>
-                        <div className="space-y-4">
-                            {[
-                                { label: 'AI 대화 세션', value: stats.chats, max: Math.max(stats.chats, 1), color: 'bg-primary-500', icon: MessageSquare },
-                                { label: '생성된 문서', value: stats.docs, max: Math.max(stats.docs, 1), color: 'bg-accent-500', icon: FileText },
-                                { label: '등록된 일정', value: stats.schedules, max: Math.max(stats.schedules, 1), color: 'bg-indigo-500', icon: Calendar },
-                            ].map((item, i) => (
-                                <div key={i}>
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <div className="flex items-center gap-2 text-xs text-neutral-sub">
-                                            <item.icon size={12} />
-                                            {item.label}
-                                        </div>
-                                        <span className="text-sm font-bold text-neutral-main">{item.value}<span className="text-xs font-normal text-neutral-muted ml-0.5">건</span></span>
-                                    </div>
-                                    <div className="h-1.5 bg-surface-hover rounded-full overflow-hidden">
-                                        <div
-                                            className={`h-full rounded-full transition-all duration-700 ${item.color}`}
-                                            style={{ width: `${Math.min(100, (item.value / Math.max(stats.chats, stats.docs, stats.schedules, 1)) * 100)}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="mt-5 pt-4 border-t border-neutral-divider">
-                            <div className="text-xs text-neutral-muted text-center">가입 이후 전체 누적 사용량</div>
-                        </div>
-                    </section>
-
-                    {/* 6. 계정 보안 */}
+                    {/* 계정 보안 */}
                     <section className="bg-surface-card rounded-2xl border border-neutral-divider shadow-sm p-6">
                         <h2 className="text-lg font-bold text-neutral-main flex items-center gap-2 mb-5">
                             <Shield size={18} className="text-green-600" /> 계정 보안

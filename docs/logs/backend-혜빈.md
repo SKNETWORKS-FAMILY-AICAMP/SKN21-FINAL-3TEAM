@@ -727,3 +727,25 @@
 - Slack 연동 확장
 - AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
 - vLLM 백엔드 연동 + sLLM 교체 및 평가
+
+---
+
+## 2026-03-05 (세션 16) — UI 개선 + 쪽지 팀 표시
+
+### 한 일
+
+**쪽지 팀 정보 표시**
+- `backend/app/api/v1/messages.py`: API 응답에 `sender_team`, `receiver_team` 필드 추가
+- `frontend/src/pages/MessagesPage.jsx`: 목록 + 상세에서 이름 옆 (팀) 표시
+- `frontend/src/components/messages/MessagePopup.jsx`: 목록 + 상세에서 이름 옆 (팀) 표시
+
+**마이페이지 개선**
+- 개인메모에 작성 날짜 표시 추가 (uiStore의 `createdAt` 활용)
+- 문서생성 > 문서 목록에서 클릭 시 미리보기 팝업 연결 (`handleDocPreview` + Eye 아이콘)
+- AI 활용 통계 카드 삭제
+
+### 다음 할 일
+- EC2 서버 재배포 (messages team 필드 반영)
+- Slack 연동 확장
+- AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
+- vLLM 백엔드 연동 + sLLM 교체 및 평가
