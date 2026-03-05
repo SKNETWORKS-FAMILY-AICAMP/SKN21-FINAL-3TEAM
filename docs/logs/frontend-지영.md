@@ -954,6 +954,39 @@
 - 시작/종료 상태 표시 바 추가 (현재 선택 중인 항목 강조)
 - 달력 셀 크기·패딩·폰트 축소로 팝업 한 화면에 저장·취소 버튼까지 표시
 
+#### 11) 상단바(Topbar) 색상 테마 통일
+- 활성 메뉴: `bg-neutral-900` → `bg-primary-900` (블루그레이) + 하단 언더라인 스타일로 변경
+- 비활성 메뉴 텍스트: `text-neutral-500` → `text-neutral-sub` (테마 색상)
+- "Your Schedule" 텍스트, 날짜 배지, 현재 시간 배지, 더보기 버튼 등 전체 primary 팔레트 통일
+
+#### 12) Your Schedule 이벤트 카드 정리
+- 참석자 아바타(프로필 사진) 전체 제거
+- 카드 내용: `시작시간 - 종료시간 | 제목` 형식으로 단순화
+
+#### 13) 대시보드 컴포넌트 border 통일
+- `ActivityTimeline`, `AIChatWidget`, `CalendarWidget`, `GreetingBanner` — 각자 다른 커스텀 border에서 `card` 클래스로 통일
+- border: `border-white/20` → `border-neutral-divider` (은은한 회색 구분선)
+
+#### 14) 채팅 페이지 스크롤 시 헤더 축소 구현
+- `Layout.jsx`: 채팅 페이지 `main` pt 값을 `isScrolled` 상태에 반응하도록 수정
+  - 기본: `pt-[180px]`, 스케줄 바 숨김: `pt-[96px]`, 스크롤 시: `pt-[76px]`
+- `transition-[padding] duration-300` 으로 부드럽게 애니메이션
+
+#### 15) 채팅에서 일정 추가 시 schedule_type 미설정 백엔드 버그 수정
+
+- **문제**: 채팅으로 "내일 회의 잡아줘" 요청 시 일정이 유형 없이 `task`로 등록됨
+- **원인 분석**:
+  - `ai/agents/schedule_agent.py` `_register_schedule`: `schedule_type` 하드코딩 `"task"`
+  - `backend/app/services/schedule_service.py` `create_with_google_services`: 기본값도 `"task"`로 fallback
+  - LLM 파싱 프롬프트에 `schedule_type` 항목 자체가 없었음
+- **수정**:
+  - `_parse_schedule_input` 프롬프트에 `schedule_type` 규칙 추가 (회의/미팅 → `meeting`, 마감 → `deadline`, 기타 → `google`)
+  - LLM 응답과 무관하게 `user_input` 키워드로 `schedule_type`을 확정하는 방어 코드 추가
+  - `_fallback_parse`: 키워드 기반 `schedule_type` 추론 추가
+  - `_handle_clarify_response`: 시간 보충 후 재등록 시 기존 `schedule_type` 유지
+  - `create_with_google_services` 기본값 `"task"` → `"google"` 변경
+- **수정 파일**: `ai/agents/schedule_agent.py`, `backend/app/services/schedule_service.py`
+
 ### 다음 할 일
 - 전체 E2E 테스트
 - 판단 Agent 스트리밍 디버깅
@@ -976,7 +1009,7 @@
 | 다크 모드 | ✅ 완료 | CSS 변수 방식, OS 감지, localStorage 유지, ThemeToggle |
 | 파일 드래그&드롭 | ✅ 완료 | 채팅 파일 첨부, 검증(형식/크기), FileChip |
 | 대화 세션 관리 | ✅ 완료 | localStorage 세션 목록, 자동 생성/전환/삭제 |
-| **백엔드 실제 연동** | 🔄 진행중 | 일정 관리 + 대시보드 완료, 문서 생성/관리자 교체 필요 |
+| **백엔드 실제 연동** | 🔄 진행중 | 대시보드, 문서 생성 교체 필요 |
 
 ### 파일 현황
 - **페이지**: 10개 전체 구현

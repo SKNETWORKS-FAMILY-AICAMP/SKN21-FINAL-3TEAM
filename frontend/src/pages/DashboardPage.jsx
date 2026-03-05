@@ -138,16 +138,25 @@ function useDashboardData() {
     .filter(s => isToday(s.start_time))
     .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
     .map(s => {
+      const startStr = String(s.start_time || '');
+      const endStr = String(s.end_time || '');
+
+      const isMidnightStart = startStr.includes('T00:00:00') || startStr.endsWith('T00:00');
+      const isMidnightEnd = endStr.includes('T23:59:59') || endStr.includes('T00:00:00') || endStr.endsWith('T00:00');
+
+      const isAllDay = startStr.length <= 10 || s.is_all_day || s.all_day || (isMidnightStart && isMidnightEnd && startStr !== endStr);
+
       const { time, period } = formatTime12(s.start_time);
       return {
-        time,
-        period,
+        time: isAllDay ? '종일' : time,
+        period: isAllDay ? '' : period,
         title: s.title,
         location: s.google_meet_link ? '온라인 (Meet)' : s.description || '-',
         attendees: 0,
         scheduleType: s.schedule_type,
         start_time: s.start_time,
         end_time: s.end_time,
+        isAllDay,
       };
     });
 
@@ -427,11 +436,10 @@ export default function DashboardPage() {
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={toggleTopbarSchedule}
-                className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed transition-colors ${
-                  dashboard.topbarScheduleHidden 
-                    ? 'border-neutral-300 dark:border-neutral-600 text-neutral-sub hover:border-primary-400 hover:text-primary-700 dark:hover:border-primary-500 dark:hover:text-primary-400' 
-                    : 'border-primary-300 text-primary-700 bg-primary-50 dark:border-primary-700 dark:text-primary-300 dark:bg-primary-900/20 hover:border-error hover:text-error hover:bg-error-bg'
-                }`}
+                className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed transition-colors ${dashboard.topbarScheduleHidden
+                  ? 'border-neutral-300 dark:border-neutral-600 text-neutral-sub hover:border-primary-400 hover:text-primary-700 dark:hover:border-primary-500 dark:hover:text-primary-400'
+                  : 'border-primary-300 text-primary-700 bg-primary-50 dark:border-primary-700 dark:text-primary-300 dark:bg-primary-900/20 hover:border-error hover:text-error hover:bg-error-bg'
+                  }`}
               >
                 {dashboard.topbarScheduleHidden ? <Plus size={16} /> : <Minus size={16} className="text-error" />}
                 <span className="text-sm font-medium">상단 스케줄 바 {dashboard.topbarScheduleHidden ? '복원' : '숨기기'}</span>
