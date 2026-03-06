@@ -273,7 +273,7 @@ def train(task: str, config: dict, base_model_override: str = None):
         gradient_checkpointing=True,
         optim="paged_adamw_8bit",
         report_to="none",
-        max_seq_length=train_cfg["max_length"],
+        max_length=train_cfg["max_length"],
         dataset_text_field="text",
     )
 
