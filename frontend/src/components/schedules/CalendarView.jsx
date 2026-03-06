@@ -15,6 +15,7 @@ function hexToRgba(hex, alpha) {
 const DEFAULT_TYPE_STYLES = {
   meeting: 'bg-primary-50 text-primary-700',
   deadline: 'bg-error-bg text-error',
+  project: 'bg-purple-50 text-purple-700',
   google: 'bg-success-bg text-success',
   holiday: 'bg-error-bg text-error',
 };
@@ -464,15 +465,15 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
                         style={{
                           bottom: `${si * 20 + 2}px`,
                           height: '18px',
-                          left: isStart ? 0 : -2,
-                          right: isEnd ? 0 : -2,
-                          backgroundColor: color,
+                          left: isStart ? 6 : -2,
+                          right: isEnd ? 6 : -2,
+                          backgroundColor: hexToRgba(color, 0.18),
                           borderRadius: `${isStart ? '4px' : '0'} ${isEnd ? '4px' : '0'} ${isEnd ? '4px' : '0'} ${isStart ? '4px' : '0'}`,
                           zIndex: isStart ? 2 : 1,
                         }}
                       >
                         {showLabel && (
-                          <span style={{ color: '#fff', fontSize: '10px', fontWeight: 600, paddingLeft: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ color, fontSize: '10px', fontWeight: 600, paddingLeft: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {event.label}
                           </span>
                         )}

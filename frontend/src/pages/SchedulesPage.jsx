@@ -62,7 +62,7 @@ export default function SchedulesPage() {
           : null;
         const baseEvent = {
           type: s.schedule_type || 'meeting',
-          label: s.title,
+          label: s.is_team_visible ? `[팀] ${s.title}` : s.title,
           time: timeStr,
           rawStartTime: hasTime ? `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}` : null,
           rawEndTime: hasTime ? `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}` : null,
@@ -104,7 +104,7 @@ export default function SchedulesPage() {
             const timeStr = `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
             const baseEvent = {
               type: s.schedule_type || 'meeting',
-              label: `[${s.user_name}] ${s.title}`,
+              label: `[팀] ${s.title}`,
               time: timeStr,
               isTeamMember: true,
               scheduleId: s.id,
