@@ -15,6 +15,7 @@ import { changePassword } from '../../api/auth';
 import { listSchedules } from '../../api/schedules';
 import { listCalendarEvents } from '../../api/google';
 import dayjs from 'dayjs';
+import client from '../../api/client';
 
 const BLOCK_COLORS = [
   '#8EA1B1', // Blueish
@@ -292,6 +293,7 @@ export default function Topbar({ isScrolled = false }) {
   const [pwSaving, setPwSaving] = useState(false);
 
   const [allDayMeetings, setAllDayMeetings] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
   const [currentTime, setCurrentTime] = useState(dayjs());
   const [hoveredEventId, setHoveredEventId] = useState(null);
 
@@ -305,8 +307,16 @@ export default function Topbar({ isScrolled = false }) {
 
   // 당일 전체 일정을 유지 (과거 일정 포함)
   const todaySchedules = useMemo(() => {
-    return allDayMeetings; // backend에서 이미 오늘 날짜 기준으로 필터링되어 전달된다고 가정 (또는 이미 allDayMeetings에 오늘 것만 있음)
+    return allDayMeetings;
   }, [allDayMeetings]);
+
+  const teamMemberMap = useMemo(() => {
+    const map = {};
+    teamMembers.forEach(m => {
+      map[m.email] = { name: m.name, avatar: m.avatar };
+    });
+    return map;
+  }, [teamMembers]);
 
   const PLAYHEAD_X_PCT = 35; // 35% from left
 
@@ -384,6 +394,18 @@ export default function Topbar({ isScrolled = false }) {
   }, [todaySchedules, currentTime]);
 
   useEffect(() => {
+    const fetchTeam = async () => {
+      try {
+        const res = await client.get('/auth/team-members');
+        setTeamMembers(res.data || []);
+      } catch (err) {
+        console.error('Failed to fetch team members', err);
+      }
+    };
+    if (user?.id) fetchTeam();
+  }, [user]);
+
+  useEffect(() => {
     const fetchData = async () => {
       try {
         const todayStr = dayjs().format('YYYY-MM-DD');
@@ -409,11 +431,20 @@ export default function Topbar({ isScrolled = false }) {
         const mergedSchedules = [...dbSchedules];
 
         googleSchedules.forEach(ge => {
+          const googleAttendees = (ge.attendees || []).map(a => {
+            const email = a.email;
+            const teamMember = teamMemberMap[email];
+            return teamMember
+              ? { name: teamMember.name, avatar: teamMember.avatar }
+              : { name: a.displayName || email.split('@')[0], avatar: null };
+          });
+
           const normalizedGe = {
             ...ge,
             start_time: ge.start,
             end_time: ge.end,
-            schedule_type: 'google'
+            schedule_type: 'google',
+            attendees: googleAttendees
           };
           const duplicate = dbSchedules.some(
             s => s.title === normalizedGe.title && isToday(s.start_time)
@@ -563,7 +594,46 @@ export default function Topbar({ isScrolled = false }) {
                                 className={`absolute inset-0 rounded-[21px] overflow-hidden border ${isActive ? 'border-white/40' : 'border-white/20'}`}
                                 style={{ backgroundColor: bgColor }}
                               >
-                                <div className="flex items-center gap-2 w-full h-full px-4 min-w-0">
+                                <div className="flex items-center gap-2 w-full h-full px-3 min-w-0">
+                                  {/* Inline Avatar Stack on Hover */}
+                                  <AnimatePresence>
+                                    {isHovered && (
+                                      <motion.div
+                                        initial={{ width: 0, opacity: 0, x: -10 }}
+                                        animate={{ width: 'auto', opacity: 1, x: 0 }}
+                                        exit={{ width: 0, opacity: 0, x: -10 }}
+                                        className="flex -space-x-2 items-center shrink-0 pr-1"
+                                      >
+                                        {(event.attendees || []).length > 0 ? (
+                                          (event.attendees || []).slice(0, 3).map((a, i) => (
+                                            <div key={i} className="w-6 h-6 rounded-full border border-white/30 bg-accent-500 overflow-hidden shrink-0" title={a.name || a.email}>
+                                              {a.avatar ? (
+                                                <img src={a.avatar} alt={a.name} className="w-full h-full object-cover" />
+                                              ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-white text-[9px] font-bold">{(a.name || a.email || '?')[0]}</div>
+                                              )}
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <div className="w-6 h-6 rounded-full border border-white/30 bg-accent-500 overflow-hidden shrink-0">
+                                            {user?.avatar ? (
+                                              <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                                            ) : (
+                                              <div className="w-full h-full flex items-center justify-center text-white text-[9px] font-bold">
+                                                {user?.name?.[0] || 'Me'}
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                        {(event.attendees || []).length > 3 && (
+                                          <div className="w-6 h-6 rounded-full border border-white/30 bg-white/10 flex items-center justify-center text-white text-[9px] font-bold shrink-0 z-10">
+                                            +{(event.attendees || []).length - 3}
+                                          </div>
+                                        )}
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
+
                                   <span className="font-bold text-[12px] text-white whitespace-nowrap shrink-0">
                                     {dayjs(event.start_time).format('h:mm')} - {dayjs(event.end_time || dayjs(event.start_time).add(1, 'hour')).format('h:mm')}
                                   </span>

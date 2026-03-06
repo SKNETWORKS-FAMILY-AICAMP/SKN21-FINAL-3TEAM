@@ -42,4 +42,5 @@ class ScheduleResponse(BaseModel):
     team_name: Optional[str] = None
     user_id: Optional[int] = None
     user_name: Optional[str] = None
+    attendees: list[dict] = []
     created_at: datetime

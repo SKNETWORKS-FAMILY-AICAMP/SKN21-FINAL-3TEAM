@@ -9,21 +9,21 @@ import { listApprovals, createApproval, approveRequest, rejectRequest, deleteApp
 import client from '../api/client';
 
 const typeConfig = {
-  leave:      { icon: Coffee,         color: 'text-orange-500 bg-orange-100 dark:bg-orange-900/30', label: '연차/반차 신청' },
-  remote:     { icon: Home,           color: 'text-teal-500 bg-teal-100 dark:bg-teal-900/30',      label: '재택근무 신청' },
-  room:       { icon: DoorOpen,       color: 'text-indigo-500 bg-indigo-100 dark:bg-indigo-900/30', label: '회의실 예약' },
-  design:     { icon: Palette,        color: 'text-pink-500 bg-pink-100 dark:bg-pink-900/30',      label: '디자인 에셋 요청' },
-  certificate:{ icon: Award,          color: 'text-yellow-500 bg-yellow-100 dark:bg-yellow-900/30', label: '증명서 발급 요청' },
-  budget:     { icon: Receipt,        color: 'text-purple-500 bg-purple-100 dark:bg-purple-900/30', label: '결재 요청' },
-  review:     { icon: GitPullRequest, color: 'text-blue-500 bg-blue-100 dark:bg-blue-900/30',      label: 'PR 리뷰 요청' },
-  deploy:     { icon: Rocket,         color: 'text-green-500 bg-green-100 dark:bg-green-900/30',   label: '배포 승인 요청' },
-  infra:      { icon: Server,         color: 'text-slate-500 bg-slate-100 dark:bg-slate-900/30',   label: '인프라/권한 신청' },
-  security:   { icon: ShieldCheck,    color: 'text-red-500 bg-red-100 dark:bg-red-900/30',        label: '보안 예외 처리' },
+  leave: { icon: Coffee, color: 'text-orange-500 bg-orange-100 dark:bg-orange-900/30', label: '연차/반차 신청' },
+  remote: { icon: Home, color: 'text-teal-500 bg-teal-100 dark:bg-teal-900/30', label: '재택근무 신청' },
+  room: { icon: DoorOpen, color: 'text-indigo-500 bg-indigo-100 dark:bg-indigo-900/30', label: '회의실 예약' },
+  design: { icon: Palette, color: 'text-pink-500 bg-pink-100 dark:bg-pink-900/30', label: '디자인 에셋 요청' },
+  certificate: { icon: Award, color: 'text-yellow-500 bg-yellow-100 dark:bg-yellow-900/30', label: '증명서 발급 요청' },
+  budget: { icon: Receipt, color: 'text-purple-500 bg-purple-100 dark:bg-purple-900/30', label: '결재 요청' },
+  review: { icon: GitPullRequest, color: 'text-blue-500 bg-blue-100 dark:bg-blue-900/30', label: 'PR 리뷰 요청' },
+  deploy: { icon: Rocket, color: 'text-green-500 bg-green-100 dark:bg-green-900/30', label: '배포 승인 요청' },
+  infra: { icon: Server, color: 'text-slate-500 bg-slate-100 dark:bg-slate-900/30', label: '인프라/권한 신청' },
+  security: { icon: ShieldCheck, color: 'text-red-500 bg-red-100 dark:bg-red-900/30', label: '보안 예외 처리' },
 };
 const defaultTypeConfig = { icon: FileSignature, color: 'text-gray-500 bg-gray-100 dark:bg-gray-900/30', label: '요청' };
 
 const statusConfig = {
-  pending:  { label: 'Pending',  color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', icon: Clock },
+  pending: { label: 'Pending', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', icon: Clock },
   approved: { label: 'Approved', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle2 },
   rejected: { label: 'Rejected', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', icon: XCircle },
 };
@@ -148,16 +148,14 @@ export default function ApprovalsPage() {
           <button
             key={tab.key}
             onClick={() => setFilter(tab.key)}
-            className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
-              filter === tab.key
+            className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${filter === tab.key
                 ? 'bg-primary-500 text-white shadow-sm'
                 : 'bg-white dark:bg-neutral-800 text-neutral-sub hover:bg-neutral-50 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700'
-            }`}
+              }`}
           >
             {tab.label}
-            <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
-              filter === tab.key ? 'bg-white/20' : 'bg-neutral-100 dark:bg-neutral-700'
-            }`}>
+            <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${filter === tab.key ? 'bg-white/20' : 'bg-neutral-100 dark:bg-neutral-700'
+              }`}>
               {counts[tab.key]}
             </span>
           </button>
@@ -223,7 +221,7 @@ export default function ApprovalsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.2, delay: idx * 0.03 }}
-                  className="bg-white dark:bg-neutral-800 p-5 rounded-2xl border border-neutral-100 dark:border-neutral-700 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                  className="bg-white/40 dark:bg-white/[0.05] backdrop-blur-md p-5 rounded-2xl border border-white/20 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                   onClick={() => setDetailItem(item)}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -328,7 +326,7 @@ export default function ApprovalsPage() {
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl p-6 w-full max-w-lg mx-4 max-h-[80vh] overflow-y-auto"
+                className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl p-8 w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto border border-white/40 dark:border-white/10"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Header */}
@@ -501,7 +499,7 @@ export default function ApprovalsPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl p-6 w-full max-w-md mx-4"
+              className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl p-8 w-full max-w-md mx-4 border border-white/40 dark:border-white/10"
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-lg font-bold text-neutral-main mb-4">새 요청 올리기</h3>
@@ -564,18 +562,18 @@ export default function ApprovalsPage() {
                     </div>
                   )}
                 </div>
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-3 pt-6">
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="flex-1 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                    className="flex-1 py-4 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-black rounded-xl shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
                   >
                     {submitting ? '제출 중...' : '요청 제출'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 text-sm font-semibold rounded-lg transition-colors dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:text-neutral-300"
+                    className="flex-1 py-4 text-xs font-black rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all"
                   >
                     취소
                   </button>

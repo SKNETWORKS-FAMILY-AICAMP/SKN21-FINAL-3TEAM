@@ -276,14 +276,14 @@ export default function ApprovalQueueWidget() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, x: -20, scale: 0.9 }}
               transition={{ duration: 0.2, delay: idx * 0.05 }}
-              className="bg-white/40 dark:bg-surface-hover p-4 rounded-xl border border-neutral-100 dark:border-neutral-800 shadow-sm hover:shadow-md transition-shadow group"
+              className="bg-white/40 dark:bg-white/[0.05] backdrop-blur-md p-4 rounded-xl border border-white/20 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow group"
             >
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-2">
                   <div className={`p-1.5 rounded-xl ${item.color}`}>
                     <item.icon size={16} />
                   </div>
-                  <span className="text-[10px] font-bold text-neutral-sub px-2.5 py-1 bg-surface-main dark:bg-neutral-800 rounded-full">
+                  <span className="text-[10px] font-bold text-neutral-sub px-2.5 py-1 bg-white/20 dark:bg-neutral-800/50 rounded-full">
                     {typeLabels[item.type] || item.type.toUpperCase()}
                   </span>
                 </div>
@@ -294,7 +294,7 @@ export default function ApprovalQueueWidget() {
 
               <h4 className="text-sm font-semibold text-neutral-main mb-1">{item.title}</h4>
 
-              <div className="flex items-center gap-2 mb-4 bg-neutral-50/40 dark:bg-neutral-800/40 p-2 rounded-lg">
+              <div className="flex items-center gap-2 mb-4 bg-white/30 dark:bg-neutral-800/40 p-2 rounded-lg">
                 {item.category === 'approval' ? (
                   <>
                     <img src={item.avatar} alt={item.requester} className="w-8 h-8 rounded-full" />

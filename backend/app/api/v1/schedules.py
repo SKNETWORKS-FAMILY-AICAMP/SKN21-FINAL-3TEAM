@@ -28,35 +28,54 @@ async def list_schedules(
         schedule_type=schedule_type,
     )
 
-    # 팀 일정 포함 시 user_name 조회
-    user_names = {}
+    # Fetch team members if needed for shared schedules
+    current_team_members = []
+    if include_team and user.team:
+        tm_result = await db.execute(
+            select(User.name, User.avatar).where(User.team == user.team, User.is_active == True)
+        )
+        current_team_members = [{"name": row.name, "avatar": row.avatar} for row in tm_result.all()]
+
+    user_info = {}
     if include_team:
         user_ids = {s.user_id for s in schedules}
         if user_ids:
             result = await db.execute(
-                select(User.id, User.name).where(User.id.in_(user_ids))
+                select(User.id, User.name, User.avatar).where(User.id.in_(user_ids))
             )
-            user_names = dict(result.all())
+            for row in result.all():
+                user_info[row.id] = {"name": row.name, "avatar": row.avatar}
 
-    return [
-        ScheduleResponse(
-            id=s.id,
-            title=s.title,
-            description=s.description,
-            start_time=s.start_time,
-            end_time=s.end_time,
-            schedule_type=s.schedule_type,
-            priority=s.priority,
-            google_event_id=s.google_event_id,
-            google_meet_link=s.google_meet_link,
-            is_team_visible=s.is_team_visible,
-            team_name=s.team_name,
-            user_id=s.user_id,
-            user_name=user_names.get(s.user_id) if include_team else None,
-            created_at=s.created_at,
+    response_items = []
+    for s in schedules:
+        if s.is_team_visible:
+            # Shared with team: show all team members as attendees
+            attendees = current_team_members
+        else:
+            # Individual: show only the owner
+            owner = user_info.get(s.user_id)
+            attendees = [owner] if owner else []
+            
+        response_items.append(
+            ScheduleResponse(
+                id=s.id,
+                title=s.title,
+                description=s.description,
+                start_time=s.start_time,
+                end_time=s.end_time,
+                schedule_type=s.schedule_type,
+                priority=s.priority,
+                google_event_id=s.google_event_id,
+                google_meet_link=s.google_meet_link,
+                is_team_visible=s.is_team_visible,
+                team_name=s.team_name,
+                user_id=s.user_id,
+                user_name=user_info.get(s.user_id, {}).get("name") if include_team else None,
+                attendees=attendees,
+                created_at=s.created_at,
+            )
         )
-        for s in schedules
-    ]
+    return response_items
 
 
 @router.post("/")

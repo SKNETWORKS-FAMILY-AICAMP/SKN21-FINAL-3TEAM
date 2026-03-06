@@ -222,7 +222,7 @@ export default function TaskPipelineWidget() {
                                             draggable="true"
                                             onDragStart={(e) => handleDragStart(e, task.id)}
                                             onDragEnd={() => setDraggingId(null)}
-                                            className={`bg-surface-card p-4 rounded-[1.5rem] border border-neutral-divider hover:border-primary-300 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-all group ${draggingId === task.id ? 'opacity-50 scale-95' : ''}`}
+                                            className={`bg-white/40 dark:bg-white/[0.05] backdrop-blur-md p-4 rounded-[1.5rem] border border-white/20 dark:border-white/10 hover:border-primary-300/50 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-all group ${draggingId === task.id ? 'opacity-50 scale-95' : ''}`}
                                         >
                                             <div className="flex justify-between items-start mb-2.5">
                                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${priorityColors[task.priority] || priorityColors.medium}`}>
@@ -246,7 +246,7 @@ export default function TaskPipelineWidget() {
                                             )}
 
                                             <div
-                                                className={`flex items-center justify-between mt-auto pt-3 border-t border-neutral-100 dark:border-white/10 rounded-xl px-1 -mx-1 ${task.assignee ? 'cursor-pointer hover:bg-primary-50/50 dark:hover:bg-white/[0.04] transition-colors' : ''}`}
+                                                className={`flex items-center justify-between mt-auto pt-3 border-t border-neutral-100/50 dark:border-white/5 rounded-xl px-1 -mx-1 ${task.assignee ? 'cursor-pointer hover:bg-primary-50/50 dark:hover:bg-white/[0.04] transition-colors' : ''}`}
                                                 onClick={(e) => { if (task.assignee) { e.stopPropagation(); openProfile(task.assignee); } }}
                                             >
                                                 <div className="flex items-center gap-2">

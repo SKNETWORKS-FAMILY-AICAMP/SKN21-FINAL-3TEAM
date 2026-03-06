@@ -134,23 +134,24 @@ const children = [
   // ═══ 테스트 6: LoRA 파인튜닝 평가 ═══
   C.twoColRow("LoRA v1\n파인튜닝 평가", [
     C.bullet("베이스 모델: Kanana-1.5-8B-Instruct (kakaocorp)"),
-    C.bullet("파인튜닝: QLoRA 4-bit (r=16, alpha=32, epoch=3)"),
+    C.bullet("파인튜닝: QLoRA 4-bit (r=16, alpha=32)"),
+    C.bullet("학습 데이터: 2,949건 (train) / 328건 (eval)"),
     C.body(""),
     C.body("평가 결과 (328건):", { bold: true }),
     C.dataTable(
       ["카테고리", "정확도", "건수"],
       [
-        ["yes", "82.9%", "82건"],
-        ["no", "84.6%", "78건"],
-        ["conditional", "75.5%", "98건"],
-        ["no_regulation", "80.0%", "70건"],
-        ["전체", "80.5%", "328건"],
+        ["no_regulation", "97.0%", "67건"],
+        ["yes", "85.0%", "100건"],
+        ["conditional", "84.0%", "100건"],
+        ["no", "82.0%", "61건"],
+        ["전체", "86.6%", "328건"],
       ],
       [2500, 1800, 2072]
     ),
     C.body(""),
-    C.bullet("JSON 유효율: 95.7%"),
-    C.bullet("v2 학습 진행 중 (r=32, alpha=64, epoch=5 → 목표: conditional 85%+)"),
+    C.bullet("JSON 유효율: 98.2%"),
+    C.bullet("v2 학습 준비 중 (r=32, alpha=64, epoch=5 → no/conditional 경계 개선 목표)"),
   ]),
 ];
 

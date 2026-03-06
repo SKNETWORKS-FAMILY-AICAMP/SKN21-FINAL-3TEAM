@@ -203,10 +203,10 @@ export default function TasksPage() {
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, stage.id)}
               >
-                <div className={`flex items-center gap-2 mb-3 p-3 rounded-xl shadow-sm border border-gray-200 dark:border-gray-600 ${stage.headerBg}`}>
+                <div className={`flex items-center gap-2 mb-3 bg-white/20 dark:bg-white/5 p-2.5 rounded-2xl shadow-sm border border-white/20 dark:border-white/10 backdrop-blur-md`}>
                   <stage.icon className={stage.color} size={18} />
-                  <span className="font-bold text-sm text-gray-900 dark:text-white">{stage.label}</span>
-                  <span className="ml-auto text-xs font-bold text-primary-700 bg-primary-50 dark:bg-primary-900/30 dark:text-primary-300 px-2.5 py-0.5 rounded-full">
+                  <span className="font-bold text-sm text-neutral-main">{stage.label}</span>
+                  <span className="ml-auto text-xs font-bold text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/50 px-2.5 py-0.5 rounded-full">
                     {stageTasks.length}
                   </span>
                 </div>
@@ -231,7 +231,7 @@ export default function TasksPage() {
                           onDragStart={(e) => handleDragStart(e, task.id)}
                           onDragEnd={() => { setDraggingId(null); setDragOverStage(null); }}
                           onClick={() => openEdit(task)}
-                          className={`bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md hover:border-primary-200 transition-all group ${draggingId === task.id ? 'opacity-40 scale-95' : ''}`}
+                          className={`bg-white/40 dark:bg-white/[0.05] backdrop-blur-md p-4 rounded-xl border border-white/20 dark:border-white/10 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-all group ${draggingId === task.id ? 'opacity-40 scale-95' : ''}`}
                         >
                           <div className="flex justify-between items-start mb-2">
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${priorityColors[task.priority] || priorityColors.medium}`}>
@@ -313,30 +313,44 @@ export default function TasksPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6"
+              className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl w-full max-w-md p-8 border border-white/40 dark:border-white/10"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tighter">
                   {editingTask ? '태스크 수정' : '태스크 추가'}
                 </h2>
-                <button onClick={closeModal} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-gray-700 transition-colors">
-                  <X size={18} />
+                <button onClick={closeModal} className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
+                  <X size={20} className="text-neutral-400" />
                 </button>
               </div>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">제목 *</label>
-                  <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className={INPUT_CLS} placeholder="태스크 제목을 입력하세요" required autoFocus />
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">제목 *</label>
+                  <input
+                    type="text"
+                    value={form.title}
+                    onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                    className="w-full px-5 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-neutral-300 dark:text-white"
+                    placeholder="태스크 제목을 입력하세요"
+                    required
+                    autoFocus
+                  />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">설명</label>
-                  <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} className={`${INPUT_CLS} resize-none`} placeholder="태스크에 대한 설명" />
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">설명</label>
+                  <textarea
+                    value={form.description}
+                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                    rows={3}
+                    className="w-full px-5 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-neutral-300 dark:text-white resize-none"
+                    placeholder="태스크에 대한 설명"
+                  />
                 </div>
 
                 {/* 담당자 선택 */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">담당자</label>
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">담당자</label>
                   <div className="flex flex-wrap gap-2">
                     {members.length === 0 && (
                       <span className="text-xs text-gray-400">팀원이 없습니다</span>
@@ -349,11 +363,10 @@ export default function TasksPage() {
                           key={m.id}
                           type="button"
                           onClick={() => setForm(f => ({ ...f, assignee: selected ? '' : m.name }))}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                            selected
-                              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 ring-1 ring-primary-300'
-                              : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-400'
-                          }`}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${selected
+                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 ring-1 ring-primary-300'
+                            : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-400 dark:bg-white/5'
+                            }`}
                         >
                           <img src={avatarSrc} alt={m.name} className="w-5 h-5 rounded-full bg-white" />
                           <span>{m.name}</span>
@@ -363,29 +376,51 @@ export default function TasksPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">우선순위</label>
-                    <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} className={INPUT_CLS}>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">우선순위</label>
+                    <select
+                      value={form.priority}
+                      onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all dark:text-white appearance-none cursor-pointer"
+                    >
                       <option value="high">높음</option>
                       <option value="medium">보통</option>
                       <option value="low">낮음</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">마감일</label>
-                    <input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} className={INPUT_CLS} />
+                  <div className="space-y-2">
+                    <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">마감일</label>
+                    <input
+                      type="date"
+                      value={form.dueDate}
+                      onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all dark:text-white"
+                    />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">태그</label>
-                  <input type="text" value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} className={INPUT_CLS} placeholder="Frontend, API (쉼표로 구분)" />
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">태그</label>
+                  <input
+                    type="text"
+                    value={form.tags}
+                    onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
+                    className="w-full px-5 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-neutral-300 dark:text-white"
+                    placeholder="Frontend, API (쉼표로 구분)"
+                  />
                 </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <button type="button" onClick={closeModal} className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-500 hover:bg-neutral-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">
+                <div className="flex gap-3 pt-6">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="flex-1 py-4 text-xs font-black rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all"
+                  >
                     취소
                   </button>
-                  <button type="submit" className="btn-primary">
+                  <button
+                    type="submit"
+                    className="flex-1 py-4 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-black rounded-xl shadow-xl hover:scale-105 active:scale-95 transition-all"
+                  >
                     {editingTask ? '저장' : '추가'}
                   </button>
                 </div>
