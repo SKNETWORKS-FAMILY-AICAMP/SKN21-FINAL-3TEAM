@@ -1066,22 +1066,48 @@
 - 팀원이 공유한 일정: `[윤경은] 제목` → `[팀] 제목`으로 변경
 - 본인이 "팀에 공유" 체크한 일정: `제목` → `[팀] 제목`으로 `is_team_visible` 조건 추가
 
-#### 7) 다크모드 가독성 개선 (`globals.css`, `ScheduleForm.jsx`, `TasksPanel.jsx`)
-- 다크모드 전체 톤 밝게 조정: body 배경, surface-main/sub/card, border/divider, card 배경
-- primary 계열: 무채색 회색 → 블루-그레이 톤으로 변경 (로그인 화면 버튼/타이틀 가독성 향상)
-- accent 계열: 무채색 → 웜톤 베이지-그레이로 변경
-- neutral-sub/muted 밝기 상향
-- `bg-white` 하드코딩 → `bg-surface-card`로 변경 (시간 드롭다운, Task 모달)
-
-#### 8) 새로고침 시 로그아웃 버그 수정 (`authStore.js`, `client.js` 외 4개 파일)
+#### 7) 새로고침 시 로그아웃 버그 수정 (`authStore.js`, `client.js` 외 4개 파일)
 - `sessionStorage` → `localStorage`로 전체 전환 (토큰 + 유저 캐시)
 - `cached_user`를 localStorage에 저장하여 새로고침 시 `/auth/me` 응답 전에도 즉시 로그인 상태 복원
 - API 응답 인터셉터에서 401 시 토큰 자동 삭제 제거 → authStore에서만 인증 관리
 - `/auth/me` 실패해도 캐시된 유저가 있으면 로그인 상태 유지
 
+#### 8) Your Schedule 실시간 동기화 (`uiStore.js`, `Topbar.jsx`, `SchedulesPage.jsx`)
+- `uiStore`에 `scheduleRefreshKey` + `triggerScheduleRefresh()` 추가
+- `Topbar`에서 `scheduleRefreshKey` 변화 감지 → 오늘 일정 재fetch
+- `SchedulesPage` 일정 생성/수정/삭제 완료 후 `triggerScheduleRefresh()` 호출
+- 일정 페이지에서 변경 시 상단 스케줄바 즉시 반영
+
+#### 9) 일정 수정 권한 — 관리자 허용 (`SchedulesPage.jsx`)
+- 기존: 본인 일정만 수정 가능 (관리자도 불가)
+- 변경: `user?.is_admin` 조건 추가 → 관리자는 모든 팀원 일정 수정 가능
+
+#### 10) Slack 토글 비활성화 색상 조정 (`SlackConnect.jsx`)
+- 비활성화 상태 트랙: `bg-primary-100` → `bg-[#b0b0b0]` (무채색 중간 회색)
+- 비활성화 상태 핸들: `bg-primary-500` → `bg-white`
+- 활성/비활성 시각적 구분 명확화
+
+#### 11) 대시보드 ScheduleTimelineWidget 스크롤바 두께 조정 (`globals.css`, `ScheduleTimelineWidget.jsx`)
+- 위젯 컨테이너에 `scrollbar-thin` 클래스 추가
+- `.scrollbar-thin::-webkit-scrollbar { height: 8px }` 커스텀 스타일 정의
+- 전역 스크롤바에 `height: 6px` 추가 (가로 스크롤바 기본 두께 통일)
+
+#### 12) 일정 schedule_type 필터 API 추가 (`schedules.py`, `schedule_service.py`)
+- `GET /schedules/?schedule_type=meeting` 쿼리 파라미터 추가
+- `list_schedules` 서비스 함수에 `schedule_type` 조건 필터 적용
+
+#### 13) AI 에이전트 일정 조회 schedule_type 필터 적용 (`schedule_agent.py`)
+- `_parse_view_request`: `schedule_type` 파싱 추가 (LLM + 키워드 fallback)
+  - "회의"/"미팅" 키워드 → `"meeting"`, "마감"/"데드라인" → `"deadline"`, 없으면 `null`
+- `_handle_schedule_view` 전면 개선:
+  - DB 조회 시 `schedule_type` 필터 직접 전달
+  - Google Calendar 결과는 제목 키워드로 후처리 필터링 + DB 중복 제거
+  - 두 결과 합쳐 시간순 정렬 후 반환
+  - "다음주 회의 언제 있어?" → 회의 유형 일정만 반환
+
 ### 다음 할 일
+- AI 에이전트 schedule_type 필터 실제 동작 테스트
 - 재빌드·배포 후 변경사항 확인
-- 새로고침 로그인 유지 테스트
 - 전체 E2E 테스트
 
 ---

@@ -449,74 +449,128 @@ def _extract_last_schedule_from_history(chat_history: list[dict]) -> dict | None
 
 
 async def _handle_schedule_view(user_input: str, user_id: int) -> dict:
-    """일정 조회: LLM 파싱 → Google Calendar 조회"""
-    # 1. LLM으로 조회 범위 파싱
+    """일정 조회: LLM 파싱 → DB 조회(schedule_type 필터) + Google Calendar 조회"""
+    # 1. LLM으로 조회 범위 + schedule_type 파싱
     logger.debug("[ScheduleAgent] schedule_view 파싱 시작")
     parsed = await _parse_view_request(user_input)
+    schedule_type = parsed.get("schedule_type")
     logger.debug("[ScheduleAgent] schedule_view 파싱 결과: %s", parsed)
 
-    # 2. Google Calendar API 호출
-    try:
-        import sys
-        from pathlib import Path
-        # backend 디렉토리를 sys.path에 추가
-        backend_path = str(Path(__file__).parent.parent.parent / "backend")
-        if backend_path not in sys.path:
-            sys.path.insert(0, backend_path)
+    import sys
+    from pathlib import Path
+    backend_path = str(Path(__file__).parent.parent.parent / "backend")
+    if backend_path not in sys.path:
+        sys.path.insert(0, backend_path)
 
-        from app.db.session import async_session
+    from app.db.session import async_session
+
+    # 2. DB 조회 (schedule_type 필터 적용)
+    db_events = []
+    try:
+        from app.services.schedule_service import list_schedules as db_list_schedules
+
+        async with async_session() as db:
+            db_schedules = await db_list_schedules(
+                db, user_id=user_id, schedule_type=schedule_type
+            )
+
+        time_min = parsed.get("time_min")
+        time_max = parsed.get("time_max")
+
+        for s in db_schedules:
+            # 기간 필터 적용
+            if time_min and s.start_time:
+                try:
+                    t_min = datetime.fromisoformat(time_min.replace("Z", "+00:00")).replace(tzinfo=None)
+                    if s.start_time < t_min:
+                        continue
+                except (ValueError, TypeError):
+                    pass
+            if time_max and s.start_time:
+                try:
+                    t_max = datetime.fromisoformat(time_max.replace("Z", "+00:00")).replace(tzinfo=None)
+                    if s.start_time > t_max:
+                        continue
+                except (ValueError, TypeError):
+                    pass
+            db_events.append({
+                "title": s.title,
+                "start": s.start_time.isoformat() if s.start_time else "",
+                "end": s.end_time.isoformat() if s.end_time else "",
+                "schedule_type": s.schedule_type,
+                "source": "db",
+            })
+    except Exception as e:
+        logger.warning(f"DB 일정 조회 실패: {e}")
+
+    # 3. Google Calendar 조회 + schedule_type 필터
+    google_events = []
+    try:
         from app.services.calendar_service import GoogleCalendarService
 
         calendar_service = GoogleCalendarService()
-
         async with async_session() as db:
-            events = await calendar_service.pull_events(
+            raw_events = await calendar_service.pull_events(
                 db, user_id,
                 time_min=parsed.get("time_min"),
                 time_max=parsed.get("time_max"),
             )
 
-        if not events:
-            return {
-                "type": "schedule_view",
-                "schedules": [],
-                "message": "해당 기간에 등록된 일정이 없습니다.",
-            }
+        # schedule_type 필터: Google Calendar 이벤트는 제목 키워드로 판별
+        _meeting_kw = ("회의", "미팅", "meeting", "스탠드업", "킥오프")
+        _deadline_kw = ("마감", "데드라인", "deadline", "제출")
 
-        # 일정 목록 메시지 생성
-        schedule_lines = []
-        for ev in events[:10]:
-            title = ev.get("title", "제목 없음")
-            start_raw = ev.get("start", "")
-            # ISO datetime → "HH:MM" 시간만 표시
-            try:
-                start_dt = datetime.fromisoformat(start_raw.replace("Z", "+00:00"))
-                start_display = start_dt.strftime("%H:%M")
-            except (ValueError, AttributeError):
-                start_display = start_raw
-            schedule_lines.append(f"- {title} ({start_display})")
-
-        message = f"총 {len(events)}개의 일정이 있습니다.\n" + "\n".join(schedule_lines)
-        if len(events) > 10:
-            message += f"\n... 외 {len(events) - 10}개"
-
-        return {
-            "type": "schedule_view",
-            "schedules": events,
-            "message": message,
-        }
-
+        db_titles = {e["title"] for e in db_events}
+        for ev in raw_events:
+            title = ev.get("title", "")
+            if title in db_titles:
+                continue  # DB에 이미 있는 것은 중복 제거
+            if schedule_type == "meeting" and not any(kw in title for kw in _meeting_kw):
+                continue
+            if schedule_type == "deadline" and not any(kw in title for kw in _deadline_kw):
+                continue
+            google_events.append({**ev, "source": "google"})
     except Exception as e:
         logger.warning(f"Google Calendar 조회 실패: {e}")
+
+    # 4. 합치기 + 시간순 정렬
+    all_events = sorted(
+        db_events + google_events,
+        key=lambda e: e.get("start") or e.get("start_time") or "",
+    )
+
+    if not all_events:
+        type_label = {"meeting": "회의", "deadline": "마감"}.get(schedule_type, "")
+        msg_suffix = f" {type_label}" if type_label else ""
         return {
             "type": "schedule_view",
             "schedules": [],
-            "message": (
-                "Google Calendar 일정을 조회하지 못했습니다. "
-                "Google 캘린더 연동이 필요합니다."
-            ),
-            "error": str(e),
+            "message": f"해당 기간에 등록된{msg_suffix} 일정이 없습니다.",
         }
+
+    # 5. 메시지 생성
+    schedule_lines = []
+    for ev in all_events[:10]:
+        title = ev.get("title", "제목 없음")
+        start_raw = ev.get("start") or ev.get("start_time") or ""
+        try:
+            start_dt = datetime.fromisoformat(start_raw.replace("Z", "+00:00") if "Z" in start_raw else start_raw)
+            start_display = start_dt.strftime("%m/%d %H:%M")
+        except (ValueError, AttributeError):
+            start_display = start_raw
+        schedule_lines.append(f"- {title} ({start_display})")
+
+    type_label = {"meeting": "회의", "deadline": "마감"}.get(schedule_type, "")
+    header = f"총 {len(all_events)}개의{f' {type_label}' if type_label else ''} 일정이 있습니다.\n"
+    message = header + "\n".join(schedule_lines)
+    if len(all_events) > 10:
+        message += f"\n... 외 {len(all_events) - 10}개"
+
+    return {
+        "type": "schedule_view",
+        "schedules": all_events,
+        "message": message,
+    }
 
 
 async def _parse_schedule_input(user_input: str) -> dict:
@@ -714,19 +768,20 @@ def _build_clarify_message(parsed: dict, missing: list) -> str:
 
 
 async def _parse_view_request(user_input: str) -> dict:
-    """자연어 입력 → 조회 범위 파싱 (Solar API json_mode)"""
+    """자연어 입력 → 조회 범위 + schedule_type 파싱 (Solar API json_mode)"""
     now = datetime.now()
     current_datetime = now.strftime("%Y-%m-%dT%H:%M:%S")
     current_weekday = ["월", "화", "수", "목", "금", "토", "일"][now.weekday()]
 
-    sys_prompt = f"""당신은 일정 조회 범위 파싱 전문가입니다. 사용자의 자연어 입력에서 조회 기간을 추출하세요.
+    sys_prompt = f"""당신은 일정 조회 범위 파싱 전문가입니다. 사용자의 자연어 입력에서 조회 기간과 일정 유형을 추출하세요.
 
 현재 시각: {current_datetime} ({current_weekday}요일)
 
 출력 형식(JSON):
 {{
     "time_min": "YYYY-MM-DDTHH:MM:SSZ",
-    "time_max": "YYYY-MM-DDTHH:MM:SSZ"
+    "time_max": "YYYY-MM-DDTHH:MM:SSZ",
+    "schedule_type": null
 }}
 
 규칙:
@@ -737,16 +792,28 @@ async def _parse_view_request(user_input: str) -> dict:
 - "이번 달 일정" → 이번 달 1일 00:00:00Z ~ 말일 23:59:59Z
 - "최근 일정", "일정 조회" 등 명확하지 않으면 → 오늘 00:00:00Z ~ 오늘로부터 +30일 23:59:59Z (향후 한 달)
 - 시간대는 UTC(Z) 형식으로 출력 (한국시간 KST = UTC+9 이므로 -9시간 보정)
+- schedule_type: "회의"/"미팅"/"meeting"/"스탠드업"/"킥오프" → "meeting", "마감"/"데드라인"/"deadline"/"제출" → "deadline", 특정 유형 언급 없으면 → null
 - 반드시 유효한 JSON만 출력하세요"""
 
     user_prompt = f"조회 요청: {user_input}"
     result_str = await _call_llm(sys_prompt, user_prompt, json_mode=True)
 
     try:
-        return json.loads(result_str)
+        parsed = json.loads(result_str)
     except json.JSONDecodeError:
         logger.error(f"조회 범위 파싱 실패: {result_str}")
-        return {}
+        parsed = {}
+
+    # LLM 결과와 무관하게 키워드로 schedule_type 재확인
+    if not parsed.get("schedule_type"):
+        _meeting_kw = ("회의", "미팅", "meeting", "스탠드업", "킥오프")
+        _deadline_kw = ("마감", "데드라인", "deadline", "제출")
+        if any(kw in user_input for kw in _meeting_kw):
+            parsed["schedule_type"] = "meeting"
+        elif any(kw in user_input for kw in _deadline_kw):
+            parsed["schedule_type"] = "deadline"
+
+    return parsed
 
 
 async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False) -> str:
