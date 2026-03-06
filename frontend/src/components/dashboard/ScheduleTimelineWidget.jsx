@@ -95,7 +95,7 @@ export default function ScheduleTimelineWidget({ meetings = [] }) {
             </div>
 
             {!isCollapsed && (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto scrollbar-thin">
                     {/* Time axis */}
                     <div className="relative min-w-[600px]">
                         <div className="flex items-center border-b border-neutral-200 dark:border-neutral-700 pb-1 mb-3">
