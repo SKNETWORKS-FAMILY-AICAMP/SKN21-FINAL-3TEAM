@@ -167,7 +167,7 @@ function MemoPanel() {
       {open && (
         <div
           ref={panelRef}
-          className={`absolute w-72 bg-sidebar-bg border border-sidebar-border rounded-md shadow-lg overflow-hidden ${isDragging ? 'z-[100]' : 'z-50'}`}
+          className={`absolute w-72 bg-[#56728A]/80 dark:bg-[#141416]/80 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-xl shadow-xl overflow-hidden ${isDragging ? 'z-[100]' : 'z-50'}`}
           style={{
             // 드래그된 적이 있으면 그 위치 사용, 아니면 기본 위치(버튼 아래)
             ...(position.x !== null
@@ -601,7 +601,7 @@ export default function Topbar({ isScrolled = false }) {
                                       >
                                         {(event.attendees || []).length > 0 ? (
                                           (event.attendees || []).slice(0, 3).map((a, i) => (
-                                            <div key={i} className="w-6 h-6 rounded-full border border-white/30 bg-accent-500 overflow-hidden shrink-0" title={a.name || a.email}>
+                                            <div key={i} className="w-6 h-6 rounded-full border border-white/40 bg-accent-500 overflow-hidden shrink-0" title={a.name || a.email}>
                                               {a.avatar ? (
                                                 <img src={a.avatar} alt={a.name} className="w-full h-full object-cover" />
                                               ) : (
@@ -610,7 +610,7 @@ export default function Topbar({ isScrolled = false }) {
                                             </div>
                                           ))
                                         ) : (
-                                          <div className="w-6 h-6 rounded-full border border-white/30 bg-accent-500 overflow-hidden shrink-0">
+                                          <div className="w-6 h-6 rounded-full border border-white/40 bg-accent-500 overflow-hidden shrink-0">
                                             {user?.avatar ? (
                                               <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
                                             ) : (
@@ -621,7 +621,7 @@ export default function Topbar({ isScrolled = false }) {
                                           </div>
                                         )}
                                         {(event.attendees || []).length > 3 && (
-                                          <div className="w-6 h-6 rounded-full border border-white/30 bg-white/10 flex items-center justify-center text-white text-[9px] font-bold shrink-0 z-10">
+                                          <div className="w-6 h-6 rounded-full border border-white/40 bg-white/10 flex items-center justify-center text-white text-[9px] font-bold shrink-0 z-10">
                                             +{(event.attendees || []).length - 3}
                                           </div>
                                         )}
@@ -801,8 +801,8 @@ export default function Topbar({ isScrolled = false }) {
       {/* 비밀번호 변경 모달 */}
       {pwModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setPwModal(false)}>
-          <div className="bg-surface-card rounded-2xl border border-neutral-divider shadow-xl w-[380px] p-0 overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="p-5 border-b border-neutral-divider bg-surface-hover">
+          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-2xl border border-white/40 dark:border-white/10 shadow-xl w-[380px] p-0 overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5 border-b border-white/20 dark:border-white/10">
               <h3 className="text-base font-bold text-neutral-main">비밀번호 변경</h3>
             </div>
             <div className="p-6 space-y-4">
@@ -818,14 +818,14 @@ export default function Topbar({ isScrolled = false }) {
                     value={pwForm[key]}
                     onChange={(e) => setPwForm({ ...pwForm, [key]: e.target.value })}
                     placeholder={placeholder}
-                    className="w-full px-3.5 py-2.5 border border-neutral-divider bg-surface-main rounded-xl text-sm outline-none focus:border-primary-500 transition-all text-neutral-main"
+                    className="w-full px-3.5 py-2.5 border border-white/30 dark:border-white/10 bg-white/40 dark:bg-white/5 rounded-xl text-sm outline-none focus:border-primary-500 transition-all text-neutral-main placeholder:text-neutral-muted"
                   />
                 </div>
               ))}
               {pwError && <p className="text-xs font-bold text-error bg-error-bg p-2 rounded-lg">{pwError}</p>}
             </div>
-            <div className="flex bg-surface-hover border-t border-neutral-divider p-4 gap-2">
-              <button className="flex-1 py-2 rounded-xl text-sm font-bold bg-surface-card border border-neutral-divider text-neutral-sub hover:text-neutral-main hover:bg-surface-main transition-all" onClick={() => setPwModal(false)}>취소</button>
+            <div className="flex border-t border-white/20 dark:border-white/10 p-4 gap-2">
+              <button className="flex-1 py-2 rounded-xl text-sm font-bold bg-white/40 dark:bg-white/10 border border-white/30 dark:border-white/10 text-neutral-sub hover:text-neutral-main hover:bg-white/60 dark:hover:bg-white/20 transition-all" onClick={() => setPwModal(false)}>취소</button>
               <button className="flex-1 py-2 rounded-xl text-sm font-bold bg-primary-700 text-white hover:bg-primary-900 transition-all" onClick={handleChangePassword} disabled={pwSaving}>
                 {pwSaving ? '변경 중...' : '변경 완료'}
               </button>

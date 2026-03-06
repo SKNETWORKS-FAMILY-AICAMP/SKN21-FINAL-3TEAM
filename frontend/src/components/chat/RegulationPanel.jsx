@@ -15,7 +15,7 @@ function RegulationModal({ reg, onClose }) {
       onClick={onClose}
     >
       <div
-        className="bg-surface-card rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col"
+        className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col border border-white/40 dark:border-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}

@@ -60,7 +60,7 @@ function ConfirmModal({ message, onConfirm, onCancel }) {
       onClick={onCancel}
     >
       <div
-        className="bg-surface-card rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6"
+        className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6 border border-white/40 dark:border-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         <p className="text-sm text-neutral-main leading-relaxed mb-6 whitespace-pre-wrap">{message}</p>

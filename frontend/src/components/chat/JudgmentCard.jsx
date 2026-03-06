@@ -33,7 +33,7 @@ function RegulationPopup({ reg, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="bg-surface-card rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col border border-white/40 dark:border-white/10" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between px-5 py-4 border-b border-neutral-divider">
           <div className="flex items-center gap-2 pr-4">
             <FileText size={16} className="text-primary-600 flex-shrink-0 mt-0.5" />

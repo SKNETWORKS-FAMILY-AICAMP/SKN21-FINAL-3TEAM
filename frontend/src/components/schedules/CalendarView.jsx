@@ -111,7 +111,7 @@ function DayDetailPopup({ day, month, year, events, typeColorMap, typeLabelMap, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
-      <div ref={ref} className="bg-surface-card rounded-lg border border-neutral-border shadow-md w-[540px] max-h-[80vh] flex flex-col overflow-hidden">
+      <div ref={ref} className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-lg border border-white/40 dark:border-white/10 shadow-md w-[540px] max-h-[80vh] flex flex-col overflow-hidden">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-divider">
           <span className="text-sm font-bold text-neutral-main">{year}년 {month}월 {day}일</span>

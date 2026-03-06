@@ -24,6 +24,7 @@ export default function Layout() {
   const [messageOpen, setMessageOpen] = useState(false);
 
   const mainRef = useRef(null);
+  const motionRef = useRef(null);
   // handleScroll 클로저에서 최신 isChatPage 값을 참조하기 위한 ref
   const isChatPageRef = useRef(isChatPage);
   isChatPageRef.current = isChatPage;
@@ -129,6 +130,7 @@ export default function Layout() {
       >
         <AnimatePresence mode="wait">
           <motion.div
+            ref={motionRef}
             key={location.pathname}
             variants={pageVariants}
             initial="initial"
@@ -136,6 +138,9 @@ export default function Layout() {
             exit="exit"
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className={isChatPage ? 'flex-1 min-h-0' : ''}
+            onAnimationComplete={() => {
+              if (motionRef.current) motionRef.current.style.transform = 'none';
+            }}
           >
             <ErrorBoundary key={location.pathname}>
               <Outlet context={{ isScrolled }} />

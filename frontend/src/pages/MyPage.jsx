@@ -474,8 +474,8 @@ const [showEditModal, setShowEditModal] = useState(false);
             {/* 프로필 수정 모달 */}
             {showEditModal && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60]" onClick={() => setShowEditModal(false)}>
-                    <div className="bg-surface-card rounded-2xl border border-neutral-divider shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="p-6 border-b border-neutral-divider flex items-center justify-between bg-surface-hover">
+                    <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-2xl border border-white/40 dark:border-white/10 shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 border-b border-white/20 dark:border-white/10 flex items-center justify-between">
                             <h3 className="text-lg font-bold text-neutral-main">프로필 수정</h3>
                             <button onClick={() => setShowEditModal(false)} className="text-neutral-sub hover:text-neutral-main transition-colors">
                                 <Plus size={20} className="rotate-45" />
@@ -520,7 +520,7 @@ const [showEditModal, setShowEditModal] = useState(false);
                                         type="text"
                                         value={editForm.name}
                                         onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-surface-hover border border-neutral-divider rounded-xl text-sm text-neutral-main focus:border-primary-500 focus:bg-surface-card outline-none transition-all"
+                                        className="w-full px-4 py-2.5 bg-white/40 dark:bg-white/5 border border-white/30 dark:border-white/10 rounded-xl text-sm text-neutral-main focus:border-primary-500 outline-none transition-all placeholder:text-neutral-muted"
                                         placeholder="이름을 입력하세요"
                                     />
                                 </div>
@@ -538,7 +538,7 @@ const [showEditModal, setShowEditModal] = useState(false);
                                             type="text"
                                             value={editForm.team}
                                             onChange={e => setEditForm({ ...editForm, team: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-surface-hover border border-neutral-divider rounded-xl text-sm text-neutral-main focus:border-primary-500 focus:bg-surface-card outline-none transition-all"
+                                            className="w-full px-4 py-2.5 bg-white/40 dark:bg-white/5 border border-white/30 dark:border-white/10 rounded-xl text-sm text-neutral-main focus:border-primary-500 outline-none transition-all placeholder:text-neutral-muted"
                                             placeholder="팀명"
                                         />
                                     </div>
@@ -548,7 +548,7 @@ const [showEditModal, setShowEditModal] = useState(false);
                                             type="text"
                                             value={editForm.phone}
                                             onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-surface-hover border border-neutral-divider rounded-xl text-sm text-neutral-main focus:border-primary-500 focus:bg-surface-card outline-none transition-all"
+                                            className="w-full px-4 py-2.5 bg-white/40 dark:bg-white/5 border border-white/30 dark:border-white/10 rounded-xl text-sm text-neutral-main focus:border-primary-500 outline-none transition-all placeholder:text-neutral-muted"
                                             placeholder="010-0000-0000"
                                         />
                                     </div>
@@ -559,7 +559,7 @@ const [showEditModal, setShowEditModal] = useState(false);
                                         type="text"
                                         value={editForm.address}
                                         onChange={e => setEditForm({ ...editForm, address: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-surface-hover border border-neutral-divider rounded-xl text-sm text-neutral-main focus:border-primary-500 focus:bg-surface-card outline-none transition-all"
+                                        className="w-full px-4 py-2.5 bg-white/40 dark:bg-white/5 border border-white/30 dark:border-white/10 rounded-xl text-sm text-neutral-main focus:border-primary-500 outline-none transition-all placeholder:text-neutral-muted"
                                         placeholder="주소를 입력하세요"
                                     />
                                 </div>
@@ -570,10 +570,10 @@ const [showEditModal, setShowEditModal] = useState(false);
                                 {saveError}
                             </div>
                         )}
-                        <div className="p-6 bg-surface-hover border-t border-neutral-divider flex gap-3">
+                        <div className="p-6 border-t border-white/20 dark:border-white/10 flex gap-3">
                             <button
                                 onClick={() => { setShowEditModal(false); setSaveError(''); }}
-                                className="flex-1 py-3 border border-neutral-divider bg-surface-card text-neutral-sub rounded-xl text-sm font-bold hover:bg-surface-hover transition-all"
+                                className="flex-1 py-3 border border-white/30 dark:border-white/10 bg-white/40 dark:bg-white/10 text-neutral-sub rounded-xl text-sm font-bold hover:bg-white/60 dark:hover:bg-white/20 transition-all"
                             >
                                 취소
                             </button>
@@ -593,8 +593,8 @@ const [showEditModal, setShowEditModal] = useState(false);
             {/* 비밀번호 변경 모달 */}
             {showPwModal && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60]" onClick={() => setShowPwModal(false)}>
-                    <div className="bg-surface-card rounded-2xl border border-neutral-divider shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="p-6 border-b border-neutral-divider flex items-center justify-between bg-surface-hover">
+                    <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-2xl border border-white/40 dark:border-white/10 shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 border-b border-white/20 dark:border-white/10 flex items-center justify-between">
                             <h3 className="text-lg font-bold text-neutral-main flex items-center gap-2">
                                 <Lock size={16} /> 비밀번호 변경
                             </h3>
@@ -635,10 +635,10 @@ const [showEditModal, setShowEditModal] = useState(false);
                                 <p className="text-xs text-green-600 font-medium">비밀번호가 변경되었습니다.</p>
                             )}
                         </div>
-                        <div className="p-6 bg-surface-hover border-t border-neutral-divider flex gap-3">
+                        <div className="p-6 border-t border-white/20 dark:border-white/10 flex gap-3">
                             <button
                                 onClick={() => setShowPwModal(false)}
-                                className="flex-1 py-3 border border-neutral-divider bg-surface-card text-neutral-sub rounded-xl text-sm font-bold hover:bg-surface-hover transition-all"
+                                className="flex-1 py-3 border border-white/30 dark:border-white/10 bg-white/40 dark:bg-white/10 text-neutral-sub rounded-xl text-sm font-bold hover:bg-white/60 dark:hover:bg-white/20 transition-all"
                             >
                                 취소
                             </button>
@@ -657,9 +657,9 @@ const [showEditModal, setShowEditModal] = useState(false);
             {/* 문서 미리보기 모달 */}
             {docPreview && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60]" onClick={() => setDocPreview(null)}>
-                    <div className="bg-surface-card rounded-2xl border border-neutral-divider shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-2xl border border-white/40 dark:border-white/10 shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col" onClick={e => e.stopPropagation()}>
                         {/* 헤더 */}
-                        <div className="p-5 border-b border-neutral-divider flex items-center justify-between bg-surface-hover shrink-0">
+                        <div className="p-5 border-b border-white/20 dark:border-white/10 flex items-center justify-between shrink-0">
                             <div className="flex-1 min-w-0">
                                 <h3 className="text-base font-bold text-neutral-main truncate">{docPreview.title}</h3>
                                 <div className="flex items-center gap-2 mt-1">

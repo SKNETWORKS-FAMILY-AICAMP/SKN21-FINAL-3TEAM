@@ -556,7 +556,7 @@ export default function ChatPage() {
       {/* 문서 선택 피커 */}
       {docPickerOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { setDocPickerOpen(false); setDocSearch(''); }}>
-          <div className="bg-surface-card rounded-xl shadow-xl w-[28rem] max-w-[90vw] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-xl shadow-xl w-[28rem] max-w-[90vw] overflow-hidden border border-white/40 dark:border-white/10" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-divider">
               <h3 className="text-sm font-semibold text-neutral-main">요약할 문서 선택</h3>
               <button onClick={() => { setDocPickerOpen(false); setDocSearch(''); }} className="text-neutral-muted hover:text-neutral-main transition">
@@ -604,7 +604,7 @@ export default function ChatPage() {
       {/* 초기화 확인 다이얼로그 */}
       {showClearConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-surface-card rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-xl shadow-xl p-6 max-w-sm w-full mx-4 border border-white/40 dark:border-white/10">
             <h3 className="text-base font-semibold mb-2">대화 기록을 초기화할까요?</h3>
             <p className="text-sm text-neutral-sub mb-5">모든 대화 내용이 삭제됩니다. 이 작업은 되돌릴 수 없습니다.</p>
             <div className="flex justify-end gap-2">

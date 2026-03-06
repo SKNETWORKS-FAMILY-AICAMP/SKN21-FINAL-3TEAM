@@ -291,7 +291,7 @@ export default function TaskPipelineWidget() {
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.9, y: 20 }}
                             transition={{ type: 'spring', duration: 0.35 }}
-                            className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-[340px] overflow-hidden"
+                            className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-3xl shadow-2xl w-[340px] overflow-hidden border border-white/40 dark:border-white/10"
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Header banner */}

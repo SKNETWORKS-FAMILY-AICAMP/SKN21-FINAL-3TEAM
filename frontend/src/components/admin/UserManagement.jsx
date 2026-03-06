@@ -82,7 +82,7 @@ export default function UserManagement({ users = [], onRefresh, selectedTeam = n
 
       {showModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-          <div className="bg-surface-card rounded-lg border border-neutral-border shadow-lg w-[400px] p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-lg border border-white/40 dark:border-white/10 shadow-lg w-[400px] p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-bold mb-4">사용자 추가</h3>
             <div className="space-y-3">
               <div>
@@ -125,7 +125,7 @@ export default function UserManagement({ users = [], onRefresh, selectedTeam = n
 
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setDeleteTarget(null)}>
-          <div className="bg-surface-card rounded-lg border border-neutral-border shadow-lg w-[360px] p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-lg border border-white/40 dark:border-white/10 shadow-lg w-[360px] p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-bold mb-2">사용자 삭제</h3>
             <p className="text-sm text-neutral-sub mb-5">
               <strong className="text-neutral-main">{deleteTarget.name}</strong> ({deleteTarget.email})을(를) 삭제하시겠습니까?<br />이 작업은 되돌릴 수 없습니다.

@@ -97,7 +97,7 @@ export default function SystemStats({ queryLogs = [], team = null }) {
 
       {selectedQuery && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setSelectedQuery(null)}>
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-xl shadow-xl max-w-md w-full mx-4 overflow-hidden border border-white/40 dark:border-white/10" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-divider">
               <span className="text-sm font-bold text-neutral-main">질의 상세</span>
               <button onClick={() => setSelectedQuery(null)} className="text-neutral-muted hover:text-neutral-main text-lg leading-none">&times;</button>

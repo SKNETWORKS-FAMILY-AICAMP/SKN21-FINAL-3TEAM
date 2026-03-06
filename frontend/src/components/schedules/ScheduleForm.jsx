@@ -245,7 +245,7 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
   };
 
   return (
-    <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl p-6 rounded-[2rem] border border-white/20 dark:border-white/10 shadow-2xl">
+    <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl p-6 rounded-[2rem] border border-white/40 dark:border-white/10 shadow-2xl">
       <h3 className="text-lg font-black mb-5 text-neutral-900 dark:text-white tracking-tight">{isEditMode ? '일정 수정' : '일정 추가'}</h3>
       <div className="space-y-3">
         {/* 제목 */}

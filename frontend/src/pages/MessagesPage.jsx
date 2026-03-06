@@ -272,7 +272,7 @@ export default function MessagesPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl p-6 w-full max-w-md mx-4"
+              className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-2xl shadow-xl p-6 w-full max-w-md mx-4 border border-white/40 dark:border-white/10"
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-lg font-bold text-neutral-main mb-4 flex items-center gap-2">
