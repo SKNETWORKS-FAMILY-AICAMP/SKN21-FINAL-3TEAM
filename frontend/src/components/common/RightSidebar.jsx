@@ -5,71 +5,37 @@ import AIChatPopup from '../chat/AIChatPopup';
 import MessagePopup from '../messages/MessagePopup';
 
 export default function RightSidebar({ chatOpen, setChatOpen, messageOpen, setMessageOpen }) {
-    const [isExpanded, setIsExpanded] = useState(false);
-
-    // 외부 클릭 시 팝업 닫기 (필요 시)
-
     return (
-        <div
-            className="fixed right-0 bottom-24 z-[60] flex items-center h-auto overflow-visible select-none"
-            onMouseEnter={() => setIsExpanded(true)}
-            onMouseLeave={() => !chatOpen && !messageOpen && setIsExpanded(false)}
-        >
-            <motion.div
-                initial={false}
-                animate={isExpanded ? "expanded" : "collapsed"}
-                variants={{
-                    collapsed: { x: 0, opacity: 1, scale: 1 },
-                    expanded: { x: 0, opacity: 1, scale: 1 }
+        <div className="fixed right-8 bottom-8 z-[60] flex flex-col gap-3 select-none">
+            {/* 쪽지 버튼 */}
+            <button
+                onClick={() => {
+                    setMessageOpen(!messageOpen);
+                    setChatOpen(false);
                 }}
-                className="flex flex-col items-center justify-center bg-white/10 dark:bg-black/20 backdrop-blur-2xl shadow-xl transition-all duration-300"
-                style={{
-                    padding: isExpanded ? '6px' : '0px',
-                    borderRadius: isExpanded ? '9999px 0 0 9999px' : '20px 0 0 20px',
-                    borderWidth: isExpanded ? '1px' : '0px',
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                    minWidth: isExpanded ? '64px' : '16px',
-                    minHeight: isExpanded ? 'auto' : '64px'
-                }}
+                className={`sidebar-trigger w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg ${messageOpen
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700'
+                    }`}
+                title="쪽지"
             >
-                {!isExpanded ? (
-                    /* 노치/핸들 영역 */
-                    <div className="w-1 h-8 bg-white/40 rounded-full" />
-                ) : (
-                    /* 펼쳐진 아이콘 영역 */
-                    <div className="flex flex-col gap-3">
-                        {/* 쪽지 버튼 */}
-                        <button
-                            onClick={() => {
-                                setMessageOpen(!messageOpen);
-                                setChatOpen(false);
-                            }}
-                            className={`sidebar-trigger w-12 h-12 rounded-full flex items-center justify-center transition-all ${messageOpen
-                                ? 'bg-primary-500 text-white shadow-lg'
-                                : 'bg-white/20 dark:bg-white/5 text-neutral-700 dark:text-neutral-200 hover:bg-white/40'
-                                }`}
-                            title="쪽지"
-                        >
-                            <Mail size={22} />
-                        </button>
+                <Mail size={24} />
+            </button>
 
-                        {/* AI 챗봇 버튼 */}
-                        <button
-                            onClick={() => {
-                                setChatOpen(!chatOpen);
-                                setMessageOpen(false);
-                            }}
-                            className={`sidebar-trigger w-12 h-12 rounded-full flex items-center justify-center transition-all ${chatOpen
-                                ? 'bg-primary-500 text-white shadow-lg'
-                                : 'bg-white/20 dark:bg-white/5 text-neutral-700 dark:text-neutral-200 hover:bg-white/40'
-                                }`}
-                            title="AI 어시스턴트"
-                        >
-                            <MessageSquare size={22} />
-                        </button>
-                    </div>
-                )}
-            </motion.div>
+            {/* AI 챗봇 버튼 */}
+            <button
+                onClick={() => {
+                    setChatOpen(!chatOpen);
+                    setMessageOpen(false);
+                }}
+                className={`sidebar-trigger w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg ${chatOpen
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700'
+                    }`}
+                title="AI 어시스턴트"
+            >
+                <MessageSquare size={24} />
+            </button>
         </div>
     );
 }
