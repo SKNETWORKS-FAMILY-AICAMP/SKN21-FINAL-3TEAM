@@ -48,29 +48,29 @@
 
 /* ── Dark mode ── */
 .dark {
-  --color-primary-900: #D4D4D8;
-  --color-primary-700: #A1A1AA;
-  --color-primary-500: #71717A;
-  --color-primary-300: #52525B;
-  --color-primary-100: #3F3F46;
-  --color-primary-50: #27272A;
+  --color-primary-900: #E0E4E8;
+  --color-primary-700: #B0BCC8;
+  --color-primary-500: #8A9AAB;
+  --color-primary-300: #5A6A7A;
+  --color-primary-100: #3A4450;
+  --color-primary-50: #2A3240;
 
-  --color-accent-700: #D4D4D8;
-  --color-accent-500: #A8A8B3;
-  --color-accent-300: #78787F;
-  --color-accent-100: #3F3F46;
-  --color-accent-50: #27272A;
+  --color-accent-700: #D8D0C4;
+  --color-accent-500: #B0A898;
+  --color-accent-300: #7A7268;
+  --color-accent-100: #3F3A34;
+  --color-accent-50: #2E2A26;
 
-  --color-surface-main: #202023;
-  --color-surface-sub: #27272A;
-  --color-surface-card: #27272A;
+  --color-surface-main: #232326;
+  --color-surface-sub: #2C2C30;
+  --color-surface-card: #2F2F34;
   --color-surface-hover: #3F3F44;
 
-  --color-neutral-main: #FAFAFA;
-  --color-neutral-sub: #A1A1AA;
-  --color-neutral-muted: #71717A;
-  --color-neutral-border: #3F3F46;
-  --color-neutral-divider: #2E2E33;
+  --color-neutral-main: #F5F5F5;
+  --color-neutral-sub: #B0B4BC;
+  --color-neutral-muted: #7E848C;
+  --color-neutral-border: #44444B;
+  --color-neutral-divider: #38383D;
 
   --color-success: #4ADE80;
   --color-success-bg: #14281E;
@@ -96,7 +96,7 @@
   }
 
   .dark body {
-    background: #18181B;
+    background: #1E1E21;
   }
 }
 
@@ -142,17 +142,17 @@
   }
 
   .dark .card {
-    background: #27272A;
+    background: #2F2F34;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    border-color: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.10);
   }
 
   .dark .card:hover {
-    background: #323235;
+    background: #363639;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    border-color: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.15);
   }
 
   .card-header {

@@ -10,22 +10,17 @@ const client = axios.create({
 
 // 요청 인터셉터: JWT 토큰 자동 첨부
 client.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem('access_token')
+  const token = localStorage.getItem('access_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
   return config
 })
 
-// 응답 인터셉터: 401(토큰 만료/무효)만 토큰 제거, 403(권한 없음)은 유지
+// 응답 인터셉터: 에러 전파만 (토큰 관리는 authStore에서 처리)
 client.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      sessionStorage.removeItem('access_token')
-    }
-    return Promise.reject(error)
-  }
+  (error) => Promise.reject(error)
 )
 
 export default client

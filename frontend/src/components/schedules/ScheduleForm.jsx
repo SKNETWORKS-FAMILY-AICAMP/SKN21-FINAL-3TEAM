@@ -70,7 +70,7 @@ function TimeSelect({ value, onChange }) {
         <div
           ref={listRef}
           style={dropStyle}
-          className="bg-white border border-neutral-border rounded-md shadow-lg overflow-y-auto max-h-48"
+          className="bg-surface-card border border-neutral-border rounded-md shadow-lg overflow-y-auto max-h-48"
         >
           {timeOptions.map((t) => (
             <button
