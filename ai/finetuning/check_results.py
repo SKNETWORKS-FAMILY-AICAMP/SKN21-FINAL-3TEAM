@@ -28,11 +28,16 @@ for task_dir in sorted(BASE.glob("v2_*")):
         if log_file.exists():
             log = json.loads(log_file.read_text())
             print(f"\n[학습 로그]")
-            for k, v in log.items():
-                if isinstance(v, float):
-                    print(f"  {k}: {v:.4f}")
-                else:
-                    print(f"  {k}: {v}")
+            if isinstance(log, list):
+                # trainer log_history 형식
+                for entry in log[-3:]:  # 마지막 3개만
+                    print(f"  {json.dumps({k: round(v,4) if isinstance(v,float) else v for k,v in entry.items()}, ensure_ascii=False)}")
+            else:
+                for k, v in log.items():
+                    if isinstance(v, float):
+                        print(f"  {k}: {v:.4f}")
+                    else:
+                        print(f"  {k}: {v}")
         else:
             print(f"\n[학습 로그] 없음")
 
