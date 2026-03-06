@@ -212,6 +212,14 @@ def load_base_model(config: dict, for_training: bool = True, base_model_override
             device_map="auto",
             trust_remote_code=True,
         )
+        # EXAONE: get_input_embeddings 패치 (peft가 양쪽 클래스에서 호출함)
+        outer_cls = type(model)
+        outer_cls.get_input_embeddings = lambda self: self.transformer.wte
+        outer_cls.set_input_embeddings = lambda self, v: setattr(self.transformer, "wte", v)
+        inner_cls = type(model.transformer)
+        inner_cls.get_input_embeddings = lambda self: self.wte
+        inner_cls.set_input_embeddings = lambda self, v: setattr(self, "wte", v)
+        print(f"  [EXAONE] get_input_embeddings 패치 완료 (outer + inner)")
     else:
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,
