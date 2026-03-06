@@ -23,7 +23,7 @@ export default function SlackConnect() {
   };
 
   return (
-    <div className="card p-5 mb-5">
+    <div className="card p-4 mb-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-[#4A154B] flex items-center justify-center">

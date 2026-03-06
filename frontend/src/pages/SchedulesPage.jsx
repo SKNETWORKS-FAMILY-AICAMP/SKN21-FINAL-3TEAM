@@ -422,26 +422,26 @@ export default function SchedulesPage() {
               y: 0,
               transition: { type: 'spring', damping: 25, stiffness: 300 }
             }}
-            className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] w-full max-w-lg overflow-hidden border border-white/40 dark:border-white/10"
+            className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[1.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] w-full max-w-sm overflow-hidden border border-white/40 dark:border-white/10"
           >
             {/* Modal Inner Shadow/Glow */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-primary-400/30 to-transparent rounded-full" />
 
-            <div className="p-6 md:p-8">
-              <div className="flex items-center justify-between mb-8">
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-5">
                 <div>
-                  <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tighter">
+                  <h2 className="text-lg font-black text-neutral-900 dark:text-white tracking-tighter">
                     {settingsTab === 'google' ? 'Google Integration' : settingsTab === 'slack' ? 'Slack Integration' : 'Integration Hub'}
                   </h2>
-                  <p className="text-[11px] text-neutral-500 font-medium mt-0.5">
+                  <p className="text-[10px] text-neutral-500 font-medium mt-0.5">
                     {settingsTab === 'all' ? 'Seamless workspace automation' : `Configure your ${settingsTab} connection`}
                   </p>
                 </div>
                 <button
                   onClick={() => setShowSettingsModal(false)}
-                  className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-400 transition-all flex items-center justify-center group"
+                  className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-400 transition-all flex items-center justify-center group"
                 >
-                  <XCircle size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+                  <XCircle size={16} className="group-hover:rotate-90 transition-transform duration-300" />
                 </button>
               </div>
 
@@ -465,11 +465,11 @@ export default function SchedulesPage() {
                 )}
               </div>
 
-              <div className="mt-8 pt-6 border-t border-neutral-100 dark:border-white/5 flex justify-between items-center">
+              <div className="mt-5 pt-4 border-t border-neutral-100 dark:border-white/5 flex justify-between items-center">
                 <p className="text-[10px] text-neutral-400 font-medium">Synced via OAuth 2.0</p>
                 <button
                   onClick={() => setShowSettingsModal(false)}
-                  className="px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-black text-xs hover:scale-105 active:scale-95 transition-all shadow-lg"
+                  className="px-5 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-lg font-black text-xs hover:scale-105 active:scale-95 transition-all shadow-lg"
                 >
                   Done
                 </button>
