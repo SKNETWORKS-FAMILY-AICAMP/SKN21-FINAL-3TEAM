@@ -49,9 +49,8 @@ from transformers import (
     AutoTokenizer,
     BitsAndBytesConfig,
     EarlyStoppingCallback,
-    TrainingArguments,
 )
-from trl import SFTTrainer
+from trl import SFTConfig, SFTTrainer
 
 # ── 경로 ──
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -251,7 +250,11 @@ def train(task: str, config: dict, base_model_override: str = None):
     output_dir = str(output_base / model_short / "checkpoints")
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    training_args = TrainingArguments(
+    # Early stopping
+    early_stopping_patience = config["training"].get("early_stopping_patience", 3)
+    callbacks = [EarlyStoppingCallback(early_stopping_patience=early_stopping_patience)]
+
+    training_args = SFTConfig(
         output_dir=output_dir,
         num_train_epochs=train_cfg["num_epochs"],
         per_device_train_batch_size=train_cfg["batch_size"],
@@ -270,11 +273,9 @@ def train(task: str, config: dict, base_model_override: str = None):
         gradient_checkpointing=True,
         optim="paged_adamw_8bit",
         report_to="none",
+        max_seq_length=train_cfg["max_length"],
+        dataset_text_field="text",
     )
-
-    # Early stopping
-    early_stopping_patience = config["training"].get("early_stopping_patience", 3)
-    callbacks = [EarlyStoppingCallback(early_stopping_patience=early_stopping_patience)]
 
     print(f"\n[3/4] 학습 시작 (epochs={train_cfg['num_epochs']}, "
           f"early_stopping={early_stopping_patience})...")
@@ -284,8 +285,6 @@ def train(task: str, config: dict, base_model_override: str = None):
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         peft_config=lora_config,
-        max_seq_length=train_cfg["max_length"],
-        dataset_text_field="text",
         callbacks=callbacks,
     )
 
