@@ -10,7 +10,6 @@ from app.db.base import Base, TimestampMixin
 
 class Message(Base, TimestampMixin):
     __tablename__ = "messages"
-
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     sender_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     receiver_id: Mapped[int] = mapped_column(ForeignKey("users.id"))

@@ -225,14 +225,18 @@ class GoogleTasksService(GoogleBaseService):
         except Exception as e:
             logger.warning(f"[pull] Google 인증 실패 (user_id={user_id}): {e}")
             raise HTTPException(status_code=400, detail="Google Tasks가 연결되어 있지 않습니다. 설정에서 Google 연결을 먼저 해주세요.")
-        service = self._build_service(creds)
-        tasklist_id = self._get_or_create_tasklist(service)
+        try:
+            service = self._build_service(creds)
+            tasklist_id = self._get_or_create_tasklist(service)
 
-        result = service.tasks().list(
-            tasklist=tasklist_id, maxResults=100,
-            showCompleted=True, showHidden=True,
-        ).execute()
-        all_google_items = result.get("items", [])
+            result = service.tasks().list(
+                tasklist=tasklist_id, maxResults=100,
+                showCompleted=True, showHidden=True,
+            ).execute()
+            all_google_items = result.get("items", [])
+        except Exception as e:
+            logger.error(f"[pull] Google Tasks API 호출 실패 (user_id={user_id}): {e}")
+            raise HTTPException(status_code=400, detail=f"Google Tasks API 호출 실패: {e}")
 
         # 삭제된 항목 필터링 (deleted 플래그가 있을 수 있음)
         deleted_ids = {t["id"] for t in all_google_items if t.get("deleted", False)}
@@ -303,6 +307,5 @@ class GoogleTasksService(GoogleBaseService):
                 "google_active": len(google_tasks),
                 "google_deleted": len(deleted_ids),
                 "db_synced_items": len(items),
-                "db_google_task_ids": [item.google_task_id for item in items],
             },
         }
