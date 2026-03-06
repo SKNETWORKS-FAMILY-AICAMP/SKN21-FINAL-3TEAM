@@ -18,12 +18,14 @@ router = APIRouter()
 @router.get("/")
 async def list_schedules(
     include_team: bool = Query(False),
+    schedule_type: str | None = Query(None),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """일정 목록 조회 (include_team=true 시 팀원 공유 일정 포함)"""
+    """일정 목록 조회 (include_team=true 시 팀원 공유 일정 포함, schedule_type 필터 선택)"""
     schedules = await schedule_service.list_schedules(
         db, user_id=user.id, include_team=include_team, user_team=user.team,
+        schedule_type=schedule_type,
     )
 
     # 팀 일정 포함 시 user_name 조회
