@@ -16,6 +16,7 @@ import ApprovalPanel from '../components/schedules/ApprovalPanel';
 import SheetsDashboard from '../components/schedules/SheetsDashboard';
 import useScheduleTypeStore, { DEFAULT_TYPES } from '../store/scheduleTypeStore';
 import useSlackStore from '../store/slackStore';
+import useUIStore from '../store/uiStore';
 import { RefreshCw, Settings, CheckCircle, XCircle, Hash, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -34,6 +35,7 @@ export default function SchedulesPage() {
   }, [allTypes]);
 
   const user = useAuthStore((s) => s.user);
+  const triggerScheduleRefresh = useUIStore((s) => s.triggerScheduleRefresh);
   const hasTeam = !!user?.team;
   const [showForm, setShowForm] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
@@ -188,11 +190,11 @@ export default function SchedulesPage() {
     return [...uniqueGoogleEvents, ...enrichedDbSchedules, ...teamSchedules];
   }, [events, myDbSchedules, teamSchedules]);
 
-  // 수정 권한: 본인 DB 일정만 수정 가능 (관리자도 남의 일정 수정 불가)
+  // 수정 권한: 본인 DB 일정 또는 관리자
   const canEdit = (event) => {
     if (event.type === 'holiday') return false;
     if (!event.scheduleId) return false;
-    return event.userId === user?.id;
+    return event.userId === user?.id || user?.is_admin;
   };
 
   // 삭제 권한 판단: 본인 일정 또는 관리자만 삭제 가능 (공휴일은 항상 X)
@@ -216,6 +218,7 @@ export default function SchedulesPage() {
       await deleteCalendarEvent(event.id, event.calendarId);
     }
     setRefreshKey((k) => k + 1);
+    triggerScheduleRefresh();
     if (connected && hasScope('calendar')) fetchCalendarEvents();
   };
 
@@ -268,6 +271,7 @@ export default function SchedulesPage() {
     }
 
     setRefreshKey((k) => k + 1);
+    triggerScheduleRefresh();
     if (connected && hasScope('calendar')) fetchCalendarEvents();
     setShowForm(false);
     setEditingSchedule(null);
@@ -354,6 +358,7 @@ export default function SchedulesPage() {
 
     // 3. 새로고침 + 폼 닫기 (DB 저장 성공 시에만 실행)
     setRefreshKey((k) => k + 1);
+    triggerScheduleRefresh();
     if (connected && hasScope('calendar')) fetchCalendarEvents();
     setShowForm(false);
   };

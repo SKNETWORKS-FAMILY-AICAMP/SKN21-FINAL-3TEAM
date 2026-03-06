@@ -41,27 +41,25 @@ async def list_schedules(
     user_id: int,
     include_team: bool = False,
     user_team: str | None = None,
+    schedule_type: str | None = None,
 ) -> list[Schedule]:
-    """일정 목록 조회 (include_team=True 시 같은 팀의 공유 일정 포함)"""
-    from sqlalchemy import or_
+    """일정 목록 조회 (include_team=True 시 같은 팀의 공유 일정 포함, schedule_type 필터 선택)"""
+    from sqlalchemy import or_, and_
 
     if include_team and user_team:
-        result = await db.execute(
-            select(Schedule)
-            .where(
-                or_(
-                    Schedule.user_id == user_id,
-                    (Schedule.team_name == user_team) & (Schedule.is_team_visible == True),
-                )
-            )
-            .order_by(Schedule.start_time.desc())
+        base_condition = or_(
+            Schedule.user_id == user_id,
+            and_(Schedule.team_name == user_team, Schedule.is_team_visible == True),
         )
     else:
-        result = await db.execute(
-            select(Schedule)
-            .where(Schedule.user_id == user_id)
-            .order_by(Schedule.start_time.desc())
-        )
+        base_condition = Schedule.user_id == user_id
+
+    query = select(Schedule).where(base_condition)
+
+    if schedule_type:
+        query = query.where(Schedule.schedule_type == schedule_type)
+
+    result = await db.execute(query.order_by(Schedule.start_time.desc()))
     return list(result.scalars().all())
 
 

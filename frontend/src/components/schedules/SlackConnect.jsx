@@ -42,9 +42,9 @@ export default function SlackConnect() {
         <button
           onClick={handleToggle}
           disabled={loading}
-          className={`relative w-11 h-6 rounded-full transition-colors duration-200 outline-none disabled:opacity-50 ${connected ? 'bg-[#4A154B]' : 'bg-primary-100'}`}
+          className={`relative w-11 h-6 rounded-full transition-colors duration-200 outline-none disabled:opacity-50 ${connected ? 'bg-[#4A154B]' : 'bg-[#b0b0b0] dark:bg-neutral-500'}`}
         >
-          <div className={`absolute top-1 left-1 w-4 h-4 rounded-full shadow-sm transition-transform duration-200 ${connected ? 'bg-white translate-x-5' : 'bg-primary-500 translate-x-0'}`} />
+          <div className={`absolute top-1 left-1 w-4 h-4 rounded-full shadow-sm transition-transform duration-200 ${connected ? 'bg-white translate-x-5' : 'bg-white translate-x-0'}`} />
         </button>
       </div>
     </div>

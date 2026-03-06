@@ -11,7 +11,7 @@ import useAuthStore from '../../store/authStore';
 import useUIStore from '../../store/uiStore';
 import useChatStore from '../../store/chatStore';
 import ThemeToggle from './ThemeToggle';
-import { changePassword, getTeamMembers } from '../../api/auth';
+import { changePassword } from '../../api/auth';
 import { listSchedules } from '../../api/schedules';
 import { listCalendarEvents } from '../../api/google';
 import dayjs from 'dayjs';
@@ -280,6 +280,7 @@ export default function Topbar({ isScrolled = false }) {
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
   const topbarScheduleHidden = useUIStore((s) => s.dashboard?.topbarScheduleHidden);
+  const scheduleRefreshKey = useUIStore((s) => s.scheduleRefreshKey);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -292,7 +293,6 @@ export default function Topbar({ isScrolled = false }) {
 
   const [allDayMeetings, setAllDayMeetings] = useState([]);
   const [currentTime, setCurrentTime] = useState(dayjs());
-  const [teamMembers, setTeamMembers] = useState([]);
   const [hoveredEventId, setHoveredEventId] = useState(null);
 
   // 1분마다 현재 시간 업데이트
@@ -392,14 +392,13 @@ export default function Topbar({ isScrolled = false }) {
         const timeMinStr = dayjs().startOf('day').toISOString();
         const timeMaxStr = dayjs().endOf('day').toISOString();
 
-        const [schedulesRes, teamRes, googleRes] = await Promise.all([
+        const [schedulesRes, googleRes] = await Promise.all([
           listSchedules({
             start_time_gte: `${todayStr}T00:00:00`,
             start_time_lt: `${endOfDayStr}T00:00:00`,
             include_team: true,
             skip: 0,
           }),
-          getTeamMembers().catch(() => ({ data: [] })),
           listCalendarEvents(timeMinStr, timeMaxStr).then(res => res.data || []).catch(() => [])
         ]);
 
@@ -452,14 +451,12 @@ export default function Topbar({ isScrolled = false }) {
 
         setAllDayMeetings(todayAllMeetings);
 
-        const members = teamRes.data || teamRes || [];
-        setTeamMembers((Array.isArray(members) ? members : []).filter(m => m.id !== user?.id));
       } catch (err) {
         console.error('Failed to fetch topbar data', err);
       }
     };
     if (user?.id) fetchData();
-  }, [user]);
+  }, [user, scheduleRefreshKey]);
 
   const handleLogout = () => {
     useChatStore.getState().reset();
@@ -532,7 +529,7 @@ export default function Topbar({ isScrolled = false }) {
                           transform: `translateX(-${nowPixelX}px)`
                         }}
                       >
-                        {eventLayouts.map(({ event, left, staggerLayer, width, bgColor, isTeamEvent, isActive, isPast }) => {
+                        {eventLayouts.map(({ event, left, staggerLayer, width, bgColor, isActive, isPast }) => {
                           const isHovered = hoveredEventId === event.id;
                           // zIndex 우선순위 (값이 클수록 위에 표시):
                           // 1. Hover 시: 50
@@ -566,47 +563,12 @@ export default function Topbar({ isScrolled = false }) {
                                 className={`absolute inset-0 rounded-[21px] overflow-hidden border ${isActive ? 'border-white/40' : 'border-white/20'}`}
                                 style={{ backgroundColor: bgColor }}
                               >
-                                <div className="flex items-center gap-3 w-full h-full px-4 min-w-0">
-                                  {/* 참석자 아바타 (모든 일정에 형태 유지) */}
-                                  <div className="flex -space-x-1.5 items-center shrink-0">
-                                    <div className="h-6 w-6 rounded-full bg-white shadow-sm border-2 flex items-center justify-center overflow-hidden z-30" style={{ borderColor: bgColor }}>
-                                      {user?.profile_image || user?.profile_picture || user?.avatar || user?.avatar_url ? (
-                                        <img src={user?.profile_image || user?.profile_picture || user?.avatar || user?.avatar_url} alt={user.name} className="w-full h-full object-cover" />
-                                      ) : (
-                                        <img src={`https://randomuser.me/api/portraits/women/44.jpg`} alt="Me" className="w-full h-full object-cover" />
-                                      )}
-                                    </div>
-                                    {isTeamEvent && (
-                                      <>
-                                        {teamMembers.slice(0, 1).map((member, idx) => {
-                                          const zClass = idx === 0 ? 'z-20' : 'z-10';
-                                          return (
-                                            <div key={member.id} className={`h-6 w-6 rounded-full shadow-sm border-2 bg-white flex items-center justify-center overflow-hidden ${zClass}`} style={{ borderColor: bgColor }}>
-                                              {member.profile_image || member.profile_picture || member.avatar || member.avatar_url ? (
-                                                <img src={member.profile_image || member.profile_picture || member.avatar || member.avatar_url} alt={member.name} className="w-full h-full object-cover" />
-                                              ) : (
-                                                <img src={`https://randomuser.me/api/portraits/${idx % 2 === 0 ? 'women' : 'men'}/${(idx + 5) * 10}.jpg`} alt={member.name || 'Team Member'} className="w-full h-full object-cover" />
-                                              )}
-                                            </div>
-                                          );
-                                        })}
-                                        {teamMembers.length > 1 && (
-                                          <div className="h-6 w-6 rounded-full bg-white/30 shadow-sm border-2 border-white/50 flex items-center justify-center z-0 backdrop-blur-sm">
-                                            <span className="text-[9px] font-bold text-white">+{teamMembers.length - 1}</span>
-                                          </div>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
-
-                                  <div className="flex items-center gap-2 flex-1 min-w-0 pr-1">
-                                    <div className="font-bold text-[12px] text-white whitespace-nowrap pr-2 border-r border-white/30 truncate">
-                                      {dayjs(event.start_time).format('h:mm')} <span className="text-white/60 mx-0.5">-</span> <span className="text-[10px] font-normal text-white/80">{dayjs(event.end_time || dayjs(event.start_time).add(1, 'hour')).format('h:mm')}</span>
-                                    </div>
-                                    <div className="flex-1 flex justify-start pl-1 min-w-0">
-                                      <span className="text-[12px] font-bold truncate text-white shrink leading-none pt-0.5 tracking-wide">{event.title}</span>
-                                    </div>
-                                  </div>
+                                <div className="flex items-center gap-2 w-full h-full px-4 min-w-0">
+                                  <span className="font-bold text-[12px] text-white whitespace-nowrap shrink-0">
+                                    {dayjs(event.start_time).format('h:mm')} - {dayjs(event.end_time || dayjs(event.start_time).add(1, 'hour')).format('h:mm')}
+                                  </span>
+                                  <span className="text-white/50 text-[11px] shrink-0">|</span>
+                                  <span className="text-[12px] font-bold truncate text-white leading-none tracking-wide">{event.title}</span>
                                 </div>
                               </div>
                             </div>

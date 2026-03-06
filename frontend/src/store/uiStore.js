@@ -200,6 +200,10 @@ const useUIStore = create((set) => ({
     saveSettings(updated)
     return { settings: updated }
   }),
+
+  // ── 일정 새로고침 신호 (Topbar ↔ SchedulesPage 동기화) ──
+  scheduleRefreshKey: 0,
+  triggerScheduleRefresh: () => set((state) => ({ scheduleRefreshKey: state.scheduleRefreshKey + 1 })),
 }))
 
 export default useUIStore
