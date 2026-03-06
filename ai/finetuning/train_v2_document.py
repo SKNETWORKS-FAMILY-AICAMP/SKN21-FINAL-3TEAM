@@ -241,7 +241,7 @@ def train(task: str, config: dict, base_model_override: str = None):
     target_modules = lora_cfg["target_modules"]
 
     # EXAONE 모델은 레이어 이름이 다름 — 자동 변환
-    if "exaone" in base_model.lower():
+    if "exaone" in model_id.lower():
         exaone_map = {"o_proj": "out_proj", "gate_proj": "c_fc_0", "up_proj": "c_fc_1"}
         target_modules = [exaone_map.get(t, t) for t in target_modules]
         print(f"  [EXAONE] target_modules 변환: {lora_cfg['target_modules']} -> {target_modules}")
