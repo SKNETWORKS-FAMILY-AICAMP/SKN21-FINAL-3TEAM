@@ -969,3 +969,67 @@ v2_generate AI Hub 데이터 탈락:
 - 토큰 길이 분석 (max_length=2048 충분한지 확인)
 - Train/Eval 분할 (`validate_v2_data.py --split`)
 - GPU 환경 준비 → 3개 모델 비교 학습
+
+---
+
+## 2026-03-06 (목)
+
+**토큰 길이 분석 + max_length 결정:**
+- Qwen3-8B 토크나이저로 3,500건 전체 토큰 길이 분석
+- 결과: 97.8%가 2048 이하, 77건 초과 (전부 v2_generate)
+- 77건 모두 2647 이하 → max_length=2560 결정 (H200 141GB VRAM 여유)
+- 2048에서 자르면 assistant JSON이 깨지므로 증가가 필수
+
+**데이터 라운드 넘버 트리밍:**
+- v2_summary: 1,007 → 1,000 (aihub 702→700, synthetic 305→300)
+- v2_generate: 1,501 → 1,500 (synthetic 801→800)
+- v2_qa: 1,000 유지
+
+**Train/Eval 분할 (seed=42, 90:10):**
+- v2_summary: train 900 / eval 100
+- v2_qa: train 900 / eval 100
+- v2_generate: train 1,350 / eval 150
+- 총 3,500건
+
+**빡센 데이터 검증 (GPU 투입 전 최종 QA):**
+- 소스 데이터: 에러 0건, JSON 100% valid, 완전 중복 0건
+- train↔eval 누수: 0건
+- 내부 중복: train 0건, eval 0건
+- 소스↔train+eval 합계 일치: 3개 모두 일치
+- 인코딩 깨짐(U+FFFD): 1건 발견 → 수정 완료
+- v2_qa 동일문서 다른질문: 24건 (정상 — 같은 문서에서 다른 질문)
+- v2_generate 필드 조합 다양성: 1,094개 고유 조합 / 1,350건 (81%)
+- 내용 품질 확인: 3개 어댑터 랜덤 샘플 눈으로 검증, not-found 케이스 정상
+
+**학습 스크립트 전면 점검 + 수정:**
+- `train_v2_document.py`:
+  - TrainingArguments → SFTConfig 마이그레이션 (trl 0.28+ 호환)
+  - max_seq_length → max_length 파라미터명 변경
+  - warmup_ratio → warmup_steps (deprecated 대응)
+  - enable_input_require_grads() 방어 코드 추가
+  - do_sample=False 시 temperature 제거
+  - dataset_text_field 버전 호환 처리
+  - 동적 필드 평가 함수 추가 (_parse_field_spec_from_user)
+  - confidence 필드 제거 (QA eval)
+  - max_length config에서 동적 로드
+- `runpod_setup.sh`:
+  - GitHub URL 수정 (개인→org 레포)
+  - pip install -U 강제 업그레이드 + CUDA 12.4 torch 전용 설치
+  - HF_TOKEN 미설정 시 경고 추가
+  - 모델 학습 실패 시 다음 모델로 계속 진행
+  - 버전 출력 추가 (torch, trl)
+- 3개 YAML config: max_length 2048→2560
+
+**AIHub 데이터 파이프라인 문서:**
+- `ai/finetuning/finetuning_docs/AIHub_데이터_파이프라인.md` 작성 (멘토 리뷰용)
+- AIHub 022 데이터 구조, 파이프라인 다이어그램, GPT-4o 역할, 프롬프트 3종 명세
+
+**RunPod H200 학습 시작:**
+- H200 141GB + Network Volume 60GB (US-TX-3) 세팅
+- generate 태스크 3모델(Qwen3-8B, EXAONE, Kanana) 순차 학습 실행 중
+
+**다음 할 일:**
+- generate 학습 완료 확인 → qa, summary 순차 실행
+- 3개 어댑터 × 3개 모델 = 9 runs 평가 결과 비교
+- 베스트 모델 선택 + 결과 정리
+- 결과 다운로드 후 로컬 배치
