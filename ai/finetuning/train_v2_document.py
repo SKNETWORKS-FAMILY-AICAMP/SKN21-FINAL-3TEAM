@@ -203,7 +203,12 @@ def load_base_model(config: dict, for_training: bool = True, base_model_override
 
     if for_training:
         model.config.use_cache = False
-        model.enable_input_require_grads()
+        if hasattr(model, "enable_input_require_grads"):
+            model.enable_input_require_grads()
+        else:
+            model.get_input_embeddings().register_forward_hook(
+                lambda module, args, output: output.requires_grad_(True)
+            )
 
     vram_gb = torch.cuda.memory_allocated() / 1e9
     print(f"  VRAM - Allocated: {vram_gb:.1f} GB")
@@ -261,7 +266,7 @@ def train(task: str, config: dict, base_model_override: str = None):
         gradient_accumulation_steps=train_cfg["gradient_accumulation_steps"],
         learning_rate=float(train_cfg["learning_rate"]),
         lr_scheduler_type="cosine",
-        warmup_ratio=train_cfg["warmup_ratio"],
+        warmup_steps=max(1, int(len(train_dataset) / train_cfg["batch_size"] / train_cfg["gradient_accumulation_steps"] * train_cfg["warmup_ratio"])),
         logging_steps=10,
         save_strategy="epoch",
         eval_strategy="epoch",
@@ -274,8 +279,13 @@ def train(task: str, config: dict, base_model_override: str = None):
         optim="paged_adamw_8bit",
         report_to="none",
         max_length=train_cfg["max_length"],
-        dataset_text_field="text",
     )
+
+    # trl 버전에 따라 dataset_text_field 위치가 다름
+    try:
+        training_args.dataset_text_field = "text"
+    except Exception:
+        pass
 
     print(f"\n[3/4] 학습 시작 (epochs={train_cfg['num_epochs']}, "
           f"early_stopping={early_stopping_patience})...")
@@ -393,7 +403,6 @@ def evaluate(task: str, config: dict, adapter_path: str, base_model_override: st
                 **inputs,
                 max_new_tokens=1024,
                 do_sample=False,
-                temperature=1.0,
                 pad_token_id=tokenizer.eos_token_id,
             )
 
