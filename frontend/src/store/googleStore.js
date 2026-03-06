@@ -154,7 +154,9 @@ const useGoogleStore = create((set, get) => ({
     try {
       await googleApi.pullTaskStatus()
       await get().fetchTasks()
+      set({ tasksLoading: false, tasksError: null })
     } catch (err) {
+      console.error('[pullTasks] 에러:', err?.response?.status, err?.response?.data, err?.message)
       set({ tasksLoading: false, tasksError: err.response?.data?.detail || 'Tasks Pull 실패' })
     }
   },
