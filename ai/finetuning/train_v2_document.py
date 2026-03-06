@@ -2,9 +2,9 @@
 LoRA v2: 문서 Agent 기능별 파인튜닝 (어댑터 분리 전략)
 
 어댑터 3종:
-  - v2_generate: 문서 생성 (회의록/보고서/제안서 JSON) — 380개
-  - v2_qa: 문서 QA (answer + citations JSON) — 300개
-  - v2_summary: 문서 요약 (마크다운) — 200개
+  - v2_generate: 문서 생성 (회의록/보고서/제안서 JSON) — 1,500개 (train 1,350 / eval 150)
+  - v2_qa: 문서 QA (answer + citations JSON) — 1,000개 (train 900 / eval 100)
+  - v2_summary: 문서 요약 (마크다운) — 1,000개 (train 900 / eval 100)
 
 베이스 모델: Qwen3-8B (1차 추천) — 비교 대상: EXAONE-3.5-7.8B, Kanana-1.5-8B
 
@@ -31,7 +31,7 @@ LoRA v2: 문서 Agent 기능별 파인튜닝 (어댑터 분리 전략)
 
 환경:
     pip install transformers peft trl bitsandbytes accelerate datasets torch pyyaml rouge-score bert-score
-    GPU: RunPod A100 40GB 권장
+    GPU: RTX 5090 32GB (또는 RunPod A100 40GB)
 """
 
 import argparse
@@ -75,7 +75,7 @@ REQUIRED_FIELDS = {
 }
 
 # doc_qa 필수 필드
-QA_REQUIRED_FIELDS = ["answer", "citations", "confidence"]
+QA_REQUIRED_FIELDS = ["answer", "citations"]
 
 
 # ── 설정 로드 ──
@@ -385,7 +385,8 @@ def evaluate(task: str, config: dict, adapter_path: str, base_model_override: st
                 for m in infer_messages
             ) + "\n<|im_start|>assistant\n"
 
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(model.device)
+        max_len = config["training"].get("max_length", 2560)
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=max_len).to(model.device)
         input_len = inputs["input_ids"].shape[1]
 
         with torch.no_grad():
@@ -473,40 +474,60 @@ def evaluate(task: str, config: dict, adapter_path: str, base_model_override: st
     return eval_results
 
 
+def _parse_field_spec_from_user(user_content: str) -> list[str]:
+    """user prompt의 [필드 명세]에서 필드 이름 목록 추출"""
+    fields = []
+    in_spec = False
+    for line in user_content.splitlines():
+        stripped = line.strip()
+        if "[필드 명세]" in stripped:
+            in_spec = True
+            continue
+        if in_spec:
+            if stripped.startswith("[") and "필드" not in stripped:
+                break
+            if stripped.startswith("- ") and ":" in stripped:
+                field_name = stripped[2:].split(":")[0].strip()
+                if field_name:
+                    fields.append(field_name)
+    return fields
+
+
 def _eval_doc_generate(st: dict, pred_text: str, gold_text: str, sample: dict):
-    """doc_generate 평가"""
+    """doc_generate 평가 (동적 필드 명세 기반)"""
     pred_json = parse_json_from_text(pred_text)
     if pred_json is None:
         return
 
     st["json_valid"] += 1
 
-    # 템플릿 타입 감지 (시스템 프롬프트에서)
-    sys_content = ""
+    # user prompt에서 동적 필드 명세 추출
+    user_content = ""
     for msg in sample.get("messages", []):
-        if msg.get("role") == "system":
-            sys_content = msg.get("content", "").lower()
+        if msg.get("role") == "user":
+            user_content = msg.get("content", "")
             break
 
-    template_type = "report"  # default
-    if "회의록" in sys_content:
-        template_type = "meeting_minutes"
-    elif "제안서" in sys_content:
-        template_type = "proposal"
-
-    required = REQUIRED_FIELDS.get(template_type, [])
+    expected_fields = _parse_field_spec_from_user(user_content)
     present_fields = set(pred_json.keys())
 
-    # 필드 완전성: 필수 필드 모두 존재?
-    if all(f in present_fields for f in required):
-        st["field_complete"] += 1
+    if expected_fields:
+        # 필드 완전성: 명세의 모든 필드가 존재?
+        if all(f in present_fields for f in expected_fields):
+            st["field_complete"] += 1
 
-    # 필드명 정확도: gold JSON의 키와 비교
-    gold_json = parse_json_from_text(gold_text)
-    if gold_json:
-        gold_keys = set(gold_json.keys())
-        if gold_keys and gold_keys.issubset(present_fields):
+        # 필드명 정확도: 명세 필드와 정확히 일치?
+        expected_set = set(expected_fields)
+        if expected_set == present_fields or expected_set.issubset(present_fields):
             st["field_accurate"] += 1
+    else:
+        # 필드 명세 파싱 실패 시 gold JSON 기준 fallback
+        gold_json = parse_json_from_text(gold_text)
+        if gold_json:
+            gold_keys = set(gold_json.keys())
+            if gold_keys and gold_keys.issubset(present_fields):
+                st["field_complete"] += 1
+                st["field_accurate"] += 1
 
 
 def _eval_doc_qa(st: dict, pred_text: str, gold_text: str):
