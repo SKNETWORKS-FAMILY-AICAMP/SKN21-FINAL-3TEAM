@@ -14,6 +14,12 @@ set -e
 TASK=${1:?'Usage: bash runpod_setup.sh <generate|qa|summary> [model_index]'}
 MODEL_INDEX=${2:-"all"}
 
+# HuggingFace 토큰 (환경변수로 미리 설정 안 됐으면 여기서 설정)
+if [ -z "$HF_TOKEN" ]; then
+    echo "WARNING: HF_TOKEN not set. Model downloads may be slow."
+    echo "Run: export HF_TOKEN=hf_xxxxx before this script."
+fi
+
 echo "========================================="
 echo " RunPod Fine-tuning Setup"
 echo " Task: ${TASK}"
