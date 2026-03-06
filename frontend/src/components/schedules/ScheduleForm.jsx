@@ -70,7 +70,7 @@ function TimeSelect({ value, onChange }) {
         <div
           ref={listRef}
           style={dropStyle}
-          className="bg-white border border-neutral-border rounded-md shadow-lg overflow-y-auto max-h-48"
+          className="bg-surface-card border border-neutral-border rounded-md shadow-lg overflow-y-auto max-h-48"
         >
           {timeOptions.map((t) => (
             <button
@@ -251,7 +251,6 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
       <div className="space-y-3">
         {/* 제목 */}
         <div>
-          <label className="text-[0.8125rem] font-semibold block mb-1">제목</label>
           <input
             value={form.title}
             onChange={(e) => { setForm({ ...form, title: e.target.value }); setErrors((p) => ({ ...p, title: undefined })); }}
@@ -270,7 +269,7 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
                 key={id}
                 type="button"
                 onClick={() => setForm({ ...form, type: id })}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-md border text-sm font-medium transition ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-md border text-[0.8125rem] font-medium transition ${
                   form.type === id
                     ? 'border-primary-500 bg-primary-50 text-primary-700'
                     : 'border-neutral-border bg-surface-card text-neutral-sub hover:border-primary-300'
@@ -316,16 +315,34 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
           {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
         </div>
 
-        {/* 종일 토글 */}
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={form.allDay}
-            onChange={(e) => setForm({ ...form, allDay: e.target.checked })}
-            className="w-4 h-4 rounded border-neutral-border accent-primary-700"
-          />
-          <span className="text-sm text-neutral-main">종일</span>
-        </label>
+        {/* 종일 + Google Meet */}
+        <div className="flex items-center justify-between">
+          {canMeet && (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.includeMeet}
+                onChange={(e) => setForm({ ...form, includeMeet: e.target.checked })}
+                className="w-4 h-4 rounded border-neutral-border accent-primary-700"
+              />
+              <div className="flex items-center gap-1.5">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary-500">
+                  <path d="M15.6 11.6L22 7v10l-6.4-4.5v-1zM4 5h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7c0-1.1.9-2 2-2z" />
+                </svg>
+                <span className="text-sm font-medium text-neutral-main">Google Meet 링크 생성</span>
+              </div>
+            </label>
+          )}
+          <label className="flex items-center gap-2 cursor-pointer ml-auto pr-3">
+            <input
+              type="checkbox"
+              checked={form.allDay}
+              onChange={(e) => setForm({ ...form, allDay: e.target.checked })}
+              className="w-4 h-4 rounded border-neutral-border accent-primary-700"
+            />
+            <span className="text-sm text-neutral-main">종일</span>
+          </label>
+        </div>
 
         {/* 시작 / 종료 시간 */}
         {!form.allDay && (
@@ -348,26 +365,6 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
             </div>
             {errors.endTime && <p className="text-xs text-red-500 mt-1 whitespace-nowrap">{errors.endTime}</p>}
           </>
-        )}
-
-        {/* Google Meet 토글 */}
-        {canMeet && (
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-md border border-neutral-divider bg-surface-hover">
-            <label className="flex items-center gap-2 cursor-pointer flex-1">
-              <input
-                type="checkbox"
-                checked={form.includeMeet}
-                onChange={(e) => setForm({ ...form, includeMeet: e.target.checked })}
-                className="w-4 h-4 rounded border-neutral-border accent-primary-700"
-              />
-              <div className="flex items-center gap-1.5">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary-500">
-                  <path d="M15.6 11.6L22 7v10l-6.4-4.5v-1zM4 5h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7c0-1.1.9-2 2-2z" />
-                </svg>
-                <span className="text-sm font-medium text-neutral-main">Google Meet 링크 생성</span>
-              </div>
-            </label>
-          </div>
         )}
 
         {/* 참석자 이메일 */}

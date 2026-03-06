@@ -13,7 +13,7 @@ export default function useAuth() {
   // 1: 로그인
   const login = async (email, password) => {   // 1. 서버에 이메일과 비밀번호를 보내서 확인 받아 (비동기 통신)
     const { data } = await authAPI.login(email, password)
-    sessionStorage.setItem('access_token', data.access_token)
+    localStorage.setItem('access_token', data.access_token)
     const { data: me } = await client.get('/auth/me')  // is_admin 포함 전체 유저 정보 로드
     setAuth(me, data.access_token)
     navigate('/dashboard')  // 3. 로그인이 완료됐으니 '대시보드' 페이지로 유저를 이동시켜

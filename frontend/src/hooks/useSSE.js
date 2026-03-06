@@ -28,7 +28,7 @@ export default function useSSE() {
   const startStream = useCallback(async (message, sessionId, documentId) => {
     setStreaming(true)
     currentIntentRef.current = null
-    const token = sessionStorage.getItem('access_token')
+    const token = localStorage.getItem('access_token')
     const controller = new AbortController()
     abortRef.current = controller
 

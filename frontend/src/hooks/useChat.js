@@ -27,11 +27,7 @@ export default function useChat() {
     try {
       await startStream(text, activeSessionId, selectedDocumentId)
     } catch (err) {
-      // 401 → 로그인 페이지로 리다이렉트
-      if (err.status === 401) {
-        sessionStorage.removeItem('access_token')
-        window.location.href = '/login'
-      }
+      // 에러는 상위에서 처리
     }
   }
 

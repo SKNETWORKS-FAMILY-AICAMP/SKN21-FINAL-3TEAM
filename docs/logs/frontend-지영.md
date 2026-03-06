@@ -1056,10 +1056,32 @@
 - 수정: `expected`에 `DEFAULT_DASHBOARD.hidden` 포함, 길이 비교 조건 제거
 - 로그아웃 후 재로그인해도 스케줄바 숨김, 위젯 배치 등 모든 대시보드 설정 유지됨
 
+#### 5) 일정 추가 폼 레이아웃 개선 (`ScheduleForm.jsx`)
+- "제목" 라벨 제거 — placeholder로 충분하므로 불필요한 라벨 삭제
+- 일정 유형 버튼 글꼴 `text-sm`(14px) → `text-[0.8125rem]`(13px)로 미세 축소
+- "종일" 체크박스를 달력 아래 행으로 이동, "Google Meet 링크 생성"과 같은 줄 배치
+  - Google Meet 좌측, 종일 우측(`ml-auto pr-3`) 정렬
+
+#### 6) 팀 공유 일정 라벨 표시 개선 (`SchedulesPage.jsx`)
+- 팀원이 공유한 일정: `[윤경은] 제목` → `[팀] 제목`으로 변경
+- 본인이 "팀에 공유" 체크한 일정: `제목` → `[팀] 제목`으로 `is_team_visible` 조건 추가
+
+#### 7) 다크모드 가독성 개선 (`globals.css`, `ScheduleForm.jsx`, `TasksPanel.jsx`)
+- 다크모드 전체 톤 밝게 조정: body 배경, surface-main/sub/card, border/divider, card 배경
+- primary 계열: 무채색 회색 → 블루-그레이 톤으로 변경 (로그인 화면 버튼/타이틀 가독성 향상)
+- accent 계열: 무채색 → 웜톤 베이지-그레이로 변경
+- neutral-sub/muted 밝기 상향
+- `bg-white` 하드코딩 → `bg-surface-card`로 변경 (시간 드롭다운, Task 모달)
+
+#### 8) 새로고침 시 로그아웃 버그 수정 (`authStore.js`, `client.js` 외 4개 파일)
+- `sessionStorage` → `localStorage`로 전체 전환 (토큰 + 유저 캐시)
+- `cached_user`를 localStorage에 저장하여 새로고침 시 `/auth/me` 응답 전에도 즉시 로그인 상태 복원
+- API 응답 인터셉터에서 401 시 토큰 자동 삭제 제거 → authStore에서만 인증 관리
+- `/auth/me` 실패해도 캐시된 유저가 있으면 로그인 상태 유지
+
 ### 다음 할 일
-- 재빌드·배포 후 멀티데이 일정 캘린더 표시 확인
-- 스케줄바 숨김 시 nav 크기 변경 확인
-- 대시보드 설정 persistence 재로그인 후 확인
+- 재빌드·배포 후 변경사항 확인
+- 새로고침 로그인 유지 테스트
 - 전체 E2E 테스트
 
 ---
