@@ -72,10 +72,10 @@ export default function AIChatPopup({ isOpen: externalOpen, onClose }) {
             initial={{ opacity: 0, x: 20, scale: 0.95 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}
-            className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md shadow-2xl rounded-2xl border border-neutral-200 w-[380px] mb-4 overflow-hidden pointer-events-auto origin-right"
+            className="bg-white/40 dark:bg-gray-800/40 backdrop-blur-xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.12)] rounded-2xl border border-white/30 dark:border-white/10 w-[380px] mb-4 overflow-hidden pointer-events-auto origin-right"
           >
             {/* Header */}
-            <div className="bg-primary-50 px-5 py-4 flex items-center justify-between border-b border-primary-100">
+            <div className="px-5 py-4 flex items-center justify-between border-b border-neutral-200/30 dark:border-white/10">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-primary-500 text-white flex items-center justify-center shadow-inner">
                   <Sparkles size={16} />

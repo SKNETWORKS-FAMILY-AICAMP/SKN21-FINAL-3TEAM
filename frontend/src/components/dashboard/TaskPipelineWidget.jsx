@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import {
     GitMerge, Clock, CheckCircle2, AlertTriangle,
     ArrowRight, Plus, Share, X, Mail, Phone, Briefcase
@@ -368,42 +369,54 @@ export default function TaskPipelineWidget() {
             </AnimatePresence>
 
             {/* Add Task Modal */}
-            <AnimatePresence>
-                {showAddModal && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-                        onClick={() => setShowAddModal(false)}
-                    >
+            {showAddModal && createPortal(
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <AnimatePresence>
                         <motion.div
-                            initial={{ scale: 0.95, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.95, opacity: 0 }}
-                            className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <h3 className="text-base font-bold text-neutral-main mb-4">태스크 추가</h3>
-                            <form onSubmit={handleAddTask} className="space-y-3">
-                                <div>
-                                    <label className="block text-xs font-medium text-neutral-main mb-1">제목</label>
-                                    <input
-                                        type="text"
-                                        value={addForm.title}
-                                        onChange={(e) => setAddForm(p => ({ ...p, title: e.target.value }))}
-                                        placeholder="태스크 제목"
-                                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm"
-                                        required
-                                        autoFocus
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-neutral-main mb-1">담당자</label>
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
+                            onClick={() => setShowAddModal(false)}
+                        />
+                    </AnimatePresence>
+                    <motion.div
+                        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl p-8 w-full max-w-[420px] mx-4 border border-white/40 dark:border-white/10"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between mb-8">
+                            <div>
+                                <h3 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tighter">태스크 추가</h3>
+                                <p className="text-xs text-neutral-400 font-bold mt-1">새로운 태스크를 생성합니다.</p>
+                            </div>
+                            <button onClick={() => setShowAddModal(false)} className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
+                                <X size={20} className="text-neutral-400" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleAddTask} className="space-y-6">
+                            <div className="space-y-2">
+                                <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">태스크 제목</label>
+                                <input
+                                    type="text"
+                                    value={addForm.title}
+                                    onChange={(e) => setAddForm(p => ({ ...p, title: e.target.value }))}
+                                    placeholder="무엇을 해야 하나요?"
+                                    className="w-full px-5 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-neutral-300"
+                                    required
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">담당자</label>
                                     <select
                                         value={addForm.assignee}
                                         onChange={(e) => setAddForm(p => ({ ...p, assignee: e.target.value }))}
-                                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm"
+                                        className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all appearance-none cursor-pointer"
                                     >
                                         <option value="">미지정</option>
                                         {members.map(m => (
@@ -411,39 +424,40 @@ export default function TaskPipelineWidget() {
                                         ))}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-neutral-main mb-1">우선순위</label>
+                                <div className="space-y-2">
+                                    <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">우선순위</label>
                                     <select
                                         value={addForm.priority}
                                         onChange={(e) => setAddForm(p => ({ ...p, priority: e.target.value }))}
-                                        className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm"
+                                        className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all appearance-none cursor-pointer"
                                     >
                                         <option value="low">Low</option>
                                         <option value="medium">Medium</option>
                                         <option value="high">High</option>
                                     </select>
                                 </div>
-                                <div className="flex gap-2 pt-2">
-                                    <button
-                                        type="submit"
-                                        disabled={addSubmitting}
-                                        className="flex-1 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
-                                    >
-                                        {addSubmitting ? '추가 중...' : '추가'}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowAddModal(false)}
-                                        className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 text-sm font-semibold rounded-lg transition-colors dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:text-neutral-300"
-                                    >
-                                        취소
-                                    </button>
-                                </div>
-                            </form>
-                        </motion.div>
+                            </div>
+                            <div className="flex gap-3 pt-6">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAddModal(false)}
+                                    className="flex-1 py-4 text-xs font-black rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all"
+                                >
+                                    취소
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={addSubmitting}
+                                    className="flex-1 py-4 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-black rounded-xl shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                                >
+                                    {addSubmitting ? '추가 중...' : '태스크 생성'}
+                                </button>
+                            </div>
+                        </form>
                     </motion.div>
-                )}
-            </AnimatePresence>
+                </div>,
+                document.body
+            )}
 
             <div className="mt-5 flex items-center gap-3 bg-neutral-50/50 dark:bg-white/[0.05] p-3 rounded-2xl border border-neutral-100 dark:border-white/10">
                 <div className="flex-1 h-1.5 bg-neutral-200/50 dark:bg-white/10 rounded-full overflow-hidden">

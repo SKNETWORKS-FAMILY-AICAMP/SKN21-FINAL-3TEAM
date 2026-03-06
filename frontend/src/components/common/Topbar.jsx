@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { NavLink, useNavigate, Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import {
   LayoutDashboard, MessageSquare, FilePlus, FileText,
   Calendar, Settings, LogOut, KeyRound, Video, ArrowUpRight,
-  StickyNote, Plus, Trash2, ArrowLeft, Check, User, Menu, X as XIcon
+  StickyNote, Plus, Trash2, ArrowLeft, Check, User, Menu, X as XIcon, X
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useUIStore from '../../store/uiStore';
@@ -272,18 +274,21 @@ function MemoPanel() {
   );
 }
 
+// ── 상단바 컴포넌트 ──
 export default function Topbar({ isScrolled = false }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const topbarScheduleHidden = useUIStore((s) => s.dashboard?.topbarScheduleHidden);
   const navigate = useNavigate();
+  const topbarScheduleHidden = useUIStore((s) => s.dashboard?.topbarScheduleHidden);
+
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
+
   const [pwModal, setPwModal] = useState(false);
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
   const [pwError, setPwError] = useState('');
   const [pwSaving, setPwSaving] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [allDayMeetings, setAllDayMeetings] = useState([]);
   const [currentTime, setCurrentTime] = useState(dayjs());
@@ -498,7 +503,7 @@ export default function Topbar({ isScrolled = false }) {
 
   return (
     <>
-      <header className={`absolute top-0 inset-x-0 z-40 transition-all duration-300 ease-in-out flex flex-col ${isScrolled ? 'pt-5 h-[60px] bg-transparent pointer-events-none' : (topbarScheduleHidden ? 'pt-1 h-[80px] bg-[#F4F5F7] dark:bg-transparent' : 'pt-5 h-[160px] bg-[#F4F5F7] dark:bg-transparent')}`}>
+      <header className={`absolute top-0 inset-x-0 z-40 transition-all duration-300 ease-in-out flex flex-col ${isScrolled ? 'pt-5 h-[60px] bg-transparent pointer-events-none' : (topbarScheduleHidden ? 'pt-1 h-[80px] bg-transparent' : 'pt-5 h-[160px] bg-transparent')}`}>
 
         {/* === Row 1: Schedule Timeline (Top) === */}
         {!topbarScheduleHidden && (

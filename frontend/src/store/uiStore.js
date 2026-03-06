@@ -150,6 +150,7 @@ const useUIStore = create((set) => ({
     const d = state.dashboard
     let left = d.leftColumn.filter(w => w !== dragId)
     let right = d.rightColumn.filter(w => w !== dragId)
+    let hidden = d.hidden.filter(w => w !== dragId)
 
     if (targetCol === 'leftColumn') {
       const idx = targetId != null ? left.indexOf(targetId) : -1
@@ -159,7 +160,7 @@ const useUIStore = create((set) => ({
       right = idx === -1 ? [...right, dragId] : [...right.slice(0, idx), dragId, ...right.slice(idx)]
     }
 
-    const next = { ...d, leftColumn: left, rightColumn: right }
+    const next = { ...d, leftColumn: left, rightColumn: right, hidden }
     saveDashboard(next)
     return { dashboard: next }
   }),

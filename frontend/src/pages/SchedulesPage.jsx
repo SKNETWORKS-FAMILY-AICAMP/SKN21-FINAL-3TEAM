@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import useGoogleServices from '../hooks/useGoogleServices';
 import useAuthStore from '../store/authStore';
@@ -10,8 +11,13 @@ import CalendarView from '../components/schedules/CalendarView';
 import ScheduleForm from '../components/schedules/ScheduleForm';
 import ScheduleTypeManager from '../components/schedules/ScheduleTypeManager';
 import TasksPanel from '../components/schedules/TasksPanel';
+import KanbanBoard from '../components/schedules/KanbanBoard';
+import ApprovalPanel from '../components/schedules/ApprovalPanel';
 import SheetsDashboard from '../components/schedules/SheetsDashboard';
 import useScheduleTypeStore, { DEFAULT_TYPES } from '../store/scheduleTypeStore';
+import useSlackStore from '../store/slackStore';
+import { RefreshCw, Settings, CheckCircle, XCircle, Hash, ExternalLink } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function SchedulesPage() {
 
@@ -34,12 +40,17 @@ export default function SchedulesPage() {
   const [showTypeManager, setShowTypeManager] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
     const tab = searchParams.get('tab');
-    return ['calendar', 'tasks', 'sheets'].includes(tab) ? tab : 'calendar';
+    return ['calendar', 'tasks', 'pipeline', 'approvals', 'sheets'].includes(tab) ? tab : 'calendar';
   });
   const [taskActions, setTaskActions] = useState(null);
+  const [boardActions, setBoardActions] = useState(null);
+  const [approvalActions, setApprovalActions] = useState(null);
   const [sheetActions, setSheetActions] = useState(null);
   const [teamSchedules, setTeamSchedules] = useState([]);
   const [myDbSchedules, setMyDbSchedules] = useState([]);
+  const { connected: slackConnected } = useSlackStore();
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('all'); // 'all' | 'google' | 'slack'
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Google Calendar 연결 시 이벤트 자동 로드 (백엔드 기본값: ±3개월)
@@ -350,31 +361,149 @@ export default function SchedulesPage() {
   return (
     <div>
       {/* 헤더 */}
-      <header className="flex justify-between items-center bg-surface-main overflow-hidden h-[100px]">
+      <header className="flex justify-between items-center bg-surface-main overflow-hidden h-[100px] px-2 mb-2">
         <div>
-          <h1 className="font-bold text-2xl">일정 관리</h1>
-          <p className="text-neutral-sub text-sm mt-1">Action Item과 회의 일정을 통합 관리합니다</p>
+          <h1 className="font-bold text-2xl tracking-tight">일정 관리</h1>
+          <p className="text-neutral-sub text-xs font-medium mt-1">Actions & Meetings Hub</p>
+        </div>
+
+        {/* Integration Hub - Interactive Badges */}
+        <div className="flex items-center gap-2 bg-white/30 dark:bg-white/5 backdrop-blur-md p-1.5 rounded-2xl border border-white/50 dark:border-white/10 shadow-sm">
+          <div className="flex items-center gap-1.5 px-2">
+            {/* Google Badge */}
+            <button
+              onClick={(e) => { e.preventDefault(); setSettingsTab('google'); setShowSettingsModal(true); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] font-black transition-all hover:scale-105 active:scale-95 ${connected ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-neutral-100 text-neutral-400 border-neutral-200'}`}
+              title="Google 연동 설정"
+            >
+              <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-neutral-300'}`} />
+              Google {connected ? 'Connected' : 'Off'}
+            </button>
+
+            {/* Slack Badge */}
+            <button
+              onClick={(e) => { e.preventDefault(); setSettingsTab('slack'); setShowSettingsModal(true); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] font-black transition-all hover:scale-105 active:scale-95 ${slackConnected ? 'bg-[#4A154B]/10 text-[#4A154B] border-[#4A154B]/20' : 'bg-neutral-100 text-neutral-400 border-neutral-200'}`}
+              title="Slack 연동 설정"
+            >
+              <Hash size={12} className={slackConnected ? 'text-[#4A154B]' : 'text-neutral-300'} />
+              Slack {slackConnected ? 'Connected' : 'Off'}
+            </button>
+          </div>
+
+          <div className="w-px h-6 bg-neutral-divider/50 mx-1" />
+
+          <button
+            onClick={() => { setSettingsTab('all'); setShowSettingsModal(true); }}
+            className={`p-2 rounded-xl border transition-all hover:bg-white dark:hover:bg-white/10 shadow-sm ${showSettingsModal ? 'bg-primary-50 border-primary-200 text-primary-700' : 'bg-white/50 border-neutral-divider text-neutral-sub'}`}
+          >
+            <Settings size={18} className={showSettingsModal ? 'animate-spin-slow' : ''} />
+          </button>
         </div>
       </header>
 
-      {/* Google 서비스 연결 */}
-      <GoogleServicesConnect />
+      {/* Integration Hub - Floating Card Modal */}
+      {showSettingsModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
+          <AnimatePresence>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSettingsModal(false)}
+              className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
+            />
+          </AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              y: 0,
+              transition: { type: 'spring', damping: 25, stiffness: 300 }
+            }}
+            className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] w-full max-w-lg overflow-hidden border border-white/40 dark:border-white/10"
+          >
+            {/* Modal Inner Shadow/Glow */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-primary-400/30 to-transparent rounded-full" />
 
-      {/* Slack 연결 */}
-      <SlackConnect />
+            <div className="p-6 md:p-8">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tighter">
+                    {settingsTab === 'google' ? 'Google Integration' : settingsTab === 'slack' ? 'Slack Integration' : 'Integration Hub'}
+                  </h2>
+                  <p className="text-[11px] text-neutral-500 font-medium mt-0.5">
+                    {settingsTab === 'all' ? 'Seamless workspace automation' : `Configure your ${settingsTab} connection`}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowSettingsModal(false)}
+                  className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-400 transition-all flex items-center justify-center group"
+                >
+                  <XCircle size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {(settingsTab === 'all' || settingsTab === 'google') && (
+                  <div className="relative group">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-[1.5rem] blur opacity-0 group-hover:opacity-100 transition duration-500" />
+                    <div className="relative">
+                      <GoogleServicesConnect />
+                    </div>
+                  </div>
+                )}
+
+                {(settingsTab === 'all' || settingsTab === 'slack') && (
+                  <div className="relative group">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-[#4A154B]/5 to-[#611f69]/5 rounded-[1.5rem] blur opacity-0 group-hover:opacity-100 transition duration-500" />
+                    <div className="relative">
+                      <SlackConnect />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-8 pt-6 border-t border-neutral-100 dark:border-white/5 flex justify-between items-center">
+                <p className="text-[10px] text-neutral-400 font-medium">Synced via OAuth 2.0</p>
+                <button
+                  onClick={() => setShowSettingsModal(false)}
+                  className="px-6 py-2.5 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl font-black text-xs hover:scale-105 active:scale-95 transition-all shadow-lg"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>,
+        document.body
+      )}
 
       {/* 유형 관리 모달 */}
-      {showTypeManager && (
-        <ScheduleTypeManager onClose={() => setShowTypeManager(false)} />
+      {showTypeManager && createPortal(
+        <ScheduleTypeManager onClose={() => setShowTypeManager(false)} />,
+        document.body
       )}
 
       {/* 일정 추가 팝업 */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20" onClick={() => { setShowForm(false); setEditingSchedule(null); }}>
-          <div className="w-[420px]" onClick={(e) => e.stopPropagation()}>
+      {showForm && createPortal(
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
+            onClick={() => { setShowForm(false); setEditingSchedule(null); }}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="relative w-full max-w-[400px]"
+            onClick={(e) => e.stopPropagation()}
+          >
             {scheduleError && (
-              <div className="mb-2 p-3 bg-red-50 border border-red-300 rounded-md">
-                <p className="text-sm text-red-600 font-medium">{scheduleError}</p>
+              <div className="mb-2 p-3 bg-red-50/80 backdrop-blur-md border border-red-200 rounded-2xl shadow-sm">
+                <p className="text-xs text-red-600 font-bold">{scheduleError}</p>
               </div>
             )}
             <ScheduleForm
@@ -382,26 +511,28 @@ export default function SchedulesPage() {
               onClose={() => { setShowForm(false); setEditingSchedule(null); setScheduleError(null); }}
               initialData={editingSchedule}
             />
-          </div>
-        </div>
+          </motion.div>
+        </div>,
+        document.body
       )}
 
       {/* 탭 네비게이션 + 액션 버튼 */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex gap-1">
           {[
-            { key: 'calendar', label: '캘린더' },
+            { key: 'calendar', label: 'Calendar' },
             { key: 'tasks', label: 'Tasks' },
+            { key: 'pipeline', label: 'Pipeline' },
+            { key: 'approvals', label: 'Approvals' },
             { key: 'sheets', label: 'Sheets' },
           ].map(({ key, label }) => (
             <button
               key={key}
               onClick={() => setActiveTab(key)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                activeTab === key
-                  ? 'bg-primary-50 text-primary-700 font-semibold'
-                  : 'text-neutral-sub hover:bg-surface-hover'
-              }`}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition ${activeTab === key
+                ? 'bg-primary-50 text-primary-700 font-semibold'
+                : 'text-neutral-sub hover:bg-surface-hover'
+                }`}
             >
               {label}
             </button>
@@ -437,23 +568,68 @@ export default function SchedulesPage() {
               <button
                 onClick={() => taskActions.refresh()}
                 disabled={taskActions.tasksLoading}
-                className="btn-outline"
+                className="btn-outline flex items-center gap-1.5"
+                title="새로고침"
               >
-                {taskActions.tasksLoading ? '동기화 중...' : '새로고침'}
+                <RefreshCw size={14} className={taskActions.tasksLoading ? 'animate-spin' : ''} />
               </button>
               <button onClick={() => taskActions.openCreate()} className="btn-primary">
                 + Task 추가
               </button>
             </>
           )}
+          {activeTab === 'pipeline' && boardActions && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => boardActions.refresh()}
+                className="btn-outline flex items-center gap-1.5"
+                title="새로고침"
+              >
+                <RefreshCw size={14} />
+              </button>
+              <button
+                onClick={() => boardActions.openCreate()}
+                className="btn-primary"
+              >
+                + 새 태스크
+              </button>
+            </div>
+          )}
+          {activeTab === 'approvals' && approvalActions && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => approvalActions.refresh()}
+                disabled={approvalActions.loading}
+                className="btn-outline flex items-center gap-1.5"
+                title="새로고침"
+              >
+                <RefreshCw size={14} className={approvalActions.loading ? 'animate-spin' : ''} />
+              </button>
+              <button
+                onClick={() => approvalActions.openCreate()}
+                className="btn-primary"
+              >
+                + 새 요청
+              </button>
+            </div>
+          )}
           {activeTab === 'sheets' && sheetActions && (
-            <button
-              onClick={() => sheetActions.create()}
-              disabled={sheetActions.creating || sheetActions.sheetsLoading}
-              className="btn-primary"
-            >
-              {sheetActions.creating ? '생성 중...' : '+ 새 시트'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => sheetActions.refresh?.()}
+                className="btn-outline"
+                title="새로고침"
+              >
+                <RefreshCw size={14} />
+              </button>
+              <button
+                onClick={() => sheetActions.create()}
+                disabled={sheetActions.creating || sheetActions.sheetsLoading}
+                className="btn-primary"
+              >
+                {sheetActions.creating ? '생성 중...' : '+ 새 시트'}
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -490,6 +666,8 @@ export default function SchedulesPage() {
       )}
 
       {activeTab === 'tasks' && <TasksPanel externalActions onReady={setTaskActions} />}
+      {activeTab === 'pipeline' && <KanbanBoard externalActions onReady={setBoardActions} />}
+      {activeTab === 'approvals' && <ApprovalPanel externalActions onReady={setApprovalActions} />}
       {activeTab === 'sheets' && <SheetsDashboard externalActions onReady={setSheetActions} />}
     </div>
   );

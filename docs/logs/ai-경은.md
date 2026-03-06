@@ -830,68 +830,85 @@ MakerBot METHOD 매뉴얼처럼 `1장 소개`, `## 안전 경고 기호`, `**무
 | `data/training/v1_judgment/backup/` | 백업 파일 추가 |
 
 **다음 할 일:**
-- ~~RunPod에서 리밸런싱된 데이터로 QLoRA 파인튜닝 baseline 실행~~ ✅ 완료 (3/5)
-- baseline 성능 확인 후 추가 데이터 방향 결정
+- CONTENT_MISMATCH 경고 샘플링 검수 (교차규정 패턴으로 인한 예상 경고 확인)
+- 중복 의심 8쌍 검토 (이름만 다른 거의 동일한 질문)
+- ~~RunPod에서 리밸런싱된 데이터로 QLoRA 파인튜닝 baseline 실행~~ ✅ 완료 (3/6)
+- ~~baseline 성능 확인 후 추가 데이터 방향 결정~~ ✅ 완료 (3/6)
 
 ---
 
-## 2026-03-05 (수) — LoRA v1 파인튜닝 실행 및 평가
+## 2026-03-06 (목) — Judgment LoRA v1 학습 결과 + v2 데이터 보강 준비
 
-### RunPod에서 QLoRA 파인튜닝 실행 (A100)
+### 1. Judgment LoRA v1 파인튜닝 실행 및 결과 (RunPod A100)
 
-**학습 설정:**
+**학습 환경:**
+- 베이스 모델: `kakaocorp/kanana-1.5-8b-instruct-2505`
+- 학습 방식: QLoRA (4-bit, r=16, alpha=32)
+- 학습 데이터: 2,949건 (train) / 328건 (eval)
+- 학습 스크립트: `ai/finetuning/train_v1_judgment.py`
 
-| 항목 | 값 |
-|------|-----|
-| 베이스 모델 | kakaocorp/kanana-1.5-8b-instruct-2505 |
-| LoRA | r=16, alpha=32, target=q/k/v/o_proj, dropout=0.05 |
-| 데이터 | Train 2,949건 / Eval 328건 |
-| 학습 | 3 epochs, batch=4, accum=4, lr=2e-4 (cosine) |
-| 정밀도 | bf16, 4-bit QLoRA |
-| 총 학습 시간 | **1시간 47분** (555 steps) |
-| VRAM | 5.7GB (학습) / 11.5GB (추론) |
+**v1 평가 결과 (`outputs/v1_judgment/eval_results.json`):**
 
-**학습 곡선:**
-
-| Epoch | Train Loss | Token Accuracy | Eval Loss | Eval Token Accuracy |
-|-------|-----------|----------------|-----------|---------------------|
-| 0.05 | 1.675 | 66.5% | - | - |
-| 0.33 | 0.506 | 87.2% | - | - |
-| 1.0 | 0.136 | 96.6% | 0.131 | 96.6% |
-| 2.0 | 0.111 | 97.0% | 0.112 | 97.0% |
-| 3.0 | 0.108 | 97.1% | 0.110 | 97.1% |
-
-→ 과적합 없이 안정적 수렴 (train/eval loss 차이 0.002 이내)
-
-### 평가 결과
-
-| 지표 | 결과 |
+| 항목 | 결과 |
 |------|------|
-| **JSON 유효율** | **98.2%** (322/328) |
-| **판단 정확도** | **83.5%** (274/328) |
+| 전체 정확도 | **86.6%** (284/328) |
+| JSON 유효율 | **98.2%** (322/328) |
 
-**카테고리별 정확도:**
+| 카테고리 | 정답 | 전체 | 정확도 |
+|----------|------|------|--------|
+| no_regulation | 65 | 67 | **97.0%** |
+| yes | 85 | 100 | **85.0%** |
+| conditional | 84 | 100 | **84.0%** |
+| no | 50 | 61 | **82.0%** |
 
-| 카테고리 | 정확도 | 건수 |
-|----------|--------|------|
-| no_regulation | **97.0%** | 67건 |
-| yes | **85.0%** | 100건 |
-| no | **80.3%** | 61건 |
-| conditional | **75.0%** | 100건 |
+**분석:**
+- 목표(≥85%) 달성: 전체 86.6%
+- **강점**: no_regulation 97% — distractor 시나리오 학습 효과 뛰어남
+- **약점**: no 82%, conditional 84% — 두 카테고리 간 경계 혼동 존재
+  - "승인 없이 ~하면?" → no인데 conditional로 오분류하는 패턴
+  - 조건 존재 여부 vs 금지 여부 판단 경계가 모호한 케이스
 
-### 결과물 GitHub push 완료
+### 2. v2 데이터 보강 분석 — no/conditional 경계 개선
 
-- `outputs/v1_judgment/final/` — LoRA 어댑터 (adapter_model.safetensors 52MB)
-- `train_log.txt` — 학습 로그
-- 체크포인트 3개 (checkpoint-185, 370, 555)는 용량 문제로 RunPod에만 보관
+**train.jsonl (2,949건) 분석 결과:**
 
-### 프론트엔드 UI 수정 커밋 & develop 머지
+| 카테고리 | 건수 | 비율 |
+|----------|------|------|
+| conditional | 883 | 29.9% |
+| yes | 772 | 26.2% |
+| no_regulation | 665 | 22.6% |
+| no | 629 | 21.3% |
 
-- Topbar 리팩토링, 페이지 레이아웃 수정 등 9개 파일 수정
-- `feat/ai-yoon` → push → `develop` 머지 완료 (Topbar.jsx 충돌 해결)
+- `no`가 가장 적은 카테고리 (629건) → 정확도도 최하위 (82%)
+- no/conditional 경계 혼동 패턴 발견:
+  - "승인 없이" → 금지(no)이지만, 조건부(conditional)로 오분류 가능
+  - 동일 규정 조항에서 질문 프레이밍에 따라 결과가 달라지는 케이스
+
+### 3. v2 보강 스크립트 작성 — `scripts/augment_v2_no_conditional.py` (신규)
+
+**목표**: ~250건 타겟 생성으로 no/conditional 경계 강화
+
+| Phase | 대상 | 건수 | 전략 |
+|-------|------|------|------|
+| A | no 강화 | ~120건 | "승인 없이", "무단으로", "허가 없이" 등 명시적 금지 패턴 |
+| B | no/conditional 경계쌍 | ~80건 | 동일 규정 + 다른 질문 프레이밍 → (no, conditional) 쌍 생성 |
+| C | conditional 명확화 | ~50건 | "~하면 가능한가요?", "조건이 뭔가요?" 등 조건 탐색 패턴 |
+
+**스크립트 특징:**
+- GPT-4o-mini 기반 데이터 생성 (비용 효율)
+- `data/regulations/` 규정 .txt 파일에서 실제 규정 원문 로드
+- 생성 후 레이블 검증 (expected와 불일치 시 자동 필터링)
+- 90/10 split으로 train.jsonl / eval.jsonl에 자동 병합 (백업 포함)
+
+### 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `scripts/augment_v2_no_conditional.py` | 신규 — no/conditional 타겟 보강 스크립트 |
+| `outputs/v1_judgment/eval_results.json` | 신규 — v1 평가 결과 (RunPod에서 push) |
 
 **다음 할 일:**
-- conditional 오답 패턴 분석 → 데이터 보강 또는 프롬프트 개선으로 정확도 향상
-- vLLM 서빙 환경 구축 (#11) — LoRA 어댑터 실 서빙
-- sLLM 교체 후 judgment_agent E2E 테스트
-- 성능 평가 리포트 (#13) — 파인튜닝 전/후 비교
+- `augment_v2_no_conditional.py` 실행 (OPENAI_API_KEY 필요) → ~250건 생성
+- v2 보강 데이터 병합 후 RunPod에서 LoRA v2 학습 실행
+- v1 vs v2 성능 비교 (특히 no 82%→목표 88%+, conditional 84%→87%+)
+- 전체 정확도 목표: 86.6% → 90%+
