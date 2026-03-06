@@ -1,4 +1,4 @@
-# AI Hub 022 데이터 파이프라인 및 GPT-4o 활용 정리
+# AI Hub 데이터 파이프라인 및 GPT-4o 활용 정리
 
 ## 1. AI Hub 022 데이터셋 개요
 
@@ -65,6 +65,107 @@
   }
 }
 ```
+
+---
+
+## 1-B. AI Hub 016 데이터셋 개요
+
+- **정식명**: 행정 문서 대상 기계독해 데이터
+- **구조**: 행정 문서(context)에 대한 질문-답변(QA) 쌍이 포함된 MRC 데이터셋
+- **활용**: v2_qa 파이프라인에서 **SN 569** 로 참조 — GPT 없이 직접 QA 변환 가능
+
+### 폴더 구조
+
+```
+016.행정 문서 대상 기계독해 데이터/
+└── 01.데이터/
+    ├── 1.Training/
+    │   ├── 라벨링데이터/
+    │   │   ├── TL_span_extraction/      ← 본문에서 답 추출 (what/who/when)
+    │   │   ├── TL_span_extraction_how/  ← 방법(how) 유형 답 추출
+    │   │   ├── TL_multiple_choice/      ← 객관식 (보기 중 선택)
+    │   │   ├── TL_tableqa/              ← 표 기반 QA
+    │   │   ├── TL_text_entailment/      ← 텍스트 함의 (Yes/No)
+    │   │   └── TL_unanswerable/         ← 답 없는 질문 (is_impossible=True)
+    │   └── 원천데이터/
+    │       └── TS_*/                    ← 원본 문서 (라벨링에 context로 포함됨)
+    └── 2.Validation/
+        ├── 라벨링데이터/VL_*/           ← 검증용 (동일 구조)
+        └── 원천데이터/VS_*/
+```
+
+### 6개 QA 유형
+
+| qa_type | 폴더 | 의미 | Training 문서 수 | QA 수 | 파일 크기 |
+|---------|------|------|:---------:|:-----:|:---------:|
+| 1 | span_extraction | 본문 답 추출 (what/who/when) | 63,932 | 106,530 | 154MB |
+| 2 | span_extraction_how | 방법(how) 답 추출 | 29,074 | 48,417 | 77MB |
+| 3 | tableqa | 표 기반 QA | 62,907 | 104,851 | 173MB |
+| 5 | text_entailment | 텍스트 함의 (Yes/No) | 16,872 | 28,100 | 47MB |
+| 6 | multiple_choice | 객관식 | 15,085 | 25,166 | 45MB |
+| 7 | unanswerable | 답 없는 질문 | 9,828 | 16,400 | 24MB |
+| | **합계** | | **197,698** | **329,464** | **520MB** |
+
+Validation: 37,042 docs (Training의 ~19%)
+
+### JSON 파일 구조
+
+```json
+{
+  "Dataset": {
+    "Identifier": "TextQA_Administrator_Doc_01",
+    "name": "행정문서 대상 기계독해 데이터셋"
+  },
+  "data": [
+    {
+      "doc_id": "D0000042870847",
+      "doc_title": "노후 어린이집 누수 제로 추진 결과 보고",
+      "doc_source": "서울특별시청",
+      "doc_class": {"class": "중앙행정기관 분류체계", "code": "공공행정"},
+      "paragraphs": [
+        {
+          "context": "행정 문서 본문 텍스트...",
+          "context_id": "C0000...",
+          "qas": [
+            {
+              "qa_type": 1,
+              "question_id": "Q0000...",
+              "question": "노후 어린이집 누수 개보수에 책정된 경비가 얼마야",
+              "is_impossible": false,
+              "answers": {
+                "text": "금55,570,000원",
+                "answer_start": 210
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+### 문서 분야 분포 (span_extraction 기준)
+
+| 분야 | 문서 수 | 주요 출처 |
+|------|:-------:|-----------|
+| 과학기술 | 14,844 | 과학기술정보통신부 |
+| 공공행정 | 12,922 | 안전행정부, 서울특별시청 |
+| 환경기상 | 11,251 | 환경부 |
+| 국토관리 | 11,175 | 산업통상자원부 |
+| 식품건강 | 3,551 | 질병관리청 |
+| 사회복지 | 2,982 | 보건복지부 |
+| 법률 | 2,454 | 특허청 |
+| 농축수산 | 1,629 | 농림축산식품부 |
+| 기타 | 1,421 | - |
+| 산업고용/문화관광 | 1,703 | 경기도 등 |
+
+### v2_qa에서의 활용 (SN 569로 참조)
+
+- **사용 유형**: `span_extraction` + `span_extraction_how` (답이 본문에서 추출되는 자연스러운 QA)
+- **GPT 불필요**: 이미 question + answer + context가 있어 형식 변환만 수행
+- **변환 방식**: `context` → user의 Context 필드, `question` → Question 필드, `answer.text` → assistant의 answer
+- **300건 사용**: v2_qa 전체 1,000건 중 AIHub MRC 직접 변환 300건
 
 ---
 
