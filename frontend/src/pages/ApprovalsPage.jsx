@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Check, X, Clock, Coffee, GitPullRequest, FileText, FileSignature,
-  Filter, Search, BellRing, CheckCircle2, XCircle, Trash2,
+  Filter, Search, BellRing, CheckCircle2, XCircle, Trash2, Download, Paperclip, Eye,
   Home, DoorOpen, Palette, Award, Receipt, Rocket, Server, ShieldCheck
 } from 'lucide-react';
-import { listApprovals, createApproval, approveRequest, rejectRequest, deleteApproval } from '../api/approvals';
+import { listApprovals, createApproval, approveRequest, rejectRequest, deleteApproval, downloadApprovalFile, getApprovalFileBlobUrl } from '../api/approvals';
 import client from '../api/client';
 
 const typeConfig = {
@@ -36,7 +36,10 @@ export default function ApprovalsPage() {
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ type: 'leave', title: '', detail: '' });
+  const [formFile, setFormFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [detailItem, setDetailItem] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
 
   const loadAll = async () => {
     setLoading(true);
@@ -88,9 +91,10 @@ export default function ApprovalsPage() {
     if (!formData.title.trim()) return;
     setSubmitting(true);
     try {
-      await createApproval({ type: formData.type, title: formData.title.trim(), detail: formData.detail.trim() || null });
+      await createApproval({ type: formData.type, title: formData.title.trim(), detail: formData.detail.trim() || null }, formFile);
       setShowModal(false);
       setFormData({ type: 'leave', title: '', detail: '' });
+      setFormFile(null);
       await loadAll();
     } catch {
       alert('요청 생성에 실패했습니다.');
@@ -218,7 +222,8 @@ export default function ApprovalsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.2, delay: idx * 0.03 }}
-                  className="bg-white dark:bg-neutral-800 p-5 rounded-2xl border border-neutral-100 dark:border-neutral-700 shadow-sm hover:shadow-md transition-shadow"
+                  className="bg-white dark:bg-neutral-800 p-5 rounded-2xl border border-neutral-100 dark:border-neutral-700 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => setDetailItem(item)}
                 >
                   <div className="flex items-start justify-between gap-4">
                     {/* Left: Info */}
@@ -240,6 +245,14 @@ export default function ApprovalsPage() {
                         {item.detail && (
                           <p className="text-xs text-neutral-muted mt-0.5">{item.detail}</p>
                         )}
+                        {item.file_name && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); downloadApprovalFile(item.id, item.file_name); }}
+                            className="inline-flex items-center gap-1 text-xs text-primary-500 hover:text-primary-600 mt-1"
+                          >
+                            <Paperclip size={12} /> {item.file_name}
+                          </button>
+                        )}
                         <div className="flex items-center gap-2 mt-2">
                           {item.requester_avatar ? (
                             <img src={item.requester_avatar} alt="" className="w-5 h-5 rounded-full" />
@@ -260,7 +273,7 @@ export default function ApprovalsPage() {
                     </div>
 
                     {/* Right: Actions */}
-                    <div className="flex gap-2 shrink-0">
+                    <div className="flex gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                       {item.status === 'pending' && (
                         <>
                           <button
@@ -292,6 +305,186 @@ export default function ApprovalsPage() {
           </AnimatePresence>
         </div>
       )}
+
+      {/* 상세 보기 모달 */}
+      <AnimatePresence>
+        {detailItem && (() => {
+          const cfg = typeConfig[detailItem.type] || defaultTypeConfig;
+          const stCfg = statusConfig[detailItem.status] || statusConfig.pending;
+          const IconComp = cfg.icon;
+          const StatusIcon = stCfg.icon;
+          const isImage = detailItem.file_name && /\.(png|jpg|jpeg|gif|webp)$/i.test(detailItem.file_name);
+          const isPdf = detailItem.file_name && /\.pdf$/i.test(detailItem.file_name);
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+              onClick={() => setDetailItem(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl p-6 w-full max-w-lg mx-4 max-h-[80vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2.5 rounded-xl ${cfg.color}`}>
+                      <IconComp size={22} />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-neutral-sub">{cfg.label}</span>
+                      <h3 className="text-lg font-bold text-neutral-main">{detailItem.title}</h3>
+                    </div>
+                  </div>
+                  <button onClick={() => setDetailItem(null)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 transition-colors">
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {/* Status */}
+                <div className="mb-4">
+                  <span className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full ${stCfg.color}`}>
+                    <StatusIcon size={14} />
+                    {stCfg.label}
+                  </span>
+                </div>
+
+                {/* Requester */}
+                <div className="flex items-center gap-3 mb-4 p-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl">
+                  {detailItem.requester_avatar ? (
+                    <img src={detailItem.requester_avatar} alt="" className="w-9 h-9 rounded-full" />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-sm font-bold text-primary-600">
+                      {(detailItem.requester_name || '?')[0]}
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm font-semibold text-neutral-main">{detailItem.requester_name || '알 수 없음'}</p>
+                    <div className="flex items-center gap-2 text-xs text-neutral-muted">
+                      {detailItem.target_team && <span>{detailItem.target_team}</span>}
+                      {detailItem.created_at && <span>· {new Date(detailItem.created_at).toLocaleString('ko-KR')}</span>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Detail */}
+                <div className="mb-4">
+                  <label className="block text-xs font-semibold text-neutral-sub mb-1">상세 내용</label>
+                  <div className="p-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl text-sm text-neutral-main whitespace-pre-wrap min-h-[60px]">
+                    {detailItem.detail || '(내용 없음)'}
+                  </div>
+                </div>
+
+                {/* Attachment */}
+                {detailItem.file_name && (
+                  <div className="mb-5">
+                    <label className="block text-xs font-semibold text-neutral-sub mb-2">첨부파일</label>
+                    <div className="flex items-center gap-2 p-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl">
+                      <Paperclip size={16} className="text-neutral-muted shrink-0" />
+                      <span className="text-sm text-neutral-main truncate flex-1">{detailItem.file_name}</span>
+                      {(isImage || isPdf) && (
+                        <button
+                          onClick={async () => { const url = await getApprovalFileBlobUrl(detailItem.id); setPreviewUrl(url); }}
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-primary-500 hover:text-primary-600 bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/40 rounded-lg transition-colors"
+                        >
+                          <Eye size={14} /> 미리보기
+                        </button>
+                      )}
+                      <button
+                        onClick={() => downloadApprovalFile(detailItem.id, detailItem.file_name)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40 rounded-lg transition-colors"
+                      >
+                        <Download size={14} /> 다운로드
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                {detailItem.status === 'pending' && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => { await handleApproval(detailItem.id, true); setDetailItem(null); }}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-xl transition-colors"
+                    >
+                      <Check size={16} /> Approve
+                    </button>
+                    <button
+                      onClick={async () => { await handleApproval(detailItem.id, false); setDetailItem(null); }}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-xl transition-colors"
+                    >
+                      <X size={16} /> Reject
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* 파일 미리보기 모달 */}
+      <AnimatePresence>
+        {previewUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
+            onClick={() => setPreviewUrl(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-neutral-700">
+                <span className="text-sm font-semibold text-neutral-main">파일 미리보기</span>
+                <div className="flex items-center gap-2">
+                  {detailItem && (
+                    <button
+                      onClick={() => downloadApprovalFile(detailItem.id, detailItem.file_name)}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                    >
+                      <Download size={14} /> 다운로드
+                    </button>
+                  )}
+                  <button onClick={() => { if (previewUrl) window.URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-600 transition-colors">
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 min-h-[400px]">
+                {detailItem?.file_name && /\.(png|jpg|jpeg|gif|webp)$/i.test(detailItem.file_name) ? (
+                  <img src={previewUrl} alt="미리보기" className="max-w-full max-h-[70vh] object-contain rounded-lg" />
+                ) : detailItem?.file_name && /\.pdf$/i.test(detailItem.file_name) ? (
+                  <iframe src={previewUrl} className="w-full h-[70vh] rounded-lg border-0" title="PDF 미리보기" />
+                ) : (
+                  <div className="text-center text-neutral-muted space-y-3">
+                    <FileText size={48} className="mx-auto opacity-40" />
+                    <p className="text-sm">이 파일 형식은 브라우저에서 미리보기를 지원하지 않습니다.</p>
+                    {detailItem && (
+                      <button
+                        onClick={() => downloadApprovalFile(detailItem.id, detailItem.file_name)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors"
+                      >
+                        <Download size={16} /> 파일 다운로드
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 새 요청 모달 */}
       <AnimatePresence>
@@ -351,6 +544,24 @@ export default function ApprovalsPage() {
                     rows={3}
                     className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm resize-none"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-main mb-1">첨부파일 (선택)</label>
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg,.gif,.webp"
+                    onChange={(e) => setFormFile(e.target.files[0] || null)}
+                    className="w-full text-sm text-neutral-sub file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-600 hover:file:bg-primary-100 dark:file:bg-primary-900/30 dark:file:text-primary-400"
+                  />
+                  {formFile && (
+                    <div className="flex items-center gap-1 mt-1 text-xs text-neutral-muted">
+                      <Paperclip size={12} />
+                      <span className="truncate">{formFile.name}</span>
+                      <button type="button" onClick={() => setFormFile(null)} className="ml-1 p-0.5 rounded hover:bg-red-100 text-red-400 hover:text-red-600 transition-colors">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button

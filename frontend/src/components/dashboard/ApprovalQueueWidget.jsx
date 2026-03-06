@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import {
   Check, X, Clock, AlertTriangle, UserX, CalendarClock,
-  BellRing, ChevronUp, ChevronDown, ArrowRight, Plus,
+  BellRing, ChevronUp, ChevronDown, ArrowRight, Plus, Paperclip,
   Coffee, FileSignature, HelpCircle, FileText, GitPullRequest,
   Home, DoorOpen, Palette, Award, Receipt, Rocket, Server, ShieldCheck
 } from 'lucide-react';
@@ -41,6 +41,7 @@ export default function ApprovalQueueWidget() {
   const [members, setMembers] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ type: 'leave', title: '', detail: '' });
+  const [formFile, setFormFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -187,9 +188,10 @@ export default function ApprovalQueueWidget() {
         type: formData.type,
         title: formData.title.trim(),
         detail: formData.detail.trim() || null,
-      });
+      }, formFile);
       setShowModal(false);
       setFormData({ type: 'leave', title: '', detail: '' });
+      setFormFile(null);
       await loadAll();
     } catch (err) {
       console.error('Failed to create approval request', err);
@@ -433,6 +435,24 @@ export default function ApprovalQueueWidget() {
                   rows={4}
                   className="w-full px-5 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-neutral-300 resize-none"
                 />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">첨부파일 (선택)</label>
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg,.gif,.webp"
+                  onChange={(e) => setFormFile(e.target.files[0] || null)}
+                  className="w-full text-sm text-neutral-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-neutral-100 file:text-neutral-500 hover:file:bg-neutral-200 dark:file:bg-white/10 dark:file:text-neutral-300"
+                />
+                {formFile && (
+                  <div className="flex items-center gap-1 mt-1 text-xs text-neutral-400">
+                    <Paperclip size={12} />
+                    <span className="truncate">{formFile.name}</span>
+                    <button type="button" onClick={() => setFormFile(null)} className="ml-1 p-0.5 rounded-full hover:bg-red-100 text-red-400 hover:text-red-600 transition-colors">
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="flex gap-3 pt-6">
                 <button
