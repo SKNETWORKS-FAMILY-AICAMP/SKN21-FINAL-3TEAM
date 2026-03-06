@@ -57,9 +57,14 @@ const useAuthStore = create((set, get) => ({
       const { data } = await client.get('/auth/me')
       localStorage.setItem('cached_user', JSON.stringify(data))
       set({ user: data, isAuthenticated: true, initialized: true })
-    } catch {
-      // API 실패해도 캐시된 유저+토큰이 있으면 로그인 상태 유지
-      if (cached) {
+    } catch (err) {
+      // 401이면 토큰 만료 — 캐시 무시하고 로그아웃
+      if (err.response?.status === 401) {
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('cached_user')
+        set({ user: null, token: null, isAuthenticated: false, initialized: true })
+      } else if (cached) {
+        // 네트워크 오류 등 다른 실패: 캐시된 유저 유지
         set({ user: cached, isAuthenticated: true, initialized: true })
       } else {
         localStorage.removeItem('access_token')

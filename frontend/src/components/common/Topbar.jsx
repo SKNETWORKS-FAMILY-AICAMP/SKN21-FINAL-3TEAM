@@ -427,7 +427,8 @@ export default function Topbar({ isScrolled = false }) {
         let dbSchedules = (schedulesRes.items || schedulesRes.data || []);
         let googleSchedules = Array.isArray(googleRes) ? googleRes : [];
 
-        const isToday = (dateStr) => dayjs(dateStr).isSame(dayjs(), 'day');
+        const todayKey = dayjs().format('YYYY-MM-DD');
+        const isToday = (dateStr) => dateStr && dayjs(dateStr).format('YYYY-MM-DD') === todayKey;
         const mergedSchedules = [...dbSchedules];
 
         googleSchedules.forEach(ge => {
@@ -456,7 +457,6 @@ export default function Topbar({ isScrolled = false }) {
           .filter(s => {
             if (!isToday(s.start_time)) return false;
 
-            // 종일 일정 제외 (상단 스케줄 바에서는 표시하지 않음)
             const startStr = String(s.start_time || '');
             const endStr = String(s.end_time || '');
 
@@ -466,13 +466,8 @@ export default function Topbar({ isScrolled = false }) {
             // 2. 명시적 플래그
             if (s.is_all_day || s.all_day) return false;
 
-            // 3. 자정 시작 & 자정(또는 23:59) 종료인 경우 종일로 간주
-            const isMidnightStart = startStr.includes('T00:00:00') || startStr.endsWith('T00:00');
-            const isMidnightEnd = endStr.includes('T23:59:59') || endStr.includes('T00:00:00') || endStr.endsWith('T00:00');
-
-            if (isMidnightStart && isMidnightEnd && startStr !== endStr) {
-              return false;
-            }
+            // 3. 멀티데이 일정 제외 (start와 end 날짜가 다르면)
+            if (endStr && dayjs(s.end_time).format('YYYY-MM-DD') !== todayKey) return false;
 
             return true;
           })

@@ -21,15 +21,12 @@ import ErrorBoundary from '../components/common/ErrorBoundary';
 import { listSchedules } from '../api/schedules';
 import { listDocuments } from '../api/documents';
 import { listSessions } from '../api/chat';
+import dayjs from 'dayjs';
 
 // ── 날짜 유틸 ──
 function isToday(dateStr) {
   if (!dateStr) return false;
-  const d = new Date(dateStr);
-  const now = new Date();
-  return d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
+  return dayjs(dateStr).format('YYYY-MM-DD') === dayjs().format('YYYY-MM-DD');
 }
 
 function formatTime12(dateStr) {
@@ -135,9 +132,11 @@ function useDashboardData() {
     if (!duplicate) mergedSchedules.push(ge);
   });
 
-  // 오늘 일정 → TodaySchedule meetings
+  // 오늘 일정 → TodaySchedule meetings (오늘 시작하는 일정만)
+  const todayKey = dayjs().format('YYYY-MM-DD');
+  const endOfTodayStr = dayjs().endOf('day').toISOString();
   const todayMeetings = mergedSchedules
-    .filter(s => isToday(s.start_time))
+    .filter(s => s.start_time && dayjs(s.start_time).format('YYYY-MM-DD') === todayKey)
     .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
     .map(s => {
       const startStr = String(s.start_time || '');
@@ -148,6 +147,11 @@ function useDashboardData() {
 
       const isAllDay = startStr.length <= 10 || s.is_all_day || s.all_day || (isMidnightStart && isMidnightEnd && startStr !== endStr);
 
+      // 멀티데이 일정의 end_time을 오늘 자정으로 클램핑
+      const clampedEnd = s.end_time && dayjs(s.end_time).isAfter(dayjs().endOf('day'))
+        ? endOfTodayStr
+        : s.end_time;
+
       const { time, period } = formatTime12(s.start_time);
       return {
         time: isAllDay ? '종일' : time,
@@ -157,7 +161,7 @@ function useDashboardData() {
         attendees: 0,
         scheduleType: s.schedule_type,
         start_time: s.start_time,
-        end_time: s.end_time,
+        end_time: clampedEnd,
         isAllDay,
       };
     });

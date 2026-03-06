@@ -17,10 +17,17 @@ client.interceptors.request.use((config) => {
   return config
 })
 
-// 응답 인터셉터: 에러 전파만 (토큰 관리는 authStore에서 처리)
+// 응답 인터셉터: 401이면 토큰 삭제 후 로그인 페이지로 이동
 client.interceptors.response.use(
   (response) => response,
-  (error) => Promise.reject(error)
+  (error) => {
+    if (error.response?.status === 401 && window.location.pathname !== '/login') {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('cached_user')
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
 )
 
 export default client

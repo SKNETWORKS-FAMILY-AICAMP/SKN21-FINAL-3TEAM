@@ -983,14 +983,7 @@
   - `create_with_google_services` 기본값 `"task"` → `"google"` 변경
 - **수정 파일**: `ai/agents/schedule_agent.py`, `backend/app/services/schedule_service.py`
 
-#### 16) 다크모드 전체 색상 시스템 개편 (`globals.css`)
-- 상단바 배경: `#20232A` → `dark:bg-transparent` (페이지 배경과 동일하게 자연스럽게 녹아듦)
-- 다크모드 body 배경: 네이비 계열 그라디언트 → **Zinc 팔레트** (`#18181B` 단색) 적용
-  - 5가지 팔레트(Slate / Zinc / Charcoal Navy / Slate Mist / Warm Gray) HTML 미리보기 파일 생성해 비교 후 Zinc 확정
-- CSS 변수 전체 교체: surface, neutral, primary, sidebar 계열 → Zinc 기반 무채색 계열
-  - `surface-card: #27272A`, `surface-hover: #3F3F44`, `neutral-main: #FAFAFA`
-
-#### 17) 대시보드 다크모드 가시성 추가 개선
+#### 16) 대시보드 다크모드 가시성 추가 개선
 
 - **`TodaySchedule.jsx`**
   - 미팅·액션 카드: `dark:bg-white/[0.06] dark:border-white/[0.08]` 추가
@@ -1004,7 +997,7 @@
 - **`TeamMembersWidget.jsx`**
   - 멤버 카드, `See Details` 버튼, 팀 배지 `teamColors` 전체 다크모드 텍스트 가시성 개선
 
-#### 18) AI 챗봇 페이지 스크롤 헤더 제어 개선 (`ChatWindow.jsx`)
+#### 17) AI 챗봇 페이지 스크롤 헤더 제어 개선 (`ChatWindow.jsx`)
 - **문제**: 스크롤 시 상단 헤더(나에게 물어봐)가 떨리고, 위로 올려도 헤더가 안 나타남 / 답변 스트리밍 시 페이지 상단으로 튀는 현상
 - **원인**:
   - `onScroll`이 픽셀마다 발생해 `isChatScrolled` state 빠르게 토글 → 레이아웃 흔들림
@@ -1105,8 +1098,25 @@
   - 두 결과 합쳐 시간순 정렬 후 반환
   - "다음주 회의 언제 있어?" → 회의 유형 일정만 반환
 
+#### 14) JWT 토큰 만료 시 자동 로그아웃 처리 (`client.js`, `authStore.js`)
+
+- **문제**: 토큰 만료 후에도 캐시된 유저로 로그인 상태 유지 → API 호출 시 "유효하지 않거나 만료된 토큰입니다" 에러
+- **`client.js`** — 응답 인터셉터에 401 처리 추가: localStorage 토큰/캐시 삭제 후 `/login` 리다이렉트 (로그인 페이지에서는 루프 방지)
+- **`authStore.js`** — `initialize()`에서 `/auth/me` 401 실패 시 캐시 무시하고 로그아웃, 네트워크 오류 등 다른 실패는 기존처럼 캐시 유지
+
+#### 15) 대시보드 Today Schedule 멀티데이 일정 필터 개선 (`DashboardPage.jsx`, `Topbar.jsx`)
+
+- **문제**: 어제 시작한 멀티데이 일정이 대시보드 Today Schedule / Topbar Your Schedule에 표시됨
+- **`DashboardPage.jsx`**
+  - `isToday` 함수를 `dayjs` 포맷 비교(`YYYY-MM-DD`)로 변경 (timezone 엣지케이스 방어)
+  - `todayMeetings` 필터: `dayjs(s.start_time).format('YYYY-MM-DD') === todayKey`로 명시적 비교
+  - 멀티데이 일정의 `end_time`을 오늘 자정으로 클램핑 (ScheduleTimelineWidget 블록 길이 제한)
+- **`Topbar.jsx`**
+  - `isToday`를 동일하게 `dayjs` 포맷 비교로 통일
+  - 멀티데이 일정(end 날짜 ≠ 오늘) 완전 제외: `dayjs(s.end_time).format('YYYY-MM-DD') !== todayKey` → filter out
+
 ### 다음 할 일
-- AI 에이전트 schedule_type 필터 실제 동작 테스트
+- **멀티데이 일정 필터 디버깅 (미완료)**: 브라우저 콘솔에서 `mergedSchedules`의 실제 `start_time` 값 확인 → 필터가 왜 통과하는지 원인 파악 필요
 - 재빌드·배포 후 변경사항 확인
 - 전체 E2E 테스트
 
