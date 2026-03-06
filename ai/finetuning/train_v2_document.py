@@ -49,7 +49,7 @@ os.environ["TRUST_REMOTE_CODE"] = "True"
 # → EXAONE의 custom modeling 코드가 import할 때 에러 방지
 import transformers.utils.generic as _trf_generic
 if not hasattr(_trf_generic, "check_model_inputs"):
-    _trf_generic.check_model_inputs = lambda *a, **k: None
+    _trf_generic.check_model_inputs = lambda func: func  # identity decorator
 if not hasattr(_trf_generic, "maybe_autocast"):
     from contextlib import nullcontext
     _trf_generic.maybe_autocast = nullcontext
