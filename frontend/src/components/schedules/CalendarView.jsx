@@ -311,6 +311,19 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
 
   const displayDays = view === 'week' ? getWeekDays() : days;
 
+  // multi-day 이벤트 분리 (중복 제거) / 단일 이벤트 분리
+  const multiDayEventsMap = new Map();
+  const singleDayEvents = [];
+  mergedEvents.forEach(e => {
+    if (e.startDate && e.endDate && e.startDate !== e.endDate) {
+      const key = e.scheduleId || e.id;
+      if (key && !multiDayEventsMap.has(key)) multiDayEventsMap.set(key, e);
+    } else {
+      singleDayEvents.push(e);
+    }
+  });
+  const multiDayEvents = Array.from(multiDayEventsMap.values());
+
   const handleDayClick = (d) => {
     if (d.other) return;
     setSelectedDay(d.day);
@@ -397,25 +410,28 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
         ) : (
           <div className="grid grid-cols-7 gap-1">
             {dayNames.map((d, idx) => (
-              <div key={d} className={`text-[0.6875rem] font-semibold py-2 text-center ${idx === 0 ? 'text-red-500' : idx === 6 ? 'text-blue-500' : 'text-neutral-muted'
-                }`}>{d}</div>
+              <div key={d} className={`text-[0.6875rem] font-semibold py-2 text-center ${idx === 0 ? 'text-red-500' : idx === 6 ? 'text-blue-500' : 'text-neutral-muted'}`}>{d}</div>
             ))}
             {displayDays.map((d, i) => {
-              const dayEvents = mergedEvents.filter((e) => e.day === d.day && e.month === currentMonth && !d.other);
+              const dayEvents = singleDayEvents.filter(e => e.day === d.day && e.month === currentMonth && !d.other);
               const isToday = !d.other && d.day === todayDate && currentYear === todayYear && currentMonth === todayMonth;
-              const isHoliday = dayEvents.some((e) => e.type === 'holiday');
+              const isHoliday = dayEvents.some(e => e.type === 'holiday');
+
+              // 이 셀에 걸친 multi-day 이벤트 스트라이프
+              const dayStripes = d.other ? [] : multiDayEvents.filter(event => {
+                if (!event.startDate || !event.endDate) return false;
+                const cellDate = new Date(currentYear, currentMonth - 1, d.day);
+                return cellDate >= new Date(event.startDate + 'T00:00:00') && cellDate <= new Date(event.endDate + 'T00:00:00');
+              });
+
               return (
                 <div
                   key={i}
                   onClick={() => handleDayClick(d)}
-                  className={`${view === 'week' ? 'min-h-[320px]' : 'min-h-[150px]'} bg-surface-card border border-neutral-divider rounded-sm p-1.5 text-xs transition hover:border-primary-300 cursor-pointer ${isToday ? 'border-primary-700 border-2' : ''
-                    } ${selectedDay === d.day && !d.other ? 'ring-2 ring-primary-500' : ''}`}
+                  className={`relative ${view === 'week' ? 'min-h-[300px]' : 'min-h-[120px]'} bg-surface-card border border-neutral-divider rounded-sm p-1.5 text-xs transition hover:border-primary-300 cursor-pointer ${isToday ? 'border-primary-700 border-2' : ''} ${selectedDay === d.day && !d.other ? 'ring-2 ring-primary-500' : ''}`}
+                  style={dayStripes.length > 0 ? { paddingBottom: `${dayStripes.length * 20 + 4}px` } : {}}
                 >
-                  <div className={`font-semibold mb-1 ${d.other ? 'text-neutral-muted'
-                      : (i % 7 === 0 || isHoliday) ? 'text-red-500'
-                        : i % 7 === 6 ? 'text-blue-500'
-                          : 'text-neutral-main'
-                    }`}>{d.day}</div>
+                  <div className={`font-semibold mb-1 ${d.other ? 'text-neutral-muted' : (i % 7 === 0 || isHoliday) ? 'text-red-500' : i % 7 === 6 ? 'text-blue-500' : 'text-neutral-main'}`}>{d.day}</div>
                   {dayEvents.map((e, j) => {
                     const builtInStyle = DEFAULT_TYPE_STYLES[e.type];
                     const color = typeColorMap[e.type];
@@ -423,13 +439,43 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
                       <div key={j} className="mb-0.5">
                         <div
                           className={`text-[0.625rem] px-1.5 py-0.5 rounded font-medium truncate ${builtInStyle || ''}`}
-                          style={!builtInStyle && color ? {
-                            backgroundColor: hexToRgba(color, 0.15),
-                            color,
-                          } : {}}
+                          style={!builtInStyle && color ? { backgroundColor: hexToRgba(color, 0.15), color } : {}}
                         >
                           {e.label}
                         </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* 하단 스트라이프 (multi-day 이벤트) */}
+                  {dayStripes.map((event, si) => {
+                    const eventStart = new Date(event.startDate + 'T00:00:00');
+                    const eventEnd = new Date(event.endDate + 'T00:00:00');
+                    const cellDate = new Date(currentYear, currentMonth - 1, d.day);
+                    const isStart = cellDate.getTime() === eventStart.getTime();
+                    const isEnd = cellDate.getTime() === eventEnd.getTime();
+                    const isWeekStart = i % 7 === 0;
+                    const showLabel = isStart || isWeekStart;
+                    const color = typeColorMap[event.type] || '#9CA3AF';
+                    return (
+                      <div
+                        key={event.scheduleId || event.id}
+                        className="absolute flex items-center overflow-hidden"
+                        style={{
+                          bottom: `${si * 20 + 2}px`,
+                          height: '18px',
+                          left: isStart ? 0 : -2,
+                          right: isEnd ? 0 : -2,
+                          backgroundColor: color,
+                          borderRadius: `${isStart ? '4px' : '0'} ${isEnd ? '4px' : '0'} ${isEnd ? '4px' : '0'} ${isStart ? '4px' : '0'}`,
+                          zIndex: isStart ? 2 : 1,
+                        }}
+                      >
+                        {showLabel && (
+                          <span style={{ color: '#fff', fontSize: '10px', fontWeight: 600, paddingLeft: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {event.label}
+                          </span>
+                        )}
                       </div>
                     );
                   })}

@@ -261,7 +261,6 @@
 - 일정 추가 버그 수정 (`SchedulesPage.jsx`)
   - `useGoogleServices.getState()` 호출 오류 → 훅에서 직접 구조분해로 변경
   - `create_meet`/`attendees` 필드명 불일치 수정
-  - 종일 이벤트 시 Invalid Date 발생 수정
 - 캘린더 토/일 색상 적용 (`CalendarView.jsx`)
   - 토요일 헤더+날짜 파란색, 일요일 헤더+날짜 빨간색, 공휴일 날짜도 빨간색 표시
   - 월간/주간/연간 뷰 전부 적용
@@ -437,7 +436,6 @@
 - `MessageSquarePlus` 아이콘으로 새 대화 생성
 
 #### 6) Agent 표시 방식 변경 — iOS 스타일 Agent 바
-- 메시지 위 AgentIndicator 제거 (ChatPage 3곳)
 - 입력창 위에 4개 둥근 pill로 Agent 그룹 표시: `규정 판단` / `문서` / `일정` / `일반`
 - 활성 Agent 진한 색 하이라이트 + 스트리밍 중 아이콘 pulse 애니메이션
 
@@ -457,7 +455,6 @@
 - 검색창 좌측에 검색 타입 선택 추가: 제목 / 제목+내용 / 날짜
 - 문서 업로드 영역 높이 `min-h-[280px]`, `flex flex-col items-center justify-center` 중앙 정렬
 - '개인 문서' → '팀 문서' 변경 (`ScopeSelector.jsx`)
-- 문서 목록 헤더에 scope 필터 추가: 전체 / 회사 / 팀
 
 #### 9) CustomSelect 커스텀 드롭다운 컴포넌트 신규 생성 (`components/common/CustomSelect.jsx`)
 - 브라우저 기본 select 대신 사이트 테마(blue-grey 팔레트)에 맞는 커스텀 드롭다운
@@ -753,7 +750,6 @@
 - **6개 파일 교체** (총 alert 18개, window.confirm 2개 → 0개)
   - `DocumentsPage.jsx` — 업로드 성공/실패, 삭제 confirm
   - `DocumentGeneratePage.jsx` — 생성/다운로드/템플릿 실패
-  - `ChatPage.jsx` — 문서 다운로드
   - `UserManagement.jsx` — 사용자 추가/상태/권한/삭제 실패
   - `RegulationManagement.jsx` — 저장/삭제 실패
   - `TasksPanel.jsx` — Task 삭제 confirm
@@ -1024,6 +1020,47 @@
 - 전체 E2E 테스트
 - 판단 Agent 스트리밍 디버깅
 - 챗봇 페이지 기타 UI 버그 확인
+
+---
+
+## 2026-03-06 (금)
+
+### 한 일
+
+#### 1) 네비게이션 바 크기 조정
+- 스케줄바 숨김 시 nav 높이 `60px → 76px`로 확대, 총 상단바 높이는 80px 유지
+  - 헤더 top padding을 `pt-5(20px) → pt-1(4px)`로 줄여 nav에 공간 확보
+  - `topbarScheduleHidden` 조건부 적용 — 스케줄바 표시 시엔 원래 크기(60px) 유지
+  - `Layout.jsx` 상단 패딩도 동기화 (pt-[100px] / pt-[96px] 유지)
+
+#### 2) 일정 멀티데이 버그 수정 (`SchedulesPage.jsx`)
+- **근본 원인**: `handleAddSchedule` / `handleUpdateSchedule`에서 `endStr` 생성 시 `data.endDate` 대신 `data.date`(시작일)를 사용 → 종료일이 항상 시작일로 저장됨
+- `endDateStr = data.endDate || data.date` 로 수정
+- `myDbSchedules` 로드 시 시작일~종료일 사이 각 날짜에 이벤트 생성 (다일 캘린더 표시)
+- 팀 일정도 동일하게 멀티데이 확장 처리
+- `baseEvent`에 `startDate` / `endDate` 추가 → 수정 폼에서 실제 시작·종료일 사용
+
+#### 3) 캘린더 멀티데이 이벤트 UI — 하단 스트라이프 방식 (`CalendarView.jsx`)
+- `multiDayEvents` (중복 제거) / `singleDayEvents` 분리
+- 멀티데이 이벤트: 날짜 셀 하단에 색상 스트라이프로 연속 표시
+  - 시작일: 왼쪽 둥근 모서리, 이벤트 이름 스트라이프 좌측에 표시
+  - 중간일: 사각형 스트라이프 (-2px 마진으로 셀 gap 브릿지)
+  - 종료일: 오른쪽 둥근 모서리
+  - 주(週) 경계 넘어가면 새 주 첫 셀 좌측에 이름 재표시
+- 단일 이벤트는 기존 pill 형태 유지
+- `getWeekBars` 방식(D안) → 하단 스트라이프 방식(B안)으로 변경
+
+#### 4) 대시보드 설정 localStorage 저장 버그 수정 (`uiStore.js`)
+- **근본 원인**: `loadDashboard()` 검증 로직 오류
+  - `all.length === expected.length` 조건이 hidden 위젯 포함 시 항상 false → 저장값 무시
+- 수정: `expected`에 `DEFAULT_DASHBOARD.hidden` 포함, 길이 비교 조건 제거
+- 로그아웃 후 재로그인해도 스케줄바 숨김, 위젯 배치 등 모든 대시보드 설정 유지됨
+
+### 다음 할 일
+- 재빌드·배포 후 멀티데이 일정 캘린더 표시 확인
+- 스케줄바 숨김 시 nav 크기 변경 확인
+- 대시보드 설정 persistence 재로그인 후 확인
+- 전체 E2E 테스트
 
 ---
 

@@ -52,17 +52,15 @@ export default function SchedulesPage() {
   // 본인 DB 일정 로드 (Google Calendar 미연결 시에도 일정 표시)
   useEffect(() => {
     listSchedules().then((res) => {
-      const schedules = (res.data || []).map((s) => {
+      const schedules = [];
+      (res.data || []).forEach((s) => {
         const start = new Date(s.start_time);
         const end = s.end_time ? new Date(s.end_time) : start;
         const hasTime = s.start_time.includes('T');
         const timeStr = hasTime
           ? `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
           : null;
-        return {
-          year: start.getFullYear(),
-          month: start.getMonth() + 1,
-          day: start.getDate(),
+        const baseEvent = {
           type: s.schedule_type || 'meeting',
           label: s.title,
           time: timeStr,
@@ -72,7 +70,22 @@ export default function SchedulesPage() {
           scheduleId: s.id,
           userId: s.user_id,
           isTeamVisible: s.is_team_visible || false,
+          startDate: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`,
+          endDate: `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`,
         };
+        // 여러 날짜에 걸친 일정은 각 날짜별로 이벤트 생성
+        const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+        const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+        const cur = new Date(startDay);
+        while (cur <= endDay) {
+          schedules.push({
+            ...baseEvent,
+            year: cur.getFullYear(),
+            month: cur.getMonth() + 1,
+            day: cur.getDate(),
+          });
+          cur.setDate(cur.getDate() + 1);
+        }
       });
       setMyDbSchedules(schedules);
     }).catch(() => setMyDbSchedules([]));
@@ -82,15 +95,14 @@ export default function SchedulesPage() {
   useEffect(() => {
     if (hasTeam) {
       listSchedules({ include_team: true }).then((res) => {
-        const dbSchedules = (res.data || [])
+        const dbSchedules = [];
+        (res.data || [])
           .filter((s) => s.user_name && s.user_name !== user?.name) // 본인 제외, 팀원만
-          .map((s) => {
+          .forEach((s) => {
             const start = new Date(s.start_time);
             const end = s.end_time ? new Date(s.end_time) : start;
             const timeStr = `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
-            return {
-              month: start.getMonth() + 1,
-              day: start.getDate(),
+            const baseEvent = {
               type: s.schedule_type || 'meeting',
               label: `[${s.user_name}] ${s.title}`,
               time: timeStr,
@@ -98,6 +110,17 @@ export default function SchedulesPage() {
               scheduleId: s.id,
               userId: s.user_id,
             };
+            const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+            const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+            const cur = new Date(startDay);
+            while (cur <= endDay) {
+              dbSchedules.push({
+                ...baseEvent,
+                month: cur.getMonth() + 1,
+                day: cur.getDate(),
+              });
+              cur.setDate(cur.getDate() + 1);
+            }
           });
         setTeamSchedules(dbSchedules);
       }).catch(() => setTeamSchedules([]));
@@ -192,7 +215,8 @@ export default function SchedulesPage() {
     setEditingSchedule({
       id: event.scheduleId,
       title: event.label,
-      date: `${eventYear}-${String(event.month).padStart(2, '0')}-${String(event.day).padStart(2, '0')}`,
+      date: event.startDate || `${eventYear}-${String(event.month).padStart(2, '0')}-${String(event.day).padStart(2, '0')}`,
+      endDate: event.endDate || '',
       startTime: event.rawStartTime || '09:00',
       endTime: event.rawEndTime || '10:00',
       type: event.type || 'meeting',
@@ -207,12 +231,13 @@ export default function SchedulesPage() {
     setScheduleError(null);
     const startTime = data.start_time || data.startTime || '00:00';
     const endTime = data.end_time || data.endTime || '23:59';
+    const endDateStr = data.endDate || data.date;
     const startStr = data.allDay
       ? `${data.date}T00:00:00`
       : `${data.date}T${startTime}:00`;
     const endStr = data.allDay
-      ? `${data.date}T23:59:59`
-      : `${data.date}T${endTime}:00`;
+      ? `${endDateStr}T23:59:59`
+      : `${endDateStr}T${endTime}:00`;
 
     try {
       await updateSchedule(editingSchedule.id, {
@@ -245,12 +270,13 @@ export default function SchedulesPage() {
     // 타임존 없는 로컬 시간 문자열 (DB: TIMESTAMP WITHOUT TIME ZONE)
     const sTime = data.start_time || data.startTime || '00:00';
     const eTime = data.end_time || data.endTime || '23:59';
+    const endDateStr = data.endDate || data.date;
     const startStr = data.allDay
       ? `${data.date}T00:00:00`
       : `${data.date}T${sTime}:00`;
     const endStr = data.allDay
-      ? `${data.date}T23:59:59`
-      : `${data.date}T${eTime}:00`;
+      ? `${endDateStr}T23:59:59`
+      : `${endDateStr}T${eTime}:00`;
 
     const startDateTime = new Date(startStr);
     const endDateTime = new Date(endStr);

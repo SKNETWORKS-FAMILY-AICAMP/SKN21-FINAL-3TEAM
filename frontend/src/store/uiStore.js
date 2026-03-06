@@ -21,11 +21,14 @@ const DEFAULT_DASHBOARD = {
 function loadDashboard() {
   try {
     const saved = JSON.parse(localStorage.getItem(DASHBOARD_KEY))
+    if (!saved || !Array.isArray(saved.leftColumn) || !Array.isArray(saved.rightColumn) || !Array.isArray(saved.hidden)) {
+      return DEFAULT_DASHBOARD
+    }
     const all = [...saved.leftColumn, ...saved.rightColumn, ...saved.hidden]
-    const expected = [...DEFAULT_DASHBOARD.leftColumn, ...DEFAULT_DASHBOARD.rightColumn]
-    if (expected.every(w => all.includes(w)) && all.length === expected.length) {
+    const expected = [...DEFAULT_DASHBOARD.leftColumn, ...DEFAULT_DASHBOARD.rightColumn, ...DEFAULT_DASHBOARD.hidden]
+    if (expected.every(w => all.includes(w))) {
       if (saved.topbarScheduleHidden === undefined) {
-        saved.topbarScheduleHidden = DEFAULT_DASHBOARD.topbarScheduleHidden;
+        saved.topbarScheduleHidden = DEFAULT_DASHBOARD.topbarScheduleHidden
       }
       return saved
     }
