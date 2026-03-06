@@ -192,38 +192,39 @@ def load_train_eval_datasets(
 
 
 def load_base_model(config: dict, for_training: bool = True, base_model_override: str = None):
-    """QLoRA 4-bit 모델 로드"""
+    """QLoRA 4-bit 모델 로드 (EXAONE은 bf16 풀로드)"""
     model_id = base_model_override or config["model"]["base_model"]
+    is_exaone = "exaone" in model_id.lower()
     print(f"  모델: {model_id}")
-
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.bfloat16,
-        bnb_4bit_use_double_quant=True,
-    )
 
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "right"
 
-    model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        quantization_config=bnb_config,
-        device_map="auto",
-        trust_remote_code=True,
-    )
-
-    # EXAONE 호환성: get_input_embeddings가 없으면 monkey-patch
-    if "exaone" in model_id.lower():
-        if not hasattr(model, "_patched_embeddings"):
-            _orig_cls = type(model)
-            if not hasattr(_orig_cls, "get_input_embeddings") or True:
-                _orig_cls.get_input_embeddings = lambda self: self.transformer.wte
-                _orig_cls.set_input_embeddings = lambda self, v: setattr(self.transformer, "wte", v)
-                model._patched_embeddings = True
-                print(f"  [EXAONE] get_input_embeddings monkey-patched")
+    if is_exaone:
+        # EXAONE: 커스텀 아키텍처라 bitsandbytes 4-bit 양자화 비호환
+        # H200 80GB VRAM이면 bf16 풀로드 + LoRA 충분
+        print(f"  [EXAONE] bf16 풀로드 (4-bit 양자화 비호환)")
+        model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+            trust_remote_code=True,
+        )
+    else:
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_use_double_quant=True,
+        )
+        model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            quantization_config=bnb_config,
+            device_map="auto",
+            trust_remote_code=True,
+        )
 
     if for_training:
         model.config.use_cache = False
@@ -308,7 +309,7 @@ def train(task: str, config: dict, base_model_override: str = None):
         bf16=use_bf16,
         fp16=not use_bf16,
         gradient_checkpointing=True,
-        optim="paged_adamw_8bit",
+        optim="adamw_torch" if "exaone" in model_id.lower() else "paged_adamw_8bit",
         report_to="none",
         max_length=train_cfg["max_length"],
     )
