@@ -36,9 +36,14 @@ LoRA v2: 문서 Agent 기능별 파인튜닝 (어댑터 분리 전략)
 
 import argparse
 import json
+import os
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
+
+# EXAONE 등 커스텀 모델 코드 자동 승인 (y/N 프롬프트 제거)
+os.environ["HF_HUB_TRUST_REMOTE_CODE"] = "1"
+os.environ["TRUST_REMOTE_CODE"] = "True"
 
 import torch
 import yaml
