@@ -155,8 +155,19 @@ class GoogleTasksService(GoogleBaseService):
         return {"synced_count": synced}
 
     async def list_tasks(self, db: AsyncSession, user_id: int) -> list:
-        """Action Items 목록 (Google Task 연동 정보 포함)"""
-        result = await db.execute(select(ActionItem))
+        """Action Items 목록 (본인 관련만 — assignee_id 또는 본인 회의)"""
+        from app.models.meeting import Meeting
+        from sqlalchemy import or_
+
+        # 본인에게 배정된 것 OR 본인이 만든 회의의 것 OR meeting_id가 null이고 assignee_id도 null인 것 제외
+        my_meeting_ids = select(Meeting.id).where(Meeting.created_by == user_id)
+        query = select(ActionItem).where(
+            or_(
+                ActionItem.assignee_id == user_id,
+                ActionItem.meeting_id.in_(my_meeting_ids),
+            )
+        )
+        result = await db.execute(query)
         items = result.scalars().all()
 
         tasks = []
