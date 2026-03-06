@@ -45,6 +45,15 @@ from pathlib import Path
 os.environ["HF_HUB_TRUST_REMOTE_CODE"] = "1"
 os.environ["TRUST_REMOTE_CODE"] = "True"
 
+# EXAONE 호환성: transformers 5.x에서 제거된 함수를 미리 주입
+# → EXAONE의 custom modeling 코드가 import할 때 에러 방지
+import transformers.utils.generic as _trf_generic
+if not hasattr(_trf_generic, "check_model_inputs"):
+    _trf_generic.check_model_inputs = lambda *a, **k: None
+if not hasattr(_trf_generic, "maybe_autocast"):
+    from contextlib import nullcontext
+    _trf_generic.maybe_autocast = nullcontext
+
 import torch
 import yaml
 from datasets import Dataset
@@ -205,6 +214,16 @@ def load_base_model(config: dict, for_training: bool = True, base_model_override
         device_map="auto",
         trust_remote_code=True,
     )
+
+    # EXAONE 호환성: get_input_embeddings가 없으면 monkey-patch
+    if "exaone" in model_id.lower():
+        if not hasattr(model, "_patched_embeddings"):
+            _orig_cls = type(model)
+            if not hasattr(_orig_cls, "get_input_embeddings") or True:
+                _orig_cls.get_input_embeddings = lambda self: self.transformer.wte
+                _orig_cls.set_input_embeddings = lambda self, v: setattr(self.transformer, "wte", v)
+                model._patched_embeddings = True
+                print(f"  [EXAONE] get_input_embeddings monkey-patched")
 
     if for_training:
         model.config.use_cache = False
