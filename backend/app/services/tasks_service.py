@@ -157,17 +157,26 @@ class GoogleTasksService(GoogleBaseService):
 
     async def list_tasks(self, db: AsyncSession, user_id: int) -> list:
         """Action Items 목록 (본인 관련만)"""
-        from app.models.meeting import Meeting
         from sqlalchemy import or_
 
-        my_meeting_ids = select(Meeting.id).where(Meeting.created_by == user_id)
-        query = select(ActionItem).where(
-            or_(
-                ActionItem.created_by == user_id,
-                ActionItem.assignee_id == user_id,
-                ActionItem.meeting_id.in_(my_meeting_ids),
+        try:
+            from app.models.meeting import Meeting
+            my_meeting_ids = select(Meeting.id).where(Meeting.created_by == user_id)
+            query = select(ActionItem).where(
+                or_(
+                    ActionItem.created_by == user_id,
+                    ActionItem.assignee_id == user_id,
+                    ActionItem.meeting_id.in_(my_meeting_ids),
+                )
             )
-        )
+        except Exception:
+            # Meeting 테이블 문제 시 fallback
+            query = select(ActionItem).where(
+                or_(
+                    ActionItem.created_by == user_id,
+                    ActionItem.assignee_id == user_id,
+                )
+            )
         result = await db.execute(query)
         items = result.scalars().all()
 
@@ -211,7 +220,11 @@ class GoogleTasksService(GoogleBaseService):
 
     async def pull_status(self, db: AsyncSession, user_id: int) -> dict:
         """Google Tasks 상태 → DB 반영 + 새 Task import"""
-        creds = await self.get_credentials(db, user_id)
+        try:
+            creds = await self.get_credentials(db, user_id)
+        except Exception as e:
+            logger.warning(f"[pull] Google 인증 실패 (user_id={user_id}): {e}")
+            raise HTTPException(status_code=400, detail="Google Tasks가 연결되어 있지 않습니다. 설정에서 Google 연결을 먼저 해주세요.")
         service = self._build_service(creds)
         tasklist_id = self._get_or_create_tasklist(service)
 
