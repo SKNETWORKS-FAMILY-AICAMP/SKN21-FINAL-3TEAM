@@ -238,16 +238,24 @@ def train(task: str, config: dict, base_model_override: str = None):
     print(f"  bf16 지원: {use_bf16}")
 
     lora_cfg = config["lora"]
+    target_modules = lora_cfg["target_modules"]
+
+    # EXAONE 모델은 레이어 이름이 다름 — 자동 변환
+    if "exaone" in base_model.lower():
+        exaone_map = {"o_proj": "out_proj", "gate_proj": "c_fc_0", "up_proj": "c_fc_1"}
+        target_modules = [exaone_map.get(t, t) for t in target_modules]
+        print(f"  [EXAONE] target_modules 변환: {lora_cfg['target_modules']} -> {target_modules}")
+
     lora_config = LoraConfig(
         r=lora_cfg["r"],
         lora_alpha=lora_cfg["lora_alpha"],
-        target_modules=lora_cfg["target_modules"],
+        target_modules=target_modules,
         lora_dropout=lora_cfg["lora_dropout"],
         bias="none",
         task_type="CAUSAL_LM",
     )
     print(f"  LoRA: r={lora_cfg['r']}, alpha={lora_cfg['lora_alpha']}, "
-          f"targets={lora_cfg['target_modules']}")
+          f"targets={target_modules}")
 
     train_cfg = config["training"]
 
