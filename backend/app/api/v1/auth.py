@@ -5,14 +5,11 @@
 - Google OAuth 2.0 소셜 로그인
 """
 import secrets
-import uuid
-import os
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -142,45 +139,6 @@ async def update_me(
     }
 
 
-_ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-_IMAGE_EXTENSIONS = {
-    "image/jpeg": ".jpg",
-    "image/png": ".png",
-    "image/webp": ".webp",
-    "image/gif": ".gif",
-}
-
-@router.post("/me/avatar")
-async def upload_avatar(
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """프로필 사진 업로드 — 로컬 저장 후 URL 반환 (추후 S3로 교체 가능)"""
-    if file.content_type not in _ALLOWED_IMAGE_TYPES:
-        raise HTTPException(status_code=400, detail="jpg, png, webp, gif 파일만 업로드 가능합니다.")
-
-    # backend/uploads/avatars — main.py 정적 서빙 경로와 일치
-    avatar_dir = Path(__file__).resolve().parents[3] / "uploads" / "avatars"
-    avatar_dir.mkdir(parents=True, exist_ok=True)
-
-    ext = _IMAGE_EXTENSIONS[file.content_type]
-    filename = f"{uuid.uuid4().hex}{ext}"
-    save_path = avatar_dir / filename
-
-    content = await file.read()
-    with open(save_path, "wb") as f:
-        f.write(content)
-
-    avatar_url = f"/uploads/avatars/{filename}"
-
-    current_user.avatar = avatar_url
-    await db.commit()
-    await db.refresh(current_user)
-
-    return {"avatar_url": avatar_url}
-
-
 @router.get("/team-members")
 async def get_team_members(
     current_user: User = Depends(get_current_user),
@@ -193,18 +151,6 @@ async def get_team_members(
     result = await db.execute(select(User).where(User.team == current_user.team))
     team_members = result.scalars().all()
     
-    # [특수 로직] '윤경은' 사용자의 프로필 이미지가 비어있는 경우, 기존 데이터에서 복구
-    if (current_user.name == "윤경은" or "ykgstar" in current_user.email) and not current_user.avatar:
-        for member in team_members:
-            if member.avatar and member.email != current_user.email:
-                current_user.avatar = member.avatar
-                await db.commit()
-                await db.refresh(current_user)
-                print(f"[DEBUG] Synchronized avatar for {current_user.email} from {member.email}")
-                break
-    
-    print(f"[DEBUG] Fetching team members for team: {current_user.team}")
-
     return [
         {
             "id": member.id,
@@ -218,25 +164,6 @@ async def get_team_members(
             "is_active": member.is_active,
         }
         for member in team_members if member.is_active
-    ]
-
-
-@router.get("/all-members")
-async def get_all_members(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """전체 활성 사용자 목록 (Pipeline 담당자 선택용)"""
-    result = await db.execute(select(User).where(User.is_active == True).order_by(User.name))
-    members = result.scalars().all()
-    return [
-        {
-            "id": m.id,
-            "name": m.name,
-            "team": m.team,
-            "avatar": m.avatar,
-        }
-        for m in members
     ]
 
 

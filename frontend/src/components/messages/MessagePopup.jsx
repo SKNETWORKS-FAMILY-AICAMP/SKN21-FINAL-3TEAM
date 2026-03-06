@@ -97,7 +97,7 @@ export default function MessagePopup({ open: externalOpen, onClose }) {
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-32 right-16 z-50 w-80 h-[28rem] bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 flex flex-col overflow-hidden origin-right"
+            className="fixed bottom-32 right-16 z-50 w-80 h-[28rem] bg-white/40 dark:bg-neutral-900/40 backdrop-blur-xl rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.12)] border border-white/30 dark:border-white/10 flex flex-col overflow-hidden origin-right"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800">
@@ -141,8 +141,8 @@ export default function MessagePopup({ open: externalOpen, onClose }) {
                         key={tab.key}
                         onClick={() => setBox(tab.key)}
                         className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition-colors ${box === tab.key
-                            ? 'text-primary-500 border-b-2 border-primary-500'
-                            : 'text-neutral-muted hover:text-neutral-sub'
+                          ? 'text-primary-500 border-b-2 border-primary-500'
+                          : 'text-neutral-muted hover:text-neutral-sub'
                           }`}
                       >
                         <tab.icon size={12} />

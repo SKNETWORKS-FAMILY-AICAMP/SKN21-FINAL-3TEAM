@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { GOOGLE_SCOPES, GOOGLE_SCOPE_LABELS } from '../../utils/constants';
 import useGoogleServices from '../../hooks/useGoogleServices';
 
-import { Calendar, CheckSquare, Mail, BarChart3 } from 'lucide-react';
+import { Calendar, CheckSquare, Mail, BarChart3, CheckCircle, ExternalLink, XCircle, RefreshCw, Trash2 } from 'lucide-react';
 
 const SERVICES = [
   { scope: GOOGLE_SCOPES.CALENDAR, icon: Calendar, desc: '일정을 자동으로 동기화합니다' },
@@ -35,91 +35,113 @@ export default function GoogleServicesConnect() {
   if (connected) {
     return (
       <div className="card mb-5">
-        <div className="card-header">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-success" />
-            <span className="text-sm font-semibold text-success">Google 서비스 연결됨</span>
-            {email && <span className="text-xs text-neutral-muted ml-1">{email}</span>}
+        <div className="card-body p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                <CheckCircle className="text-emerald-600" size={20} />
+              </div>
+              <div>
+                <h4 className="font-bold text-neutral-main">Google 계정 연결됨</h4>
+                <p className="text-xs text-neutral-muted">{email || '연결 성공'}</p>
+              </div>
+            </div>
+            <button
+              onClick={disconnect}
+              disabled={loading}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-error border border-error/20 hover:bg-error-bg transition-colors active:scale-95"
+            >
+              연결 해제
+            </button>
           </div>
-          <button onClick={disconnect} disabled={loading} className="text-xs text-neutral-muted hover:text-error transition">
-            연결 해제
-          </button>
-        </div>
-        <div className="card-body">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {SERVICES.map(({ scope, icon: Icon }) => {
+
+          <div className="grid grid-cols-2 gap-3">
+            {SERVICES.map(({ scope, icon: Icon, desc }) => {
               const active = hasScope(scope);
               return (
                 <div
                   key={scope}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md border text-sm ${
-                    active
-                      ? 'border-primary-300 bg-primary-50 text-primary-700'
-                      : 'border-neutral-divider bg-surface-hover text-neutral-muted'
-                  }`}
+                  className={`relative flex flex-col gap-1 p-4 rounded-2xl border transition-all ${active
+                    ? 'border-emerald-200 bg-emerald-50/50'
+                    : 'border-neutral-divider bg-neutral-50/50'
+                    }`}
                 >
-                  <Icon size={16} />
-                  <span className="font-medium">{GOOGLE_SCOPE_LABELS[scope]}</span>
-                  {active && <span className="ml-auto text-[0.625rem] text-success font-semibold">ON</span>}
+                  <div className="flex items-center gap-2 mb-1">
+                    <Icon size={16} className={active ? 'text-emerald-600' : 'text-neutral-400'} />
+                    <span className={`text-sm font-bold ${active ? 'text-emerald-700' : 'text-neutral-500'}`}>
+                      {GOOGLE_SCOPE_LABELS[scope]}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-neutral-muted leading-tight">{desc}</p>
+                  {active && (
+                    <div className="absolute top-3 right-3">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
+
           {missingScopes.length > 0 && (
             <button
               onClick={handleAddScopes}
               disabled={loading}
-              className="btn-primary mt-3 text-sm"
+              className="w-full btn-primary mt-6 py-3 rounded-2xl flex items-center justify-center gap-2"
             >
-              {loading ? '연결 중...' : `나머지 서비스 추가 연결 (${missingScopes.map((s) => GOOGLE_SCOPE_LABELS[s]).join(', ')})`}
+              <ExternalLink size={16} />
+              {loading ? '연결 중...' : `추가 기능 연동하기`}
             </button>
           )}
-          {error && <p className="text-xs text-error mt-3">{error}</p>}
+          {error && <p className="text-xs text-error mt-4 font-medium italic">{error}</p>}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="card mb-5">
-      <div className="card-header">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-neutral-muted" />
-          <span className="text-sm font-semibold text-neutral-sub">Google 서비스 미연결</span>
+    <div className="card border-neutral-divider bg-neutral-50/30">
+      <div className="card-body p-8 text-center">
+        <div className="inline-flex w-16 h-16 rounded-3xl bg-primary-100 items-center justify-center mb-6">
+          <Calendar className="text-primary-600" size={32} />
         </div>
-      </div>
-      <div className="card-body">
-        <p className="text-xs text-neutral-muted mb-3">연결할 서비스를 선택하세요</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <h3 className="text-xl font-bold text-neutral-main mb-2">Google 서비스 연결</h3>
+        <p className="text-sm text-neutral-muted mb-8 max-w-xs mx-auto">
+          캘린더, Tasks 등 다양한 기능을 한 번에 연결하여 효율적으로 작업하세요.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8 text-left">
           {SERVICES.map(({ scope, icon: Icon, desc }) => {
             const selected = selectedScopes.includes(scope);
             return (
               <button
                 key={scope}
                 onClick={() => toggleScope(scope)}
-                className={`flex flex-col items-start gap-1 px-3 py-3 rounded-md border text-left transition ${
-                  selected
-                    ? 'border-primary-500 bg-primary-50 text-primary-700'
-                    : 'border-neutral-divider bg-surface-card text-neutral-sub hover:border-primary-300'
-                }`}
+                className={`flex items-start gap-4 p-4 rounded-2xl border transition-all ${selected
+                  ? 'border-primary-500 bg-white ring-2 ring-primary-100 shadow-soft'
+                  : 'border-neutral-divider bg-white/50 hover:bg-white hover:border-primary-300'
+                  }`}
               >
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Icon size={16} />
-                  {GOOGLE_SCOPE_LABELS[scope]}
+                <div className={`mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${selected ? 'bg-primary-500 text-white' : 'bg-neutral-100 text-neutral-400'}`}>
+                  <Icon size={18} />
                 </div>
-                <span className="text-[0.6875rem] text-neutral-muted">{desc}</span>
+                <div>
+                  <div className={`text-sm font-bold ${selected ? 'text-primary-900' : 'text-neutral-700'}`}>{GOOGLE_SCOPE_LABELS[scope]}</div>
+                  <div className="text-[10px] text-neutral-muted mt-0.5 leading-snug">{desc}</div>
+                </div>
               </button>
             );
           })}
         </div>
+
         <button
           onClick={handleConnect}
           disabled={loading || selectedScopes.length === 0}
-          className="btn-primary"
+          className="w-full btn-primary py-4 rounded-2xl font-black text-base shadow-lg shadow-primary-500/20 active:scale-95 transition-transform"
         >
-          {loading ? '연결 중...' : 'Google 계정 연결하기'}
+          {loading ? '연결 중...' : 'Google 계정으로 시작하기'}
         </button>
-        {error && <p className="text-xs text-error mt-3">{error}</p>}
+        {error && <p className="text-xs text-error mt-4 font-medium italic">{error}</p>}
       </div>
     </div>
   );

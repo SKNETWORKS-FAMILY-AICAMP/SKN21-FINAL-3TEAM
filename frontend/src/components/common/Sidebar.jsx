@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, Link } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import useUIStore from '../../store/uiStore';
 import ThemeToggle from './ThemeToggle';
@@ -108,12 +108,12 @@ export default function Sidebar() {
 
         {/* 로고 + 햄버거 버튼 */}
         <div className={`flex px-4 pt-5 pb-5 ${collapsed ? 'flex-col items-center gap-3' : 'items-center justify-between'}`}>
-          <a
-            href="/dashboard"
+          <Link
+            to="/dashboard"
             className={`flex items-center gap-3 overflow-hidden ${collapsed ? 'justify-center' : ''}`}
           >
             <img src="/logo.png" alt="Logo" className={`${collapsed ? 'w-10' : 'w-14'} object-contain mix-blend-multiply transition-all`} />
-          </a>
+          </Link>
 
           <button
             onClick={() => setCollapsed(!collapsed)}

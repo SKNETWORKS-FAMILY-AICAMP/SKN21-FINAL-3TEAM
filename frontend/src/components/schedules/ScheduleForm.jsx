@@ -78,11 +78,10 @@ function TimeSelect({ value, onChange }) {
               type="button"
               data-selected={t === value}
               onClick={() => { onChange(t); setIsOpen(false); }}
-              className={`w-full text-left px-3 py-1.5 text-sm transition ${
-                t === value
-                  ? 'bg-primary-50 text-primary-700 font-semibold'
-                  : 'text-neutral-main hover:bg-surface-hover'
-              }`}
+              className={`w-full text-left px-3 py-1.5 text-sm transition ${t === value
+                ? 'bg-primary-50 text-primary-700 font-semibold'
+                : 'text-neutral-main hover:bg-surface-hover'
+                }`}
             >
               {t}
             </button>
@@ -167,11 +166,11 @@ function RangePicker({ startDate, endDate, onChange }) {
             className={[
               'w-full h-7 flex items-center justify-center text-[0.6875rem] transition',
               isStart(day) || isEnd(day) ? 'bg-primary-700 text-white font-semibold rounded' :
-              isInRange(day) ? 'bg-primary-100 text-primary-800' :
-              isTodayCell(day) ? 'border border-primary-400 text-primary-700 font-semibold hover:bg-primary-50 rounded' :
-              idx % 7 === 0 ? 'text-red-400 hover:bg-surface-hover rounded' :
-              idx % 7 === 6 ? 'text-blue-400 hover:bg-surface-hover rounded' :
-              'text-neutral-main hover:bg-surface-hover rounded',
+                isInRange(day) ? 'bg-primary-100 text-primary-800' :
+                  isTodayCell(day) ? 'border border-primary-400 text-primary-700 font-semibold hover:bg-primary-50 rounded' :
+                    idx % 7 === 0 ? 'text-red-400 hover:bg-surface-hover rounded' :
+                      idx % 7 === 6 ? 'text-blue-400 hover:bg-surface-hover rounded' :
+                        'text-neutral-main hover:bg-surface-hover rounded',
               isInRange(day) ? 'rounded-none' : '',
             ].join(' ')}
           >
@@ -246,8 +245,8 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
   };
 
   return (
-    <div className="card p-5">
-      <h3 className="text-base font-bold mb-4">{isEditMode ? '일정 수정' : '일정 추가'}</h3>
+    <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl p-6 rounded-[2rem] border border-white/20 dark:border-white/10 shadow-2xl">
+      <h3 className="text-lg font-black mb-5 text-neutral-900 dark:text-white tracking-tight">{isEditMode ? '일정 수정' : '일정 추가'}</h3>
       <div className="space-y-3">
         {/* 제목 */}
         <div>
@@ -255,27 +254,26 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
             value={form.title}
             onChange={(e) => { setForm({ ...form, title: e.target.value }); setErrors((p) => ({ ...p, title: undefined })); }}
             placeholder="일정 제목을 입력하세요"
-            className={`w-full px-3.5 py-2.5 border rounded-sm text-sm focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(110,135,160,0.1)] outline-none ${errors.title ? 'border-red-400' : 'border-neutral-border'}`}
+            className={`w-full px-4 py-3 rounded-xl border transition-all text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white/50 dark:bg-black/20 ${errors.title ? 'border-red-400' : 'border-neutral-divider dark:border-white/10'}`}
           />
-          {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title}</p>}
+          {errors.title && <p className="text-[10px] text-red-500 mt-1 ml-1 font-bold">{errors.title}</p>}
         </div>
 
         {/* 일정 유형 */}
         <div>
-          <label className="text-[0.8125rem] font-semibold block mb-1">일정 유형</label>
+          <label className="text-[11px] font-black uppercase tracking-wider text-neutral-400 mb-2 ml-1">일정 유형</label>
           <div className="flex flex-wrap gap-2">
             {allTypes.map(({ id, label, color }) => (
               <button
                 key={id}
                 type="button"
                 onClick={() => setForm({ ...form, type: id })}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-md border text-[0.8125rem] font-medium transition ${
-                  form.type === id
-                    ? 'border-primary-500 bg-primary-50 text-primary-700'
-                    : 'border-neutral-border bg-surface-card text-neutral-sub hover:border-primary-300'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] font-black transition-all ${form.type === id
+                  ? 'border-primary-500 bg-primary-500 text-white shadow-lg shadow-primary-500/20'
+                  : 'border-neutral-divider dark:border-white/10 bg-white/50 dark:bg-black/20 text-neutral-500'
+                  }`}
               >
-                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
                 {label}
               </button>
             ))}
@@ -382,11 +380,11 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
         )}
 
         {/* 버튼 */}
-        <div className="flex gap-2 pt-2">
-          <button onClick={handleSubmit} disabled={submitting} className="btn-primary">
+        <div className="flex gap-2 pt-4">
+          <button onClick={onClose} disabled={submitting} className="flex-1 py-3 text-xs font-black rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all">취소</button>
+          <button onClick={handleSubmit} disabled={submitting} className="flex-1 py-3 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-black rounded-xl shadow-xl hover:scale-105 transition-all">
             {submitting ? (isEditMode ? '수정 중...' : '등록 중...') : (isEditMode ? '수정' : '등록')}
           </button>
-          <button onClick={onClose} disabled={submitting} className="btn-outline">취소</button>
         </div>
       </div>
     </div>

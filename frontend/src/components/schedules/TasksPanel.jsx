@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { RefreshCw, Plus, X } from 'lucide-react';
 import useGoogleServices from '../../hooks/useGoogleServices';
 import { TASK_STATUS_LABELS } from '../../utils/constants';
@@ -18,77 +19,88 @@ function TaskCreateModal({ onClose, onSubmit, submitting }) {
     });
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div
-        className="bg-surface-card rounded-xl shadow-xl w-full max-w-md mx-4 p-6"
+  return createPortal(
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-[400px] p-8 mx-4 border border-white/40 dark:border-white/10"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-base font-semibold text-neutral-main">새 Task 추가</h3>
-          <button onClick={onClose} className="text-neutral-muted hover:text-neutral-main p-1 rounded">
-            <X size={18} />
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-black text-neutral-900 dark:text-white tracking-tighter">New Task</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400 transition-colors flex items-center justify-center">
+            <X size={20} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-neutral-muted mb-1">제목 *</label>
+            <label className="block text-[11px] font-black uppercase tracking-wider text-neutral-400 mb-1.5 ml-1">Title</label>
             <input
               type="text"
-              placeholder="할 일을 입력하세요"
+              placeholder="What needs to be done?"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="input w-full"
+              className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-all placeholder:text-neutral-300"
               autoFocus
               required
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-neutral-muted mb-1">담당자</label>
+            <label className="block text-[11px] font-black uppercase tracking-wider text-neutral-400 mb-1.5 ml-1">Assignee</label>
             <input
               type="text"
-              placeholder="담당자 이름"
+              placeholder="Who is responsible?"
               value={formData.assignee}
               onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
-              className="input w-full"
+              className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-all"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-neutral-muted mb-1">마감일</label>
+              <label className="block text-[11px] font-black uppercase tracking-wider text-neutral-400 mb-1.5 ml-1">Due Date</label>
               <input
                 type="date"
                 value={formData.due_date}
                 onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                className="input w-full"
+                className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-all"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-neutral-muted mb-1">우선순위</label>
+              <label className="block text-[11px] font-black uppercase tracking-wider text-neutral-400 mb-1.5 ml-1">Priority</label>
               <select
                 value={formData.priority}
                 onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                className="input w-full"
+                className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm focus:ring-2 focus:ring-primary-500 outline-none transition-all"
               >
-                <option value="high">높음</option>
-                <option value="medium">보통</option>
-                <option value="low">낮음</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
               </select>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} className="btn-outline text-sm">
-              취소
+          <div className="flex justify-end gap-2 pt-4">
+            <button type="button" onClick={onClose} className="px-6 py-2.5 text-xs font-black rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all">
+              Cancel
             </button>
-            <button type="submit" disabled={submitting} className="btn-primary text-sm">
-              {submitting ? '생성 중...' : '등록'}
+            <button type="submit" disabled={submitting} className="px-8 py-2.5 text-xs font-black rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 shadow-xl hover:scale-105 transition-all">
+              {submitting ? 'Creating...' : 'Create'}
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </div>,
+    document.body
   );
 }
 
@@ -197,9 +209,8 @@ export default function TasksPanel({ externalActions, onReady }) {
           <button
             key={key}
             onClick={() => setFilter(key)}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition ${
-              filter === key ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-muted hover:bg-surface-hover'
-            }`}
+            className={`px-3 py-1 rounded-md text-xs font-medium transition ${filter === key ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-muted hover:bg-surface-hover'
+              }`}
           >
             {label}
           </button>
@@ -235,9 +246,8 @@ export default function TasksPanel({ externalActions, onReady }) {
                 {task.deadline && (
                   <span className="text-[0.6875rem] text-neutral-muted whitespace-nowrap">{task.deadline}</span>
                 )}
-                <span className={`text-[0.625rem] px-2 py-0.5 rounded-full font-medium ${
-                  task.completed ? 'bg-success-bg text-success' : 'bg-warning-bg text-warning'
-                }`}>
+                <span className={`text-[0.625rem] px-2 py-0.5 rounded-full font-medium ${task.completed ? 'bg-success-bg text-success' : 'bg-warning-bg text-warning'
+                  }`}>
                   {TASK_STATUS_LABELS[task.status] || (task.completed ? '완료' : '미완료')}
                 </span>
                 <button

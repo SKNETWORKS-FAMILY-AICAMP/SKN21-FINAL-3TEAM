@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Minus, Pencil, Check, RotateCcw, ArrowUp } from 'lucide-react';
 import GreetingBanner from '../components/dashboard/GreetingBanner';
 import TodaySchedule from '../components/dashboard/TodaySchedule';
@@ -16,6 +17,7 @@ import { SkeletonCard } from '../components/common/Skeleton';
 import useUIStore from '../store/uiStore';
 import useGoogleStore from '../store/googleStore';
 import { FileText, HelpCircle, CalendarClock } from 'lucide-react';
+import ErrorBoundary from '../components/common/ErrorBoundary';
 import { listSchedules } from '../api/schedules';
 import { listDocuments } from '../api/documents';
 import { listSessions } from '../api/chat';
@@ -340,21 +342,6 @@ function WidgetColumn({ col, items, editMode, onHide, dragId, dropTarget, onDrag
   );
 }
 
-// ── 숨긴 위젯 카드 ──
-function HiddenWidgetCard({ id, onRestore }) {
-  const entry = WIDGET_REGISTRY[id];
-  if (!entry) return null;
-
-  return (
-    <button
-      onClick={() => onRestore(id)}
-      className="flex items-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed border-neutral-300 dark:border-neutral-600 text-neutral-sub hover:border-primary-400 hover:text-primary-700 dark:hover:border-primary-500 dark:hover:text-primary-400 transition-colors"
-    >
-      <Plus size={16} />
-      <span className="text-sm font-medium">{entry.label}</span>
-    </button>
-  );
-}
 
 // ── 메인 페이지 ──
 export default function DashboardPage() {
@@ -454,39 +441,108 @@ export default function DashboardPage() {
         <WidgetColumn col="rightColumn" items={rightColumn} editMode={editMode} onHide={hideWidget} {...dragProps} widgetProps={widgetProps} />
       </div>
 
-      {/* 숨긴 위젯 영역 및 레이아웃 제어 */}
-      {editMode && (
-        <div className="mt-5 space-y-4">
-          {/* 상단 레이아웃 제어 */}
-          <div>
-            <p className="text-xs text-neutral-muted mb-2 font-medium">상단 레이아웃 제어</p>
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={toggleTopbarSchedule}
-                className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed transition-colors ${dashboard.topbarScheduleHidden
-                  ? 'border-neutral-300 dark:border-neutral-600 text-neutral-sub hover:border-primary-400 hover:text-primary-700 dark:hover:border-primary-500 dark:hover:text-primary-400'
-                  : 'border-primary-300 text-primary-700 bg-primary-50 dark:border-primary-700 dark:text-primary-300 dark:bg-primary-900/20 hover:border-error hover:text-error hover:bg-error-bg'
-                  }`}
-              >
-                {dashboard.topbarScheduleHidden ? <Plus size={16} /> : <Minus size={16} className="text-error" />}
-                <span className="text-sm font-medium">상단 스케줄 바 {dashboard.topbarScheduleHidden ? '복원' : '숨기기'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 숨긴 위젯 요소가 있을 경우만 렌더링 */}
-          {hidden.length > 0 && (
-            <div>
-              <p className="text-xs text-neutral-muted mb-2 font-medium">숨긴 위젯 (클릭하여 복원)</p>
-              <div className="flex flex-wrap gap-3">
-                {hidden.map(id => (
-                  <HiddenWidgetCard key={id} id={id} onRestore={restoreWidget} />
-                ))}
+      {/* ── Widget Edit Mode UI ── */}
+      <AnimatePresence>
+        {editMode && (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="mt-12 space-y-12 bg-white/30 dark:bg-black/10 backdrop-blur-xl p-10 rounded-[3.5rem] border border-dashed border-neutral-300 dark:border-neutral-800"
+          >
+            {/* 상단 레이아웃 제어 */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-6 bg-primary-500 rounded-full" />
+                <h3 className="text-xl font-black text-neutral-900 dark:text-white tracking-tighter">상단 레이아웃 제어</h3>
+              </div>
+              <div className="flex flex-wrap gap-4">
+                <button
+                  onClick={toggleTopbarSchedule}
+                  className={`flex items-center gap-3 px-6 py-4 rounded-2xl border-2 border-dashed transition-all group ${dashboard.topbarScheduleHidden
+                    ? 'border-neutral-300 dark:border-neutral-700 text-neutral-500 hover:border-primary-500 hover:text-primary-600'
+                    : 'border-primary-500 bg-primary-500/5 text-primary-600 dark:text-primary-400 hover:border-error hover:text-error'
+                    }`}
+                >
+                  {dashboard.topbarScheduleHidden ? (
+                    <Plus size={18} className="group-hover:rotate-90 transition-transform" />
+                  ) : (
+                    <Minus size={18} className="group-hover:scale-125 transition-transform" />
+                  )}
+                  <span className="text-sm font-black">상단 스케줄 바 {dashboard.topbarScheduleHidden ? '복원' : '숨기기'}</span>
+                </button>
               </div>
             </div>
-          )}
-        </div>
-      )}
+
+            {/* 사용 가능한 위젯 (Visual Previews) */}
+            <div className="space-y-6">
+              <div className="flex items-end justify-between border-b border-neutral-divider pb-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-6 bg-indigo-500 rounded-full" />
+                  <h3 className="text-3xl font-black text-neutral-900 dark:text-white tracking-tighter">사용 가능한 위젯</h3>
+                </div>
+                <p className="text-[11px] text-neutral-400 font-bold uppercase tracking-widest px-4 py-2 bg-neutral-100 dark:bg-white/5 rounded-full">
+                  위젯을 드래그하여 대시보드로 옮기거나 + 를 눌러 추가하세요.
+                </p>
+              </div>
+
+              {hidden.length === 0 ? (
+                <div className="py-20 flex flex-col items-center justify-center opacity-40">
+                  <RotateCcw size={48} className="text-neutral-300 mb-4" />
+                  <p className="text-sm font-bold text-neutral-400">모든 위젯이 활성화되어 있습니다.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {hidden.map(id => {
+                    const entry = WIDGET_REGISTRY[id];
+                    if (!entry || !entry.component) return null;
+                    const Comp = entry.component;
+                    const props = widgetProps[id] || {};
+                    return (
+                      <motion.div
+                        key={`preview-${id}`}
+                        draggable
+                        onDragStart={(e) => { e.stopPropagation(); handleDragStart(id); }}
+                        onDragEnd={handleDragEnd}
+                        className="relative group cursor-grab active:cursor-grabbing h-fit"
+                      >
+                        {/* Add Button */}
+                        <div className="absolute top-6 right-6 z-20 overflow-hidden rounded-full">
+                          <button
+                            type="button"
+                            onClick={() => restoreWidget(id)}
+                            className="w-12 h-12 rounded-full bg-primary-600/90 hover:bg-primary-600 text-white shadow-2xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center group/btn"
+                          >
+                            <Plus size={24} className="group-hover/btn:rotate-90 transition-transform duration-300" />
+                          </button>
+                        </div>
+
+                        {/* Dashed Border Container */}
+                        <div className="absolute inset-0 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-[3rem] -z-10 group-hover:border-primary-400 group-hover:bg-primary-500/5 transition-all duration-300 bg-white/10 dark:bg-black/10" />
+
+                        {/* Widget Wrapper (Scaled or constrained for preview) */}
+                        <div className="p-6 overflow-hidden rounded-[3rem] opacity-60 group-hover:opacity-100 transition-all duration-300 scale-[0.96] group-hover:scale-100 min-h-[100px]">
+                          <div className="pointer-events-none select-none filter blur-[0.3px] group-hover:blur-0 transition-all duration-500 grayscale-[0.2] group-hover:grayscale-0 pointer-events-none">
+                            <ErrorBoundary fallback={<div className="p-4 text-xs text-red-400">Preview Load Error</div>}>
+                              <Comp {...props} previewMode />
+                            </ErrorBoundary>
+                          </div>
+                        </div>
+
+                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md px-6 py-2 rounded-full border border-neutral-divider dark:border-white/10 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-y-4 group-hover:translate-y-0">
+                          <span className="text-[12px] font-black uppercase tracking-[0.2em] text-neutral-500 dark:text-neutral-400">
+                            {entry.label}
+                          </span>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 하단 편집/완료 버튼 */}
       <div className="flex items-center justify-center gap-3 mt-8">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import {
   Check, X, Clock, AlertTriangle, UserX, CalendarClock,
   BellRing, ChevronUp, ChevronDown, ArrowRight, Plus,
@@ -18,16 +19,16 @@ import client from '../../api/client';
  */
 
 const typeConfig = {
-  leave:      { icon: Coffee,         color: 'text-orange-500 bg-orange-100 dark:bg-orange-900/30', label: '연차/반차 신청' },
-  remote:     { icon: Home,           color: 'text-teal-500 bg-teal-100 dark:bg-teal-900/30',      label: '재택근무 신청' },
-  room:       { icon: DoorOpen,       color: 'text-indigo-500 bg-indigo-100 dark:bg-indigo-900/30', label: '회의실 예약' },
-  design:     { icon: Palette,        color: 'text-pink-500 bg-pink-100 dark:bg-pink-900/30',      label: '디자인 에셋 요청' },
-  certificate:{ icon: Award,          color: 'text-yellow-500 bg-yellow-100 dark:bg-yellow-900/30', label: '증명서 발급 요청' },
-  budget:     { icon: Receipt,        color: 'text-purple-500 bg-purple-100 dark:bg-purple-900/30', label: '결재 요청' },
-  review:     { icon: GitPullRequest, color: 'text-blue-500 bg-blue-100 dark:bg-blue-900/30',      label: 'PR 리뷰 요청' },
-  deploy:     { icon: Rocket,         color: 'text-green-500 bg-green-100 dark:bg-green-900/30',   label: '배포 승인 요청' },
-  infra:      { icon: Server,         color: 'text-slate-500 bg-slate-100 dark:bg-slate-900/30',   label: '인프라/권한 신청' },
-  security:   { icon: ShieldCheck,    color: 'text-red-500 bg-red-100 dark:bg-red-900/30',        label: '보안 예외 처리' },
+  leave: { icon: Coffee, color: 'text-orange-500 bg-orange-100 dark:bg-orange-900/30', label: '연차/반차 신청' },
+  remote: { icon: Home, color: 'text-teal-500 bg-teal-100 dark:bg-teal-900/30', label: '재택근무 신청' },
+  room: { icon: DoorOpen, color: 'text-indigo-500 bg-indigo-100 dark:bg-indigo-900/30', label: '회의실 예약' },
+  design: { icon: Palette, color: 'text-pink-500 bg-pink-100 dark:bg-pink-900/30', label: '디자인 에셋 요청' },
+  certificate: { icon: Award, color: 'text-yellow-500 bg-yellow-100 dark:bg-yellow-900/30', label: '증명서 발급 요청' },
+  budget: { icon: Receipt, color: 'text-purple-500 bg-purple-100 dark:bg-purple-900/30', label: '결재 요청' },
+  review: { icon: GitPullRequest, color: 'text-blue-500 bg-blue-100 dark:bg-blue-900/30', label: 'PR 리뷰 요청' },
+  deploy: { icon: Rocket, color: 'text-green-500 bg-green-100 dark:bg-green-900/30', label: '배포 승인 요청' },
+  infra: { icon: Server, color: 'text-slate-500 bg-slate-100 dark:bg-slate-900/30', label: '인프라/권한 신청' },
+  security: { icon: ShieldCheck, color: 'text-red-500 bg-red-100 dark:bg-red-900/30', label: '보안 예외 처리' },
 };
 
 const defaultTypeConfig = { icon: FileSignature, color: 'text-gray-500 bg-gray-100 dark:bg-gray-900/30', label: '요청' };
@@ -45,13 +46,13 @@ export default function ApprovalQueueWidget() {
   useEffect(() => {
     client.get('/auth/team-members')
       .then(res => setMembers(res.data || []))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const loadApprovals = async (trySeed = false) => {
     try {
       if (trySeed) {
-        try { await seedApprovals(); } catch {}
+        try { await seedApprovals(); } catch { }
       }
       const res = await listApprovals();
       const approvals = (Array.isArray(res.data) ? res.data : []).map(a => {
@@ -364,85 +365,96 @@ export default function ApprovalQueueWidget() {
       </div>
 
       {/* 요청 올리기 모달 */}
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-            onClick={() => setShowModal(false)}
-          >
+      {showModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <AnimatePresence>
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl p-6 w-full max-w-md mx-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-lg font-bold text-neutral-main mb-4">새 요청 올리기</h3>
-              <form onSubmit={handleSubmitRequest} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-main mb-1">유형</label>
-                  <select
-                    value={formData.type}
-                    onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm"
-                  >
-                    <option value="leave">연차/반차 신청</option>
-                    <option value="remote">재택근무 신청</option>
-                    <option value="room">회의실 예약</option>
-                    <option value="design">디자인 에셋 요청</option>
-                    <option value="certificate">증명서 발급 요청</option>
-                    <option value="budget">결재 요청</option>
-                    <option value="review">PR 리뷰 요청</option>
-                    <option value="deploy">배포 승인 요청</option>
-                    <option value="infra">인프라/권한 신청</option>
-                    <option value="security">보안 예외 처리</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-main mb-1">제목</label>
-                  <input
-                    type="text"
-                    value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="요청 제목을 입력하세요"
-                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-main mb-1">상세 내용</label>
-                  <textarea
-                    value={formData.detail}
-                    onChange={(e) => setFormData(prev => ({ ...prev, detail: e.target.value }))}
-                    placeholder="상세 내용을 입력하세요 (선택)"
-                    rows={3}
-                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm resize-none"
-                  />
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="flex-1 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    {submitting ? '제출 중...' : '요청 제출'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 text-sm font-semibold rounded-lg transition-colors dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:text-neutral-300"
-                  >
-                    취소
-                  </button>
-                </div>
-              </form>
-            </motion.div>
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
+              onClick={() => setShowModal(false)}
+            />
+          </AnimatePresence>
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl p-8 w-full max-w-md mx-4 overflow-hidden border border-white/40 dark:border-white/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h3 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tighter">새 요청 올리기</h3>
+                <p className="text-xs text-neutral-400 font-bold mt-1">도움이나 승인이 필요한 내용을 적어주세요.</p>
+              </div>
+              <button onClick={() => setShowModal(false)} className="p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors">
+                <X size={20} className="text-neutral-400" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitRequest} className="space-y-6">
+              <div className="space-y-2">
+                <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">요청 유형</label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all appearance-none cursor-pointer"
+                >
+                  <option value="leave">연차/반차 신청</option>
+                  <option value="remote">재택근무 신청</option>
+                  <option value="room">회의실 예약</option>
+                  <option value="design">디자인 에셋 요청</option>
+                  <option value="certificate">증명서 발급 요청</option>
+                  <option value="budget">결재 요청</option>
+                  <option value="review">PR 리뷰 요청</option>
+                  <option value="deploy">배포 승인 요청</option>
+                  <option value="infra">인프라/권한 신청</option>
+                  <option value="security">보안 예외 처리</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">제목</label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="요청 제목을 입력하세요"
+                  className="w-full px-5 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-neutral-300"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">상세 내용</label>
+                <textarea
+                  value={formData.detail}
+                  onChange={(e) => setFormData(prev => ({ ...prev, detail: e.target.value }))}
+                  placeholder="상세 내용을 입력하세요 (선택)"
+                  rows={4}
+                  className="w-full px-5 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-neutral-300 resize-none"
+                />
+              </div>
+              <div className="flex gap-3 pt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 py-4 text-xs font-black rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 py-4 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-black rounded-xl shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {submitting ? '제출 중...' : '요청 제출'}
+                </button>
+              </div>
+            </form>
           </motion.div>
-        )}
-      </AnimatePresence>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
