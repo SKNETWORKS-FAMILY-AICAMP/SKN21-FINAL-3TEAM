@@ -139,6 +139,25 @@ async def startup_migrate_slack_column():
 
 
 @app.on_event("startup")
+async def startup_migrate_approval_file_columns():
+    """approval_requests에 file_path, file_name 컬럼 추가"""
+    try:
+        from app.db.session import engine
+        from sqlalchemy import text
+
+        async with engine.begin() as conn:
+            await conn.execute(text(
+                "ALTER TABLE approval_requests ADD COLUMN IF NOT EXISTS file_path VARCHAR(1000)"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE approval_requests ADD COLUMN IF NOT EXISTS file_name VARCHAR(500)"
+            ))
+        print("[Startup] approval_requests file 컬럼 추가 완료")
+    except Exception as _e:
+        print(f"[Startup] approval_requests file 컬럼 처리 실패 (무시하고 계속): {_e}")
+
+
+@app.on_event("startup")
 async def startup_slack_scheduler():
     """Slack 마감 알림 스케줄러 (매일 오전 9시 KST)"""
     import asyncio

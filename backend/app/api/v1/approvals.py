@@ -3,10 +3,14 @@ Approval Request API (팀원 D 담당)
 - 결재/승인 요청 CRUD
 - 같은 팀 소속끼리 공유
 """
-from fastapi import APIRouter, Depends, HTTPException
+import os
+import uuid
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
 from typing import Optional
 
 from app.api.deps import get_current_user
@@ -16,13 +20,36 @@ from app.models.approval_request import ApprovalRequest
 
 router = APIRouter()
 
+UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads" / "approvals"
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt", ".png", ".jpg", ".jpeg", ".gif", ".webp"}
 
-# ── Schemas ──
 
-class ApprovalCreate(BaseModel):
-    type: str  # leave / review / budget / etc
-    title: str
-    detail: Optional[str] = None
+def _serialize_approval(i, users_map=None):
+    """공통 직렬화 헬퍼"""
+    user = (users_map or {}).get(i.requester_id)
+    return {
+        "id": i.id,
+        "type": i.type,
+        "title": i.title,
+        "detail": i.detail,
+        "status": i.status,
+        "requester_id": i.requester_id,
+        "requester_name": user.name if user else None,
+        "requester_avatar": user.avatar if user else None,
+        "target_team": i.target_team,
+        "file_name": i.file_name,
+        "created_at": i.created_at.isoformat() if i.created_at else None,
+    }
+
+
+async def _get_users_map(db, items):
+    user_ids = list({i.requester_id for i in items})
+    users_map = {}
+    if user_ids:
+        users_result = await db.execute(select(User).where(User.id.in_(user_ids)))
+        for u in users_result.scalars().all():
+            users_map[u.id] = u
+    return users_map
 
 
 # ── Endpoints ──
@@ -40,30 +67,8 @@ async def list_approvals(
     )
     result = await db.execute(query)
     items = result.scalars().all()
-
-    # requester 이름/아바타 조회를 위해 user id 수집
-    user_ids = list({i.requester_id for i in items})
-    users_map = {}
-    if user_ids:
-        users_result = await db.execute(select(User).where(User.id.in_(user_ids)))
-        for u in users_result.scalars().all():
-            users_map[u.id] = u
-
-    return [
-        {
-            "id": i.id,
-            "type": i.type,
-            "title": i.title,
-            "detail": i.detail,
-            "status": i.status,
-            "requester_id": i.requester_id,
-            "requester_name": users_map.get(i.requester_id, None) and users_map[i.requester_id].name,
-            "requester_avatar": users_map.get(i.requester_id, None) and users_map[i.requester_id].avatar,
-            "target_team": i.target_team,
-            "created_at": i.created_at.isoformat() if i.created_at else None,
-        }
-        for i in items
-    ]
+    users_map = await _get_users_map(db, items)
+    return [_serialize_approval(i, users_map) for i in items]
 
 
 @router.get("/history")
@@ -82,45 +87,44 @@ async def list_approval_history(
     )
     result = await db.execute(query)
     items = result.scalars().all()
-
-    user_ids = list({i.requester_id for i in items})
-    users_map = {}
-    if user_ids:
-        users_result = await db.execute(select(User).where(User.id.in_(user_ids)))
-        for u in users_result.scalars().all():
-            users_map[u.id] = u
-
-    return [
-        {
-            "id": i.id,
-            "type": i.type,
-            "title": i.title,
-            "detail": i.detail,
-            "status": i.status,
-            "requester_id": i.requester_id,
-            "requester_name": users_map.get(i.requester_id, None) and users_map[i.requester_id].name,
-            "requester_avatar": users_map.get(i.requester_id, None) and users_map[i.requester_id].avatar,
-            "target_team": i.target_team,
-            "created_at": i.created_at.isoformat() if i.created_at else None,
-        }
-        for i in items
-    ]
+    users_map = await _get_users_map(db, items)
+    return [_serialize_approval(i, users_map) for i in items]
 
 
 @router.post("/", status_code=201)
 async def create_approval(
-    req: ApprovalCreate,
+    type: str = Form(...),
+    title: str = Form(...),
+    detail: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """새 결재/승인 요청 생성"""
+    """새 결재/승인 요청 생성 (파일 첨부 가능)"""
+    saved_path = None
+    saved_name = None
+
+    if file and file.filename:
+        ext = Path(file.filename).suffix.lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(status_code=400, detail=f"허용되지 않는 파일 형식입니다: {ext}")
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        unique_name = f"{uuid.uuid4().hex}{ext}"
+        saved_path = str(UPLOAD_DIR / unique_name)
+        content = await file.read()
+        with open(saved_path, "wb") as f:
+            f.write(content)
+        saved_name = file.filename
+
     approval = ApprovalRequest(
-        type=req.type,
-        title=req.title,
-        detail=req.detail,
+        type=type,
+        title=title,
+        detail=detail,
         status="pending",
         requester_id=current_user.id,
         target_team=current_user.team,
+        file_path=saved_path,
+        file_name=saved_name,
     )
     db.add(approval)
     await db.flush()
@@ -129,7 +133,29 @@ async def create_approval(
         "type": approval.type,
         "title": approval.title,
         "status": approval.status,
+        "file_name": approval.file_name,
     }
+
+
+@router.get("/{approval_id}/file")
+async def download_approval_file(
+    approval_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """첨부파일 다운로드"""
+    result = await db.execute(select(ApprovalRequest).where(ApprovalRequest.id == approval_id))
+    approval = result.scalar_one_or_none()
+    if not approval:
+        raise HTTPException(status_code=404, detail="요청을 찾을 수 없습니다")
+    if not approval.file_path or not os.path.exists(approval.file_path):
+        raise HTTPException(status_code=404, detail="첨부파일이 없습니다")
+
+    return FileResponse(
+        path=approval.file_path,
+        filename=approval.file_name or "attachment",
+        media_type="application/octet-stream",
+    )
 
 
 @router.put("/{approval_id}/approve")
@@ -183,6 +209,10 @@ async def delete_approval(
         raise HTTPException(status_code=404, detail="요청을 찾을 수 없습니다")
     if approval.requester_id != current_user.id:
         raise HTTPException(status_code=403, detail="본인이 올린 요청만 삭제할 수 있습니다")
+
+    # 첨부파일도 삭제
+    if approval.file_path and os.path.exists(approval.file_path):
+        os.remove(approval.file_path)
 
     await db.delete(approval)
     await db.flush()

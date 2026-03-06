@@ -19,3 +19,5 @@ class ApprovalRequest(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending / approved / rejected
     requester_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     target_team: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    file_path: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+    file_name: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
