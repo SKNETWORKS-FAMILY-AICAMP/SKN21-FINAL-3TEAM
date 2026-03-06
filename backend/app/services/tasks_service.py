@@ -230,7 +230,10 @@ class GoogleTasksService(GoogleBaseService):
         logger.info(f"[pull] Google Tasks 전체: {len(all_google_items)}개, 활성: {len(google_tasks)}개")
 
         db_result = await db.execute(
-            select(ActionItem).where(ActionItem.google_task_id.isnot(None))
+            select(ActionItem).where(
+                ActionItem.google_task_id.isnot(None),
+                ActionItem.created_by == user_id,
+            )
         )
         items = db_result.scalars().all()
         existing_ids = {item.google_task_id for item in items}
