@@ -129,7 +129,11 @@ async def startup_migrate_slack_column():
             await conn.execute(text(
                 "ALTER TABLE action_items ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id)"
             ))
-        print("[Startup] action_items.created_by 컬럼 확인/추가 완료")
+        # created_by가 null인 기존 데이터 삭제 (각자 Google Tasks Pull로 재import)
+            deleted = await conn.execute(text(
+                "DELETE FROM action_items WHERE created_by IS NULL"
+            ))
+            print(f"[Startup] action_items.created_by 컬럼 확인/추가 완료, 기존 null 데이터 {deleted.rowcount}건 삭제")
     except Exception as _e:
         print(f"[Startup] action_items.created_by 처리 실패 (무시하고 계속): {_e}")
 
