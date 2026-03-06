@@ -123,6 +123,16 @@ async def startup_migrate_slack_column():
     except Exception as _e:
         print(f"[Startup] slack_enabled 처리 실패 (무시하고 계속): {_e}")
 
+    # action_items에 created_by 컬럼 추가
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text(
+                "ALTER TABLE action_items ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id)"
+            ))
+        print("[Startup] action_items.created_by 컬럼 확인/추가 완료")
+    except Exception as _e:
+        print(f"[Startup] action_items.created_by 처리 실패 (무시하고 계속): {_e}")
+
 
 @app.on_event("startup")
 async def startup_slack_scheduler():

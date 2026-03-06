@@ -22,6 +22,8 @@ class ActionItem(Base, TimestampMixin):
     priority: Mapped[str] = mapped_column(String(20), default="medium")  # high/medium/low
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending/in_progress/done
 
+    created_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)  # 생성자
+
     # Google Services 연동
     google_task_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     sheet_row_id: Mapped[Optional[int]] = mapped_column(nullable=True)

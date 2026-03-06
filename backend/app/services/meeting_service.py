@@ -147,6 +147,7 @@ async def _save_action_items(
     db: AsyncSession,
     meeting_id: int,
     action_items_data: list[dict],
+    user_id: int = None,
 ) -> list[ActionItem]:
     """Action Items를 DB에 저장한다."""
     items = []
@@ -166,6 +167,7 @@ async def _save_action_items(
             due_date=_parse_due_date(ai_data.get("due_date")),
             priority=priority,
             status="pending",
+            created_by=user_id,
         )
         db.add(item)
         items.append(item)
@@ -218,7 +220,7 @@ async def generate_meeting(
 
     # 3. Action Items 저장
     action_items_data = data.get("action_items") or agent_response.get("action_items", [])
-    action_items = await _save_action_items(db, meeting.id, action_items_data)
+    action_items = await _save_action_items(db, meeting.id, action_items_data, user_id=user_id)
 
     # 4. 회의록 Document 저장 (미리보기용)
     generated_dir = os.path.join(settings.UPLOAD_DIR, "generated")
@@ -285,7 +287,7 @@ async def analyze_meeting(
         delete(ActionItem).where(ActionItem.meeting_id == meeting_id)
     )
     action_items_data = data.get("action_items") or agent_response.get("action_items", [])
-    action_items = await _save_action_items(db, meeting_id, action_items_data)
+    action_items = await _save_action_items(db, meeting_id, action_items_data, user_id=user_id)
 
     await db.refresh(meeting)
 
