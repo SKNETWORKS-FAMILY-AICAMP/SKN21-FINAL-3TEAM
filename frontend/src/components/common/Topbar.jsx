@@ -640,9 +640,9 @@ export default function Topbar({ isScrolled = false }) {
         <div className={`flex items-center justify-between px-4 md:px-10 flex-shrink-0 transition-all duration-300 ease-in-out ${isScrolled ? 'opacity-100 md:opacity-0 pointer-events-auto md:pointer-events-none h-[60px] md:h-0 overflow-hidden bg-white/80 dark:bg-[#363A48]/80 backdrop-blur-md md:bg-transparent shadow-sm md:shadow-none' : 'opacity-100 h-[60px] pointer-events-auto'}`}>
 
           {/* 좌측 - 로고 */}
-          <div className="flex items-center shrink-0 w-[200px] -mt-5">
+          <div className="flex-1 flex items-center shrink-0">
             <Link to="/dashboard" className="flex items-center gap-3">
-              <img src="/logo.png" alt="Logo" className={`object-contain transition-all py-1 ${isScrolled ? 'w-24' : 'w-28'}`} />
+              <img src="/logo.png" alt="Logo" className="w-24 h-auto object-contain py-1" />
             </Link>
           </div>
 
@@ -655,7 +655,7 @@ export default function Topbar({ isScrolled = false }) {
           </button>
 
           {/* 중앙 - 네비게이션 메뉴 (데스크톱) */}
-          <nav className="hidden md:flex flex-1 justify-center items-center gap-2 lg:gap-6">
+          <nav className="hidden md:flex flex-none items-center gap-2 lg:gap-6">
             {getNavItems(user?.is_admin).map(item => (
               <NavLink
                 key={item.to}
@@ -677,7 +677,7 @@ export default function Topbar({ isScrolled = false }) {
           </nav>
 
           {/* 우측 - 유틸리티 (데스크톱) */}
-          <div className={`hidden md:flex items-center justify-end gap-3 w-auto -mt-5 transition-opacity duration-300`}>
+          <div className="flex-1 hidden md:flex items-center justify-end gap-3 transition-opacity duration-300">
             <ThemeToggle />
             <MemoPanel />
 
@@ -686,7 +686,7 @@ export default function Topbar({ isScrolled = false }) {
                 onClick={() => setUserMenuOpen((o) => !o)}
                 className="flex items-center gap-2 px-2 py-1.5 rounded-full hover:bg-neutral-border/30 dark:hover:bg-white/10 transition-all border border-transparent hover:border-neutral-200 dark:hover:border-white/10"
               >
-                <div className={`rounded-full bg-accent-500 border border-neutral-border/20 flex items-center justify-center font-bold text-white flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden shadow-sm ${isScrolled ? 'w-7 h-7 text-[10px]' : 'w-9 h-9 text-xs'}`}>
+                <div className="w-8 h-8 rounded-full bg-accent-500 border border-neutral-border/20 flex items-center justify-center font-bold text-white flex-shrink-0 overflow-hidden shadow-sm text-xs">
                   {user?.profile_image || user?.profile_picture || user?.avatar || user?.avatar_url ? (
                     <img src={user?.profile_image || user?.profile_picture || user?.avatar || user?.avatar_url} alt={user.name} className="w-full h-full object-cover" />
                   ) : (
