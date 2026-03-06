@@ -96,8 +96,9 @@ export default function ApprovalsPage() {
       setFormData({ type: 'leave', title: '', detail: '' });
       setFormFile(null);
       await loadAll();
-    } catch {
-      alert('요청 생성에 실패했습니다.');
+    } catch (err) {
+      console.error('Approval create error:', err.response?.status, err.response?.data, err);
+      alert('요청 생성에 실패했습니다. (' + (err.response?.data?.detail || err.message) + ')');
     } finally {
       setSubmitting(false);
     }

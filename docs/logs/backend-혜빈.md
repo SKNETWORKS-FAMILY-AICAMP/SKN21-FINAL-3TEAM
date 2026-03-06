@@ -749,3 +749,54 @@
 - Slack 연동 확장
 - AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
 - vLLM 백엔드 연동 + sLLM 교체 및 평가
+
+---
+
+## 2026-03-06 (세션 17) — Approval Request 문서 첨부 + 상세보기
+
+### 한 일
+
+**Approval Request 문서 첨부 기능 구현**
+- `backend/app/models/approval_request.py`: `file_path`, `file_name` 컬럼 추가
+- `backend/app/api/v1/approvals.py`: POST를 JSON → Form+UploadFile 방식으로 변경
+  - 파일 저장: `uploads/approvals/{uuid}.{ext}`
+  - 허용 확장자: PDF, DOCX, DOC, TXT, PNG, JPG, JPEG, GIF, WEBP
+  - `GET /{id}/file` 파일 다운로드 엔드포인트 추가 (FileResponse)
+  - 삭제 시 첨부파일도 함께 삭제
+  - 응답에 `file_name` 필드 추가
+- `backend/app/main.py`: startup 마이그레이션 추가 (file_path, file_name 컬럼 자동 추가)
+
+**프론트엔드 파일 첨부 UI**
+- `frontend/src/api/approvals.js`:
+  - `createApproval` FormData 방식 전환 (`Content-Type: undefined`로 axios 자동 boundary 설정)
+  - `downloadApprovalFile()`, `getApprovalFileBlobUrl()` 헬퍼 추가 (JWT 인증 포함 blob 다운로드)
+- `frontend/src/pages/ApprovalsPage.jsx`:
+  - 새 요청 모달에 파일 첨부 input + X 취소 버튼
+  - 카드 클릭 → 상세보기 모달 (유형, 제목, 상태, 요청자, 상세 내용, 날짜)
+  - 첨부파일: 미리보기 버튼(이미지/PDF) + 다운로드 버튼
+  - 파일 미리보기 팝업 (이미지: img 렌더링, PDF: iframe)
+  - Approve/Reject 버튼도 상세 모달 안에서 사용 가능
+  - 에러 상세 메시지 표시 추가
+- `frontend/src/components/dashboard/ApprovalQueueWidget.jsx`:
+  - 위젯 모달에 파일 첨부 input + X 취소 버튼 (원격 디자인 유지)
+  - 충돌 해결: 원격(createPortal + backdrop-blur 디자인) 기반으로 파일 첨부 기능 병합
+
+### 이슈 및 해결
+
+**이슈 1: FormData 업로드 실패**
+- 원인: axios client 기본 `Content-Type: application/json`이 FormData boundary를 덮어씀
+- 해결: `headers: { 'Content-Type': undefined }`로 설정하여 axios 자동 처리
+
+**이슈 2: 파일 다운로드/미리보기 실패**
+- 원인: `<a href>` 방식은 JWT 토큰을 보내지 못함
+- 해결: axios blob 요청 기반 `downloadApprovalFile`, `getApprovalFileBlobUrl` 함수로 교체
+
+**이슈 3: ApprovalsPage에서만 요청 생성 실패 (대시보드 위젯은 정상)**
+- 상태: 디버깅 중 — catch에 에러 상세 로깅 추가, 원인 확인 필요
+
+### 다음 할 일
+- ApprovalsPage 요청 생성 실패 원인 확인 (브라우저 콘솔 에러 메시지 기반)
+- EC2 서버 재배포
+- Slack 연동 확장
+- AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
+- vLLM 백엔드 연동 + sLLM 교체 및 평가
