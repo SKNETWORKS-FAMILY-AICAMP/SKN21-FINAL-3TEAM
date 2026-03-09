@@ -946,8 +946,13 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
             # sLLM 모드: vLLM + LoRA 어댑터
             try:
                 from ai.serving.vllm_client import VLLMProvider
-                llm = VLLMProvider().with_lora(f"v2_{task}")
-                print(f"[DocumentAgent] _call_llm | sLLM: v2_{task} 어댑터")
+                use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
+                if use_lora:
+                    llm = VLLMProvider().with_lora(f"v2_{task}")
+                    print(f"[DocumentAgent] _call_llm | sLLM: v2_{task} LoRA 어댑터")
+                else:
+                    llm = VLLMProvider()
+                    print(f"[DocumentAgent] _call_llm | sLLM: base model (LoRA 없음)")
                 response = await llm.generate(
                     prompt=user_prompt,
                     system_prompt=sys_prompt,
