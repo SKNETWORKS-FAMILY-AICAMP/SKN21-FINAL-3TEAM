@@ -302,7 +302,7 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                                             <span className="text-neutral-sub">진행률</span>
                                             <span className="text-neutral-main">{progress}%</span>
                                         </div>
-                                        <div className="w-full h-[5px] bg-neutral-100 dark:bg-white/10 rounded-full overflow-hidden">
+                                        <div className="w-full h-2 bg-neutral-200 dark:bg-white/15 rounded-full overflow-hidden">
                                             <div className={`h-full ${pColor} rounded-full transition-all duration-700`} style={{ width: `${progress}%` }} />
                                         </div>
                                     </div>
