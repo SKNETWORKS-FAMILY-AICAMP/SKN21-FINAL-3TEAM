@@ -21,7 +21,10 @@ client.interceptors.request.use((config) => {
 client.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && window.location.pathname !== '/login') {
+    const url = error.config?.url || ''
+    // Google 연동 API(calendar, google)의 401은 연동 안 된 것이지 인증 만료가 아님
+    const isGoogleApi = /\/(calendar|google)\//.test(url)
+    if (error.response?.status === 401 && window.location.pathname !== '/login' && !isGoogleApi) {
       localStorage.removeItem('access_token')
       localStorage.removeItem('cached_user')
       window.location.href = '/login'

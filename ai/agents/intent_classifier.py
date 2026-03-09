@@ -179,20 +179,17 @@ class IntentClassifier:
         import time as _time
         _t = _time.time()
         print(f"[IntentClassifier] _llm_based_predict 시작 | text='{text}'")
-        api_key = os.getenv("SOLAR_API_KEY")
-        print(f"[IntentClassifier] SOLAR_API_KEY 존재: {bool(api_key)}, 값 앞4자: {api_key[:4] if api_key else 'None'}")
+        api_key = os.getenv("OPENAI_API_KEY")
+        print(f"[IntentClassifier] OPENAI_API_KEY 존재: {bool(api_key)}")
         if not api_key:
-            print("[IntentClassifier] SOLAR_API_KEY 없음 → 임베딩 fallback")
+            print("[IntentClassifier] OPENAI_API_KEY 없음 → 임베딩 fallback")
             return self._embedding_based_predict(text, return_candidates=return_candidates)
 
         try:
             from openai import OpenAI
 
-            print("[IntentClassifier] Solar API 호출 중...")
-            client = OpenAI(
-                api_key=api_key,
-                base_url="https://api.upstage.ai/v1/solar",
-            )
+            print("[IntentClassifier] GPT API 호출 중...")
+            client = OpenAI(api_key=api_key)
 
             # return_candidates 요청 시 top-3 반환 프롬프트 추가
             if return_candidates:
@@ -228,7 +225,7 @@ class IntentClassifier:
                 {"intent": "카테고리명", "confidence": 0.0~1.0}"""
 
             response = client.chat.completions.create(
-                model="solar-1-mini-chat",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": text},
@@ -238,7 +235,7 @@ class IntentClassifier:
             )
 
             raw_content = response.choices[0].message.content
-            print(f"[IntentClassifier] Solar API 응답 원문: {raw_content}")
+            print(f"[IntentClassifier] GPT API 응답 원문: {raw_content}")
             result = json.loads(raw_content)
             intent = result.get("intent", "general")
 
