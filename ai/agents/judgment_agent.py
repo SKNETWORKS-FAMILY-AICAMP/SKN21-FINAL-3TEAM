@@ -540,13 +540,16 @@ async def judgment_agent(state: AgentState) -> AgentState:
     print(f"[JudgmentAgent] 진입 | user_input='{user_input[:80]}', user_id={user_id}")
 
     try:
-        # 1. RAG 검색 (다중 규정 교차 분석을 위해 top_k 확대)
+        # 1. RAG 검색 (Reranker + Score Threshold + HyDE 적용)
         _t_rag = time.time()
-        print("[JudgmentAgent] RAG 검색 시작 (top_k=10)...")
+        print("[JudgmentAgent] RAG 검색 시작 (top_k=10, reranker=True, hyde=True)...")
         pipeline = get_qdrant_pipeline()
         context = pipeline.retrieve(
             query=user_input, user_id=user_id, top_k=10,
             filter={"source": "regulations"},
+            use_reranker=True,       # Cross-Encoder로 관련도 재정렬
+            score_threshold=-2.0,    # Cross-Encoder 점수 기준 (음수 가능, -2.0 이하만 제거)
+            use_hyde=True,           # HyDE로 벡터 검색 품질 향상
         )
         print(f"[JudgmentAgent] RAG 검색 완료 ({time.time()-_t_rag:.2f}s) | {len(context)}개 문서 검색됨")
 
@@ -671,11 +674,14 @@ async def judgment_agent_stream(state: AgentState) -> AsyncGenerator[str, None]:
     chat_history = state.get("chat_history", [])
 
     try:
-        # RAG 검색
+        # RAG 검색 (Reranker + Score Threshold + HyDE 적용)
         pipeline = get_qdrant_pipeline()
         context = pipeline.retrieve(
             query=user_input, user_id=user_id, top_k=10,
             filter={"source": "regulations"},
+            use_reranker=True,
+            score_threshold=0.1,
+            use_hyde=True,
         )
 
         # 판단 이력 추출

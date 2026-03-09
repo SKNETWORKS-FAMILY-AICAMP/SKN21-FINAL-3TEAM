@@ -119,7 +119,7 @@ async def generate_document(
         )
 
         if request.template_type == "meeting_minutes":
-            result = _generate_meeting_minutes(user_input)
+            result = await _generate_meeting_minutes(user_input)
             return {
                 "document_id": result["document_id"],
                 "template_type": "meeting_minutes",
@@ -134,7 +134,7 @@ async def generate_document(
             }
 
         if request.template_type == "report":
-            result = _generate_report(user_input)
+            result = await _generate_report(user_input)
             return {
                 "document_id": result["document_id"],
                 "template_type": "report",
@@ -148,7 +148,7 @@ async def generate_document(
             }
 
         if request.template_type == "proposal":
-            result = _generate_proposal(user_input)
+            result = await _generate_proposal(user_input)
             return {
                 "document_id": result["document_id"],
                 "template_type": "proposal",

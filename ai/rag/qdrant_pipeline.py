@@ -3,12 +3,17 @@ Qdrant 기반 RAG 파이프라인
 
 파이프라인:
   사용자 질문
+  → (선택) LLM 쿼리 재작성 (HyDE)
   → BM25 검색 (Top 15) + Vector 검색 (Top 15)
-  → RRF 합산 (Top K)
-  → AgentState.context에 저장 → Agent가 LLM에 전달
+  → RRF 합산
+  → (선택) Cross-Encoder Reranker 재정렬
+  → (선택) Score Threshold 필터링
+  → Top K → AgentState.context에 저장
 
-NOTE: Reranker(Cross-Encoder)는 성능 병목(~15초)으로 비활성화됨.
-      BM25+Vector 하이브리드 검색의 RRF 머징으로 충분한 품질 확보.
+검색 품질 개선 옵션 (retrieve 호출 시 선택):
+  - use_reranker=True: Cross-Encoder로 관련도 재평가 (정밀도 ↑, 지연 +2~5초)
+  - score_threshold=0.1: 관련 없는 문서 자동 제거
+  - use_hyde=True: LLM으로 가상 정답 문서 생성 → 벡터 검색 품질 향상
 """
 import logging
 import os
@@ -95,23 +100,56 @@ class QdrantRAGPipeline:
         # 전체 저장 완료 후 BM25 인덱스 한 번만 재구축
         self.searcher.build_bm25_index()
 
-    def retrieve(self, query: str, user_id: int | None = None, top_k: int = 5, filter: dict | None = None) -> list[dict]:
-        """하이브리드 검색 (BM25 + Vector → RRF 합산)
+    def retrieve(
+        self,
+        query: str,
+        user_id: int | None = None,
+        top_k: int = 5,
+        filter: dict | None = None,
+        use_reranker: bool = False,
+        score_threshold: float | None = None,
+        use_hyde: bool = False,
+    ) -> list[dict]:
+        """하이브리드 검색 (BM25 + Vector → RRF 합산 → Reranker → Threshold)
 
         Args:
             query: 사용자 질문
             user_id: 사용자 ID (scope 필터용)
             top_k: 최종 반환 문서 수
             filter: 메타데이터 필터 (예: {"source": "regulations"})
+            use_reranker: Cross-Encoder 재정렬 사용 여부
+            score_threshold: 최소 점수 기준 (미달 문서 제거)
+            use_hyde: HyDE (Hypothetical Document Embeddings) 사용 여부
 
         Returns:
             list of {"content": str, "source": str, "score": float, ...}
         """
         _t = time.time()
-        print(f"[RAGPipeline] retrieve 시작 | query='{query[:50]}', top_k={top_k}, filter={filter}")
+        search_query = query
 
-        # Hybrid Search (BM25 + Vector) → RRF 합산 → Top K
-        search_results = self.searcher.search(query=query, user_id=user_id, top_k=top_k, filter=filter)
+        # HyDE: LLM으로 가상 정답 문서 생성 → 벡터 검색에 사용
+        if use_hyde:
+            try:
+                from ai.rag.query_refiner import generate_hyde_document
+                hyde_doc = generate_hyde_document(query)
+                if hyde_doc:
+                    search_query = hyde_doc
+                    logger.info(f"[RAGPipeline] HyDE 적용: '{query[:40]}' → '{hyde_doc[:60]}'")
+            except Exception as e:
+                logger.warning(f"[RAGPipeline] HyDE 실패, 원본 쿼리 사용: {e}")
+
+        print(f"[RAGPipeline] retrieve 시작 | query='{query[:50]}', top_k={top_k}, "
+              f"reranker={use_reranker}, threshold={score_threshold}, hyde={use_hyde}")
+
+        # Hybrid Search (BM25 + Vector) → RRF 합산 → (Reranker) → Top K
+        search_results = self.searcher.search(
+            query=search_query,
+            user_id=user_id,
+            top_k=top_k,
+            filter=filter,
+            use_reranker=use_reranker,
+            score_threshold=score_threshold,
+        )
         print(f"[RAGPipeline] retrieve 완료 ({time.time()-_t:.2f}s) | {len(search_results)}개 문서 검색됨")
 
         return search_results
