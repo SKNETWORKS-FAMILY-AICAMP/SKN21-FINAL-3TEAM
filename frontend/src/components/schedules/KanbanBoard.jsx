@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitMerge, Clock, CheckCircle2, AlertTriangle, Plus, Trash2, X, Pencil, ExternalLink, CheckSquare, Square, Send, FolderOpen, ChevronDown } from 'lucide-react';
+import { GitMerge, Clock, CheckCircle2, AlertTriangle, Plus, Trash2, X, Pencil, ExternalLink, CheckSquare, Square, Send, FolderOpen, ChevronDown, RefreshCw } from 'lucide-react';
 import { listPipelineTasks, createPipelineTask, updatePipelineTask, deletePipelineTask } from '../../api/tasks';
 import { createTask as createGoogleTask } from '../../api/google';
 import useGoogleServices from '../../hooks/useGoogleServices';
@@ -95,7 +95,7 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
     /* ── Modal ── */
     const openCreate = () => {
         setEditingTask(null);
-        setForm(EMPTY_FORM);
+        setForm({ ...EMPTY_FORM, project: filterProject && filterProject !== '미분류' ? filterProject : '' });
         setShowModal(true);
     };
 
@@ -164,7 +164,7 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
             due_date: form.dueDate || null,
             priority: form.priority,
             tags,
-            project: form.project || null,
+            project: filterProject || form.project || null,
         };
 
         try {
@@ -512,30 +512,30 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         transition={{ duration: 0.2 }}
-                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-sm p-8 mx-4 border border-white/40 dark:border-white/10"
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-sm mx-4 border border-white/40 dark:border-white/10 max-h-[85vh] flex flex-col"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-black text-neutral-main tracking-tighter">
+                        <div className="flex items-center justify-between px-6 pt-6 pb-2 flex-shrink-0">
+                            <h2 className="text-lg font-black text-neutral-main tracking-tighter">
                                 {editingTask ? 'Task Details' : 'New Task'}
                             </h2>
-                            <button onClick={closeModal} className="w-8 h-8 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400 transition-colors flex items-center justify-center">
-                                <X size={20} />
+                            <button onClick={closeModal} className="w-7 h-7 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400 transition-colors flex items-center justify-center">
+                                <X size={18} />
                             </button>
                         </div>
-                        <form onSubmit={handleSubmit} className="space-y-5">
+                        <form onSubmit={handleSubmit} className="space-y-3 flex-1 min-h-0 overflow-y-auto px-6 pb-6">
                             <div>
-                                <label className="block text-[11px] font-black uppercase tracking-wider text-neutral-400 mb-1.5 ml-1">Title</label>
+                                <label className="block text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-1 ml-1">Title</label>
                                 <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className={INPUT_CLS} placeholder="What needs to be done?" required autoFocus />
                             </div>
                             <div>
-                                <label className="block text-[11px] font-black uppercase tracking-wider text-neutral-400 mb-1.5 ml-1">Description</label>
-                                <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} className={`${INPUT_CLS} resize-none`} placeholder="Add some context..." />
+                                <label className="block text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-1 ml-1">Description</label>
+                                <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className={`${INPUT_CLS} resize-none`} placeholder="Add some context..." />
                             </div>
 
                             <div>
-                                <label className="block text-[11px] font-black uppercase tracking-wider text-neutral-400 mb-2 ml-1">Assignee</label>
-                                <div className="flex flex-wrap gap-2">
+                                <label className="block text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-1.5 ml-1">Assignee</label>
+                                <div className="flex flex-wrap gap-1.5">
                                     {members.map((m) => {
                                         const selected = form.assignee === m.name;
                                         const avatarSrc = m.avatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(m.name)}`;
@@ -544,8 +544,8 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
                                                 key={m.id}
                                                 type="button"
                                                 onClick={() => setForm(f => ({ ...f, assignee: selected ? '' : m.name }))}
-                                                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all ${selected
-                                                    ? 'border-primary-500 bg-primary-500 text-white shadow-lg shadow-primary-500/20 scale-105'
+                                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${selected
+                                                    ? 'border-primary-500 bg-primary-500 text-white shadow-md shadow-primary-500/20'
                                                     : 'border-neutral-border text-neutral-sub bg-surface-card/50 hover:border-primary-300'
                                                     }`}
                                             >
@@ -557,14 +557,21 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-[11px] font-black uppercase tracking-wider text-neutral-400 mb-1.5 ml-1">Project</label>
-                                <input type="text" value={form.project} onChange={e => setForm(f => ({ ...f, project: e.target.value }))} className={INPUT_CLS} placeholder="프로젝트/회의 출처 (선택)" />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
+                            {!filterProject && (
                                 <div>
-                                    <label className="block text-[11px] font-black uppercase tracking-wider text-neutral-400 mb-1.5 ml-1">Priority</label>
+                                    <label className="block text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-1 ml-1">Project</label>
+                                    <select value={form.project} onChange={e => setForm(f => ({ ...f, project: e.target.value }))} className={`${INPUT_CLS} py-2`}>
+                                        <option value="">프로젝트 선택 (선택)</option>
+                                        {[...new Set(tasks.map(t => t.project).filter(Boolean))].map(p => (
+                                            <option key={p} value={p}>{p}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-1 ml-1">Priority</label>
                                     <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} className={`${INPUT_CLS} py-2`}>
                                         <option value="high">High</option>
                                         <option value="medium">Medium</option>
@@ -572,16 +579,16 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-[11px] font-black uppercase tracking-wider text-neutral-400 mb-1.5 ml-1">Due Date</label>
+                                    <label className="block text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-1 ml-1">Due Date</label>
                                     <input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} className={`${INPUT_CLS} py-2`} />
                                 </div>
                             </div>
 
-                            <div className="flex justify-end gap-2 pt-4">
-                                <button type="button" onClick={closeModal} className="px-6 py-2.5 text-xs font-black rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all">
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button type="button" onClick={closeModal} className="px-5 py-2 text-xs font-black rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all">
                                     Cancel
                                 </button>
-                                <button type="submit" className="px-8 py-2.5 text-xs font-black rounded-xl bg-primary-700 text-white shadow-xl hover:bg-primary-900 hover:scale-105 transition-all">
+                                <button type="submit" className="px-6 py-2 text-xs font-black rounded-xl bg-primary-700 text-white shadow-xl hover:bg-primary-900 hover:scale-105 transition-all">
                                     {editingTask ? 'Save' : 'Create'}
                                 </button>
                             </div>
@@ -611,7 +618,7 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
                                         className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"
                                         title="새로고침"
                                     >
-                                        <ExternalLink size={15} className={googleTasksLoading ? 'animate-spin' : ''} />
+                                        <RefreshCw size={15} className={googleTasksLoading ? 'animate-spin' : ''} />
                                     </button>
                                     <button onClick={() => setShowGoogleTasksPanel(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
                                         <X size={16} />

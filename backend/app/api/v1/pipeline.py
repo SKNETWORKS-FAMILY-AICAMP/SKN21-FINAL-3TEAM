@@ -5,7 +5,7 @@ Pipeline Task API (팀원 D 담당)
 - 회의록 액션아이템 → Pipeline Todo 일괄 추가
 """
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from typing import Optional
@@ -63,12 +63,22 @@ async def list_pipeline_tasks(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """같은 팀의 Pipeline Task 목록"""
+    """같은 팀 또는 본인이 assignee인 Pipeline Task 목록"""
     query = select(PipelineTask).order_by(PipelineTask.sort_order, PipelineTask.created_at)
     if current_user.team:
-        query = query.where(PipelineTask.team == current_user.team)
+        query = query.where(
+            or_(
+                PipelineTask.team == current_user.team,
+                PipelineTask.assignee == current_user.name,
+            )
+        )
     else:
-        query = query.where(PipelineTask.created_by == current_user.id)
+        query = query.where(
+            or_(
+                PipelineTask.created_by == current_user.id,
+                PipelineTask.assignee == current_user.name,
+            )
+        )
 
     result = await db.execute(query)
     items = result.scalars().all()
@@ -225,12 +235,36 @@ async def list_projects(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """같은 팀의 프로젝트 목록"""
+    """같은 팀 또는 본인이 assignee인 태스크가 있는 프로젝트 목록"""
+    # 본인이 assignee인 태스크의 프로젝트명 수집
+    assigned_q = select(PipelineTask.project).where(
+        PipelineTask.assignee == current_user.name,
+        PipelineTask.project.isnot(None),
+    ).distinct()
+    assigned_result = await db.execute(assigned_q)
+    assigned_project_names = [r[0] for r in assigned_result.all()]
+
     query = select(Project).order_by(Project.created_at)
     if current_user.team:
-        query = query.where(Project.team == current_user.team)
+        if assigned_project_names:
+            query = query.where(
+                or_(
+                    Project.team == current_user.team,
+                    Project.name.in_(assigned_project_names),
+                )
+            )
+        else:
+            query = query.where(Project.team == current_user.team)
     else:
-        query = query.where(Project.created_by == current_user.id)
+        if assigned_project_names:
+            query = query.where(
+                or_(
+                    Project.created_by == current_user.id,
+                    Project.name.in_(assigned_project_names),
+                )
+            )
+        else:
+            query = query.where(Project.created_by == current_user.id)
 
     result = await db.execute(query)
     items = result.scalars().all()

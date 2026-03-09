@@ -11,9 +11,9 @@ export default function MeetingInput({ onSubmit, loading }) {
     date: new Date().toISOString().split('T')[0],
     author: user?.name ?? '',
     team: user?.team ?? '',
-    attendees: '',
     content: '',
   });
+  const [selectedAttendees, setSelectedAttendees] = useState([]);
   const [showAttendeesDropdown, setShowAttendeesDropdown] = useState(false);
 
   // Fetch all members to group by team
@@ -21,7 +21,6 @@ export default function MeetingInput({ onSubmit, loading }) {
     client.get('/auth/all-members')
       .then(res => {
         const members = res.data || [];
-        // Include current user too
         if (user) {
           const hasSelf = members.some(m => m.id === user.id);
           if (!hasSelf) {
@@ -45,25 +44,14 @@ export default function MeetingInput({ onSubmit, loading }) {
     return allMembers.filter(m => m.team === form.team);
   }, [allMembers, form.team]);
 
-  // Parse attendees as array
-  const selectedAttendees = useMemo(() => {
-    return form.attendees.split(',').map(s => s.trim()).filter(Boolean);
-  }, [form.attendees]);
-
   const toggleAttendee = (name) => {
-    const current = selectedAttendees;
-    let next;
-    if (current.includes(name)) {
-      next = current.filter(n => n !== name);
-    } else {
-      next = [...current, name];
-    }
-    setForm({ ...form, attendees: next.join(', ') });
+    setSelectedAttendees(prev =>
+      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
+    );
   };
 
   const removeAttendee = (name) => {
-    const next = selectedAttendees.filter(n => n !== name);
-    setForm({ ...form, attendees: next.join(', ') });
+    setSelectedAttendees(prev => prev.filter(n => n !== name));
   };
 
   const update = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -73,7 +61,7 @@ export default function MeetingInput({ onSubmit, loading }) {
     if (!form.content.trim()) return;
     onSubmit?.({
       ...form,
-      attendees: form.attendees.split(',').map((s) => s.trim()).filter(Boolean),
+      attendees: selectedAttendees,
     });
   };
 
@@ -137,7 +125,7 @@ export default function MeetingInput({ onSubmit, loading }) {
           <label className="block text-[0.8125rem] font-semibold mb-1.5">참석자</label>
           <div className="relative">
             <div
-              onClick={() => setShowAttendeesDropdown(!showAttendeesDropdown)}
+              onClick={() => setShowAttendeesDropdown(prev => !prev)}
               className="w-full min-h-[42px] px-3.5 py-2 border border-neutral-border rounded-sm text-sm outline-none focus-within:border-primary-500 cursor-pointer flex flex-wrap items-center gap-1.5"
             >
               {selectedAttendees.length > 0 ? (
@@ -161,19 +149,21 @@ export default function MeetingInput({ onSubmit, loading }) {
             {/* Dropdown */}
             {showAttendeesDropdown && (
               <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowAttendeesDropdown(false)} />
-                <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl max-h-[200px] overflow-y-auto">
+                <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setShowAttendeesDropdown(false); }} />
+                <div
+                  className="absolute top-full left-0 right-0 mt-1 z-20 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl max-h-[200px] overflow-y-auto"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {teamMembers.length > 0 ? (
                     teamMembers.map(m => {
                       const isSelected = selectedAttendees.includes(m.name);
                       return (
-                        <button
+                        <div
                           key={m.id}
-                          type="button"
                           onClick={() => toggleAttendee(m.name)}
-                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors ${isSelected ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''}`}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors ${isSelected ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''}`}
                         >
-                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${isSelected ? 'border-primary-600 bg-primary-600' : 'border-neutral-300 dark:border-neutral-600'}`}>
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${isSelected ? 'border-primary-700 bg-primary-700' : 'border-neutral-300 dark:border-neutral-500'}`}>
                             {isSelected && (
                               <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                             )}
@@ -184,7 +174,7 @@ export default function MeetingInput({ onSubmit, loading }) {
                             className="w-7 h-7 rounded-full object-cover bg-neutral-100 dark:bg-neutral-700 flex-shrink-0"
                           />
                           <span className={`${isSelected ? 'font-semibold text-primary-700' : 'text-neutral-700 dark:text-neutral-300'}`}>{m.name}</span>
-                        </button>
+                        </div>
                       );
                     })
                   ) : (
