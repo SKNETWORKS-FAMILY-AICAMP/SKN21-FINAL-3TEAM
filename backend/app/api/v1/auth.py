@@ -167,6 +167,27 @@ async def get_team_members(
     ]
 
 
+@router.get("/all-members")
+async def get_all_members(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """전체 사용자 목록 조회 (쪽지 보내기용)"""
+    result = await db.execute(select(User).where(User.is_active == True))
+    members = result.scalars().all()
+
+    return [
+        {
+            "id": m.id,
+            "email": m.email,
+            "name": m.name,
+            "team": m.team,
+            "avatar": m.avatar,
+        }
+        for m in members if m.id != current_user.id
+    ]
+
+
 # ── 비밀번호 변경 (로그인 상태에서) ──
 
 

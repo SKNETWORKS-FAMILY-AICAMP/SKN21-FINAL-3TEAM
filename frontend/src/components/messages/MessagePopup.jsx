@@ -16,8 +16,14 @@ export default function MessagePopup({ open: externalOpen, onClose }) {
   const [unread, setUnread] = useState(0);
   const [selectedMsg, setSelectedMsg] = useState(null);
   const [teamMembers, setTeamMembers] = useState([]);
+  const [selectedTeam, setSelectedTeam] = useState('');
   const [form, setForm] = useState({ receiver_id: '', content: '' });
   const [submitting, setSubmitting] = useState(false);
+
+  const teamList = [...new Set(teamMembers.map(m => m.team).filter(Boolean))].sort();
+  const filteredMembers = selectedTeam
+    ? teamMembers.filter(m => m.team === selectedTeam)
+    : teamMembers;
 
   const fetchUnread = async () => {
     try { setUnread(await getUnreadCount()); } catch { }
@@ -244,6 +250,19 @@ export default function MessagePopup({ open: externalOpen, onClose }) {
               {view === 'compose' && (
                 <form onSubmit={handleSend} className="p-4 space-y-3">
                   <div>
+                    <label className="block text-xs font-medium text-neutral-main mb-1">팀 선택</label>
+                    <select
+                      value={selectedTeam}
+                      onChange={(e) => { setSelectedTeam(e.target.value); setForm(prev => ({ ...prev, receiver_id: '' })); }}
+                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-xs"
+                    >
+                      <option value="">전체</option>
+                      {teamList.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
                     <label className="block text-xs font-medium text-neutral-main mb-1">받는 사람</label>
                     <select
                       value={form.receiver_id}
@@ -252,7 +271,7 @@ export default function MessagePopup({ open: externalOpen, onClose }) {
                       required
                     >
                       <option value="">선택하세요</option>
-                      {teamMembers.map(m => (
+                      {filteredMembers.map(m => (
                         <option key={m.id} value={m.id}>{m.name}{m.team ? ` (${m.team})` : ''}</option>
                       ))}
                     </select>
