@@ -40,6 +40,8 @@ export default function ApprovalsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [detailItem, setDetailItem] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const loadAll = async () => {
     setLoading(true);
@@ -388,10 +390,19 @@ export default function ApprovalsPage() {
                       <span className="text-sm text-neutral-main truncate flex-1">{detailItem.file_name}</span>
                       {(isImage || isPdf) && (
                         <button
-                          onClick={async () => { const url = await getApprovalFileBlobUrl(detailItem.id); setPreviewUrl(url); }}
-                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-primary-500 hover:text-primary-600 bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/40 rounded-lg transition-colors"
+                          onClick={async () => {
+                            setPreviewLoading(true);
+                            try {
+                              const url = await getApprovalFileBlobUrl(detailItem.id, detailItem.file_name);
+                              setPreviewUrl(url);
+                              setShowPreview(true);
+                            } catch { alert('미리보기를 불러올 수 없습니다.'); }
+                            setPreviewLoading(false);
+                          }}
+                          disabled={previewLoading}
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-primary-500 hover:text-primary-600 bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/40 rounded-lg transition-colors disabled:opacity-50"
                         >
-                          <Eye size={14} /> 미리보기
+                          <Eye size={14} /> {previewLoading ? '로딩...' : '미리보기'}
                         </button>
                       )}
                       <button
@@ -429,19 +440,19 @@ export default function ApprovalsPage() {
 
       {/* 파일 미리보기 모달 */}
       <AnimatePresence>
-        {previewUrl && (
+        {showPreview && previewUrl && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
-            onClick={() => setPreviewUrl(null)}
+            onClick={() => { window.URL.revokeObjectURL(previewUrl); setPreviewUrl(null); setShowPreview(false); }}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden flex flex-col border border-white/40 dark:border-white/10"
+              className="relative bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-4 border-b border-neutral-divider">
@@ -462,21 +473,13 @@ export default function ApprovalsPage() {
               </div>
               <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-surface-sub min-h-[400px]">
                 {detailItem?.file_name && /\.(png|jpg|jpeg|gif|webp)$/i.test(detailItem.file_name) ? (
-                  <img src={previewUrl} alt="미리보기" className="max-w-full max-h-[70vh] object-contain rounded-lg" />
+                  <img src={previewUrl} alt="미리보기" className="max-w-full max-h-[80vh] object-contain" />
                 ) : detailItem?.file_name && /\.pdf$/i.test(detailItem.file_name) ? (
-                  <iframe src={previewUrl} className="w-full h-[70vh] rounded-lg border-0" title="PDF 미리보기" />
+                  <iframe src={previewUrl + '#toolbar=0'} className="w-full h-[80vh] border-0" title="PDF 미리보기" />
                 ) : (
-                  <div className="text-center text-neutral-muted space-y-3">
+                  <div className="text-center text-neutral-muted space-y-3 p-8">
                     <FileText size={48} className="mx-auto opacity-40" />
-                    <p className="text-sm">이 파일 형식은 브라우저에서 미리보기를 지원하지 않습니다.</p>
-                    {detailItem && (
-                      <button
-                        onClick={() => downloadApprovalFile(detailItem.id, detailItem.file_name)}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors"
-                      >
-                        <Download size={16} /> 파일 다운로드
-                      </button>
-                    )}
+                    <p className="text-sm">이 파일 형식은 미리보기를 지원하지 않습니다.</p>
                   </div>
                 )}
               </div>

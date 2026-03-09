@@ -5,10 +5,44 @@ import CustomSelect from '../common/CustomSelect';
 import EmptyState from '../common/EmptyState';
 import { FileText } from 'lucide-react';
 
+const CATEGORY_VARIANT = {
+  '회의록': 'document',
+  '계약서': 'intent',
+  '제안서': 'status-active',
+  '정책문서': 'intent',
+  '인사문서': 'status-revising',
+  '보고서': 'document',
+  '기타': 'status-revising',
+  'PDF': 'status-revising',
+  'DOCX': 'status-revising',
+  '문서': 'status-revising',
+};
+
 export default function DocumentList({ documents = [], onSelect, searchQuery = '', scopeFilter = '전체', onScopeFilterChange }) {
   const columns = [
     { key: 'name', label: '문서명', render: (v) => <span className="font-semibold"><KeywordHighlight text={v} keyword={searchQuery} /></span> },
-    { key: 'category', label: '분류', render: (v) => <Badge variant={v === '규정' ? 'intent' : v === '회의록' ? 'document' : 'status-revising'}>{v}</Badge> },
+    { key: 'category', label: '분류', render: (v) => <Badge variant={CATEGORY_VARIANT[v] || 'status-revising'}>{v}</Badge> },
+    {
+      key: 'tags',
+      label: '태그',
+      render: (v) => {
+        if (!v || !Array.isArray(v) || v.length === 0) return <span className="text-neutral-muted text-xs">-</span>;
+        const display = v.slice(0, 3);
+        const remaining = v.length - 3;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {display.map((tag, i) => (
+              <span key={i} className="inline-block px-1.5 py-0.5 text-[0.6875rem] rounded bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+                #{tag}
+              </span>
+            ))}
+            {remaining > 0 && (
+              <span className="text-[0.6875rem] text-neutral-muted">+{remaining}</span>
+            )}
+          </div>
+        );
+      },
+    },
     { key: 'date', label: '수정일' },
   ];
 

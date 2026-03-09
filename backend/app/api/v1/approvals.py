@@ -3,6 +3,7 @@ Approval Request API (팀원 D 담당)
 - 결재/승인 요청 CRUD
 - 같은 팀 소속끼리 공유
 """
+import mimetypes
 import os
 import uuid
 from pathlib import Path
@@ -151,10 +152,11 @@ async def download_approval_file(
     if not approval.file_path or not os.path.exists(approval.file_path):
         raise HTTPException(status_code=404, detail="첨부파일이 없습니다")
 
+    mime_type, _ = mimetypes.guess_type(approval.file_name or "")
     return FileResponse(
         path=approval.file_path,
         filename=approval.file_name or "attachment",
-        media_type="application/octet-stream",
+        media_type=mime_type or "application/octet-stream",
     )
 
 

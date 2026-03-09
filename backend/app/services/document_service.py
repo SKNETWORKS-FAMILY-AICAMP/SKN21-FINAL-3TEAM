@@ -33,6 +33,52 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+async def analyze_document_with_llm(text: str, title: str) -> dict | None:
+    """
+    LLM으로 문서를 분석하여 summary, category, tags를 추출한다.
+    실패 시 None 반환 (문서 업로드는 정상 진행).
+    """
+    try:
+        print("[DocumentAnalysis] LLM 모듈 import 시도...")
+        from ai.llm import get_llm
+
+        llm = get_llm()
+        print(f"[DocumentAnalysis] LLM 인스턴스 획득: {type(llm).__name__}")
+
+        truncated = text[:3000]
+
+        prompt = f"""다음 문서를 분석해주세요.
+
+문서 제목: {title}
+문서 내용:
+{truncated}
+
+다음 JSON 형식으로 응답해주세요:
+{{
+  "summary": "2-3문장으로 문서의 핵심 내용을 요약",
+  "category": "다음 중 하나 선택: 계약서, 회의록, 제안서, 정책문서, 인사문서, 보고서, 기타",
+  "tags": ["관련 키워드 태그 3-5개, 예: 마케팅, 계약, 2025"]
+}}"""
+
+        response = await llm.generate(
+            prompt=prompt,
+            system_prompt="당신은 문서 분석 전문가입니다. 주어진 문서를 분석하여 요약, 분류, 태그를 JSON으로 반환합니다.",
+            json_mode=True,
+            temperature=0.2,
+        )
+
+        import json
+        result = json.loads(response.content)
+        logger.info(f"문서 LLM 분석 완료: category={result.get('category')}, tags={result.get('tags')}")
+        return result
+
+    except Exception as e:
+        print(f"[DocumentAnalysis] LLM 분석 실패: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
 async def save_file(file: UploadFile, upload_dir: str) -> tuple[str, str]:
     """
     UploadFile을 디스크에 저장한다.
@@ -187,6 +233,15 @@ async def upload_and_parse(
 
         doc.content = text
         doc.status = "completed"
+
+        # LLM 자동 분석 (요약 + 분류 + 태깅)
+        print(f"[DocumentAnalysis] LLM 분석 시작: title={doc.title}, text_len={len(text)}")
+        analysis = await analyze_document_with_llm(text, doc.title)
+        print(f"[DocumentAnalysis] LLM 분석 결과: {analysis}")
+        if analysis:
+            doc.summary = analysis.get("summary")
+            doc.category = analysis.get("category")
+            doc.tags = analysis.get("tags")
 
         # Qdrant에 인덱싱 (RAG 검색용)
         try:
@@ -380,6 +435,31 @@ async def delete_document(
 
     await db.delete(doc)
     return {"message": "문서가 삭제되었습니다", "document_id": document_id}
+
+
+async def analyze_existing_documents(db: AsyncSession) -> dict:
+    """기존 문서 중 분석되지 않은 문서를 일괄 LLM 분석한다."""
+    stmt = select(Document).where(
+        Document.status == "completed",
+        Document.summary.is_(None),
+        Document.content.isnot(None),
+    )
+    result = await db.execute(stmt)
+    docs = list(result.scalars().all())
+
+    analyzed = 0
+    failed = 0
+    for doc in docs:
+        analysis = await analyze_document_with_llm(doc.content, doc.title)
+        if analysis:
+            doc.summary = analysis.get("summary")
+            doc.category = analysis.get("category")
+            doc.tags = analysis.get("tags")
+            analyzed += 1
+        else:
+            failed += 1
+
+    return {"total": len(docs), "analyzed": analyzed, "failed": failed}
 
 
 async def generate_and_save(

@@ -69,6 +69,30 @@ async def startup_ensure_tables():
 
 
 @app.on_event("startup")
+async def startup_migrate_document_analysis_columns():
+    """documents 테이블에 category, tags, summary 컬럼 추가"""
+    try:
+        from app.db.session import engine
+        from sqlalchemy import text
+
+        async with engine.begin() as conn:
+            await conn.execute(text(
+                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS category VARCHAR(50)"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS tags JSON"
+            ))
+            await conn.execute(text(
+                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS summary TEXT"
+            ))
+        print("[Startup] documents 분석 컬럼(category, tags, summary) 추가 완료")
+    except Exception as _e:
+        import traceback
+        print(f"[Startup] documents 분석 컬럼 처리 실패 (무시하고 계속): {_e}")
+        traceback.print_exc()
+
+
+@app.on_event("startup")
 async def startup_migrate_team_column():
     """users.team 컬럼 추가 및 기존 사용자 랜덤 팀 배정"""
     try:

@@ -65,6 +65,8 @@ async def list_documents(
             "status": d.status,
             "uploaded_by": d.uploaded_by,
             "created_at": d.created_at,
+            "category": d.category,
+            "tags": d.tags,
         }
         for d in docs
     ]
@@ -91,6 +93,9 @@ async def upload_document(
         "status": doc.status,
         "uploaded_by": doc.uploaded_by,
         "created_at": doc.created_at,
+        "category": doc.category,
+        "tags": doc.tags,
+        "summary": doc.summary,
     }
 
 
@@ -171,6 +176,17 @@ async def generate_document(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"문서 생성 중 오류 발생: {str(e)}")
+
+
+@router.post("/analyze-all")
+async def analyze_all_documents(
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """기존 문서 중 미분석 문서를 일괄 LLM 분석"""
+    result = await document_service.analyze_existing_documents(db)
+    await db.commit()
+    return result
 
 
 @router.get("/search/highlight")
@@ -274,6 +290,9 @@ async def get_document(
         "content": doc.content,
         "file_path": doc.file_path,
         "version": 1,
+        "category": doc.category,
+        "tags": doc.tags,
+        "summary": doc.summary,
     }
 
 

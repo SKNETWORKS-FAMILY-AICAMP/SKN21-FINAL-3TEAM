@@ -149,7 +149,7 @@ export default function DocumentsPage() {
   const formattedDocs = documents.map(doc => ({
     id: doc.id,
     name: doc.title,
-    category: doc.file_type === 'pdf' ? 'PDF' : doc.file_type === 'docx' ? 'DOCX' : '문서',
+    category: doc.category || (doc.file_type === 'pdf' ? 'PDF' : doc.file_type === 'docx' ? 'DOCX' : '문서'),
     version: '-',
     status: doc.status === 'completed' ? '완료' : doc.status === 'processing' ? '처리중' : '실패',
     date: new Date(doc.created_at).toLocaleDateString('ko-KR'),
@@ -157,6 +157,7 @@ export default function DocumentsPage() {
     file_type: doc.file_type,
     uploaded_by: doc.uploaded_by,
     created_at: doc.created_at,
+    tags: doc.tags || [],
   }));
 
   const filteredDocs = formattedDocs.filter((doc) => {

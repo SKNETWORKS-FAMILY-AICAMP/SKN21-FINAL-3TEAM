@@ -21,6 +21,7 @@ export default function DocumentDetail({ doc, documentDetail, searchQuery = '', 
   // 실제 업로드된 문서인 경우 documentDetail 사용
   const isRealDocument = doc.id && documentDetail;
   const content = isRealDocument ? documentDetail.content : doc.analysis;
+  const hasAnalysis = isRealDocument && (documentDetail.summary || documentDetail.category || documentDetail.tags?.length > 0);
 
   return (
     <div className="bg-surface-card rounded-md border border-neutral-border p-5" ref={printRef}>
@@ -30,8 +31,42 @@ export default function DocumentDetail({ doc, documentDetail, searchQuery = '', 
       </div>
       <div className="mb-4">
         <div className="text-[0.8125rem] font-bold text-neutral-main mb-2 flex items-center gap-1.5">기본 정보</div>
-        <div className="text-[0.8125rem] text-neutral-sub leading-[1.7]">분류: {doc.category} · 버전: {doc.version} · 수정일: {doc.date}<br/>범위: 회사 문서 · 파싱 상태: 완료</div>
+        <div className="text-[0.8125rem] text-neutral-sub leading-[1.7]">분류: {isRealDocument && documentDetail.category ? documentDetail.category : doc.category} · 버전: {doc.version} · 수정일: {doc.date}<br/>범위: 회사 문서 · 파싱 상태: 완료</div>
       </div>
+      {hasAnalysis && (
+        <div className="mb-4">
+          <div className="text-[0.8125rem] font-bold text-neutral-main mb-2 flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a4 4 0 0 1 4 4c0 1.95-1.4 3.26-2.06 3.7L12 11l-1.94-1.3C9.4 9.26 8 7.95 8 6a4 4 0 0 1 4-4z"/><path d="M12 11v11"/><path d="m4.93 15.5 2.83-2.83"/><path d="m16.24 12.67 2.83 2.83"/><path d="m7.76 12.67-2.83 2.83"/><path d="m19.07 15.5-2.83-2.83"/></svg>
+            AI 자동 분석
+          </div>
+          <div className="bg-surface-main p-3 rounded border border-neutral-border space-y-2">
+            {documentDetail.category && (
+              <div className="flex items-center gap-2">
+                <span className="text-[0.75rem] text-neutral-muted">분류:</span>
+                <Badge variant={documentDetail.category === '계약서' ? 'intent' : documentDetail.category === '회의록' ? 'document' : 'status-revising'}>
+                  {documentDetail.category}
+                </Badge>
+              </div>
+            )}
+            {documentDetail.tags?.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[0.75rem] text-neutral-muted">태그:</span>
+                {documentDetail.tags.map((tag, i) => (
+                  <span key={i} className="inline-block px-2 py-0.5 text-[0.75rem] rounded-full bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+            {documentDetail.summary && (
+              <div>
+                <span className="text-[0.75rem] text-neutral-muted">요약:</span>
+                <p className="text-[0.8125rem] text-neutral-sub leading-[1.7] mt-1">{documentDetail.summary}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {isRealDocument && content && (
         <div className="mb-4">
           <div className="text-[0.8125rem] font-bold text-neutral-main mb-2 flex items-center gap-1.5">문서 내용</div>

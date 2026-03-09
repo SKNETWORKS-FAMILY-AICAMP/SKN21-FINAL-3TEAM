@@ -32,7 +32,19 @@ export const downloadApprovalFile = async (id, fileName) => {
   window.URL.revokeObjectURL(url);
 };
 
-export const getApprovalFileBlobUrl = async (id) => {
+export const getApprovalFileBlobUrl = async (id, fileName) => {
   const res = await client.get(`/approvals/${id}/file`, { responseType: 'blob' });
-  return window.URL.createObjectURL(res.data);
+  // 서버가 올바른 MIME 타입을 보내면 그대로 사용, 아니면 파일명에서 추론
+  let blob = res.data;
+  if (blob.type === 'application/octet-stream' && fileName) {
+    const ext = fileName.split('.').pop().toLowerCase();
+    const mimeMap = {
+      pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg',
+      jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp',
+    };
+    if (mimeMap[ext]) {
+      blob = new Blob([blob], { type: mimeMap[ext] });
+    }
+  }
+  return window.URL.createObjectURL(blob);
 };
