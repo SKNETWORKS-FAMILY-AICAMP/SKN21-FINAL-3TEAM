@@ -137,7 +137,7 @@ export default function MeetingPreview({ data, onDownload, loading }) {
                   disabled={pipelineSent || pipelineLoading}
                   className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-primary-300 text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-50"
                 >
-                  {pipelineLoading ? '추가 중...' : pipelineSent ? '✓ Pipeline 추가됨' : '📋 Pipeline에 추가'}
+                  {pipelineLoading ? '추가 중...' : pipelineSent ? '✓ Pipeline 추가됨' : 'Pipeline에 추가'}
                 </button>
                 <button
                   onClick={async () => {
@@ -161,7 +161,7 @@ export default function MeetingPreview({ data, onDownload, loading }) {
                   disabled={googleTasksSent || googleTasksLoading}
                   className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-emerald-300 text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
                 >
-                  {googleTasksLoading ? '추가 중...' : googleTasksSent ? '✓ Tasks 추가됨' : '📌 Google Tasks에 추가'}
+                  {googleTasksLoading ? '추가 중...' : googleTasksSent ? '✓ Tasks 추가됨' : 'Google Tasks에 추가'}
                 </button>
               </div>
             </div>
