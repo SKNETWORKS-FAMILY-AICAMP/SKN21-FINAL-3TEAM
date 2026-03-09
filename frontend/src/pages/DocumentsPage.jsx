@@ -151,6 +151,7 @@ export default function DocumentsPage() {
     id: doc.id,
     name: doc.title,
     category: doc.file_type === 'pdf' ? 'PDF' : doc.file_type === 'docx' ? 'DOCX' : doc.file_type === 'txt' ? 'TXT' : '문서',
+    doc_type: doc.category || '-',
     version: '-',
     status: doc.status === 'completed' ? '완료' : doc.status === 'processing' ? '처리중' : '실패',
     date: new Date(doc.created_at).toLocaleDateString('ko-KR'),

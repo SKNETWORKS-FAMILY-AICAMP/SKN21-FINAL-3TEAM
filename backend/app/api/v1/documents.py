@@ -184,9 +184,14 @@ async def analyze_all_documents(
     db=Depends(get_db),
 ):
     """기존 문서 중 미분석 문서를 일괄 LLM 분석"""
-    result = await document_service.analyze_existing_documents(db)
-    await db.commit()
-    return result
+    try:
+        result = await document_service.analyze_existing_documents(db)
+        await db.commit()
+        return result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"일괄 분석 실패: {str(e)}")
 
 
 @router.get("/search/highlight")

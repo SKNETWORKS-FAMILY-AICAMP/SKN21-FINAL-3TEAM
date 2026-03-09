@@ -23,6 +23,13 @@ export default function DocumentList({ documents = [], onSelect, searchQuery = '
     { key: 'name', label: '문서명', render: (v) => <span className="font-semibold"><KeywordHighlight text={v} keyword={searchQuery} /></span> },
     { key: 'category', label: '분류', render: (v) => <Badge variant={CATEGORY_VARIANT[v] || 'status-revising'}>{v}</Badge> },
     {
+      key: 'doc_type',
+      label: '타입',
+      render: (v) => v && v !== '-'
+        ? <Badge variant={CATEGORY_VARIANT[v] || 'document'}>{v}</Badge>
+        : <span className="text-neutral-muted text-xs">-</span>,
+    },
+    {
       key: 'tags',
       label: '태그',
       render: (v) => {

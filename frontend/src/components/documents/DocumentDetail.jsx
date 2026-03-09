@@ -42,7 +42,7 @@ export default function DocumentDetail({ doc, documentDetail, searchQuery = '', 
           <div className="bg-surface-main p-3 rounded border border-neutral-border space-y-2">
             {documentDetail.category && (
               <div className="flex items-center gap-2">
-                <span className="text-[0.75rem] text-neutral-muted">분류:</span>
+                <span className="text-[0.75rem] text-neutral-muted">타입:</span>
                 <Badge variant={documentDetail.category === '계약서' ? 'intent' : documentDetail.category === '회의록' ? 'document' : 'status-revising'}>
                   {documentDetail.category}
                 </Badge>
