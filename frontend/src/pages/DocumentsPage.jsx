@@ -249,14 +249,7 @@ export default function DocumentsPage() {
           <p className="text-neutral-sub text-sm mt-1">회사 규정 및 문서를 관리합니다</p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={async () => { await handleAnalyzeAll(); await handleReindex(); }}
-            disabled={analyzing}
-            className={`btn-outline text-xs h-[38px] px-3 whitespace-nowrap ${analyzing ? 'opacity-70' : ''}`}
-          >
-            {analyzing ? '처리중...' : 'AI 분석 + 챗봇 연동'}
-          </button>
-          <div className="flex items-center gap-2">
+<div className="flex items-center gap-2">
             <CustomSelect
               value={searchType}
               onChange={handleSearchTypeChange}
