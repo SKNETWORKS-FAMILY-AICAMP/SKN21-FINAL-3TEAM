@@ -255,6 +255,17 @@ async def startup_preload():
     except Exception as e:
         print(f"[Startup] RAG 파이프라인 로드 실패 (서비스는 계속 가능): {e}")
 
+    # 문서 Qdrant 재인덱싱 (태그/분류/요약 메타데이터 반영)
+    try:
+        from app.db.session import async_session
+        from app.services.document_service import reindex_all_documents
+
+        async with async_session() as db:
+            result = await reindex_all_documents(db)
+            print(f"[Startup] 문서 재인덱싱 완료: {result}")
+    except Exception as e:
+        print(f"[Startup] 문서 재인덱싱 실패 (서비스는 계속 가능): {e}")
+
     print(f"[Startup] 모델 pre-loading 완료 (총 {time.time()-_t:.2f}s)")
 
 

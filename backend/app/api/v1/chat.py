@@ -29,6 +29,7 @@ def _build_initial_state(request: ChatRequest, user, stream_mode: bool = False) 
     return {
         "user_input": request.message,
         "user_id": user.id,
+        "user_team": getattr(user, "team", None),
         "intent": "",
         "confidence": 0.0,
         "context": [],

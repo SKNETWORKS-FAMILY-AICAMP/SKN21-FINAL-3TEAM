@@ -91,8 +91,8 @@ class HybridSearcher:
         self.bm25 = BM25Okapi(tokenized_corpus)
 
     def _bm25_search(
-        self, query: str, user_id: int | None = None, top_k: int = 15,
-        filter: dict | None = None,
+        self, query: str, user_id: int | None = None, user_team: str | None = None,
+        top_k: int = 15, filter: dict | None = None,
     ) -> list[dict]:
         """BM25 키워드 검색 → Top K (score 정규화 0~1, scope 필터 적용)"""
         if self.bm25 is None or not self._corpus_docs:
@@ -116,11 +116,14 @@ class HybridSearcher:
         for idx in scored_indices:
             if normalized_scores[idx] <= 0:
                 break
-            # scope 필터: user_id=None → company만, user_id 있으면 company + 본인 personal
+            # scope 필터: company=전체공개, team=같은팀만, personal=본인만
             meta = self._corpus_metadatas[idx]
             scope = meta.get("scope")
             if scope == "personal":
                 if user_id is None or str(meta.get("user_id")) != str(user_id):
+                    continue
+            elif scope == "team":
+                if not user_team or meta.get("team_name") != user_team:
                     continue
             # 메타데이터 필터 적용 (예: {"source": "documents"} 또는 {"source__nin": [...]})
             if filter:
@@ -166,8 +169,8 @@ class HybridSearcher:
         )
 
     def search(
-        self, query: str, user_id: int | None = None, top_k: int = 20,
-        max_per_source: int = 3, filter: dict | None = None,
+        self, query: str, user_id: int | None = None, user_team: str | None = None,
+        top_k: int = 20, max_per_source: int = 3, filter: dict | None = None,
         use_reranker: bool = False, rerank_top_k: int | None = None,
         score_threshold: float | None = None,
     ) -> list[dict]:
@@ -205,7 +208,7 @@ class HybridSearcher:
         vector_query = refine_query_for_vector(query)
 
         # 1. BM25 검색 → Top 15 (scope 필터 포함, 키워드+동의어 확장 쿼리)
-        bm25_results = self._bm25_search(bm25_query, user_id=user_id, top_k=15, filter=filter)
+        bm25_results = self._bm25_search(bm25_query, user_id=user_id, user_team=user_team, top_k=15, filter=filter)
 
         # 2. Vector 검색 → Top 15 (원본 쿼리, 시멘틱 의미 보존)
         vector_results = self._vector_search(vector_query, top_k=15, filter=filter)
@@ -281,7 +284,6 @@ class HybridSearcher:
         if not diverse_results:
             return []
         rrf_scores_list = [doc["rrf_score"] for doc in diverse_results]
-        min_s = min(rrf_scores_list)
         max_s = max(rrf_scores_list)
 
         normalized_results = [
@@ -292,7 +294,7 @@ class HybridSearcher:
                 "chapter": doc.get("chapter", ""),
                 "article": doc.get("article", ""),
                 "document_id": doc.get("document_id"),
-                "score": (doc["rrf_score"] - min_s) / (max_s - min_s) if max_s > min_s else 1.0,
+                "score": doc["rrf_score"] / max_s if max_s > 0 else 1.0,
                 "rrf_score": doc["rrf_score"],
                 "doc_id": doc["doc_id"],
             }

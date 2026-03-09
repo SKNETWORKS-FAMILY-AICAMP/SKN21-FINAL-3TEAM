@@ -21,6 +21,15 @@ const CATEGORY_VARIANT = {
 export default function DocumentList({ documents = [], onSelect, searchQuery = '', scopeFilter = '전체', onScopeFilterChange }) {
   const columns = [
     { key: 'name', label: '문서명', render: (v) => <span className="font-semibold"><KeywordHighlight text={v} keyword={searchQuery} /></span> },
+    {
+      key: 'scope',
+      label: '공개범위',
+      render: (v) => {
+        const label = v === 'company' ? '회사' : v === 'team' ? '팀' : '개인';
+        const variant = v === 'company' ? 'status-active' : v === 'team' ? 'intent' : 'status-revising';
+        return <Badge variant={variant}>{label}</Badge>;
+      },
+    },
     { key: 'category', label: '분류', render: (v) => <Badge variant={CATEGORY_VARIANT[v] || 'status-revising'}>{v}</Badge> },
     {
       key: 'doc_type',

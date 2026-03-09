@@ -141,9 +141,20 @@ def _extract_pdf(file_path: str) -> str:
         result = "\n".join(text_parts)
 
         if not result.strip():
-            raise ValueError("PDF extracted but content is empty")
+            # 텍스트 레이어 없는 스캔 PDF → OCR 폴백
+            logger.info(f"PDF 텍스트 레이어 없음, OCR 시도: {file_path}")
+            try:
+                from ai.document_parser.ocr_parser import OCRParser
+                ocr = OCRParser(lang="korean")
+                result = ocr.extract_text_from_pdf(file_path)
+                if not result.strip():
+                    raise ValueError("PDF에서 텍스트를 추출할 수 없습니다 (스캔 이미지 OCR도 실패)")
+            except ImportError:
+                raise ValueError("PDF 텍스트 레이어가 없고 OCR(PaddleOCR)이 설치되지 않았습니다")
 
         return result
+    except ValueError:
+        raise
     except Exception as e:
         raise ValueError(f"PDF extraction failed: {e}") from e
 
@@ -269,9 +280,9 @@ async def upload_and_parse(
             # 태그 키워드를 본문 앞에 추가하여 BM25 검색 정확도 향상
             tags_prefix = ""
             if doc.tags:
-                tags_prefix = f"[태그: {', '.join(doc.tags)}] [분류: {doc.category or ''}] "
+                tags_prefix = f"{' '.join(doc.tags)} {doc.category or ''} "
             if doc.summary:
-                tags_prefix += f"[요약: {doc.summary}] "
+                tags_prefix += f"{doc.summary} "
             indexed_text = tags_prefix + text
 
             pipeline.add_documents(
@@ -432,8 +443,11 @@ async def delete_document(
     document_id: int,
     user_id: int,
 ) -> dict:
-    """문서 삭제 (로그인한 사용자 누구나 가능)"""
+    """문서 삭제 (업로드한 사용자만 가능)"""
     doc = await get_document(db, document_id)
+
+    if doc.uploaded_by != user_id:
+        raise HTTPException(status_code=403, detail="본인이 업로드한 문서만 삭제할 수 있습니다")
 
     # 파일 삭제
     if doc.file_path and os.path.exists(doc.file_path):
@@ -507,9 +521,9 @@ async def reindex_all_documents(db: AsyncSession) -> dict:
             # 태그/분류/요약을 본문 앞에 추가
             tags_prefix = ""
             if doc.tags:
-                tags_prefix = f"[태그: {', '.join(doc.tags)}] [분류: {doc.category or ''}] "
+                tags_prefix = f"{' '.join(doc.tags)} {doc.category or ''} "
             if doc.summary:
-                tags_prefix += f"[요약: {doc.summary}] "
+                tags_prefix += f"{doc.summary} "
             indexed_text = tags_prefix + doc.content
 
             qdrant_meta = {

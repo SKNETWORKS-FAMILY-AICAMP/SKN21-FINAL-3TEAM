@@ -5,7 +5,7 @@ import CustomSelect from '../components/common/CustomSelect';
 import DatePicker from '../components/common/DatePicker';
 import DocumentList from '../components/documents/DocumentList';
 import DocumentDetail from '../components/documents/DocumentDetail';
-import { uploadDocument, listDocuments, getDocument, deleteDocument, analyzeAllDocuments, reindexAllDocuments } from '../api/documents';
+import { uploadDocument, listDocuments, getDocument, deleteDocument } from '../api/documents';
 import { toast, confirm } from '../store/toastStore';
 
 
@@ -34,7 +34,6 @@ export default function DocumentsPage() {
   const [searching, setSearching] = useState(false);
   const [documentDetail, setDocumentDetail] = useState(null);
   const [datePickerKey, setDatePickerKey] = useState(0);
-  const [analyzing, setAnalyzing] = useState(false);
 
   // 문서 목록 로드
   useEffect(() => {
@@ -130,7 +129,7 @@ export default function DocumentsPage() {
 
       // 업로드 응답의 status 확인
       if (uploadedDoc.status === 'failed') {
-        toast.warning(`텍스트 추출에 실패했습니다. 파일 형식을 확인해주세요.\n파일: ${uploadedDoc.title}`);
+        toast.warning(`텍스트 추출에 실패했습니다. 스캔 이미지 PDF이거나 손상된 파일일 수 있습니다.\n파일: ${uploadedDoc.title}`);
       } else if (uploadedDoc.status === 'completed') {
         toast.success('문서가 성공적으로 업로드되었습니다.');
       } else {
@@ -184,43 +183,6 @@ export default function DocumentsPage() {
       }
     } else {
       setDocumentDetail(null);
-    }
-  };
-
-  // 기존 문서 일괄 AI 분석
-  const handleAnalyzeAll = async () => {
-    setAnalyzing(true);
-    try {
-      const res = await analyzeAllDocuments();
-      const { total, analyzed, failed } = res.data;
-      if (total === 0) {
-        toast.info('분석할 문서가 없습니다 (이미 모두 분석됨)');
-      } else {
-        toast.success(`${analyzed}개 문서 분석 완료${failed > 0 ? `, ${failed}개 실패` : ''}`);
-      }
-      loadDocuments();
-    } catch (error) {
-      toast.error('일괄 분석 실패: ' + (error.response?.data?.detail || error.message));
-    } finally {
-      setAnalyzing(false);
-    }
-  };
-
-  // Qdrant 재인덱싱
-  const handleReindex = async () => {
-    setAnalyzing(true);
-    try {
-      const res = await reindexAllDocuments();
-      const { total, indexed, failed } = res.data;
-      if (total === 0) {
-        toast.info('인덱싱할 문서가 없습니다.');
-      } else {
-        toast.success(`${indexed}개 문서 챗봇 연동 완료${failed > 0 ? `, ${failed}개 실패` : ''}`);
-      }
-    } catch (error) {
-      toast.error('재인덱싱 실패: ' + (error.response?.data?.detail || error.message));
-    } finally {
-      setAnalyzing(false);
     }
   };
 

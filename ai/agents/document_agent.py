@@ -43,9 +43,10 @@ async def document_agent(state: AgentState) -> AgentState:
     user_input = state.get("user_input", "")
     context = state.get("context", [])
     user_id = state.get("user_id")
+    user_team = state.get("user_team")
 
     _t_agent = time.time()
-    print(f"[DocumentAgent] 진입 | intent={intent}, user_input='{user_input[:50]}...', user_id={user_id}")
+    print(f"[DocumentAgent] 진입 | intent={intent}, user_input='{user_input[:50]}...', user_id={user_id}, user_team={user_team}")
 
     response_data = {}
 
@@ -55,7 +56,7 @@ async def document_agent(state: AgentState) -> AgentState:
     try:
         if intent == "doc_search":
             print("[DocumentAgent] → _handle_doc_search 호출")
-            response_data = await _handle_doc_search(user_input, context, user_id, stream_mode=stream_mode)
+            response_data = await _handle_doc_search(user_input, context, user_id, user_team=user_team, stream_mode=stream_mode)
 
         elif intent == "doc_generate":
             # template_type 결정: ① state에서 프론트가 보낸 값 ② LLM 판단 ③ 키워드 fallback
@@ -71,6 +72,7 @@ async def document_agent(state: AgentState) -> AgentState:
                 user_input,
                 document_content=document_content,
                 user_id=user_id,
+                user_team=user_team,
                 stream_mode=stream_mode,
             )
 
@@ -80,6 +82,7 @@ async def document_agent(state: AgentState) -> AgentState:
                 user_input,
                 context=context,
                 user_id=user_id,
+                user_team=user_team,
                 stream_mode=stream_mode,
             )
 
@@ -255,7 +258,7 @@ def _build_search_prompt(query: str, context: list) -> tuple:
 
 # ── Intent 핸들러 ──
 
-async def _handle_doc_search(query: str, context: List[str], user_id: int = None, stream_mode: bool = False) -> Dict[str, Any]:
+async def _handle_doc_search(query: str, context: List[str], user_id: int = None, user_team: str = None, stream_mode: bool = False) -> Dict[str, Any]:
     """문서 검색 결과 처리"""
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_search | query='{query[:50]}', context 길이={len(context)}, stream_mode={stream_mode}")
@@ -269,7 +272,7 @@ async def _handle_doc_search(query: str, context: List[str], user_id: int = None
             _t_rag = time.time()
             print(f"[DocumentAgent] RAG 검색 수행: '{query[:50]}'")
             rag_pipeline = get_qdrant_pipeline()
-            search_results = rag_pipeline.retrieve(query, user_id=user_id, top_k=5, filter={"source": "documents"})
+            search_results = rag_pipeline.retrieve(query, user_id=user_id, user_team=user_team, top_k=5, filter={"source": "documents"})
 
             # 검색된 문서의 content를 context로 사용
             context = [doc["content"] for doc in search_results]
@@ -756,7 +759,7 @@ async def _generate_proposal(user_input: str) -> Dict[str, Any]:
     }
 
 
-async def _handle_doc_summary(user_input: str, document_content: str = None, user_id: int = None, stream_mode: bool = False) -> Dict[str, Any]:
+async def _handle_doc_summary(user_input: str, document_content: str = None, user_id: int = None, user_team: str = None, stream_mode: bool = False) -> Dict[str, Any]:
     """문서 요약 처리"""
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_summary | content_len={len(document_content) if document_content else 0}, stream_mode={stream_mode}")
@@ -814,7 +817,7 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, use
     }
 
 
-async def _handle_doc_qa(query: str, context: list = None, user_id: int = None, stream_mode: bool = False) -> Dict[str, Any]:
+async def _handle_doc_qa(query: str, context: list = None, user_id: int = None, user_team: str = None, stream_mode: bool = False) -> Dict[str, Any]:
     """문서 내용 기반 질의응답"""
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_qa | query='{query[:50]}', context_len={len(context) if context else 0}, stream_mode={stream_mode}")
@@ -828,7 +831,7 @@ async def _handle_doc_qa(query: str, context: list = None, user_id: int = None, 
             _t_rag = time.time()
             print(f"[DocumentAgent] RAG 검색 수행 (doc_qa): '{query[:50]}'")
             rag_pipeline = get_qdrant_pipeline()
-            search_results = rag_pipeline.retrieve(query, user_id=user_id, top_k=5, filter={"source": "documents"})
+            search_results = rag_pipeline.retrieve(query, user_id=user_id, user_team=user_team, top_k=5, filter={"source": "documents"})
             context = [doc["content"] for doc in search_results]
             print(f"[DocumentAgent] RAG 검색 완료 ({time.time()-_t_rag:.2f}s): {len(context)}개 문서")
 

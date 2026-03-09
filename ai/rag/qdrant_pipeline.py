@@ -104,6 +104,7 @@ class QdrantRAGPipeline:
         self,
         query: str,
         user_id: int | None = None,
+        user_team: str | None = None,
         top_k: int = 5,
         filter: dict | None = None,
         use_reranker: bool = False,
@@ -115,6 +116,7 @@ class QdrantRAGPipeline:
         Args:
             query: 사용자 질문
             user_id: 사용자 ID (scope 필터용)
+            user_team: 사용자 소속 팀 (team scope 필터용)
             top_k: 최종 반환 문서 수
             filter: 메타데이터 필터 (예: {"source": "regulations"})
             use_reranker: Cross-Encoder 재정렬 사용 여부
@@ -145,6 +147,7 @@ class QdrantRAGPipeline:
         search_results = self.searcher.search(
             query=search_query,
             user_id=user_id,
+            user_team=user_team,
             top_k=top_k,
             filter=filter,
             use_reranker=use_reranker,
