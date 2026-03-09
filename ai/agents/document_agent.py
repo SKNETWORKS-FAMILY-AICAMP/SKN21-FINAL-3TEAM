@@ -236,8 +236,9 @@ def _build_search_prompt(query: str, context: list) -> tuple:
         sys_prompt = """당신은 문서 검색 전문가입니다.
 
     [중요 지시사항]
-    - 관련 문서들을 목록으로 나열하세요
-    - 각 문서의 핵심 내용을 한 줄로 요약하세요
+    - Context에 포함된 모든 문서를 빠짐없이 목록으로 나열하세요
+    - 각 문서의 제목과 핵심 내용을 한 줄로 요약하세요
+    - 문서를 하나도 빠뜨리지 마세요. Context에 5개 문서가 있으면 5개 모두 나열하세요
     - "다음 문서들을 찾았습니다:" 형식으로 시작하세요
 
     답변 시 Context에 포함된 정보만 사용하고, 추측하지 마세요."""
@@ -911,15 +912,12 @@ def _handle_risk_detect(user_input: str) -> Dict[str, Any]:
 
 # ── 공통 유틸 ──
 
-def _build_sources(search_results: list, min_score: float = 0.5) -> list:
-    """검색 결과에서 출처 정보 구성 (중복 제거, 낮은 관련도 제외)"""
+def _build_sources(search_results: list) -> list:
+    """검색 결과에서 출처 정보 구성 (중복 제거)"""
     sources = []
     seen_sources = set()
     if search_results:
         for doc in search_results:
-            # 관련도가 낮은 출처 제외
-            if doc.get("score", 0.0) < min_score:
-                continue
             content_key = doc.get("content", "")[:100]
             if content_key in seen_sources:
                 continue
