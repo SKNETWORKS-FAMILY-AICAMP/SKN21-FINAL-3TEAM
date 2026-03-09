@@ -184,9 +184,29 @@ async def analyze_all_documents(
     db=Depends(get_db),
 ):
     """기존 문서 중 미분석 문서를 일괄 LLM 분석"""
-    result = await document_service.analyze_existing_documents(db)
-    await db.commit()
-    return result
+    try:
+        result = await document_service.analyze_existing_documents(db)
+        await db.commit()
+        return result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"일괄 분석 실패: {str(e)}")
+
+
+@router.post("/reindex-all")
+async def reindex_all_documents(
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """기존 문서를 Qdrant에 재인덱싱 (태그/분류/요약 메타데이터 포함)"""
+    try:
+        result = await document_service.reindex_all_documents(db)
+        return result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"재인덱싱 실패: {str(e)}")
 
 
 @router.get("/search/highlight")

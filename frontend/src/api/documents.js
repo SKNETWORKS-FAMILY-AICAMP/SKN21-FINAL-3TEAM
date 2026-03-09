@@ -22,6 +22,12 @@ export const uploadDocument = (file, scope) => {
 export const deleteDocument = (id) =>
   client.delete(`/documents/${id}`)
 
+export const analyzeAllDocuments = () =>
+  client.post('/documents/analyze-all')
+
+export const reindexAllDocuments = () =>
+  client.post('/documents/reindex-all')
+
 // ── 문서 생성 ──
 
 export const generateDocument = (data) =>

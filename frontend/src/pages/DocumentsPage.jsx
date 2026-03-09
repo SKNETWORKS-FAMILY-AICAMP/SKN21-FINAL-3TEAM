@@ -5,7 +5,7 @@ import CustomSelect from '../components/common/CustomSelect';
 import DatePicker from '../components/common/DatePicker';
 import DocumentList from '../components/documents/DocumentList';
 import DocumentDetail from '../components/documents/DocumentDetail';
-import { uploadDocument, listDocuments, getDocument, deleteDocument } from '../api/documents';
+import { uploadDocument, listDocuments, getDocument, deleteDocument, analyzeAllDocuments, reindexAllDocuments } from '../api/documents';
 import { toast, confirm } from '../store/toastStore';
 
 
@@ -34,6 +34,7 @@ export default function DocumentsPage() {
   const [searching, setSearching] = useState(false);
   const [documentDetail, setDocumentDetail] = useState(null);
   const [datePickerKey, setDatePickerKey] = useState(0);
+  const [analyzing, setAnalyzing] = useState(false);
 
   // 문서 목록 로드
   useEffect(() => {
@@ -149,7 +150,8 @@ export default function DocumentsPage() {
   const formattedDocs = documents.map(doc => ({
     id: doc.id,
     name: doc.title,
-    category: doc.category || (doc.file_type === 'pdf' ? 'PDF' : doc.file_type === 'docx' ? 'DOCX' : '문서'),
+    category: doc.file_type === 'pdf' ? 'PDF' : doc.file_type === 'docx' ? 'DOCX' : doc.file_type === 'txt' ? 'TXT' : '문서',
+    doc_type: doc.category || '-',
     version: '-',
     status: doc.status === 'completed' ? '완료' : doc.status === 'processing' ? '처리중' : '실패',
     date: new Date(doc.created_at).toLocaleDateString('ko-KR'),
@@ -185,6 +187,43 @@ export default function DocumentsPage() {
     }
   };
 
+  // 기존 문서 일괄 AI 분석
+  const handleAnalyzeAll = async () => {
+    setAnalyzing(true);
+    try {
+      const res = await analyzeAllDocuments();
+      const { total, analyzed, failed } = res.data;
+      if (total === 0) {
+        toast.info('분석할 문서가 없습니다 (이미 모두 분석됨)');
+      } else {
+        toast.success(`${analyzed}개 문서 분석 완료${failed > 0 ? `, ${failed}개 실패` : ''}`);
+      }
+      loadDocuments();
+    } catch (error) {
+      toast.error('일괄 분석 실패: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  // Qdrant 재인덱싱
+  const handleReindex = async () => {
+    setAnalyzing(true);
+    try {
+      const res = await reindexAllDocuments();
+      const { total, indexed, failed } = res.data;
+      if (total === 0) {
+        toast.info('인덱싱할 문서가 없습니다.');
+      } else {
+        toast.success(`${indexed}개 문서 챗봇 연동 완료${failed > 0 ? `, ${failed}개 실패` : ''}`);
+      }
+    } catch (error) {
+      toast.error('재인덱싱 실패: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   // 문서 삭제 핸들러
   const handleDeleteDoc = async (docId) => {
     const ok = await confirm('이 문서를 삭제하시겠습니까?');
@@ -210,7 +249,7 @@ export default function DocumentsPage() {
           <p className="text-neutral-sub text-sm mt-1">회사 규정 및 문서를 관리합니다</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+<div className="flex items-center gap-2">
             <CustomSelect
               value={searchType}
               onChange={handleSearchTypeChange}

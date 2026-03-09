@@ -69,7 +69,13 @@ async def analyze_document_with_llm(text: str, title: str) -> dict | None:
 
         import json
         result = json.loads(response.content)
-        logger.info(f"문서 LLM 분석 완료: category={result.get('category')}, tags={result.get('tags')}")
+        # category를 tags 첫 번째에 포함
+        category = result.get("category", "")
+        tags = result.get("tags", [])
+        if category and category not in tags:
+            tags = [category] + tags
+        result["tags"] = tags
+        logger.info(f"문서 LLM 분석 완료: category={result.get('category')}, tags={tags}")
         return result
 
     except Exception as e:
@@ -247,17 +253,30 @@ async def upload_and_parse(
         try:
             from ai.rag.qdrant_pipeline import get_qdrant_pipeline
             pipeline = get_qdrant_pipeline()
+            # 분석 결과를 메타데이터에 포함 (RAG 검색 정확도 향상)
+            qdrant_meta = {
+                "source": "documents",
+                "doc_type": doc.category or "general",
+                "title": doc.title,
+                "scope": doc.scope,
+                "team_name": doc.team_name or "",
+                "user_id": str(user_id),
+                "document_id": doc.id,
+                "summary": doc.summary or "",
+                "category": doc.category or "",
+                "tags": ", ".join(doc.tags) if doc.tags else "",
+            }
+            # 태그 키워드를 본문 앞에 추가하여 BM25 검색 정확도 향상
+            tags_prefix = ""
+            if doc.tags:
+                tags_prefix = f"[태그: {', '.join(doc.tags)}] [분류: {doc.category or ''}] "
+            if doc.summary:
+                tags_prefix += f"[요약: {doc.summary}] "
+            indexed_text = tags_prefix + text
+
             pipeline.add_documents(
-                documents=[text],
-                metadatas=[{
-                    "source": "documents",
-                    "doc_type": "general",
-                    "title": doc.title,
-                    "scope": doc.scope,
-                    "team_name": doc.team_name or "",
-                    "user_id": str(user_id),
-                    "document_id": doc.id,
-                }],
+                documents=[indexed_text],
+                metadatas=[qdrant_meta],
             )
             logger.info(f"문서 Qdrant 인덱싱 완료: document_id={doc.id}, title={doc.title}")
         except Exception as qdrant_err:
@@ -460,6 +479,66 @@ async def analyze_existing_documents(db: AsyncSession) -> dict:
             failed += 1
 
     return {"total": len(docs), "analyzed": analyzed, "failed": failed}
+
+
+async def reindex_all_documents(db: AsyncSession) -> dict:
+    """기존 문서를 Qdrant에 재인덱싱 (태그/분류/요약 메타데이터 포함)."""
+    stmt = select(Document).where(
+        Document.status == "completed",
+        Document.content.isnot(None),
+    )
+    result = await db.execute(stmt)
+    docs = list(result.scalars().all())
+
+    indexed = 0
+    failed = 0
+
+    try:
+        from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+        pipeline = get_qdrant_pipeline()
+    except Exception as e:
+        return {"error": f"Qdrant 파이프라인 로드 실패: {e}"}
+
+    for doc in docs:
+        try:
+            # 기존 벡터 삭제
+            try:
+                pipeline.vector_store.delete_by_filter({"document_id": doc.id})
+            except Exception:
+                pass
+
+            # 태그/분류/요약을 본문 앞에 추가
+            tags_prefix = ""
+            if doc.tags:
+                tags_prefix = f"[태그: {', '.join(doc.tags)}] [분류: {doc.category or ''}] "
+            if doc.summary:
+                tags_prefix += f"[요약: {doc.summary}] "
+            indexed_text = tags_prefix + doc.content
+
+            qdrant_meta = {
+                "source": "documents",
+                "doc_type": doc.category or "general",
+                "title": doc.title,
+                "scope": doc.scope,
+                "team_name": doc.team_name or "",
+                "user_id": str(doc.uploaded_by),
+                "document_id": doc.id,
+                "summary": doc.summary or "",
+                "category": doc.category or "",
+                "tags": ", ".join(doc.tags) if doc.tags else "",
+            }
+
+            pipeline.add_documents(
+                documents=[indexed_text],
+                metadatas=[qdrant_meta],
+            )
+            indexed += 1
+            print(f"[Reindex] 완료: id={doc.id}, title={doc.title}")
+        except Exception as e:
+            print(f"[Reindex] 실패: id={doc.id}, error={e}")
+            failed += 1
+
+    return {"total": len(docs), "indexed": indexed, "failed": failed}
 
 
 async def generate_and_save(
