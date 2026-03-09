@@ -948,9 +948,23 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
     try:
         if mode == "sllm" and task:
             # sLLM 모드: vLLM + LoRA 어댑터
-            from ai.serving.vllm_client import VLLMProvider
-            llm = VLLMProvider().with_lora(f"v2_{task}")
-            print(f"[DocumentAgent] _call_llm | sLLM: v2_{task} 어댑터")
+            try:
+                from ai.serving.vllm_client import VLLMProvider
+                llm = VLLMProvider().with_lora(f"v2_{task}")
+                print(f"[DocumentAgent] _call_llm | sLLM: v2_{task} 어댑터")
+                response = await llm.generate(
+                    prompt=user_prompt,
+                    system_prompt=sys_prompt,
+                    temperature=0.7,
+                    json_mode=json_mode,
+                )
+                result = response.content
+                print(f"[DocumentAgent] _call_llm | sLLM 응답 ({time.time()-_t_llm:.2f}s) 길이: {len(result)}자")
+                return result
+            except Exception as e:
+                print(f"[DocumentAgent] _call_llm | sLLM 실패, API fallback: {e}")
+                from ai.llm import get_llm
+                llm = get_llm()
         else:
             # API 모드: 기존 LLM Factory (GPT/Claude)
             from ai.llm import get_llm
