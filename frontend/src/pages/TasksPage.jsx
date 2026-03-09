@@ -25,14 +25,14 @@ const tagColors = {
 };
 
 const stageConfig = [
-  { id: 'todo', label: 'To Do', icon: Clock, color: 'text-neutral-500', headerBg: 'bg-neutral-50 dark:bg-gray-800' },
+  { id: 'todo', label: 'To Do', icon: Clock, color: 'text-neutral-muted', headerBg: 'bg-surface-sub dark:bg-surface-sub' },
   { id: 'in_progress', label: 'In Progress', icon: GitMerge, color: 'text-primary-500', headerBg: 'bg-primary-50/60 dark:bg-primary-900/20' },
   { id: 'review', label: 'Review', icon: AlertTriangle, color: 'text-orange-500', headerBg: 'bg-orange-50/60 dark:bg-orange-900/20' },
   { id: 'done', label: 'Done', icon: CheckCircle2, color: 'text-success', headerBg: 'bg-green-50/60 dark:bg-green-900/20' },
 ];
 
 const EMPTY_FORM = { title: '', description: '', assignee: '', dueDate: '', priority: 'medium', tags: '' };
-const INPUT_CLS = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500';
+const INPUT_CLS = 'w-full px-3 py-2 border border-neutral-border rounded-lg bg-surface-card text-neutral-main focus:outline-none focus:ring-2 focus:ring-primary-500';
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState([]);
@@ -165,12 +165,12 @@ export default function TasksPage() {
   const getDueBadge = (dueDate, stage) => {
     if (!dueDate) return null;
     if (stage === 'todo' || stage === 'done') {
-      return { text: dueDate, cls: 'text-gray-500 dark:text-gray-400' };
+      return { text: dueDate, cls: 'text-neutral-muted' };
     }
     const diff = Math.ceil((new Date(dueDate) - new Date()) / 86400000);
     if (diff < 0) return { text: `${Math.abs(diff)}일 초과`, cls: 'text-red-500' };
     if (diff <= 2) return { text: `D-${diff}`, cls: 'text-orange-500 font-bold' };
-    return { text: dueDate, cls: 'text-gray-500 dark:text-gray-400' };
+    return { text: dueDate, cls: 'text-neutral-muted' };
   };
 
   return (
@@ -178,8 +178,8 @@ export default function TasksPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Task Pipeline</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">팀 프로젝트 진행 현황을 한눈에 관리하세요</p>
+          <h1 className="text-2xl font-bold text-neutral-main">Task Pipeline</h1>
+          <p className="text-sm text-neutral-sub mt-1">팀 프로젝트 진행 현황을 한눈에 관리하세요</p>
         </div>
         <button onClick={openCreate} className="btn-primary">
           <Plus size={16} />
@@ -189,7 +189,7 @@ export default function TasksPage() {
 
       {/* Kanban Board */}
       {loading ? (
-        <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">로딩 중...</div>
+        <div className="flex items-center justify-center h-64 text-neutral-sub">로딩 중...</div>
       ) : (
         <div className="grid grid-cols-4 gap-4">
           {stageConfig.map((stage) => {
@@ -211,7 +211,7 @@ export default function TasksPage() {
                   </span>
                 </div>
 
-                <div className={`flex-1 space-y-3 p-3 rounded-xl transition-all duration-200 ${isOver ? 'bg-primary-50/40 dark:bg-primary-900/10 border-2 border-dashed border-primary-300' : 'bg-neutral-50/30 dark:bg-gray-800/20 border-2 border-transparent'}`}>
+                <div className={`flex-1 space-y-3 p-3 rounded-xl transition-all duration-200 ${isOver ? 'bg-primary-50/40 dark:bg-primary-900/10 border-2 border-dashed border-primary-300' : 'bg-surface-sub/30 border-2 border-transparent'}`}>
                   <AnimatePresence>
                     {stageTasks.map((task) => {
                       const due = getDueBadge(task.dueDate, task.stage);
@@ -240,14 +240,14 @@ export default function TasksPage() {
                             <div className="flex items-center gap-1">
                               <button
                                 onClick={(e) => { e.stopPropagation(); openEdit(task); }}
-                                className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-500 dark:text-gray-400 hover:text-blue-500 transition-all"
+                                className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 text-neutral-muted hover:text-blue-500 transition-all"
                                 title="수정"
                               >
                                 <Pencil size={13} />
                               </button>
                               <button
                                 onClick={(e) => handleDelete(e, task.id)}
-                                className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-gray-500 dark:text-gray-400 hover:text-red-500 transition-all"
+                                className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-neutral-muted hover:text-red-500 transition-all"
                                 title="삭제"
                               >
                                 <Trash2 size={13} />
@@ -255,29 +255,29 @@ export default function TasksPage() {
                             </div>
                           </div>
 
-                          <h4 className="text-sm font-semibold text-gray-900 dark:text-white leading-snug mb-1">{task.title}</h4>
+                          <h4 className="text-sm font-semibold text-neutral-main leading-snug mb-1">{task.title}</h4>
                           {task.description && (
-                            <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-2.5 line-clamp-2 leading-relaxed">{task.description}</p>
+                            <p className="text-[11px] text-neutral-sub mb-2.5 line-clamp-2 leading-relaxed">{task.description}</p>
                           )}
 
                           {task.tags?.length > 0 && (
                             <div className="flex flex-wrap gap-1 mb-3">
                               {task.tags.map(tag => (
-                                <span key={tag} className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${tagColors[tag] || 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'}`}>
+                                <span key={tag} className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${tagColors[tag] || 'bg-surface-sub text-neutral-sub'}`}>
                                   {tag}
                                 </span>
                               ))}
                             </div>
                           )}
 
-                          <div className="flex items-center justify-between pt-2.5 border-t border-gray-200 dark:border-gray-600">
+                          <div className="flex items-center justify-between pt-2.5 border-t border-neutral-divider">
                             {task.assignee ? (
                               <div className="flex items-center gap-2">
-                                <img src={avatarSrc} alt={task.assignee} className="w-6 h-6 rounded-full border border-gray-300 dark:border-gray-500 bg-white" />
-                                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{task.assignee}</span>
+                                <img src={avatarSrc} alt={task.assignee} className="w-6 h-6 rounded-full border border-neutral-border bg-surface-card" />
+                                <span className="text-xs font-medium text-neutral-sub">{task.assignee}</span>
                               </div>
                             ) : (
-                              <span className="text-xs text-gray-500 dark:text-gray-400">미지정</span>
+                              <span className="text-xs text-neutral-muted">미지정</span>
                             )}
                             {due && <span className={`text-[10px] font-medium ${due.cls}`}>{due.text}</span>}
                           </div>
@@ -287,8 +287,8 @@ export default function TasksPage() {
                   </AnimatePresence>
 
                   {stageTasks.length === 0 && (
-                    <div className={`h-24 flex items-center justify-center border-2 border-dashed rounded-xl transition-colors ${isOver ? 'border-primary-400 bg-primary-50/30' : 'border-gray-300 dark:border-gray-500'}`}>
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">드래그하여 이동</span>
+                    <div className={`h-24 flex items-center justify-center border-2 border-dashed rounded-xl transition-colors ${isOver ? 'border-primary-400 bg-primary-50/30' : 'border-neutral-border'}`}>
+                      <span className="text-xs font-medium text-neutral-muted">드래그하여 이동</span>
                     </div>
                   )}
                 </div>
@@ -353,7 +353,7 @@ export default function TasksPage() {
                   <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">담당자</label>
                   <div className="flex flex-wrap gap-2">
                     {members.length === 0 && (
-                      <span className="text-xs text-gray-400">팀원이 없습니다</span>
+                      <span className="text-xs text-neutral-muted">팀원이 없습니다</span>
                     )}
                     {members.map((m) => {
                       const selected = form.assignee === m.name;
@@ -365,10 +365,10 @@ export default function TasksPage() {
                           onClick={() => setForm(f => ({ ...f, assignee: selected ? '' : m.name }))}
                           className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${selected
                             ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 ring-1 ring-primary-300'
-                            : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-400 dark:bg-white/5'
+                            : 'border-neutral-border text-neutral-sub hover:border-neutral-muted dark:bg-white/5'
                             }`}
                         >
-                          <img src={avatarSrc} alt={m.name} className="w-5 h-5 rounded-full bg-white" />
+                          <img src={avatarSrc} alt={m.name} className="w-5 h-5 rounded-full bg-surface-card" />
                           <span>{m.name}</span>
                         </button>
                       );
@@ -419,7 +419,7 @@ export default function TasksPage() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-4 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-black rounded-xl shadow-xl hover:scale-105 active:scale-95 transition-all"
+                    className="flex-1 py-4 bg-primary-700 text-white text-xs font-black rounded-xl shadow-xl hover:bg-primary-900 hover:scale-105 active:scale-95 transition-all"
                   >
                     {editingTask ? '저장' : '추가'}
                   </button>

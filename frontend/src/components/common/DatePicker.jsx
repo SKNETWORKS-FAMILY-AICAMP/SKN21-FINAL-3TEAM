@@ -84,7 +84,7 @@ export default function DatePicker({ value, onChange, placeholder = '날짜 선�
         <div
           ref={popupRef}
           style={popupStyle}
-          className="bg-white border border-neutral-divider rounded-lg shadow-lg p-4 w-[272px]"
+          className="bg-surface-card border border-neutral-divider rounded-lg shadow-lg p-4 w-[272px]"
         >
           {/* 월 네비게이션 */}
           <div className="flex items-center justify-between mb-3">

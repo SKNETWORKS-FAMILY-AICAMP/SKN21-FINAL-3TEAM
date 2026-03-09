@@ -20,7 +20,7 @@ const typeConfig = {
   infra: { icon: Server, color: 'text-slate-500 bg-slate-100 dark:bg-slate-900/30', label: '인프라/권한 신청' },
   security: { icon: ShieldCheck, color: 'text-red-500 bg-red-100 dark:bg-red-900/30', label: '보안 예외 처리' },
 };
-const defaultTypeConfig = { icon: FileSignature, color: 'text-gray-500 bg-gray-100 dark:bg-gray-900/30', label: '요청' };
+const defaultTypeConfig = { icon: FileSignature, color: 'text-neutral-sub bg-surface-sub', label: '요청' };
 
 const statusConfig = {
   pending: { label: 'Pending', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', icon: Clock },
@@ -150,11 +150,11 @@ export default function ApprovalsPage() {
             onClick={() => setFilter(tab.key)}
             className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${filter === tab.key
                 ? 'bg-primary-500 text-white shadow-sm'
-                : 'bg-white dark:bg-neutral-800 text-neutral-sub hover:bg-neutral-50 dark:hover:bg-neutral-700 border border-neutral-200 dark:border-neutral-700'
+                : 'bg-surface-card text-neutral-sub hover:bg-surface-sub border border-neutral-divider'
               }`}
           >
             {tab.label}
-            <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${filter === tab.key ? 'bg-white/20' : 'bg-neutral-100 dark:bg-neutral-700'
+            <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${filter === tab.key ? 'bg-white/20' : 'bg-surface-sub'
               }`}>
               {counts[tab.key]}
             </span>
@@ -171,7 +171,7 @@ export default function ApprovalsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="제목 또는 요청자 검색..."
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm"
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-neutral-border bg-surface-card text-neutral-main text-sm"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -179,7 +179,7 @@ export default function ApprovalsPage() {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-3 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm"
+            className="px-3 py-2.5 rounded-xl border border-neutral-border bg-surface-card text-neutral-main text-sm"
           >
             <option value="all">모든 유형</option>
             <option value="leave">연차/반차 신청</option>
@@ -232,7 +232,7 @@ export default function ApprovalsPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-bold text-neutral-sub px-2 py-0.5 bg-neutral-50 dark:bg-neutral-700 rounded-full">
+                          <span className="text-xs font-bold text-neutral-sub px-2 py-0.5 bg-surface-sub rounded-full">
                             {cfg.label}
                           </span>
                           <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${stCfg.color}`}>
@@ -354,7 +354,7 @@ export default function ApprovalsPage() {
                 </div>
 
                 {/* Requester */}
-                <div className="flex items-center gap-3 mb-4 p-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl">
+                <div className="flex items-center gap-3 mb-4 p-3 bg-surface-sub rounded-xl">
                   {detailItem.requester_avatar ? (
                     <img src={detailItem.requester_avatar} alt="" className="w-9 h-9 rounded-full" />
                   ) : (
@@ -374,7 +374,7 @@ export default function ApprovalsPage() {
                 {/* Detail */}
                 <div className="mb-4">
                   <label className="block text-xs font-semibold text-neutral-sub mb-1">상세 내용</label>
-                  <div className="p-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl text-sm text-neutral-main whitespace-pre-wrap min-h-[60px]">
+                  <div className="p-3 bg-surface-sub rounded-xl text-sm text-neutral-main whitespace-pre-wrap min-h-[60px]">
                     {detailItem.detail || '(내용 없음)'}
                   </div>
                 </div>
@@ -383,7 +383,7 @@ export default function ApprovalsPage() {
                 {detailItem.file_name && (
                   <div className="mb-5">
                     <label className="block text-xs font-semibold text-neutral-sub mb-2">첨부파일</label>
-                    <div className="flex items-center gap-2 p-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl">
+                    <div className="flex items-center gap-2 p-3 bg-surface-sub rounded-xl">
                       <Paperclip size={16} className="text-neutral-muted shrink-0" />
                       <span className="text-sm text-neutral-main truncate flex-1">{detailItem.file_name}</span>
                       {(isImage || isPdf) && (
@@ -444,7 +444,7 @@ export default function ApprovalsPage() {
               className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden flex flex-col border border-white/40 dark:border-white/10"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-neutral-700">
+              <div className="flex items-center justify-between p-4 border-b border-neutral-divider">
                 <span className="text-sm font-semibold text-neutral-main">파일 미리보기</span>
                 <div className="flex items-center gap-2">
                   {detailItem && (
@@ -460,7 +460,7 @@ export default function ApprovalsPage() {
                   </button>
                 </div>
               </div>
-              <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 min-h-[400px]">
+              <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-surface-sub min-h-[400px]">
                 {detailItem?.file_name && /\.(png|jpg|jpeg|gif|webp)$/i.test(detailItem.file_name) ? (
                   <img src={previewUrl} alt="미리보기" className="max-w-full max-h-[70vh] object-contain rounded-lg" />
                 ) : detailItem?.file_name && /\.pdf$/i.test(detailItem.file_name) ? (
@@ -509,7 +509,7 @@ export default function ApprovalsPage() {
                   <select
                     value={formData.type}
                     onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm"
+                    className="w-full px-3 py-2 rounded-lg border border-neutral-border bg-surface-card text-neutral-main text-sm"
                   >
                     <option value="leave">연차/반차 신청</option>
                     <option value="remote">재택근무 신청</option>
@@ -530,7 +530,7 @@ export default function ApprovalsPage() {
                     value={formData.title}
                     onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                     placeholder="요청 제목을 입력하세요"
-                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm"
+                    className="w-full px-3 py-2 rounded-lg border border-neutral-border bg-surface-card text-neutral-main text-sm"
                     required
                   />
                 </div>
@@ -541,7 +541,7 @@ export default function ApprovalsPage() {
                     onChange={(e) => setFormData(prev => ({ ...prev, detail: e.target.value }))}
                     placeholder="상세 내용을 입력하세요 (선택)"
                     rows={3}
-                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm resize-none"
+                    className="w-full px-3 py-2 rounded-lg border border-neutral-border bg-surface-card text-neutral-main text-sm resize-none"
                   />
                 </div>
                 <div>
@@ -566,7 +566,7 @@ export default function ApprovalsPage() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="flex-1 py-4 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-black rounded-xl shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                    className="flex-1 py-4 bg-primary-700 text-white text-xs font-black rounded-xl shadow-xl hover:bg-primary-900 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
                   >
                     {submitting ? '제출 중...' : '요청 제출'}
                   </button>
