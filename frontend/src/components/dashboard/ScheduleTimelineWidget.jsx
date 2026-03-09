@@ -14,6 +14,17 @@ const BLOCK_COLORS = [
     'bg-[#A5B38B]', // Olive/Grass
 ];
 
+const BLOCK_COLOR_HEXES = [
+    '#7A90A4',
+    '#8FB18E',
+    '#B56D6D',
+    '#B0D0C8',
+    '#CBAA85',
+    '#D0B16D',
+    '#B197B1',
+    '#A5B38B',
+];
+
 function timeToFraction(timeStr) {
     if (!timeStr) return 8;
     const d = new Date(timeStr);
@@ -76,6 +87,7 @@ export default function ScheduleTimelineWidget({ meetings = [] }) {
             startH,
             duration,
             color: BLOCK_COLORS[idx % BLOCK_COLORS.length],
+            colorHex: BLOCK_COLOR_HEXES[idx % BLOCK_COLOR_HEXES.length],
         };
     });
 
@@ -132,9 +144,12 @@ export default function ScheduleTimelineWidget({ meetings = [] }) {
                                 );
                             }
 
-                            // Detect overlapping blocks and assign rows
-                            const sorted = [...blocks].sort((a, b) => a.startH - b.startH);
-                            const rows = []; // each row is an array of endH values
+                            const regularBlocks = blocks.filter(b => !b.isAllDay);
+                            const allDayBlocks = blocks.filter(b => b.isAllDay);
+
+                            // Row assignment for regular blocks only
+                            const sorted = [...regularBlocks].sort((a, b) => a.startH - b.startH);
+                            const rows = [];
                             const rowAssign = new Map();
 
                             sorted.forEach((block) => {
@@ -154,27 +169,35 @@ export default function ScheduleTimelineWidget({ meetings = [] }) {
                                 }
                             });
 
-                            const rowCount = Math.max(rows.length, 1);
-                            const rowH = 40; // px per row
+                            const rowH = 40;
                             const gap = 4;
+                            const allDayH = 24; // 텍스트(14) + gap(4) + 선(2) + 여백(4)
+                            const allDayGap = 4;
+
+                            const rowCount = rows.length;
+                            const regularHeight = rowCount * (rowH + gap);
+                            const dividerHeight = rowCount > 0 && allDayBlocks.length > 0 ? 8 : 0;
+                            const allDaySectionHeight = allDayBlocks.length * (allDayH + allDayGap);
+                            const totalHeight = Math.max(regularHeight + dividerHeight + allDaySectionHeight, 44);
 
                             return (
-                                <div className="relative" style={{ height: `${rowCount * (rowH + gap)}px` }}>
-                                    {blocks.map((block, idx) => {
+                                <div className="relative" style={{ height: `${totalHeight}px` }}>
+                                    {/* 일반 일정 블록 */}
+                                    {regularBlocks.map((block, idx) => {
                                         const startPct = Math.max(0, ((block.startH - dayStart) / dayRange) * 100);
                                         const widthPct = (block.duration / dayRange) * 100;
                                         const row = rowAssign.get(block) || 0;
                                         return (
                                             <motion.div
-                                                key={idx}
+                                                key={`reg-${idx}`}
                                                 initial={{ opacity: 0, scaleX: 0 }}
                                                 animate={{ opacity: 1, scaleX: 1 }}
                                                 transition={{ delay: idx * 0.1 }}
                                                 title={`${block.title} (${block.time} ${block.period})`}
                                                 className={`absolute ${block.color} rounded-lg px-2 py-1 text-white text-[11px] font-semibold overflow-hidden cursor-default shadow-sm hover:shadow-md hover:z-20 transition-shadow`}
                                                 style={{
-                                                    left: `${block.isAllDay ? 0 : startPct}%`,
-                                                    width: `${block.isAllDay ? 100 : Math.max(widthPct, 8)}%`,
+                                                    left: `${startPct}%`,
+                                                    width: `${Math.max(widthPct, 8)}%`,
                                                     top: `${row * (rowH + gap)}px`,
                                                     height: `${rowH}px`,
                                                     transformOrigin: 'left',
@@ -182,6 +205,34 @@ export default function ScheduleTimelineWidget({ meetings = [] }) {
                                             >
                                                 <div className="truncate leading-tight">{block.title}</div>
                                                 <div className="text-[9px] opacity-80 truncate">{block.time} {block.period}</div>
+                                            </motion.div>
+                                        );
+                                    })}
+
+                                    {/* 종일/멀티데이 일정 — 텍스트 + 얇은 선 */}
+                                    {allDayBlocks.map((block, idx) => {
+                                        const topOffset = regularHeight + dividerHeight + idx * (allDayH + allDayGap);
+                                        return (
+                                            <motion.div
+                                                key={`allday-${idx}`}
+                                                initial={{ opacity: 0, x: -8 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: idx * 0.08 }}
+                                                title={block.title}
+                                                className="absolute cursor-default"
+                                                style={{ left: 0, right: 0, top: `${topOffset}px` }}
+                                            >
+                                                <div
+                                                    className="text-[11px] font-semibold truncate mb-1 flex items-center gap-1.5"
+                                                    style={{ color: block.colorHex }}
+                                                >
+                                                    <span className="truncate">{block.title}</span>
+                                                    <span className="shrink-0 text-[10px] opacity-70">종일</span>
+                                                </div>
+                                                <div
+                                                    className="w-full rounded-full"
+                                                    style={{ height: '3px', backgroundColor: block.colorHex, opacity: 0.85 }}
+                                                />
                                             </motion.div>
                                         );
                                     })}

@@ -1138,23 +1138,43 @@
 - `bg-neutral-50` / `dark:bg-gray-800` → `bg-surface-sub`
 - `bg-neutral-900 dark:bg-white text-white dark:text-neutral-900` (제출 버튼) → `bg-primary-700 text-white`
 
-**수정 파일 (8개)**
-
-| 파일 | 주요 수정 |
-|------|----------|
-| `pages/TasksPage.jsx` | 텍스트/배경/보더/드롭존/제출버튼 전체 |
-| `components/schedules/KanbanBoard.jsx` | 동일 패턴 (칸반 보드 컴포넌트 버전) |
-| `components/common/Header.jsx` | Schedule 필, 날짜 뱃지, 타임라인 트랙, 유틸리티 박스, 드롭다운 |
-| `pages/ApprovalsPage.jsx` | 상태 탭, 검색/필터 인풋, 섹션 배경, 모달 폼, 제출 버튼 |
-| `pages/ChatPage.jsx` | `no_regulation` 설정값, 세션 사이드바 버튼 |
-| `components/chat/AIChatPopup.jsx` | 추천 질문 칩, 히스토리 아이템, AI 메시지 버블, 입력창, 전송 버튼 |
-| `components/common/DatePicker.jsx` | 달력 팝업 배경 |
-| `components/dashboard/ApprovalQueueWidget.jsx` | 기본 타입 설정, 배지 배경, 담당자 섹션, 아바타, 제출 버튼 |
-
 ### 다음 할 일
 - 멀티데이 일정 필터 디버깅 마무리
 - Slack 연동 E2E 확인
 - 전체 E2E 테스트
+
+#### 2) ScheduleTimelineWidget 멀티데이 일정 UI 개선 (`ScheduleTimelineWidget.jsx`, `DashboardPage.jsx`)
+
+**멀티데이 일정 정렬 순서 변경**
+- 기존: `isAllDay` 블록이 `startH = dayStart`로 설정되어 row 정렬 시 가장 앞에 배치 → 상단에 위치
+- 수정: 정렬 시 `isAllDay` 블록을 뒤로 밀어 하단 행에 배치
+
+**멀티데이 일정 렌더링 분리**
+- 일반 일정(`isAllDay: false`)과 종일/멀티데이 일정(`isAllDay: true`)을 분리 렌더링
+- 멀티데이 일정: 기존 40px 블록 → **텍스트(일정 이름 + "종일") + 3px 얇은 선** 형식으로 변경
+- 텍스트와 선 모두 같은 색상(hex inline style) 사용
+- `BLOCK_COLOR_HEXES` 배열 추가 (inline style용 hex 색상값)
+
+**오늘이 포함된 멀티데이 일정도 타임라인에 표시**
+- 기존: `todayMeetings`(오늘 시작 일정)만 `ScheduleTimelineWidget`에 전달 → 다른 날 시작한 멀티데이 일정 누락
+- 수정: `DashboardPage.jsx`에 `timelineMeetings` 추가
+  - `todayMeetings` + `startKey < todayKey && endKey >= todayKey` 조건의 멀티데이 일정 합산
+  - 추가된 멀티데이 일정은 `isAllDay: true`로 매핑
+  - `ScheduleTimelineWidget`에 `timelineMeetings` 전달
+
+#### 3) CalendarView 멀티데이 일정 스트라이프 row 고정 (`CalendarView.jsx`)
+
+**문제**
+- 멀티데이 이벤트 스트라이프의 위치가 셀마다 달라지는 버그
+- 원인: 스트라이프 높이를 `dayStripes` 배열의 인덱스(`si`)로 결정 → 셀마다 이벤트 개수/순서가 달라 같은 이벤트가 다른 `bottom` 값을 가짐
+- 예: "어제→오늘" 이벤트가 어제 셀에서 `bottom: 2px`, 오늘 셀에서 `bottom: 22px` → 줄이 끊겨 보임
+
+**수정**
+- 렌더링 전 그리디 알고리즘으로 각 멀티데이 이벤트에 **고정 row 인덱스** 사전 배정
+  - `multiDayEvents`를 시작일 기준 정렬 후, 겹치는 이벤트끼리 다른 row를 배정
+  - `multiDayRowMap: Map<이벤트 key, row 번호>` 생성
+- 스트라이프 `bottom` 계산: 배열 인덱스 `si` → `multiDayRowMap`에서 가져온 고정 `row` 값으로 교체
+- 셀 `paddingBottom`: 배열 길이 기준 → 해당 셀의 **최대 row 번호** 기준으로 교체
 
 ---
 
