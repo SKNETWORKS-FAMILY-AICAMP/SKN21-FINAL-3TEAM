@@ -17,17 +17,16 @@ AI Hub 데이터 구조 (파일 1건 = JSON 1건):
 사용법:
     python ai/finetuning/scripts/convert_aihub_summary.py
     python ai/finetuning/scripts/convert_aihub_summary.py --total 100
-    python ai/finetuning/scripts/convert_aihub_summary.py --llm-enhance
+    python ai/finetuning/scripts/convert_aihub_summary.py --model gpt-4o
 """
 
 import argparse
 import json
+import os
 import random
-import re
 import sys
 import io
 import time
-from collections import Counter
 from pathlib import Path
 
 # Windows 콘솔 한글 출력
@@ -35,24 +34,20 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+sys.path.insert(0, str(BASE_DIR))
+
+from dotenv import load_dotenv
+load_dotenv(BASE_DIR / ".env", override=True)
+
+from ai.llm.prompts import DOC_SUMMARY_SLLM_PROMPT
 
 # AI Hub 데이터 경로 (실제 구조에 맞춤)
-RAW_BASE = BASE_DIR / "data" / "raw" / "aihub" / "022.요약문 및 레포트 생성 데이터" / "01.데이터"
+RAW_BASE = BASE_DIR / "data" / "raw" / "ai_hub" / "022.요약문 및 레포트 생성 데이터" / "01.데이터"
 TRAIN_LABEL_DIR = RAW_BASE / "1.Training" / "라벨링데이터" / "TL1"
 OUTPUT_DIR = BASE_DIR / "data" / "training" / "v2_summary"
 
-# ── 프로덕션 시스템 프롬프트 (ai/llm/prompts.py와 100% 일치) ──
-
-SYSTEM_PROMPT = (
-    "당신은 기업 문서 요약 전문가입니다.\n"
-    "주어진 문서를 분석하여 핵심 내용을 정리합니다.\n\n"
-    "규칙:\n"
-    "- 문서의 핵심 요약을 먼저 2-3문장으로 작성하세요.\n"
-    "- 주요 포인트를 마크다운 불릿 리스트로 정리하세요.\n"
-    "- 중요 키워드를 별도로 나열하세요.\n"
-    "- 원문에 없는 내용을 추가하지 마세요.\n"
-    "- 한국어로 답변하세요."
-)
+# ── sLLM 시스템 프롬프트 (ai/llm/prompts.py에서 import) ──
+SYSTEM_PROMPT = DOC_SUMMARY_SLLM_PROMPT
 
 # ── 카테고리 매핑 (폴더명 → 한글) ──
 
@@ -72,17 +67,13 @@ FOLDER_TO_CATEGORY = {
 # ── 카테고리별 목표 배분 (700개) ──
 
 CATEGORY_TARGETS = {
-    "회의록": 180,
-    "보고서": 100,
-    "간행물": 80,
-    "뉴스": 100,
-    "보도자료": 90,
-    "사설": 50,
-    "연설문": 60,
-    "역사기록물": 20,
-    "나레이션": 15,
-    "문학": 5,
+    "뉴스": 180,
+    "보도자료": 160,
+    "보고서": 160,
+    "간행물": 100,
+    "사설": 100,
 }
+# 제외: 회의록(국회 속기록), 연설문, 역사기록물, 문학, 나레이션 — 기업 문서 도메인 부적합
 
 # ── 사용자 요청 변형 (15가지) ──
 
@@ -105,11 +96,11 @@ USER_REQUEST_VARIATIONS = [
 ]
 
 CATEGORY_SPECIFIC_REQUESTS = {
-    "회의록": ["이 회의록 요약해줘", "회의 내용 정리해줘", "회의 결과 요약", "회의록 핵심만 뽑아줘"],
     "보고서": ["보고서 요약 부탁해", "이 보고서 핵심 정리", "보고서 내용 요약해줘"],
     "간행물": ["이 문서 요약해줘", "핵심 내용 정리해줘"],
     "보도자료": ["보도자료 요약해줘", "보도 내용 정리해줘"],
-    "연설문": ["연설 내용 요약해줘", "연설 핵심 정리해줘"],
+    "뉴스": ["이 뉴스 요약해줘", "뉴스 핵심 정리해줘", "기사 내용 요약"],
+    "사설": ["사설 요약해줘", "핵심 논점 정리해줘"],
 }
 
 # 원문 길이 필터 (자)
@@ -143,10 +134,12 @@ def load_aihub_data(label_dir: Path, targets: dict[str, int], max_per_cat: int =
         if target == 0:
             continue
 
-        limit = max_per_cat if max_per_cat > 0 else target * 3
+        limit = max_per_cat if max_per_cat > 0 else target * 7
 
         cat_docs = []
-        for sub_folder in sorted(cat_folder.iterdir()):
+        # 2~3sent 우선 로드 (summary2 있음, passage에서 불릿 추출 용이)
+        sub_folders = sorted(cat_folder.iterdir(), key=lambda p: (0 if "sent" in p.name else 1, p.name))
+        for sub_folder in sub_folders:
             if not sub_folder.is_dir():
                 continue
 
@@ -211,16 +204,8 @@ def filter_and_select(
         cat = doc["category"]
         passage = doc["passage"]
 
-        # 길이 필터
+        # 길이 필터 (passage만 있으면 됨 — GPT-4o가 요약 생성)
         if not (min_len <= len(passage) <= max_len):
-            continue
-
-        # summary2 또는 summary3 중 하나는 있어야 함
-        has_summary = (
-            (doc["summary2"] and len(doc["summary2"].strip()) >= 20)
-            or (doc["summary3"] and len(doc["summary3"].strip()) >= 20)
-        )
-        if not has_summary:
             continue
 
         if cat not in by_category:
@@ -247,88 +232,113 @@ def filter_and_select(
         # 2~3sent 우선 정렬 (summary2가 있는 것 먼저)
         pool_sorted = sorted(pool, key=lambda d: (0 if d["summary2"] else 1))
 
-        if len(pool_sorted) < target:
-            print(f"    [경고] {cat}: {len(pool_sorted)}건만 사용 가능 (목표 {target}건)")
+        # 포인트 필터 탈락 보상을 위해 target * 3 선별
+        over_target = target * 3
+        if len(pool_sorted) < over_target:
+            print(f"    [참고] {cat}: {len(pool_sorted)}건 사용 가능 (목표 {target}, 선별 {len(pool_sorted)})")
             selected[cat] = pool_sorted
         else:
-            # 상위 target*2개에서 랜덤 선택 (다양성 확보)
-            candidates = pool_sorted[:min(target * 3, len(pool_sorted))]
-            selected[cat] = random.sample(candidates, target)
+            candidates = pool_sorted[:min(over_target * 2, len(pool_sorted))]
+            selected[cat] = random.sample(candidates, over_target)
 
     total = sum(len(v) for v in selected.values())
     print(f"\n  총 선별: {total}건")
     return selected
 
 
-def extract_keywords_simple(passage: str, top_n: int = 5) -> list[str]:
-    """간이 키워드 추출 (TF 기반, 한국어)"""
-    stopwords = {
-        "있다", "하다", "되다", "이다", "것", "수", "등", "및", "또는", "그", "이",
-        "위해", "대한", "통해", "따라", "대해", "있는", "하는", "되는", "것으로",
-        "있으며", "하였다", "되었다", "합니다", "있습니다", "됩니다", "것입니다",
-        "위한", "관련", "경우", "해당", "기반", "현재", "이후", "이전", "사항",
-    }
-    words = re.findall(r"[가-힣]{2,}", passage)
-    word_counts = Counter(words)
-    keywords = [
-        word for word, _ in word_counts.most_common()
-        if word not in stopwords and len(word) >= 2
+def call_openai(
+    system_prompt: str,
+    user_prompt: str,
+    model: str = "gpt-4o",
+    temperature: float = 0.7,
+    max_tokens: int = 1024,
+    max_retries: int = 3,
+) -> str | None:
+    """OpenAI API 호출"""
+    try:
+        from openai import OpenAI
+    except ImportError:
+        print("[오류] openai 패키지가 필요합니다: pip install openai")
+        sys.exit(1)
+
+    client = OpenAI()
+
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"    [API 에러 (시도 {attempt+1}/{max_retries})] {e}")
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+
+    return None
+
+
+def generate_summary_with_gpt(passage: str, model: str = "gpt-4o") -> str | None:
+    """GPT-4o로 DOC_SUMMARY_SLLM_PROMPT 형식의 요약 생성"""
+    return call_openai(
+        SYSTEM_PROMPT,
+        f"다음 문서를 요약하세요:\n\n{passage}",
+        model=model,
+        temperature=0.7,
+        max_tokens=1024,
+    )
+
+
+def validate_summary(summary: str) -> tuple[bool, list[str]]:
+    """요약 형식 검증"""
+    errors = []
+    if "## 주요 포인트" not in summary:
+        errors.append("'## 주요 포인트' 섹션 없음")
+    if "## 키워드" not in summary:
+        errors.append("'## 키워드' 섹션 없음")
+    if "- " not in summary:
+        errors.append("불릿 포인트 없음")
+
+    # 포인트 개수 검증 (3~5개)
+    if "## 주요 포인트" in summary and "## 키워드" in summary:
+        points_section = summary.split("## 주요 포인트")[1].split("## 키워드")[0]
+        bullet_count = points_section.count("\n- ")
+        if not points_section.startswith("- "):
+            bullet_count += points_section.lstrip().startswith("- ")
+        # \n- 로 시작하는 줄 + 섹션 첫 줄이 - 로 시작하는 경우
+        bullets = [line.strip() for line in points_section.strip().splitlines() if line.strip().startswith("- ")]
+        if len(bullets) < 3 or len(bullets) > 5:
+            errors.append(f"포인트 개수 부적합: {len(bullets)}개 (3~5개 필요)")
+
+    # 키워드 개수 검증 (3~7개)
+    if "## 키워드" in summary:
+        kw_part = summary.split("## 키워드")[-1].strip()
+        keywords = [kw.strip() for kw in kw_part.split(",") if kw.strip()]
+        if len(keywords) < 3 or len(keywords) > 7:
+            errors.append(f"키워드 개수 부적합: {len(keywords)}개 (3~7개 필요)")
+
+    # 메타 지시문 복사 감지
+    meta_patterns = [
+        "핵심 요약 2-3문장",
+        "빈 줄",
+        "불릿(-)",
+        "명사/명사구",
+        "쉼표로 구분",
     ]
-    return keywords[:top_n]
+    for pattern in meta_patterns:
+        if pattern in summary:
+            errors.append(f"메타 지시문 복사: '{pattern}'")
+            break
+    # "포인트" + "작성하세요" 동시 존재
+    if "포인트" in summary and "작성하세요" in summary:
+        errors.append("메타 지시문 복사: '포인트'+'작성하세요'")
 
-
-def extract_bullet_points(text: str, max_points: int = 5) -> list[str]:
-    """텍스트에서 핵심 포인트를 문장 단위로 추출"""
-    if not text or not text.strip():
-        return []
-    sentences = re.split(r"[.!?。]\s*", text)
-    sentences = [s.strip() for s in sentences if len(s.strip()) > 15]
-    return sentences[:max_points]
-
-
-def build_assistant_response(doc: dict) -> str:
-    """프로덕션 형식의 assistant 응답 (마크다운) 구성.
-
-    형식:
-        핵심 요약 2-3문장
-
-        ## 주요 포인트
-        - 포인트1
-        - 포인트2
-
-        ## 키워드
-        키워드1, 키워드2, ...
-    """
-    passage = doc["passage"]
-    summary2 = doc.get("summary2", "").strip()
-    summary3 = doc.get("summary3", "").strip()
-    summary1 = doc.get("summary1", "").strip()
-
-    # 1. 핵심 요약 (summary2 > summary1 > passage 앞부분)
-    if summary2 and len(summary2) >= 20:
-        core_summary = summary2
-    elif summary1 and len(summary1) >= 20:
-        core_summary = summary1
-    else:
-        core_summary = passage[:200].strip() + "..."
-
-    # 2. 주요 포인트
-    if summary3 and len(summary3) >= 30:
-        bullet_points = extract_bullet_points(summary3)
-    else:
-        # summary3 없으면 passage에서 추출
-        bullet_points = extract_bullet_points(passage)
-
-    if not bullet_points:
-        bullet_points = [passage[:100].strip()]
-
-    bullets_str = "\n".join(f"- {p}" for p in bullet_points)
-
-    # 3. 키워드
-    keywords = extract_keywords_simple(passage, top_n=5)
-    keywords_str = ", ".join(keywords) if keywords else "내용 요약"
-
-    return f"{core_summary}\n\n## 주요 포인트\n{bullets_str}\n\n## 키워드\n{keywords_str}"
+    return len(errors) == 0, errors
 
 
 def build_user_prompt(passage: str, category: str) -> str:
@@ -341,98 +351,77 @@ def build_user_prompt(passage: str, category: str) -> str:
     return f"다음 문서를 요약해주세요.\n\n사용자 요청: {request}\n\n문서 내용:\n{passage}"
 
 
-def enhance_keywords_with_llm(passage: str, keywords: list[str]) -> list[str]:
-    """OpenAI API로 키워드 추출 (GPT 결과만 사용, TF는 fallback)"""
-    try:
-        from openai import OpenAI
-        client = OpenAI()
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": (
-                    "주어진 문서에서 핵심 키워드 5개를 추출하세요.\n"
-                    "규칙:\n"
-                    "- 명사 또는 명사구만 출력 (조사, 어미 제거)\n"
-                    "- 문서의 주제를 대표하는 단어만 선택\n"
-                    "- 쉼표로 구분하여 키워드만 출력하세요."
-                )},
-                {"role": "user", "content": f"문서:\n{passage[:1500]}"},
-            ],
-            temperature=0.3,
-            max_tokens=100,
-        )
-        result = response.choices[0].message.content.strip()
-        llm_keywords = [kw.strip() for kw in result.split(",") if kw.strip()]
-        if len(llm_keywords) >= 3:
-            return llm_keywords[:5]
-        # LLM 결과 부족하면 TF로 보충
-        merged = list(dict.fromkeys(llm_keywords + keywords))
-        return merged[:5]
-    except Exception as e:
-        print(f"    [LLM 키워드 실패, TF fallback] {e}")
-        return keywords
-
 
 def convert_and_save(
     selected: dict[str, list[dict]],
     output_path: Path,
-    llm_enhance: bool = False,
+    targets: dict[str, int] = None,
+    model: str = "gpt-4o",
+    append: bool = False,
 ):
-    """선별된 데이터를 v2_summary JSONL 형식으로 변환 저장"""
+    """선별된 데이터를 GPT-4o 요약으로 변환 저장"""
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     count = 0
     errors = 0
-    llm_calls = 0
+    validation_fails = 0
 
-    with open(output_path, "w", encoding="utf-8") as f:
+    mode = "a" if append else "w"
+    with open(output_path, mode, encoding="utf-8") as f:
         for category, docs in selected.items():
-            print(f"\n  [{category}] {len(docs)}건 변환 중...")
+            cat_target = (targets or {}).get(category, len(docs))
+            cat_count = 0
+            print(f"\n  [{category}] {len(docs)}건 중 {cat_target}건 목표...")
 
             for i, doc in enumerate(docs):
-                try:
-                    # 프로덕션 형식 구성
-                    user_prompt = build_user_prompt(doc["passage"], category)
-                    response = build_assistant_response(doc)
+                if cat_count >= cat_target:
+                    break
 
-                    # LLM 키워드 보강 (전체 적용)
-                    if llm_enhance:
-                        keywords = extract_keywords_simple(doc["passage"])
-                        keywords = enhance_keywords_with_llm(doc["passage"], keywords)
-                        llm_calls += 1
-                        # 키워드 부분 교체 (re.sub 대신 문자열 치환 — 키워드에 \숫자 포함 시 안전)
-                        kw_str = ", ".join(keywords)
-                        if "## 키워드\n" in response:
-                            before = response.split("## 키워드\n")[0]
-                            response = before + "## 키워드\n" + kw_str
-                        if llm_calls % 50 == 0:
-                            time.sleep(2)
-                            print(f"    LLM 호출 {llm_calls}건 완료...")
+                passage = doc["passage"]
+                print(f"    [{cat_count+1}/{cat_target}] {passage[:30]}...", end=" ", flush=True)
 
-                    sample = {
-                        "messages": [
-                            {"role": "system", "content": SYSTEM_PROMPT},
-                            {"role": "user", "content": user_prompt},
-                            {"role": "assistant", "content": response},
-                        ]
-                    }
-
-                    f.write(json.dumps(sample, ensure_ascii=False) + "\n")
-                    count += 1
-
-                    if (i + 1) % 100 == 0:
-                        print(f"    {i+1}/{len(docs)}건 완료")
-
-                except Exception as e:
+                # GPT-4o로 요약 생성
+                summary = generate_summary_with_gpt(passage, model=model)
+                if not summary:
+                    print("- API 실패")
                     errors += 1
-                    if errors <= 5:
-                        print(f"    [에러] {category} #{i}: {e}")
+                    continue
+
+                # 형식 검증
+                is_valid, err_list = validate_summary(summary)
+                if not is_valid:
+                    print(f"- 검증 실패: {err_list}")
+                    validation_fails += 1
+                    continue
+
+                # 학습 데이터 저장
+                user_prompt = build_user_prompt(passage, category)
+                sample = {
+                    "messages": [
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                        {"role": "assistant", "content": summary},
+                    ]
+                }
+
+                f.write(json.dumps(sample, ensure_ascii=False) + "\n")
+                f.flush()
+                count += 1
+                cat_count += 1
+                print("- OK")
+
+                # Rate limiting
+                if cat_count % 10 == 0:
+                    time.sleep(1)
+                    print(f"    --- {cat_count}/{cat_target}건 완료 ---")
+
+            print(f"  [{category}] 결과: {cat_count}건 완료")
 
     print(f"\n  변환 완료: {count}건 -> {output_path}")
+    if validation_fails:
+        print(f"  검증 실패: {validation_fails}건")
     if errors:
-        print(f"  에러: {errors}건")
-    if llm_calls:
-        print(f"  LLM 호출: {llm_calls}건")
+        print(f"  API 에러: {errors}건")
 
 
 def main():
@@ -440,10 +429,11 @@ def main():
     parser.add_argument("--input", type=str, default=str(TRAIN_LABEL_DIR), help="AI Hub TL1 디렉토리")
     parser.add_argument("--output", type=str, default=str(OUTPUT_DIR / "aihub_summary.jsonl"), help="출력 파일")
     parser.add_argument("--total", type=int, default=700, help="총 변환 목표 건수")
-    parser.add_argument("--llm-enhance", action="store_true", help="LLM 키워드 보강 (OpenAI API 필요)")
+    parser.add_argument("--model", type=str, default="gpt-4o", help="요약 생성 모델")
     parser.add_argument("--seed", type=int, default=42, help="랜덤 시드")
     parser.add_argument("--min-len", type=int, default=MIN_PASSAGE_LEN, help="최소 원문 길이")
     parser.add_argument("--max-len", type=int, default=MAX_PASSAGE_LEN, help="최대 원문 길이")
+    parser.add_argument("--append", action="store_true", help="기존 파일에 추가")
     args = parser.parse_args()
 
     print("=" * 70)
@@ -452,8 +442,12 @@ def main():
     print(f"  입력: {args.input}")
     print(f"  출력: {args.output}")
     print(f"  목표: {args.total}건")
-    print(f"  LLM 보강: {'ON' if args.llm_enhance else 'OFF'}")
+    print(f"  모델: {args.model}")
     print(f"  원문 길이: {args.min_len}~{args.max_len}자")
+
+    if not os.getenv("OPENAI_API_KEY"):
+        print("[오류] OPENAI_API_KEY 환경변수가 설정되지 않았습니다.")
+        sys.exit(1)
 
     # 목표 수 비례 조정
     ratio = args.total / 700
@@ -476,7 +470,7 @@ def main():
 
     # 3. 변환 & 저장
     print(f"\n[3/3] 변환 & 저장")
-    convert_and_save(selected, Path(args.output), args.llm_enhance)
+    convert_and_save(selected, Path(args.output), targets=adjusted_targets, model=args.model, append=args.append)
 
     # 4. 검증 요약
     output_path = Path(args.output)

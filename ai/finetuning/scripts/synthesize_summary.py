@@ -1,11 +1,11 @@
 """
 v2_summary 합성 데이터 생성 스크립트
 
-GPT-4o를 활용하여 완전 합성 요약 데이터 300개를 생성합니다.
+GPT-4o를 활용하여 완전 합성 요약 데이터 200개를 생성합니다.
 기존 AI Hub 700개를 보완하여 새로운 문서 유형(이메일, 사내공지, 계약서 등) 추가.
 
 카테고리별 배분:
-  회의록 50, 보고서 50, 간행물 30, 뉴스/보도자료 40,
+  회의록 35, 보고서 35, 간행물 20, 뉴스/보도자료 25,
   사설/연설문 30, 이메일 40, 사내공지 30, 계약서/법률문서 30
 
 2단계 파이프라인:
@@ -34,32 +34,29 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+sys.path.insert(0, str(BASE_DIR))
+
+from dotenv import load_dotenv
+load_dotenv(BASE_DIR / ".env", override=True)
+
+from ai.llm.prompts import DOC_SUMMARY_SLLM_PROMPT
+
 OUTPUT_DIR = BASE_DIR / "data" / "training" / "v2_summary"
 
-# ── 프로덕션 시스템 프롬프트 (ai/llm/prompts.py와 100% 일치) ──
-
-SYSTEM_PROMPT = (
-    "당신은 기업 문서 요약 전문가입니다.\n"
-    "주어진 문서를 분석하여 핵심 내용을 정리합니다.\n\n"
-    "규칙:\n"
-    "- 문서의 핵심 요약을 먼저 2-3문장으로 작성하세요.\n"
-    "- 주요 포인트를 마크다운 불릿 리스트로 정리하세요.\n"
-    "- 중요 키워드를 별도로 나열하세요.\n"
-    "- 원문에 없는 내용을 추가하지 마세요.\n"
-    "- 한국어로 답변하세요."
-)
+# ── sLLM 시스템 프롬프트 (ai/llm/prompts.py에서 import) ──
+SYSTEM_PROMPT = DOC_SUMMARY_SLLM_PROMPT
 
 # ── 카테고리별 합성 목표 ──
 
 CATEGORY_TARGETS = {
-    "회의록": 50,
-    "보고서": 50,
-    "간행물": 30,
-    "뉴스/보도자료": 40,
-    "사설/연설문": 30,
-    "이메일": 40,
-    "사내공지": 30,
-    "계약서/법률문서": 30,
+    "회의록": 35,
+    "보고서": 35,
+    "간행물": 20,
+    "뉴스/보도자료": 25,
+    "사설/연설문": 20,
+    "이메일": 25,
+    "사내공지": 20,
+    "계약서/법률문서": 20,
 }
 
 # ── 업종 풀 ──
@@ -147,21 +144,9 @@ CATEGORY_SPECIFIC_REQUESTS = {
 
 # ── 요약 생성 프롬프트 ──
 
-SUMMARY_GENERATION_SYSTEM = (
-    "주어진 문서를 요약하세요.\n\n"
-    "출력 형식 (반드시 이 형식을 따르세요):\n"
-    "1. 핵심 요약 2-3문장\n"
-    "2. 빈 줄\n"
-    "3. ## 주요 포인트\n"
-    "4. - 불릿 포인트 3~5개\n"
-    "5. 빈 줄\n"
-    "6. ## 키워드\n"
-    "7. 키워드1, 키워드2, 키워드3, 키워드4, 키워드5\n\n"
-    "규칙:\n"
-    "- 원문에 없는 내용을 추가하지 마세요.\n"
-    "- 키워드는 명사/명사구만 (조사, 어미 제거).\n"
-    "- 마크다운 형식 외 다른 설명을 포함하지 마세요."
-)
+# Step B에서도 sLLM 시스템 프롬프트를 그대로 사용
+# → GPT-4o가 sLLM과 동일한 형식으로 요약 생성
+SUMMARY_GENERATION_SYSTEM = DOC_SUMMARY_SLLM_PROMPT
 
 
 def call_openai(
@@ -237,12 +222,35 @@ def validate_summary(summary: str) -> tuple[bool, list[str]]:
     if "- " not in summary:
         errors.append("불릿 포인트 없음")
 
-    # 키워드 섹션 확인
+    # 포인트 개수 검증 (3~5개)
+    if "## 주요 포인트" in summary and "## 키워드" in summary:
+        points_section = summary.split("## 주요 포인트")[1].split("## 키워드")[0]
+        bullets = [line.strip() for line in points_section.strip().splitlines() if line.strip().startswith("- ")]
+        if len(bullets) < 3 or len(bullets) > 5:
+            errors.append(f"포인트 개수 부적합: {len(bullets)}개 (3~5개 필요)")
+
+    # 키워드 개수 검증 (3~7개)
     if "## 키워드" in summary:
         kw_part = summary.split("## 키워드")[-1].strip()
         keywords = [kw.strip() for kw in kw_part.split(",") if kw.strip()]
-        if len(keywords) < 3:
-            errors.append(f"키워드 부족: {len(keywords)}개")
+        if len(keywords) < 3 or len(keywords) > 7:
+            errors.append(f"키워드 개수 부적합: {len(keywords)}개 (3~7개 필요)")
+
+    # 메타 지시문 복사 감지
+    meta_patterns = [
+        "핵심 요약 2-3문장",
+        "빈 줄",
+        "불릿(-)",
+        "명사/명사구",
+        "쉼표로 구분",
+    ]
+    for pattern in meta_patterns:
+        if pattern in summary:
+            errors.append(f"메타 지시문 복사: '{pattern}'")
+            break
+    # "포인트" + "작성하세요" 동시 존재
+    if "포인트" in summary and "작성하세요" in summary:
+        errors.append("메타 지시문 복사: '포인트'+'작성하세요'")
 
     return len(errors) == 0, errors
 
@@ -334,7 +342,7 @@ def synthesize_all(
 def main():
     parser = argparse.ArgumentParser(description="v2_summary 합성 데이터 생성")
     parser.add_argument("--output", type=str, default=str(OUTPUT_DIR / "synthetic_summary.jsonl"))
-    parser.add_argument("--count", type=int, default=0, help="총 생성 수 (0=기본값 300)")
+    parser.add_argument("--count", type=int, default=0, help="총 생성 수 (0=기본값 200)")
     parser.add_argument("--model", type=str, default="gpt-4o")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--append", action="store_true", help="기존 파일에 추가")
@@ -347,7 +355,7 @@ def main():
 
     # 목표 수 결정
     if args.count > 0:
-        ratio = args.count / 300
+        ratio = args.count / 200
         targets = {k: max(1, int(v * ratio)) for k, v in CATEGORY_TARGETS.items()}
     else:
         targets = dict(CATEGORY_TARGETS)

@@ -2,9 +2,9 @@
 LoRA v2: 문서 Agent 기능별 파인튜닝 (어댑터 분리 전략)
 
 어댑터 3종:
-  - v2_generate: 문서 생성 (회의록/보고서/제안서 JSON) — 380개
-  - v2_qa: 문서 QA (answer + citations JSON) — 300개
-  - v2_summary: 문서 요약 (마크다운) — 200개
+  - v2_generate: 문서 생성 (회의록/보고서/제안서 JSON) — 1,500개 (train 1,350 / eval 150)
+  - v2_qa: 문서 QA (answer + citations JSON) — 1,000개 (train 900 / eval 100)
+  - v2_summary: 문서 요약 (마크다운) — 1,000개 (train 900 / eval 100)
 
 베이스 모델: Qwen3-8B (1차 추천) — 비교 대상: EXAONE-3.5-7.8B, Kanana-1.5-8B
 
@@ -31,14 +31,28 @@ LoRA v2: 문서 Agent 기능별 파인튜닝 (어댑터 분리 전략)
 
 환경:
     pip install transformers peft trl bitsandbytes accelerate datasets torch pyyaml rouge-score bert-score
-    GPU: RunPod A100 40GB 권장
+    GPU: RTX 5090 32GB (또는 RunPod A100 40GB)
 """
 
 import argparse
 import json
+import os
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
+
+# EXAONE 등 커스텀 모델 코드 자동 승인 (y/N 프롬프트 제거)
+os.environ["HF_HUB_TRUST_REMOTE_CODE"] = "1"
+os.environ["TRUST_REMOTE_CODE"] = "True"
+
+# EXAONE 호환성: transformers 5.x에서 제거된 함수를 미리 주입
+# → EXAONE의 custom modeling 코드가 import할 때 에러 방지
+import transformers.utils.generic as _trf_generic
+if not hasattr(_trf_generic, "check_model_inputs"):
+    _trf_generic.check_model_inputs = lambda func: func  # identity decorator
+if not hasattr(_trf_generic, "maybe_autocast"):
+    from contextlib import nullcontext
+    _trf_generic.maybe_autocast = nullcontext
 
 import torch
 import yaml
@@ -49,9 +63,8 @@ from transformers import (
     AutoTokenizer,
     BitsAndBytesConfig,
     EarlyStoppingCallback,
-    TrainingArguments,
 )
-from trl import SFTTrainer
+from trl import SFTConfig, SFTTrainer
 
 # ── 경로 ──
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -75,7 +88,7 @@ REQUIRED_FIELDS = {
 }
 
 # doc_qa 필수 필드
-QA_REQUIRED_FIELDS = ["answer", "citations", "confidence"]
+QA_REQUIRED_FIELDS = ["answer", "citations"]
 
 
 # ── 설정 로드 ──
@@ -179,32 +192,56 @@ def load_train_eval_datasets(
 
 
 def load_base_model(config: dict, for_training: bool = True, base_model_override: str = None):
-    """QLoRA 4-bit 모델 로드"""
+    """QLoRA 4-bit 모델 로드 (EXAONE은 bf16 풀로드)"""
     model_id = base_model_override or config["model"]["base_model"]
+    is_exaone = "exaone" in model_id.lower()
     print(f"  모델: {model_id}")
-
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.bfloat16,
-        bnb_4bit_use_double_quant=True,
-    )
 
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "right"
 
-    model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        quantization_config=bnb_config,
-        device_map="auto",
-        trust_remote_code=True,
-    )
+    if is_exaone:
+        # EXAONE: 커스텀 아키텍처라 bitsandbytes 4-bit 양자화 비호환
+        # H200 80GB VRAM이면 bf16 풀로드 + LoRA 충분
+        print(f"  [EXAONE] bf16 풀로드 (4-bit 양자화 비호환)")
+        model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+            trust_remote_code=True,
+        )
+        # EXAONE: get_input_embeddings 패치 (peft가 양쪽 클래스에서 호출함)
+        outer_cls = type(model)
+        outer_cls.get_input_embeddings = lambda self: self.transformer.wte
+        outer_cls.set_input_embeddings = lambda self, v: setattr(self.transformer, "wte", v)
+        inner_cls = type(model.transformer)
+        inner_cls.get_input_embeddings = lambda self: self.wte
+        inner_cls.set_input_embeddings = lambda self, v: setattr(self, "wte", v)
+        print(f"  [EXAONE] get_input_embeddings 패치 완료 (outer + inner)")
+    else:
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_use_double_quant=True,
+        )
+        model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            quantization_config=bnb_config,
+            device_map="auto",
+            trust_remote_code=True,
+        )
 
     if for_training:
         model.config.use_cache = False
-        model.enable_input_require_grads()
+        if hasattr(model, "enable_input_require_grads"):
+            model.enable_input_require_grads()
+        else:
+            model.get_input_embeddings().register_forward_hook(
+                lambda module, args, output: output.requires_grad_(True)
+            )
 
     vram_gb = torch.cuda.memory_allocated() / 1e9
     print(f"  VRAM - Allocated: {vram_gb:.1f} GB")
@@ -234,16 +271,24 @@ def train(task: str, config: dict, base_model_override: str = None):
     print(f"  bf16 지원: {use_bf16}")
 
     lora_cfg = config["lora"]
+    target_modules = lora_cfg["target_modules"]
+
+    # EXAONE 모델은 레이어 이름이 다름 — 자동 변환
+    if "exaone" in model_id.lower():
+        exaone_map = {"o_proj": "out_proj", "gate_proj": "c_fc_0", "up_proj": "c_fc_1"}
+        target_modules = [exaone_map.get(t, t) for t in target_modules]
+        print(f"  [EXAONE] target_modules 변환: {lora_cfg['target_modules']} -> {target_modules}")
+
     lora_config = LoraConfig(
         r=lora_cfg["r"],
         lora_alpha=lora_cfg["lora_alpha"],
-        target_modules=lora_cfg["target_modules"],
+        target_modules=target_modules,
         lora_dropout=lora_cfg["lora_dropout"],
         bias="none",
         task_type="CAUSAL_LM",
     )
     print(f"  LoRA: r={lora_cfg['r']}, alpha={lora_cfg['lora_alpha']}, "
-          f"targets={lora_cfg['target_modules']}")
+          f"targets={target_modules}")
 
     train_cfg = config["training"]
 
@@ -251,14 +296,18 @@ def train(task: str, config: dict, base_model_override: str = None):
     output_dir = str(output_base / model_short / "checkpoints")
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    training_args = TrainingArguments(
+    # Early stopping
+    early_stopping_patience = config["training"].get("early_stopping_patience", 3)
+    callbacks = [EarlyStoppingCallback(early_stopping_patience=early_stopping_patience)]
+
+    training_args = SFTConfig(
         output_dir=output_dir,
         num_train_epochs=train_cfg["num_epochs"],
         per_device_train_batch_size=train_cfg["batch_size"],
         gradient_accumulation_steps=train_cfg["gradient_accumulation_steps"],
         learning_rate=float(train_cfg["learning_rate"]),
         lr_scheduler_type="cosine",
-        warmup_ratio=train_cfg["warmup_ratio"],
+        warmup_steps=max(1, int(len(train_dataset) / train_cfg["batch_size"] / train_cfg["gradient_accumulation_steps"] * train_cfg["warmup_ratio"])),
         logging_steps=10,
         save_strategy="epoch",
         eval_strategy="epoch",
@@ -268,13 +317,16 @@ def train(task: str, config: dict, base_model_override: str = None):
         bf16=use_bf16,
         fp16=not use_bf16,
         gradient_checkpointing=True,
-        optim="paged_adamw_8bit",
+        optim="adamw_torch" if "exaone" in model_id.lower() else "paged_adamw_8bit",
         report_to="none",
+        max_length=train_cfg["max_length"],
     )
 
-    # Early stopping
-    early_stopping_patience = config["training"].get("early_stopping_patience", 3)
-    callbacks = [EarlyStoppingCallback(early_stopping_patience=early_stopping_patience)]
+    # trl 버전에 따라 dataset_text_field 위치가 다름
+    try:
+        training_args.dataset_text_field = "text"
+    except Exception:
+        pass
 
     print(f"\n[3/4] 학습 시작 (epochs={train_cfg['num_epochs']}, "
           f"early_stopping={early_stopping_patience})...")
@@ -284,8 +336,6 @@ def train(task: str, config: dict, base_model_override: str = None):
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         peft_config=lora_config,
-        max_seq_length=train_cfg["max_length"],
-        dataset_text_field="text",
         callbacks=callbacks,
     )
 
@@ -385,7 +435,8 @@ def evaluate(task: str, config: dict, adapter_path: str, base_model_override: st
                 for m in infer_messages
             ) + "\n<|im_start|>assistant\n"
 
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(model.device)
+        max_len = config["training"].get("max_length", 2560)
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=max_len).to(model.device)
         input_len = inputs["input_ids"].shape[1]
 
         with torch.no_grad():
@@ -393,7 +444,6 @@ def evaluate(task: str, config: dict, adapter_path: str, base_model_override: st
                 **inputs,
                 max_new_tokens=1024,
                 do_sample=False,
-                temperature=1.0,
                 pad_token_id=tokenizer.eos_token_id,
             )
 
@@ -473,40 +523,60 @@ def evaluate(task: str, config: dict, adapter_path: str, base_model_override: st
     return eval_results
 
 
+def _parse_field_spec_from_user(user_content: str) -> list[str]:
+    """user prompt의 [필드 명세]에서 필드 이름 목록 추출"""
+    fields = []
+    in_spec = False
+    for line in user_content.splitlines():
+        stripped = line.strip()
+        if "[필드 명세]" in stripped:
+            in_spec = True
+            continue
+        if in_spec:
+            if stripped.startswith("[") and "필드" not in stripped:
+                break
+            if stripped.startswith("- ") and ":" in stripped:
+                field_name = stripped[2:].split(":")[0].strip()
+                if field_name:
+                    fields.append(field_name)
+    return fields
+
+
 def _eval_doc_generate(st: dict, pred_text: str, gold_text: str, sample: dict):
-    """doc_generate 평가"""
+    """doc_generate 평가 (동적 필드 명세 기반)"""
     pred_json = parse_json_from_text(pred_text)
     if pred_json is None:
         return
 
     st["json_valid"] += 1
 
-    # 템플릿 타입 감지 (시스템 프롬프트에서)
-    sys_content = ""
+    # user prompt에서 동적 필드 명세 추출
+    user_content = ""
     for msg in sample.get("messages", []):
-        if msg.get("role") == "system":
-            sys_content = msg.get("content", "").lower()
+        if msg.get("role") == "user":
+            user_content = msg.get("content", "")
             break
 
-    template_type = "report"  # default
-    if "회의록" in sys_content:
-        template_type = "meeting_minutes"
-    elif "제안서" in sys_content:
-        template_type = "proposal"
-
-    required = REQUIRED_FIELDS.get(template_type, [])
+    expected_fields = _parse_field_spec_from_user(user_content)
     present_fields = set(pred_json.keys())
 
-    # 필드 완전성: 필수 필드 모두 존재?
-    if all(f in present_fields for f in required):
-        st["field_complete"] += 1
+    if expected_fields:
+        # 필드 완전성: 명세의 모든 필드가 존재?
+        if all(f in present_fields for f in expected_fields):
+            st["field_complete"] += 1
 
-    # 필드명 정확도: gold JSON의 키와 비교
-    gold_json = parse_json_from_text(gold_text)
-    if gold_json:
-        gold_keys = set(gold_json.keys())
-        if gold_keys and gold_keys.issubset(present_fields):
+        # 필드명 정확도: 명세 필드와 정확히 일치?
+        expected_set = set(expected_fields)
+        if expected_set == present_fields or expected_set.issubset(present_fields):
             st["field_accurate"] += 1
+    else:
+        # 필드 명세 파싱 실패 시 gold JSON 기준 fallback
+        gold_json = parse_json_from_text(gold_text)
+        if gold_json:
+            gold_keys = set(gold_json.keys())
+            if gold_keys and gold_keys.issubset(present_fields):
+                st["field_complete"] += 1
+                st["field_accurate"] += 1
 
 
 def _eval_doc_qa(st: dict, pred_text: str, gold_text: str):

@@ -720,3 +720,316 @@ Config 분리 (3종):
 - 변형 데이터 생성 (구어체/오타)
 - 검증 + train/eval 분할
 - RunPod A100에서 3개 모델 비교 학습 (Qwen3-8B, EXAONE-3.5-7.8B, Kanana-1.5-8B)
+
+---
+
+## 2026-03-04 (화)
+
+**파인튜닝 시스템 프롬프트 검토 + 데이터 품질 QA:**
+
+프롬프트 ↔ 학습 데이터 일치 검증:
+- v2_summary: `prompts.py` ↔ 학습 데이터 system 100% 일치 (171자) ✅
+- v2_qa: `prompts.py` ↔ 학습 데이터 system 100% 일치 (423자) ✅
+- v2_generate: 동적 필드 방식 system prompt 적용됨 ✅
+
+v2_qa 데이터 다양성 문제 발견 (심각):
+- confidence: 0.9, 0.95 딱 2종류뿐 (600건 전부)
+- relevance: 전부 "높음" (600건 전부)
+- citations 수: 전부 1개 (600건 전부)
+- 합성 스크립트(`synthesize_qa.py`)도 동일 문제 — `build_training_sample`에서 하드코딩
+- **원인**: AI Hub 원본에 confidence/relevance 정보 없어서 변환 시 하드코딩, 합성 스크립트도 그대로 가져감
+
+v2_generate AI Hub 데이터 탈락:
+- 고정 프롬프트 backup: 783건
+- 동적 필드 변환 후: 476건 (307건 탈락)
+- `convert_to_dynamic_fields.py` 변환 실패 원인 확인 필요
+
+3개 어댑터 시스템 프롬프트 개선안 작성:
+- v2_generate: "실제 내용 작성" + "지침 문장 복사 금지" 2줄 추가
+- v2_summary: 출력 형식 단계별 명시 (헤딩명, 포인트 3~5개, 키워드 3~7개 쉼표 구분)
+- v2_qa: confidence 구간 가이드, relevance 판단 기준, citations 복수 허용 명시
+- v2_qa 근본적 설계 선택지 3가지 정리 (A.현행+보완 / B.간소화 / C.자연어)
+
+**산출물:**
+- `ai/finetuning/finetuning_docs/프롬프트_검토_TODO.md` — 검토 결과 + 개선안 + 작업 체크리스트
+
+**다음 할 일 (집에서 이어서):**
+- Step 1: 3개 어댑터 프롬프트 확정 (TODO.md 개선안 기반)
+- Step 2: v2_generate 476건 탈락 원인 확인 + 복구
+- Step 3: v2_qa 합성 스크립트 수정 (다양성 보완)
+- Step 4: 프롬프트 변경 시 AI Hub 데이터 재변환 + 합성 데이터 재생성
+- Step 5: 검증 + train/eval 분할
+
+---
+
+## 2026-03-04 (화) — 오후 세션 (프롬프트 v2 구현)
+
+**프롬프트 v2 스크립트 수정 (8개 파일, 이전 세션에서 완료):**
+- `ai/llm/prompts.py`: sLLM 전용 상수 3개 추가 (DOC_QA/SUMMARY/GENERATE_SLLM_PROMPT)
+- 변환 스크립트 3개 + 합성 스크립트 3개: sys.path + import + SYSTEM_PROMPT 교체
+- `validate_v2_data.py`: QA 스키마 업데이트 (confidence/relevance/source 제거)
+- 플랜 문서: `docs/지용/FINETUNING_PROMPT_V2_PLAN.md`
+
+**기존 문서 2개 업데이트:**
+- `문서Agent_파인튜닝_파이프라인_보고서.md`: v2_qa JSON 간소화 반영, 검증 항목 수정, sLLM 프롬프트 전략 반영, 진행 현황 업데이트
+- `문서Agent_LoRA_v2_파인튜닝_계획.md`: 데이터 포맷 설명 수정, 프롬프트 v2 완료 기록 추가
+
+**데이터 경로 수정:**
+- `convert_aihub_qa.py`, `convert_aihub_summary.py`: `data/raw/aihub/` → `data/raw/ai_hub/` (실제 폴더명과 일치)
+
+**v2_qa MRC 재생성 + 버그 수정:**
+- **버그**: `_char_overlap_ratio` 퍼지 매칭이 한국어 공통 글자로 거의 모든 청크를 매칭 → citations 2~3개 88%
+- **수정**: 정확 substring 매칭 + 인접 청크 경계 처리로 변경
+- **결과**: 324건 (MRC 290 + not-found 34), citations 1개 88.3%, not-found 10.5%
+
+**v2_summary 재생성 + 버그 수정 3건:**
+1. **`20per` 폴더만 로드**: `sorted()` 정렬에서 `20per`가 `2~3sent`보다 먼저 → limit 도달 후 `2~3sent` 미로드
+   - 수정: `2~3sent` 우선 정렬 (summary2 있고, passage에서 포인트 추출 용이)
+2. **소수점 오분할**: `[.!?。]` regex가 `3.5%`의 `.`도 분할
+   - 수정: `(?<!\d)[.!?。]` (숫자 뒤 마침표 무시) + 줄바꿈 분할 추가
+3. **포인트 6개 편향**: 긴 passage에서 항상 5개 이상 추출 → 99%가 6개
+   - 수정: `max_points`를 `random.randint(3, 5)`로 랜덤화
+- **결과**: 700건, 포인트 분포 3개 37% / 4개 32% / 5개 32%, 3개 미만 0건
+
+**데이터 품질 검증:**
+- v2_qa: system prompt byte-for-byte 일치 ✅, JSON 100% valid ✅, 필드 오류 0 ✅
+- v2_summary: system prompt 일치 ✅, 마크다운 구조 100% ✅
+- v2_summary 키워드 품질 이슈: TF 기반 추출 → 조사 포함 821건 (`수사가`, `측면에서`) → `--llm-enhance` 필요
+
+**현재 데이터 현황:**
+
+| 어댑터 | AI Hub 목표 | 완료 | 합성 목표 | 완료 | 변형 목표 | 완료 |
+|--------|:-----------:|:----:|:---------:|:----:|:---------:|:----:|
+| v2_qa | 600 | 324 (MRC만) | 300 | 0 | 100 | 0 |
+| v2_summary | 700 | **700** ✅ | 200 | 0 | 100 | 0 |
+| v2_generate | 460 | 0 | 400 | 0 | 140 | 0 |
+
+**다음 할 일:**
+- 아래 야간 세션에서 이어서 진행
+
+---
+
+## 2026-03-04 (화) — 야간 세션 (데이터 증량 + 문서 동기화)
+
+**v2_generate 1,500건 증량 결정:**
+- 기존 1,000건 → 1,500건 (QLoRA 8B 모델 기준 검토)
+- 이유: 3개 문서 유형(회의록/보고서/제안서) 각각이 별도 서브태스크 → 타입당 500건 필요
+- v2_qa(1,000), v2_summary(1,000)는 단일 태스크라 충분
+
+**부분 누락(빈 필드) 학습 데이터 전략 추가:**
+- v2_generate 할루시네이션 방지: 긴 입력에서 없는 정보를 지어내서 다른 필드에 채우는 현상
+- 합성 600건 중 30% = 180건 (타입당 60건)을 부분 누락으로 생성
+- 타입당: 전체채움 440건 (88%) + 부분누락 60건 (12%)
+
+**v2_generate 최종 구성:**
+
+| 템플릿 | 건수 | AI Hub | 합성 | 변형 |
+|--------|:----:|:------:|:----:|:----:|
+| 회의록 | 600 | 60 (10%) | 420 (70%) | 120 (20%) |
+| 보고서 | 450 | 315 (70%) | 90 (20%) | 45 (10%) |
+| 제안서 | 450 | 315 (70%) | 90 (20%) | 45 (10%) |
+| **합계** | **1,500** | **690 (46%)** | **600 (40%)** | **210 (14%)** |
+
+**문서 동기화 (계획서 + 보고서):**
+- `문서Agent_LoRA_v2_파인튜닝_계획.md`: v2_generate 1,500건 반영, 템플릿별 배분 업데이트, 빈 필드 규칙 상세화, TODO STEP 갯수 업데이트
+- `문서Agent_파인튜닝_파이프라인_보고서.md`: v2_generate 1,500건 반영, 비율 설계 근거 변경, 예상 비용 재계산, 진행현황 업데이트, 디렉토리 구조 업데이트
+
+**전체 데이터 최종 구성:**
+
+| 어댑터 | 총량 | AI Hub | 합성 | 변형 |
+|--------|:----:|:------:|:----:|:----:|
+| v2_qa | 1,000 | 600 (60%) | 300 (30%) | 100 (10%) |
+| v2_summary | 1,000 | 700 (70%) | 200 (20%) | 100 (10%) |
+| v2_generate | 1,500 | 690 (46%) | 600 (40%) | 210 (14%) |
+| **합계** | **3,500** | **1,990 (57%)** | **1,100 (31%)** | **410 (12%)** |
+
+**키워드 보강 순서 변경:**
+- 기존: AI Hub 700건만 먼저 보강
+- 변경: 합성+변형까지 전체 1,000건 모은 후 마지막에 한번에 보강 (~$0.7)
+
+**현재 완료 현황:**
+
+| 어댑터 | AI Hub | 합성 | 변형 |
+|--------|:------:|:----:|:----:|
+| v2_qa | 324/600 (MRC만) | 0/300 | 0/100 |
+| v2_summary | **700/700** ✅ | 0/200 | 0/100 |
+| v2_generate | 0/690 | 0/600 | 0/210 |
+
+**다음 할 일 (API 순서):**
+1. v2_qa Report QA 300건 (GPT-4o, ~$7.5)
+2. v2_generate AI Hub 690건 (GPT-4o, ~$27.6)
+3. 합성 데이터 1,100건 (GPT-4o/Claude, ~$22, 부분 누락 포함)
+4. 변형 데이터 410건 (규칙 기반, $0)
+5. v2_summary 키워드 보강 — 전체 1,000건 (GPT-4o-mini, ~$0.7)
+6. 전체 검증 + train/eval 분할
+
+---
+
+## 2026-03-05 (수)
+
+**v2_generate 필드 풀 방식 재설계 (다른 PC에서 작업 후 pull):**
+- 기존 고정 필드 방식 폐기 → 필드 풀 랜덤 조합 방식으로 전환
+- 문서유형별 15~20개 필드 풀 정의, 매 샘플 6~10개 랜덤 선택
+- aihub_generate.jsonl + synthetic_generate.jsonl 삭제 후 재생성 중
+
+**3개 어댑터 데이터 품질 심층 검증:**
+- v2_generate: 필드 풀 방식 정상 동작 확인
+- v2_qa: aihub_qa에서 34% 단답 문제 발견 (10자 미만)
+- v2_summary: aihub + synthetic 양쪽 모두 품질 문제 발견
+  - aihub: 규칙 기반 build_assistant_response()가 국회 속기록에서 쓰레기 생성
+  - synthetic: SUMMARY_GENERATION_SYSTEM 번호 형식을 GPT가 메타지시문 그대로 복사
+
+**v2_summary 스크립트 전면 재설계:**
+- `convert_aihub_summary.py`:
+  - 카테고리 10종→5종 선별 (뉴스180/보도160/보고서160/간행물100/사설100)
+  - 제외: 회의록(국회속기록), 연설문, 역사기록물, 문학, 나레이션
+  - build_assistant_response() 삭제 → GPT-4o 요약 생성으로 교체
+  - validate_summary() 메타지시문 복사 감지 추가
+- `synthesize_summary.py`:
+  - SUMMARY_GENERATION_SYSTEM → DOC_SUMMARY_SLLM_PROMPT 교체
+  - validate_summary()에 메타지시문 복사 감지 추가
+
+**aihub_qa 단답 보강:**
+- `convert_aihub_qa.py`에 `enhance_short_answers()` 함수 추가
+- 15자 미만 단답 152건 → GPT-4o로 서술형 답변 재생성
+- 결과: 150건 성공, 2건 영구 실패 (허용 범위)
+- `--enhance-short`, `--min-answer-len` CLI 옵션 추가
+
+**synthetic_qa 400건 조정:**
+- synthesize_qa.py --append --count 64 실행 → 69건 추가 (not-found 7건 자동 추가)
+- 405건→400건 트리밍
+- not-found 비율 9.5%→12.0% 조정 (카테고리 교차 매칭으로 10건 추가 생성)
+- 최종: 352 normal + 48 not-found = 400건 (12.0%)
+
+**보고서 업데이트:**
+- v2_qa 완료 반영 (synthetic 300→400건, aihub 단답 보강)
+- v2_summary 재설계 반영 (카테고리 선별, GPT-4o 요약)
+- 스크립트 테이블 건수 업데이트
+- 리스크 섹션 summary 행 업데이트
+- 구현 이력 2026-03-05 오후 섹션 추가
+
+**현재 데이터 현황:**
+
+| 어댑터 | AI Hub | 합성 | 상태 |
+|--------|:------:|:----:|:----:|
+| v2_qa | 600/600 ✅ | 400/400 ✅ | **완료** (병합 대기) |
+| v2_summary | 0/700 | 0/300 | 스크립트 준비 완료, 재생성 대기 |
+| v2_generate | 생성 중 | 생성 중 | 다른 PC에서 작업 중 |
+
+**다음 할 일:**
+- 아래 야간 세션에서 이어서 진행
+
+---
+
+## 2026-03-05 (수) — 야간 세션
+
+**v2_summary 데이터 생성 완료:**
+- `convert_aihub_summary.py`: 702건 생성 (목표 700, +2건 초과)
+  - 컴퓨터 꺼짐 → `--append` 옵션 추가하여 이어서 생성 (JSONL 포맷 덕분에 데이터 유실 없음)
+- `synthesize_summary.py`: 305건 생성 (목표 300, +5건 초과)
+- validate_summary() 검증 강화: 포인트 3~5개, 키워드 3~7개, 메타지시문 5패턴 감지
+
+**v2_generate 데이터 생성 완료:**
+- synthetic_generate.jsonl: 801건 (목표 800)
+- aihub_generate.jsonl: 700건 (기존 완료)
+
+**validate_v2_data.py 검증 스크립트 전면 개선:**
+- v2_generate: 고정 필드 검증 → 동적 `[필드 명세]` 파싱 기반 검증으로 변경
+- v2_summary: 포인트/키워드 개수 + 메타지시문 감지 추가
+- `_detect_task()`: 동적 필드 프롬프트 감지 키워드 추가
+- 중복 체크: assistant만 비교 → user+assistant 쌍 비교 (not-found 오탐 해결)
+
+**전체 데이터 검증 실행:**
+```
+총 샘플: 3,508건 | 에러: 0건 | 경고: 178건 | 중복: 0건 | 판정: PASS
+```
+- 경고 178건: 전부 조사 포함 키워드 오탐 (정규식 과탐, 실제 품질 문제 아님)
+
+**보고서 업데이트:**
+- Section 4: 실제 데이터 수량 반영 (3,508건)
+- Section 5: 검증 결과 기록 (에러 0건)
+- Section 6: Train/Eval 분할 수치 실제 데이터에 맞게 수정
+- Section 13: Solar API → LLM API fallback으로 수정
+- 부록 A: variant 파일 제거, 건수/상태 최신화
+
+**데이터 생성 과정 기록 문서 작성:**
+- `ai/finetuning/finetuning_docs/데이터_생성_과정_기록.md` 신규 생성
+- 8단계 타임라인 + 최종 데이터 현황 + 데이터 구조 + 핵심 설계 결정 기록
+
+**최종 데이터 현황:**
+
+| 어댑터 | AI Hub | 합성 | 합계 | 상태 |
+|--------|:------:|:----:|:----:|:----:|
+| v2_summary | 702 | 305 | 1,007 | 완료 |
+| v2_qa | 600 | 400 | 1,000 | 완료 |
+| v2_generate | 700 | 801 | 1,501 | 완료 |
+| **합계** | **2,002** | **1,506** | **3,508** | **완료** |
+
+**다음 할 일:**
+- 토큰 길이 분석 (max_length=2048 충분한지 확인)
+- Train/Eval 분할 (`validate_v2_data.py --split`)
+- GPU 환경 준비 → 3개 모델 비교 학습
+
+---
+
+## 2026-03-06 (목)
+
+**토큰 길이 분석 + max_length 결정:**
+- Qwen3-8B 토크나이저로 3,500건 전체 토큰 길이 분석
+- 결과: 97.8%가 2048 이하, 77건 초과 (전부 v2_generate)
+- 77건 모두 2647 이하 → max_length=2560 결정 (H200 141GB VRAM 여유)
+- 2048에서 자르면 assistant JSON이 깨지므로 증가가 필수
+
+**데이터 라운드 넘버 트리밍:**
+- v2_summary: 1,007 → 1,000 (aihub 702→700, synthetic 305→300)
+- v2_generate: 1,501 → 1,500 (synthetic 801→800)
+- v2_qa: 1,000 유지
+
+**Train/Eval 분할 (seed=42, 90:10):**
+- v2_summary: train 900 / eval 100
+- v2_qa: train 900 / eval 100
+- v2_generate: train 1,350 / eval 150
+- 총 3,500건
+
+**빡센 데이터 검증 (GPU 투입 전 최종 QA):**
+- 소스 데이터: 에러 0건, JSON 100% valid, 완전 중복 0건
+- train↔eval 누수: 0건
+- 내부 중복: train 0건, eval 0건
+- 소스↔train+eval 합계 일치: 3개 모두 일치
+- 인코딩 깨짐(U+FFFD): 1건 발견 → 수정 완료
+- v2_qa 동일문서 다른질문: 24건 (정상 — 같은 문서에서 다른 질문)
+- v2_generate 필드 조합 다양성: 1,094개 고유 조합 / 1,350건 (81%)
+- 내용 품질 확인: 3개 어댑터 랜덤 샘플 눈으로 검증, not-found 케이스 정상
+
+**학습 스크립트 전면 점검 + 수정:**
+- `train_v2_document.py`:
+  - TrainingArguments → SFTConfig 마이그레이션 (trl 0.28+ 호환)
+  - max_seq_length → max_length 파라미터명 변경
+  - warmup_ratio → warmup_steps (deprecated 대응)
+  - enable_input_require_grads() 방어 코드 추가
+  - do_sample=False 시 temperature 제거
+  - dataset_text_field 버전 호환 처리
+  - 동적 필드 평가 함수 추가 (_parse_field_spec_from_user)
+  - confidence 필드 제거 (QA eval)
+  - max_length config에서 동적 로드
+- `runpod_setup.sh`:
+  - GitHub URL 수정 (개인→org 레포)
+  - pip install -U 강제 업그레이드 + CUDA 12.4 torch 전용 설치
+  - HF_TOKEN 미설정 시 경고 추가
+  - 모델 학습 실패 시 다음 모델로 계속 진행
+  - 버전 출력 추가 (torch, trl)
+- 3개 YAML config: max_length 2048→2560
+
+**AIHub 데이터 파이프라인 문서:**
+- `ai/finetuning/finetuning_docs/AIHub_데이터_파이프라인.md` 작성 (멘토 리뷰용)
+- AIHub 022 데이터 구조, 파이프라인 다이어그램, GPT-4o 역할, 프롬프트 3종 명세
+
+**RunPod H200 학습 시작:**
+- H200 141GB + Network Volume 60GB (US-TX-3) 세팅
+- generate 태스크 3모델(Qwen3-8B, EXAONE, Kanana) 순차 학습 실행 중
+
+**다음 할 일:**
+- generate 학습 완료 확인 → qa, summary 순차 실행
+- 3개 어댑터 × 3개 모델 = 9 runs 평가 결과 비교
+- 베스트 모델 선택 + 결과 정리
+- 결과 다운로드 후 로컬 배치

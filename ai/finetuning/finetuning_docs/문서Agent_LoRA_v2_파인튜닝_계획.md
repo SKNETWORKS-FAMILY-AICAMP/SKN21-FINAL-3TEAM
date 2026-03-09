@@ -1,6 +1,10 @@
-# 문서 Agent LoRA v2 파인튜닝 계획
+# ~~문서 Agent LoRA v2 파인튜닝 계획~~ (DEPRECATED)
 
-> 최종 수정: 2026-03-04
+> **⚠️ 이 문서는 더 이상 업데이트되지 않습니다.**
+> **정본 문서: [`문서Agent_파인튜닝_파이프라인_보고서.md`](./문서Agent_파인튜닝_파이프라인_보고서.md)**
+> 이 계획서의 TODO, 리스크, 구현 이력은 모두 보고서로 통합되었습니다. (2026-03-05)
+>
+> ~~최종 수정: 2026-03-04~~
 > 담당: 신지용 (PM, 승언 업무 인수, 데이터 수집 단독 진행)
 
 ---
@@ -95,15 +99,15 @@ VRAM 예상: Kanana ~5GB + Qwen3 ~5GB + LoRA 어댑터 + KV Cache = ~25GB → RT
 
 ## 5. 학습 데이터 설계
 
-### v2_generate (P0) — 총 1,000개
+### v2_generate (P0) — 총 1,500개
 
 | 템플릿 | 수량 | AI Hub | 합성 | 변형 | 비고 |
 |--------|:----:|:------:|:----:|:----:|------|
-| 회의록 | 400개 | 40개 (10%) | 280개 (70%) | 80개 (20%) | **합성 중심** (기업 회의록 공개 데이터 없음) |
-| 보고서 | 300개 | 210개 (70%) | 60개 (20%) | 30개 (10%) | AI Hub 보고서/간행물 원문 활용 |
-| 제안서 | 300개 | 210개 (70%) | 60개 (20%) | 30개 (10%) | AI Hub 보도자료/간행물 원문 활용 |
+| 회의록 | 600개 | 60개 (10%) | 420개 (70%) | 120개 (20%) | **합성 중심** (기업 회의록 공개 데이터 없음) |
+| 보고서 | 450개 | 315개 (70%) | 90개 (20%) | 45개 (10%) | AI Hub 보고서/간행물 원문 활용 |
+| 제안서 | 450개 | 315개 (70%) | 90개 (20%) | 45개 (10%) | AI Hub 보도자료/간행물 원문 활용 |
 
-빈 필드 규칙: 전체의 ~30%는 일부 선택 필드를 빈 문자열/빈 배열로 포함 (실사용 대응)
+빈 필드 규칙: 합성 데이터의 ~30% (타입당 60건, 전체 180건)를 부분 누락으로 생성 — 할루시네이션 방지 (긴 입력에서 없는 정보를 지어내서 다른 필드에 채우는 현상 방지)
 
 > **meeting_minutes 합성 중심 이유**: AI Hub 회의록 = 국회 속기록(발언자 대화 형식)으로
 > 기업 회의록과 도메인/스타일이 다름. 공개 기업 회의록 데이터셋이 존재하지 않아
@@ -115,9 +119,9 @@ VRAM 예상: Kanana ~5GB + Qwen3 ~5GB + LoRA 어댑터 + KV Cache = ~25GB → RT
 
 | 소스 | 비율 | 개수 | 역할 |
 |------|:----:|:----:|------|
-| AI Hub 원문 + GPT-4o 변환 | 46% | 460개 | report 210 + proposal 210 + meeting 40 |
-| GPT-4o/Claude 합성 | 40% | 400개 | meeting 280 + report 60 + proposal 60 |
-| 변형(구어체/오타) | 14% | 140개 | meeting 80 + report 30 + proposal 30 |
+| AI Hub 원문 + GPT-4o 변환 | 46% | 690개 | report 315 + proposal 315 + meeting 60 |
+| GPT-4o/Claude 합성 | 40% | 600개 | meeting 420 + report 90 + proposal 90 (부분 누락 180건 포함) |
+| 변형(구어체/오타) | 14% | 210개 | meeting 120 + report 45 + proposal 45 |
 
 ### v2_qa (P1) — 총 1,000개
 
@@ -146,10 +150,12 @@ VRAM 예상: Kanana ~5GB + Qwen3 ~5GB + LoRA 어댑터 + KV Cache = ~25GB → RT
 
 | 어댑터 | 데이터 | AI Hub | 합성 | 변형 | 예상 비용 |
 |--------|:------:|:------:|:----:|:----:|:---------:|
-| v2_generate | **1,000개** | 460 (46%) | 400 (40%) | 140 (14%) | ~$18 |
-| v2_qa | **1,000개** | 600 (60%) | 300 (30%) | 100 (10%) | ~$19 |
-| v2_summary | **1,000개** | 700 (70%) | 200 (20%) | 100 (10%) | ~$7.5 |
-| **합계** | **3,000개** | **1,760 (59%)** | **900 (30%)** | **340 (11%)** | **~$44.5** |
+| v2_generate | **1,500개** | 690 (46%) | 600 (40%) | 210 (14%) | ~$27 + $12 |
+| v2_qa | **1,000개** | 600 (60%) | 300 (30%) | 100 (10%) | ~$7.5 + $6 |
+| v2_summary | **1,000개** | 700 (70%) | 200 (20%) | 100 (10%) | ~$0.7 + $4 |
+| **합계** | **3,500개** | **1,990 (57%)** | **1,100 (31%)** | **410 (12%)** | **~$57.2** |
+
+> 비용 = AI Hub 변환 + 합성 데이터 생성. 변형 데이터는 규칙 기반($0).
 
 ### 데이터 포맷 (JSONL, SFTTrainer messages 형식)
 
@@ -162,7 +168,7 @@ VRAM 예상: Kanana ~5GB + Qwen3 ~5GB + LoRA 어댑터 + KV Cache = ~25GB → RT
 ```
 
 - doc_generate → assistant가 **순수 JSON** 출력 (영문 필드명 필수)
-- doc_qa → assistant가 **JSON** 출력 (answer + citations + confidence)
+- doc_qa → assistant가 **JSON** 출력 (answer + citations[].content만 — confidence/source/relevance는 백엔드가 RAG score 기반 계산)
 - doc_summary → assistant가 **마크다운** 출력 (요약 + 주요포인트 + 키워드)
 
 샘플 데이터: `data/training/v2_*/sample_*.jsonl` 참고
@@ -276,15 +282,29 @@ VRAM 예상: Kanana ~5GB + Qwen3 ~5GB + LoRA 어댑터 + KV Cache = ~25GB → RT
 | FORMAT_GUIDE.md 업데이트 | `data/training/v2_document/FORMAT_GUIDE.md` | ✅ |
 | v2_generate/qa/summary config 수량 업데이트 | `ai/finetuning/configs/v2_*.yaml` | ✅ |
 
+### 완료 (2026-03-04 추가 — 프롬프트 v2)
+
+| 작업 | 파일 | 상태 |
+|------|------|:----:|
+| sLLM 전용 프롬프트 상수 3개 추가 | `ai/llm/prompts.py` | ✅ |
+| v2_qa JSON 간소화 + 퍼지 매칭 + not-found | `ai/finetuning/scripts/convert_aihub_qa.py` | ✅ |
+| v2_generate SYSTEM_PROMPT 교체 | `ai/finetuning/scripts/convert_to_dynamic_fields.py` | ✅ |
+| v2_summary SYSTEM_PROMPT 교체 + 포인트 필터 | `ai/finetuning/scripts/convert_aihub_summary.py` | ✅ |
+| 합성 스크립트 3개 SYSTEM_PROMPT 교체 | `synthesize_qa/generate/summary.py` | ✅ |
+| validate_v2_data.py 스키마 업데이트 | `ai/finetuning/validate_v2_data.py` | ✅ |
+| 프롬프트 v2 플랜 문서화 | `docs/지용/FINETUNING_PROMPT_V2_PLAN.md` | ✅ |
+
+> 상세 내용: `docs/지용/FINETUNING_PROMPT_V2_PLAN.md` 참고
+
 ### TODO: 데이터 수집 (PM 단독 진행)
 
 | 단계 | 작업 |
 |------|------|
 | STEP 1 | ~~AI Hub 데이터 다운로드~~ → 완료 (SN 582 + SN 569) |
-| STEP 2 | 변환 스크립트 실행: summary 700 → generate 420 → qa 600 |
-| STEP 3 | meeting_minutes 합성 데이터 280개 생성 (GPT-4o/Claude) |
-| STEP 4 | 나머지 합성 데이터 생성 (report 60 + proposal 60 + qa 300 + summary 200) |
-| STEP 5 | 변형 데이터 생성 (구어체/오타) 340개 |
+| STEP 2 | 변환 스크립트 실행: summary 700 → generate 690 → qa 600 |
+| STEP 3 | meeting_minutes 합성 데이터 420개 생성 (GPT-4o/Claude) |
+| STEP 4 | 나머지 합성 데이터 생성 (report 90 + proposal 90 + qa 300 + summary 200, 부분 누락 180건 포함) |
+| STEP 5 | 변형 데이터 생성 (구어체/오타) 410개 |
 | STEP 6 | 3단계 품질 검증: 자동검증 → LLM 교차검증 → 수동 샘플링(150개) |
 | STEP 7 | train/eval 분할 (generate/qa 10%, summary 15%) |
 
