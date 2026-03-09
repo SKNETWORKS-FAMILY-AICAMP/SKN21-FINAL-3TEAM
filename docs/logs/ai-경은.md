@@ -912,3 +912,66 @@ MakerBot METHOD 매뉴얼처럼 `1장 소개`, `## 안전 경고 기호`, `**무
 - v2 보강 데이터 병합 후 RunPod에서 LoRA v2 학습 실행
 - v1 vs v2 성능 비교 (특히 no 82%→목표 88%+, conditional 84%→87%+)
 - 전체 정확도 목표: 86.6% → 90%+
+
+---
+
+## 2026-03-09 (일) — RAG 검색 고도화 + 성능 평가
+
+### 1. RAG 파이프라인 고도화 (3단계 개선)
+
+| 방법 | 기존 상태 | 개선 내용 |
+|------|----------|----------|
+| Reranker 활성화 | 비활성화 | Cross-Encoder(bge-reranker-v2-m3) 활성화, score_threshold=-2.0 |
+| Query Refinement 강화 | 동의어 사전 + 구어체 변환 | HyDE(가상 문서 생성) 기반 벡터 검색 품질 향상 |
+| 메타데이터 필터링 | chapter/source 기반 | 태그/카테고리 매칭 부스트, Score 표시 추가 |
+| 청크 전략 개선 | 현재 고정 크기 추정 | 조항 단위 청킹으로 정밀도 향상 |
+| Score threshold | 없음 | RRF 점수 하한선 설정 → 낮은 점수 문서 제거 |
+
+### 2. RAG 벤치마크 결과
+
+**파일**: `data/evaluation/benchmark_results/rag_improvement_comparison.json`
+
+| 지표 | 결과 |
+|------|------|
+| Hit Rate | **95.24%** (21건 중 20건 적중) |
+| MRR (Mean Reciprocal Rank) | **0.636** |
+| 평균 순위 | 2.65 |
+| 평균 검색 시간 | ~0.22초 |
+| 테스트 케이스 | 21개 judgment 쿼리 |
+
+### 3. 파인튜닝 재학습 불필요 판단
+
+RAG 개선(3단계)과 LoRA 파인튜닝(4단계)은 독립적 구조:
+- RAG 개선 → 모델에 더 좋은 규정 문서를 전달 (입력 품질 향상)
+- LoRA v1 모델 → 동일한 입출력 형식으로 그대로 사용 가능
+- **결론**: 기존 LoRA v1(86.6%)을 RAG 개선 환경에서 재평가하여 실질 성능 확인 후, 부족 시 v2 학습 진행
+
+### 4. 수정 파일 (커밋 완료)
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `ai/rag/hybrid_search.py` | Reranker 활성화, HyDE 적용, score threshold, 태그 매칭 부스트 |
+| `ai/rag/query_refiner.py` | HyDE 가상 문서 생성, 동의어 사전 확장 |
+| `ai/rag/qdrant_pipeline.py` | BM25 인덱스 태그 정리, score threshold 설정 |
+| `ai/agents/document_agent.py` | 문서 scope 필터링 개선 |
+| `ai/tests/benchmark_rag_improvement.py` | RAG 개선 전/후 벤치마크 스크립트 |
+
+### 5. 현재 전체 성능 요약
+
+| 모듈 | 지표 | 결과 |
+|------|------|------|
+| RAG 검색 | Hit Rate | 95.24% |
+| RAG 검색 | MRR | 0.636 |
+| 판단 Agent (LoRA v1) | 전체 정확도 | 86.6% (목표 85% 달성) |
+| 판단 Agent (LoRA v1) | no_regulation | 97.0% |
+| 판단 Agent (LoRA v1) | yes | 85.0% |
+| 판단 Agent (LoRA v1) | conditional | 84.0% |
+| 판단 Agent (LoRA v1) | no | 82.0% |
+| Intent 분류 (KoELECTRA) | Adversarial F1 | 0.8758 |
+| Intent 분류 (KoELECTRA) | 추론 속도 | 7.9ms |
+
+**다음 할 일:**
+- RAG 개선 환경에서 LoRA v1 모델 재평가 (실질 정확도 변화 측정)
+- 재평가 결과 90%+ 미달 시 → v2 보강 데이터로 LoRA v2 학습 실행
+- v2 목표: no 82%→88%+, conditional 84%→87%+, 전체 86.6%→90%+
+- 5단계 성능 평가 (#13) — 전체 파이프라인 E2E 정량 평가
