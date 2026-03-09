@@ -195,7 +195,7 @@ function useDashboardData() {
       const { time, period } = formatTime12(s.start_time);
       return {
         title: s.title,
-        assignee: s.schedule_type || '',
+        assignee: s.user_name || s.assigned_to || '',
         deadline: time ? `${period} ${time}` : '종일',
         priority: 'low',
       };
