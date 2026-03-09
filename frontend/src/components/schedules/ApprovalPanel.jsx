@@ -363,7 +363,7 @@ export default function ApprovalPanel({ onReady, externalActions }) {
                                 <button
                                     type="submit"
                                     disabled={submitting}
-                                    className="flex-1 py-3 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-black rounded-xl shadow-xl hover:scale-105 transition-all disabled:opacity-50"
+                                    className="flex-1 py-3 bg-primary-700 text-white text-xs font-black rounded-xl shadow-xl shadow-primary-700/20 hover:bg-primary-800 hover:scale-105 transition-all disabled:opacity-50"
                                 >
                                     {submitting ? '제출 중...' : '요청 제출'}
                                 </button>

@@ -118,7 +118,7 @@ export default function Header() {
             
           </div>
 
-          <Link to="/schedules" className="w-[48px] h-[48px] ml-3 mr-1 rounded-full bg-neutral-900 flex items-center justify-center hover:bg-neutral-800 border border-neutral-800 transition-colors shadow-sm text-white focus:outline-none flex-shrink-0">
+          <Link to="/schedules" className="w-[48px] h-[48px] ml-3 mr-1 rounded-full bg-primary-700 flex items-center justify-center hover:bg-primary-800 border border-primary-800 transition-colors shadow-sm text-white focus:outline-none flex-shrink-0">
             <ArrowUpRight size={20} strokeWidth={2.5} />
           </Link>
         </div>

@@ -43,6 +43,7 @@ export default function ApprovalQueueWidget() {
   const [formData, setFormData] = useState({ type: 'leave', title: '', detail: '' });
   const [formFile, setFormFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     client.get('/auth/team-members')
@@ -150,8 +151,12 @@ export default function ApprovalQueueWidget() {
   };
 
   const loadAll = async (trySeed = false) => {
-    const [approvals, taskAlerts] = await Promise.all([loadApprovals(trySeed), loadTaskAlerts()]);
-    setItems([...taskAlerts, ...approvals].sort((a, b) => b.priority - a.priority));
+    try {
+      const [approvals, taskAlerts] = await Promise.all([loadApprovals(trySeed), loadTaskAlerts()]);
+      setItems([...taskAlerts, ...approvals].sort((a, b) => b.priority - a.priority));
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { loadAll(true); }, []);
@@ -354,7 +359,7 @@ export default function ApprovalQueueWidget() {
           ))}
         </AnimatePresence>
 
-        {visibleItems.length === 0 && !isCollapsed && (
+        {visibleItems.length === 0 && !isCollapsed && !loading && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

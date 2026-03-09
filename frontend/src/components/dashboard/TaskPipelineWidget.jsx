@@ -490,7 +490,7 @@ export default function TaskPipelineWidget() {
                                 <button
                                     type="submit"
                                     disabled={addSubmitting}
-                                    className="flex-1 py-4 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-black rounded-xl shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                                    className="flex-1 py-4 bg-primary-700 text-white text-xs font-black rounded-xl shadow-xl shadow-primary-700/20 hover:bg-primary-800 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
                                 >
                                     {addSubmitting ? '추가 중...' : '태스크 생성'}
                                 </button>

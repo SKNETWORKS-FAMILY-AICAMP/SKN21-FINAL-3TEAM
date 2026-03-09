@@ -623,7 +623,7 @@ export default function ChatPage() {
               onClick={() => setSessionSidebarOpen(!sessionSidebarOpen)}
               title={sessionSidebarOpen ? '대화 목록 닫기' : '대화 목록'}
               className={`w-11 h-11 flex items-center justify-center rounded-full shadow-sm transition hover:shadow-md ${sessionSidebarOpen
-                ? 'bg-neutral-900 text-white'
+                ? 'bg-primary-700 text-white'
                 : 'bg-surface-card text-neutral-sub hover:text-neutral-main border border-neutral-border'
                 }`}
             >

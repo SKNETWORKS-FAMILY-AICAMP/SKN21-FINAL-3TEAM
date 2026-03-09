@@ -20,14 +20,8 @@ const getMeetingStatus = (m) => {
   return { variant: 'status-scheduled', label: '예정' };
 };
 
-const TYPE_COLORS = {
-  meeting: '#6E87A0',
-  deadline: '#C06060',
-  project: '#8B7CB8',
-  google: '#6AAB7A',
-};
 
-export default function TodaySchedule({ meetings = [], actions = [], inProgressMeetings = [], loading = false }) {
+export default function TodaySchedule({ meetings = [], actions = [], loading = false }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [, setNow] = useState(dayjs());
 
@@ -98,32 +92,6 @@ export default function TodaySchedule({ meetings = [], actions = [], inProgressM
           </>
         )}
       </div>
-
-      {/* 진행 중인 멀티데이 일정 — 스크롤 영역 밖, 항상 하단 고정 */}
-      {inProgressMeetings.length > 0 && (
-        <div className="border-t border-neutral-divider pt-2 mb-3 space-y-1">
-          {inProgressMeetings.map((m, i) => {
-            const color = TYPE_COLORS[m.scheduleType] || '#9CA3AF';
-            return (
-              <Link
-                key={i}
-                to="/schedules"
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-surface-hover transition-colors"
-                style={{ borderLeft: `3px solid ${color}` }}
-              >
-                <span className="flex-1 min-w-0 text-[11px] font-semibold text-neutral-sub truncate">{m.title}</span>
-                <span className="text-[10px] text-neutral-muted whitespace-nowrap">{m.startDate} ~ {m.endDate}</span>
-                <span
-                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap"
-                  style={{ backgroundColor: `${color}22`, color }}
-                >
-                  진행중
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      )}
 
       {!isCollapsed && (
         <>
