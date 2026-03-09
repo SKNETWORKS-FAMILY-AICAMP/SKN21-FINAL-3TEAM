@@ -27,7 +27,7 @@ const TYPE_COLORS = {
   google: '#6AAB7A',
 };
 
-export default function TodaySchedule({ meetings = [], actions = [], inProgressMeetings = [] }) {
+export default function TodaySchedule({ meetings = [], actions = [], inProgressMeetings = [], loading = false }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [, setNow] = useState(dayjs());
 
@@ -55,10 +55,25 @@ export default function TodaySchedule({ meetings = [], actions = [], inProgressM
       </div>
 
       <div className="overflow-y-auto pr-2 custom-scrollbar space-y-2 mb-2">
-        {displayMeetings.length === 0 && (
-          <p className="text-sm font-bold text-neutral-muted py-2 text-center mt-4">오늘 예정된 회의가 없습니다.</p>
-        )}
-        {displayMeetings.map((m, i) => (
+        {loading ? (
+          <div className="animate-pulse space-y-2 mt-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-2xl bg-neutral-100 dark:bg-neutral-800">
+                <div className="w-12 h-12 rounded-xl bg-neutral-200 dark:bg-neutral-700 flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 bg-neutral-200 dark:bg-neutral-700 rounded w-3/4" />
+                  <div className="h-2.5 bg-neutral-200 dark:bg-neutral-700 rounded w-1/2" />
+                </div>
+                <div className="w-12 h-5 bg-neutral-200 dark:bg-neutral-700 rounded-full" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            {displayMeetings.length === 0 && (
+              <p className="text-sm font-bold text-neutral-muted py-2 text-center mt-4">오늘 예정된 회의가 없습니다.</p>
+            )}
+            {displayMeetings.map((m, i) => (
           <Link key={i} to="/schedules" className="group flex items-center gap-3 p-3 rounded-2xl border border-transparent bg-white/40 dark:bg-white/[0.06] dark:border-white/[0.08] hover:border-primary-200 dark:hover:border-white/20 hover:shadow-soft transition-all duration-300 relative overflow-hidden">
             <div className="absolute inset-0 bg-primary-50 dark:bg-white/[0.04] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             <div className="relative z-10 text-center flex-shrink-0 bg-primary-50 dark:bg-white/10 w-12 h-12 rounded-xl flex flex-col items-center justify-center">
@@ -79,7 +94,9 @@ export default function TodaySchedule({ meetings = [], actions = [], inProgressM
               {(() => { const s = getMeetingStatus(m); return <Badge variant={s.variant}>{s.label}</Badge>; })()}
             </div>
           </Link>
-        ))}
+            ))}
+          </>
+        )}
       </div>
 
       {/* 진행 중인 멀티데이 일정 — 스크롤 영역 밖, 항상 하단 고정 */}
@@ -120,10 +137,24 @@ export default function TodaySchedule({ meetings = [], actions = [], inProgressM
             </h3>
           </div>
           <div className="space-y-2">
-            {actions.length === 0 && (
-              <p className="text-sm font-bold text-neutral-muted py-2 text-center">내일 예정된 일정이 없습니다.</p>
-            )}
-            {actions.map((item, i) => (
+            {loading ? (
+              <div className="animate-pulse space-y-2">
+                {[1, 2].map(i => (
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-2xl bg-neutral-100 dark:bg-neutral-800">
+                    <div className="w-12 h-12 rounded-xl bg-neutral-200 dark:bg-neutral-700 flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-neutral-200 dark:bg-neutral-700 rounded w-2/3" />
+                      <div className="h-2.5 bg-neutral-200 dark:bg-neutral-700 rounded w-1/3" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                {actions.length === 0 && (
+                  <p className="text-sm font-bold text-neutral-muted py-2 text-center">내일 예정된 일정이 없습니다.</p>
+                )}
+                {actions.map((item, i) => (
               <Link
                 key={i}
                 to="/schedules"
@@ -145,7 +176,9 @@ export default function TodaySchedule({ meetings = [], actions = [], inProgressM
                   )}
                 </div>
               </Link>
-            ))}
+                ))}
+              </>
+            )}
           </div>
         </>
       )}

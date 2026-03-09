@@ -42,7 +42,14 @@ export default function LoginPage() {
     try {
       await login(email, password);
     } catch (err) {
-      const msg = err.response?.data?.detail || '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.';
+      let msg;
+      if (!err.response) {
+        msg = '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';
+      } else if (Array.isArray(err.response?.data?.detail)) {
+        msg = '입력값을 확인해주세요.';
+      } else {
+        msg = err.response?.data?.detail || '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.';
+      }
       setError(msg);
     } finally {
       setLoading(false);
