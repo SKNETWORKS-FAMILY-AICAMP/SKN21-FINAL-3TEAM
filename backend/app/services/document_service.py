@@ -69,7 +69,13 @@ async def analyze_document_with_llm(text: str, title: str) -> dict | None:
 
         import json
         result = json.loads(response.content)
-        logger.info(f"문서 LLM 분석 완료: category={result.get('category')}, tags={result.get('tags')}")
+        # category를 tags 첫 번째에 포함
+        category = result.get("category", "")
+        tags = result.get("tags", [])
+        if category and category not in tags:
+            tags = [category] + tags
+        result["tags"] = tags
+        logger.info(f"문서 LLM 분석 완료: category={result.get('category')}, tags={tags}")
         return result
 
     except Exception as e:
