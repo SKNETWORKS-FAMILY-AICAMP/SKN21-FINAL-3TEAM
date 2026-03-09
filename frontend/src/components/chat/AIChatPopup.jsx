@@ -269,7 +269,7 @@ export default function AIChatPopup({ isOpen: externalOpen, onClose }) {
                           <button
                             key={q.text}
                             onClick={() => handleSearch(q.text)}
-                            className="w-full text-left px-4 py-3.5 rounded-2xl text-xs font-bold bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-100 dark:border-neutral-700 transition-all hover:border-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-700 dark:hover:text-primary-300 shadow-sm"
+                            className="w-full text-left px-4 py-3.5 rounded-2xl text-xs font-bold bg-surface-card text-neutral-sub border border-neutral-divider transition-all hover:border-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-700 dark:hover:text-primary-300 shadow-sm"
                           >
                             {q.text}
                           </button>
@@ -288,7 +288,7 @@ export default function AIChatPopup({ isOpen: externalOpen, onClose }) {
                             <button
                               key={s.session_id}
                               onClick={() => handleSessionClick(s.session_id)}
-                              className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-2xl transition-all hover:bg-white dark:hover:bg-neutral-800 border border-transparent hover:border-neutral-100 dark:hover:border-neutral-700 group"
+                              className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-2xl transition-all hover:bg-surface-card border border-transparent hover:border-neutral-divider group"
                             >
                               <div className="bg-neutral-100 dark:bg-neutral-800 p-2 rounded-xl text-neutral-400 group-hover:text-primary-500 transition-colors">
                                 <MessageSquare size={14} />
@@ -329,7 +329,7 @@ export default function AIChatPopup({ isOpen: externalOpen, onClose }) {
                             )}
                             <div className={`px-4 py-3 rounded-2xl text-sm ${msg.role === 'user'
                                 ? 'bg-primary-500 text-white rounded-br-none shadow-lg shadow-primary-500/20'
-                                : 'bg-white/80 dark:bg-neutral-800/80 text-neutral-800 dark:text-neutral-200 rounded-bl-none border border-neutral-100 dark:border-neutral-700'
+                                : 'bg-surface-card/80 text-neutral-main rounded-bl-none border border-neutral-divider'
                               }`}>
                               <MarkdownText>{msg.content}</MarkdownText>
                               {msg.role === 'assistant' && !msg.content && i === messages.length - 1 && isStreaming && (
@@ -364,12 +364,12 @@ export default function AIChatPopup({ isOpen: externalOpen, onClose }) {
                   onKeyDown={handleKeyDown}
                   placeholder="메시지를 입력하세요..."
                   disabled={isStreaming}
-                  className="w-full pl-5 pr-14 py-4 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-[1.25rem] text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all shadow-sm placeholder:text-neutral-400 dark:text-white disabled:opacity-50"
+                  className="w-full pl-5 pr-14 py-4 bg-surface-card border border-neutral-border rounded-[1.25rem] text-sm text-neutral-main outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all shadow-sm placeholder:text-neutral-muted disabled:opacity-50"
                 />
                 <button
                   onClick={() => handleSearch()}
                   disabled={isStreaming || !query.trim()}
-                  className="absolute right-2.5 w-10 h-10 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
+                  className="absolute right-2.5 w-10 h-10 bg-primary-700 text-white rounded-xl flex items-center justify-center transition-all hover:bg-primary-900 hover:scale-105 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
                 >
                   <Send size={18} />
                 </button>

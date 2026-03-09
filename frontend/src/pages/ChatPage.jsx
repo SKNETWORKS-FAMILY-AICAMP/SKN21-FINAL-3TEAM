@@ -62,7 +62,7 @@ const RESULT_BADGE = {
   yes: { icon: CheckCircle, bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', iconColor: 'text-green-500' },
   no: { icon: XCircle, bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', iconColor: 'text-red-500' },
   conditional: { icon: AlertTriangle, bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', iconColor: 'text-amber-500' },
-  no_regulation: { icon: HelpCircle, bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-600', iconColor: 'text-gray-400' },
+  no_regulation: { icon: HelpCircle, bg: 'bg-surface-sub', border: 'border-neutral-border', text: 'text-neutral-sub', iconColor: 'text-neutral-muted' },
 };
 
 function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], index = -1) {
@@ -624,7 +624,7 @@ export default function ChatPage() {
               title={sessionSidebarOpen ? '대화 목록 닫기' : '대화 목록'}
               className={`w-11 h-11 flex items-center justify-center rounded-full shadow-sm transition hover:shadow-md ${sessionSidebarOpen
                 ? 'bg-neutral-900 text-white'
-                : 'bg-white text-neutral-600 hover:text-neutral-900 border border-neutral-200'
+                : 'bg-surface-card text-neutral-sub hover:text-neutral-main border border-neutral-border'
                 }`}
             >
               <Menu size={20} />
@@ -632,7 +632,7 @@ export default function ChatPage() {
             <button
               onClick={() => { startNewSession(); setSessionSidebarOpen(true); }}
               title="새 대화"
-              className="w-11 h-11 flex items-center justify-center rounded-full bg-white text-neutral-600 border border-neutral-200 shadow-sm transition hover:shadow-md hover:text-neutral-900"
+              className="w-11 h-11 flex items-center justify-center rounded-full bg-surface-card text-neutral-sub border border-neutral-border shadow-sm transition hover:shadow-md hover:text-neutral-main"
             >
               <MessageSquarePlus size={20} />
             </button>
