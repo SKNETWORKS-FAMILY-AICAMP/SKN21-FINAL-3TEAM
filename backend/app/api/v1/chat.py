@@ -111,7 +111,18 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                     if doc:
                         if not doc.content or not doc.content.strip():
                             logger.warning("[Chat] document_id=%s content 비어있음", request.document_id)
-                        initial_state["document_content"] = doc.content or None
+                        # AI 분석 결과를 컨텍스트에 포함
+                        doc_context = ""
+                        if doc.category or doc.tags or doc.summary:
+                            doc_context += f"\n[문서 AI 분석 정보]\n"
+                            if doc.category:
+                                doc_context += f"- 문서 타입: {doc.category}\n"
+                            if doc.tags:
+                                doc_context += f"- 태그: {', '.join(doc.tags)}\n"
+                            if doc.summary:
+                                doc_context += f"- 요약: {doc.summary}\n"
+                            doc_context += "\n[문서 본문]\n"
+                        initial_state["document_content"] = doc_context + (doc.content or "")
                     else:
                         try:
                             from ai.rag.qdrant_pipeline import get_qdrant_pipeline

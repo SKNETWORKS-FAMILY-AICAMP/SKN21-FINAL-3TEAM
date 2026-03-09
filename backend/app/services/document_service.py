@@ -253,17 +253,30 @@ async def upload_and_parse(
         try:
             from ai.rag.qdrant_pipeline import get_qdrant_pipeline
             pipeline = get_qdrant_pipeline()
+            # 분석 결과를 메타데이터에 포함 (RAG 검색 정확도 향상)
+            qdrant_meta = {
+                "source": "documents",
+                "doc_type": doc.category or "general",
+                "title": doc.title,
+                "scope": doc.scope,
+                "team_name": doc.team_name or "",
+                "user_id": str(user_id),
+                "document_id": doc.id,
+                "summary": doc.summary or "",
+                "category": doc.category or "",
+                "tags": ", ".join(doc.tags) if doc.tags else "",
+            }
+            # 태그 키워드를 본문 앞에 추가하여 BM25 검색 정확도 향상
+            tags_prefix = ""
+            if doc.tags:
+                tags_prefix = f"[태그: {', '.join(doc.tags)}] [분류: {doc.category or ''}] "
+            if doc.summary:
+                tags_prefix += f"[요약: {doc.summary}] "
+            indexed_text = tags_prefix + text
+
             pipeline.add_documents(
-                documents=[text],
-                metadatas=[{
-                    "source": "documents",
-                    "doc_type": "general",
-                    "title": doc.title,
-                    "scope": doc.scope,
-                    "team_name": doc.team_name or "",
-                    "user_id": str(user_id),
-                    "document_id": doc.id,
-                }],
+                documents=[indexed_text],
+                metadatas=[qdrant_meta],
             )
             logger.info(f"문서 Qdrant 인덱싱 완료: document_id={doc.id}, title={doc.title}")
         except Exception as qdrant_err:
