@@ -1033,3 +1033,45 @@ v2_generate AI Hub 데이터 탈락:
 - 3개 어댑터 × 3개 모델 = 9 runs 평가 결과 비교
 - 베스트 모델 선택 + 결과 정리
 - 결과 다운로드 후 로컬 배치
+
+---
+
+## 2026-03-09 (일)
+
+**v2_generate 파인튜닝 결과 분석 + 모델 선정:**
+- 3개 모델 동일 조건(1,350건 train, 150건 eval) 학습 완료
+- 결과: EXAONE & Kanana 공동 1위 (JSON 유효율 98.67%), Qwen3 3위 (90.67%)
+- **Kanana-1.5-8B 최종 선정** — loss 수렴 최우수 (final loss 0.5390, eval loss 0.7257) + Apache 2.0 라이선스
+- 학습 결과 보고서 작성: `docs/finetuning/v2_generate_학습결과.md`
+  - 발표 스토리라인 기반 리팩토링 (문제→모델선정→base확인→데이터→학습→결과→선정→검증→서빙)
+  - 모델 선정 근거 강화 (왜 8B, 왜 이 3개, 후보 선별 과정)
+
+**Base Model vs Fine-tuned 비교 평가 (RunPod H200):**
+- `tmp_base_eval.py` 작성 → RunPod에서 실행 (150건 eval)
+- 구조 지표(JSON 유효율/필드 완성도)에서는 base instruct가 이미 높음 (100%/99.33%)
+  - 원인: `kanana-1.5-8b-instruct`는 이미 Kakao가 instruction following 학습시킨 모델
+- **실제 차이는 내용 품질**: 샘플 비교에서 base는 할루시네이션(날짜 지어냄), JSON 가끔 incomplete, 장황함 / fine-tuned는 없으면 비움, JSON 안정적, 간결함
+
+**sLLM 서빙 인프라 구축:**
+- `ai/serving/start_vllm.sh` — RunPod vLLM 서버 시작 스크립트 작성
+- `ai/serving/vllm_client.py` — json_mode 파라미터 추가 (guided_json 지원)
+- `ai/agents/document_agent.py` — sLLM 실패 시 API(GPT-4o) 자동 fallback 로직 추가
+- `VLLM_USE_LORA` 환경변수 추가 (true: LoRA adapter 사용 / false: base model)
+
+**RunPod RTX 4090 서빙 테스트:**
+- RTX 4090 24GB Pod에서 vLLM 서버 기동 (Kanana-1.5-8B base instruct)
+- 외부 URL 노출: `https://3mvoa3u0ufc6nx-8000.proxy.runpod.net`
+- EC2 백엔드 `.env` 수정: `DOC_AGENT_MODE=sllm`, `VLLM_BASE_URL` → RunPod 주소
+- **EC2 → RunPod vLLM 연동 테스트 성공** (로그인 + chat API로 확인, vLLM 로그에 요청 정상 수신)
+- 팀원은 아무것도 안 해도 됨 (백엔드가 중간에서 처리)
+
+**커밋 2건:**
+1. `feat: sLLM 서빙 인프라 + fallback 로직 추가` → develop push (CI/CD 배포)
+2. `feat: VLLM_USE_LORA 환경변수로 LoRA 사용 여부 제어` → develop push (CI/CD 배포)
+
+**다음 할 일:**
+- LoRA adapter를 4090 Pod로 복사 → fine-tuned 모델 서빙 테스트
+- 프론트에서 실제 문서 생성 품질 확인 (base vs fine-tuned)
+- v2_summary, v2_qa 파인튜닝 (generate 서빙 안정화 후)
+- GPT-4o vs Fine-tuned Kanana 비교 (sLLM 전환 최종 검증)
+- base eval 결과 → 학습결과 보고서 섹션 9 반영
