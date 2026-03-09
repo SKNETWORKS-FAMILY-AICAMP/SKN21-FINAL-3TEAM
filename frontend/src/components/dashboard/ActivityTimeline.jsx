@@ -9,7 +9,7 @@ const iconStyles = {
   schedule: 'bg-success-bg text-success',
 };
 
-export default function ActivityTimeline({ activities = [] }) {
+export default function ActivityTimeline({ activities = [], loading = false }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
@@ -31,10 +31,25 @@ export default function ActivityTimeline({ activities = [] }) {
       </div>
 
       <div className="card-body space-y-2">
-        {activities.length === 0 && !isCollapsed && (
-          <p className="text-sm text-neutral-muted py-2">최근 활동이 없습니다.</p>
-        )}
-        {activities.slice(0, isCollapsed ? 1 : 999).map((a, i) => (
+        {loading ? (
+          <div className="animate-pulse space-y-2">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="flex items-center gap-3 px-3 py-3 rounded-sm bg-neutral-100 dark:bg-neutral-800">
+                <div className="w-9 h-9 rounded-sm bg-neutral-200 dark:bg-neutral-700 flex-shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3 bg-neutral-200 dark:bg-neutral-700 rounded w-2/3" />
+                  <div className="h-2.5 bg-neutral-200 dark:bg-neutral-700 rounded w-1/2" />
+                </div>
+                <div className="w-10 h-2.5 bg-neutral-200 dark:bg-neutral-700 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            {activities.length === 0 && !isCollapsed && (
+              <p className="text-sm text-neutral-muted py-2">최근 활동이 없습니다.</p>
+            )}
+            {activities.slice(0, isCollapsed ? 1 : 999).map((a, i) => (
           <Link key={i} to={a.to || '#'} className="flex items-center gap-3 px-3 py-3 rounded-sm border border-neutral-border transition hover:bg-surface-hover">
             <div className={`w-9 h-9 rounded-sm flex items-center justify-center flex-shrink-0 ${iconStyles[a.type] || 'bg-primary-50 text-primary-700'}`}>{(() => { const Icon = a.icon; return Icon ? <Icon size={18} /> : null; })()}</div>
             <div className="flex-1">
@@ -43,7 +58,9 @@ export default function ActivityTimeline({ activities = [] }) {
             </div>
             <span className="text-[0.6875rem] text-neutral-muted whitespace-nowrap ml-auto">{a.time}</span>
           </Link>
-        ))}
+            ))}
+          </>
+        )}
       </div>
     </div>
   );

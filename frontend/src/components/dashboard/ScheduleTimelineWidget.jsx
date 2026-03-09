@@ -31,7 +31,7 @@ function timeToFraction(timeStr) {
     return d.getHours() + d.getMinutes() / 60;
 }
 
-export default function ScheduleTimelineWidget({ meetings = [] }) {
+export default function ScheduleTimelineWidget({ meetings = [], loading = false }) {
     const [isCollapsed, setIsCollapsed] = useState(false);
 
     // 기본 09~18, 범위 밖 일정이 있으면 자동 확장
@@ -106,7 +106,16 @@ export default function ScheduleTimelineWidget({ meetings = [] }) {
                 </button>
             </div>
 
-            {!isCollapsed && (
+            {!isCollapsed && loading ? (
+                <div className="animate-pulse space-y-3 py-2">
+                    <div className="h-4 bg-neutral-100 dark:bg-neutral-800 rounded w-full" />
+                    <div className="flex gap-2">
+                        <div className="h-10 bg-neutral-100 dark:bg-neutral-800 rounded-lg w-1/3" />
+                        <div className="h-10 bg-neutral-100 dark:bg-neutral-800 rounded-lg w-1/4" />
+                        <div className="h-10 bg-neutral-100 dark:bg-neutral-800 rounded-lg w-1/5" />
+                    </div>
+                </div>
+            ) : !isCollapsed && (
                 <div className="overflow-x-auto scrollbar-thin">
                     {/* Time axis */}
                     <div className="relative min-w-[600px]">

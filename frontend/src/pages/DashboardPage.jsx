@@ -68,17 +68,20 @@ function useDashboardData() {
   const fetchCalendarEvents = useGoogleStore((s) => s.fetchCalendarEvents);
   const fetchGoogleStatus = useGoogleStore((s) => s.fetchStatus);
 
-  const fetchAll = async (setCancelled) => {
-    const results = await Promise.allSettled([
-      listSchedules({ include_team: true }).then(r => r.data),
-      listDocuments().then(r => r.data),
-      listSessions(),
-    ]);
-    if (setCancelled?.()) return;
-    if (results[0].status === 'fulfilled') setSchedules(results[0].value || []);
-    if (results[1].status === 'fulfilled') setDocs(results[1].value || []);
-    if (results[2].status === 'fulfilled') setSessions(results[2].value || []);
-    setLoading(false);
+  const fetchAll = (isCancelled) => {
+    // 각 요청 독립 처리 — 하나가 느려도 나머지에 영향 없음
+    listSchedules({ include_team: true })
+      .then(r => { if (!isCancelled()) setSchedules(r.data || []); })
+      .catch(() => {})
+      .finally(() => { if (!isCancelled()) setLoading(false); });
+
+    listDocuments()
+      .then(r => { if (!isCancelled()) setDocs(r.data || []); })
+      .catch(() => {});
+
+    listSessions()
+      .then(data => { if (!isCancelled()) setSessions(data || []); })
+      .catch(() => {});
   };
 
   // 마운트 시 DB 데이터 + Google 연결 상태 로드
@@ -97,7 +100,7 @@ function useDashboardData() {
   // 탭 포커스 시 데이터 리페치 (다른 페이지에서 일정 변경 후 돌아올 때)
   useEffect(() => {
     const handleFocus = () => {
-      fetchAll();
+      fetchAll(() => false);
       if (googleConnected) fetchCalendarEvents();
     };
     window.addEventListener('focus', handleFocus);
@@ -411,12 +414,12 @@ export default function DashboardPage() {
   // 위젯별 props 매핑
   const widgetProps = {
     WhatsOnWidget: {},
-    ScheduleTimelineWidget: { meetings: timelineMeetings },
-    TodaySchedule: { meetings: todayMeetings, actions: upcomingActions, inProgressMeetings },
-    ActivityTimeline: { activities: recentActivities },
+    ScheduleTimelineWidget: { meetings: timelineMeetings, loading },
+    TodaySchedule: { meetings: todayMeetings, actions: upcomingActions, inProgressMeetings, loading },
+    ActivityTimeline: { activities: recentActivities, loading },
     AIChatWidget: {},
     CalendarWidget: { allSchedules },
-    RecentDocs: { docs: recentDocs },
+    RecentDocs: { docs: recentDocs, loading },
     TeamMembersWidget: {},
     EmployeeTableWidget: {},
     TaskPipelineWidget: {},

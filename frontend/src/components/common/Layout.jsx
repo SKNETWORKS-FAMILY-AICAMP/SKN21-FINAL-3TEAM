@@ -92,11 +92,14 @@ export default function Layout() {
       const scrollableRange = scrollHeight - clientHeight;
       const delta = scrollTop - prevScrollTopRef.current;
       prevScrollTopRef.current = scrollTop; // 블록 중에도 항상 갱신
-      if (resizingRef.current || navBlockRef.current) return;
+      if (navBlockRef.current) return;
+      // scrollTop이 0이 됐는데 헤더가 숨겨진 경우 → resizing 중에도 항상 복원
+      // (topbar 축소로 컨테이너가 커져 브라우저가 scrollTop을 0으로 자동 조정할 때)
+      if (scrollTop === 0 && isScrolledRef.current) newVal = false;
       // 스크롤 가능 범위가 충분해야만 줄어듦 (topbar 44px + 여유 20px = 64px)
-      // → 줄어든 후에도 최소 20px 이상 남아 스크롤 올리기 가능
-      if (delta > 5 && scrollableRange > 64) newVal = true;
-      else if (delta < -5) newVal = false; // 위로 스크롤은 항상 허용
+      else if (resizingRef.current) return;
+      else if (delta > 5 && scrollableRange > 64) newVal = true;
+      else if (delta < -5) newVal = false;
       else return;
     } else {
       // 일반 페이지: 위치 기반

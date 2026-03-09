@@ -1176,6 +1176,10 @@
 - 스트라이프 `bottom` 계산: 배열 인덱스 `si` → `multiDayRowMap`에서 가져온 고정 `row` 값으로 교체
 - 셀 `paddingBottom`: 배열 길이 기준 → 해당 셀의 **최대 row 번호** 기준으로 교체
 
+#### 4) 대시보드 로딩 스켈레톤 추가
+
+- 새로고침 시 로딩 중 스켈레톤 표시 → 완료 후 실제 데이터 또는 "없음" 메시지로 전환
+
 ---
 
 ## 현재 구현 현황 요약
@@ -1190,7 +1194,6 @@
 | Google Services UI | ✅ 완료 | 5개 서비스 통합 UI |
 | 일정 관리 | ✅ 완료 | Google Calendar 실제 연동, 공휴일 중복 제거, 자동 갱신 |
 | KeywordHighlight (FR-DOC-006) | ✅ 완료 | 문서 검색 + 규정 패널 키워드 하이라이트 |
-| 글씨 크기 조절 | ✅ 완료 | FontSizeControl (가-/가+), 전체 54파일 px→rem 변환 |
 | 다크 모드 | ✅ 완료 | CSS 변수 방식, OS 감지, localStorage 유지, ThemeToggle |
 | 파일 드래그&드롭 | ✅ 완료 | 채팅 파일 첨부, 검증(형식/크기), FileChip |
 | 대화 세션 관리 | ✅ 완료 | localStorage 세션 목록, 자동 생성/전환/삭제 |
@@ -1203,3 +1206,4 @@
 - **훅**: 4개 (useAuth, useChat, useSSE, useGoogleServices)
 - **API**: 8개 (client, auth, chat, documents, meetings, schedules, google, admin)
 - **npm 패키지 추가**: framer-motion
+
