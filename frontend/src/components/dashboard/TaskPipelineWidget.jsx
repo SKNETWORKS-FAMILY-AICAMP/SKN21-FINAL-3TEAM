@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import {
     GitMerge, Clock, CheckCircle2, AlertTriangle,
-    ArrowRight, Plus, Share, X, Mail, Phone, Briefcase
+    ArrowRight, Plus, X, Mail, Phone, Briefcase, ExternalLink, ChevronDown
 } from 'lucide-react';
-import { listPipelineTasks, updatePipelineTask, createPipelineTask } from '../../api/tasks';
+import { listPipelineTasks, updatePipelineTask, createPipelineTask, listProjects } from '../../api/tasks';
 import client from '../../api/client';
 
 const priorityColors = {
@@ -31,7 +31,9 @@ export default function TaskPipelineWidget() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [addForm, setAddForm] = useState({ title: '', assignee: '', priority: 'medium' });
     const [addSubmitting, setAddSubmitting] = useState(false);
-    const [shareToast, setShareToast] = useState(false);
+    const [projects, setProjects] = useState([]);
+    const [selectedProject, setSelectedProject] = useState(null); // null until loaded
+    const [showProjectDropdown, setShowProjectDropdown] = useState(false);
 
     const fetchTasks = async () => {
         try {
@@ -43,6 +45,18 @@ export default function TaskPipelineWidget() {
     };
 
     useEffect(() => { fetchTasks(); }, []);
+
+    useEffect(() => {
+        listProjects()
+            .then(res => {
+                const list = Array.isArray(res.data) ? res.data : [];
+                setProjects(list);
+                // 기본값: 첫 번째 프로젝트 자동 선택
+                if (list.length > 0) setSelectedProject(list[0].name);
+                else setSelectedProject('');
+            })
+            .catch(() => { setProjects([]); setSelectedProject(''); });
+    }, []);
 
     useEffect(() => {
         client.get('/auth/team-members')
@@ -108,24 +122,31 @@ export default function TaskPipelineWidget() {
         }
     };
 
-    const handleShare = () => {
-        const summary = stageConfig.map(s => {
-            const count = tasks.filter(t => t.stage === s.id).length;
-            return `${s.label}: ${count}건`;
-        }).join(' | ');
-        const doneCount = tasks.filter(t => t.stage === 'done').length;
-        const pct = tasks.length > 0 ? Math.round((doneCount / tasks.length) * 100) : 0;
-        const text = `📋 Task Pipeline\n${summary}\n✅ 진행률: ${pct}%`;
-        navigator.clipboard.writeText(text).then(() => {
-            setShareToast(true);
-            setTimeout(() => setShareToast(false), 2000);
-        });
-    };
+    // 태스크의 project 필드에서도 프로젝트 목록 추출 (DB projects + 태스크 project 합침)
+    const allProjectNames = (() => {
+        const names = new Set();
+        projects.forEach(p => names.add(p.name));
+        tasks.forEach(t => { if (t.project) names.add(t.project); });
+        return [...names];
+    })();
 
-    const teamStats = [...new Set(tasks.filter(t => t.assignee).map(t => t.assignee))].map(name => ({
+    // 첫 번째 프로젝트 자동 선택 (로딩 완료 후 한번만)
+    useEffect(() => {
+        if (selectedProject === null && tasks.length > 0) {
+            const firstProject = allProjectNames[0];
+            setSelectedProject(firstProject || '');
+        }
+    }, [tasks, allProjectNames, selectedProject]);
+
+    // Filter tasks by selected project (null = loading, '' = all)
+    const filteredTasks = selectedProject
+        ? tasks.filter(t => t.project === selectedProject)
+        : tasks;
+
+    const teamStats = [...new Set(filteredTasks.filter(t => t.assignee).map(t => t.assignee))].map(name => ({
         name,
         avatar: getAvatar(name),
-        count: tasks.filter(task => task.assignee === name).length
+        count: filteredTasks.filter(task => task.assignee === name).length
     }));
 
     return (
@@ -156,34 +177,53 @@ export default function TaskPipelineWidget() {
                     </div>
                 )}
 
-                {/* Right: Utility Buttons & View All */}
-                <div className="flex-1 flex justify-end gap-2 items-center">
-                    <div className="flex gap-1.5 mr-3">
+                {/* Right: Project Selector + Utility Buttons */}
+                <div className="flex-1 flex justify-end gap-1.5 items-center">
+                    {/* Project Selector */}
+                    <div className="relative mr-1">
                         <button
-                            onClick={() => setShowAddModal(true)}
-                            title="태스크 추가"
-                            className="w-9 h-9 rounded-full bg-surface-hover hover:bg-primary-50 hover:text-primary-600 flex items-center justify-center text-neutral-sub shadow-sm border border-neutral-divider transition-all"
+                            onClick={() => setShowProjectDropdown(!showProjectDropdown)}
+                            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-surface-hover hover:bg-neutral-100 dark:hover:bg-white/10 border border-neutral-divider text-xs font-bold text-neutral-main transition-all max-w-[180px]"
                         >
-                            <Plus size={16} />
+                            <span className="truncate">{selectedProject || '전체'}</span>
+                            <ChevronDown size={12} className={`text-neutral-400 flex-shrink-0 transition-transform ${showProjectDropdown ? 'rotate-180' : ''}`} />
                         </button>
-                        <button
-                            onClick={handleShare}
-                            title="현황 복사"
-                            className="w-9 h-9 rounded-full bg-surface-hover hover:bg-primary-50 hover:text-primary-600 flex items-center justify-center text-neutral-sub shadow-sm border border-neutral-divider transition-all relative"
-                        >
-                            <Share size={14} />
-                            {shareToast && (
-                                <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded-lg whitespace-nowrap shadow">
-                                    복사됨!
-                                </span>
-                            )}
-                        </button>
+                        {showProjectDropdown && (
+                            <>
+                                <div className="fixed inset-0 z-10" onClick={() => setShowProjectDropdown(false)} />
+                                <div className="absolute top-full right-0 mt-1 z-20 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg py-1 min-w-[200px] max-h-[260px] overflow-y-auto">
+                                    <button
+                                        onClick={() => { setSelectedProject(''); setShowProjectDropdown(false); }}
+                                        className={`w-full text-left px-4 py-2.5 text-xs font-semibold hover:bg-primary-50 dark:hover:bg-white/10 transition-colors ${!selectedProject ? 'text-primary-600 font-bold bg-primary-50/50 dark:bg-primary-900/20' : 'text-neutral-main'}`}
+                                    >
+                                        전체 프로젝트
+                                    </button>
+                                    {allProjectNames.map(name => (
+                                        <button
+                                            key={name}
+                                            onClick={() => { setSelectedProject(name); setShowProjectDropdown(false); }}
+                                            className={`w-full text-left px-4 py-2.5 text-xs font-semibold hover:bg-primary-50 dark:hover:bg-white/10 transition-colors truncate ${selectedProject === name ? 'text-primary-600 font-bold bg-primary-50/50 dark:bg-primary-900/20' : 'text-neutral-main'}`}
+                                        >
+                                            {name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
                     </div>
                     <button
-                        className="text-xs text-primary-600 hover:text-primary-700 font-bold whitespace-nowrap"
-                        onClick={() => navigate('/tasks')}
+                        onClick={() => setShowAddModal(true)}
+                        title="태스크 추가"
+                        className="w-9 h-9 rounded-full bg-surface-hover hover:bg-primary-50 hover:text-primary-600 flex items-center justify-center text-neutral-sub shadow-sm border border-neutral-divider transition-all"
                     >
-                        View All &rarr;
+                        <Plus size={16} />
+                    </button>
+                    <button
+                        onClick={() => navigate('/schedules?tab=pipeline')}
+                        title="전체 보기"
+                        className="w-9 h-9 rounded-full bg-surface-hover hover:bg-primary-50 hover:text-primary-600 flex items-center justify-center text-neutral-sub shadow-sm border border-neutral-divider transition-all"
+                    >
+                        <ExternalLink size={14} />
                     </button>
                 </div>
             </div>
@@ -203,14 +243,14 @@ export default function TaskPipelineWidget() {
                                 <stage.icon className={`${stage.color}`} size={16} />
                                 <span className="font-bold text-sm text-neutral-main">{stage.label}</span>
                                 <span className="ml-auto text-xs font-bold text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/50 px-2.5 py-0.5 rounded-full">
-                                    {tasks.filter(t => t.stage === stage.id).length}
+                                    {filteredTasks.filter(t => t.stage === stage.id).length}
                                 </span>
                             </div>
 
                             {/* Task Cards Container */}
                             <div className={`flex-1 space-y-3 p-2 rounded-[1.5rem] bg-surface-main/40 border-2 transition-colors min-h-[150px] ${draggingId ? 'border-dashed border-primary-300 bg-primary-50/10' : 'border-transparent'}`}>
                                 <AnimatePresence mode="popLayout">
-                                    {tasks.filter(t => t.stage === stage.id).map((task) => (
+                                    {filteredTasks.filter(t => t.stage === stage.id).map((task) => (
                                         <motion.div
                                             key={task.id}
                                             layout
@@ -265,7 +305,7 @@ export default function TaskPipelineWidget() {
                                     ))}
                                 </AnimatePresence>
 
-                                {tasks.filter(t => t.stage === stage.id).length === 0 && (
+                                {filteredTasks.filter(t => t.stage === stage.id).length === 0 && (
                                     <div className="h-20 flex items-center justify-center border-2 border-dashed border-neutral-divider rounded-[1.5rem]">
                                         <span className="text-[11px] font-bold text-neutral-muted uppercase tracking-widest">Empty</span>
                                     </div>
@@ -342,7 +382,7 @@ export default function TaskPipelineWidget() {
 
                                 {/* Task stats for this member */}
                                 {(() => {
-                                    const memberTasks = tasks.filter(t => t.assignee === profilePopup.name);
+                                    const memberTasks = filteredTasks.filter(t => t.assignee === profilePopup.name);
                                     if (memberTasks.length === 0) return null;
                                     const byStage = stageConfig.map(s => ({
                                         ...s,
@@ -462,8 +502,8 @@ export default function TaskPipelineWidget() {
             <div className="mt-5 flex items-center gap-3 bg-neutral-50/50 dark:bg-white/[0.05] p-3 rounded-2xl border border-neutral-100 dark:border-white/10">
                 <div className="flex-1 h-1.5 bg-neutral-200/50 dark:bg-white/10 rounded-full overflow-hidden">
                     {(() => {
-                        const doneCount = tasks.filter(t => t.stage === 'done').length;
-                        const donePct = tasks.length > 0 ? (doneCount / tasks.length) * 100 : 0;
+                        const doneCount = filteredTasks.filter(t => t.stage === 'done').length;
+                        const donePct = filteredTasks.length > 0 ? (doneCount / filteredTasks.length) * 100 : 0;
                         return (
                             <div
                                 className="h-full bg-primary-500 dark:bg-primary-400 transition-all duration-700 ease-out"
@@ -473,7 +513,7 @@ export default function TaskPipelineWidget() {
                     })()}
                 </div>
                 <span className="text-[11px] font-extrabold text-neutral-sub dark:text-neutral-300 whitespace-nowrap">
-                    {tasks.length > 0 ? Math.round((tasks.filter(t => t.stage === 'done').length / tasks.length) * 100) : 0}% COMPLETE
+                    {filteredTasks.length > 0 ? Math.round((filteredTasks.filter(t => t.stage === 'done').length / filteredTasks.length) * 100) : 0}% COMPLETE
                 </span>
             </div>
         </div>

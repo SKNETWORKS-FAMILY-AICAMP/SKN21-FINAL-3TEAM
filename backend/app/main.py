@@ -163,6 +163,22 @@ async def startup_migrate_slack_column():
 
 
 @app.on_event("startup")
+async def startup_migrate_pipeline_project_column():
+    """pipeline_tasks에 project 컬럼 추가 (회의/프로젝트 출처 구분)"""
+    try:
+        from app.db.session import engine
+        from sqlalchemy import text
+
+        async with engine.begin() as conn:
+            await conn.execute(text(
+                "ALTER TABLE pipeline_tasks ADD COLUMN IF NOT EXISTS project VARCHAR(300)"
+            ))
+        print("[Startup] pipeline_tasks.project 컬럼 확인/추가 완료")
+    except Exception as _e:
+        print(f"[Startup] pipeline_tasks.project 처리 실패 (무시하고 계속): {_e}")
+
+
+@app.on_event("startup")
 async def startup_migrate_approval_file_columns():
     """approval_requests에 file_path, file_name 컬럼 추가"""
     try:
