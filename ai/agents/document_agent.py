@@ -911,12 +911,15 @@ def _handle_risk_detect(user_input: str) -> Dict[str, Any]:
 
 # ── 공통 유틸 ──
 
-def _build_sources(search_results: list) -> list:
-    """검색 결과에서 출처 정보 구성 (중복 제거)"""
+def _build_sources(search_results: list, min_score: float = 0.5) -> list:
+    """검색 결과에서 출처 정보 구성 (중복 제거, 낮은 관련도 제외)"""
     sources = []
     seen_sources = set()
     if search_results:
         for doc in search_results:
+            # 관련도가 낮은 출처 제외
+            if doc.get("score", 0.0) < min_score:
+                continue
             content_key = doc.get("content", "")[:100]
             if content_key in seen_sources:
                 continue
