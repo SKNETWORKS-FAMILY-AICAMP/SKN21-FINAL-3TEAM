@@ -168,9 +168,12 @@ class HybridSearcher:
     def search(
         self, query: str, user_id: int | None = None, top_k: int = 20,
         max_per_source: int = 3, filter: dict | None = None,
+        use_reranker: bool = False, rerank_top_k: int | None = None,
+        score_threshold: float | None = None,
     ) -> list[dict]:
         """
-        BM25 (Top 15) + Vector (Top 15) → RRF 합산 정렬 → 소스 다양성 적용 → Top K
+        BM25 (Top 15) + Vector (Top 15) → RRF 합산 정렬 → 소스 다양성 적용
+        → (선택) Reranker 재정렬 → (선택) Score Threshold 필터링 → Top K
 
         Args:
             query: 사용자 질문
@@ -178,6 +181,9 @@ class HybridSearcher:
             top_k: 최종 반환 수
             max_per_source: 동일 출처 규정의 최대 포함 수 (교차 규정 검색 품질 향상)
             filter: 메타데이터 필터 (예: {"source": "regulations"})
+            use_reranker: True면 RRF 결과를 Cross-Encoder로 재정렬
+            rerank_top_k: Reranker에 넘길 후보 수 (기본값: top_k * 2)
+            score_threshold: RRF 정규화 점수 최소 기준 (미달 문서 제거, Reranker 미사용 시)
 
         Returns:
             list of {"content", "source", "score", "doc_id"}
@@ -278,7 +284,7 @@ class HybridSearcher:
         min_s = min(rrf_scores_list)
         max_s = max(rrf_scores_list)
 
-        return [
+        normalized_results = [
             {
                 "content": doc["content"],
                 "source": doc["source"],
@@ -292,3 +298,39 @@ class HybridSearcher:
             }
             for doc in diverse_results
         ]
+
+        # Score Threshold 필터링 (Reranker 미사용 시 RRF 정규화 점수 기준)
+        if score_threshold is not None and not use_reranker:
+            before_count = len(normalized_results)
+            normalized_results = [
+                doc for doc in normalized_results
+                if doc["score"] >= score_threshold
+            ]
+            if len(normalized_results) < before_count:
+                logger.info(
+                    f"[HybridSearch] Score threshold {score_threshold} 적용: "
+                    f"{before_count}개 → {len(normalized_results)}개"
+                )
+
+        # Reranker 재정렬 (Cross-Encoder로 관련도 재평가)
+        if use_reranker and normalized_results:
+            try:
+                from ai.rag.reranker import Reranker
+                reranker = Reranker()
+                # Reranker에 넘길 후보 수 (기본: top_k * 2, 최소 top_k)
+                _rerank_candidates = rerank_top_k or max(top_k * 2, len(normalized_results))
+                candidates = normalized_results[:_rerank_candidates]
+                reranked = reranker.rerank(
+                    query=query,
+                    documents=candidates,
+                    top_k=top_k,
+                    score_threshold=score_threshold if score_threshold is not None else -1.0,
+                )
+                logger.info(
+                    f"[HybridSearch] Reranker 적용: {len(candidates)}개 → {len(reranked)}개"
+                )
+                return reranked
+            except Exception as e:
+                logger.warning(f"[HybridSearch] Reranker 실패, RRF 결과 사용: {e}")
+
+        return normalized_results
