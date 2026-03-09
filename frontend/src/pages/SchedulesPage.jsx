@@ -10,8 +10,8 @@ import SlackConnect from '../components/schedules/SlackConnect';
 import CalendarView from '../components/schedules/CalendarView';
 import ScheduleForm from '../components/schedules/ScheduleForm';
 import ScheduleTypeManager from '../components/schedules/ScheduleTypeManager';
-import TasksPanel from '../components/schedules/TasksPanel';
 import KanbanBoard from '../components/schedules/KanbanBoard';
+import ProjectFolderView from '../components/schedules/ProjectFolderView';
 import ApprovalPanel from '../components/schedules/ApprovalPanel';
 import SheetsDashboard from '../components/schedules/SheetsDashboard';
 import useScheduleTypeStore, { DEFAULT_TYPES } from '../store/scheduleTypeStore';
@@ -42,9 +42,17 @@ export default function SchedulesPage() {
   const [showTypeManager, setShowTypeManager] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
     const tab = searchParams.get('tab');
-    return ['calendar', 'tasks', 'pipeline', 'approvals', 'sheets'].includes(tab) ? tab : 'calendar';
+    return ['calendar', 'pipeline', 'approvals', 'sheets'].includes(tab) ? tab : 'calendar';
   });
-  const [taskActions, setTaskActions] = useState(null);
+
+  // URL ?tab= 변경 시 탭 동기화
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['calendar', 'pipeline', 'approvals', 'sheets'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
   const [boardActions, setBoardActions] = useState(null);
   const [approvalActions, setApprovalActions] = useState(null);
   const [sheetActions, setSheetActions] = useState(null);
@@ -526,7 +534,6 @@ export default function SchedulesPage() {
         <div className="flex gap-1">
           {[
             { key: 'calendar', label: 'Calendar' },
-            { key: 'tasks', label: 'Tasks' },
             { key: 'pipeline', label: 'Pipeline' },
             { key: 'approvals', label: 'Approvals' },
             { key: 'sheets', label: 'Sheets' },
@@ -568,21 +575,6 @@ export default function SchedulesPage() {
               </button>
             </>
           )}
-          {activeTab === 'tasks' && taskActions && (
-            <>
-              <button
-                onClick={() => taskActions.refresh()}
-                disabled={taskActions.tasksLoading}
-                className="btn-outline flex items-center gap-1.5"
-                title="새로고침"
-              >
-                <RefreshCw size={14} className={taskActions.tasksLoading ? 'animate-spin' : ''} />
-              </button>
-              <button onClick={() => taskActions.openCreate()} className="btn-primary">
-                + Task 추가
-              </button>
-            </>
-          )}
           {activeTab === 'pipeline' && boardActions && (
             <div className="flex items-center gap-2">
               <button
@@ -592,12 +584,14 @@ export default function SchedulesPage() {
               >
                 <RefreshCw size={14} />
               </button>
-              <button
-                onClick={() => boardActions.openCreate()}
-                className="btn-primary"
-              >
-                + 새 태스크
-              </button>
+              {boardActions.inProject && boardActions.openCreate && (
+                <button
+                  onClick={() => boardActions.openCreate()}
+                  className="btn-primary"
+                >
+                  + 새 태스크
+                </button>
+              )}
             </div>
           )}
           {activeTab === 'approvals' && approvalActions && (
@@ -670,8 +664,7 @@ export default function SchedulesPage() {
         </>
       )}
 
-      {activeTab === 'tasks' && <TasksPanel externalActions onReady={setTaskActions} />}
-      {activeTab === 'pipeline' && <KanbanBoard externalActions onReady={setBoardActions} />}
+      {activeTab === 'pipeline' && <ProjectFolderView externalActions onReady={setBoardActions} />}
       {activeTab === 'approvals' && <ApprovalPanel externalActions onReady={setApprovalActions} />}
       {activeTab === 'sheets' && <SheetsDashboard externalActions onReady={setSheetActions} />}
     </div>

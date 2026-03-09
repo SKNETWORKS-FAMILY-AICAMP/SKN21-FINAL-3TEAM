@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitMerge, Clock, CheckCircle2, AlertTriangle, Plus, Trash2, X, Pencil } from 'lucide-react';
+import { GitMerge, Clock, CheckCircle2, AlertTriangle, Plus, Trash2, X, Pencil, ExternalLink, CheckSquare, Square, Send, FolderOpen, ChevronDown } from 'lucide-react';
 import { listPipelineTasks, createPipelineTask, updatePipelineTask, deletePipelineTask } from '../../api/tasks';
+import { createTask as createGoogleTask } from '../../api/google';
+import useGoogleServices from '../../hooks/useGoogleServices';
 import client from '../../api/client';
 
 const priorityColors = {
@@ -32,10 +34,10 @@ const stageConfig = [
     { id: 'done', label: 'Done', icon: CheckCircle2, color: 'text-emerald-600', headerBg: 'bg-emerald-50/70 dark:bg-emerald-900/40', accent: 'border-emerald-200' },
 ];
 
-const EMPTY_FORM = { title: '', description: '', assignee: '', dueDate: '', priority: 'medium', tags: '' };
+const EMPTY_FORM = { title: '', description: '', assignee: '', dueDate: '', priority: 'medium', tags: '', project: '' };
 const INPUT_CLS = 'w-full px-3 py-2 border border-neutral-border rounded-lg bg-surface-card text-neutral-main focus:outline-none focus:ring-2 focus:ring-primary-500';
 
-export default function KanbanBoard({ onReady, externalActions }) {
+export default function KanbanBoard({ onReady, externalActions, filterProject }) {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [draggingId, setDraggingId] = useState(null);
@@ -44,6 +46,15 @@ export default function KanbanBoard({ onReady, externalActions }) {
     const [editingTask, setEditingTask] = useState(null);
     const [form, setForm] = useState(EMPTY_FORM);
     const [members, setMembers] = useState([]);
+    const [syncingTaskIds, setSyncingTaskIds] = useState(new Set());
+
+    // Google Tasks 연동
+    const { tasks: googleTasks, tasksLoading: googleTasksLoading, updateTask: updateGoogleTask, pullTasks, hasScope } = useGoogleServices();
+    const [selectMode, setSelectMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [bulkSending, setBulkSending] = useState(false);
+    const [showGoogleTasksPanel, setShowGoogleTasksPanel] = useState(false);
+    const [activeProject, setActiveProject] = useState('all'); // 'all' or project name
 
     const fetchTasks = useCallback(async () => {
         try {
@@ -73,10 +84,13 @@ export default function KanbanBoard({ onReady, externalActions }) {
                     setForm(EMPTY_FORM);
                     setShowModal(true);
                 },
-                loading
+                loading,
+                startSelectMode: () => setSelectMode(true),
+                openGoogleTasksPanel: () => { setShowGoogleTasksPanel(true); if (hasScope('tasks')) pullTasks(); },
+                selectMode,
             });
         }
-    }, [onReady, externalActions, fetchTasks, loading]);
+    }, [onReady, externalActions, fetchTasks, loading, selectMode]);
 
     /* ── Modal ── */
     const openCreate = () => {
@@ -94,6 +108,7 @@ export default function KanbanBoard({ onReady, externalActions }) {
             dueDate: task.dueDate || '',
             priority: task.priority || 'medium',
             tags: (task.tags || []).join(', '),
+            project: task.project || '',
         });
         setShowModal(true);
     };
@@ -149,6 +164,7 @@ export default function KanbanBoard({ onReady, externalActions }) {
             due_date: form.dueDate || null,
             priority: form.priority,
             tags,
+            project: form.project || null,
         };
 
         try {
@@ -176,6 +192,62 @@ export default function KanbanBoard({ onReady, externalActions }) {
         }
     };
 
+    /* ── Sync to Google Tasks ── */
+    const handleSyncToGoogleTasks = async (e, task) => {
+        e.stopPropagation();
+        setSyncingTaskIds(prev => new Set([...prev, task.id]));
+        try {
+            await createGoogleTask({
+                title: task.title,
+                assignee: task.assignee || null,
+                due_date: task.dueDate || null,
+                priority: task.priority || 'medium',
+            });
+            alert('Google Tasks에 추가되었습니다');
+        } catch (err) {
+            alert(err.response?.data?.detail || 'Google Tasks 추가 실패');
+        } finally {
+            setSyncingTaskIds(prev => {
+                const next = new Set(prev);
+                next.delete(task.id);
+                return next;
+            });
+        }
+    };
+
+    /* ── Bulk select ── */
+    const toggleSelect = (id) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    };
+
+    const handleBulkSendToGoogleTasks = async () => {
+        if (selectedIds.size === 0) return;
+        setBulkSending(true);
+        try {
+            const selected = tasks.filter(t => selectedIds.has(t.id));
+            for (const task of selected) {
+                await createGoogleTask({
+                    title: task.title,
+                    assignee: task.assignee || null,
+                    due_date: task.dueDate || null,
+                    priority: task.priority || 'medium',
+                });
+            }
+            alert(`${selected.length}개 태스크가 Google Tasks에 추가되었습니다`);
+            setSelectedIds(new Set());
+            setSelectMode(false);
+            if (hasScope('tasks')) pullTasks();
+        } catch (err) {
+            alert(err.response?.data?.detail || 'Google Tasks 추가 실패');
+        } finally {
+            setBulkSending(false);
+        }
+    };
+
     /* ── Due badge ── */
     const getDueBadge = (dueDate, stage) => {
         if (!dueDate) return null;
@@ -190,6 +262,90 @@ export default function KanbanBoard({ onReady, externalActions }) {
 
     return (
         <div className="space-y-6">
+            {/* Google Tasks 연동 바 */}
+            <div className="flex items-center gap-2 flex-wrap">
+                {selectMode ? (
+                    <>
+                        <span className="text-xs font-bold text-neutral-sub">{selectedIds.size}개 선택됨</span>
+                        <button
+                            onClick={handleBulkSendToGoogleTasks}
+                            disabled={selectedIds.size === 0 || bulkSending}
+                            className="px-3 py-1.5 text-xs font-bold rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                        >
+                            <Send size={12} />
+                            {bulkSending ? '전송 중...' : 'Google Tasks로 보내기'}
+                        </button>
+                        <button
+                            onClick={() => { setSelectMode(false); setSelectedIds(new Set()); }}
+                            className="px-3 py-1.5 text-xs font-bold rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                        >
+                            취소
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <button
+                            onClick={() => setSelectMode(true)}
+                            className="px-3 py-1.5 text-xs font-bold rounded-lg border border-emerald-300 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors flex items-center gap-1.5"
+                        >
+                            <CheckSquare size={13} />
+                            Google Tasks 보내기
+                        </button>
+                        <button
+                            onClick={() => { setShowGoogleTasksPanel(true); if (hasScope('tasks')) pullTasks(); }}
+                            className="px-3 py-1.5 text-xs font-bold rounded-lg border border-primary-300 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors flex items-center gap-1.5"
+                        >
+                            <ExternalLink size={13} />
+                            Google Tasks 확인
+                        </button>
+                    </>
+                )}
+            </div>
+
+            {/* 프로젝트 필터 (filterProject 외부 지정이 없을 때만 표시) */}
+            {!filterProject && (() => {
+                const projects = [...new Set(tasks.map(t => t.project).filter(Boolean))];
+                if (projects.length === 0) return null;
+                return (
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <FolderOpen size={14} className="text-neutral-muted" />
+                        <button
+                            onClick={() => setActiveProject('all')}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${activeProject === 'all'
+                                ? 'bg-primary-600 text-white shadow-md'
+                                : 'bg-surface-card/60 text-neutral-sub border border-neutral-border hover:border-primary-300'
+                            }`}
+                        >
+                            전체 ({tasks.length})
+                        </button>
+                        {projects.map(proj => {
+                            const count = tasks.filter(t => t.project === proj).length;
+                            return (
+                                <button
+                                    key={proj}
+                                    onClick={() => setActiveProject(proj)}
+                                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${activeProject === proj
+                                        ? 'bg-primary-600 text-white shadow-md'
+                                        : 'bg-surface-card/60 text-neutral-sub border border-neutral-border hover:border-primary-300'
+                                    }`}
+                                >
+                                    {proj} ({count})
+                                </button>
+                            );
+                        })}
+                        <button
+                            onClick={() => setActiveProject('none')}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${activeProject === 'none'
+                                ? 'bg-primary-600 text-white shadow-md'
+                                : 'bg-surface-card/60 text-neutral-sub border border-neutral-border hover:border-primary-300'
+                            }`}
+                        >
+                            미분류 ({tasks.filter(t => !t.project).length})
+                        </button>
+                    </div>
+                );
+            })()}
+
             {!externalActions && (
                 <div className="flex items-center justify-between">
                     <h2 className="text-lg font-bold text-neutral-main">보드 뷰</h2>
@@ -205,7 +361,12 @@ export default function KanbanBoard({ onReady, externalActions }) {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                     {stageConfig.map((stage) => {
-                        const stageTasks = tasks.filter(t => t.stage === stage.id);
+                        const filteredTasks = filterProject
+                            ? (filterProject === '미분류' ? tasks.filter(t => !t.project) : tasks.filter(t => t.project === filterProject))
+                            : activeProject === 'all' ? tasks
+                            : activeProject === 'none' ? tasks.filter(t => !t.project)
+                            : tasks.filter(t => t.project === activeProject);
+                        const stageTasks = filteredTasks.filter(t => t.stage === stage.id);
                         const isOver = dragOverStage === stage.id;
                         return (
                             <div
@@ -241,17 +402,35 @@ export default function KanbanBoard({ onReady, externalActions }) {
                                                     animate={{ opacity: 1, y: 0 }}
                                                     exit={{ opacity: 0, scale: 0.9 }}
                                                     transition={{ duration: 0.2 }}
-                                                    draggable="true"
-                                                    onDragStart={(e) => handleDragStart(e, task.id)}
+                                                    draggable={!selectMode}
+                                                    onDragStart={(e) => !selectMode && handleDragStart(e, task.id)}
                                                     onDragEnd={() => { setDraggingId(null); setDragOverStage(null); }}
-                                                    onClick={() => openEdit(task)}
+                                                    onClick={() => selectMode ? toggleSelect(task.id) : openEdit(task)}
                                                     className={`bg-white/30 dark:bg-gray-800/20 backdrop-blur-md p-4 rounded-2xl border border-white/60 dark:border-white/10 shadow-lg cursor-grab active:cursor-grabbing hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] hover:border-primary-400 hover:bg-white/50 dark:hover:bg-gray-700/40 hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300 group ${draggingId === task.id ? 'opacity-40 scale-95' : ''}`}
                                                 >
                                                     <div className="flex justify-between items-start mb-2">
-                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${priorityColors[task.priority] || priorityColors.medium}`}>
-                                                            {(task.priority || 'medium').toUpperCase()}
-                                                        </span>
+                                                        <div className="flex items-center gap-2">
+                                                            {selectMode && (
+                                                                <span className="flex-shrink-0">
+                                                                    {selectedIds.has(task.id)
+                                                                        ? <CheckSquare size={16} className="text-emerald-500" />
+                                                                        : <Square size={16} className="text-neutral-300" />
+                                                                    }
+                                                                </span>
+                                                            )}
+                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${priorityColors[task.priority] || priorityColors.medium}`}>
+                                                                {(task.priority || 'medium').toUpperCase()}
+                                                            </span>
+                                                        </div>
                                                         <div className="flex items-center gap-1">
+                                                            <button
+                                                                onClick={(e) => handleSyncToGoogleTasks(e, task)}
+                                                                disabled={syncingTaskIds.has(task.id)}
+                                                                className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-neutral-muted hover:text-emerald-500 transition-all disabled:opacity-50"
+                                                                title="Google Tasks에 추가"
+                                                            >
+                                                                <ExternalLink size={13} />
+                                                            </button>
                                                             <button
                                                                 onClick={(e) => { e.stopPropagation(); openEdit(task); }}
                                                                 className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 text-neutral-muted hover:text-blue-500 transition-all"
@@ -274,9 +453,14 @@ export default function KanbanBoard({ onReady, externalActions }) {
                                                         <p className="text-[11px] text-neutral-sub mb-2.5 line-clamp-2 leading-relaxed">{task.description}</p>
                                                     )}
 
-                                                    {task.tags?.length > 0 && (
+                                                    {(task.tags?.length > 0 || task.project) && (
                                                         <div className="flex flex-wrap gap-1 mb-3">
-                                                            {task.tags.map(tag => (
+                                                            {task.project && (
+                                                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+                                                                    {task.project}
+                                                                </span>
+                                                            )}
+                                                            {task.tags?.map(tag => (
                                                                 <span key={tag} className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${tagColors[tag] || 'bg-surface-sub text-neutral-sub'}`}>
                                                                     {tag}
                                                                 </span>
@@ -373,6 +557,11 @@ export default function KanbanBoard({ onReady, externalActions }) {
                                 </div>
                             </div>
 
+                            <div>
+                                <label className="block text-[11px] font-black uppercase tracking-wider text-neutral-400 mb-1.5 ml-1">Project</label>
+                                <input type="text" value={form.project} onChange={e => setForm(f => ({ ...f, project: e.target.value }))} className={INPUT_CLS} placeholder="프로젝트/회의 출처 (선택)" />
+                            </div>
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-[11px] font-black uppercase tracking-wider text-neutral-400 mb-1.5 ml-1">Priority</label>
@@ -401,6 +590,96 @@ export default function KanbanBoard({ onReady, externalActions }) {
                 </div>,
                 document.body
             )}
+            {/* ── Google Tasks Side Panel ── */}
+            <AnimatePresence>
+                {showGoogleTasksPanel && (
+                    <motion.div
+                        initial={{ x: '100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                        className="fixed top-0 right-0 h-full w-[360px] z-[100] bg-white dark:bg-neutral-900 shadow-[-8px_0_30px_-10px_rgba(0,0,0,0.15)] border-l border-neutral-200 dark:border-neutral-700 flex flex-col"
+                    >
+                        {/* Header */}
+                        <div className="px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-[11px] font-medium text-neutral-muted">할 일 목록</span>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => pullTasks()}
+                                        disabled={googleTasksLoading}
+                                        className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"
+                                        title="새로고침"
+                                    >
+                                        <ExternalLink size={15} className={googleTasksLoading ? 'animate-spin' : ''} />
+                                    </button>
+                                    <button onClick={() => setShowGoogleTasksPanel(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                            <h2 className="text-base font-bold text-neutral-main">WorkFlow Agent</h2>
+                        </div>
+
+                        {/* Task List */}
+                        <div className="flex-1 overflow-y-auto">
+                            {googleTasksLoading && googleTasks.length === 0 ? (
+                                <div className="flex items-center justify-center h-32 text-neutral-muted text-sm">로딩 중...</div>
+                            ) : googleTasks.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-40 text-neutral-muted">
+                                    <CheckCircle2 size={28} className="mb-2 opacity-30" />
+                                    <p className="text-sm">할 일이 없습니다</p>
+                                </div>
+                            ) : (
+                                <ul className="py-2">
+                                    {[...googleTasks].sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0)).map((task) => (
+                                        <li
+                                            key={task.action_item_id || task.id}
+                                            className="flex items-start gap-3 px-5 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
+                                        >
+                                            <button
+                                                onClick={() => updateGoogleTask(task.action_item_id || task.id, !task.completed)}
+                                                className={`w-[18px] h-[18px] mt-0.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${task.completed
+                                                    ? 'border-blue-500 bg-blue-500 text-white'
+                                                    : 'border-neutral-300 dark:border-neutral-600 hover:border-blue-400'
+                                                }`}
+                                            >
+                                                {task.completed && (
+                                                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                                )}
+                                            </button>
+                                            <div className="flex-1 min-w-0">
+                                                <p className={`text-sm leading-snug ${task.completed ? 'text-neutral-muted line-through' : 'text-neutral-main'}`}>
+                                                    {task.title}
+                                                </p>
+                                                {(task.assignee || task.priority) && (
+                                                    <p className="text-[11px] text-neutral-muted mt-0.5">
+                                                        {[
+                                                            task.assignee && `담당: ${task.assignee}`,
+                                                            task.priority && `우선순위: ${task.priority}`,
+                                                        ].filter(Boolean).join(' | ')}
+                                                    </p>
+                                                )}
+                                                {task.deadline && (
+                                                    <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-md border border-neutral-200 dark:border-neutral-700 text-[11px] text-neutral-muted">
+                                                        <Clock size={10} />
+                                                        {task.deadline}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-5 py-3 border-t border-neutral-100 dark:border-neutral-800 text-xs text-neutral-muted text-center">
+                            {googleTasks.filter(t => !t.completed).length}개 미완료 · {googleTasks.filter(t => t.completed).length}개 완료
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

@@ -24,4 +24,5 @@ class PipelineTask(Base, TimestampMixin):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     team: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # 팀별 분리
     tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 쉼표 구분 태그
+    project: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)  # 출처 회의/프로젝트명
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
