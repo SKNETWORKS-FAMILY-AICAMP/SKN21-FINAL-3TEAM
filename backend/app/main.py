@@ -225,10 +225,17 @@ async def startup_preload():
     _t = time.time()
 
     try:
+        import asyncio
         from ai.rag.qdrant_pipeline import get_qdrant_pipeline
 
-        get_qdrant_pipeline()
+        # 30초 타임아웃으로 pre-loading (멈춤 방지)
+        await asyncio.wait_for(
+            asyncio.get_event_loop().run_in_executor(None, get_qdrant_pipeline),
+            timeout=30
+        )
         print(f"[Startup] RAG 파이프라인 로드 완료 ({time.time()-_t:.2f}s)")
+    except asyncio.TimeoutError:
+        print(f"[Startup] RAG 파이프라인 로드 타임아웃 (30초 초과, 건너뜀)")
     except Exception as e:
         print(f"[Startup] RAG 파이프라인 로드 실패 (서비스는 계속 가능): {e}")
 
