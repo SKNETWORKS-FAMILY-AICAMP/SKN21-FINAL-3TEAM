@@ -93,7 +93,7 @@ function TaskCreateModal({ onClose, onSubmit, submitting }) {
             <button type="button" onClick={onClose} className="px-6 py-2.5 text-xs font-black rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all">
               Cancel
             </button>
-            <button type="submit" disabled={submitting} className="px-8 py-2.5 text-xs font-black rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 shadow-xl hover:scale-105 transition-all">
+            <button type="submit" disabled={submitting} className="px-8 py-2.5 text-xs font-black rounded-xl bg-primary-700 text-white shadow-xl shadow-primary-700/20 hover:bg-primary-800 hover:scale-105 transition-all">
               {submitting ? 'Creating...' : 'Create'}
             </button>
           </div>

@@ -4,14 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import {
   LayoutDashboard, MessageSquare, FilePlus, FileText,
-  Calendar, Settings, LogOut, KeyRound, Video, ArrowUpRight,
+  Calendar, Settings, LogOut, Video, ArrowUpRight,
   StickyNote, Plus, Trash2, ArrowLeft, Check, User, Menu, X as XIcon, X
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useUIStore from '../../store/uiStore';
 import useChatStore from '../../store/chatStore';
 import ThemeToggle from './ThemeToggle';
-import { changePassword } from '../../api/auth';
 import { listSchedules } from '../../api/schedules';
 import { listCalendarEvents } from '../../api/google';
 import dayjs from 'dayjs';
@@ -287,11 +286,6 @@ export default function Topbar({ isScrolled = false }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
 
-  const [pwModal, setPwModal] = useState(false);
-  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
-  const [pwError, setPwError] = useState('');
-  const [pwSaving, setPwSaving] = useState(false);
-
   const [allDayMeetings, setAllDayMeetings] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [currentTime, setCurrentTime] = useState(dayjs());
@@ -490,28 +484,6 @@ export default function Topbar({ isScrolled = false }) {
     navigate('/login');
   };
 
-  const openPwModal = () => {
-    setUserMenuOpen(false);
-    setPwForm({ current: '', next: '', confirm: '' });
-    setPwError('');
-    setPwModal(true);
-  };
-
-  const handleChangePassword = async () => {
-    if (!pwForm.current.trim()) return setPwError('현재 비밀번호를 입력하세요.');
-    if (pwForm.next.length < 6) return setPwError('새 비밀번호는 6자 이상이어야 합니다.');
-    if (pwForm.next !== pwForm.confirm) return setPwError('새 비밀번호가 일치하지 않습니다.');
-    setPwSaving(true);
-    setPwError('');
-    try {
-      await changePassword(pwForm.current, pwForm.next);
-      setPwModal(false);
-    } catch (e) {
-      setPwError(e.response?.data?.detail || '비밀번호 변경에 실패했습니다.');
-    } finally {
-      setPwSaving(false);
-    }
-  };
 
   useEffect(() => {
     if (!userMenuOpen) return;
@@ -746,13 +718,6 @@ export default function Topbar({ isScrolled = false }) {
                       <User size={14} />
                       마이페이지
                     </button>
-                    <button
-                      onClick={openPwModal}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-neutral-sub hover:text-neutral-main hover:bg-neutral-divider/50 rounded-lg transition-all"
-                    >
-                      <KeyRound size={14} />
-                      비밀번호 변경
-                    </button>
                   </div>
                   <div className="p-1 border-t border-neutral-divider">
                     <button
@@ -798,41 +763,6 @@ export default function Topbar({ isScrolled = false }) {
         </div>
       )}
 
-      {/* 비밀번호 변경 모달 */}
-      {pwModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setPwModal(false)}>
-          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-2xl border border-white/40 dark:border-white/10 shadow-xl w-[380px] p-0 overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="p-5 border-b border-white/20 dark:border-white/10">
-              <h3 className="text-base font-bold text-neutral-main">비밀번호 변경</h3>
-            </div>
-            <div className="p-6 space-y-4">
-              {[
-                { label: '현재 비밀번호', key: 'current', placeholder: '현재 비밀번호를 입력하세요' },
-                { label: '새 비밀번호', key: 'next', placeholder: '6자 이상 입력하세요' },
-                { label: '새 비밀번호 확인', key: 'confirm', placeholder: '새 비밀번호를 다시 입력하세요' },
-              ].map(({ label, key, placeholder }) => (
-                <div key={key}>
-                  <label className="text-xs font-bold text-neutral-sub block mb-1.5">{label}</label>
-                  <input
-                    type="password"
-                    value={pwForm[key]}
-                    onChange={(e) => setPwForm({ ...pwForm, [key]: e.target.value })}
-                    placeholder={placeholder}
-                    className="w-full px-3.5 py-2.5 border border-white/30 dark:border-white/10 bg-white/40 dark:bg-white/5 rounded-xl text-sm outline-none focus:border-primary-500 transition-all text-neutral-main placeholder:text-neutral-muted"
-                  />
-                </div>
-              ))}
-              {pwError && <p className="text-xs font-bold text-error bg-error-bg p-2 rounded-lg">{pwError}</p>}
-            </div>
-            <div className="flex border-t border-white/20 dark:border-white/10 p-4 gap-2">
-              <button className="flex-1 py-2 rounded-xl text-sm font-bold bg-white/40 dark:bg-white/10 border border-white/30 dark:border-white/10 text-neutral-sub hover:text-neutral-main hover:bg-white/60 dark:hover:bg-white/20 transition-all" onClick={() => setPwModal(false)}>취소</button>
-              <button className="flex-1 py-2 rounded-xl text-sm font-bold bg-primary-700 text-white hover:bg-primary-900 transition-all" onClick={handleChangePassword} disabled={pwSaving}>
-                {pwSaving ? '변경 중...' : '변경 완료'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

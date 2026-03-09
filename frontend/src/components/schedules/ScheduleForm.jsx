@@ -382,7 +382,7 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
         {/* 버튼 */}
         <div className="flex gap-2 pt-4">
           <button onClick={onClose} disabled={submitting} className="flex-1 py-3 text-xs font-black rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all">취소</button>
-          <button onClick={handleSubmit} disabled={submitting} className="flex-1 py-3 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-black rounded-xl shadow-xl hover:scale-105 transition-all">
+          <button onClick={handleSubmit} disabled={submitting} className="flex-1 py-3 bg-primary-700 text-white text-xs font-black rounded-xl shadow-xl shadow-primary-700/20 hover:bg-primary-800 hover:scale-105 transition-all">
             {submitting ? (isEditMode ? '수정 중...' : '등록 중...') : (isEditMode ? '수정' : '등록')}
           </button>
         </div>

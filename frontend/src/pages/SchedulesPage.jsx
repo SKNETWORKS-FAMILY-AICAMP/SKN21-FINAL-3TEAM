@@ -474,7 +474,7 @@ export default function SchedulesPage() {
                 <p className="text-[10px] text-neutral-400 font-medium">Synced via OAuth 2.0</p>
                 <button
                   onClick={() => setShowSettingsModal(false)}
-                  className="px-5 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-lg font-black text-xs hover:scale-105 active:scale-95 transition-all shadow-lg"
+                  className="px-5 py-2 bg-primary-700 text-white rounded-lg font-black text-xs hover:bg-primary-800 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary-700/20"
                 >
                   Done
                 </button>

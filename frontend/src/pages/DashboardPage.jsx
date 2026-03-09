@@ -168,7 +168,7 @@ function useDashboardData() {
       };
     });
 
-  // 오늘 진행 중인 멀티데이 일정 (오늘 이전에 시작 & 오늘 이후에 종료)
+  // 오늘 진행 중인 멀티데이 일정 (오늘 이전에 시작 & 오늘 이후에 종료) — 카드 형식으로 변환
   const inProgressMeetings = mergedSchedules
     .filter(s => {
       if (!s.start_time || !s.end_time) return false;
@@ -177,10 +177,15 @@ function useDashboardData() {
       return startKey < todayKey && endKey >= todayKey;
     })
     .map(s => ({
+      time: '종일',
+      period: '',
       title: s.title,
+      location: s.google_meet_link ? '온라인 (Meet)' : s.description || '-',
+      attendees: 0,
       scheduleType: s.schedule_type,
-      startDate: dayjs(s.start_time).format('M/D'),
-      endDate: dayjs(s.end_time).format('M/D'),
+      start_time: s.start_time,
+      end_time: s.end_time,
+      isAllDay: true,
     }));
 
   // 내일 일정
@@ -415,7 +420,7 @@ export default function DashboardPage() {
   const widgetProps = {
     WhatsOnWidget: {},
     ScheduleTimelineWidget: { meetings: timelineMeetings, loading },
-    TodaySchedule: { meetings: todayMeetings, actions: upcomingActions, inProgressMeetings, loading },
+    TodaySchedule: { meetings: [...inProgressMeetings, ...todayMeetings], actions: upcomingActions, loading },
     ActivityTimeline: { activities: recentActivities, loading },
     AIChatWidget: {},
     CalendarWidget: { allSchedules },
@@ -478,10 +483,22 @@ export default function DashboardPage() {
       <GreetingBanner meetingCount={meetingCount} actionCount={actionCount} riskCount={0} />
 
 
-      <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-5 min-w-0">
-        <WidgetColumn col="leftColumn" items={leftColumn} editMode={editMode} onHide={hideWidget} {...dragProps} widgetProps={widgetProps} />
-        <WidgetColumn col="rightColumn" items={rightColumn} editMode={editMode} onHide={hideWidget} {...dragProps} widgetProps={widgetProps} />
-      </div>
+      {loading ? (
+        <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
+          <div className="w-10 h-10 border-[3px] border-primary-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-bold text-neutral-muted">대시보드 불러오는 중...</p>
+        </div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4 }}
+          className="mt-5 grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-5 min-w-0"
+        >
+          <WidgetColumn col="leftColumn" items={leftColumn} editMode={editMode} onHide={hideWidget} {...dragProps} widgetProps={widgetProps} />
+          <WidgetColumn col="rightColumn" items={rightColumn} editMode={editMode} onHide={hideWidget} {...dragProps} widgetProps={widgetProps} />
+        </motion.div>
+      )}
 
       {/* ── Widget Edit Mode UI ── */}
       <AnimatePresence>

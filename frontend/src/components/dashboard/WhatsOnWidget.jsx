@@ -10,7 +10,6 @@ function getMonthName() {
 export default function WhatsOnWidget() {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [items, setItems] = useState([]);
-
     useEffect(() => {
         const fetchLeaves = async () => {
             try {

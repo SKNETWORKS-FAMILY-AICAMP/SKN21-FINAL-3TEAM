@@ -1138,11 +1138,6 @@
 - `bg-neutral-50` / `dark:bg-gray-800` → `bg-surface-sub`
 - `bg-neutral-900 dark:bg-white text-white dark:text-neutral-900` (제출 버튼) → `bg-primary-700 text-white`
 
-### 다음 할 일
-- 멀티데이 일정 필터 디버깅 마무리
-- Slack 연동 E2E 확인
-- 전체 E2E 테스트
-
 #### 2) ScheduleTimelineWidget 멀티데이 일정 UI 개선 (`ScheduleTimelineWidget.jsx`, `DashboardPage.jsx`)
 
 **멀티데이 일정 정렬 순서 변경**
@@ -1179,6 +1174,31 @@
 #### 4) 대시보드 로딩 스켈레톤 추가
 
 - 새로고침 시 로딩 중 스켈레톤 표시 → 완료 후 실제 데이터 또는 "없음" 메시지로 전환
+
+#### 5) 대시보드 '오늘 일정' 멀티데이 일정 디자인 통일 (`TodaySchedule.jsx`, `DashboardPage.jsx`)
+
+**문제**
+- 오늘 시작하는 멀티데이 일정 → 상단에 '종일' 카드로 표시
+- 오늘 이전에 시작된 진행 중인 멀티데이 일정 → 하단에 border-left 스타일 얇은 한 줄로 별도 표시
+
+**수정**
+- `inProgressMeetings` 포맷을 슬림 포맷(title, startDate, endDate)에서 카드 포맷(time, period, location, isAllDay 등)으로 변환
+- `DashboardPage.jsx`의 `widgetProps.TodaySchedule`에서 `[...inProgressMeetings, ...todayMeetings]`로 머지 → 진행 중인 일정이 상단에 먼저 표시
+- `TodaySchedule.jsx` 하단 별도 섹션 제거, `inProgressMeetings` prop 제거, 미사용 `TYPE_COLORS` 상수 제거
+- 모든 멀티데이 일정이 동일한 '종일' 카드 디자인으로 통일
+
+#### 6) 대시보드 위젯 로딩 UX 개선 (`DashboardPage.jsx`, `WhatsOnWidget.jsx`, `CalendarWidget.jsx`, `ApprovalQueueWidget.jsx`)
+
+- 각 위젯 개별 "불러오는 중..." 텍스트 대신 대시보드 전체 단일 스피너로 통일
+- `loading` true 시 위젯 그리드 전체를 중앙 스피너(`animate-spin`)로 대체
+- 로딩 완료 후 0.4초 fade-in으로 위젯 자연스럽게 등장 (framer-motion)
+- `ApprovalQueueWidget`: `loading` 완료 전 "모든 항목을 처리했습니다!" 빈 상태 노출 방지(`!loading` 조건 추가)
+
+#### 7) 상단바 계정 프로필 비밀번호 변경 제거 (`Topbar.jsx`)
+
+- 계정 드롭다운에서 '비밀번호 변경' 버튼 제거 → 마이페이지 내에서만 접근 가능하도록 변경
+- 관련 state(`pwModal`, `pwForm`, `pwError`, `pwSaving`), 함수(`openPwModal`, `handleChangePassword`), 모달 전체 제거
+- 미사용 import(`KeyRound`, `changePassword`) 정리
 
 ---
 
