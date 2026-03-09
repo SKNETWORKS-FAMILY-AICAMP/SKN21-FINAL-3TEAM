@@ -1,6 +1,7 @@
-import { useState } from 'react';
-
+import { useState, useEffect, useMemo } from 'react';
+import { ChevronDown } from 'lucide-react';
 import useAuthStore from '../store/authStore';
+import client from '../api/client';
 import TemplateSelector from '../components/documents/TemplateSelector';
 import TemplateUploadDialog from '../components/documents/TemplateUploadDialog';
 import DocumentPreview from '../components/documents/DocumentPreview';
@@ -19,8 +20,28 @@ export default function DocumentGeneratePage() {
   const [result, setResult] = useState(null);
   const [meetingResult, setMeetingResult] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [reportForm, setReportForm] = useState({ title: '', date: new Date().toISOString().split('T')[0], author: user?.name ?? '', department: '', content: '' });
+  const [reportForm, setReportForm] = useState({ title: '', date: new Date().toISOString().split('T')[0], author: user?.name ?? '', department: user?.team ?? '', content: '' });
   const [proposalForm, setProposalForm] = useState({ title: '', date: new Date().toISOString().split('T')[0], company: '', manager: user?.name ?? '', phone: '', content: '' });
+  const [allMembers, setAllMembers] = useState([]);
+
+  useEffect(() => {
+    client.get('/auth/all-members')
+      .then(res => {
+        const members = res.data || [];
+        if (user) {
+          const hasSelf = members.some(m => m.id === user.id);
+          if (!hasSelf) members.push({ id: user.id, name: user.name, team: user.team });
+        }
+        setAllMembers(members);
+      })
+      .catch(() => setAllMembers([]));
+  }, [user]);
+
+  const teams = useMemo(() => {
+    const set = new Set(allMembers.map(m => m.team).filter(Boolean));
+    if (user?.team) set.add(user.team);
+    return [...set].sort();
+  }, [allMembers, user]);
 
   const isMeeting = selectedTemplate === 'meeting_minutes';
   const isReport = selectedTemplate === 'report';
@@ -31,7 +52,7 @@ export default function DocumentGeneratePage() {
     setResult(null);
     setMeetingResult(null);
     setPrompt('');
-    setReportForm({ title: '', date: new Date().toISOString().split('T')[0], author: user?.name ?? '', department: '', content: '' });
+    setReportForm({ title: '', date: new Date().toISOString().split('T')[0], author: user?.name ?? '', department: user?.team ?? '', content: '' });
     setProposalForm({ title: '', date: new Date().toISOString().split('T')[0], company: '', manager: user?.name ?? '', phone: '', content: '' });
   };
 
@@ -219,13 +240,20 @@ export default function DocumentGeneratePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">부서</label>
-                    <input
-                      value={reportForm.department}
-                      onChange={(e) => setReportForm({ ...reportForm, department: e.target.value })}
-                      placeholder="예: 정보보안팀"
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
+                    <label className="block text-[0.8125rem] font-semibold mb-1.5">팀</label>
+                    <div className="relative">
+                      <select
+                        value={reportForm.department}
+                        onChange={(e) => setReportForm({ ...reportForm, department: e.target.value })}
+                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 appearance-none bg-white dark:bg-neutral-900 cursor-pointer"
+                      >
+                        <option value="">팀 선택</option>
+                        {teams.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+                    </div>
                   </div>
                 </div>
                 <div>

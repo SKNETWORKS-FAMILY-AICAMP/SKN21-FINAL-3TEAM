@@ -18,6 +18,13 @@ export default function MeetingPreview({ data, onDownload, loading }) {
   const [newProjectMode, setNewProjectMode] = useState(false);
   const [newProjectInput, setNewProjectInput] = useState('');
 
+  // Google Tasks 액션아이템 선택 모달
+  const [showGoogleTasksModal, setShowGoogleTasksModal] = useState(false);
+  const [selectedActionItems, setSelectedActionItems] = useState([]);
+
+  // Pipeline 액션아이템 선택
+  const [pipelineSelectedItems, setPipelineSelectedItems] = useState([]);
+
   const fetchProjects = async () => {
     setProjectsLoading(true);
     try {
@@ -34,6 +41,7 @@ export default function MeetingPreview({ data, onDownload, loading }) {
     setSelectedProjectName(data?.title || '');
     setNewProjectMode(false);
     setNewProjectInput('');
+    setPipelineSelectedItems(data.actionItems.map((_, i) => i)); // 기본 전체 선택
     setShowProjectModal(true);
     fetchProjects();
   };
@@ -53,7 +61,8 @@ export default function MeetingPreview({ data, onDownload, loading }) {
           // 이미 존재하면 무시
         }
       }
-      await createPipelineFromActionItems(data.actionItems, projectName);
+      const itemsToAdd = pipelineSelectedItems.map(i => data.actionItems[i]);
+      await createPipelineFromActionItems(itemsToAdd, projectName);
       setPipelineSent(true);
     } catch (err) {
       alert(err.response?.data?.detail || 'Pipeline 추가 실패');
@@ -140,23 +149,9 @@ export default function MeetingPreview({ data, onDownload, loading }) {
                   {pipelineLoading ? '추가 중...' : pipelineSent ? '✓ Pipeline 추가됨' : 'Pipeline에 추가'}
                 </button>
                 <button
-                  onClick={async () => {
-                    setGoogleTasksLoading(true);
-                    try {
-                      for (const item of data.actionItems) {
-                        await createGoogleTask({
-                          title: item.task,
-                          assignee: item.assignee || null,
-                          due_date: item.deadline || null,
-                          priority: 'medium',
-                        });
-                      }
-                      setGoogleTasksSent(true);
-                    } catch (err) {
-                      alert(err.response?.data?.detail || 'Google Tasks 추가 실패');
-                    } finally {
-                      setGoogleTasksLoading(false);
-                    }
+                  onClick={() => {
+                    setSelectedActionItems(data.actionItems.map((_, i) => i)); // 기본 전체 선택
+                    setShowGoogleTasksModal(true);
                   }}
                   disabled={googleTasksSent || googleTasksLoading}
                   className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-emerald-300 text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
@@ -191,12 +186,41 @@ export default function MeetingPreview({ data, onDownload, loading }) {
             onClick={() => setShowProjectModal(false)}
           />
           <div
-            className="relative bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-neutral-200 dark:border-neutral-700"
+            className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-white/40 dark:border-white/10"
             onClick={e => e.stopPropagation()}
           >
             <h3 className="text-base font-bold text-neutral-main mb-1">프로젝트 선택</h3>
+            <p className="text-xs text-neutral-muted mb-3">
+              추가할 액션아이템을 선택하세요.
+            </p>
+
+            {/* 액션아이템 선택 */}
+            <div className="space-y-1.5 max-h-[160px] overflow-y-auto mb-4 border border-neutral-200 dark:border-neutral-700 rounded-xl p-2.5">
+              {data.actionItems.map((item, i) => (
+                <label key={i} className="flex items-start gap-2.5 cursor-pointer p-1.5 rounded-lg hover:bg-surface-hover transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={pipelineSelectedItems.includes(i)}
+                    onChange={() => {
+                      setPipelineSelectedItems(prev =>
+                        prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]
+                      );
+                    }}
+                    className="mt-0.5 w-4 h-4 rounded accent-primary-700"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm text-neutral-main block truncate">{item.task}</span>
+                    <div className="flex gap-2 text-[10px] text-neutral-muted">
+                      {item.assignee && <span>{item.assignee}</span>}
+                      {item.deadline && <span>{item.deadline}</span>}
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
             <p className="text-xs text-neutral-muted mb-4">
-              액션아이템 {data.actionItems?.length}건을 어떤 프로젝트에 추가할까요?
+              {pipelineSelectedItems.length}건 선택됨 — 어떤 프로젝트에 추가할까요?
             </p>
 
             {projectsLoading ? (
@@ -272,19 +296,97 @@ export default function MeetingPreview({ data, onDownload, loading }) {
             </div>
 
             {/* 확인 / 취소 */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowProjectModal(false)}
-                className="flex-1 px-4 py-2.5 text-xs font-bold rounded-xl text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                className="px-5 py-3 text-sm font-extrabold rounded-xl text-neutral-600 dark:text-neutral-300 hover:text-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
               >
                 취소
               </button>
               <button
                 onClick={handleConfirmProject}
-                disabled={newProjectMode ? !newProjectInput.trim() : !selectedProjectName}
-                className="flex-1 px-4 py-2.5 text-xs font-bold rounded-xl bg-primary-600 text-white hover:bg-primary-700 transition-colors disabled:opacity-40"
+                disabled={pipelineSelectedItems.length === 0 || (newProjectMode ? !newProjectInput.trim() : !selectedProjectName)}
+                className="flex-1 px-5 py-3 text-sm font-extrabold rounded-xl bg-primary-900 text-white hover:bg-neutral-main shadow-lg transition-colors disabled:opacity-60"
               >
-                Pipeline에 추가
+                {pipelineSelectedItems.length}건 Pipeline에 추가
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {/* Google Tasks 액션아이템 선택 모달 */}
+      {showGoogleTasksModal && createPortal(
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
+            onClick={() => setShowGoogleTasksModal(false)}
+          />
+          <div
+            className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-white/40 dark:border-white/10"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-neutral-main mb-1">Google Tasks에 추가</h3>
+            <p className="text-xs text-neutral-muted mb-3">
+              추가할 액션아이템을 선택하세요.
+            </p>
+
+            <div className="space-y-1.5 max-h-[280px] overflow-y-auto mb-4 border border-neutral-200 dark:border-neutral-700 rounded-xl p-2.5">
+              {data.actionItems.map((item, i) => (
+                <label key={i} className="flex items-start gap-2.5 cursor-pointer p-1.5 rounded-lg hover:bg-surface-hover transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={selectedActionItems.includes(i)}
+                    onChange={() => {
+                      setSelectedActionItems(prev =>
+                        prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]
+                      );
+                    }}
+                    className="mt-0.5 w-4 h-4 rounded accent-emerald-600"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm text-neutral-main block truncate">{item.task}</span>
+                    <div className="flex gap-2 text-[10px] text-neutral-muted">
+                      {item.assignee && <span>{item.assignee}</span>}
+                      {item.deadline && <span>{item.deadline}</span>}
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowGoogleTasksModal(false)}
+                className="px-5 py-3 text-sm font-extrabold rounded-xl text-neutral-600 dark:text-neutral-300 hover:text-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={async () => {
+                  setShowGoogleTasksModal(false);
+                  setGoogleTasksLoading(true);
+                  try {
+                    for (const idx of selectedActionItems) {
+                      const item = data.actionItems[idx];
+                      await createGoogleTask({
+                        title: item.task,
+                        assignee: item.assignee || null,
+                        due_date: item.deadline || null,
+                        priority: 'medium',
+                      });
+                    }
+                    setGoogleTasksSent(true);
+                  } catch (err) {
+                    alert(err.response?.data?.detail || 'Google Tasks 추가 실패');
+                  } finally {
+                    setGoogleTasksLoading(false);
+                  }
+                }}
+                disabled={selectedActionItems.length === 0}
+                className="flex-1 px-5 py-3 text-sm font-extrabold rounded-xl bg-primary-900 text-white hover:bg-neutral-main shadow-lg transition-colors disabled:opacity-60"
+              >
+                {selectedActionItems.length}건 Tasks에 추가
               </button>
             </div>
           </div>

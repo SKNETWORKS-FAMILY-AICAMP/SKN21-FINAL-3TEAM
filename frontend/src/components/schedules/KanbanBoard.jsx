@@ -598,7 +598,7 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="fixed top-0 right-0 h-full w-[360px] z-[100] bg-white dark:bg-neutral-900 shadow-[-8px_0_30px_-10px_rgba(0,0,0,0.15)] border-l border-neutral-200 dark:border-neutral-700 flex flex-col"
+                        className="fixed top-4 right-4 bottom-4 w-[360px] z-[100] bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl shadow-[-8px_0_30px_-10px_rgba(0,0,0,0.15)] border border-white/40 dark:border-white/10 rounded-[2rem] flex flex-col overflow-hidden"
                     >
                         {/* Header */}
                         <div className="px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
