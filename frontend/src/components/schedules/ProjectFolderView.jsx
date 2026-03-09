@@ -352,11 +352,11 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                             />
                             <div className="flex items-center gap-2">
                                 <button onClick={handleCreateProject} disabled={!newProjectName.trim()}
-                                    className="flex-1 px-3 py-2 text-xs font-bold rounded-xl bg-primary-600 text-white hover:bg-primary-700 transition-colors disabled:opacity-40">
+                                    className="flex-1 px-4 py-2.5 text-sm font-bold rounded-xl bg-primary-600 text-white hover:bg-primary-700 shadow-md transition-colors disabled:opacity-40">
                                     생성
                                 </button>
                                 <button onClick={() => { setCreatingProject(false); setNewProjectName(''); }}
-                                    className="px-3 py-2 text-xs font-bold rounded-xl text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+                                    className="flex-1 px-4 py-2.5 text-sm font-bold rounded-xl border border-neutral-300 dark:border-neutral-600 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
                                     취소
                                 </button>
                             </div>
