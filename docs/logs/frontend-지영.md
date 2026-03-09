@@ -1200,6 +1200,55 @@
 - 관련 state(`pwModal`, `pwForm`, `pwError`, `pwSaving`), 함수(`openPwModal`, `handleChangePassword`), 모달 전체 제거
 - 미사용 import(`KeyRound`, `changePassword`) 정리
 
+#### 8) 복합 질문(Multi-Intent) 처리 Phase 1 구현 — 규칙 기반 파이프라인
+
+> 단일 intent만 처리 가능했던 챗봇에 복합 질문(예: "규정 찾아줘 그리고 판단해줘") 감지 및 분리 처리 파이프라인 구현
+
+**AI 수정 (4개 파일)**
+- `ai/agents/state.py` — `sub_queries`, `sub_responses` 필드 추가 (복합 질문 분해/결과 저장용)
+- `ai/agents/config.py` — `ENABLE_COMPLEX_QUERY = True` 플래그 추가
+- `ai/agents/intent_classifier.py` — 규칙 기반 복합 감지 함수 추가
+  - `_INTENT_VERB_PATTERNS`: intent별 핵심 동사 패턴 (8개 intent)
+  - `_split_compound_text()`: 접속사 분리 (그리고 → 쉼표 → 동사+하고 → ~해서 → 구문 패턴)
+  - `detect_compound_query()`: 2+ intent 동사 매칭 시 분리 + hint intent 부여
+- `ai/agents/orchestrator.py` — LangGraph 그래프 구조 변경
+  - 진입점: `classify_intent` → `decompose_query`로 변경
+  - `decompose_query` 노드: 복합 감지 → sub_queries 설정
+  - `route_after_decompose`: compound_pending vs classify_intent 분기
+  - `compound_pending` 노드: stream_pending 설정 (chat.py에서 처리)
+
+**Backend 수정 (1개 파일)**
+- `backend/app/api/v1/chat.py` — compound 스트리밍 핸들러 추가
+  - `_build_initial_state`에 `sub_queries`, `sub_responses` 초기값 추가
+  - `decompose_query` 노드 핸들러: 상태 이벤트 전송
+  - `compound_pending` 핸들러: sub_queries 순회 → 각각 `graph.ainvoke()` 호출 → 응답 텍스트 10자 단위 토큰 스트리밍 → sub_responses 수집 → compound_response 머지
+
+**Frontend 수정/추가 (3개 파일)**
+- `frontend/src/hooks/useSSE.js` — `compound_start`, `compound_sub`, `compound_sub_done` 이벤트 핸들러 추가
+- `frontend/src/components/chat/CompoundCard.jsx` — **신규** compound 결과 카드 컴포넌트
+  - 기존 디자인 시스템 색상 활용 (primary=판단, accent=문서, success=일정)
+  - intent별 아이콘·라벨·border-left 컬러 매핑
+  - 헤더 "N개 요청을 처리했습니다" + 하위 카드 렌더링
+- `frontend/src/pages/ChatPage.jsx` — `renderCardMessage`에 `case 'compound'` 추가
+
+**검증 결과**
+- `data/training/intent/complex_test.json` 30문장 테스트: **83.3% (25/30)** 정확도
+- 오류 5건: 규칙 기반 한계 (애매한 동사, 누락 패턴) → Phase 2 멀티라벨 BERT로 해결 예정
+
+### 다음 할 일
+
+#### 복합 질문(Multi-Intent) 처리 Phase 2: 멀티라벨 BERT 교체
+
+Phase 1 규칙 기반 파이프라인이 동작하므로, 이를 멀티라벨 BERT로 교체하여 정확도를 높인다.
+
+- 기존 단일 intent 학습 데이터 조합으로 복합 학습 데이터 자동 생성
+- 학습 코드 수정 (softmax → sigmoid, CrossEntropy → BCEWithLogitsLoss)
+- 멀티라벨 BERT 학습 + 성능 평가
+- `intent_classifier.py` predict 수정 (threshold 기반 다중 intent 반환)
+- Phase 1 규칙 기반 감지를 멀티라벨 BERT로 교체
+
+**목적**: 심사 평가 시 "단일→멀티라벨 진화" 스토리 + 자체 sLLM 개발 일관성 확보
+
 ---
 
 ## 현재 구현 현황 요약

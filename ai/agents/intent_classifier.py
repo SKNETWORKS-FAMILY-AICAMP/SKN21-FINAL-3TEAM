@@ -451,3 +451,117 @@ def get_classifier() -> IntentClassifier:
     if _classifier_instance is None:
         _classifier_instance = IntentClassifier()
     return _classifier_instance
+
+
+# ── 복합 질문 감지 (규칙 기반) ──
+
+# 복합 감지 키워드 (문장 안에 서로 다른 intent 동사가 2개 이상)
+_INTENT_VERB_PATTERNS = {
+    "judgment": r"(판단|위반|허용|가능한가|되나요|해도 되|해도 돼)",
+    "doc_search": r"(찾아|검색|어디|어떤 문서|검토)",
+    "doc_generate": r"(작성|생성|만들어|써 줘|써줘|작성해|만들어 줘)",
+    "doc_summary": r"(요약|정리|핵심만)",
+    "doc_qa": r"(뭐라고|뭐야|뭐였|결정사항|내용이)",
+    "schedule_add": r"(일정.*(?:추가|등록|잡아|넣어)|(?:추가|등록|잡아|넣어).*일정|회의.*(?:잡아|등록))",
+    "schedule_view": r"(일정.*(?:보여|조회|확인|알려)|(?:보여|조회|확인).*일정|스케줄.*(?:보여|확인))",
+}
+
+# 동사 어간 + "하고"/"주고" 패턴 (분리점으로 사용)
+_VERB_CONNECTOR_PATTERN = r"((?:추가|등록|잡아|검색|찾아|조회|확인|판단|생성|작성|요약|정리)하고|(?:해|찾아|보여|알려|잡아|확인해|조회해)(?:줘|주고))\s+"
+
+
+# "~해서/~어서" 순차 연결 패턴
+_SEQUENTIAL_CONNECTOR_PATTERN = r"((?:찾아|검색해|확인해|정리해|검토해|조회해)서)\s+"
+
+# "~보고", "바탕으로", "한 다음" 등 순차 패턴
+_SEQUENTIAL_PHRASE_PATTERNS = [
+    r"(.+?(?:찾아|검색해|확인해)보고)\s+(.+)",      # "찾아보고 ~해줘"
+    r"(.+?)\s*(?:바탕으로|기반으로|토대로)\s+(.+)",   # "규정을 바탕으로 JD 작성해줘"
+    r"(.+?(?:요약|정리|확인|검색)한\s*(?:다음|후에?))\s+(.+)",  # "요약한 다음 ~해줘"
+    r"(.+?)\s*있으면\s*(.+?)\s*없으면\s*(.+)",        # "있으면 ~ 없으면 ~"
+]
+
+
+def _split_compound_text(text: str) -> list[str]:
+    """복합 질문 텍스트를 서브쿼리 파트로 분리"""
+    # 1. "그리고" / 쉼표로 분리
+    if "그리고" in text:
+        return [p.strip() for p in text.split("그리고") if p.strip()]
+    if ", " in text or "," in text:
+        parts = [p.strip() for p in re.split(r",\s*", text) if p.strip()]
+        if len(parts) >= 2:
+            return parts
+
+    # 2. "~하고 ", "~주고 " 동사 연결 패턴
+    segments = re.split(_VERB_CONNECTOR_PATTERN, text)
+    if len(segments) >= 3:
+        parts = [segments[0] + segments[1]]
+        remaining = "".join(segments[2:])
+        if remaining.strip():
+            parts.append(remaining.strip())
+        return parts
+
+    # 3. "~해서/~어서" 순차 연결 패턴
+    segments = re.split(_SEQUENTIAL_CONNECTOR_PATTERN, text)
+    if len(segments) >= 3:
+        parts = [segments[0] + segments[1]]
+        remaining = "".join(segments[2:])
+        if remaining.strip():
+            parts.append(remaining.strip())
+        return parts
+
+    # 4. "~보고", "바탕으로", "한 다음" 등 순차 구문
+    for pattern in _SEQUENTIAL_PHRASE_PATTERNS:
+        m = re.match(pattern, text)
+        if m:
+            parts = [p.strip() for p in m.groups() if p and p.strip()]
+            if len(parts) >= 2:
+                return parts
+
+    return []
+
+
+def detect_compound_query(text: str) -> list[dict]:
+    """
+    규칙 기반 복합 질문 감지 + 분리.
+
+    Returns:
+        복합이면: [{"query": "일정 추가해줘", "hint": "schedule_add"}, ...]
+        단일이면: []
+    """
+    # 1단계: intent 동사 패턴으로 2개 이상 intent 감지
+    matched_intents = []
+    for intent, pattern in _INTENT_VERB_PATTERNS.items():
+        if re.search(pattern, text):
+            matched_intents.append(intent)
+
+    if len(matched_intents) < 2:
+        return []
+
+    # 2단계: 명확한 구분자로 문장 분리
+    parts = _split_compound_text(text)
+
+    if len(parts) < 2:
+        return []
+
+    # 3단계: 각 part에 intent hint 매칭
+    sub_queries = []
+    for part in parts:
+        hint = "general"
+        for intent, pattern in _INTENT_VERB_PATTERNS.items():
+            if re.search(pattern, part):
+                hint = intent
+                break
+        sub_queries.append({"query": part, "hint": hint})
+
+    # 모든 sub_query가 같은 intent면 복합이 아님
+    hints = set(sq["hint"] for sq in sub_queries)
+    if len(hints) < 2:
+        return []
+
+    logger.info(
+        "Compound query detected: '%s' → %s",
+        text,
+        [sq["hint"] for sq in sub_queries],
+    )
+    return sub_queries

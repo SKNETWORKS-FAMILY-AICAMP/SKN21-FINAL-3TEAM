@@ -124,11 +124,14 @@ export default function useSSE() {
                 console.error('[SSE] 서버 에러:', event.message || event.value)
                 setLastAssistantError(event.message || event.value || '서버 오류가 발생했습니다')
                 break
-              case 'multi_intent':
-                setCurrentStatus(`복합 질문 분석: ${event.data?.total || ''}개 하위 질문`)
+              case 'compound_start':
+                setCurrentStatus(`복합 질문 감지: ${event.total || ''}개 하위 질문 처리 중...`)
                 break
-              case 'sub_query_done':
-                setCurrentStatus(`처리 중 ${event.data?.step || ''}/${event.data?.total || ''}`)
+              case 'compound_sub':
+                setCurrentStatus(`[${(event.index || 0) + 1}/${event.total || ''}] ${event.query || ''} 처리 중...`)
+                if (event.index > 0) appendToken('\n\n---\n\n')
+                break
+              case 'compound_sub_done':
                 break
               case 'clarify_candidates':
                 setLastAssistantResult('clarify', event.data)

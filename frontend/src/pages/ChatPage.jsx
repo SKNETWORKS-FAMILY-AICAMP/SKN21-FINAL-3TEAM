@@ -15,6 +15,7 @@ import ScheduleCard from '../components/chat/ScheduleCard';
 import GenerateCard from '../components/chat/GenerateCard';
 import MarkdownText from '../components/chat/MarkdownText';
 import SourceItem from '../components/chat/SourceItem';
+import CompoundCard from '../components/chat/CompoundCard';
 import useChat from '../hooks/useChat';
 import useChatStore from '../store/chatStore';
 import { listRegulations } from '../api/regulations';
@@ -266,6 +267,10 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
           </div>
         </div>
       );
+    }
+
+    case 'compound': {
+      return <CompoundCard data={data} />;
     }
 
     case 'doc_pick': {
