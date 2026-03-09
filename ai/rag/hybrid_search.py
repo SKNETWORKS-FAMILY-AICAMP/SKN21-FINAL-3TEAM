@@ -148,6 +148,8 @@ class HybridSearcher:
                 "article": meta.get("article", ""),
                 "score": float(normalized_scores[idx]),
                 "doc_id": self._corpus_ids[idx],
+                "tags": meta.get("tags", ""),
+                "category": meta.get("category", ""),
             }
             # 추가 메타데이터 전파 (document_id 등)
             if "document_id" in meta:
@@ -217,37 +219,46 @@ class HybridSearcher:
         rrf_scores: dict[str, dict] = {}
         k = 60  # RRF 상수
 
+        def _init_rrf_entry(doc, doc_id):
+            return {
+                "content": doc["content"],
+                "source": doc["source"],
+                "title": doc.get("title", ""),
+                "chapter": doc.get("chapter", ""),
+                "article": doc.get("article", ""),
+                "document_id": doc.get("document_id"),
+                "tags": doc.get("tags", ""),
+                "category": doc.get("category", ""),
+                "doc_id": doc_id,
+                "rrf_score": 0.0,
+            }
+
         for rank, doc in enumerate(bm25_results):
             doc_id = doc["doc_id"]
             rrf_score = 1.0 / (k + rank + 1)
             if doc_id not in rrf_scores:
-                rrf_scores[doc_id] = {
-                    "content": doc["content"],
-                    "source": doc["source"],
-                    "title": doc.get("title", ""),
-                    "chapter": doc.get("chapter", ""),
-                    "article": doc.get("article", ""),
-                    "document_id": doc.get("document_id"),
-                    "doc_id": doc_id,
-                    "rrf_score": 0.0,
-                }
+                rrf_scores[doc_id] = _init_rrf_entry(doc, doc_id)
             rrf_scores[doc_id]["rrf_score"] += rrf_score
 
         for rank, doc in enumerate(vector_results):
             doc_id = doc["doc_id"]
             rrf_score = 1.0 / (k + rank + 1)
             if doc_id not in rrf_scores:
-                rrf_scores[doc_id] = {
-                    "content": doc["content"],
-                    "source": doc["source"],
-                    "title": doc.get("title", ""),
-                    "chapter": doc.get("chapter", ""),
-                    "article": doc.get("article", ""),
-                    "document_id": doc.get("document_id"),
-                    "doc_id": doc_id,
-                    "rrf_score": 0.0,
-                }
+                rrf_scores[doc_id] = _init_rrf_entry(doc, doc_id)
             rrf_scores[doc_id]["rrf_score"] += rrf_score
+
+        # 4. 태그/카테고리 매칭 부스트
+        # 쿼리 키워드가 문서의 tags/category에 포함되면 RRF 점수 부스트
+        query_keywords = [t.lower() for t in tokenize(query)]
+        for doc_id, doc in rrf_scores.items():
+            doc_tags = doc.get("tags", "").lower()
+            doc_category = doc.get("category", "").lower()
+            tag_text = f"{doc_tags} {doc_category}"
+            match_count = sum(1 for kw in query_keywords if kw in tag_text)
+            if match_count > 0:
+                # 태그 매칭 시 RRF 점수에 부스트 (매칭 키워드 수에 비례)
+                boost = 0.3 * match_count
+                doc["rrf_score"] *= (1.0 + boost)
 
         # RRF score 기준 내림차순 정렬
         sorted_results = sorted(
@@ -285,21 +296,26 @@ class HybridSearcher:
             return []
         rrf_scores_list = [doc["rrf_score"] for doc in diverse_results]
         max_s = max(rrf_scores_list)
+        min_s = min(rrf_scores_list)
 
-        normalized_results = [
-            {
+        normalized_results = []
+        for doc in diverse_results:
+            # 상대 점수 (0~1) + 바닥 보정으로 시각적 신뢰도 향상
+            # 검색 결과에 포함된 문서는 최소 40%의 관련성이 있다고 표시
+            relative = doc["rrf_score"] / max_s if max_s > 0 else 1.0
+            display_score = 0.4 + 0.6 * relative  # 40%~100% 범위로 매핑
+
+            normalized_results.append({
                 "content": doc["content"],
                 "source": doc["source"],
                 "title": doc.get("title", ""),
                 "chapter": doc.get("chapter", ""),
                 "article": doc.get("article", ""),
                 "document_id": doc.get("document_id"),
-                "score": doc["rrf_score"] / max_s if max_s > 0 else 1.0,
+                "score": display_score,
                 "rrf_score": doc["rrf_score"],
                 "doc_id": doc["doc_id"],
-            }
-            for doc in diverse_results
-        ]
+            })
 
         # Score Threshold 필터링 (Reranker 미사용 시 RRF 정규화 점수 기준)
         if score_threshold is not None and not use_reranker:
