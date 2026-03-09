@@ -31,7 +31,7 @@ const typeConfig = {
   security: { icon: ShieldCheck, color: 'text-red-500 bg-red-100 dark:bg-red-900/30', label: '보안 예외 처리' },
 };
 
-const defaultTypeConfig = { icon: FileSignature, color: 'text-gray-500 bg-gray-100 dark:bg-gray-900/30', label: '요청' };
+const defaultTypeConfig = { icon: FileSignature, color: 'text-neutral-sub bg-surface-sub', label: '요청' };
 
 export default function ApprovalQueueWidget() {
   const navigate = useNavigate();
@@ -283,7 +283,7 @@ export default function ApprovalQueueWidget() {
                   <div className={`p-1.5 rounded-xl ${item.color}`}>
                     <item.icon size={16} />
                   </div>
-                  <span className="text-[10px] font-bold text-neutral-sub px-2.5 py-1 bg-white/20 dark:bg-neutral-800/50 rounded-full">
+                  <span className="text-[10px] font-bold text-neutral-sub px-2.5 py-1 bg-surface-sub/60 rounded-full">
                     {typeLabels[item.type] || item.type.toUpperCase()}
                   </span>
                 </div>
@@ -294,7 +294,7 @@ export default function ApprovalQueueWidget() {
 
               <h4 className="text-sm font-semibold text-neutral-main mb-1">{item.title}</h4>
 
-              <div className="flex items-center gap-2 mb-4 bg-white/30 dark:bg-neutral-800/40 p-2 rounded-lg">
+              <div className="flex items-center gap-2 mb-4 bg-surface-sub/60 p-2 rounded-lg">
                 {item.category === 'approval' ? (
                   <>
                     <img src={item.avatar} alt={item.requester} className="w-8 h-8 rounded-full" />
@@ -305,7 +305,7 @@ export default function ApprovalQueueWidget() {
                   </>
                 ) : item.assignee ? (
                   <>
-                    <img src={getAvatar(item.assignee)} alt={item.assignee} className="w-8 h-8 rounded-full border border-gray-200 bg-white" />
+                    <img src={getAvatar(item.assignee)} alt={item.assignee} className="w-8 h-8 rounded-full border border-neutral-border bg-surface-card" />
                     <div>
                       <p className="text-xs font-medium text-neutral-main">{item.assignee}</p>
                       <p className="text-[10px] text-neutral-muted">{item.detail}</p>
@@ -465,7 +465,7 @@ export default function ApprovalQueueWidget() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 py-4 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-black rounded-xl shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                  className="flex-1 py-4 bg-primary-700 text-white text-xs font-black rounded-xl shadow-xl hover:bg-primary-900 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
                 >
                   {submitting ? '제출 중...' : '요청 제출'}
                 </button>

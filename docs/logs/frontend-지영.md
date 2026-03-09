@@ -1122,6 +1122,42 @@
 
 ---
 
+## 2026-03-09 (월)
+
+### 한 일
+
+#### 1) 다크모드 하드코딩 색상 전체 점검 및 수정 (8개 파일)
+
+> `bg-white`, `text-gray-*`, `bg-gray-*`, `border-gray-*`, `dark:bg-gray-*` 등 Tailwind 고정 클래스를 프로젝트 CSS 변수 기반 토큰으로 전면 교체
+
+**수정 원칙**
+- `bg-white` / `dark:bg-gray-700` → `bg-surface-card` (라이트=#FFF, 다크=#2F2F34 자동 전환)
+- `text-gray-900` / `dark:text-white` → `text-neutral-main`
+- `text-gray-500` / `dark:text-gray-400` → `text-neutral-sub` / `text-neutral-muted`
+- `border-gray-*` / `dark:border-gray-*` → `border-neutral-border` / `border-neutral-divider`
+- `bg-neutral-50` / `dark:bg-gray-800` → `bg-surface-sub`
+- `bg-neutral-900 dark:bg-white text-white dark:text-neutral-900` (제출 버튼) → `bg-primary-700 text-white`
+
+**수정 파일 (8개)**
+
+| 파일 | 주요 수정 |
+|------|----------|
+| `pages/TasksPage.jsx` | 텍스트/배경/보더/드롭존/제출버튼 전체 |
+| `components/schedules/KanbanBoard.jsx` | 동일 패턴 (칸반 보드 컴포넌트 버전) |
+| `components/common/Header.jsx` | Schedule 필, 날짜 뱃지, 타임라인 트랙, 유틸리티 박스, 드롭다운 |
+| `pages/ApprovalsPage.jsx` | 상태 탭, 검색/필터 인풋, 섹션 배경, 모달 폼, 제출 버튼 |
+| `pages/ChatPage.jsx` | `no_regulation` 설정값, 세션 사이드바 버튼 |
+| `components/chat/AIChatPopup.jsx` | 추천 질문 칩, 히스토리 아이템, AI 메시지 버블, 입력창, 전송 버튼 |
+| `components/common/DatePicker.jsx` | 달력 팝업 배경 |
+| `components/dashboard/ApprovalQueueWidget.jsx` | 기본 타입 설정, 배지 배경, 담당자 섹션, 아바타, 제출 버튼 |
+
+### 다음 할 일
+- 멀티데이 일정 필터 디버깅 마무리
+- Slack 연동 E2E 확인
+- 전체 E2E 테스트
+
+---
+
 ## 현재 구현 현황 요약
 
 | 항목 | 상태 | 비고 |

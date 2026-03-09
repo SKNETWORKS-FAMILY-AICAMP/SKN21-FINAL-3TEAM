@@ -48,18 +48,18 @@ export default function Header() {
 
       {/* Middle: Schedule Timeline Widget */}
       <div className="flex-[2] flex justify-center w-full">
-        <div className="bg-white border border-neutral-200 text-neutral-800 rounded-full flex items-center p-2 w-full max-w-[850px] shadow-sm">
+        <div className="bg-surface-card border border-neutral-divider text-neutral-main rounded-full flex items-center p-2 w-full max-w-[850px] shadow-sm">
           {/* Label section */}
           <div className="flex items-center gap-3 px-6 py-2 whitespace-nowrap">
-            <span className="text-base font-extrabold tracking-tight text-neutral-800">Your Schedule</span>
-            <div className="bg-neutral-100 rounded-full px-4 py-1.5 flex items-center gap-2 border border-neutral-200">
-              <Calendar size={14} className="text-neutral-500" />
-              <span className="text-sm text-neutral-600 font-semibold">{dayjs().format('DD MMMM')}</span>
+            <span className="text-base font-extrabold tracking-tight text-neutral-main">Your Schedule</span>
+            <div className="bg-surface-sub rounded-full px-4 py-1.5 flex items-center gap-2 border border-neutral-divider">
+              <Calendar size={14} className="text-neutral-muted" />
+              <span className="text-sm text-neutral-sub font-semibold">{dayjs().format('DD MMMM')}</span>
             </div>
           </div>
-          
+
           {/* Timeline Track (Light Background) */}
-          <div className="flex-1 bg-neutral-50/80 rounded-full flex items-center ml-2 border border-neutral-200 shadow-inner relative overflow-hidden h-[52px]">
+          <div className="flex-1 bg-surface-sub/80 rounded-full flex items-center ml-2 border border-neutral-divider shadow-inner relative overflow-hidden h-[52px]">
             {todaySchedules.length > 0 ? (
               <>
                 {/* Active Event Block (Point Color) */}
@@ -84,7 +84,7 @@ export default function Header() {
                     </div>
 
                     {todaySchedules[0].meet_link && (
-                      <a href={todaySchedules[0].meet_link} target="_blank" rel="noreferrer" className="w-8 h-8 flex items-center justify-center bg-white border border-transparent hover:border-white text-[#5A768A] rounded-full transition-all shrink-0 shadow-sm">
+                      <a href={todaySchedules[0].meet_link} target="_blank" rel="noreferrer" className="w-8 h-8 flex items-center justify-center bg-surface-card border border-transparent hover:border-white/30 text-primary-700 rounded-full transition-all shrink-0 shadow-sm">
                         <Video size={14} />
                       </a>
                     )}
@@ -102,9 +102,9 @@ export default function Header() {
                   <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-4 animate-fade-in">
                     <span className="text-[13px] font-bold text-neutral-400">{dayjs(todaySchedules[1].start_time).format('h:mm A')}</span>
                     <div className="flex -space-x-1 opacity-60 grayscale">
-                       <div className="h-7 w-7 rounded-full bg-neutral-200 border border-white flex items-center justify-center text-[9px] font-bold text-neutral-500 z-10">Me</div>
+                       <div className="h-7 w-7 rounded-full bg-neutral-divider border border-surface-card flex items-center justify-center text-[9px] font-bold text-neutral-sub z-10">Me</div>
                        {(todaySchedules[1].schedule_type === 'meeting' || todaySchedules[1].attendees > 0) && (
-                         <div className="h-7 w-7 rounded-full bg-neutral-200 border border-white flex items-center justify-center text-[9px] font-bold text-neutral-500">T</div>
+                         <div className="h-7 w-7 rounded-full bg-neutral-divider border border-surface-card flex items-center justify-center text-[9px] font-bold text-neutral-sub">T</div>
                        )}
                     </div>
                   </div>
@@ -126,26 +126,26 @@ export default function Header() {
 
       {/* Right side: Unified Utilities Box */}
       <div className="flex-1 flex justify-end">
-        <div className="flex items-center gap-3 bg-white border border-neutral-200 rounded-full px-2 py-1.5 shadow-sm">
-          
-          <button className="w-10 h-10 rounded-full flex items-center justify-center relative hover:bg-neutral-100 transition">
-            <Bell size={18} className="text-neutral-500" />
-            <span className="absolute top-2.5 right-2 w-2 h-2 bg-error rounded-full border border-white" />
+        <div className="flex items-center gap-3 bg-surface-card border border-neutral-divider rounded-full px-2 py-1.5 shadow-sm">
+
+          <button className="w-10 h-10 rounded-full flex items-center justify-center relative hover:bg-surface-sub transition">
+            <Bell size={18} className="text-neutral-muted" />
+            <span className="absolute top-2.5 right-2 w-2 h-2 bg-error rounded-full border border-surface-card" />
           </button>
           
-          <div className="w-[1px] h-6 bg-neutral-200" />
+          <div className="w-[1px] h-6 bg-neutral-divider" />
 
           {/* Profile Dropdown Container */}
           <div className="relative" ref={profileRef}>
-            <button 
+            <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="flex items-center gap-2 px-1 hover:bg-neutral-50 rounded-full transition-colors"
+              className="flex items-center gap-2 px-1 hover:bg-surface-sub rounded-full transition-colors"
             >
-              <div className="w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center overflow-hidden border border-neutral-200">
+              <div className="w-10 h-10 rounded-full bg-surface-sub flex items-center justify-center overflow-hidden border border-neutral-divider">
                  {_user?.profile_image || _user?.profile_picture || _user?.avatar || _user?.avatar_url ? (
                    <img src={_user.profile_image || _user.profile_picture || _user.avatar || _user.avatar_url} alt="Profile" className="w-full h-full object-cover" />
                  ) : (
-                   <span className="text-xs font-bold text-neutral-600">{_user?.name?.[0] || '김'}</span>
+                   <span className="text-xs font-bold text-neutral-sub">{_user?.name?.[0] || '김'}</span>
                  )}
               </div>
               <ChevronDown size={14} className="text-neutral-400 mr-1" />
@@ -153,20 +153,20 @@ export default function Header() {
 
             {/* Dropdown Menu */}
             {isProfileOpen && (
-              <div className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-[0_4px_24px_-4px_rgba(0,0,0,0.12)] border border-neutral-200/60 overflow-hidden z-50 py-2 animate-fade-in opacity-100">
-                <div className="px-5 py-3 border-b border-neutral-100 mb-2 bg-neutral-50/50">
-                  <p className="text-sm font-bold text-neutral-800 tracking-tight">{_user?.name || 'User'}님</p>
-                  <p className="text-xs text-neutral-500 font-medium truncate mt-0.5">{_user?.email || 'user@example.com'}</p>
+              <div className="absolute right-0 mt-3 w-56 bg-surface-card rounded-2xl shadow-[0_4px_24px_-4px_rgba(0,0,0,0.12)] border border-neutral-divider overflow-hidden z-50 py-2 animate-fade-in opacity-100">
+                <div className="px-5 py-3 border-b border-neutral-divider mb-2 bg-surface-sub/50">
+                  <p className="text-sm font-bold text-neutral-main tracking-tight">{_user?.name || 'User'}님</p>
+                  <p className="text-xs text-neutral-muted font-medium truncate mt-0.5">{_user?.email || 'user@example.com'}</p>
                 </div>
-                
-                <Link 
-                  to="/mypage" 
+
+                <Link
+                  to="/mypage"
                   onClick={() => setIsProfileOpen(false)}
-                  className="w-full text-left px-5 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-primary-50 hover:text-primary-700 flex items-center gap-3 transition-colors"
+                  className="w-full text-left px-5 py-2.5 text-sm font-semibold text-neutral-sub hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-700 flex items-center gap-3 transition-colors"
                 >
-                  <User size={16} className="text-neutral-400" /> 마이페이지
+                  <User size={16} className="text-neutral-muted" /> 마이페이지
                 </Link>
-                <div className="my-1.5 border-t border-neutral-100" />
+                <div className="my-1.5 border-t border-neutral-divider" />
                 
                 <button 
                   onClick={() => {

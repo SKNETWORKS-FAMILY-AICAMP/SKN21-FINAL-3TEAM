@@ -157,26 +157,23 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         yield f"data: {json.dumps({'type': 'clarify_candidates', 'data': {'candidates': candidates, 'message': agent_response.get('message', '')}}, ensure_ascii=False)}\n\n"
 
                     elif node_name == "general_response":
-                        # 2-1. 일반 응답 스트리밍 (Solar API)
+                        # 2-1. 일반 응답 스트리밍 (GPT API)
                         import os as _os
                         from openai import AsyncOpenAI
 
-                        solar_key = _os.getenv("SOLAR_API_KEY")
+                        openai_key = _os.getenv("OPENAI_API_KEY")
 
-                        if not solar_key:
-                            yield f"data: {json.dumps({'type': 'error', 'message': 'SOLAR_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
+                        if not openai_key:
+                            yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
                             continue
 
-                        client = AsyncOpenAI(
-                            api_key=solar_key,
-                            base_url="https://api.upstage.ai/v1/solar",
-                        )
+                        client = AsyncOpenAI(api_key=openai_key)
 
                         user_input = final_state.get("user_input", "")
                         chat_history = final_state.get("chat_history", [])
 
                         stream = await client.chat.completions.create(
-                            model="solar-1-mini-chat",
+                            model="gpt-4o-mini",
                             messages=[
                                 {"role": "system", "content": "당신은 업무 도우미 '듀듀'입니다. 한국어로 친절하게 답변하세요."},
                                 *chat_history,
@@ -329,18 +326,15 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             import os as _os2
                             from openai import AsyncOpenAI as _AsyncOpenAI2
 
-                            solar_key = _os2.getenv("SOLAR_API_KEY")
-                            if not solar_key:
-                                yield f"data: {json.dumps({'type': 'error', 'message': 'SOLAR_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
+                            openai_key = _os2.getenv("OPENAI_API_KEY")
+                            if not openai_key:
+                                yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
                                 continue
 
-                            doc_client = _AsyncOpenAI2(
-                                api_key=solar_key,
-                                base_url="https://api.upstage.ai/v1/solar",
-                            )
+                            doc_client = _AsyncOpenAI2(api_key=openai_key)
 
                             doc_stream = await doc_client.chat.completions.create(
-                                model="solar-1-mini-chat",
+                                model="gpt-4o-mini",
                                 messages=[
                                     {"role": "system", "content": agent_response["sys_prompt"]},
                                     {"role": "user", "content": agent_response["user_prompt"]},
