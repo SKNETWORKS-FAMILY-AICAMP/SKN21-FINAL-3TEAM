@@ -5,7 +5,7 @@ import CustomSelect from '../components/common/CustomSelect';
 import DatePicker from '../components/common/DatePicker';
 import DocumentList from '../components/documents/DocumentList';
 import DocumentDetail from '../components/documents/DocumentDetail';
-import { uploadDocument, listDocuments, getDocument, deleteDocument, analyzeAllDocuments } from '../api/documents';
+import { uploadDocument, listDocuments, getDocument, deleteDocument, analyzeAllDocuments, reindexAllDocuments } from '../api/documents';
 import { toast, confirm } from '../store/toastStore';
 
 
@@ -206,6 +206,24 @@ export default function DocumentsPage() {
     }
   };
 
+  // Qdrant 재인덱싱
+  const handleReindex = async () => {
+    setAnalyzing(true);
+    try {
+      const res = await reindexAllDocuments();
+      const { total, indexed, failed } = res.data;
+      if (total === 0) {
+        toast.info('인덱싱할 문서가 없습니다.');
+      } else {
+        toast.success(`${indexed}개 문서 챗봇 연동 완료${failed > 0 ? `, ${failed}개 실패` : ''}`);
+      }
+    } catch (error) {
+      toast.error('재인덱싱 실패: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   // 문서 삭제 핸들러
   const handleDeleteDoc = async (docId) => {
     const ok = await confirm('이 문서를 삭제하시겠습니까?');
@@ -232,11 +250,11 @@ export default function DocumentsPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={handleAnalyzeAll}
+            onClick={async () => { await handleAnalyzeAll(); await handleReindex(); }}
             disabled={analyzing}
             className={`btn-outline text-xs h-[38px] px-3 whitespace-nowrap ${analyzing ? 'opacity-70' : ''}`}
           >
-            {analyzing ? 'AI 분석중...' : 'AI 일괄 분석'}
+            {analyzing ? '처리중...' : 'AI 분석 + 챗봇 연동'}
           </button>
           <div className="flex items-center gap-2">
             <CustomSelect
