@@ -325,6 +325,21 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
   });
   const multiDayEvents = Array.from(multiDayEventsMap.values());
 
+  // 멀티데이 이벤트마다 고정 row 배정 (그리디 알고리즘)
+  // 같은 이벤트가 모든 셀에서 동일한 row를 쓰도록 사전 배정
+  const sortedMultiDay = [...multiDayEvents].sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const rowEndDates = [];
+  const multiDayRowMap = new Map();
+  sortedMultiDay.forEach(event => {
+    const key = event.scheduleId || event.id;
+    let row = 0;
+    while (row < rowEndDates.length && rowEndDates[row] >= event.startDate) {
+      row++;
+    }
+    rowEndDates[row] = event.endDate;
+    multiDayRowMap.set(key, row);
+  });
+
   const handleDayClick = (d) => {
     if (d.other) return;
     setSelectedDay(d.day);
@@ -430,7 +445,11 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
                   key={i}
                   onClick={() => handleDayClick(d)}
                   className={`relative ${view === 'week' ? 'min-h-[300px]' : 'min-h-[120px]'} bg-surface-card border border-neutral-divider rounded-sm p-1.5 text-xs transition hover:border-primary-300 cursor-pointer ${isToday ? 'border-primary-700 border-2' : ''} ${selectedDay === d.day && !d.other ? 'ring-2 ring-primary-500' : ''}`}
-                  style={dayStripes.length > 0 ? { paddingBottom: `${dayStripes.length * 20 + 4}px` } : {}}
+                  style={(() => {
+                    if (dayStripes.length === 0) return {};
+                    const maxRow = Math.max(...dayStripes.map(e => multiDayRowMap.get(e.scheduleId || e.id) ?? 0));
+                    return { paddingBottom: `${(maxRow + 1) * 20 + 4}px` };
+                  })()}
                 >
                   <div className={`font-semibold mb-1 ${d.other ? 'text-neutral-muted' : (i % 7 === 0 || isHoliday) ? 'text-red-500' : i % 7 === 6 ? 'text-blue-500' : 'text-neutral-main'}`}>{d.day}</div>
                   {dayEvents.map((e, j) => {
@@ -449,7 +468,7 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
                   })}
 
                   {/* 하단 스트라이프 (multi-day 이벤트) */}
-                  {dayStripes.map((event, si) => {
+                  {dayStripes.map((event) => {
                     const eventStart = new Date(event.startDate + 'T00:00:00');
                     const eventEnd = new Date(event.endDate + 'T00:00:00');
                     const cellDate = new Date(currentYear, currentMonth - 1, d.day);
@@ -458,12 +477,13 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
                     const isWeekStart = i % 7 === 0;
                     const showLabel = isStart || isWeekStart;
                     const color = typeColorMap[event.type] || '#9CA3AF';
+                    const row = multiDayRowMap.get(event.scheduleId || event.id) ?? 0;
                     return (
                       <div
                         key={event.scheduleId || event.id}
                         className="absolute flex items-center overflow-hidden"
                         style={{
-                          bottom: `${si * 20 + 2}px`,
+                          bottom: `${row * 20 + 2}px`,
                           height: '18px',
                           left: isStart ? 6 : -2,
                           right: isEnd ? 6 : -2,

@@ -13,7 +13,6 @@ import ApprovalQueueWidget from '../components/dashboard/ApprovalQueueWidget';
 import ScheduleTimelineWidget from '../components/dashboard/ScheduleTimelineWidget';
 import EmployeeTableWidget from '../components/dashboard/EmployeeTableWidget';
 import WhatsOnWidget from '../components/dashboard/WhatsOnWidget';
-import { SkeletonCard } from '../components/common/Skeleton';
 import useUIStore from '../store/uiStore';
 import useGoogleStore from '../store/googleStore';
 import { FileText, HelpCircle, CalendarClock } from 'lucide-react';
@@ -166,6 +165,21 @@ function useDashboardData() {
       };
     });
 
+  // 오늘 진행 중인 멀티데이 일정 (오늘 이전에 시작 & 오늘 이후에 종료)
+  const inProgressMeetings = mergedSchedules
+    .filter(s => {
+      if (!s.start_time || !s.end_time) return false;
+      const startKey = dayjs(s.start_time).format('YYYY-MM-DD');
+      const endKey = dayjs(s.end_time).format('YYYY-MM-DD');
+      return startKey < todayKey && endKey >= todayKey;
+    })
+    .map(s => ({
+      title: s.title,
+      scheduleType: s.schedule_type,
+      startDate: dayjs(s.start_time).format('M/D'),
+      endDate: dayjs(s.end_time).format('M/D'),
+    }));
+
   // 내일 일정
   const upcomingActions = mergedSchedules
     .filter(s => {
@@ -194,6 +208,29 @@ function useDashboardData() {
       date: d.created_at ? new Date(d.created_at).toLocaleDateString('ko-KR') : '',
       status: d.status === 'completed' ? '완료' : d.status === 'processing' ? '처리중' : '업로드됨',
     }));
+
+  // ScheduleTimelineWidget용: 오늘 시작 일정 + 오늘이 포함된 멀티데이 일정
+  const timelineMeetings = [
+    ...todayMeetings,
+    ...mergedSchedules
+      .filter(s => {
+        if (!s.start_time || !s.end_time) return false;
+        const startKey = dayjs(s.start_time).format('YYYY-MM-DD');
+        const endKey = dayjs(s.end_time).format('YYYY-MM-DD');
+        return startKey < todayKey && endKey >= todayKey;
+      })
+      .map(s => ({
+        time: '종일',
+        period: '',
+        title: s.title,
+        location: s.google_meet_link ? '온라인 (Meet)' : s.description || '-',
+        attendees: 0,
+        scheduleType: s.schedule_type,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        isAllDay: true,
+      })),
+  ];
 
   // 전체 일정을 CalendarWidget에 전달 (위젯 내부에서 월별 필터링)
   const allSchedules = mergedSchedules;
@@ -247,6 +284,8 @@ function useDashboardData() {
   return {
     loading,
     todayMeetings,
+    timelineMeetings,
+    inProgressMeetings,
     upcomingActions,
     recentDocs,
     allSchedules,
@@ -359,6 +398,8 @@ export default function DashboardPage() {
   const {
     loading,
     todayMeetings,
+    timelineMeetings,
+    inProgressMeetings,
     upcomingActions,
     recentDocs,
     allSchedules,
@@ -370,8 +411,8 @@ export default function DashboardPage() {
   // 위젯별 props 매핑
   const widgetProps = {
     WhatsOnWidget: {},
-    ScheduleTimelineWidget: { meetings: todayMeetings },
-    TodaySchedule: { meetings: todayMeetings, actions: upcomingActions },
+    ScheduleTimelineWidget: { meetings: timelineMeetings },
+    TodaySchedule: { meetings: todayMeetings, actions: upcomingActions, inProgressMeetings },
     ActivityTimeline: { activities: recentActivities },
     AIChatWidget: {},
     CalendarWidget: { allSchedules },
@@ -433,12 +474,6 @@ export default function DashboardPage() {
     <div className="py-6">
       <GreetingBanner meetingCount={meetingCount} actionCount={actionCount} riskCount={0} />
 
-      {loading && (
-        <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-5 min-w-0">
-          <div className="space-y-5"><SkeletonCard lines={4} /><SkeletonCard lines={3} /><SkeletonCard lines={2} /></div>
-          <div className="space-y-5"><SkeletonCard lines={2} /><SkeletonCard lines={3} /></div>
-        </div>
-      )}
 
       <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-5 min-w-0">
         <WidgetColumn col="leftColumn" items={leftColumn} editMode={editMode} onHide={hideWidget} {...dragProps} widgetProps={widgetProps} />
