@@ -432,11 +432,8 @@ async def delete_document(
     document_id: int,
     user_id: int,
 ) -> dict:
-    """문서 삭제 (업로드한 사용자만 가능)"""
+    """문서 삭제 (로그인한 사용자 누구나 가능)"""
     doc = await get_document(db, document_id)
-
-    if doc.uploaded_by != user_id:
-        raise HTTPException(status_code=403, detail="본인이 업로드한 문서만 삭제할 수 있습니다")
 
     # 파일 삭제
     if doc.file_path and os.path.exists(doc.file_path):
