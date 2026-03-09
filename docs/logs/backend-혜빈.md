@@ -800,3 +800,62 @@
 - Slack 연동 확장
 - AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
 - vLLM 백엔드 연동 + sLLM 교체 및 평가
+
+---
+
+## 2026-03-09 (세션 18) — RAG 검색 정확도 개선 + 문서 관리 UX
+
+### 한 일
+
+**문서 업로드 Scope 라벨링 + 팀 문서 접근 제어**
+- `frontend/src/components/documents/ScopeSelector.jsx`: 회사/팀 선택 버튼에 설명 라벨 추가 ("전체 사용자가 열람 가능" / "OO 팀원만 열람 가능")
+- `frontend/src/components/documents/DocumentList.jsx`: 공개범위(scope) 컬럼 추가 (회사/팀/개인 Badge)
+- RAG 챗봇에 팀 문서 격리 적용:
+  - `backend/app/api/v1/chat.py`: `user_team` 전달
+  - `ai/agents/document_agent.py`: `user_team` 파라미터 추가, RAG retrieve에 전달
+  - `ai/rag/hybrid_search.py`: BM25 검색에 team scope 필터 추가 (같은 팀만 팀 문서 열람)
+  - `ai/rag/qdrant_pipeline.py`: `user_team` 전달
+
+**스캔 PDF OCR Fallback 추가**
+- `backend/app/services/document_service.py`: `_extract_pdf()`에서 텍스트 레이어 없는 PDF → PaddleOCR 자동 시도
+
+**RAG 검색 점수 표시 개선**
+- 문제: RRF min-max 정규화로 마지막 결과가 항상 0% 표시
+- 해결: max 기반 정규화 + 40%~100% 바닥 보정 (`display_score = 0.4 + 0.6 * (score/max)`)
+- `ai/rag/hybrid_search.py`: 점수 정규화 방식 변경
+
+**태그/카테고리 기반 검색 부스트**
+- `ai/rag/hybrid_search.py`: RRF 합산 후 쿼리 키워드가 문서 tags/category에 매칭되면 점수 부스트 (매칭 수 × 0.3)
+- `backend/app/services/document_service.py`: 태그 프리픽스에서 대괄호 제거 → BM25 토크나이저 매칭 개선
+
+**Query Refinement 개선**
+- `ai/rag/query_refiner.py`: 문서 유형 동의어 추가 (보고서/회의록/제안서), 검색 동사 불용어 추가
+
+**LLM 문서 검색 응답 개선**
+- `ai/agents/document_agent.py`: "find" 프롬프트 강화 — Context의 모든 문서를 빠짐없이 나열하도록 지시
+
+**서버 시작 시 자동 재인덱싱**
+- `backend/app/main.py`: `startup_preload()`에서 기존 문서 Qdrant 자동 재인덱싱
+- 프론트엔드: 재인덱싱 버튼 및 일괄 분석 버튼 제거
+
+**커밋 및 배포**
+- GitHub Actions CI/CD로 EC2 자동 배포
+- EC2 서버 재시작 필요 (점수 개선 반영)
+
+### 이슈 및 해결
+
+**이슈 1: 검색 점수 0%/2% 표시**
+- 원인: min-max 정규화에서 최저 점수가 항상 0
+- 해결: max 기반 + 40% 바닥 보정
+
+**이슈 2: 태그 프리픽스 BM25 매칭 실패**
+- 원인: `[태그: ...]` 대괄호가 토크나이저에서 분리됨
+- 해결: 대괄호/라벨 제거, 순수 키워드만 프리픽스
+
+**이슈 3: LLM이 5개 중 3개만 답변**
+- 해결: 프롬프트에 "모든 문서를 빠짐없이 나열" 명시
+
+### 다음 할 일
+- EC2 서버 수동 재시작 (점수 개선 반영 확인)
+- AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
+- vLLM 백엔드 연동 + sLLM 교체 및 평가
