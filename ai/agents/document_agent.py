@@ -240,6 +240,7 @@ def _build_search_prompt(query: str, context: list) -> tuple:
     - 검색 키워드와 전혀 상관없는 문서는 나열하지 마세요
 
     [출력 규칙]
+    - 각 문서의 제목은 반드시 [문서 제목: ...] 에 표시된 실제 제목을 사용하세요. 내용에서 추측하지 마세요.
     - 관련 문서가 있으면 "다음 문서들을 찾았습니다:" 형식으로 시작하고, 각 문서의 제목과 핵심 내용을 한 줄로 요약하세요
     - 관련 문서가 하나도 없으면 "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요."라고만 답하세요
     - 관련 있는 문서는 빠뜨리지 마세요
@@ -279,7 +280,7 @@ async def _handle_doc_search(query: str, context: List[str], user_id: int = None
             search_results = rag_pipeline.retrieve(query, user_id=user_id, user_team=user_team, top_k=5, filter={"source": "documents"})
 
             # 검색된 문서의 content를 context로 사용
-            context = [doc["content"] for doc in search_results]
+            context = [f"[문서 제목: {doc.get('title', '')}]\n{doc['content']}" for doc in search_results]
             print(f"[DocumentAgent] RAG 검색 완료 ({time.time()-_t_rag:.2f}s): {len(context)}개 문서 검색됨")
 
         except Exception as e:
@@ -836,7 +837,7 @@ async def _handle_doc_qa(query: str, context: list = None, user_id: int = None, 
             print(f"[DocumentAgent] RAG 검색 수행 (doc_qa): '{query[:50]}'")
             rag_pipeline = get_qdrant_pipeline()
             search_results = rag_pipeline.retrieve(query, user_id=user_id, user_team=user_team, top_k=5, filter={"source": "documents"})
-            context = [doc["content"] for doc in search_results]
+            context = [f"[문서 제목: {doc.get('title', '')}]\n{doc['content']}" for doc in search_results]
             print(f"[DocumentAgent] RAG 검색 완료 ({time.time()-_t_rag:.2f}s): {len(context)}개 문서")
 
         except Exception as e:
@@ -930,7 +931,7 @@ def _build_sources(search_results: list) -> list:
                 "title": doc.get("title") or doc.get("chapter") or doc.get("source", "제목 없음"),
                 "source": doc.get("source", ""),
                 "score": doc.get("score", 0.0),
-                "content": doc.get("content", "")[:200] + "...",
+                "content": doc.get("content", ""),
                 "document_id": doc.get("document_id"),
             })
     return sources
