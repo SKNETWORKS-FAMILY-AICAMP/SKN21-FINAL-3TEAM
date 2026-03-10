@@ -950,9 +950,10 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
     global _last_model_name
     _t_llm = time.time()
     mode = os.getenv("DOC_AGENT_MODE", "api")
-    print(f"[DocumentAgent] _call_llm 호출 | mode={mode}, task={task}, json_mode={json_mode}")
+    sllm_tasks = os.getenv("DOC_SLLM_TASKS", "generate").split(",")  # sLLM 적용 태스크 (쉼표 구분)
+    print(f"[DocumentAgent] _call_llm 호출 | mode={mode}, task={task}, sllm_tasks={sllm_tasks}, json_mode={json_mode}")
     try:
-        if mode == "sllm" and task:
+        if mode == "sllm" and task in sllm_tasks:
             # sLLM 모드: vLLM + LoRA 어댑터
             try:
                 from ai.serving.vllm_client import VLLMProvider
