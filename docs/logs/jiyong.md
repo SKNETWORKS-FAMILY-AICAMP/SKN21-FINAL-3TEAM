@@ -1075,3 +1075,56 @@ v2_generate AI Hub 데이터 탈락:
 - v2_summary, v2_qa 파인튜닝 (generate 서빙 안정화 후)
 - GPT-4o vs Fine-tuned Kanana 비교 (sLLM 전환 최종 검증)
 - base eval 결과 → 학습결과 보고서 섹션 9 반영
+
+---
+
+## 2026-03-10 (월)
+
+**문서생성 페이지 통합 리팩토링:**
+- `DocumentGeneratePage.jsx`: MeetingInput + DynamicForm → 통합 컴포넌트로 재구성
+  - `TeamAttendeePicker` 컴포넌트 분리 (팀 드롭다운 + 참석자 체크박스, DB 멤버 로드)
+  - `DynamicForm`에 `skipKeys` prop 추가 (회의록일 때 attendees/team 제외)
+  - 회의록: TeamAttendeePicker + DynamicForm, 기타: DynamicForm만 렌더링
+- `TemplateUploadDialog.jsx`: 기본 카테고리 `custom` → `meeting_minutes`로 변경
+- 커스텀 양식에서 attendees/team 필드 있으면 자동으로 TeamAttendeePicker 표시
+
+**커스텀 양식 DOCX 빌더 구현 (`ai/skills/create_from_template.py` 신규):**
+- `fill_template_docx()`: 원본 DOCX 양식에 LLM 데이터 채워넣기
+  - 다열 테이블: 라벨 셀 옆 값 셀에 주입
+  - 1열 섹션 테이블: 다음 행(아래)에 주입 (회의 내용, 결정 사항 등)
+  - `_normalize_label()`: 공백 제거 3단계 매칭 + 라벨 매핑 대폭 확장
+- `create_generic_document()`: 원본 파일 없을 때 범용 레이아웃 생성
+- `document_agent.py` `_generate_with_custom_template`: 하드코딩 빌더 → 범용 빌더로 교체
+
+**template_extractor 필드 추출 개선:**
+- 1열 섹션 테이블(회의 내용, 결정 사항, 비고 등) 추출 안 되던 버그 수정
+- 병합 헤더(Action Item 등) 추출 추가
+- `FIELD_MAPPING`에 ActionItem, 비고/다음회의일정 등 추가
+- 양식 1: 5→9개, 양식 2: 6개, 양식 3: 5개 필드 정상 추출 확인
+
+**챗봇 문서생성 sLLM 이슈 발견:**
+- EC2에서 `DOC_AGENT_MODE=sllm` (Kanana 8B base) → 문서 생성 시 5개 필드만 반환 (123자)
+- 원인: template_extractor가 1열 테이블 필드를 추출 못 함 → sLLM 프롬프트에 content/decisions/action_items 없음
+- template_extractor 수정으로 해결 예정 (DB 재업로드 필요)
+- meeting_minutes 카테고리 커스텀 양식에 summary/decisions/action_items 필드 자동 보강 fallback 추가
+
+**EC2 서버 관련:**
+- SSH로 서버 로그 확인, DOC_AGENT_MODE 전환, 서버 재시작 수행
+- uvicorn 다중 프로세스 기동 → 메모리 과부하로 SSH 타임아웃 발생 (리부트 필요)
+
+**커밋 8건** (feat/jiyong → develop push 완료):
+1. `feat: 문서생성 페이지 TeamAttendeePicker+DynamicForm 통합 + E2E 테스트 추가`
+2. `fix: 커스텀 회의록 양식에서 팀/참석자 UI 표시되도록 수정`
+3. `feat: 커스텀 양식 전용 범용 DOCX 빌더 추가`
+4. `fix: 커스텀 양식 DOCX 빌더 값 셀 무조건 덮어쓰기`
+5. `fix: 커스텀 양식 라벨 매칭 강화 (공백 제거 + 매핑 확장)`
+6. `fix: 1열 테이블 아래 행 주입 + 라벨 매핑 보강`
+7. `fix: 회의록 content fallback + 디버그 로그`
+8. `fix: template_extractor 1열 섹션 테이블 + 병합 헤더 필드 추출`
+
+**다음 할 일:**
+- EC2 리부트 후 서버 재시작 + 최신 코드 반영 확인
+- 기존 업로드된 커스텀 양식 재업로드 (DB parsed_structure 9개 필드로 갱신)
+- sLLM(Kanana 8B)으로 회의록 생성 품질 재검증
+- LoRA fine-tuned 모델 서빙 연결 후 base vs fine-tuned 비교
+- 템플릿 업로드 버튼 반응 없는 버그 확인 (미해결)
