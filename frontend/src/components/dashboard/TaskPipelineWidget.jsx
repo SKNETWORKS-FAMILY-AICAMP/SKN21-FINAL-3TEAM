@@ -111,6 +111,7 @@ export default function TaskPipelineWidget() {
                 assignee: addForm.assignee || null,
                 priority: addForm.priority,
                 stage: 'todo',
+                project: selectedProject || null,
             });
             setShowAddModal(false);
             setAddForm({ title: '', assignee: '', priority: 'medium' });
@@ -138,10 +139,10 @@ export default function TaskPipelineWidget() {
         }
     }, [tasks, allProjectNames, selectedProject]);
 
-    // Filter tasks by selected project (null = loading, '' = all, '미분류' = no project)
+    // Filter tasks by selected project (null = loading, '' = all)
     const filteredTasks = (() => {
         if (!selectedProject) return tasks; // '' → show all
-        if (selectedProject === '미분류') return tasks.filter(t => !t.project);
+        if (selectedProject === '미분류') return tasks.filter(t => !t.project || t.project === '미분류');
         return tasks.filter(t => t.project === selectedProject);
     })();
 

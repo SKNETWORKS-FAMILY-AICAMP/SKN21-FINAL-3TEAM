@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FolderOpen, ArrowLeft, Users, Clock, CheckCircle2, Plus, Pencil, Check, X, Trash2 } from 'lucide-react';
@@ -21,6 +21,25 @@ export default function ProjectFolderView({ externalActions, onReady }) {
     const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'in_progress' | 'done'
     const [deleteTarget, setDeleteTarget] = useState(null); // project name to delete
     const [deleting, setDeleting] = useState(false);
+    const isNavigatingRef = useRef(false);
+
+    // 프로젝트 선택 시 history에 state push → 브라우저 뒤로가기로 목록 복귀
+    const selectProject = useCallback((name) => {
+        isNavigatingRef.current = true;
+        window.history.pushState({ pipelineProject: name }, '');
+        setSelectedProject(name);
+    }, []);
+
+    useEffect(() => {
+        const handlePopState = (e) => {
+            if (selectedProject !== null) {
+                // 프로젝트 내부에서 뒤로가기 → 목록으로
+                setSelectedProject(null);
+            }
+        };
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [selectedProject]);
 
     const fetchAll = useCallback(async () => {
         // 각각 독립적으로 fetch (하나 실패해도 다른 건 유지)
@@ -49,10 +68,16 @@ export default function ProjectFolderView({ externalActions, onReady }) {
         }
         setRenaming(true);
         try {
+            // 최신 태스크를 API에서 다시 가져와서 사용 (stale state 방지)
+            const freshRes = await listPipelineTasks();
+            const freshTasks = Array.isArray(freshRes.data) ? freshRes.data : [];
+
+            // 현재 프로젝트의 태스크 필터 (미분류: project가 null인 것도 포함)
+            const projectTasks = selectedProject === '미분류'
+                ? freshTasks.filter(t => !t.project || t.project === '미분류')
+                : freshTasks.filter(t => t.project === selectedProject);
+
             // 태스크의 project 필드 일괄 업데이트
-            const projectTasks = tasks.filter(t =>
-                selectedProject === '미분류' ? !t.project : t.project === selectedProject
-            );
             await Promise.all(projectTasks.map(t =>
                 updatePipelineTask(t.id, { project: trimmed })
             ));
@@ -61,9 +86,9 @@ export default function ProjectFolderView({ externalActions, onReady }) {
             if (dbProj) {
                 await updateProjectApi(dbProj.id, { name: trimmed });
             }
-            setSelectedProject(trimmed);
+            await fetchAll();
+            selectProject(trimmed);
             setEditingName(false);
-            fetchAll();
         } catch (err) {
             alert('프로젝트 이름 변경 실패');
         } finally {
@@ -76,7 +101,7 @@ export default function ProjectFolderView({ externalActions, onReady }) {
         try {
             await createProjectApi({ name: newProjectName.trim() });
             await fetchAll();
-            setSelectedProject(newProjectName.trim());
+            selectProject(newProjectName.trim());
             setCreatingProject(false);
             setNewProjectName('');
         } catch (err) {
@@ -93,9 +118,7 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                 await deleteProjectApi(dbProj.id);
             }
             // 해당 프로젝트의 태스크도 삭제
-            const projectTasks = tasks.filter(t =>
-                projName === '미분류' ? !t.project : t.project === projName
-            );
+            const projectTasks = tasks.filter(t => t.project === projName);
             await Promise.all(projectTasks.map(t => deletePipelineTask(t.id)));
             setDeleteTarget(null);
             fetchAll();
@@ -121,7 +144,7 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                     refresh: () => { fetchAll(); boardActions?.refresh?.(); },
                     openCreate: () => boardActions?.openCreate?.(),
                     loading,
-                    goBack: () => setSelectedProject(null),
+                    goBack: () => window.history.back(),
                     inProject: true,
                 });
             } else {
@@ -181,7 +204,7 @@ export default function ProjectFolderView({ externalActions, onReady }) {
         return { text: `D-${diff}`, cls: 'text-neutral-muted' };
     };
 
-    const progressColors = ['bg-emerald-400', 'bg-primary-400', 'bg-amber-400', 'bg-rose-400', 'bg-cyan-400', 'bg-violet-400'];
+    const progressColors = ['bg-emerald-400', 'bg-blue-400', 'bg-amber-400', 'bg-rose-400', 'bg-cyan-400', 'bg-violet-400'];
 
     // Filter projects by status
     const filteredProjects = projects.filter(proj => {
@@ -206,7 +229,7 @@ export default function ProjectFolderView({ externalActions, onReady }) {
         return (
             <div className="space-y-4">
                 <button
-                    onClick={() => setSelectedProject(null)}
+                    onClick={() => window.history.back()}
                     className="flex items-center gap-2 text-sm font-bold text-neutral-sub hover:text-primary-600 transition-colors"
                 >
                     <ArrowLeft size={16} />
@@ -254,6 +277,7 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                     )}
                 </div>
                 <KanbanBoard
+                    key={selectedProject}
                     externalActions={externalActions}
                     onReady={setBoardActions}
                     filterProject={selectedProject}
@@ -325,7 +349,7 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.95 }}
                                     transition={{ duration: 0.25, delay: idx * 0.04 }}
-                                    onClick={() => setSelectedProject(proj.name)}
+                                    onClick={() => selectProject(proj.name)}
                                     className="relative bg-white/40 dark:bg-white/5 backdrop-blur-xl pt-8 pb-5 px-5 rounded-3xl border border-neutral-200/60 dark:border-white/10 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group flex flex-col items-center text-center"
                                 >
                                     {/* Delete button */}
