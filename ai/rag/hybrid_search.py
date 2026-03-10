@@ -291,17 +291,20 @@ class HybridSearcher:
                     break
 
         # 절대 관련도 필터링: Vector 검색 최고 유사도가 낮으면 관련 문서가 없다고 판단
-        # 코사인 유사도 0.5 미만 = 쿼리와 의미적으로 거의 관련 없음
-        MIN_VECTOR_SIMILARITY = 0.5
+        # 코사인 유사도 0.3 미만 = 쿼리와 의미적으로 거의 관련 없음
+        MIN_VECTOR_SIMILARITY = 0.3
         if vector_results:
             max_vector_score = max(doc.get("score", 0) for doc in vector_results)
         else:
             max_vector_score = 0
 
+        logger.info(
+            f"[HybridSearch] Vector 최고 유사도: {max_vector_score:.3f} (임계값: {MIN_VECTOR_SIMILARITY})"
+        )
+
         if max_vector_score < MIN_VECTOR_SIMILARITY:
             logger.info(
-                f"[HybridSearch] 관련 문서 없음: Vector 최고 유사도 {max_vector_score:.3f} < "
-                f"임계값 {MIN_VECTOR_SIMILARITY} → 빈 결과 반환"
+                f"[HybridSearch] 관련 문서 없음 → 빈 결과 반환"
             )
             return []
 
