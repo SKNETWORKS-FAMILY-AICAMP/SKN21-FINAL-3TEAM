@@ -1,25 +1,165 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { ChevronDown, X } from 'lucide-react';
 import useAuthStore from '../store/authStore';
+import client from '../api/client';
 import TemplateSelector from '../components/documents/TemplateSelector';
 import TemplateUploadDialog from '../components/documents/TemplateUploadDialog';
 import DocumentPreview from '../components/documents/DocumentPreview';
 import MeetingPreview from '../components/meetings/MeetingPreview';
-import MeetingInput from '../components/meetings/MeetingInput';
 import { generateDocument, downloadDocument, uploadTemplate, listTemplates, getTemplate } from '../api/documents';
 import { toast } from '../store/toastStore';
 
 
 /**
- * 동적 폼 렌더링 — parsed_structure.fields 기반
+ * 팀 + 참석자 선택 UI (회의록 전용)
+ * — DB에서 전체 멤버를 불러와 팀별 필터링 + 체크박스 선택
  */
-function DynamicForm({ fields, formData, onChange }) {
+function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendees, onAttendeesChange }) {
+  const [allMembers, setAllMembers] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  useEffect(() => {
+    client.get('/auth/all-members')
+      .then(res => {
+        const members = res.data || [];
+        if (user) {
+          const hasSelf = members.some(m => m.id === user.id);
+          if (!hasSelf) {
+            members.push({ id: user.id, name: user.name, team: user.team, avatar: user.avatar });
+          }
+        }
+        setAllMembers(members);
+      })
+      .catch(() => setAllMembers([]));
+  }, [user]);
+
+  const teams = useMemo(() => {
+    const set = new Set(allMembers.map(m => m.team).filter(Boolean));
+    if (user?.team) set.add(user.team);
+    return [...set].sort();
+  }, [allMembers, user]);
+
+  const teamMembers = useMemo(() => {
+    return allMembers.filter(m => m.team === selectedTeam);
+  }, [allMembers, selectedTeam]);
+
+  const toggleAttendee = (name) => {
+    const next = selectedAttendees.includes(name)
+      ? selectedAttendees.filter(n => n !== name)
+      : [...selectedAttendees, name];
+    onAttendeesChange(next);
+  };
+
+  const removeAttendee = (name) => {
+    onAttendeesChange(selectedAttendees.filter(n => n !== name));
+  };
+
+  return (
+    <>
+      {/* 팀 선택 */}
+      <div>
+        <label className="block text-[0.8125rem] font-semibold mb-1.5">팀</label>
+        <div className="relative">
+          <select
+            value={selectedTeam}
+            onChange={(e) => onTeamChange(e.target.value)}
+            className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 appearance-none bg-white dark:bg-neutral-900 cursor-pointer"
+          >
+            <option value="">팀 선택</option>
+            {teams.map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+        </div>
+      </div>
+
+      {/* 참석자 선택 */}
+      <div>
+        <label className="block text-[0.8125rem] font-semibold mb-1.5">참석자</label>
+        <div className="relative">
+          <div
+            onClick={() => setShowDropdown(prev => !prev)}
+            className="w-full min-h-[42px] px-3.5 py-2 border border-neutral-border rounded-sm text-sm outline-none focus-within:border-primary-500 cursor-pointer flex flex-wrap items-center gap-1.5"
+          >
+            {selectedAttendees.length > 0 ? (
+              selectedAttendees.map(name => (
+                <span key={name} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary-50 text-primary-700 text-xs font-medium">
+                  {name}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); removeAttendee(name); }}
+                    className="hover:text-primary-900 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              ))
+            ) : (
+              <span className="text-neutral-400 text-sm">팀원을 선택하세요</span>
+            )}
+          </div>
+
+          {showDropdown && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setShowDropdown(false); }} />
+              <div
+                className="absolute top-full left-0 right-0 mt-1 z-20 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl max-h-[200px] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {teamMembers.length > 0 ? (
+                  teamMembers.map(m => {
+                    const isSelected = selectedAttendees.includes(m.name);
+                    return (
+                      <div
+                        key={m.id}
+                        onClick={() => toggleAttendee(m.name)}
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors ${isSelected ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''}`}
+                      >
+                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${isSelected ? 'border-primary-700 bg-primary-700' : 'border-neutral-300 dark:border-neutral-500'}`}>
+                          {isSelected && (
+                            <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          )}
+                        </div>
+                        <img
+                          src={m.avatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(m.name)}`}
+                          alt={m.name}
+                          className="w-7 h-7 rounded-full object-cover bg-neutral-100 dark:bg-neutral-700 flex-shrink-0"
+                        />
+                        <span className={`${isSelected ? 'font-semibold text-primary-700' : 'text-neutral-700 dark:text-neutral-300'}`}>{m.name}</span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="px-4 py-3 text-sm text-neutral-400 text-center">
+                    {selectedTeam ? '팀원이 없습니다' : '팀을 먼저 선택하세요'}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+
+/**
+ * 동적 폼 렌더링 — parsed_structure.fields 기반
+ * attendees/team 필드는 회의록일 때 TeamAttendeePicker로 대체되므로 스킵
+ */
+function DynamicForm({ fields, formData, onChange, skipKeys = [] }) {
   if (!fields || fields.length === 0) return null;
 
   const inputClass = 'w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500';
 
+  const filteredFields = fields.filter(f => !skipKeys.includes(f.key));
+  if (filteredFields.length === 0) return null;
+
   return (
     <div className="space-y-4">
-      {fields.map((field) => {
+      {filteredFields.map((field) => {
         const value = formData[field.key] || '';
 
         if (field.type === 'textarea') {
@@ -106,6 +246,10 @@ export default function DocumentGeneratePage() {
   const [customTemplates, setCustomTemplates] = useState([]);
   const [selectedCustomTemplate, setSelectedCustomTemplate] = useState(null);
 
+  // 회의록 전용: 팀 + 참석자
+  const [selectedTeam, setSelectedTeam] = useState(user?.team || '');
+  const [selectedAttendees, setSelectedAttendees] = useState([]);
+
   const fetchCustomTemplates = () => {
     listTemplates()
       .then(res => setCustomTemplates((res.data || []).filter(t => !t.is_system)))
@@ -124,17 +268,15 @@ export default function DocumentGeneratePage() {
     setMeetingResult(null);
     setFormData({});
     setTemplateFields([]);
+    setSelectedTeam(user?.team || '');
+    setSelectedAttendees([]);
 
-    // 템플릿 상세 조회하여 parsed_structure 로드
     const templateId = customTpl?.id;
     setSelectedTemplateId(templateId || null);
 
-    // 시스템 템플릿이든 커스텀이든 DB에서 조회
     try {
-      // listTemplates에서 해당 카테고리의 시스템 템플릿 ID를 찾아야 함
       let tplId = templateId;
       if (!tplId) {
-        // 시스템 템플릿: listTemplates에서 category + is_system으로 찾기
         const res = await listTemplates({ category: template });
         const systemTpl = (res.data || []).find(t => t.is_system);
         if (systemTpl) tplId = systemTpl.id;
@@ -152,7 +294,6 @@ export default function DocumentGeneratePage() {
           const fields = ps.fields || ps;
           setTemplateFields(Array.isArray(fields) ? fields : []);
 
-          // 기본값 세팅
           const defaults = {};
           for (const f of (Array.isArray(fields) ? fields : [])) {
             if (f.key === 'date') defaults[f.key] = new Date().toISOString().split('T')[0];
@@ -172,44 +313,7 @@ export default function DocumentGeneratePage() {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
 
-  /** 회의록용: MeetingInput의 onSubmit 핸들러 */
-  const handleMeetingSubmit = async (meetingForm) => {
-    if (!selectedTemplate) return;
-    setLoading(true);
-    try {
-      const payload = {
-        template_type: 'meeting_minutes',
-        template_id: selectedCustomTemplate?.id || null,
-        title: meetingForm.title || '',
-        date: meetingForm.date || '',
-        attendees: Array.isArray(meetingForm.attendees)
-          ? meetingForm.attendees
-          : (meetingForm.attendees || '').split(',').map(s => s.trim()).filter(Boolean),
-        content: meetingForm.content || '',
-      };
-
-      const response = await generateDocument(payload);
-      const apiData = response.data;
-
-      setMeetingResult({
-        title: apiData.title || meetingForm.title,
-        date: apiData.date || meetingForm.date,
-        attendees: apiData.attendees?.length > 0
-          ? apiData.attendees
-          : payload.attendees,
-        summary: apiData.summary || apiData.data?.summary || '',
-        decisions: apiData.decisions || apiData.data?.decisions || [],
-        actionItems: apiData.action_items || apiData.data?.action_items || [],
-        document_id: apiData.document_id,
-      });
-    } catch (err) {
-      toast.error('문서 생성 실패: ' + (err.response?.data?.detail || err.message));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /** 보고서/제안서용: DynamicForm의 생성 핸들러 */
+  /** 통합 생성 핸들러 */
   const handleGenerate = async () => {
     if (!selectedTemplate) return;
     setLoading(true);
@@ -217,6 +321,7 @@ export default function DocumentGeneratePage() {
       // formData를 텍스트로 조립
       const lines = [];
       for (const field of templateFields) {
+        if (isMeeting && (field.key === 'attendees' || field.key === 'team')) continue;
         const val = formData[field.key] || '';
         if (val) lines.push(`${field.label}: ${val}`);
       }
@@ -227,34 +332,47 @@ export default function DocumentGeneratePage() {
         template_id: selectedCustomTemplate?.id || null,
         title: formData.title || '',
         date: formData.date || '',
-        attendees: formData.attendees
-          ? formData.attendees.split(',').map(s => s.trim()).filter(Boolean)
-          : [],
+        attendees: isMeeting
+          ? selectedAttendees
+          : (formData.attendees ? formData.attendees.split(',').map(s => s.trim()).filter(Boolean) : []),
         content: formData.content || userInput,
       };
 
       const response = await generateDocument(payload);
       const apiData = response.data;
 
-      // 보고서/제안서: data에서 주요 필드 추출
-      const data = apiData.data || apiData;
-      const displayFields = Object.entries(data)
-        .filter(([k]) => !['title', 'date', 'document_id'].includes(k))
-        .filter(([, v]) => v && (typeof v === 'string' ? v.trim() : true))
-        .slice(0, 5)
-        .map(([k, v]) => ({
-          label: k,
-          value: Array.isArray(v) ? v.map(i => typeof i === 'object' ? JSON.stringify(i) : i).join('\n') : String(v),
-        }));
+      if (isMeeting) {
+        setMeetingResult({
+          title: apiData.title || formData.title,
+          date: apiData.date || formData.date,
+          attendees: apiData.attendees?.length > 0
+            ? apiData.attendees
+            : payload.attendees,
+          summary: apiData.summary || apiData.data?.summary || '',
+          decisions: apiData.decisions || apiData.data?.decisions || [],
+          actionItems: apiData.action_items || apiData.data?.action_items || [],
+          document_id: apiData.document_id,
+        });
+      } else {
+        const data = apiData.data || apiData;
+        const displayFields = Object.entries(data)
+          .filter(([k]) => !['title', 'date', 'document_id'].includes(k))
+          .filter(([, v]) => v && (typeof v === 'string' ? v.trim() : true))
+          .slice(0, 5)
+          .map(([k, v]) => ({
+            label: k,
+            value: Array.isArray(v) ? v.map(i => typeof i === 'object' ? JSON.stringify(i) : i).join('\n') : String(v),
+          }));
 
-      setResult({
-        title: data.title || formData.title,
-        templateType: selectedTemplate,
-        fields: displayFields.length > 0
-          ? displayFields
-          : [{ label: '미리보기', value: apiData.preview || '내용 없음' }],
-        document_id: apiData.document_id,
-      });
+        setResult({
+          title: data.title || formData.title,
+          templateType: selectedTemplate,
+          fields: displayFields.length > 0
+            ? displayFields
+            : [{ label: '미리보기', value: apiData.preview || '내용 없음' }],
+          document_id: apiData.document_id,
+        });
+      }
     } catch (err) {
       toast.error('문서 생성 실패: ' + (err.response?.data?.detail || err.message));
     } finally {
@@ -304,6 +422,9 @@ export default function DocumentGeneratePage() {
     proposal: '제안서',
   };
 
+  // 회의록일 때 DynamicForm에서 제외할 키 (TeamAttendeePicker가 대신 렌더링)
+  const meetingSkipKeys = isMeeting ? ['attendees', 'team'] : [];
+
   return (
     <div>
       <header className="bg-surface-main flex flex-col justify-center overflow-hidden h-[100px]">
@@ -337,13 +458,8 @@ export default function DocumentGeneratePage() {
           }}
         />
 
-        {/* 회의록: MeetingInput (팀 선택 + 참석자 드롭다운) */}
-        {selectedTemplate && isMeeting && (
-          <MeetingInput onSubmit={handleMeetingSubmit} loading={loading} />
-        )}
-
-        {/* 보고서/제안서: 동적 입력 폼 */}
-        {selectedTemplate && !isMeeting && templateFields.length > 0 && (
+        {/* 통합 입력 폼 */}
+        {selectedTemplate && (isMeeting || templateFields.length > 0) && (
           <div className="card">
             <div className="card-header">
               <div className="card-title">
@@ -351,18 +467,32 @@ export default function DocumentGeneratePage() {
               </div>
             </div>
             <div className="card-body space-y-4">
+              {/* 회의록: 팀 + 참석자 (항상 표시) */}
+              {isMeeting && (
+                <TeamAttendeePicker
+                  user={user}
+                  selectedTeam={selectedTeam}
+                  onTeamChange={setSelectedTeam}
+                  selectedAttendees={selectedAttendees}
+                  onAttendeesChange={setSelectedAttendees}
+                />
+              )}
+
+              {/* 동적 폼 필드 (회의록이면 attendees/team 제외) */}
               <DynamicForm
                 fields={templateFields}
                 formData={formData}
                 onChange={handleFieldChange}
+                skipKeys={meetingSkipKeys}
               />
+
               <div className="flex justify-end">
                 <button
                   onClick={handleGenerate}
                   disabled={loading}
                   className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? 'AI 생성 중...' : 'AI 문서 생성'}
+                  {loading ? 'AI 생성 중...' : isMeeting ? 'AI 회의록 생성' : 'AI 문서 생성'}
                 </button>
               </div>
             </div>
