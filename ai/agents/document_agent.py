@@ -402,23 +402,20 @@ async def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
     _t = time.time()
     print(f"[DocumentAgent] _generate_meeting_minutes | input='{user_input[:80]}...'")
 
-    sys_prompt = (
-        "당신은 회의록 작성 전문가입니다.\n"
-        "아래 [작성 지침]을 참고하여 입력된 회의 내용을 바탕으로 실제 회의록을 생성하세요.\n\n"
-        "[작성 지침]\n"
-        "- title: 회의 주제를 반영한 구체적인 제목\n"
-        "- date: 회의 날짜 (YYYY-MM-DD 형식, 없으면 오늘 날짜)\n"
-        "- attendees: 참석자 이름 배열 (없으면 빈 배열)\n"
-        "- summary: 회의에서 논의된 주요 내용을 파트별로 3~5문장으로 요약 (한 줄 요약 금지, 반드시 실제 내용으로 작성)\n"
-        "- decisions: 결정된 사항 목록 (배열, 없으면 빈 배열)\n"
-        "- action_items: 후속 조치 목록. 각 항목은 {content, assignee, due_date} 형태\n"
-        "- risks: 리스크 목록. 각 항목은 {description, level(상/중/하), regulation} 형태\n\n"
-        "반드시 JSON만 출력하세요. 설명 텍스트나 지침 문장을 값으로 출력하지 마세요."
-    )
+    from ai.llm.prompts import DOC_GENERATE_SLLM_PROMPT
+    sys_prompt = DOC_GENERATE_SLLM_PROMPT
     user_prompt = (
-        f"다음 회의 내용을 바탕으로 회의록 JSON을 작성해주세요.\n\n"
-        f"[회의 내용]\n{user_input}\n\n"
-        f"출력 JSON 키: title, date, attendees, summary, decisions, action_items, risks"
+        f"다음 내용을 바탕으로 문서를 JSON 형식으로 작성해주세요.\n\n"
+        f"[문서 유형] 회의록\n\n"
+        f"[필드 명세]\n"
+        f"- title: 회의 주제를 반영한 구체적인 제목\n"
+        f"- date: 회의 날짜 (YYYY-MM-DD 형식, 없으면 오늘 날짜)\n"
+        f"- attendees: 참석자 이름 배열 (없으면 빈 배열)\n"
+        f"- summary: 회의에서 논의된 주요 내용을 3~5문장으로 요약\n"
+        f"- decisions: 결정된 사항 목록 (배열, 없으면 빈 배열)\n"
+        f'- action_items: 후속 조치 목록 배열. 각 항목은 {{"content": "내용", "assignee": "담당자", "due_date": "기한"}} 형태\n'
+        f'- risks: 리스크 목록 배열. 각 항목은 {{"description": "설명", "level": "상/중/하", "mitigation": "대응방안"}} 형태\n\n'
+        f"[회의 내용]\n{user_input}"
     )
 
     print(f"[DocumentAgent] LLM 호출 (meeting_minutes, json_mode=True)...")
@@ -525,31 +522,25 @@ async def _generate_report(user_input: str) -> Dict[str, Any]:
     _t = time.time()
     print(f"[DocumentAgent] _generate_report | input='{user_input[:80]}...'")
 
-    sys_prompt = (
-        "당신은 업무보고서 작성 전문가입니다.\n"
-        "아래 [작성 지침]을 참고하여 사용자의 업무 내용을 바탕으로 실제 보고서 내용을 생성하세요.\n\n"
-        "[작성 지침]\n"
-        "- title: 업무 내용을 반영한 구체적인 보고서 제목\n"
-        "- author: 작성자 이름 (없으면 빈 문자열)\n"
-        "- date: 오늘 날짜 (YYYY-MM-DD 형식)\n"
-        "- department: 부서명 (없으면 빈 문자열)\n"
-        "- position: 직급 (없으면 빈 문자열)\n"
-        "- report_to: 보고 대상 (없으면 빈 문자열)\n"
-        "- report_type: '일일', '주간', '월간', '수시' 중 하나\n"
-        "- overview: 업무 내용을 요약한 보고 개요 (3~5문장, 반드시 실제 내용으로 작성)\n"
-        "- main_content: 업무 세부 내용을 항목별로 구체적으로 작성\n"
-        "- tasks: 진행 중인 업무 목록. 반드시 JSON 배열 형태이며 각 항목은 다음 키를 포함해야 함:\n"
-        "  { \"item\": \"업무항목명\", \"assignee\": \"담당자\", \"progress\": \"진행률(예:70%)\", \"start_date\": \"YYYY-MM-DD\", \"end_date\": \"YYYY-MM-DD\" }\n"
-        "  (담당자/날짜 정보가 없으면 빈 문자열로 채울 것)\n"
-        "- issues: 이슈 및 건의사항 (없으면 빈 문자열)\n"
-        "- next_plan: 향후 계획 (구체적으로 작성)\n\n"
-        "반드시 JSON만 출력하세요. 설명 텍스트나 지침 문장을 값으로 출력하지 마세요."
-    )
+    from ai.llm.prompts import DOC_GENERATE_SLLM_PROMPT
+    sys_prompt = DOC_GENERATE_SLLM_PROMPT
     user_prompt = (
-        f"다음 업무 내용을 바탕으로 업무보고서 JSON을 작성해주세요.\n\n"
-        f"[업무 내용]\n{user_input}\n\n"
-        f"출력 JSON 키: title, author, date, department, position, report_to, report_type, "
-        f"overview, main_content, tasks, issues, next_plan"
+        f"다음 내용을 바탕으로 문서를 JSON 형식으로 작성해주세요.\n\n"
+        f"[문서 유형] 업무보고서\n\n"
+        f"[필드 명세]\n"
+        f"- title: 업무 내용을 반영한 구체적인 보고서 제목\n"
+        f"- author: 작성자 이름 (없으면 빈 문자열)\n"
+        f"- date: 작성 날짜 (YYYY-MM-DD 형식)\n"
+        f"- department: 부서명 (없으면 빈 문자열)\n"
+        f"- position: 직급 (없으면 빈 문자열)\n"
+        f"- report_to: 보고 대상 (없으면 빈 문자열)\n"
+        f"- report_type: '일일', '주간', '월간', '수시' 중 하나\n"
+        f"- overview: 업무 내용을 요약한 보고 개요 (3~5문장)\n"
+        f"- main_content: 업무 세부 내용을 항목별로 구체적으로 작성\n"
+        f'- tasks: 진행 업무 목록 배열. 각 항목은 {{"item": "업무명", "assignee": "담당자", "progress": "진행률", "start_date": "시작일", "end_date": "종료일"}} 형태\n'
+        f"- issues: 이슈 및 건의사항 (없으면 빈 문자열)\n"
+        f"- next_plan: 향후 계획 (구체적으로 작성)\n\n"
+        f"[업무 내용]\n{user_input}"
     )
 
     generated_json_str = await _call_llm(sys_prompt, user_prompt, json_mode=True, task="generate")
@@ -640,37 +631,26 @@ async def _generate_proposal(user_input: str) -> Dict[str, Any]:
     _t = time.time()
     print(f"[DocumentAgent] _generate_proposal | input='{user_input[:80]}...'")
 
-    sys_prompt = (
-        "당신은 제안서 작성 전문가입니다.\n"
-        "아래 [작성 지침]을 참고하여 사용자의 제안 내용을 바탕으로 실제 제안서 내용을 생성하세요.\n\n"
-        "[작성 지침]\n"
-        "- title: 제안 내용을 반영한 구체적인 제안서 제목\n"
-        "- submit_date: 제출 날짜 (YYYY-MM-DD, 없으면 오늘 날짜)\n"
-        "- submit_to: 제출처 (없으면 빈 문자열)\n"
-        "- company: 제안사 이름 (없으면 빈 문자열)\n"
-        "- manager: 담당자 이름 (없으면 빈 문자열)\n"
-        "- contact: 연락처 (없으면 빈 문자열)\n"
-        "- proposal_name: 제안명 (title과 유사하게)\n"
-        "- background: 제안 배경을 2~3문장으로 실제 내용으로 작성\n"
-        "- proposal_date: 제안 날짜 (YYYY-MM-DD)\n"
-        "- period: 제안 기간 (예: 2026년 3월 ~ 6월)\n"
-        "- proposer: 제안사명\n"
-        "- manager_contact: 담당자 / 연락처\n"
-        "- purpose: 제안 목적 및 필요성을 3~5문장으로 실제 내용으로 작성\n"
-        "- analysis: 현황 분석을 3~5문장으로 실제 내용으로 작성\n"
-        "- content: 제안 내용을 항목별로 구체적으로 작성\n"
-        "- schedule: 추진 일정 배열. 각 항목은 {item, phase1, phase2, phase3, phase4} 형태\n"
-        "- budget: 예산 배열. 각 항목은 {item, quantity, unit_price, amount} 형태\n"
-        "- budget_total: 합계 금액\n"
-        "- expected_effect: 기대 효과를 3~5문장으로 실제 내용으로 작성\n\n"
-        "반드시 JSON만 출력하세요. 설명 텍스트나 지침 문장을 값으로 출력하지 마세요."
-    )
+    from ai.llm.prompts import DOC_GENERATE_SLLM_PROMPT
+    sys_prompt = DOC_GENERATE_SLLM_PROMPT
     user_prompt = (
-        f"다음 제안 내용을 바탕으로 제안서 JSON을 작성해주세요.\n\n"
-        f"[제안 내용]\n{user_input}\n\n"
-        f"출력 JSON 키: title, submit_date, submit_to, company, manager, contact, proposal_name, "
-        f"background, proposal_date, period, proposer, manager_contact, purpose, analysis, "
-        f"content, schedule, budget, budget_total, expected_effect"
+        f"다음 내용을 바탕으로 문서를 JSON 형식으로 작성해주세요.\n\n"
+        f"[문서 유형] 제안서\n\n"
+        f"[필드 명세]\n"
+        f"- title: 제안 내용을 반영한 구체적인 제안서 제목\n"
+        f"- submit_date: 제출 날짜 (YYYY-MM-DD, 없으면 오늘 날짜)\n"
+        f"- submit_to: 제출처 (없으면 빈 문자열)\n"
+        f"- company: 제안사 이름 (없으면 빈 문자열)\n"
+        f"- manager: 담당자 이름 (없으면 빈 문자열)\n"
+        f"- contact: 연락처 (없으면 빈 문자열)\n"
+        f"- purpose: 제안 목적 및 필요성 (3~5문장)\n"
+        f"- background: 제안 배경 (2~3문장)\n"
+        f"- content: 제안 내용을 항목별로 구체적으로 작성\n"
+        f'- schedule: 추진 일정 배열. 각 항목은 {{"phase": "단계", "task": "업무", "period": "기간"}} 형태\n'
+        f'- budget: 예산 배열. 각 항목은 {{"item": "항목", "amount": "금액"}} 형태\n'
+        f"- budget_total: 합계 금액 (없으면 빈 문자열)\n"
+        f"- expected_effect: 기대 효과 (3~5문장)\n\n"
+        f"[제안 내용]\n{user_input}"
     )
 
     generated_json_str = await _call_llm(sys_prompt, user_prompt, json_mode=True, task="generate")
