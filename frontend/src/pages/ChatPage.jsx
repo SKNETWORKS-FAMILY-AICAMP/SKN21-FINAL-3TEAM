@@ -169,11 +169,17 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
         }
       };
 
+      // 회의록이면 action_items 전달
+      const actionItems = data.template_type === 'meeting_minutes'
+        ? (data.action_items || docData.action_items || [])
+        : [];
+
       return (
         <GenerateCard
           title={String(docData.title || templateName)}
           templateType={data.template_type}
           fields={fields}
+          actionItems={actionItems}
           onDownload={handleDocDownload}
         />
       );

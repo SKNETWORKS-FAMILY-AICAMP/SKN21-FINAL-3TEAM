@@ -1,28 +1,107 @@
-import { useState, useEffect, useMemo } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import useAuthStore from '../store/authStore';
-import client from '../api/client';
 import TemplateSelector from '../components/documents/TemplateSelector';
 import TemplateUploadDialog from '../components/documents/TemplateUploadDialog';
 import DocumentPreview from '../components/documents/DocumentPreview';
-import MeetingInput from '../components/meetings/MeetingInput';
 import MeetingPreview from '../components/meetings/MeetingPreview';
-import { generateDocument, downloadDocument, uploadTemplate, listTemplates } from '../api/documents';
+import { generateDocument, downloadDocument, uploadTemplate, listTemplates, getTemplate } from '../api/documents';
 import { toast } from '../store/toastStore';
+
+
+/**
+ * 동적 폼 렌더링 — parsed_structure.fields 기반
+ */
+function DynamicForm({ fields, formData, onChange }) {
+  if (!fields || fields.length === 0) return null;
+
+  const inputClass = 'w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500';
+
+  return (
+    <div className="space-y-4">
+      {fields.map((field) => {
+        const value = formData[field.key] || '';
+
+        if (field.type === 'textarea') {
+          return (
+            <div key={field.key}>
+              <label className="block text-[0.8125rem] font-semibold mb-1.5">
+                {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+              </label>
+              <textarea
+                value={value}
+                onChange={(e) => onChange(field.key, e.target.value)}
+                placeholder={`${field.label}을(를) 입력하세요`}
+                rows={4}
+                onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px'; }}
+                className={`${inputClass} resize-none overflow-y-auto max-h-[200px]`}
+              />
+            </div>
+          );
+        }
+
+        if (field.type === 'date') {
+          return (
+            <div key={field.key} className="w-1/2">
+              <label className="block text-[0.8125rem] font-semibold mb-1.5">
+                {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+              </label>
+              <input
+                type="date"
+                value={value}
+                onChange={(e) => onChange(field.key, e.target.value)}
+                className={inputClass}
+              />
+            </div>
+          );
+        }
+
+        if (field.type === 'list') {
+          return (
+            <div key={field.key}>
+              <label className="block text-[0.8125rem] font-semibold mb-1.5">
+                {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+              </label>
+              <input
+                value={value}
+                onChange={(e) => onChange(field.key, e.target.value)}
+                placeholder={`${field.label} (쉼표로 구분)`}
+                className={inputClass}
+              />
+            </div>
+          );
+        }
+
+        // default: text
+        return (
+          <div key={field.key}>
+            <label className="block text-[0.8125rem] font-semibold mb-1.5">
+              {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+            </label>
+            <input
+              value={value}
+              onChange={(e) => onChange(field.key, e.target.value)}
+              placeholder={`${field.label}을(를) 입력하세요`}
+              className={inputClass}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 
 export default function DocumentGeneratePage() {
 
   const user = useAuthStore((s) => s.user);
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);  // category string
+  const [selectedTemplateId, setSelectedTemplateId] = useState(null);  // DB id
+  const [templateFields, setTemplateFields] = useState([]);  // parsed_structure.fields
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [prompt, setPrompt] = useState('');
-  const [result, setResult] = useState(null);
-  const [meetingResult, setMeetingResult] = useState(null);
+  const [formData, setFormData] = useState({});
+  const [result, setResult] = useState(null);          // 보고서/제안서 결과
+  const [meetingResult, setMeetingResult] = useState(null);  // 회의록 결과
   const [loading, setLoading] = useState(false);
-  const [reportForm, setReportForm] = useState({ title: '', date: new Date().toISOString().split('T')[0], author: user?.name ?? '', department: user?.team ?? '', content: '' });
-  const [proposalForm, setProposalForm] = useState({ title: '', date: new Date().toISOString().split('T')[0], company: '', manager: user?.name ?? '', phone: '', content: '' });
-  const [allMembers, setAllMembers] = useState([]);
   const [customTemplates, setCustomTemplates] = useState([]);
   const [selectedCustomTemplate, setSelectedCustomTemplate] = useState(null);
 
@@ -34,130 +113,125 @@ export default function DocumentGeneratePage() {
 
   useEffect(() => { fetchCustomTemplates(); }, []);
 
-  useEffect(() => {
-    client.get('/auth/all-members')
-      .then(res => {
-        const members = res.data || [];
-        if (user) {
-          const hasSelf = members.some(m => m.id === user.id);
-          if (!hasSelf) members.push({ id: user.id, name: user.name, team: user.team });
-        }
-        setAllMembers(members);
-      })
-      .catch(() => setAllMembers([]));
-  }, [user]);
-
-  const teams = useMemo(() => {
-    const set = new Set(allMembers.map(m => m.team).filter(Boolean));
-    if (user?.team) set.add(user.team);
-    return [...set].sort();
-  }, [allMembers, user]);
-
   const isMeeting = selectedTemplate === 'meeting_minutes';
-  const isReport = selectedTemplate === 'report';
-  const isProposal = selectedTemplate === 'proposal';
 
-  const handleTemplateSelect = (template, customTpl = null) => {
+  // 템플릿 선택 → parsed_structure 로드 → 동적 폼 초기화
+  const handleTemplateSelect = async (template, customTpl = null) => {
     setSelectedTemplate(template);
     setSelectedCustomTemplate(customTpl);
     setResult(null);
     setMeetingResult(null);
-    setPrompt('');
-    setReportForm({ title: '', date: new Date().toISOString().split('T')[0], author: user?.name ?? '', department: user?.team ?? '', content: '' });
-    setProposalForm({ title: '', date: new Date().toISOString().split('T')[0], company: '', manager: user?.name ?? '', phone: '', content: '' });
+    setFormData({});
+    setTemplateFields([]);
+
+    // 템플릿 상세 조회하여 parsed_structure 로드
+    const templateId = customTpl?.id;
+    setSelectedTemplateId(templateId || null);
+
+    // 시스템 템플릿이든 커스텀이든 DB에서 조회
+    try {
+      // listTemplates에서 해당 카테고리의 시스템 템플릿 ID를 찾아야 함
+      let tplId = templateId;
+      if (!tplId) {
+        // 시스템 템플릿: listTemplates에서 category + is_system으로 찾기
+        const res = await listTemplates({ category: template });
+        const systemTpl = (res.data || []).find(t => t.is_system);
+        if (systemTpl) tplId = systemTpl.id;
+      }
+
+      if (tplId) {
+        const res = await getTemplate(tplId);
+        const tplData = res.data;
+        setSelectedTemplateId(tplId);
+
+        if (tplData.parsed_structure) {
+          const ps = typeof tplData.parsed_structure === 'string'
+            ? JSON.parse(tplData.parsed_structure)
+            : tplData.parsed_structure;
+          const fields = ps.fields || ps;
+          setTemplateFields(Array.isArray(fields) ? fields : []);
+
+          // 기본값 세팅
+          const defaults = {};
+          for (const f of (Array.isArray(fields) ? fields : [])) {
+            if (f.key === 'date') defaults[f.key] = new Date().toISOString().split('T')[0];
+            else if (f.key === 'author' || f.key === 'manager') defaults[f.key] = user?.name || '';
+            else if (f.key === 'department') defaults[f.key] = user?.team || '';
+            else defaults[f.key] = '';
+          }
+          setFormData(defaults);
+        }
+      }
+    } catch (err) {
+      console.error('[DocumentGeneratePage] 템플릿 조회 실패:', err);
+    }
+  };
+
+  const handleFieldChange = (key, value) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
   };
 
   const handleGenerate = async () => {
     if (!selectedTemplate) return;
     setLoading(true);
     try {
-      let payload = { template_type: selectedTemplate };
-      if (selectedCustomTemplate) {
-        payload.template_id = selectedCustomTemplate.id;
+      // formData를 텍스트로 조립
+      const lines = [];
+      for (const field of templateFields) {
+        const val = formData[field.key] || '';
+        if (val) lines.push(`${field.label}: ${val}`);
       }
+      const userInput = lines.join('\n');
 
-      if (isReport) {
-        payload = {
-          ...payload,
-          title: reportForm.title,
-          date: reportForm.date,
-          content: [
-            reportForm.author && `작성자: ${reportForm.author}`,
-            reportForm.department && `부서: ${reportForm.department}`,
-            reportForm.content,
-          ].filter(Boolean).join('\n'),
-        };
-      } else if (isProposal) {
-        payload = {
-          ...payload,
-          title: proposalForm.title,
-          date: proposalForm.date,
-          content: [
-            proposalForm.company && `제안사: ${proposalForm.company}`,
-            proposalForm.manager && `담당자: ${proposalForm.manager}`,
-            proposalForm.phone && `연락처: ${proposalForm.phone}`,
-            proposalForm.content,
-          ].filter(Boolean).join('\n'),
-        };
-      } else {
-        payload = { ...payload, content: prompt };
-      }
+      const payload = {
+        template_type: selectedTemplate,
+        template_id: selectedCustomTemplate?.id || null,
+        title: formData.title || '',
+        date: formData.date || '',
+        attendees: formData.attendees
+          ? formData.attendees.split(',').map(s => s.trim()).filter(Boolean)
+          : [],
+        content: formData.content || userInput,
+      };
 
       const response = await generateDocument(payload);
       const apiData = response.data;
 
-      const fieldsMap = {
-        report: [
-          { label: '보고 개요', value: apiData.overview },
-          { label: '주요 내용', value: apiData.main_content },
-          { label: '향후 계획', value: apiData.next_plan },
-        ],
-        proposal: [
-          { label: '제안 배경', value: apiData.background },
-          { label: '제안 내용', value: apiData.content },
-          { label: '기대 효과', value: apiData.expected_effect },
-        ],
-      };
+      if (isMeeting) {
+        setMeetingResult({
+          title: apiData.title || formData.title,
+          date: apiData.date || formData.date,
+          attendees: apiData.attendees?.length > 0
+            ? apiData.attendees
+            : (formData.attendees || '').split(',').map(s => s.trim()).filter(Boolean),
+          summary: apiData.summary || apiData.data?.summary || '',
+          decisions: apiData.decisions || apiData.data?.decisions || [],
+          actionItems: apiData.action_items || apiData.data?.action_items || [],
+          document_id: apiData.document_id,
+        });
+      } else {
+        // 보고서/제안서: data에서 주요 필드 추출
+        const data = apiData.data || apiData;
+        const displayFields = Object.entries(data)
+          .filter(([k]) => !['title', 'date', 'document_id'].includes(k))
+          .filter(([, v]) => v && (typeof v === 'string' ? v.trim() : true))
+          .slice(0, 5)
+          .map(([k, v]) => ({
+            label: k,
+            value: Array.isArray(v) ? v.map(i => typeof i === 'object' ? JSON.stringify(i) : i).join('\n') : String(v),
+          }));
 
-      setResult({
-        title: apiData.title,
-        templateType: selectedTemplate,
-        fields: fieldsMap[selectedTemplate] || [{ label: '내용', value: apiData.preview }],
-        document_id: apiData.document_id,
-      });
+        setResult({
+          title: data.title || formData.title,
+          templateType: selectedTemplate,
+          fields: displayFields.length > 0
+            ? displayFields
+            : [{ label: '미리보기', value: apiData.preview || '내용 없음' }],
+          document_id: apiData.document_id,
+        });
+      }
     } catch (err) {
       toast.error('문서 생성 실패: ' + (err.response?.data?.detail || err.message));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleMeetingSubmit = async (formData) => {
-    setLoading(true);
-    try {
-      const response = await generateDocument({
-        template_type: 'meeting_minutes',
-        title: formData.title,
-        date: formData.date,
-        attendees: formData.attendees,
-        content: formData.content,
-      });
-      const apiData = response.data;
-      setMeetingResult({
-        title: apiData.title || formData.title,
-        date: apiData.date || formData.date,
-        attendees: apiData.attendees?.length > 0 ? apiData.attendees : formData.attendees,
-        summary: apiData.summary,
-        decisions: apiData.decisions || [],
-        actionItems: (apiData.action_items || []).map((ai) => ({
-          task: ai.content,
-          assignee: ai.assignee,
-          deadline: ai.due_date,
-        })),
-        document_id: apiData.document_id,
-      });
-    } catch (err) {
-      toast.error('회의록 생성 실패: ' + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
     }
@@ -194,9 +268,15 @@ export default function DocumentGeneratePage() {
       category: data.category,
       description: data.description,
     });
-    const result = res.data;
-    toast.success(`"${result.name}" 템플릿 업로드 완료 (${result.field_count}개 필드 추출)`);
+    const uploadResult = res.data;
+    toast.success(`"${uploadResult.name}" 템플릿 업로드 완료 (${uploadResult.field_count}개 필드 추출)`);
     fetchCustomTemplates();
+  };
+
+  const categoryLabel = {
+    meeting_minutes: '회의록',
+    report: '보고서',
+    proposal: '제안서',
   };
 
   return (
@@ -223,6 +303,8 @@ export default function DocumentGeneratePage() {
               if (selectedCustomTemplate?.id === id) {
                 setSelectedTemplate(null);
                 setSelectedCustomTemplate(null);
+                setTemplateFields([]);
+                setFormData({});
               }
             } catch (err) {
               toast.error('삭제 실패: ' + (err.response?.data?.detail || err.message));
@@ -230,207 +312,38 @@ export default function DocumentGeneratePage() {
           }}
         />
 
-        {/* 회의록 선택 시: 회의 내용 입력 폼 */}
-        {isMeeting && (
-          <>
-            <MeetingInput onSubmit={handleMeetingSubmit} loading={loading} />
-            <MeetingPreview data={meetingResult} onDownload={handleDownload} loading={loading} />
-          </>
-        )}
-
-        {/* 보고서 입력 폼 */}
-        {isReport && (
-          <>
-            <div className="card">
-              <div className="card-header">
-                <div className="card-title">보고서 내용 입력</div>
-              </div>
-              <div className="card-body space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">제목</label>
-                    <input
-                      value={reportForm.title}
-                      onChange={(e) => setReportForm({ ...reportForm, title: e.target.value })}
-                      placeholder="예: 2026년 1분기 보안 현황 보고서"
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">날짜</label>
-                    <input
-                      type="date"
-                      value={reportForm.date}
-                      onChange={(e) => setReportForm({ ...reportForm, date: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">작성자</label>
-                    <input
-                      value={reportForm.author}
-                      onChange={(e) => setReportForm({ ...reportForm, author: e.target.value })}
-                      placeholder="예: 김정보"
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">팀</label>
-                    <div className="relative">
-                      <select
-                        value={reportForm.department}
-                        onChange={(e) => setReportForm({ ...reportForm, department: e.target.value })}
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 appearance-none bg-white dark:bg-neutral-900 cursor-pointer"
-                      >
-                        <option value="">팀 선택</option>
-                        {teams.map(t => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
-                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[0.8125rem] font-semibold mb-1.5">회의 내용</label>
-                  <textarea
-                    value={reportForm.content}
-                    onChange={(e) => setReportForm({ ...reportForm, content: e.target.value })}
-                    placeholder="보고서에 포함할 회의 내용을 입력하세요."
-                    rows={4}
-                    onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 130) + 'px'; }}
-                    className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[130px]"
-                  />
-                </div>
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleGenerate}
-                    disabled={loading}
-                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? 'AI 생성 중...' : 'AI 문서 생성'}
-                  </button>
-                </div>
+        {/* 동적 입력 폼 */}
+        {selectedTemplate && templateFields.length > 0 && (
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">
+                {selectedCustomTemplate?.name || categoryLabel[selectedTemplate] || '문서'} 내용 입력
               </div>
             </div>
-            <DocumentPreview data={result} onDownload={handleDownload} loading={loading} />
-          </>
-        )}
-
-        {/* 제안서 입력 폼 */}
-        {isProposal && (
-          <>
-            <div className="card">
-              <div className="card-header">
-                <div className="card-title">제안서 내용 입력</div>
-              </div>
-              <div className="card-body space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">제목</label>
-                    <input
-                      value={proposalForm.title}
-                      onChange={(e) => setProposalForm({ ...proposalForm, title: e.target.value })}
-                      placeholder="예: 보안 시스템 고도화 제안서"
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">날짜</label>
-                    <input
-                      type="date"
-                      value={proposalForm.date}
-                      onChange={(e) => setProposalForm({ ...proposalForm, date: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">제안사</label>
-                    <input
-                      value={proposalForm.company}
-                      onChange={(e) => setProposalForm({ ...proposalForm, company: e.target.value })}
-                      placeholder="예: (주)보안솔루션"
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">담당자</label>
-                    <input
-                      value={proposalForm.manager}
-                      onChange={(e) => setProposalForm({ ...proposalForm, manager: e.target.value })}
-                      placeholder="예: 이담당"
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">연락처</label>
-                    <input
-                      value={proposalForm.phone}
-                      onChange={(e) => setProposalForm({ ...proposalForm, phone: e.target.value })}
-                      placeholder="예: 010-1234-5678"
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[0.8125rem] font-semibold mb-1.5">회의내용</label>
-                  <textarea
-                    value={proposalForm.content}
-                    onChange={(e) => setProposalForm({ ...proposalForm, content: e.target.value })}
-                    placeholder="제안서에 포함할 회의 내용을 입력하세요."
-                    rows={4}
-                    onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 130) + 'px'; }}
-                    className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[130px]"
-                  />
-                </div>
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleGenerate}
-                    disabled={loading}
-                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? 'AI 생성 중...' : 'AI 문서 생성'}
-                  </button>
-                </div>
+            <div className="card-body space-y-4">
+              <DynamicForm
+                fields={templateFields}
+                formData={formData}
+                onChange={handleFieldChange}
+              />
+              <div className="flex justify-end">
+                <button
+                  onClick={handleGenerate}
+                  disabled={loading}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'AI 생성 중...' : 'AI 문서 생성'}
+                </button>
               </div>
             </div>
-            <DocumentPreview data={result} onDownload={handleDownload} loading={loading} />
-          </>
+          </div>
         )}
 
-        {/* 기타 템플릿 선택 시: 추가 지시사항 + 문서 미리보기 */}
-        {selectedTemplate && !isMeeting && !isReport && !isProposal && (
-          <>
-            <div className="card">
-              <div className="card-header">
-                <div className="card-title">추가 지시사항</div>
-              </div>
-              <div className="card-body space-y-4">
-                <textarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="AI에게 추가 지시사항을 입력하세요 (선택). 예: 보안팀 관점에서 작성해줘"
-                  rows={3}
-                  className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 resize-y"
-                />
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleGenerate}
-                    disabled={loading}
-                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? 'AI 생성 중...' : 'AI 문서 생성'}
-                  </button>
-                </div>
-              </div>
-            </div>
-            <DocumentPreview data={result} onDownload={handleDownload} loading={loading} />
-          </>
-        )}
+        {/* 회의록 결과: MeetingPreview (action_items + Pipeline/Google Tasks) */}
+        {isMeeting && <MeetingPreview data={meetingResult} onDownload={handleDownload} loading={loading} />}
+
+        {/* 보고서/제안서 결과 */}
+        {!isMeeting && <DocumentPreview data={result} onDownload={handleDownload} loading={loading} />}
 
         {/* 업로드 다이얼로그 */}
         <TemplateUploadDialog

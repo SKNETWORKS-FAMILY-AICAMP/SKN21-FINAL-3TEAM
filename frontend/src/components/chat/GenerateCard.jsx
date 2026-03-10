@@ -1,6 +1,6 @@
 import Badge from '../common/Badge';
 
-export default function GenerateCard({ title, templateType, fields = [], downloadUrl, onDownload }) {
+export default function GenerateCard({ title, templateType, fields = [], actionItems = [], downloadUrl, onDownload }) {
   const typeLabels = { meeting_minutes: '회의록', report: '보고서', jd: '채용 공고', proposal: '제안서' };
 
   return (
@@ -22,6 +22,30 @@ export default function GenerateCard({ title, templateType, fields = [], downloa
             ))}
           </div>
         )}
+
+        {/* Action Items (회의록만) */}
+        {actionItems.length > 0 && (
+          <div className="mb-4">
+            <div className="text-[0.8125rem] font-semibold text-neutral-sub mb-2">Action Items</div>
+            <div className="space-y-1.5">
+              {actionItems.map((item, i) => (
+                <div key={i} className="flex items-start gap-2 text-[0.8125rem]">
+                  <span className="text-neutral-400 shrink-0">{i + 1}.</span>
+                  <div>
+                    <span className="text-neutral-main">{item.task}</span>
+                    {(item.assignee || item.due_date) && (
+                      <span className="text-neutral-sub ml-1.5 text-xs">
+                        {item.assignee && `(${item.assignee})`}
+                        {item.due_date && ` ~${item.due_date}`}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-2">
           <button
             onClick={onDownload}

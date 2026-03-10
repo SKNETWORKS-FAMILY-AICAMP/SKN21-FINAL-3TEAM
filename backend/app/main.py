@@ -64,8 +64,15 @@ async def startup_ensure_tables():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         print("[Startup] DB 테이블 확인/생성 완료")
+
+        # 시스템 템플릿 시딩
+        from app.db.session import async_session
+        from app.services.template_service import ensure_system_templates
+        async with async_session() as db:
+            await ensure_system_templates(db)
+        print("[Startup] 시스템 템플릿 시딩 완료")
     except Exception as _e:
-        print(f"[Startup] DB 테이블 생성 실패 (무시하고 계속): {_e}")
+        print(f"[Startup] DB 테이블 생성/시딩 실패 (무시하고 계속): {_e}")
 
 
 @app.on_event("startup")

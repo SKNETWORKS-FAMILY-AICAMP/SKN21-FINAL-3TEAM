@@ -240,7 +240,7 @@ def create_meeting_minutes(output_path: str = "회의록_test.docx", data: dict 
         action_items = data.get("action_items", [])
         for r in range(2, 5):
             ai_item = action_items[r - 2] if r - 2 < len(action_items) else {}
-            _inject_cell_text(t3.rows[r].cells[1], ai_item.get("content", ""))
+            _inject_cell_text(t3.rows[r].cells[1], ai_item.get("task", "") or ai_item.get("content", ""))
             _inject_cell_text(t3.rows[r].cells[2], ai_item.get("assignee", ""))
             _inject_cell_text(t3.rows[r].cells[3], ai_item.get("due_date", ""))
             status = ai_item.get("status", "☐ 진행중  ☐ 완료") if ai_item else "☐ 진행중  ☐ 완료"

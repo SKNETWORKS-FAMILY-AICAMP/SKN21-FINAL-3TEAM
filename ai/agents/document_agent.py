@@ -186,7 +186,9 @@ async def _query_custom_templates(category: str) -> list:
             field_count = 0
             if t.parsed_structure:
                 try:
-                    field_count = len(json.loads(t.parsed_structure))
+                    ps = json.loads(t.parsed_structure)
+                    fields = ps.get("fields", ps) if isinstance(ps, dict) else ps
+                    field_count = len(fields) if isinstance(fields, list) else 0
                 except Exception:
                     pass
             items.append({
@@ -410,7 +412,8 @@ async def _handle_doc_generate(user_input: str, template_type: str, document_con
         type_label = doc_type_names.get(template_type, template_type)
 
         # 시스템 기본 + 커스텀 목록 구성
-        all_templates = [{"template_id": None, "name": f"기본 {type_label}", "is_system": True}]
+        system_field_counts = {"meeting_minutes": 4, "report": 5, "proposal": 5}
+        all_templates = [{"template_id": None, "name": f"기본 {type_label}", "is_system": True, "field_count": system_field_counts.get(template_type, 4)}]
         all_templates.extend(custom_templates)
 
         if len(all_templates) >= 2:
@@ -427,53 +430,32 @@ async def _handle_doc_generate(user_input: str, template_type: str, document_con
             }
 
         # 1개(기본만)면 바로 생성
-        if template_type == "meeting_minutes":
-            return await _generate_meeting_minutes(user_input)
-        if template_type == "report":
-            return await _generate_report(user_input)
-        if template_type == "proposal":
-            return await _generate_proposal(user_input)
+        return await generate_document(category=template_type, user_input=user_input)
 
-    # 1. 템플릿 가져오기
-    try:
-        template = get_system_template(template_type)
-        print(f"[DocumentAgent] 템플릿 로드 성공: {template_type}")
-    except ValueError:
-        print(f"[DocumentAgent] 템플릿 '{template_type}' 없음 → report fallback")
-        try:
-            template = get_system_template("report") # Fallback
-        except Exception:
-            template = None
+    # 지원되지 않는 카테고리 fallback
+    return await generate_document(category=template_type or "report", user_input=user_input)
 
-    # 2. LLM이 템플릿 필드 채우기
-    required_fields = template.REQUIRED_FIELDS if template and hasattr(template, 'REQUIRED_FIELDS') else 'all'
 
-    sys_prompt = f"당신은 문서 작성 도우미입니다. 사용자의 요청을 바탕으로 '{template_type}' JSON 데이터를 생성하세요."
-    user_prompt = f"요청: {user_input}\n\n필수 필드: {required_fields}"
+async def generate_document(category: str, user_input: str, template_id: int | None = None) -> Dict[str, Any]:
+    """
+    문서 생성 공통 진입점 — 문서생성 페이지와 챗봇 모두 이 함수를 호출.
 
-    print(f"[DocumentAgent] LLM 호출 (doc_generate, json_mode=True)...")
-    generated_json_str = await _call_llm(sys_prompt, user_prompt, json_mode=True)
-    print(f"[DocumentAgent] LLM 응답: {generated_json_str[:200]}...")
-    try:
-        data = json.loads(generated_json_str)
-        print(f"[DocumentAgent] JSON 파싱 성공 | keys={list(data.keys())}")
-    except json.JSONDecodeError:
-        print(f"[DocumentAgent] !!! JSON 파싱 실패 → fallback")
-        data = {"content": generated_json_str} # Fallback
+    Args:
+        category: 'meeting_minutes' | 'report' | 'proposal'
+        user_input: 사용자 입력 텍스트 (폼 데이터를 텍스트로 변환한 것 or 자연어)
+        template_id: 커스텀 템플릿 ID (None이면 시스템 기본)
+    """
+    if template_id:
+        return await _generate_with_custom_template(user_input, template_id, category)
 
-    # 3. 템플릿 렌더링 (Markdown)
-    preview = f"# {data.get('title', '문서')}\n\n{data.get('content', '내용 없음')}"
-
-    return {
-        "type": "doc_generate",
-        "template_type": template_type,
-        "template_id": None,
-        "template_name": template.template_name if template else template_type,
-        "preview": preview,
-        "data": data,
-        "document_id": 123, # Mock ID
-        "download_url": "/api/v1/documents/123/download"
-    }
+    if category == "meeting_minutes":
+        return await _generate_meeting_minutes(user_input)
+    elif category == "report":
+        return await _generate_report(user_input)
+    elif category == "proposal":
+        return await _generate_proposal(user_input)
+    else:
+        raise ValueError(f"지원하지 않는 문서 카테고리: {category}")
 
 
 async def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
@@ -492,7 +474,7 @@ async def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
         f"- attendees: 참석자 이름 배열 (없으면 빈 배열)\n"
         f"- summary: 회의에서 논의된 주요 내용을 3~5문장으로 요약\n"
         f"- decisions: 결정된 사항 목록 (배열, 없으면 빈 배열)\n"
-        f'- action_items: 후속 조치 목록 배열. 각 항목은 {{"content": "내용", "assignee": "담당자", "due_date": "기한"}} 형태\n'
+        f'- action_items: 후속 조치 목록 배열. 각 항목은 {{"task": "할 일", "assignee": "담당자", "due_date": "기한"}} 형태\n'
         f'- risks: 리스크 목록 배열. 각 항목은 {{"description": "설명", "level": "상/중/하", "mitigation": "대응방안"}} 형태\n\n'
         f"[회의 내용]\n{user_input}"
     )
@@ -511,8 +493,8 @@ async def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
     for str_field in ("title", "summary"):
         data[str_field] = _to_readable_str(data.get(str_field, ""))
 
-    # action_items 정규화: create_meeting_minutes.py 기대 키 → content, assignee, due_date
-    _CONTENT_KEYS  = ("content", "task", "item", "action", "할일", "내용", "업무", "name")
+    # action_items 정규화: 통일 스키마 {task, assignee, due_date}
+    _TASK_KEYS     = ("task", "content", "item", "action", "할일", "내용", "업무", "name")
     _ASSIGNEE_KEYS = ("assignee", "person", "담당자", "owner", "assigned_to")
     _DUE_KEYS      = ("due_date", "deadline", "기한", "due", "end_date", "완료일")
 
@@ -528,10 +510,10 @@ async def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
     normalized_ai = []
     for item in (raw_ai if isinstance(raw_ai, list) else []):
         if isinstance(item, str):
-            normalized_ai.append({"content": item, "assignee": "", "due_date": ""})
+            normalized_ai.append({"task": item, "assignee": "", "due_date": ""})
         elif isinstance(item, dict):
             normalized_ai.append({
-                "content":  _first_val(item, _CONTENT_KEYS),
+                "task":     _first_val(item, _TASK_KEYS),
                 "assignee": _first_val(item, _ASSIGNEE_KEYS),
                 "due_date": _first_val(item, _DUE_KEYS),
             })
@@ -548,7 +530,7 @@ async def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
     {chr(10).join(['- ' + d for d in data.get('decisions', [])])}
 
     ## Action Items
-    {chr(10).join([f"- {ai.get('content')} ({ai.get('assignee')})" for ai in data.get('action_items', [])])}"""
+    {chr(10).join([f"- {ai.get('task')} ({ai.get('assignee')})" for ai in data.get('action_items', [])])}"""
 
     # DOCX 파일 생성
     doc_uuid = str(uuid.uuid4())
@@ -696,6 +678,7 @@ async def _generate_report(user_input: str) -> Dict[str, Any]:
     return {
         "type": "doc_generate",
         "template_type": "report",
+        "template_id": None,
         "template_name": "업무보고서",
         "preview": preview,
         "data": data,
@@ -813,6 +796,7 @@ async def _generate_proposal(user_input: str) -> Dict[str, Any]:
     return {
         "type": "doc_generate",
         "template_type": "proposal",
+        "template_id": None,
         "template_name": "제안서",
         "preview": preview,
         "data": data,

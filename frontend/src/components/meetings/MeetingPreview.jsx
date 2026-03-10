@@ -168,7 +168,7 @@ export default function MeetingPreview({ data, onDownload, loading }) {
                     <span className="text-neutral-main">{item.task}</span>
                     <div className="flex gap-3 mt-1 text-xs text-neutral-muted">
                       {item.assignee && <span>{item.assignee}</span>}
-                      {item.deadline && <span>{item.deadline}</span>}
+                      {item.due_date && <span>{item.due_date}</span>}
                     </div>
                   </div>
                 </div>
@@ -212,7 +212,7 @@ export default function MeetingPreview({ data, onDownload, loading }) {
                     <span className="text-sm text-neutral-main block truncate">{item.task}</span>
                     <div className="flex gap-2 text-[10px] text-neutral-muted">
                       {item.assignee && <span>{item.assignee}</span>}
-                      {item.deadline && <span>{item.deadline}</span>}
+                      {item.due_date && <span>{item.due_date}</span>}
                     </div>
                   </div>
                 </label>
@@ -348,7 +348,7 @@ export default function MeetingPreview({ data, onDownload, loading }) {
                     <span className="text-sm text-neutral-main block truncate">{item.task}</span>
                     <div className="flex gap-2 text-[10px] text-neutral-muted">
                       {item.assignee && <span>{item.assignee}</span>}
-                      {item.deadline && <span>{item.deadline}</span>}
+                      {item.due_date && <span>{item.due_date}</span>}
                     </div>
                   </div>
                 </label>
@@ -372,7 +372,7 @@ export default function MeetingPreview({ data, onDownload, loading }) {
                       await createGoogleTask({
                         title: item.task,
                         assignee: item.assignee || null,
-                        due_date: item.deadline || null,
+                        due_date: item.due_date || null,
                         priority: 'medium',
                       });
                     }

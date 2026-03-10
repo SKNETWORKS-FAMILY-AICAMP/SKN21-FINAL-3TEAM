@@ -111,12 +111,7 @@ async def generate_document(
     현재 지원: meeting_minutes, report, proposal
     """
     try:
-        from ai.agents.document_agent import (
-            _generate_meeting_minutes,
-            _generate_report,
-            _generate_proposal,
-            _generate_with_custom_template,
-        )
+        from ai.agents.document_agent import generate_document as ai_generate
 
         user_input = (
             f"제목: {request.title}\n"
@@ -125,69 +120,34 @@ async def generate_document(
             f"내용: {request.content}"
         )
 
-        # 커스텀 템플릿 (template_id가 있으면 커스텀 경로)
-        if request.template_id:
-            result = await _generate_with_custom_template(
-                user_input, request.template_id, request.template_type
-            )
-            return {
-                "document_id": result["document_id"],
-                "template_type": result["template_type"],
-                "template_id": result.get("template_id"),
-                "template_name": result.get("template_name"),
-                "preview": result["preview"],
-                "download_url": f"/api/v1/documents/{result['document_id']}/download",
-                "title": _to_str(result.get("data", {}).get("title", request.title)),
-            }
-
-        if request.template_type == "meeting_minutes":
-            result = await _generate_meeting_minutes(user_input)
-            return {
-                "document_id": result["document_id"],
-                "template_type": "meeting_minutes",
-                "preview": result["preview"],
-                "download_url": f"/api/v1/documents/{result['document_id']}/download",
-                "title": result.get("data", {}).get("title", request.title),
-                "date": result.get("data", {}).get("date", request.date),
-                "attendees": result.get("data", {}).get("attendees", request.attendees),
-                "summary": result.get("summary", ""),
-                "decisions": result.get("decisions", []),
-                "action_items": result.get("action_items", []),
-            }
-
-        if request.template_type == "report":
-            result = await _generate_report(user_input)
-            return {
-                "document_id": result["document_id"],
-                "template_type": "report",
-                "preview": result["preview"],
-                "download_url": f"/api/v1/documents/{result['document_id']}/download",
-                "title": _to_str(result.get("data", {}).get("title", request.title)),
-                "overview": _to_str(result.get("data", {}).get("overview", "")),
-                "main_content": _to_str(result.get("data", {}).get("main_content", "")),
-                "tasks": result.get("data", {}).get("tasks", []),
-                "next_plan": _to_str(result.get("data", {}).get("next_plan", "")),
-            }
-
-        if request.template_type == "proposal":
-            result = await _generate_proposal(user_input)
-            return {
-                "document_id": result["document_id"],
-                "template_type": "proposal",
-                "preview": result["preview"],
-                "download_url": f"/api/v1/documents/{result['document_id']}/download",
-                "title": _to_str(result.get("data", {}).get("title", request.title)),
-                "background": _to_str(result.get("data", {}).get("background", "")),
-                "content": _to_str(result.get("data", {}).get("content", "")),
-                "expected_effect": _to_str(result.get("data", {}).get("expected_effect", "")),
-                "schedule": result.get("data", {}).get("schedule", []),
-                "budget": result.get("data", {}).get("budget", []),
-            }
-
-        raise HTTPException(
-            status_code=400,
-            detail=f"지원하지 않는 템플릿 타입입니다: {request.template_type}",
+        result = await ai_generate(
+            category=request.template_type,
+            user_input=user_input,
+            template_id=request.template_id,
         )
+
+        # 통일된 응답 구조
+        data = result.get("data", {})
+        response = {
+            "document_id": result["document_id"],
+            "template_type": result.get("template_type", request.template_type),
+            "template_id": result.get("template_id"),
+            "template_name": result.get("template_name"),
+            "preview": result.get("preview", ""),
+            "download_url": f"/api/v1/documents/{result['document_id']}/download",
+            "data": data,
+        }
+
+        # 회의록: action_items 포함
+        if request.template_type == "meeting_minutes":
+            response["title"] = data.get("title", request.title)
+            response["date"] = data.get("date", request.date)
+            response["attendees"] = data.get("attendees", request.attendees)
+            response["summary"] = result.get("summary", data.get("summary", ""))
+            response["decisions"] = result.get("decisions", data.get("decisions", []))
+            response["action_items"] = result.get("action_items", data.get("action_items", []))
+
+        return response
 
     except HTTPException:
         raise
