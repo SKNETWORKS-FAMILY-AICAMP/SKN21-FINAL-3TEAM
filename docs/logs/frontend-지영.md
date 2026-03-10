@@ -1535,11 +1535,84 @@ v3+후처리 v1의 오답 11건을 정밀 분석하여 규칙과 데이터 양�
 - connector trap: "X이랑 Y 판단해줘"=단일, "규정 검토 결과"=judgment
 - doc_search 목록조회: "어떤 거 있는지", "뭐가 있는지"
 
+#### 13) v4 데이터 모델 재학습 + 전략 비교 v2 실행
+
+v4 데이터로 재학습한 결과 **모델 자체 성능이 대폭 향상** — Baseline만으로 90.0%:
+
+**v4 모델 전략 비교 결과:**
+
+| 전략 | Subset Accuracy | Micro F1 | 오답 |
+|---|---|---|---|
+| Baseline | 90.0% | 96.6% | 6건 |
+| **전략1 (Threshold)** | **93.3%** | **97.6%** | **4건** |
+| 전략2 (후처리 v2) | 88.3% | 95.6% | 7건 |
+| 전략3 (하이브리드) | 90.0% | 96.1% | 6건 |
+
+> **이번엔 전략1 (Threshold)이 최고** — v4 모델이 충분히 좋아져서 후처리 규칙이 오히려 해가 됨
+> 예: "위반 사례 정리해줘"에 judgment 강제추가 → 과잉 (실제는 doc_search+doc_summary)
+
+**카테고리별 변화 (v3→v4 Baseline):**
+
+| 카테고리 | v3 | v4 |
+|---|---|---|
+| no_connector_compound | 73.3% | **93.3%** |
+| implicit_compound | 80% | **90%** |
+| short_compound | 75% | **87.5%** |
+| triple_intent | 40% | **60%** |
+| false_positive_single | 83.3% | **91.7%** |
+| connector_trap_single | 80% | **100%** |
+
+**v4 Baseline 남은 오답 6건:**
+- [3] "빈 시간 있으면 회의 잡아줘" → schedule_view 누락
+- [23] "출장비 규정 검토해서 정리해줘" → judgment 과잉
+- [32] "관련 조항 찾아주고 적용되는지 봐줘" → doc_qa↔doc_search 혼동
+- [43] "규정 위반 여부랑 관련 문서" → doc_summary 과잉
+- [48] "인사 규정 찾아서 요약해주고 판단해줘" → doc_search 누락 (3중)
+- [49] "회의록 확인하고 정리해서 보고서 작성해줘" → doc_qa 누락 (3중)
+
+**전체 koelectra 성능 추이 (Adversarial 60건 기준):**
+
+| 단계 | Subset Accuracy | Micro F1 | 주요 개선 포인트 |
+|---|---|---|---|
+| v1 모델 | 46.7% | 62.3% | 초기 학습 데이터 |
+| v2 모델 | 58.3% | 80.8% | 패턴 다양화 (그리고 70%→20%) |
+| v3 모델 | 75.0% | 89.3% | 오답 분석 기반 골든 데이터 40개 |
+| v3+후처리v1 | 81.7% | 92.2% | 키워드 기반 후처리 규칙 |
+| **v4 모델** | **90.0%** | **96.6%** | **오답 타겟 골든+30, 함정/3중 확대** |
+| **v4+Threshold** | **93.3%** | **97.6%** | **Per-label threshold 최적화** |
+
+> **결론**: koelectra-base-v3로 Adversarial 93.3% / Micro F1 97.6% 달성
+> 데이터 품질이 가장 큰 성능 향상 요인 (v1→v4: +43.3%p)
+
+#### 14) Held-out 테스트셋 작성 — 과적합 검증 준비
+
+기존 adversarial 60개는 오답 분석 → 데이터 보강에 반복 사용되어 간접적 테스트 유출(test leakage) 우려.
+**한 번도 개발에 사용하지 않은 새 adversarial 60개**를 만들어 진짜 성능을 측정.
+
+**파일:**
+- `data/training/intent_multilabel/adversarial_holdout_test.json` — 새 테스트 60개
+- `ai/experiments/eval_holdout.py` — 기존 vs held-out 비교 평가 스크립트
+
+**테스트셋 구성 (기존과 동일 카테고리 비율):**
+
+| 카테고리 | 개수 | 설명 |
+|---|---|---|
+| no_connector_compound | 15 | 접속사 없는 복합 |
+| false_positive_single | 12 | 단일인데 복합처럼 보이는 함정 |
+| implicit_compound | 10 | 암묵적 복합 (쉼표, ~도, 조건절) |
+| short_compound | 8 | 극단 짧은 복합 |
+| triple_intent | 5 | 3중 intent |
+| connector_trap_single | 10 | 접속사 있지만 단일 |
+
+**과적합 판정 기준:**
+- 기존 ADV vs Held-out의 Subset Accuracy 차이 ±5%p 이내 → 과적합 없음
+- Held-out에서 크게 하락 → 과적합 의심
+
 ### 다음 할 일
 
-- RunPod에서 v4 데이터 생성 → 재학습 → 전략 비교 v2 실행
-- 결과 확인 후 최종 production 코드 반영
-- 오케스트레이터에서 `predict_multilabel()` 호출 연결
+- RunPod에서 `python -m ai.experiments.eval_holdout` 실행하여 과적합 검증
+- 결과에 따라 다른 base 모델 (klue/roberta-base, klue/roberta-large) 시도 검토
+- 최종 모델 확정 후 production 코드 반영
 
 ---
 
