@@ -372,6 +372,9 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             # 최종 응답 업데이트
                             agent_response["message"] = full_doc_response
                             agent_response["answer"] = full_doc_response
+                            # LLM이 "관련 문서 없음"으로 판단하면 출처도 비우기
+                            if "찾지 못했습니다" in full_doc_response or "관련 문서가 없" in full_doc_response:
+                                agent_response["sources"] = []
                             agent_response.pop("stream_pending", None)
                             agent_response.pop("sys_prompt", None)
                             agent_response.pop("user_prompt", None)
