@@ -19,26 +19,59 @@ from docx.oxml import OxmlElement
 
 # ── 필드명 매칭 (한글 라벨 → 데이터 key) ──
 _LABEL_TO_KEY = {
-    "제목": "title", "회의 제목": "title", "보고서 제목": "title", "제안서 제목": "title", "문서 제목": "title",
-    "날짜": "date", "일시": "date", "작성일": "date", "회의 날짜": "date", "제출일": "date",
-    "참석자": "attendees", "참석 인원": "attendees",
-    "작성자": "author", "담당자": "manager",
-    "팀": "team", "부서": "department",
-    "내용": "content", "회의 내용": "content", "업무 내용": "content", "제안 내용": "content",
+    # 제목
+    "제목": "title", "회의제목": "title", "회의 제목": "title",
+    "보고서제목": "title", "보고서 제목": "title",
+    "제안서제목": "title", "제안서 제목": "title", "문서제목": "title", "문서 제목": "title",
+    "회의안건": "title", "안건": "title", "주제": "title", "회의주제": "title",
+    # 날짜/시간
+    "날짜": "date", "일시": "date", "작성일": "date", "회의날짜": "date", "회의 날짜": "date",
+    "제출일": "date", "회의일시": "date", "회의 일시": "date",
+    "시간": "time", "회의시간": "time", "회의 시간": "time",
+    # 참석자
+    "참석자": "attendees", "참석인원": "attendees", "참석 인원": "attendees",
+    "회의자": "attendees", "참여자": "attendees",
+    # 작성자/담당자
+    "작성자": "author", "담당자": "manager", "기록자": "author",
+    # 팀/부서
+    "팀": "team", "부서": "department", "소속": "department",
+    # 장소
+    "장소": "location", "회의장소": "location", "회의 장소": "location",
+    # 내용
+    "내용": "content", "회의내용": "content", "회의 내용": "content",
+    "업무내용": "content", "업무 내용": "content",
+    "제안내용": "content", "제안 내용": "content",
+    "주요내용": "content", "주요 내용": "content",
+    "보고내용": "content", "보고 내용": "content",
+    # 요약
     "요약": "summary", "개요": "overview",
+    # 결정사항
     "결정사항": "decisions", "결정 사항": "decisions",
-    "비고": "notes", "다음 회의 일정": "notes",
-    "회의 시간": "time", "장소": "location", "회의 장소": "location",
-    "회의 유형": "meeting_type",
+    # 기타
+    "비고": "notes", "특이사항": "notes", "특이 사항": "notes",
+    "다음회의일정": "notes", "다음 회의 일정": "notes",
+    "회의유형": "meeting_type", "회의 유형": "meeting_type",
     "목적": "purpose", "배경": "background",
-    "기대 효과": "expected_effect", "기대효과": "expected_effect",
+    "기대효과": "expected_effect", "기대 효과": "expected_effect",
+    "진행일정": "schedule", "일정": "schedule",
 }
 
 
 def _normalize_label(text: str) -> str | None:
-    """라벨 텍스트를 데이터 key로 변환"""
+    """라벨 텍스트를 데이터 key로 변환 (공백 제거 후 매칭)"""
     text = text.strip().rstrip(":：")
-    return _LABEL_TO_KEY.get(text)
+    # 먼저 원본으로 매칭
+    if text in _LABEL_TO_KEY:
+        return _LABEL_TO_KEY[text]
+    # 모든 공백 제거 후 매칭 (양식 3처럼 "참  석  인  원" → "참석인원")
+    collapsed = re.sub(r'\s+', '', text)
+    if collapsed in _LABEL_TO_KEY:
+        return _LABEL_TO_KEY[collapsed]
+    # 공백 1개로 통일 후 매칭
+    single_space = re.sub(r'\s+', ' ', text)
+    if single_space in _LABEL_TO_KEY:
+        return _LABEL_TO_KEY[single_space]
+    return None
 
 
 def _format_value(val) -> str:
