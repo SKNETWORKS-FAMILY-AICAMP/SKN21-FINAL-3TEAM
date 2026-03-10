@@ -31,6 +31,7 @@ def _to_str(v) -> str:
 
 class GenerateDocumentRequest(BaseModel):
     template_type: str
+    template_id: int | None = None
     title: str = ""
     date: str = ""
     attendees: list[str] = []
@@ -114,6 +115,7 @@ async def generate_document(
             _generate_meeting_minutes,
             _generate_report,
             _generate_proposal,
+            _generate_with_custom_template,
         )
 
         user_input = (
@@ -122,6 +124,21 @@ async def generate_document(
             f"참석자: {', '.join(request.attendees)}\n"
             f"내용: {request.content}"
         )
+
+        # 커스텀 템플릿 (template_id가 있으면 커스텀 경로)
+        if request.template_id:
+            result = await _generate_with_custom_template(
+                user_input, request.template_id, request.template_type
+            )
+            return {
+                "document_id": result["document_id"],
+                "template_type": result["template_type"],
+                "template_id": result.get("template_id"),
+                "template_name": result.get("template_name"),
+                "preview": result["preview"],
+                "download_url": f"/api/v1/documents/{result['document_id']}/download",
+                "title": _to_str(result.get("data", {}).get("title", request.title)),
+            }
 
         if request.template_type == "meeting_minutes":
             result = await _generate_meeting_minutes(user_input)

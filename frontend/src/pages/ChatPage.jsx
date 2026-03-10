@@ -268,6 +268,38 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       );
     }
 
+    case 'template_pick': {
+      const templates = data.templates || [];
+      const originalQuery = index > 0 ? (messages[index - 1]?.content || '') : '';
+      return (
+        <div>
+          <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">
+            {data.message || '사용할 양식을 선택해주세요:'}
+          </div>
+          {templates.length > 0 && (
+            <div className="mt-2 flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
+              {templates.map((tpl, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    useChatStore.getState().setSelectedTemplate(tpl.template_id, tpl.name);
+                    onSelectClarify?.(originalQuery);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm bg-surface-card border border-neutral-border rounded-xl hover:bg-primary-50 hover:border-primary-300 text-neutral-main hover:text-primary-700 transition text-left"
+                >
+                  <FileText size={14} className="flex-shrink-0 text-neutral-muted" />
+                  <span className="truncate">{tpl.name}</span>
+                  {tpl.field_count && (
+                    <span className="ml-auto text-xs text-neutral-muted">{tpl.field_count}개 필드</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     case 'doc_pick': {
       const documents = data.documents || [];
       // 이 assistant 메시지 바로 앞의 user 메시지가 원본 쿼리

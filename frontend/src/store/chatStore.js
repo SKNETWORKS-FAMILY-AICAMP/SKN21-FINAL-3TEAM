@@ -30,6 +30,12 @@ const useChatStore = create((set, get) => ({
   setSelectedDocument: (id, name) => set({ selectedDocumentId: id, selectedDocumentName: name }),
   clearSelectedDocument: () => set({ selectedDocumentId: null, selectedDocumentName: null }),
 
+  // 템플릿 선택 (챗봇 문서 생성 시)
+  selectedTemplateId: null,
+  selectedTemplateName: null,
+  setSelectedTemplate: (id, name) => set({ selectedTemplateId: id, selectedTemplateName: name }),
+  clearSelectedTemplate: () => set({ selectedTemplateId: null, selectedTemplateName: null }),
+
   // 세션 관리
   sessions: [],
   activeSessionId: null,
@@ -268,6 +274,8 @@ const useChatStore = create((set, get) => ({
       pendingQuestion: null,
       selectedDocumentId: null,
       selectedDocumentName: null,
+      selectedTemplateId: null,
+      selectedTemplateName: null,
     }),
 }))
 

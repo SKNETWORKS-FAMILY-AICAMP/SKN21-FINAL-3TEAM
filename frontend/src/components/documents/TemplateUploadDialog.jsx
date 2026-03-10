@@ -45,7 +45,7 @@ export default function TemplateUploadDialog({ isOpen, onClose, onUpload }) {
           {/* 파일 선택 */}
           <div>
             <label className="block text-[0.8125rem] font-semibold mb-1.5">파일</label>
-            <input ref={fileRef} type="file" accept=".docx,.pdf,.txt" onChange={handleFileChange} className="hidden" />
+            <input ref={fileRef} type="file" accept=".docx" onChange={handleFileChange} className="hidden" />
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
@@ -54,7 +54,7 @@ export default function TemplateUploadDialog({ isOpen, onClose, onUpload }) {
               {file ? (
                 <span className="text-neutral-main font-medium">{file.name}</span>
               ) : (
-                <>클릭하여 파일 선택 (.docx, .pdf, .txt)</>
+                <>클릭하여 파일 선택 (.docx)</>
               )}
             </button>
           </div>

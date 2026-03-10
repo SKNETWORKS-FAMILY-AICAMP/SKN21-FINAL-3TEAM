@@ -7,7 +7,7 @@ import TemplateUploadDialog from '../components/documents/TemplateUploadDialog';
 import DocumentPreview from '../components/documents/DocumentPreview';
 import MeetingInput from '../components/meetings/MeetingInput';
 import MeetingPreview from '../components/meetings/MeetingPreview';
-import { generateDocument, downloadDocument } from '../api/documents';
+import { generateDocument, downloadDocument, uploadTemplate, listTemplates } from '../api/documents';
 import { toast } from '../store/toastStore';
 
 
@@ -23,6 +23,16 @@ export default function DocumentGeneratePage() {
   const [reportForm, setReportForm] = useState({ title: '', date: new Date().toISOString().split('T')[0], author: user?.name ?? '', department: user?.team ?? '', content: '' });
   const [proposalForm, setProposalForm] = useState({ title: '', date: new Date().toISOString().split('T')[0], company: '', manager: user?.name ?? '', phone: '', content: '' });
   const [allMembers, setAllMembers] = useState([]);
+  const [customTemplates, setCustomTemplates] = useState([]);
+  const [selectedCustomTemplate, setSelectedCustomTemplate] = useState(null);
+
+  const fetchCustomTemplates = () => {
+    listTemplates()
+      .then(res => setCustomTemplates((res.data || []).filter(t => !t.is_system)))
+      .catch(() => setCustomTemplates([]));
+  };
+
+  useEffect(() => { fetchCustomTemplates(); }, []);
 
   useEffect(() => {
     client.get('/auth/all-members')
@@ -47,8 +57,9 @@ export default function DocumentGeneratePage() {
   const isReport = selectedTemplate === 'report';
   const isProposal = selectedTemplate === 'proposal';
 
-  const handleTemplateSelect = (template) => {
+  const handleTemplateSelect = (template, customTpl = null) => {
     setSelectedTemplate(template);
+    setSelectedCustomTemplate(customTpl);
     setResult(null);
     setMeetingResult(null);
     setPrompt('');
@@ -61,6 +72,9 @@ export default function DocumentGeneratePage() {
     setLoading(true);
     try {
       let payload = { template_type: selectedTemplate };
+      if (selectedCustomTemplate) {
+        payload.template_id = selectedCustomTemplate.id;
+      }
 
       if (isReport) {
         payload = {
@@ -175,7 +189,14 @@ export default function DocumentGeneratePage() {
   };
 
   const handleUpload = async (data) => {
-    toast.info(`"${data.name}" 템플릿이 업로드되었습니다.`);
+    const res = await uploadTemplate(data.file, {
+      name: data.name,
+      category: data.category,
+      description: data.description,
+    });
+    const result = res.data;
+    toast.success(`"${result.name}" 템플릿 업로드 완료 (${result.field_count}개 필드 추출)`);
+    fetchCustomTemplates();
   };
 
   return (
@@ -189,8 +210,24 @@ export default function DocumentGeneratePage() {
         {/* 템플릿 선택 */}
         <TemplateSelector
           selected={selectedTemplate}
+          selectedCustomId={selectedCustomTemplate?.id}
           onSelect={handleTemplateSelect}
           onUploadClick={() => setUploadOpen(true)}
+          customTemplates={customTemplates}
+          onDeleteTemplate={async (id) => {
+            try {
+              const { deleteTemplate } = await import('../api/documents');
+              await deleteTemplate(id);
+              toast.success('템플릿이 삭제되었습니다.');
+              fetchCustomTemplates();
+              if (selectedCustomTemplate?.id === id) {
+                setSelectedTemplate(null);
+                setSelectedCustomTemplate(null);
+              }
+            } catch (err) {
+              toast.error('삭제 실패: ' + (err.response?.data?.detail || err.message));
+            }
+          }}
         />
 
         {/* 회의록 선택 시: 회의 내용 입력 폼 */}

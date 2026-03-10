@@ -398,7 +398,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             agent_response.pop("sys_prompt", None)
                             agent_response.pop("user_prompt", None)
                             final_state["agent_response"] = agent_response
-                        elif agent_response.get("type") == "doc_pick":
+                        elif agent_response.get("type") in ("doc_pick", "template_pick"):
                             pass
                         else:
                             yield f"data: {json.dumps({'type': 'status', 'value': 'document_agent 처리 완료'}, ensure_ascii=False)}\n\n"

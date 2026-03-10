@@ -155,6 +155,52 @@ def _detect_template_type(user_input: str) -> str:
     return "report"
 
 
+async def _query_custom_templates(category: str) -> list:
+    """DB에서 해당 카테고리의 커스텀 템플릿 목록 조회"""
+    try:
+        from sqlalchemy import select
+        from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+        from sqlalchemy.orm import sessionmaker
+
+        db_url = os.getenv("DATABASE_URL", "")
+        if not db_url:
+            return []
+
+        engine = create_async_engine(db_url)
+        async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        async with async_session() as session:
+            from app.models.document_template import DocumentTemplate
+            result = await session.execute(
+                select(DocumentTemplate).where(
+                    DocumentTemplate.category == category,
+                    DocumentTemplate.is_system == False,  # noqa: E712
+                ).order_by(DocumentTemplate.created_at.desc())
+            )
+            templates = result.scalars().all()
+
+        await engine.dispose()
+
+        items = []
+        for t in templates:
+            field_count = 0
+            if t.parsed_structure:
+                try:
+                    field_count = len(json.loads(t.parsed_structure))
+                except Exception:
+                    pass
+            items.append({
+                "template_id": t.id,
+                "name": t.name,
+                "is_system": False,
+                "field_count": field_count,
+            })
+        return items
+    except Exception as e:
+        print(f"[DocumentAgent] 커스텀 템플릿 조회 실패: {e}")
+        return []
+
+
 async def _llm_detect_template_type(user_input: str) -> str:
     """LLM을 사용해 사용자가 어떤 문서를 만들려는지 판단
 
@@ -357,12 +403,40 @@ async def _handle_doc_generate(user_input: str, template_type: str, document_con
     if template_id:
         return await _generate_with_custom_template(user_input, template_id, template_type)
 
-    if template_type == "meeting_minutes":
-        return await _generate_meeting_minutes(user_input)
-    if template_type == "report":
-        return await _generate_report(user_input)
-    if template_type == "proposal":
-        return await _generate_proposal(user_input)
+    # 챗봇 요청: 해당 카테고리에 커스텀 템플릿이 있으면 선택지 제공
+    if template_type in ("meeting_minutes", "report", "proposal"):
+        custom_templates = await _query_custom_templates(template_type)
+        doc_type_names = {
+            "meeting_minutes": "회의록",
+            "report": "보고서",
+            "proposal": "제안서",
+        }
+        type_label = doc_type_names.get(template_type, template_type)
+
+        # 시스템 기본 + 커스텀 목록 구성
+        all_templates = [{"template_id": None, "name": f"기본 {type_label}", "is_system": True}]
+        all_templates.extend(custom_templates)
+
+        if len(all_templates) >= 2:
+            # 2개 이상이면 선택지 제공
+            lines = [f"{type_label} 양식을 선택해주세요:"]
+            for i, tpl in enumerate(all_templates, 1):
+                suffix = " (시스템)" if tpl.get("is_system") else f" ({tpl.get('field_count', '?')}개 필드)"
+                lines.append(f"{i}. {tpl['name']}{suffix}")
+            return {
+                "type": "template_pick",
+                "message": "\n".join(lines),
+                "templates": all_templates,
+                "template_type": template_type,
+            }
+
+        # 1개(기본만)면 바로 생성
+        if template_type == "meeting_minutes":
+            return await _generate_meeting_minutes(user_input)
+        if template_type == "report":
+            return await _generate_report(user_input)
+        if template_type == "proposal":
+            return await _generate_proposal(user_input)
 
     # 1. 템플릿 가져오기
     try:
@@ -853,6 +927,67 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
     preview = "\n".join(preview_parts)
 
     doc_uuid = str(uuid.uuid4())
+    GENERATED_DOCS_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = str(GENERATED_DOCS_DIR / f"{doc_uuid}.docx")
+
+    # category에 맞는 기존 DOCX 빌더 재활용
+    try:
+        if template_type == "meeting_minutes":
+            from ai.skills.create_meeting_minutes import create_meeting_minutes
+            attendees = data.get("attendees", [])
+            docx_data = {
+                "title": data.get("title", "회의록"),
+                "date": data.get("date", ""),
+                "time": data.get("time", ""),
+                "location": data.get("location", ""),
+                "meeting_type": data.get("meeting_type", "정기"),
+                "attendees": attendees,
+                "author": data.get("author", attendees[0] if attendees else ""),
+                "content": data.get("summary", data.get("content", "")),
+                "decisions": data.get("decisions", []),
+                "action_items": data.get("action_items", []),
+                "notes": data.get("notes", ""),
+            }
+            create_meeting_minutes(output_path, docx_data)
+        elif template_type == "report":
+            from ai.skills.create_report import create_report
+            docx_data = {
+                "title": data.get("title", "업무보고서"),
+                "author": data.get("author", ""),
+                "date": data.get("date", ""),
+                "department": data.get("department", ""),
+                "position": data.get("position", ""),
+                "report_to": data.get("report_to", ""),
+                "report_type": data.get("report_type", "수시"),
+                "overview": data.get("overview", ""),
+                "main_content": data.get("main_content", ""),
+                "tasks": data.get("tasks", []),
+                "issues": data.get("issues", ""),
+                "next_plan": data.get("next_plan", ""),
+            }
+            create_report(output_path, docx_data)
+        elif template_type == "proposal":
+            from ai.skills.create_proposal import create_proposal
+            docx_data = {
+                "title": data.get("title", "제안서"),
+                "submit_date": data.get("submit_date", data.get("date", "")),
+                "submit_to": data.get("submit_to", ""),
+                "company": data.get("company", ""),
+                "manager": data.get("manager", ""),
+                "contact": data.get("contact", ""),
+                "purpose": data.get("purpose", ""),
+                "background": data.get("background", ""),
+                "content": data.get("content", ""),
+                "schedule": data.get("schedule", []),
+                "budget": data.get("budget", []),
+                "expected_effect": data.get("expected_effect", ""),
+            }
+            create_proposal(output_path, docx_data)
+        print(f"[DocumentAgent] 커스텀 DOCX 생성 완료: {output_path}")
+    except Exception as e:
+        print(f"[DocumentAgent] !!! 커스텀 DOCX 생성 실패: {e}")
+        import traceback
+        traceback.print_exc()
 
     return {
         "type": "doc_generate",
@@ -862,6 +997,7 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
         "preview": preview,
         "data": data,
         "document_id": doc_uuid,
+        "docx_path": output_path,
         "download_url": f"/api/v1/documents/{doc_uuid}/download",
     }
 
