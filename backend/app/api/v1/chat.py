@@ -399,7 +399,8 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             agent_response.pop("user_prompt", None)
                             final_state["agent_response"] = agent_response
                         elif agent_response.get("type") in ("doc_pick", "template_pick"):
-                            pass
+                            # 선택지 응답 → final_state에 저장하여 format_response에서 전달
+                            final_state["agent_response"] = agent_response
                         else:
                             yield f"data: {json.dumps({'type': 'status', 'value': 'document_agent 처리 완료'}, ensure_ascii=False)}\n\n"
 
@@ -425,8 +426,9 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             # clarify로 전송해야 프론트에서 버튼 카드로 렌더링됨
                             yield f"data: {json.dumps({'type': 'result', 'intent': 'clarify', 'data': agent_response}, ensure_ascii=False)}\n\n"
                         else:
-                            # 이미 스트리밍한 경우 token 전송 건너뛰기
-                            if not agent_response.get("stream_pending") and intent not in ("general", "doc_search", "doc_summary", "doc_qa", "judgment"):
+                            # 선택지(template_pick, doc_pick) / clarify는 token 스트리밍 불필요
+                            skip_token = agent_response.get("stream_pending") or resp_type in ("template_pick", "doc_pick", "clarify")
+                            if not skip_token and intent not in ("general", "doc_search", "doc_summary", "doc_qa", "judgment"):
                                 yield f"data: {json.dumps({'type': 'token', 'value': message}, ensure_ascii=False)}\n\n"
 
                             yield f"data: {json.dumps({'type': 'result', 'intent': resp_type, 'data': agent_response}, ensure_ascii=False)}\n\n"

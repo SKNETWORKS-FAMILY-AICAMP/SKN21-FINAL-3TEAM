@@ -16,7 +16,7 @@ export default function useChat() {
       await useChatStore.getState().createSession()
     }
 
-    const { activeSessionId, selectedDocumentId, selectedTemplateId } = useChatStore.getState()
+    const { activeSessionId, selectedDocumentId, selectedTemplateId, selectedTemplateType } = useChatStore.getState()
 
     addMessage({ role: 'user', content: text })
     addMessage({ role: 'assistant', content: '' })
@@ -26,7 +26,7 @@ export default function useChat() {
     useChatStore.getState().clearSelectedTemplate()
 
     try {
-      await startStream(text, activeSessionId, selectedDocumentId, selectedTemplateId)
+      await startStream(text, activeSessionId, selectedDocumentId, selectedTemplateId, selectedTemplateType)
     } catch (err) {
       // 에러는 상위에서 처리
     }

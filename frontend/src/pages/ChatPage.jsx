@@ -288,7 +288,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                 <button
                   key={idx}
                   onClick={() => {
-                    useChatStore.getState().setSelectedTemplate(tpl.template_id, tpl.name);
+                    useChatStore.getState().setSelectedTemplate(tpl.template_id, tpl.name, data.template_type);
                     onSelectClarify?.(originalQuery);
                   }}
                   className="flex items-center gap-2 px-4 py-2.5 text-sm bg-surface-card border border-neutral-border rounded-xl hover:bg-primary-50 hover:border-primary-300 text-neutral-main hover:text-primary-700 transition text-left"

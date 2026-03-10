@@ -4,6 +4,7 @@ import TemplateSelector from '../components/documents/TemplateSelector';
 import TemplateUploadDialog from '../components/documents/TemplateUploadDialog';
 import DocumentPreview from '../components/documents/DocumentPreview';
 import MeetingPreview from '../components/meetings/MeetingPreview';
+import MeetingInput from '../components/meetings/MeetingInput';
 import { generateDocument, downloadDocument, uploadTemplate, listTemplates, getTemplate } from '../api/documents';
 import { toast } from '../store/toastStore';
 
@@ -171,6 +172,44 @@ export default function DocumentGeneratePage() {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
 
+  /** 회의록용: MeetingInput의 onSubmit 핸들러 */
+  const handleMeetingSubmit = async (meetingForm) => {
+    if (!selectedTemplate) return;
+    setLoading(true);
+    try {
+      const payload = {
+        template_type: 'meeting_minutes',
+        template_id: selectedCustomTemplate?.id || null,
+        title: meetingForm.title || '',
+        date: meetingForm.date || '',
+        attendees: Array.isArray(meetingForm.attendees)
+          ? meetingForm.attendees
+          : (meetingForm.attendees || '').split(',').map(s => s.trim()).filter(Boolean),
+        content: meetingForm.content || '',
+      };
+
+      const response = await generateDocument(payload);
+      const apiData = response.data;
+
+      setMeetingResult({
+        title: apiData.title || meetingForm.title,
+        date: apiData.date || meetingForm.date,
+        attendees: apiData.attendees?.length > 0
+          ? apiData.attendees
+          : payload.attendees,
+        summary: apiData.summary || apiData.data?.summary || '',
+        decisions: apiData.decisions || apiData.data?.decisions || [],
+        actionItems: apiData.action_items || apiData.data?.action_items || [],
+        document_id: apiData.document_id,
+      });
+    } catch (err) {
+      toast.error('문서 생성 실패: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /** 보고서/제안서용: DynamicForm의 생성 핸들러 */
   const handleGenerate = async () => {
     if (!selectedTemplate) return;
     setLoading(true);
@@ -197,39 +236,25 @@ export default function DocumentGeneratePage() {
       const response = await generateDocument(payload);
       const apiData = response.data;
 
-      if (isMeeting) {
-        setMeetingResult({
-          title: apiData.title || formData.title,
-          date: apiData.date || formData.date,
-          attendees: apiData.attendees?.length > 0
-            ? apiData.attendees
-            : (formData.attendees || '').split(',').map(s => s.trim()).filter(Boolean),
-          summary: apiData.summary || apiData.data?.summary || '',
-          decisions: apiData.decisions || apiData.data?.decisions || [],
-          actionItems: apiData.action_items || apiData.data?.action_items || [],
-          document_id: apiData.document_id,
-        });
-      } else {
-        // 보고서/제안서: data에서 주요 필드 추출
-        const data = apiData.data || apiData;
-        const displayFields = Object.entries(data)
-          .filter(([k]) => !['title', 'date', 'document_id'].includes(k))
-          .filter(([, v]) => v && (typeof v === 'string' ? v.trim() : true))
-          .slice(0, 5)
-          .map(([k, v]) => ({
-            label: k,
-            value: Array.isArray(v) ? v.map(i => typeof i === 'object' ? JSON.stringify(i) : i).join('\n') : String(v),
-          }));
+      // 보고서/제안서: data에서 주요 필드 추출
+      const data = apiData.data || apiData;
+      const displayFields = Object.entries(data)
+        .filter(([k]) => !['title', 'date', 'document_id'].includes(k))
+        .filter(([, v]) => v && (typeof v === 'string' ? v.trim() : true))
+        .slice(0, 5)
+        .map(([k, v]) => ({
+          label: k,
+          value: Array.isArray(v) ? v.map(i => typeof i === 'object' ? JSON.stringify(i) : i).join('\n') : String(v),
+        }));
 
-        setResult({
-          title: data.title || formData.title,
-          templateType: selectedTemplate,
-          fields: displayFields.length > 0
-            ? displayFields
-            : [{ label: '미리보기', value: apiData.preview || '내용 없음' }],
-          document_id: apiData.document_id,
-        });
-      }
+      setResult({
+        title: data.title || formData.title,
+        templateType: selectedTemplate,
+        fields: displayFields.length > 0
+          ? displayFields
+          : [{ label: '미리보기', value: apiData.preview || '내용 없음' }],
+        document_id: apiData.document_id,
+      });
     } catch (err) {
       toast.error('문서 생성 실패: ' + (err.response?.data?.detail || err.message));
     } finally {
@@ -312,8 +337,13 @@ export default function DocumentGeneratePage() {
           }}
         />
 
-        {/* 동적 입력 폼 */}
-        {selectedTemplate && templateFields.length > 0 && (
+        {/* 회의록: MeetingInput (팀 선택 + 참석자 드롭다운) */}
+        {selectedTemplate && isMeeting && (
+          <MeetingInput onSubmit={handleMeetingSubmit} loading={loading} />
+        )}
+
+        {/* 보고서/제안서: 동적 입력 폼 */}
+        {selectedTemplate && !isMeeting && templateFields.length > 0 && (
           <div className="card">
             <div className="card-header">
               <div className="card-title">
