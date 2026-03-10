@@ -14,14 +14,16 @@ echo "=== 패키지 설치 완료 ==="
 
 # 모델 및 어댑터 경로
 BASE_MODEL="kakaocorp/kanana-1.5-8b-instruct-2505"
-ADAPTER_PATH="/workspace/SKN21-FINAL-3TEAM/outputs/v2_generate/kanana-1.5-8b-instruct-2505/final"
+ADAPTER_GENERATE="/workspace/SKN21-FINAL-3TEAM/outputs/v2_generate/kanana-1.5-8b-instruct-2505/final"
+ADAPTER_SUMMARY="/workspace/SKN21-FINAL-3TEAM/outputs/v2_summary/kanana-1.5-8b-instruct-2505/final"
 PORT=8000
 
 # 어댑터 존재 확인
-if [ ! -f "${ADAPTER_PATH}/adapter_model.safetensors" ]; then
-    echo "ERROR: adapter weights not found at ${ADAPTER_PATH}"
-    exit 1
-fi
+for adapter in "${ADAPTER_GENERATE}" "${ADAPTER_SUMMARY}"; do
+    if [ ! -f "${adapter}/adapter_model.safetensors" ]; then
+        echo "WARNING: adapter weights not found at ${adapter}"
+    fi
+done
 
 echo "=== vLLM 서버 시작 ==="
 echo "  Base model: ${BASE_MODEL}"
@@ -39,8 +41,8 @@ python -m vllm.entrypoints.openai.api_server \
     --host 0.0.0.0 \
     --trust-remote-code \
     --enable-lora \
-    --lora-modules v2_generate=${ADAPTER_PATH} \
+    --lora-modules v2_generate=${ADAPTER_GENERATE} v2_summary=${ADAPTER_SUMMARY} \
     --max-lora-rank 32 \
-    --max-model-len 2560 \
+    --max-model-len 8192 \
     --gpu-memory-utilization 0.85 \
     --dtype bfloat16

@@ -2,7 +2,7 @@
 AI Hub 요약문 데이터 → v2_summary 학습 데이터 변환 스크립트
 
 소스: AI Hub "요약문 및 레포트 생성 데이터" (SN 582)
-타겟: data/training/v2_summary/aihub_summary.jsonl (700개)
+타겟: data/training/v2_summary/aihub_summary.jsonl (300개)
 
 AI Hub 데이터 구조 (파일 1건 = JSON 1건):
   {
@@ -64,48 +64,29 @@ FOLDER_TO_CATEGORY = {
     "10.narration": "나레이션",
 }
 
-# ── 카테고리별 목표 배분 (700개) ──
+# ── 카테고리별 목표 배분 (300개) ──
 
 CATEGORY_TARGETS = {
-    "뉴스": 180,
-    "보도자료": 160,
-    "보고서": 160,
-    "간행물": 100,
-    "사설": 100,
+    "뉴스": 77,
+    "보도자료": 69,
+    "보고서": 69,
+    "간행물": 43,
+    "사설": 43,
 }
 # 제외: 회의록(국회 속기록), 연설문, 역사기록물, 문학, 나레이션 — 기업 문서 도메인 부적합
 
-# ── 사용자 요청 변형 (15가지) ──
-
-USER_REQUEST_VARIATIONS = [
-    "이 문서 요약해줘",
-    "요약 부탁해",
-    "핵심 정리해줘",
-    "간단히 요약해줘",
-    "핵심 내용만 정리",
-    "이거 정리 좀 해줘",
-    "주요 내용 요약",
-    "문서 요약 해줘",
-    "이 내용 요약해줄래?",
-    "요약본 만들어줘",
-    "브리핑 해줘",
-    "3줄 요약 해줘",
-    "핵심만 뽑아줘",
-    "간략하게 정리해줘",
-    "이거 한번 정리해볼래?",
+# ── 길이 구간별 목표 ──
+# AI Hub 원문은 최대 ~1500자이므로 해당 범위 내에서 균등 분배
+# 중간/긴 문서는 합성 데이터(700개)에서 커버
+LENGTH_BINS = [
+    {"name": "짧은", "min": 500, "max": 800, "target": 100},
+    {"name": "중간", "min": 800, "max": 1200, "target": 100},
+    {"name": "긴",   "min": 1200, "max": 1500, "target": 100},
 ]
 
-CATEGORY_SPECIFIC_REQUESTS = {
-    "보고서": ["보고서 요약 부탁해", "이 보고서 핵심 정리", "보고서 내용 요약해줘"],
-    "간행물": ["이 문서 요약해줘", "핵심 내용 정리해줘"],
-    "보도자료": ["보도자료 요약해줘", "보도 내용 정리해줘"],
-    "뉴스": ["이 뉴스 요약해줘", "뉴스 핵심 정리해줘", "기사 내용 요약"],
-    "사설": ["사설 요약해줘", "핵심 논점 정리해줘"],
-}
-
 # 원문 길이 필터 (자)
-MIN_PASSAGE_LEN = 300
-MAX_PASSAGE_LEN = 3000
+MIN_PASSAGE_LEN = 500
+MAX_PASSAGE_LEN = 1500
 
 
 def load_aihub_data(label_dir: Path, targets: dict[str, int], max_per_cat: int = 0) -> list[dict]:
@@ -134,7 +115,7 @@ def load_aihub_data(label_dir: Path, targets: dict[str, int], max_per_cat: int =
         if target == 0:
             continue
 
-        limit = max_per_cat if max_per_cat > 0 else target * 7
+        limit = max_per_cat if max_per_cat > 0 else target * 15
 
         cat_docs = []
         # 2~3sent 우선 로드 (summary2 있음, passage에서 불릿 추출 용이)
@@ -195,56 +176,93 @@ def filter_and_select(
     max_len: int = MAX_PASSAGE_LEN,
     seed: int = 42,
 ) -> dict[str, list[dict]]:
-    """카테고리별로 원문 길이 필터링 후 목표 수만큼 선별.
+    """길이 구간별 + 카테고리별로 원문 필터링 후 목표 수만큼 선별.
 
-    우선순위: 2~3sent 폴더 (summary2 있음) > 20per 폴더 (summary3 있음)
+    LENGTH_BINS 기준으로 각 길이 구간별 목표를 맞추고,
+    부족한 구간은 있는 만큼만 뽑는다.
     """
-    by_category = {}
-    for doc in docs:
-        cat = doc["category"]
-        passage = doc["passage"]
-
-        # 길이 필터 (passage만 있으면 됨 — GPT-4o가 요약 생성)
-        if not (min_len <= len(passage) <= max_len):
-            continue
-
-        if cat not in by_category:
-            by_category[cat] = []
-        by_category[cat].append(doc)
-
-    # 카테고리별 현황 출력
-    print(f"\n  [필터링 후 카테고리별 현황 ({min_len}~{max_len}자)]")
-    for cat in sorted(by_category.keys()):
-        count = len(by_category[cat])
-        target = targets.get(cat, 0)
-        status = "OK" if count >= target else "부족"
-        print(f"    {cat}: {count:,}건 (목표: {target}, {status})")
-
-    # 목표 수만큼 랜덤 선별 (2~3sent 우선)
     random.seed(seed)
-    selected = {}
-    for cat, target in targets.items():
-        pool = by_category.get(cat, [])
-        if not pool:
-            print(f"    [경고] {cat}: 데이터 없음 (목표 {target}건)")
-            continue
 
-        # 2~3sent 우선 정렬 (summary2가 있는 것 먼저)
+    # 전체 길이 필터 + 길이 구간별 분류
+    by_bin = {b["name"]: [] for b in LENGTH_BINS}
+    filtered_total = 0
+
+    for doc in docs:
+        passage = doc["passage"]
+        plen = len(passage)
+        if not (min_len <= plen <= max_len):
+            continue
+        filtered_total += 1
+        for b in LENGTH_BINS:
+            if b["min"] <= plen < b["max"]:
+                by_bin[b["name"]].append(doc)
+                break
+        else:
+            # max 경계값 포함
+            if plen == max_len:
+                by_bin[LENGTH_BINS[-1]["name"]].append(doc)
+
+    # 길이 구간별 현황 출력
+    print(f"\n  [필터링 후 길이 구간별 현황 ({min_len}~{max_len}자)]")
+    print(f"  총 필터 통과: {filtered_total}건")
+    for b in LENGTH_BINS:
+        count = len(by_bin[b["name"]])
+        status = "OK" if count >= b["target"] else f"부족 (있는 만큼 사용)"
+        print(f"    {b['name']} ({b['min']}~{b['max']}자): {count}건 (목표: {b['target']}, {status})")
+
+    # 길이 구간별 카테고리 분포 출력
+    for b in LENGTH_BINS:
+        cat_counts = {}
+        for doc in by_bin[b["name"]]:
+            cat_counts[doc["category"]] = cat_counts.get(doc["category"], 0) + 1
+        print(f"    {b['name']} 카테고리 분포: {cat_counts}")
+
+    # 길이 구간별로 목표 수만큼 랜덤 선별
+    selected = {}
+    total_selected = 0
+
+    for b in LENGTH_BINS:
+        pool = by_bin[b["name"]]
+        target = b["target"]
+
+        # 2~3sent 우선 정렬
         pool_sorted = sorted(pool, key=lambda d: (0 if d["summary2"] else 1))
 
-        # 포인트 필터 탈락 보상을 위해 target * 3 선별
-        over_target = target * 3
-        if len(pool_sorted) < over_target:
-            print(f"    [참고] {cat}: {len(pool_sorted)}건 사용 가능 (목표 {target}, 선별 {len(pool_sorted)})")
-            selected[cat] = pool_sorted
-        else:
-            candidates = pool_sorted[:min(over_target * 2, len(pool_sorted))]
-            selected[cat] = random.sample(candidates, over_target)
+        actual = min(target, len(pool_sorted))
+        if actual < target:
+            print(f"    [{b['name']}] {actual}건만 사용 가능 (목표 {target})")
 
-    total = sum(len(v) for v in selected.values())
-    print(f"\n  총 선별: {total}건")
+        picked = random.sample(pool_sorted, actual) if actual > 0 else []
+
+        # 선별된 것을 카테고리별로 분배
+        for doc in picked:
+            cat = doc["category"]
+            if cat not in selected:
+                selected[cat] = []
+            selected[cat].append(doc)
+
+        total_selected += actual
+
+    # 카테고리별 최종 선별 현황
+    print(f"\n  [최종 선별 카테고리별 현황]")
+    for cat in sorted(selected.keys()):
+        print(f"    {cat}: {len(selected[cat])}건")
+    print(f"\n  총 선별: {total_selected}건")
     return selected
 
+
+_openai_client = None
+
+def _get_client():
+    global _openai_client
+    if _openai_client is None:
+        try:
+            from openai import OpenAI
+        except ImportError:
+            print("[오류] openai 패키지가 필요합니다: pip install openai")
+            sys.exit(1)
+        _openai_client = OpenAI()
+    return _openai_client
 
 def call_openai(
     system_prompt: str,
@@ -255,13 +273,7 @@ def call_openai(
     max_retries: int = 3,
 ) -> str | None:
     """OpenAI API 호출"""
-    try:
-        from openai import OpenAI
-    except ImportError:
-        print("[오류] openai 패키지가 필요합니다: pip install openai")
-        sys.exit(1)
-
-    client = OpenAI()
+    client = _get_client()
 
     for attempt in range(max_retries):
         try:
@@ -297,58 +309,42 @@ def generate_summary_with_gpt(passage: str, model: str = "gpt-4o") -> str | None
 def validate_summary(summary: str) -> tuple[bool, list[str]]:
     """요약 형식 검증"""
     errors = []
-    if "## 주요 포인트" not in summary:
-        errors.append("'## 주요 포인트' 섹션 없음")
-    if "## 키워드" not in summary:
-        errors.append("'## 키워드' 섹션 없음")
-    if "- " not in summary:
-        errors.append("불릿 포인트 없음")
 
-    # 포인트 개수 검증 (3~5개)
-    if "## 주요 포인트" in summary and "## 키워드" in summary:
-        points_section = summary.split("## 주요 포인트")[1].split("## 키워드")[0]
-        bullet_count = points_section.count("\n- ")
-        if not points_section.startswith("- "):
-            bullet_count += points_section.lstrip().startswith("- ")
-        # \n- 로 시작하는 줄 + 섹션 첫 줄이 - 로 시작하는 경우
-        bullets = [line.strip() for line in points_section.strip().splitlines() if line.strip().startswith("- ")]
-        if len(bullets) < 3 or len(bullets) > 5:
-            errors.append(f"포인트 개수 부적합: {len(bullets)}개 (3~5개 필요)")
+    if "태그:" not in summary:
+        errors.append("'태그:' 없음")
+    if "요약:" not in summary:
+        errors.append("'요약:' 없음")
 
-    # 키워드 개수 검증 (3~7개)
-    if "## 키워드" in summary:
-        kw_part = summary.split("## 키워드")[-1].strip()
-        keywords = [kw.strip() for kw in kw_part.split(",") if kw.strip()]
-        if len(keywords) < 3 or len(keywords) > 7:
-            errors.append(f"키워드 개수 부적합: {len(keywords)}개 (3~7개 필요)")
+    # 태그 개수 검증 (3~7개)
+    if "태그:" in summary:
+        tag_line = summary.split("태그:")[1].split("\n")[0].strip()
+        tags = [t.strip().lstrip("#").strip() for t in tag_line.split("#") if t.strip()]
+        if len(tags) < 3 or len(tags) > 7:
+            errors.append(f"태그 개수 부적합: {len(tags)}개 (3~7개 필요)")
+
+    # 요약 길이 검증
+    if "요약:" in summary:
+        summary_text = summary.split("요약:", 1)[1].strip()
+        if len(summary_text) < 30:
+            errors.append(f"요약 너무 짧음: {len(summary_text)}자 (30자 이상 필요)")
 
     # 메타 지시문 복사 감지
     meta_patterns = [
-        "핵심 요약 2-3문장",
-        "빈 줄",
-        "불릿(-)",
-        "명사/명사구",
-        "쉼표로 구분",
+        "2~3문장",
+        "3~7개",
+        "원문에 없는",
     ]
     for pattern in meta_patterns:
         if pattern in summary:
             errors.append(f"메타 지시문 복사: '{pattern}'")
             break
-    # "포인트" + "작성하세요" 동시 존재
-    if "포인트" in summary and "작성하세요" in summary:
-        errors.append("메타 지시문 복사: '포인트'+'작성하세요'")
 
     return len(errors) == 0, errors
 
 
 def build_user_prompt(passage: str, category: str) -> str:
-    """프로덕션 형식의 user 프롬프트"""
-    if category in CATEGORY_SPECIFIC_REQUESTS and random.random() < 0.3:
-        request = random.choice(CATEGORY_SPECIFIC_REQUESTS[category])
-    else:
-        request = random.choice(USER_REQUEST_VARIATIONS)
-
-    return f"다음 문서를 요약해주세요.\n\n사용자 요청: {request}\n\n문서 내용:\n{passage}"
+    """프로덕션 형식의 user 프롬프트 (summarize_document()와 동일 형식)"""
+    return f"다음 문서를 요약해주세요.\n\n문서 내용:\n{passage}"
 
 
 
@@ -428,7 +424,7 @@ def main():
     parser = argparse.ArgumentParser(description="AI Hub -> v2_summary 변환")
     parser.add_argument("--input", type=str, default=str(TRAIN_LABEL_DIR), help="AI Hub TL1 디렉토리")
     parser.add_argument("--output", type=str, default=str(OUTPUT_DIR / "aihub_summary.jsonl"), help="출력 파일")
-    parser.add_argument("--total", type=int, default=700, help="총 변환 목표 건수")
+    parser.add_argument("--total", type=int, default=300, help="총 변환 목표 건수")
     parser.add_argument("--model", type=str, default="gpt-4o", help="요약 생성 모델")
     parser.add_argument("--seed", type=int, default=42, help="랜덤 시드")
     parser.add_argument("--min-len", type=int, default=MIN_PASSAGE_LEN, help="최소 원문 길이")
@@ -449,8 +445,16 @@ def main():
         print("[오류] OPENAI_API_KEY 환경변수가 설정되지 않았습니다.")
         sys.exit(1)
 
-    # 목표 수 비례 조정
-    ratio = args.total / 700
+    # 길이 구간별 목표 출력
+    print(f"\n  길이 구간별 목표:")
+    for b in LENGTH_BINS:
+        print(f"    {b['name']} ({b['min']}~{b['max']}자): {b['target']}건")
+    total_bin_target = sum(b["target"] for b in LENGTH_BINS)
+    print(f"    합계: {total_bin_target}건")
+
+    # 카테고리별 목표 (로드용)
+    # 충분히 많이 로드해서 길이 구간별로 나눌 수 있도록 목표 x 비례 조정
+    ratio = args.total / 300
     adjusted_targets = {cat: max(1, int(n * ratio)) for cat, n in CATEGORY_TARGETS.items()}
 
     # 1. 데이터 로드 (필요한 만큼만)
@@ -462,15 +466,14 @@ def main():
         print("[오류] 로드된 데이터가 없습니다.")
         sys.exit(1)
 
-    # 2. 데이터 선별
-    print(f"\n[2/3] 데이터 선별")
-    print(f"  조정된 목표: {adjusted_targets}")
+    # 2. 데이터 선별 (길이 구간별)
+    print(f"\n[2/3] 데이터 선별 (길이 구간별)")
 
     selected = filter_and_select(docs, adjusted_targets, args.min_len, args.max_len, args.seed)
 
     # 3. 변환 & 저장
     print(f"\n[3/3] 변환 & 저장")
-    convert_and_save(selected, Path(args.output), targets=adjusted_targets, model=args.model, append=args.append)
+    convert_and_save(selected, Path(args.output), targets=None, model=args.model, append=args.append)
 
     # 4. 검증 요약
     output_path = Path(args.output)
@@ -485,7 +488,7 @@ def main():
         for line in lines:
             sample = json.loads(line)
             content = sample["messages"][2]["content"]
-            if "## 주요 포인트" in content and "## 키워드" in content:
+            if "태그:" in content and "요약:" in content:
                 valid_format += 1
 
         pct = valid_format / len(lines) * 100 if lines else 0

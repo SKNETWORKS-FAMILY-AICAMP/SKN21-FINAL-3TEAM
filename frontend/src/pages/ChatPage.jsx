@@ -261,14 +261,31 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
     }
 
     case 'doc_summary': {
+      const tags = data.tags || [];
+      const summaryText = data.summary || content || data.answer || data.message;
       return (
         <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
           <div className="px-4 py-3 border-b border-neutral-divider flex items-center gap-2 font-bold text-sm text-primary-700">
             <FileText size={16} />
             문서 요약
           </div>
-          <div className="p-4 text-[0.8125rem] text-neutral-main leading-[1.7]">
-            <MarkdownText>{content || data.answer || data.message}</MarkdownText>
+          <div className="p-4 space-y-2">
+            {tags.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[0.75rem] text-neutral-muted">태그:</span>
+                {tags.map((tag, i) => (
+                  <span key={i} className="inline-block px-2 py-0.5 text-[0.75rem] rounded-full bg-primary-50 text-primary-700">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+            {summaryText && (
+              <div>
+                <span className="text-[0.75rem] text-neutral-muted">요약:</span>
+                <p className="text-[0.8125rem] text-neutral-main leading-[1.7] mt-1">{summaryText}</p>
+              </div>
+            )}
           </div>
         </div>
       );

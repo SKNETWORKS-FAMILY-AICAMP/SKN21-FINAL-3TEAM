@@ -346,15 +346,36 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             import os as _os2
                             from openai import AsyncOpenAI as _AsyncOpenAI2
 
-                            openai_key = _os2.getenv("OPENAI_API_KEY")
-                            if not openai_key:
-                                yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
-                                continue
+                            # sLLM 모드 판별
+                            _doc_mode = _os2.getenv("DOC_AGENT_MODE", "api")
+                            _doc_sllm_tasks = _os2.getenv("DOC_SLLM_TASKS", "generate").split(",")
+                            _doc_resp_type = agent_response.get("type", "")
+                            _doc_task = "summary" if _doc_resp_type == "doc_summary" else "search" if _doc_resp_type == "doc_search" else "qa"
+                            _use_sllm = _doc_mode == "sllm" and _doc_task in _doc_sllm_tasks
 
-                            doc_client = _AsyncOpenAI2(api_key=openai_key)
+                            if _use_sllm:
+                                # sLLM: vLLM OpenAI 호환 서버로 스트리밍
+                                vllm_base = _os2.getenv("VLLM_BASE_URL", "http://localhost:8000/v1")
+                                vllm_api_key = _os2.getenv("VLLM_API_KEY", "EMPTY")
+                                vllm_model = _os2.getenv("VLLM_MODEL", "kakaocorp/kanana-1.5-8b-instruct-2505")
+                                _use_lora = _os2.getenv("VLLM_USE_LORA", "false").lower() == "true"
+                                if _use_lora:
+                                    vllm_model = f"v2_{_doc_task}"
+                                doc_client = _AsyncOpenAI2(api_key=vllm_api_key, base_url=vllm_base)
+                                _stream_model = vllm_model
+                                logger.info("[Chat] document_agent sLLM 스트리밍: model=%s, base_url=%s", vllm_model, vllm_base)
+                            else:
+                                # API 모드: 기존 OpenAI
+                                openai_key = _os2.getenv("OPENAI_API_KEY")
+                                if not openai_key:
+                                    yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
+                                    continue
+                                openai_base = _os2.getenv("LLM_BASE_URL") or None
+                                doc_client = _AsyncOpenAI2(api_key=openai_key, base_url=openai_base) if openai_base else _AsyncOpenAI2(api_key=openai_key)
+                                _stream_model = _os2.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
                             doc_stream = await doc_client.chat.completions.create(
-                                model="gpt-4o-mini",
+                                model=_stream_model,
                                 messages=[
                                     {"role": "system", "content": agent_response["sys_prompt"]},
                                     {"role": "user", "content": agent_response["user_prompt"]},
@@ -374,7 +395,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             # 최종 응답 업데이트
                             agent_response["message"] = full_doc_response
                             agent_response["answer"] = full_doc_response
-                            agent_response["model_name"] = "gpt-4o-mini"
+                            agent_response["model_name"] = _stream_model
                             # LLM이 "관련 문서 없음"으로 판단하면 출처도 비우기
                             if "찾지 못했습니다" in full_doc_response or "관련 문서가 없" in full_doc_response:
                                 agent_response["sources"] = []
@@ -394,9 +415,28 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                         filtered_sources.append(src)
                                 if filtered_sources:
                                     agent_response["sources"] = filtered_sources
+                            # doc_summary 스트리밍 완료 후 DB 업데이트
+                            _doc_id_for_update = agent_response.get("document_id")
+                            if agent_response.get("type") == "doc_summary" and _doc_id_for_update and "태그:" in full_doc_response:
+                                try:
+                                    from ai.agents.document_agent import parse_summary_output
+                                    from app.models.document import Document as _DocModel
+                                    _parsed = parse_summary_output(full_doc_response)
+                                    if _parsed["tags"]:
+                                        _doc_result = await db.execute(select(_DocModel).where(_DocModel.id == _doc_id_for_update))
+                                        _doc_obj = _doc_result.scalar_one_or_none()
+                                        if _doc_obj:
+                                            _doc_obj.summary = _parsed["summary"]
+                                            _doc_obj.tags = _parsed["tags"]
+                                            await db.commit()
+                                            logger.info("[Chat] doc_summary DB 업데이트 완료: document_id=%s", _doc_id_for_update)
+                                except Exception as _db_err:
+                                    logger.warning("[Chat] doc_summary DB 업데이트 실패: %s", _db_err)
+
                             agent_response.pop("stream_pending", None)
                             agent_response.pop("sys_prompt", None)
                             agent_response.pop("user_prompt", None)
+                            agent_response.pop("document_id", None)
                             final_state["agent_response"] = agent_response
                         elif agent_response.get("type") in ("doc_pick", "template_pick"):
                             # 선택지 응답 → final_state에 저장하여 format_response에서 전달

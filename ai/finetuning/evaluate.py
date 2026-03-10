@@ -264,52 +264,139 @@ def evaluate_doc_qa(
 # ── 문서 요약 평가 (v2 doc_summary) ──
 
 
-def evaluate_summary(predictions: list[str], references: list[str]) -> dict:
-    """요약 평가 — ROUGE-L, 포맷 준수율
+def _check_tag_format(text: str) -> dict:
+    """태그+요약 포맷 검사
+
+    기대 형식:
+        태그: #태그1 #태그2 #태그3
+        요약: 2~3문장 요약 텍스트
+
+    Returns:
+        {
+            "format_ok": bool,
+            "has_tag_line": bool,
+            "has_summary_line": bool,
+            "tag_count": int,
+            "tag_count_ok": bool,  # 3~7개
+        }
+    """
+    lines = text.strip().split("\n")
+    has_tag_line = False
+    has_summary_line = False
+    tag_count = 0
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("태그:"):
+            has_tag_line = True
+            tag_part = stripped[len("태그:"):].strip()
+            tag_count = tag_part.count("#")
+        elif stripped.startswith("요약:"):
+            has_summary_line = True
+
+    tag_count_ok = 3 <= tag_count <= 7
+    format_ok = has_tag_line and has_summary_line and tag_count_ok
+
+    return {
+        "format_ok": format_ok,
+        "has_tag_line": has_tag_line,
+        "has_summary_line": has_summary_line,
+        "tag_count": tag_count,
+        "tag_count_ok": tag_count_ok,
+    }
+
+
+def evaluate_summary(
+    predictions: list[str],
+    references: list[str],
+    input_lengths: list[int] | None = None,
+) -> dict:
+    """요약 평가 — ROUGE-L, 포맷 준수율, 태그 품질, 길이별 분석
 
     Args:
-        predictions: LLM이 생성한 요약 텍스트 (마크다운)
+        predictions: LLM이 생성한 요약 텍스트 (태그+요약 형식)
         references: 정답 요약 텍스트
+        input_lengths: 원본 문서 길이 리스트 (길이별 분석용, optional)
 
     Returns:
         {
             "total": int,
             "rouge_l": float,
             "format_compliance": float,
+            "tag_count_compliance": float,
+            "avg_tag_count": float,
             "avg_length": float,
+            "by_length": {  # input_lengths 제공 시
+                "짧은(~2000)": {"count": int, "rouge_l": float, "format_compliance": float},
+                "중간(2000~5000)": {...},
+                "긴(5000~)": {...},
+            },
         }
     """
     total = len(predictions)
     rouge_l_sum = 0.0
     format_ok = 0
+    tag_count_ok = 0
+    tag_count_sum = 0
     total_length = 0
 
-    for pred, ref in zip(predictions, references):
+    # 길이별 버킷
+    length_bins = {
+        "짧은(~2000)": {"rouge_sum": 0.0, "format_ok": 0, "count": 0},
+        "중간(2000~5000)": {"rouge_sum": 0.0, "format_ok": 0, "count": 0},
+        "긴(5000~)": {"rouge_sum": 0.0, "format_ok": 0, "count": 0},
+    }
+
+    for i, (pred, ref) in enumerate(zip(predictions, references)):
         # ROUGE-L
-        rouge_l_sum += _rouge_l(pred, ref)
+        rouge = _rouge_l(pred, ref)
+        rouge_l_sum += rouge
 
-        # 포맷 준수: 마크다운 구조 (제목/키포인트/키워드 중 2개 이상)
-        structure_markers = 0
-        if "##" in pred or "**" in pred:
-            structure_markers += 1
-        if "포인트" in pred or "요점" in pred or "핵심" in pred or "-" in pred:
-            structure_markers += 1
-        if "키워드" in pred or "keyword" in pred.lower():
-            structure_markers += 1
-        if len(pred) > 50:
-            structure_markers += 1
-
-        if structure_markers >= 2:
+        # 태그+요약 포맷 검사
+        fmt = _check_tag_format(pred)
+        if fmt["format_ok"]:
             format_ok += 1
+        if fmt["tag_count_ok"]:
+            tag_count_ok += 1
+        tag_count_sum += fmt["tag_count"]
 
         total_length += len(pred)
 
-    return {
+        # 길이별 버킷 분류
+        if input_lengths and i < len(input_lengths):
+            doc_len = input_lengths[i]
+            if doc_len < 2000:
+                bucket = "짧은(~2000)"
+            elif doc_len < 5000:
+                bucket = "중간(2000~5000)"
+            else:
+                bucket = "긴(5000~)"
+            length_bins[bucket]["rouge_sum"] += rouge
+            length_bins[bucket]["format_ok"] += 1 if fmt["format_ok"] else 0
+            length_bins[bucket]["count"] += 1
+
+    result = {
         "total": total,
         "rouge_l": rouge_l_sum / total if total > 0 else 0,
         "format_compliance": format_ok / total if total > 0 else 0,
+        "tag_count_compliance": tag_count_ok / total if total > 0 else 0,
+        "avg_tag_count": tag_count_sum / total if total > 0 else 0,
         "avg_length": total_length / total if total > 0 else 0,
     }
+
+    # 길이별 분석 (input_lengths 제공 시)
+    if input_lengths:
+        by_length = {}
+        for name, bucket in length_bins.items():
+            c = bucket["count"]
+            by_length[name] = {
+                "count": c,
+                "rouge_l": bucket["rouge_sum"] / c if c > 0 else 0,
+                "format_compliance": bucket["format_ok"] / c if c > 0 else 0,
+            }
+        result["by_length"] = by_length
+
+    return result
 
 
 # ── Action Item 추출 평가 ──

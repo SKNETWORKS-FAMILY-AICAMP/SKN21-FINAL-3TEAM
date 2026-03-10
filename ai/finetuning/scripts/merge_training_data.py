@@ -6,7 +6,7 @@
 
 최종 산출물:
   data/training/v2_generate/merged_generate.jsonl  <- 1,500개 (690 AI Hub + 600 합성 + 210 변형)
-  data/training/v2_summary/merged_summary.jsonl    <- 1,000개 (700 AI Hub + 300 합성)
+  data/training/v2_summary/merged_summary.jsonl    <- 1,000개 (300 AI Hub + 700 합성)
   data/training/v2_qa/merged_qa.jsonl              <- 1,000개 (600 AI Hub + 400 합성)
 
 사용법:
