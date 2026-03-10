@@ -1180,7 +1180,7 @@ def _build_sources(search_results: list) -> list:
 
 _last_model_name = "unknown"
 
-async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, task: str = None) -> str:
+async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, task: str = None, temperature: float = None) -> str:
     """
     LLM 호출 — 모드에 따라 LLM API 또는 sLLM(vLLM + LoRA) 사용
 
@@ -1188,12 +1188,16 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
         task: 파인튜닝 태스크명 ("generate", "qa", "summary").
               DOC_AGENT_MODE=sllm일 때 해당 LoRA 어댑터로 라우팅.
               None이면 항상 LLM API 사용 (template_type 감지 등).
+        temperature: LLM 온도. None이면 task에 따라 자동 결정
+                     (generate=0.7, 검색/QA=0.1)
     """
     global _last_model_name
+    if temperature is None:
+        temperature = 0.7 if task == "generate" else 0.1
     _t_llm = time.time()
     mode = os.getenv("DOC_AGENT_MODE", "api")
-    sllm_tasks = os.getenv("DOC_SLLM_TASKS", "generate").split(",")  # sLLM 적용 태스크 (쉼표 구분)
-    print(f"[DocumentAgent] _call_llm 호출 | mode={mode}, task={task}, sllm_tasks={sllm_tasks}, json_mode={json_mode}")
+    sllm_tasks = os.getenv("DOC_SLLM_TASKS", "generate").split(",")
+    print(f"[DocumentAgent] _call_llm 호출 | mode={mode}, task={task}, temperature={temperature}, json_mode={json_mode}")
     try:
         if mode == "sllm" and task in sllm_tasks:
             # sLLM 모드: vLLM + LoRA 어댑터
@@ -1211,7 +1215,7 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
                 response = await llm.generate(
                     prompt=user_prompt,
                     system_prompt=sys_prompt,
-                    temperature=0.7,
+                    temperature=temperature,
                     json_mode=json_mode,
                 )
                 result = response.content
@@ -1232,7 +1236,7 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
         response = await llm.generate(
             prompt=user_prompt,
             system_prompt=sys_prompt,
-            temperature=0.7,
+            temperature=temperature,
             json_mode=json_mode,
         )
 
