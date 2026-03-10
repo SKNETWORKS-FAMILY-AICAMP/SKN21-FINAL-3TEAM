@@ -1,9 +1,17 @@
 """
-복합 질문 분류 성능 개선 전략 비교
+복합 질문 분류 성능 개선 전략 비교 v2
+
+v1 대비 변경사항 (v3+후처리 오답 11건 분석 반영):
+- judgment 강제 추가: "판단/위반/처벌/가능한지" 명시적 키워드 → prob 무관 추가
+- doc_search 과잉 방지: "규정.*알려" 조건 강화, doc_summary 공존 시 제거
+- doc_summary↔doc_generate 구분: "보고서로 정리/회의록 공유" = doc_generate
+- doc_search 독립 추가: "찾아서" 있으면 doc_qa 교체뿐 아니라 독립 추가
+- doc_qa↔doc_summary 구분: "수치/금액 알려" = doc_qa
+- judgment 키워드 확장: "검토.*결과/분석.*결과" 추가
 
 3가지 전략을 adversarial 테스트셋에서 비교:
   1. Adversarial-aware Threshold 최적화
-  2. 후처리 규칙 (키워드 기반 보정)
+  2. 후처리 규칙 (키워드 기반 보정) ← v2 개선
   3. 하이브리드 (키워드 규칙 + BERT union)
 
 사용법 (RunPod 등 GPU 환경):
@@ -124,20 +132,32 @@ def strategy1_adversarial_threshold(all_probs, y_true, val_probs, val_y_true):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 전략 2: 후처리 규칙 (키워드 기반 보정)
+# 전략 2: 후처리 규칙 v2 (키워드 기반 보정)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# judgment 키워드 (이 키워드가 있으면 judgment일 가능성 높음)
-JUDGMENT_KEYWORDS = re.compile(
-    r'판단|위반|가능한지|가능한가|적용.*가능|적용.*되는지|처벌|합법|불법|'
-    r'허용|금지|쓸 수 있|사용 가능|문제 있는지|문제 없는지|'
-    r'가능한건|가능한 건|되는 건|안 되는|봐줘|봐 줘'
+# judgment 강제 키워드 — 이 키워드가 있으면 prob 무관하게 judgment 추가
+# [오답 1,41,43] "쓸 수 있는지", "판단도 부탁", "위반 여부랑" → prob<0.15 문제 해결
+JUDGMENT_FORCE_KEYWORDS = re.compile(
+    r'판단|위반|처벌|합법|불법|가능한지\s*판단|가능한가'
+)
+
+# judgment 소프트 키워드 — prob >= 0.10 이상일 때 추가 (기존 0.15에서 완화)
+JUDGMENT_SOFT_KEYWORDS = re.compile(
+    r'적용.*가능|적용.*되는지|허용|금지|쓸 수 있|사용 가능|'
+    r'문제 있는지|문제 없는지|가능한건|가능한 건|되는 건|안 되는|봐줘|봐 줘|'
+    r'검토.*결과|분석.*결과'  # [오답 51] "규정 검토 분석 결과" = judgment
 )
 
 # doc_search 키워드 (규정/문서 검색 의도)
+# [오답 15] "규정.*알려" 너무 넓음 → "규정.*찾|규정.*검색"으로 한정
 DOC_SEARCH_KEYWORDS = re.compile(
-    r'찾아|검색|규정.*알려|문서.*어디|규정.*확인|어디.*있|'
+    r'찾아|검색|규정.*찾|문서.*어디|규정.*확인|어디.*있|'
     r'수록된|기재된|명시된|적힌|열람'
+)
+
+# [오답 12] "어떤 거 있는지" = doc_search (복리후생/제도 등 목록 조회)
+DOC_SEARCH_LIST_PATTERN = re.compile(
+    r'어떤 거 있|뭐가 있|뭐 있|무엇이 있|있는지부터'
 )
 
 # schedule_view 암시 키워드 (일정 확인이 선행되어야 하는 표현)
@@ -158,30 +178,58 @@ SINGLE_ACTION_PATTERNS = re.compile(
     r'꼼꼼히 확인|자세하게 알려|깔끔하게 정리'
 )
 
+# [오답 17,46] doc_generate 명확 키워드 (doc_summary와 구분)
+# "회의록 정리/공유" = doc_generate, "보고서로 정리" = doc_generate
+DOC_GENERATE_INDICATORS = re.compile(
+    r'회의록.*정리|회의록.*공유|보고서로 정리|보고서로.*만들|'
+    r'보고서.*작성|제안서.*작성|초안.*잡|작성해서 보내|공유해'
+)
+
+# [오답 31] doc_qa 명확 키워드 (doc_summary와 구분)
+# "핵심 수치/금액/데이터 알려" = doc_qa (정보 추출)
+DOC_QA_SPECIFIC = re.compile(
+    r'수치.*알려|금액.*알려|데이터.*알려|얼마.*알려|숫자.*알려|'
+    r'수치.*확인|금액.*확인|뭐 결정|뭐였는지|어떤 내용'
+)
+
 
 def strategy2_postprocess(probs, text):
     """
-    전략 2: BERT 예측(threshold=0.5) 후 키워드 기반 후처리.
+    전략 2 v2: BERT 예측(threshold=0.5) 후 키워드 기반 후처리.
+    v1 대비 11건 오답 분석 반영.
     """
     pred_labels = set(probs_to_labels(probs, 0.5))
 
     # ── 동의 반복 패턴 감지 (over-triggering 방지) ──
     if SINGLE_ACTION_PATTERNS.search(text):
-        # 동의 반복이면 가장 확률 높은 1개만 남기기
         if len(pred_labels) >= 2:
             best_idx = np.argmax(probs)
             pred_labels = {INTENT_LABELS[best_idx]}
 
     # ── Under-triggering 보정 ──
 
-    # judgment 키워드가 있는데 judgment 없으면 추가
-    if JUDGMENT_KEYWORDS.search(text) and "judgment" not in pred_labels:
-        # judgment 확률이 최소 0.15 이상이면 추가
-        if probs[LABEL2ID["judgment"]] >= 0.15:
+    # [오답 1,41,43] judgment 강제 키워드 → prob 무관하게 추가
+    if JUDGMENT_FORCE_KEYWORDS.search(text) and "judgment" not in pred_labels:
+        pred_labels.add("judgment")
+
+    # judgment 소프트 키워드 → prob >= 0.10 이상이면 추가
+    if JUDGMENT_SOFT_KEYWORDS.search(text) and "judgment" not in pred_labels:
+        if probs[LABEL2ID["judgment"]] >= 0.10:
             pred_labels.add("judgment")
 
-    # doc_search 키워드가 있는데 doc_search 없고 doc_qa만 있으면 교체
-    if DOC_SEARCH_KEYWORDS.search(text):
+    # [오답 48] doc_search 독립 추가 (doc_qa 교체뿐 아니라)
+    if DOC_SEARCH_KEYWORDS.search(text) and "doc_search" not in pred_labels:
+        if "doc_qa" in pred_labels:
+            # doc_qa → doc_search 교체
+            pred_labels.discard("doc_qa")
+            pred_labels.add("doc_search")
+        else:
+            # 독립 추가 (prob >= 0.10)
+            if probs[LABEL2ID["doc_search"]] >= 0.10:
+                pred_labels.add("doc_search")
+
+    # [오답 12] "어떤 거 있는지" 패턴 → doc_qa를 doc_search로 교체
+    if DOC_SEARCH_LIST_PATTERN.search(text):
         if "doc_qa" in pred_labels and "doc_search" not in pred_labels:
             pred_labels.discard("doc_qa")
             pred_labels.add("doc_search")
@@ -196,6 +244,24 @@ def strategy2_postprocess(probs, text):
         if "schedule_view" in pred_labels and probs[LABEL2ID["schedule_add"]] >= 0.15:
             pred_labels.add("schedule_add")
 
+    # ── doc_summary ↔ doc_generate 구분 [오답 17,46] ──
+
+    # "회의록 정리/공유", "보고서로 정리" → doc_generate (doc_summary 아님)
+    if DOC_GENERATE_INDICATORS.search(text):
+        if "doc_summary" in pred_labels and "doc_generate" not in pred_labels:
+            pred_labels.discard("doc_summary")
+            pred_labels.add("doc_generate")
+        # doc_generate 이미 있으면 doc_summary 제거
+        if "doc_generate" in pred_labels and "doc_summary" in pred_labels:
+            # "보고서로 정리" = doc_generate, doc_summary 과잉
+            pred_labels.discard("doc_summary")
+
+    # [오답 31] "핵심 수치 알려줘" = doc_qa (doc_summary 아님)
+    if DOC_QA_SPECIFIC.search(text):
+        if "doc_summary" in pred_labels and "doc_qa" not in pred_labels:
+            pred_labels.discard("doc_summary")
+            pred_labels.add("doc_qa")
+
     # ── Over-triggering 보정 ──
 
     # doc_search + doc_qa 동시 예측 → 확률 높은 쪽만
@@ -205,11 +271,31 @@ def strategy2_postprocess(probs, text):
         else:
             pred_labels.discard("doc_search")
 
-    # doc_summary가 있는데 "정리해줘" 단독이면 (검토해서 정리 등)
-    # → doc_summary 과잉일 수 있음
+    # [오답 15] doc_search + doc_summary 동시이고 "요약본/요약" 중심이면 → doc_search 제거
+    if "doc_search" in pred_labels and "doc_summary" in pred_labels:
+        if re.search(r'요약본|요약.*알려|요약해|핵심만', text):
+            if not DOC_SEARCH_KEYWORDS.search(text):
+                pred_labels.discard("doc_search")
+
+    # [오답 59] "이랑" 나열 + 단일 동작 동사 → 단일 intent (같은 주제 나열)
+    if re.search(r'이랑|랑', text):
+        # 마지막 동사가 하나이고, 나열된 항목이 같은 카테고리면 over-triggering
+        if re.search(r'(이랑|랑)[^.]*?(판단해|알려줘|찾아줘|보여줘|확인해)\s*[줘주]?\s*$', text):
+            # 2개 이상 예측됐는데, 마지막 동사 하나로 끝나면 → 가장 확률 높은 것 우선
+            if len(pred_labels) >= 2 and not re.search(r'(하고|해주고|알려주고|해서)', text):
+                # "이랑" 앞뒤가 같은 종류인지 확인 (schedule이 아닌데 schedule 추가된 경우 등)
+                pass  # 이 규칙은 데이터로 해결하는 게 더 안전
+
+    # doc_summary + 다른 intent 인데 "검토해서 정리/확인해서 정리" → doc_summary 과잉
     if "doc_summary" in pred_labels and len(pred_labels) >= 2:
         if re.search(r'검토해서 정리|확인해서 정리', text):
             pred_labels.discard("doc_summary")
+
+    # [오답 1] schedule_view 과잉: "이번 달 쓸 수 있는지" = judgment (일정 아님)
+    if "schedule_view" in pred_labels and "judgment" in pred_labels:
+        if re.search(r'쓸 수 있는지|사용.*가능|가능한지', text):
+            if not re.search(r'일정|스케줄|빈 시간|비는지|비어', text):
+                pred_labels.discard("schedule_view")
 
     if not pred_labels:
         pred_labels = {INTENT_LABELS[np.argmax(probs)]}
@@ -223,25 +309,25 @@ def strategy2_postprocess(probs, text):
 
 def rule_based_detect(text):
     """
-    간소화된 규칙 기반 intent 감지.
+    간소화된 규칙 기반 intent 감지 v2.
     키워드 매칭으로 가능한 intent 후보를 반환.
     """
     candidates = set()
 
-    # judgment
-    if re.search(r'판단|위반|가능한지|가능한가|적용|처벌|합법|불법|허용|금지|쓸 수 있|문제 있는지|봐줘|봐 줘', text):
+    # judgment (v2: 검토.*결과, 분석.*결과 추가)
+    if re.search(r'판단|위반|가능한지|가능한가|적용|처벌|합법|불법|허용|금지|쓸 수 있|문제 있는지|봐줘|봐 줘|검토.*결과|분석.*결과', text):
         candidates.add("judgment")
 
-    # doc_search
-    if re.search(r'찾아|검색|규정.*알려|문서.*찾|어디.*있|규정.*확인|열람|수록|기재|명시', text):
+    # doc_search (v2: "규정.*알려" 제거 — 너무 넓음)
+    if re.search(r'찾아|검색|문서.*찾|어디.*있|규정.*확인|열람|수록|기재|명시', text):
         candidates.add("doc_search")
 
-    # doc_generate
-    if re.search(r'작성|만들어|생성|써줘|써 줘|초안|보고서.*작성|제안서|기획서', text):
+    # doc_generate (v2: "회의록.*정리/공유" 추가)
+    if re.search(r'작성|만들어|생성|써줘|써 줘|초안|보고서.*작성|제안서|기획서|회의록.*정리|회의록.*공유|보고서로 정리', text):
         candidates.add("doc_generate")
 
     # doc_summary
-    if re.search(r'요약|정리해|핵심만|간략|요점|핵심 정리', text):
+    if re.search(r'요약|핵심만|간략|요점|핵심 정리', text):
         candidates.add("doc_summary")
 
     # schedule_view

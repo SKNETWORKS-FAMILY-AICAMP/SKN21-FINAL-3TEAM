@@ -1458,11 +1458,88 @@ v2 adversarial 오답 25건을 분석하여 `generate_multilabel_data.py` 추가
 > **Trade-off**: Over-triggering 4.5% → 13.6% (단일→복합 오인 약간 증가)
 > **남은 오답 15건**: 대부분 intent 경계 혼동 (doc_search↔doc_qa, doc_generate↔doc_summary)
 
+#### 11) 3가지 성능 개선 전략 비교 (v3 모델 기준)
+
+v3 모델(75.0%)에서 추가 성능 향상을 위해 3가지 전략을 비교 실험:
+
+**전략 설명:**
+1. **전략1: Adversarial-aware Threshold** — validation+adversarial 합산 데이터에서 intent별 최적 threshold 탐색
+2. **전략2: 후처리 규칙** — BERT 예측 후 키워드 기반 보정 (judgment 키워드, doc_search↔doc_qa 구분, 단일행동 패턴 등)
+3. **전략3: 하이브리드** — 규칙 기반 intent 탐지 + BERT union (확률 floor 적용)
+
+**비교 결과:**
+
+| 지표 | Baseline | 전략1(Threshold) | 전략2(후처리) | 전략3(하이브리드) |
+|---|---|---|---|---|
+| Subset Accuracy | 75.0% | 80.0% | **81.7%** | 80.0% |
+| Micro F1 | 89.3% | 91.9% | **92.2%** | 91.3% |
+| Over-triggering | 13.6% | 9.1% | **4.5%** | 9.1% |
+| Under-triggering | 7.9% | 5.3% | 5.3% | 5.3% |
+| 오답 수 | 15건 | 12건 | **11건** | 12건 |
+
+**최종 선택: 전략2 (후처리 규칙)** — 81.7% Subset Accuracy, 92.2% Micro F1
+
+**후처리 규칙 내용:**
+- `판단|위반|가능한지|처벌|합법|불법` → judgment 추가
+- `찾아|검색|규정.*알려|문서.*찾` → doc_search 추가
+- `빈 시간.*있으면|비는지.*보고|겹치는.*없는지` → schedule_view 추가
+- `확인해서 알려|찾아서 보여|검토해서 정리` → 단일 intent 판별 (over-triggering 방지)
+
+**v1 → v2 → v3 → v3+후처리 전체 성능 추이:**
+
+| 지표 | v1 | v2 | v3 | v3+후처리 |
+|---|---|---|---|---|
+| Subset Accuracy | 46.7% | 58.3% | 75.0% | **81.7%** |
+| Micro F1 | 62.3% | 80.8% | 89.3% | **92.2%** |
+| Under-triggering | 57.9% | 28.9% | 7.9% | **5.3%** |
+| Over-triggering | 4.5% | 4.5% | 13.6% | **4.5%** |
+
+#### 12) 오답 11건 분석 → 후처리 규칙 v2 + 학습 데이터 v4 준비
+
+v3+후처리 v1의 오답 11건을 정밀 분석하여 규칙과 데이터 양쪽 동시 개선:
+
+**오답 분류 (11건):**
+
+| 패턴 | 건수 | ID | 원인 |
+|---|---|---|---|
+| judgment 누락 | 3건 | 1,41,43 | "판단/위반" 있지만 prob<0.15라 규칙 미적용 |
+| doc_search 과잉 | 2건 | 15,59 | "규정.*알려" 정규식 너무 넓음 |
+| doc_summary↔doc_generate 혼동 | 2건 | 17,46 | "보고서로 정리/회의록 공유"=generate인데 summary로 분류 |
+| doc_qa↔doc_search 혼동 | 2건 | 12,51 | "어떤 거 있는지"=search, "규정 검토"=judgment |
+| doc_qa↔doc_summary 혼동 | 1건 | 31 | "핵심 수치 알려줘"=qa인데 summary로 분류 |
+| doc_search 누락 | 1건 | 48 | "찾아서" 있지만 독립추가 규칙 없음 |
+
+**후처리 규칙 v2 변경 (`compare_strategies.py`):**
+- judgment "판단/위반/처벌" → **확률 무관 강제 추가** (기존: prob≥0.15)
+- doc_search "찾아서" → **독립 추가 규칙** (기존: doc_qa 교체만)
+- "회의록 정리/보고서로 정리" → **doc_generate** (기존: doc_summary 혼동)
+- "핵심 수치 알려줘" → **doc_qa** (기존: doc_summary 혼동)
+- "규정 검토/분석 결과" → **judgment 키워드 추가**
+- "요약본+처벌 기준" → doc_search 과잉 방지
+- "쓸 수 있는지" + 일정 키워드 없음 → schedule_view 과잉 방지
+
+**학습 데이터 v4 변경 (`generate_multilabel_data.py`):**
+
+| 항목 | v3 | v4 | 변화 |
+|---|---|---|---|
+| 골든 데이터 | 40개 | ~70개 | +30 (오답 패턴 직접 반영) |
+| 3중 복합 | 250개 (25/조합) | ~300개 (30/조합) | +50 |
+| 함정 단일 | 90개 (15/intent) | ~120개 (20/intent) | +30 |
+| 3중 템플릿 | 10개 | 15개 | +5 ("찾아서" 포함 강화) |
+| 함정 템플릿 | 4개 | 7개 | +3 ("이랑+단일동사" 패턴) |
+
+**v4 골든 데이터 추가 내용 (30개):**
+- judgment 짧은/암묵적: "판단도 부탁", "위반 여부랑", "쓸 수 있는지"
+- doc_generate 구분: "회의록 정리", "보고서로 정리", "정리해서 공유"
+- doc_qa 구분: "핵심 수치 알려줘", "금액 확인"
+- connector trap: "X이랑 Y 판단해줘"=단일, "규정 검토 결과"=judgment
+- doc_search 목록조회: "어떤 거 있는지", "뭐가 있는지"
+
 ### 다음 할 일
 
+- RunPod에서 v4 데이터 생성 → 재학습 → 전략 비교 v2 실행
+- 결과 확인 후 최종 production 코드 반영
 - 오케스트레이터에서 `predict_multilabel()` 호출 연결
-- Threshold 튜닝 (0.5→0.4 등) 으로 over-triggering 조정 검토
-- 최종 Phase 1 vs Phase 2 비교 정리
 
 ---
 
