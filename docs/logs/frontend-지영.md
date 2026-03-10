@@ -1237,17 +1237,57 @@
 
 ### 다음 할 일
 
-#### 복합 질문(Multi-Intent) 처리 Phase 2: 멀티라벨 BERT 교체
+- RunPod에서 멀티라벨 BERT 학습 실행 (`python -m ai.experiments.train_multilabel`)
+- 학습된 모델을 `ai/models/intent_multilabel/`에 배치
+- 오케스트레이터에서 `predict_multilabel()` 호출 연결
+- Phase 1 vs Phase 2 비교 결과 정리
 
-Phase 1 규칙 기반 파이프라인이 동작하므로, 이를 멀티라벨 BERT로 교체하여 정확도를 높인다.
+---
 
-- 기존 단일 intent 학습 데이터 조합으로 복합 학습 데이터 자동 생성
-- 학습 코드 수정 (softmax → sigmoid, CrossEntropy → BCEWithLogitsLoss)
-- 멀티라벨 BERT 학습 + 성능 평가
-- `intent_classifier.py` predict 수정 (threshold 기반 다중 intent 반환)
-- Phase 1 규칙 기반 감지를 멀티라벨 BERT로 교체
+## 2026-03-10 (화)
 
-**목적**: 심사 평가 시 "단일→멀티라벨 진화" 스토리 + 자체 sLLM 개발 일관성 확보
+### 한 일
+
+#### 1) Phase 1 (규칙 기반) 멀티라벨 전용 지표 재평가
+
+> 기존 accuracy 83.3% (30문장) 평가를 멀티라벨 전용 지표 7개로 재평가
+
+- `ai/experiments/eval_compound_phase1.py` — 평가 스크립트 작성
+  - 이진 감지 지표: Precision / Recall / F1 / Over-triggering Rate / Under-triggering Rate
+  - 멀티라벨 Intent 집합 지표: Subset Accuracy / Hamming Loss / Jaccard / Macro F1 / Micro F1
+- **Phase 1 재평가 결과:**
+  - 복합감지 F1: **76.2%** (기존 accuracy 83.3%보다 낮게 나옴)
+  - Under-triggering Rate: **33.3%** (복합 4/12건 미감지 — 핵심 약점)
+  - Subset Accuracy: **41.7%** (완전 일치 절반도 안 됨)
+  - Macro F1: **49.3%** / Micro F1: **70.3%**
+
+#### 2) Phase 2 멀티라벨 학습 데이터 자동 생성
+
+- `ai/experiments/generate_multilabel_data.py` — 데이터 생성 스크립트 작성
+  - 기존 v2 단일 라벨 데이터 (2,327개) → `labels: ["intent"]` 멀티라벨 형식 변환
+  - 10개 intent 쌍 조합 × 78개 = **780개** 복합 데이터 자동 생성
+  - 단일:복합 비율 **3:1** 로 조정 (학습 불균형 방지)
+  - 복합 생성 전략: 70% 원문 "그리고" 연결 + 30% 쌍별 전용 템플릿
+- **생성 결과:**
+  - `data/training/intent_multilabel/train.jsonl` — 2,873개 (단일 2,327 + 복합 546)
+  - `data/training/intent_multilabel/val.jsonl` — 402개
+  - `data/training/intent_multilabel/test.jsonl` — 403개
+  - `data/training/intent_multilabel/compound_only.jsonl` — 780개 (검증용)
+
+#### 3) 멀티라벨 BERT 학습 스크립트 작성
+
+- `ai/experiments/train_multilabel.py` — 학습 + 평가 통합 스크립트
+  - `problem_type="multi_label_classification"` (sigmoid + BCEWithLogitsLoss)
+  - 평가 지표: Subset Accuracy / Hamming Loss / Jaccard / Macro F1 / Micro F1 / Over·Under-triggering
+  - Phase 1 vs Phase 2 자동 비교표 출력
+  - koelectra best config 기반 (ep10/lr3e-5/bs16, max_length 64→128 확대)
+
+#### 4) `predict_multilabel()` 메서드 추가
+
+- `ai/agents/intent_classifier.py` 수정
+  - `predict_multilabel()`: sigmoid + threshold 기반 다중 intent 반환
+  - `load_model()`에서 `model_info.json`의 `problem_type` 감지 → 멀티라벨 모드 자동 전환
+  - 멀티라벨 모델 없을 시 규칙 기반 `detect_compound_query()` fallback 유지
 
 ---
 

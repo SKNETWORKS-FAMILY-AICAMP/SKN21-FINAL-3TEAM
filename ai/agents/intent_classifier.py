@@ -55,6 +55,8 @@ class IntentClassifier:
         self.tokenizer = None
         self.id2label = None
         self._loaded = False
+        self._is_multilabel = False
+        self._multilabel_threshold = 0.5
 
     def load_model(self):
         """모델 로드 — weights 없으면 fallback 모드로 동작"""
@@ -97,10 +99,17 @@ class IntentClassifier:
                     model_info = json.load(f)
                 base_model = model_info.get("base_model", base_model)
 
+            # 멀티라벨 모델 감지
+            if model_info_file.exists():
+                problem_type = model_info.get("problem_type", "single_label_classification")
+                self._is_multilabel = (problem_type == "multi_label_classification")
+                self._multilabel_threshold = model_info.get("threshold", 0.5)
+
             self.tokenizer = AutoTokenizer.from_pretrained(base_model)
             self.model = AutoModelForSequenceClassification.from_pretrained(str(model_dir))
             self.model.eval()
-            logger.info("Intent classifier loaded from %s (tokenizer: %s)", model_dir, base_model)
+            mode_str = "multi-label" if self._is_multilabel else "single-label"
+            logger.info("Intent classifier loaded from %s (tokenizer: %s, mode: %s)", model_dir, base_model, mode_str)
         except Exception as e:
             logger.error("Failed to load intent classifier: %s", e)
             self.model = None
@@ -173,6 +182,107 @@ class IntentClassifier:
             result["candidates"] = candidates
 
         return result
+
+    def predict_multilabel(self, text: str) -> dict:
+        """
+        멀티라벨 Intent 분류 추론 (Phase 2).
+
+        sigmoid + threshold 기반으로 여러 intent를 동시에 반환.
+        멀티라벨 모델이 없으면 규칙 기반 detect_compound_query()로 fallback.
+
+        Returns:
+            {
+                "intents": [
+                    {"intent": "doc_search", "confidence": 0.92},
+                    {"intent": "judgment", "confidence": 0.87},
+                ],
+                "is_compound": True,
+                "primary_intent": "doc_search",   # 최고 confidence
+                "primary_confidence": 0.92,
+            }
+        """
+        self.load_model()
+
+        # 멀티라벨 모델이 없으면 규칙 기반 fallback
+        if not self._is_multilabel or self.model is None or self.tokenizer is None:
+            return self._fallback_compound_detect(text)
+
+        # 전처리
+        try:
+            from ai.agents.preprocessing import preprocess
+            processed = preprocess(text)
+        except ImportError:
+            processed = text
+
+        import torch
+
+        inputs = self.tokenizer(
+            processed,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=128,
+        )
+
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+
+        # sigmoid (멀티라벨)
+        probs = torch.sigmoid(outputs.logits)[0]
+
+        # threshold 이상인 intent 수집
+        intents = []
+        for idx in range(len(INTENT_LABELS)):
+            conf = probs[idx].item()
+            if conf >= self._multilabel_threshold:
+                intents.append({
+                    "intent": self.id2label.get(idx, "general"),
+                    "confidence": round(conf, 4),
+                })
+
+        # threshold 이상이 하나도 없으면 최고 confidence intent 반환
+        if not intents:
+            best_idx = torch.argmax(probs).item()
+            intents = [{
+                "intent": self.id2label.get(best_idx, "general"),
+                "confidence": round(probs[best_idx].item(), 4),
+            }]
+
+        # confidence 내림차순 정렬
+        intents.sort(key=lambda x: x["confidence"], reverse=True)
+
+        return {
+            "intents": intents,
+            "is_compound": len(intents) >= 2,
+            "primary_intent": intents[0]["intent"],
+            "primary_confidence": intents[0]["confidence"],
+        }
+
+    def _fallback_compound_detect(self, text: str) -> dict:
+        """멀티라벨 모델 없을 때 규칙 기반 fallback"""
+        sub_queries = detect_compound_query(text)
+
+        if sub_queries:
+            # 복합 감지됨: hint intent 사용
+            intents = [
+                {"intent": sq["hint"], "confidence": 0.7}
+                for sq in sub_queries
+            ]
+            return {
+                "intents": intents,
+                "is_compound": True,
+                "primary_intent": intents[0]["intent"],
+                "primary_confidence": 0.7,
+            }
+
+        # 단일: 기존 predict() 결과를 멀티라벨 형식으로 변환
+        result = self.predict(text)
+        return {
+            "intents": [{"intent": result["intent"], "confidence": result["confidence"]}],
+            "is_compound": False,
+            "primary_intent": result["intent"],
+            "primary_confidence": result["confidence"],
+        }
 
     def _llm_based_predict(self, text: str, return_candidates: bool = False) -> dict:
         """LLM 기반 intent 분류 (Solar API)"""
