@@ -292,8 +292,7 @@ def _build_search_prompt(query: str, context: list) -> tuple:
     - "보고서 문서 찾아줘"와 "보고서 찾아줘"는 같은 의미입니다. 오타나 중복 표현에 유연하게 대응하세요.
 
     [출력 규칙]
-    - 각 문서의 제목은 Context의 [문서 제목: ...] 에 표시된 실제 제목을 사용하세요.
-    - 단, 제목이 "제안서", "보고서" 같이 너무 짧으면 본문 첫 줄의 구체적인 제목을 사용하세요.
+    - 각 문서의 제목은 반드시 Context의 [문서 제목: ...] 에 표시된 실제 제목을 그대로 사용하세요. 제목을 수정하거나 만들어내지 마세요.
     - 출력할 때 "[문서 제목: ]" 태그는 포함하지 마세요. 제목만 **볼드체**로 표시하세요.
     - 관련 문서가 있으면 "다음 문서들을 찾았습니다:" 형식으로 시작하고, 각 문서의 **제목**과 핵심 내용을 한 줄로 요약하세요
     - Context에 포함된 관련 문서는 전부 나열하세요. 1개만 골라내지 마세요.
@@ -1169,16 +1168,8 @@ def _build_sources(search_results: list) -> list:
                 continue
             seen_sources.add(content_key)
 
-            title = doc.get("title") or doc.get("chapter") or doc.get("source", "제목 없음")
-            # 제목이 너무 짧으면(3자 이하) content 첫 줄에서 더 구체적인 제목 추출
-            if len(title) <= 3:
-                content = doc.get("content", "")
-                first_line = content.split("\n")[0].strip() if content else ""
-                if len(first_line) > len(title) and len(first_line) <= 50:
-                    title = first_line
-
             sources.append({
-                "title": title,
+                "title": doc.get("title") or doc.get("chapter") or doc.get("source", "제목 없음"),
                 "source": doc.get("source", ""),
                 "score": doc.get("score", 0.0),
                 "content": doc.get("content", ""),
