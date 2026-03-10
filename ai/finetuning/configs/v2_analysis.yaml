@@ -1,0 +1,40 @@
+# LoRA v2: 문서 분석 (doc_analysis) 전용 어댑터
+# 문서 → JSON {summary, category, tags} 분류/요약
+# 베이스 모델: Kanana-1.5-8B (현재 vLLM 서버에 로드된 모델)
+model:
+  base_model: "kakaocorp/kanana-1.5-8b-instruct-2505"
+  quantization: "4bit"  # QLoRA
+
+lora:
+  r: 16
+  lora_alpha: 32              # alpha/r = 2.0
+  lora_dropout: 0.05
+  target_modules:
+    - "q_proj"
+    - "v_proj"
+    - "k_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+
+training:
+  num_epochs: 10              # 데이터 42건으로 적으므로 epoch 높임
+  batch_size: 2               # 소량 데이터 → 작은 배치
+  gradient_accumulation_steps: 4  # effective batch = 8
+  learning_rate: 2e-4         # 소량 데이터에 약간 높은 lr
+  warmup_ratio: 0.1
+  max_length: 3072            # 문서 내용 3000자 + 프롬프트
+  early_stopping_patience: 3
+
+data:
+  train_path: "data/doc_analysis_train.jsonl"
+  eval_path: "data/doc_analysis_val.jsonl"
+
+output:
+  output_dir: "outputs/v2_analysis"
+  save_steps: 50
+
+evaluation:
+  category_accuracy: 0.80     # 카테고리 일치율 목표 >80%
+  tags_f1: 0.50               # 태그 F1 목표 >50%
+  summary_similarity: 0.50    # 요약 유사도 목표 >50%
