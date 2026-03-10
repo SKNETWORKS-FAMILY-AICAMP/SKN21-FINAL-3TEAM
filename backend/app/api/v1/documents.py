@@ -241,12 +241,66 @@ async def upload_template(
 ):
     """
     커스텀 템플릿 업로드
-    — AI 구조 추출 필요, 팀원 C 구현 후 연동
+    — DOCX 양식 파일을 업로드하면 규칙 기반으로 필드를 추출하여 저장
     """
-    raise HTTPException(
-        status_code=501,
-        detail="커스텀 템플릿 업로드는 문서 구조 추출(from_parsed_structure) 구현 대기 중입니다.",
-    )
+    import tempfile
+    import os
+    from app.models.document_template import DocumentTemplate
+
+    # 파일 타입 검증
+    if not file.filename.endswith((".docx", ".DOCX")):
+        raise HTTPException(status_code=400, detail="DOCX 파일만 업로드 가능합니다.")
+
+    # 임시 파일에 저장 후 파싱
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        from ai.document_parser.template_extractor import extract_template_fields, fields_to_parsed_structure
+        fields = extract_template_fields(tmp_path)
+
+        if not fields:
+            raise HTTPException(status_code=400, detail="양식에서 필드를 추출하지 못했습니다. DOCX 양식 파일인지 확인해주세요.")
+
+        parsed_structure = fields_to_parsed_structure(fields)
+
+        # 업로드 파일 저장
+        upload_dir = Path("uploads/templates")
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        file_path = str(upload_dir / f"{user.id}_{file.filename}")
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        # DB 저장
+        template = DocumentTemplate(
+            name=name,
+            description=description,
+            file_path=file_path,
+            file_type="docx",
+            parsed_structure=parsed_structure,
+            category=category,
+            is_system=False,
+            scope=scope,
+            uploaded_by=user.id,
+            status="ready",
+        )
+        db.add(template)
+        await db.commit()
+        await db.refresh(template)
+
+        return {
+            "id": template.id,
+            "name": template.name,
+            "category": template.category,
+            "status": "ready",
+            "fields": fields,
+            "field_count": len(fields),
+        }
+
+    finally:
+        os.unlink(tmp_path)
 
 
 @router.get("/templates/")
