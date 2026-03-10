@@ -60,11 +60,13 @@ FIELD_MAPPING = {
     "의결사항": {"key": "decisions", "desc": "결정된 사항 목록 (배열, 없으면 빈 배열)"},
     "후속조치": {"key": "action_items", "desc": '후속 조치 목록 배열. 각 항목은 {"content": "내용", "assignee": "담당자", "due_date": "기한"} 형태'},
     "실행계획": {"key": "action_items", "desc": '후속 조치 목록 배열. 각 항목은 {"content": "내용", "assignee": "담당자", "due_date": "기한"} 형태'},
-    "조치사항": {"key": "action_items", "desc": '후속 조치 목록 배열. 각 항목은 {"content": "내용", "assignee": "담당자", "due_date": "기한"} 형태'},
+    "조치사항": {"key": "action_items", "desc": '후속 조치 목록 배열. 각 항목은 {"task": "할 일", "assignee": "담당자", "due_date": "기한"} 형태'},
+    "ActionItem": {"key": "action_items", "desc": '후속 조치 목록 배열. 각 항목은 {"task": "할 일", "assignee": "담당자", "due_date": "기한"} 형태'},
     "다음회의": {"key": "next_meeting", "desc": "다음 회의 일정 (없으면 빈 문자열)"},
     "차기회의": {"key": "next_meeting", "desc": "다음 회의 일정 (없으면 빈 문자열)"},
     "비고": {"key": "notes", "desc": "비고 사항 (없으면 빈 문자열)"},
     "특이사항": {"key": "notes", "desc": "비고 사항 (없으면 빈 문자열)"},
+    "비고다음회의일정": {"key": "notes", "desc": "비고 및 다음 회의 일정 (없으면 빈 문자열)"},
     "회의목적": {"key": "meeting_purpose", "desc": "회의 목적 (1~2문장)"},
     "목적": {"key": "meeting_purpose", "desc": "회의/업무 목적 (1~2문장)"},
 
@@ -163,14 +165,38 @@ def extract_template_fields(file_path: str) -> list[dict]:
             seen_keys.add(field["key"])
             fields.append(field)
 
-    # 1. 테이블에서 필드 추출 (첫 번째 열 = 필드명)
+    # 1. 테이블에서 필드 추출
     for table in doc.tables:
-        for row in table.rows:
+        rows = table.rows
+        num_cols = len(table.columns) if table.columns else 0
+
+        for ri, row in enumerate(rows):
             cells = [cell.text.strip() for cell in row.cells]
+
+            # 1-a. 다열 테이블: 첫 번째 열 = 필드명
             if len(cells) >= 2 and cells[0]:
-                # 첫 번째 셀이 필드명, 나머지는 값(빈칸)
                 label = cells[0]
-                # 너무 긴 텍스트는 필드명이 아님
+                if len(label) <= 20:
+                    field = _match_field(label)
+                    _add_field(field)
+
+            # 1-b. 1열 섹션 테이블: 첫 행이 섹션 헤더, 두 번째 행이 값 영역
+            #      예: [회의 내용] / [빈칸],  [결정 사항] / [빈칸]
+            elif num_cols == 1 and ri == 0 and cells[0]:
+                label = cells[0]
+                # 공백 제거 후 매칭 (예: "비고 / 다음 회의 일정")
+                normalized = re.sub(r'\s+', '', label)
+                if len(normalized) <= 20:
+                    field = _match_field(label)
+                    _add_field(field)
+
+        # 1-c. 다열 테이블의 첫 행이 병합 헤더인 경우 (Action Item 등)
+        if len(rows) >= 2 and num_cols > 1:
+            first_cells = [cell.text.strip() for cell in rows[0].cells]
+            # 모든 셀이 같은 텍스트 = 병합된 섹션 헤더
+            unique_texts = set(first_cells)
+            if len(unique_texts) == 1 and first_cells[0]:
+                label = first_cells[0]
                 if len(label) <= 20:
                     field = _match_field(label)
                     _add_field(field)
