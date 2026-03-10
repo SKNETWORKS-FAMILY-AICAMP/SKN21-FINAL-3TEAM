@@ -39,10 +39,10 @@ class VLLMProvider(BaseLLM):
     def __init__(self, config: Optional[LLMConfig] = None):
         config = config or LLMConfig()
 
-        # vLLM 전용 환경변수
+        # vLLM 전용 환경변수 (RunPod Serverless 또는 로컬 vLLM 서버)
         self.base_url = os.getenv("VLLM_BASE_URL", "http://localhost:8000/v1")
         self.model = config.model or os.getenv("VLLM_MODEL", "kakaocorp/kanana-1.5-8b-instruct-2505")
-        self.api_key = os.getenv("VLLM_API_KEY", "EMPTY")  # vLLM은 API key 불필요
+        self.api_key = os.getenv("VLLM_API_KEY", "EMPTY")
 
         if not config.model:
             config.model = self.model
