@@ -1289,6 +1289,115 @@
   - `load_model()`에서 `model_info.json`의 `problem_type` 감지 → 멀티라벨 모드 자동 전환
   - 멀티라벨 모델 없을 시 규칙 기반 `detect_compound_query()` fallback 유지
 
+#### 5) RunPod에서 멀티라벨 BERT 학습 실행
+
+- RunPod RTX 4090 환경에서 `python -m ai.experiments.train_multilabel` 실행
+- 모델: `monologg/koelectra-base-v3-discriminator` (112M params)
+- 학습 시간: **58.5초** (10 epoch)
+- **Val 결과:** Subset Accuracy 98.5%, Macro F1 99.1%
+- **Test 결과:**
+  - Subset Accuracy: **97.8%**, Hamming Loss: **0.0056**
+  - Macro F1: **98.1%**, Micro F1: **98.3%**
+  - Over-triggering: **0.0%**, Under-triggering: **0.0%**
+  - 오답 9건: 단일 분류 경계 케이스 (doc_summary↔doc_qa, doc_generate↔doc_summary 등)
+- **Compound-Only 결과 (복합 780개):**
+  - Subset Accuracy: **99.9%**, Micro F1: **100.0%**
+  - 오답 1건: "복장 코드 문서 찾아줄 수 있어? 그리고 서머리 해줘" → doc_generate 과잉 예측
+
+#### Phase 1 vs Phase 2 비교
+
+| 지표 | Phase 1 (규칙) | Phase 2 (BERT) | 개선 |
+|---|---|---|---|
+| Subset Accuracy | 41.7% | **99.9%** | +58.2%p |
+| Hamming Loss | 0.1146 | **0.0002** | ↓99.8% |
+| Jaccard Score | 52.8% | **100.0%** | +47.2%p |
+| Macro F1 | 49.3% | **87.5%** | +38.2%p |
+| Micro F1 | 70.3% | **100.0%** | +29.7%p |
+| Over-triggering | 5.6% | **0.0%** | 완전 해결 |
+| Under-triggering | 33.3% | **0.0%** | 완전 해결 |
+
+> 단, 테스트 데이터가 학습 데이터와 동일 방식("그리고" 연결)으로 생성되어 점수가 높게 나옴.
+> adversarial 테스트 (접속사 없는 복합, 애매한 경계 문장) 추가 검증 필요.
+
+- 학습된 모델: `ai/models/intent_multilabel/`에 저장 + RunPod에서 push 완료
+
+#### 5) Adversarial 복합 테스트셋 제작 및 평가
+
+- `data/training/intent_multilabel/adversarial_compound_test.json` — 60개 수동 작성
+  - 6개 카테고리: no_connector_compound(15), false_positive_single(12), implicit_compound(10), short_compound(8), triple_intent(5), connector_trap_single(10)
+- `ai/experiments/eval_adversarial_compound.py` — adversarial 전용 평가 스크립트
+
+**Adversarial 평가 결과 (RunPod에서 실행):**
+
+| 지표 | Phase 1 (규칙) | Phase 2 (자동생성) | Phase 2 (Adversarial) |
+|---|---|---|---|
+| Subset Accuracy | 41.7% | 99.9% | **46.7%** |
+| Hamming Loss | 0.1146 | 0.0002 | **0.0896** |
+| Jaccard Score | 52.8% | 100.0% | **57.2%** |
+| Macro F1 | 49.3% | 87.5% | **46.9%** |
+| Micro F1 | 70.3% | 100.0% | **62.3%** |
+| Over-triggering | 5.6% | 0.0% | **4.5%** |
+| Under-triggering | 33.3% | 0.0% | **57.9%** |
+
+**카테고리별 Exact Match:**
+
+| 카테고리 | 정답률 | 분석 |
+|---|---|---|
+| connector_trap_single | 9/10 (90%) | 함정 단일 — 잘 분류 |
+| false_positive_single | 10/12 (83.3%) | 단일 오탐 — 양호 |
+| implicit_compound | 5/10 (50%) | 암묵적 복합 — 절반만 정답 |
+| no_connector_compound | 3/15 (20%) | 접속사 없는 복합 — 매우 취약 |
+| short_compound | 1/8 (12.5%) | 짧은 복합 — 거의 실패 |
+| triple_intent | 0/5 (0%) | 3중 intent — 전혀 못 잡음 |
+
+> **핵심 문제**: 학습 데이터의 70%가 "그리고" 패턴 → 접속사 없으면 복합 감지 실패
+> **Under-triggering 57.9%**: 복합 질문을 단일로 잘못 분류하는 비율이 매우 높음
+
+#### 6) 성능 개선 방향 분석
+
+자동생성 테스트 99.9% → adversarial 46.7% 성능 급락 원인 분석:
+- 학습 데이터 패턴 단일성 (70% "그리고" 연결)
+- 접속사 없는 자연어 복합 문장에 대한 학습 부재
+- 3중 intent 학습 데이터 부재
+
+**개선 방안 우선순위:**
+1. **Threshold 튜닝** — 0.5 → 0.3으로 낮춰서 under-triggering 즉시 감소 (재학습 불필요)
+2. **하이브리드 접근** — Phase 1(규칙) + Phase 2(BERT) 결합으로 상호 보완
+3. **데이터 다양화 + 재학습** — 접속사 없는 패턴, 짧은 복합, 3중 intent 추가
+4. **Loss 가중치** — 복합 예제에 높은 가중치 부여
+
+#### 7) 학습 데이터 v2 — 패턴 다양화
+
+adversarial 성능 급락 원인(70% "그리고" 패턴)을 해결하기 위해 `generate_multilabel_data.py` 전면 개편:
+
+**v1 → v2 데이터 비교:**
+
+| 항목 | v1 | v2 | 변화 |
+|---|---|---|---|
+| 전체 데이터 | 3,678개 | 4,029개 | +351 |
+| 복합 데이터 | 780개 | 1,041개 | +261 |
+| 짧은 복합 | 0개 | 156개 | 신규 |
+| 3중 복합 | 0개 | 105개 | 신규 |
+| 함정 단일 | 0개 | 90개 | 신규 |
+| "그리고" 비율 | 70% | 20% | ↓50%p |
+| 패턴 종류 | 3종 | 10종+ | 대폭 확대 |
+
+**추가된 무접속사 패턴:**
+- 조사 연결: `이랑`, `까지`, `부터~까지`, `여부랑`
+- 조건절: `있으면`, `에 맞춰`, `비어있는 데`
+- 동사 연쇄: `보고`, `확인 후`, `토대로`, `내용으로`, `참고해서`, `중에`
+- 구두점 분리: 쉼표, `~도` 추가
+- 짧은 복합: 10~25자 극단 짧은 문장
+- 3중 intent: 7개 조합 × 15개 = 105개
+- 함정 단일: "그리고/이랑" 있지만 같은 intent (over-triggering 방지)
+
+### 다음 할 일
+
+- RunPod에서 v2 데이터로 모델 재학습
+- adversarial 재평가 (v1 모델 vs v2 모델 비교)
+- Threshold 튜닝 및 하이브리드(규칙+BERT) 접근 구현
+- 오케스트레이터에서 `predict_multilabel()` 호출 연결
+
 ---
 
 ## 현재 구현 현황 요약
