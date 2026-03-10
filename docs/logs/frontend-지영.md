@@ -1391,12 +1391,78 @@ adversarial 성능 급락 원인(70% "그리고" 패턴)을 해결하기 위해 
 - 3중 intent: 7개 조합 × 15개 = 105개
 - 함정 단일: "그리고/이랑" 있지만 같은 intent (over-triggering 방지)
 
+#### 8) v2 데이터 모델 재학습 + adversarial 재평가
+
+RunPod에서 v2 데이터로 모델 재학습 후 adversarial 평가:
+
+**v1 모델 → v2 모델 Adversarial 비교:**
+
+| 지표 | v1 모델 | v2 모델 | 변화 |
+|---|---|---|---|
+| Subset Accuracy | 46.7% | **58.3%** | +11.6%p |
+| Jaccard Score | 57.2% | **74.7%** | +17.5%p |
+| Micro F1 | 62.3% | **80.8%** | +18.5%p |
+| Under-triggering | 57.9% | **28.9%** | ↓29%p |
+
+#### 9) 학습 데이터 v3 — 오답 분석 기반 targeted 보강
+
+v2 adversarial 오답 25건을 분석하여 `generate_multilabel_data.py` 추가 개편:
+
+**오답 분석 결과 → 보강 방향:**
+1. **judgment vs doc_qa 혼동 (7건)** → 골든 데이터로 구분 강화
+2. **두 번째 intent 누락 (15건)** → 조건절/순차 의존 템플릿 추가
+3. **짧은 문장 두 번째 intent 무시 (4건)** → 짧은 복합 템플릿 확장
+
+**v2 → v3 데이터 비교:**
+
+| 항목 | v2 | v3 | 변화 |
+|---|---|---|---|
+| 전체 데이터 | 4,029개 | 4,272개 | +243 |
+| 복합 데이터 | 1,041개 | 1,269개 | +228 |
+| 짧은 복합 | 156개 | 210개 | +54 |
+| 3중 복합 | 105개 | 250개 | +145 |
+| 골든 데이터 | 0개 | 40개 | 신규 |
+| 쌍별 템플릿 | ~7개 | ~12개 | 확대 |
+
+**v3 추가 요소:**
+- 조건절/순차 의존 템플릿: `까지`, `토대로`, `내용으로`, `있으면`, `보고`, `참고해서` 강화
+- 수동 골든 데이터 40개 (judgment vs doc_qa 구분, 짧은 복합, 암묵적 복합 등)
+- doc_summary+judgment 쌍 신규 추가
+- 3중 intent 조합 7→10개, 수량 15→25개/조합
+
+#### 10) v3 데이터 모델 재학습 + adversarial 재평가
+
+**v1 → v2 → v3 모델 Adversarial 성능 추이:**
+
+| 지표 | v1 모델 | v2 모델 | v3 모델 |
+|---|---|---|---|
+| Subset Accuracy | 46.7% | 58.3% | **75.0%** |
+| Jaccard Score | 57.2% | 74.7% | **86.0%** |
+| Macro F1 | 46.9% | 68.6% | **77.5%** |
+| Micro F1 | 62.3% | 80.8% | **89.3%** |
+| Under-triggering | 57.9% | 28.9% | **7.9%** |
+| Over-triggering | 4.5% | 4.5% | 13.6% |
+
+**카테고리별 변화:**
+
+| 카테고리 | v1 | v2 | v3 |
+|---|---|---|---|
+| no_connector_compound | 20% | 33.3% | **73.3%** |
+| implicit_compound | 50% | 60% | **80%** |
+| short_compound | 12.5% | 50% | **75%** |
+| triple_intent | 0% | 40% | 40% |
+| false_positive_single | 83.3% | 83.3% | 83.3% |
+| connector_trap_single | 90% | 80% | 80% |
+
+> **핵심 성과**: Under-triggering 57.9% → 7.9% (거의 해결), no_connector 20% → 73.3% (+53.3%p)
+> **Trade-off**: Over-triggering 4.5% → 13.6% (단일→복합 오인 약간 증가)
+> **남은 오답 15건**: 대부분 intent 경계 혼동 (doc_search↔doc_qa, doc_generate↔doc_summary)
+
 ### 다음 할 일
 
-- RunPod에서 v2 데이터로 모델 재학습
-- adversarial 재평가 (v1 모델 vs v2 모델 비교)
-- Threshold 튜닝 및 하이브리드(규칙+BERT) 접근 구현
 - 오케스트레이터에서 `predict_multilabel()` 호출 연결
+- Threshold 튜닝 (0.5→0.4 등) 으로 over-triggering 조정 검토
+- 최종 Phase 1 vs Phase 2 비교 정리
 
 ---
 
