@@ -12,6 +12,7 @@
 
 요구사항: FR-DOC-008
 """
+import json
 from datetime import datetime
 
 from fastapi import HTTPException
@@ -74,8 +75,15 @@ async def list_templates(
     result = await db.execute(stmt)
     custom = result.scalars().all()
 
-    custom_dicts = [
-        {
+    custom_dicts = []
+    for t in custom:
+        field_count = 0
+        if t.parsed_structure:
+            try:
+                field_count = len(json.loads(t.parsed_structure))
+            except Exception:
+                pass
+        custom_dicts.append({
             "id": t.id,
             "name": t.name,
             "description": t.description,
@@ -85,9 +93,8 @@ async def list_templates(
             "file_type": t.file_type,
             "status": t.status,
             "created_at": t.created_at,
-        }
-        for t in custom
-    ]
+            "field_count": field_count,
+        })
 
     return system + custom_dicts
 

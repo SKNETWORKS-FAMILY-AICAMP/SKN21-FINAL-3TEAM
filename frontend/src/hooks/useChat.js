@@ -16,16 +16,17 @@ export default function useChat() {
       await useChatStore.getState().createSession()
     }
 
-    const { activeSessionId, selectedDocumentId } = useChatStore.getState()
+    const { activeSessionId, selectedDocumentId, selectedTemplateId } = useChatStore.getState()
 
     addMessage({ role: 'user', content: text })
     addMessage({ role: 'assistant', content: '' })
 
-    // 전송 후 선택 문서 자동 해제
+    // 전송 후 선택 상태 자동 해제
     useChatStore.getState().clearSelectedDocument()
+    useChatStore.getState().clearSelectedTemplate()
 
     try {
-      await startStream(text, activeSessionId, selectedDocumentId)
+      await startStream(text, activeSessionId, selectedDocumentId, selectedTemplateId)
     } catch (err) {
       // 에러는 상위에서 처리
     }

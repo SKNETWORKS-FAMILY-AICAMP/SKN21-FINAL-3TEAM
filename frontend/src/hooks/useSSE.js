@@ -25,7 +25,7 @@ export default function useSSE() {
   } = useChatStore()
 
   // 실제 SSE 스트리밍
-  const startStream = useCallback(async (message, sessionId, documentId) => {
+  const startStream = useCallback(async (message, sessionId, documentId, templateId) => {
     setStreaming(true)
     currentIntentRef.current = null
     const token = localStorage.getItem('access_token')
@@ -36,6 +36,7 @@ export default function useSSE() {
       const body = { message }
       if (sessionId) body.session_id = sessionId
       if (documentId) body.document_id = documentId
+      if (templateId) body.template_id = templateId
 
       const res = await fetch('/api/v1/chat/stream', {
         method: 'POST',
