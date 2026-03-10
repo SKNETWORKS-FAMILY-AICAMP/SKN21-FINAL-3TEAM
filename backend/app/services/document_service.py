@@ -277,16 +277,10 @@ async def upload_and_parse(
                 "category": doc.category or "",
                 "tags": ", ".join(doc.tags) if doc.tags else "",
             }
-            # 태그 키워드를 본문 앞에 추가하여 BM25 검색 정확도 향상
-            tags_prefix = ""
-            if doc.tags:
-                tags_prefix = f"{' '.join(doc.tags)} {doc.category or ''} "
-            if doc.summary:
-                tags_prefix += f"{doc.summary} "
-            indexed_text = tags_prefix + text
-
+            # 태그/요약은 메타데이터에만 저장 (BM25 태그 부스트는 hybrid_search에서 처리)
+            # content에 prefix를 붙이면 사용자에게 태그 텍스트가 그대로 노출됨
             pipeline.add_documents(
-                documents=[indexed_text],
+                documents=[text],
                 metadatas=[qdrant_meta],
             )
             logger.info(f"문서 Qdrant 인덱싱 완료: document_id={doc.id}, title={doc.title}")
@@ -518,13 +512,8 @@ async def reindex_all_documents(db: AsyncSession) -> dict:
             except Exception:
                 pass
 
-            # 태그/분류/요약을 본문 앞에 추가
-            tags_prefix = ""
-            if doc.tags:
-                tags_prefix = f"{' '.join(doc.tags)} {doc.category or ''} "
-            if doc.summary:
-                tags_prefix += f"{doc.summary} "
-            indexed_text = tags_prefix + doc.content
+            # 태그/요약은 메타데이터에만 저장 (content에 prefix 붙이지 않음)
+            indexed_text = doc.content
 
             qdrant_meta = {
                 "source": "documents",
