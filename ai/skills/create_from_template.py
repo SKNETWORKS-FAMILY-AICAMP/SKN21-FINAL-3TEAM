@@ -114,11 +114,9 @@ def fill_template_docx(template_path: str, output_path: str, data: dict) -> bool
                 for j in range(i + 1, len(cells)):
                     if cells[j]._tc != cells[i]._tc:  # 다른 셀인지 확인
                         target_cell = cells[j]
-                        existing = target_cell.text.strip()
-                        # 빈 셀이거나 플레이스홀더인 경우만 채움
-                        if not existing or existing.startswith("(") or existing.startswith("☐"):
-                            _inject_cell_text(target_cell, val)
-                            filled_keys.add(key)
+                        # 라벨 옆 값 셀은 무조건 덮어쓰기 (플레이스홀더 텍스트 포함)
+                        _inject_cell_text(target_cell, val)
+                        filled_keys.add(key)
                         break
 
     # 2. 본문 "필드명:" 패턴 아래에 값 주입
