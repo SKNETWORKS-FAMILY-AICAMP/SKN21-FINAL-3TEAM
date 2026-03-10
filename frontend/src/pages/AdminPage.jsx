@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import UserManagement from '../components/admin/UserManagement';
 import RegulationManagement from '../components/admin/RegulationManagement';
 import SystemStats from '../components/admin/SystemStats';
+import ApprovalManagement from '../components/admin/ApprovalManagement';
 import { listUsers, getSystemStats, getQueryLogs, listRegulations } from '../api/admin';
 import { TEAMS } from '../utils/constants';
 import { SkeletonCard, SkeletonTable } from '../components/common/Skeleton';
@@ -119,7 +120,8 @@ export default function AdminPage() {
               <UserManagement users={users} onRefresh={loadAll} selectedTeam={selectedTeam} />
               <RegulationManagement regulations={regulations} onRefresh={loadAll} />
             </div>
-            <div className="min-w-0">
+            <div className="space-y-5 min-w-0">
+              <ApprovalManagement />
               <SystemStats queryLogs={queryLogs} team={selectedTeam} />
             </div>
           </div>
