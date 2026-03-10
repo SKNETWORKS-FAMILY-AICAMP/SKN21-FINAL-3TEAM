@@ -25,7 +25,9 @@ import sys
 import time
 
 # 프로젝트 루트를 path에 추가
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "backend"))
 
 
 # ── 색상 출력 ──
@@ -258,7 +260,10 @@ async def main():
         f1_color = GREEN if tags_f1["f1"] >= 0.7 else YELLOW if tags_f1["f1"] >= 0.4 else RED
         sim_color = GREEN if summary_sim >= 0.5 else YELLOW if summary_sim >= 0.3 else RED
 
-        print(f"  결과: category {cat_icon}  tags F1={colored(f'{tags_f1[\"f1\"]:.0%}', f1_color)}  summary 유사도={colored(f'{summary_sim:.0%}', sim_color)}")
+        f1_val = tags_f1["f1"]
+        f1_str = colored(f"{f1_val:.0%}", f1_color)
+        sim_str = colored(f"{summary_sim:.0%}", sim_color)
+        print(f"  결과: category {cat_icon}  tags F1={f1_str}  summary 유사도={sim_str}")
         print()
 
         results.append({
