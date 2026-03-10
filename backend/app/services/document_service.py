@@ -37,13 +37,29 @@ async def analyze_document_with_llm(text: str, title: str) -> dict | None:
     """
     LLM으로 문서를 분석하여 summary, category, tags를 추출한다.
     실패 시 None 반환 (문서 업로드는 정상 진행).
+
+    DOC_ANALYSIS_MODE 환경변수:
+      - "api" (기본): GPT/Claude API 사용
+      - "sllm": vLLM(Kanana-1.5-8B) 사용
     """
     try:
-        print("[DocumentAnalysis] LLM 모듈 import 시도...")
-        from ai.llm import get_llm
+        import os
+        mode = os.getenv("DOC_ANALYSIS_MODE", "api")
+        print(f"[DocumentAnalysis] mode={mode}")
 
-        llm = get_llm()
-        print(f"[DocumentAnalysis] LLM 인스턴스 획득: {type(llm).__name__}")
+        if mode == "sllm":
+            from ai.serving.vllm_client import VLLMProvider
+            use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
+            if use_lora:
+                llm = VLLMProvider().with_lora("v2_analysis")
+                print("[DocumentAnalysis] sLLM: v2_analysis LoRA 어댑터")
+            else:
+                llm = VLLMProvider()
+                print(f"[DocumentAnalysis] sLLM: base model ({llm.model})")
+        else:
+            from ai.llm import get_llm
+            llm = get_llm()
+            print(f"[DocumentAnalysis] API: {type(llm).__name__}")
 
         truncated = text[:3000]
 
