@@ -290,23 +290,13 @@ class HybridSearcher:
                 if len(diverse_results) >= top_k:
                     break
 
-        # 절대 관련도 필터링: Vector 검색 최고 유사도가 낮으면 관련 문서가 없다고 판단
-        # 코사인 유사도 0.3 미만 = 쿼리와 의미적으로 거의 관련 없음
-        MIN_VECTOR_SIMILARITY = 0.3
+        # Vector 최고 유사도 로깅 (디버깅용, 필터링하지 않음)
+        # 관련 없는 문서 필터링은 LLM 프롬프트에서 처리
         if vector_results:
             max_vector_score = max(doc.get("score", 0) for doc in vector_results)
+            logger.info(f"[HybridSearch] Vector 최고 유사도: {max_vector_score:.3f}")
         else:
-            max_vector_score = 0
-
-        logger.info(
-            f"[HybridSearch] Vector 최고 유사도: {max_vector_score:.3f} (임계값: {MIN_VECTOR_SIMILARITY})"
-        )
-
-        if max_vector_score < MIN_VECTOR_SIMILARITY:
-            logger.info(
-                f"[HybridSearch] 관련 문서 없음 → 빈 결과 반환"
-            )
-            return []
+            logger.info("[HybridSearch] Vector 검색 결과 없음")
 
         # RRF 점수 정규화 (0~1 범위)
         if not diverse_results:
