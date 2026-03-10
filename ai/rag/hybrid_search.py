@@ -290,17 +290,20 @@ class HybridSearcher:
                 if len(diverse_results) >= top_k:
                     break
 
-        # 절대 점수 필터링: RRF 원본 점수가 너무 낮으면 관련 없는 문서로 판단하여 제거
-        # RRF 단일 출처 최고 점수 = 1/(60+1) ≈ 0.0164, 양쪽 모두 1위 = 0.0328
-        # 임계값 0.005 = 양쪽 모두 10위 이하인 문서 제거
-        MIN_RRF_ABSOLUTE = 0.005
-        before_abs_filter = len(diverse_results)
-        diverse_results = [doc for doc in diverse_results if doc["rrf_score"] >= MIN_RRF_ABSOLUTE]
-        if len(diverse_results) < before_abs_filter:
+        # 절대 관련도 필터링: Vector 검색 최고 유사도가 낮으면 관련 문서가 없다고 판단
+        # 코사인 유사도 0.5 미만 = 쿼리와 의미적으로 거의 관련 없음
+        MIN_VECTOR_SIMILARITY = 0.5
+        if vector_results:
+            max_vector_score = max(doc.get("score", 0) for doc in vector_results)
+        else:
+            max_vector_score = 0
+
+        if max_vector_score < MIN_VECTOR_SIMILARITY:
             logger.info(
-                f"[HybridSearch] 절대 점수 필터링: {before_abs_filter}개 → {len(diverse_results)}개 "
-                f"(임계값: {MIN_RRF_ABSOLUTE})"
+                f"[HybridSearch] 관련 문서 없음: Vector 최고 유사도 {max_vector_score:.3f} < "
+                f"임계값 {MIN_VECTOR_SIMILARITY} → 빈 결과 반환"
             )
+            return []
 
         # RRF 점수 정규화 (0~1 범위)
         if not diverse_results:
