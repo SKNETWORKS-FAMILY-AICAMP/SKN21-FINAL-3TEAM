@@ -378,6 +378,21 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             # LLM이 "관련 문서 없음"으로 판단하면 출처도 비우기
                             if "찾지 못했습니다" in full_doc_response or "관련 문서가 없" in full_doc_response:
                                 agent_response["sources"] = []
+                            elif agent_response.get("sources"):
+                                # LLM 답변에 언급된 문서만 출처에 남기기
+                                # 출처의 content 앞부분(핵심 키워드)이 답변에 포함되었는지 확인
+                                filtered_sources = []
+                                for src in agent_response["sources"]:
+                                    title = src.get("title", "")
+                                    content = src.get("content", "")[:100]
+                                    # 제목의 핵심 부분(2글자 이상 단어)이 답변에 있는지 확인
+                                    title_keywords = [w for w in title.replace("_", " ").split() if len(w) >= 2]
+                                    match_count = sum(1 for kw in title_keywords if kw in full_doc_response)
+                                    # 제목 키워드 중 절반 이상 매칭되면 관련 있다고 판단
+                                    if title_keywords and match_count >= max(len(title_keywords) // 2, 1):
+                                        filtered_sources.append(src)
+                                if filtered_sources:
+                                    agent_response["sources"] = filtered_sources
                             agent_response.pop("stream_pending", None)
                             agent_response.pop("sys_prompt", None)
                             agent_response.pop("user_prompt", None)
