@@ -1608,11 +1608,125 @@ v4 데이터로 재학습한 결과 **모델 자체 성능이 대폭 향상** �
 - 기존 ADV vs Held-out의 Subset Accuracy 차이 ±5%p 이내 → 과적합 없음
 - Held-out에서 크게 하락 → 과적합 의심
 
+#### 15) Held-out 과적합 검증 결과
+
+**결과: 과적합 확인 (-13.3%p 하락)**
+
+| 지표 | 기존 ADV (개발용) | Held-out (진짜 성능) | 차이 |
+|---|---|---|---|
+| Subset Accuracy | 90.0% | **76.7%** | **-13.3%p** |
+| Micro F1 | 96.6% | 89.2% | -7.4%p |
+| Over-triggering | 4.5% | 13.6% | +9.1%p |
+| Under-triggering | 2.6% | 10.5% | +7.9%p |
+
+**Held-out 카테고리별:**
+
+| 카테고리 | 기존 ADV | Held-out |
+|---|---|---|
+| connector_trap_single | 100% | 90% |
+| false_positive_single | 91.7% | 75% |
+| implicit_compound | 90% | 80% |
+| no_connector_compound | 93.3% | **60%** |
+| short_compound | 87.5% | **100%** |
+| triple_intent | 60% | 60% |
+
+**과적합 원인**: 기존 adversarial 60개의 오답을 보고 학습 데이터를 만들었기 때문에, 같은 60개에서는 높은 성능이 나오지만 새로운 문장에서는 일반화가 안 됨.
+
+**Held-out 오답 14건 주요 패턴:**
+- doc_search 누락 6건 — 모델이 doc_search를 doc_qa로 혼동
+- over-triggering 3건 — "가능한", "분석" 같은 표현에서 judgment 과잉 추가
+- 두 번째 intent 누락 3건 — 복합 문장에서 하나만 잡음
+
+> **결론**: 진짜 성능은 ~77%. 데이터 보강만으로는 한계. 모델 자체의 언어 이해력을 높여야 함.
+> → **klue/roberta-large (338M) 모델 교체 시도 결정**
+
+---
+
+### 복합 질문 분류 실험 전체 요약 (발표용)
+
+> 사용자가 "연차 규정 찾아서 위반인지 판단해줘"처럼 **한 문장에 여러 의도를 담은 복합 질문**을 했을 때, 각 의도를 정확히 분리하여 해당 Agent에 전달하는 것이 목표.
+
+#### 실험 배경
+
+| 항목 | 내용 |
+|---|---|
+| 모델 | monologg/koelectra-base-v3-discriminator (112M params) |
+| 방식 | 멀티라벨 분류 (sigmoid + BCEWithLogitsLoss) |
+| Intent 8개 | judgment, doc_search, doc_generate, doc_summary, schedule_add, schedule_view, general, doc_qa |
+| 평가 | Adversarial 테스트셋 60개 (접속사 없는 복합, 짧은 복합, 함정 단일 등 6개 카테고리) |
+
+#### 실험 단계별 요약
+
+**1단계: 기본 학습 (v1 데이터)**
+- 내용: 기존 단일 라벨 데이터에 "그리고" 연결 복합 데이터 추가
+- 문제: 복합 데이터의 70%가 "그리고" 패턴 → 접속사 없으면 감지 실패
+- 결과: Adversarial **46.7%** (Under-triggering 57.9%)
+
+**2단계: 패턴 다양화 (v2 데이터)**
+- 시도: "그리고" 비율 70%→20%, "이랑/까지/있으면/보고/토대로" 등 10+개 연결 패턴 추가
+- 이유: 실제 사용자는 "그리고" 없이 복합 질문을 함
+- 결과: **58.3%** (+11.6%p) — Under-triggering 57.9%→28.9%
+
+**3단계: 오답 분석 + 골든 데이터 (v3 데이터)**
+- 시도: v2 오답 25건 분석 → 수동 골든 데이터 40개 + 템플릿 확대 + 3중 intent 강화
+- 이유: 모델이 특정 패턴(judgment vs doc_qa 혼동, 조건절 복합)을 반복 실패
+- 결과: **75.0%** (+16.7%p) — Under-triggering 28.9%→7.9%
+
+**4단계: Per-label Threshold 최적화**
+- 시도: intent별 최적 threshold 탐색 (validation set 기반)
+- 이유: 모든 intent에 0.5 일괄 적용하면 특성 차이를 반영 못 함
+- 결과: validation에서는 개선, adversarial에서는 **변화 없음** (75.0%)
+- 교훈: validation(쉬운 데이터)의 최적값이 adversarial(어려운 데이터)에 전이 안 됨
+
+**5단계: 3가지 성능 개선 전략 비교**
+- 전략1: Adversarial-aware Threshold (val+adv 합쳐서 threshold 최적화)
+- 전략2: 후처리 규칙 (키워드 기반 BERT 예측 보정)
+- 전략3: 하이브리드 (규칙 기반 + BERT union)
+- 결과: **전략2 (후처리 규칙) 81.7%** 최고 → Over-triggering 13.6%→4.5%
+- 교훈: 모델이 놓치는 부분을 키워드 규칙으로 보완하면 효과적
+
+**6단계: 2차 오답 분석 + 데이터 재보강 (v4 데이터)**
+- 시도: 후처리 오답 11건 분석 → 골든 데이터 +30개, 함정/3중 템플릿 확대
+- 이유: judgment 누락, doc_summary↔doc_generate 혼동 등 반복 패턴 해결
+- 결과: 기존 ADV에서 **90.0%** (+8.3%p), Threshold 적용 시 **93.3%**
+
+**7단계: 과적합 검증 (Held-out 테스트)**
+- 시도: 개발에 한 번도 사용하지 않은 새 adversarial 60개로 진짜 성능 측정
+- 결과: **76.7%** (기존 ADV 90.0%와 -13.3%p 차이)
+- 교훈: **오답→보강→같은 테스트 평가 반복은 과적합을 유발**. 진짜 성능은 ~77%
+
+#### 성능 추이 — 기존 ADV 기준 vs 실제 성능
+
+| 단계 | 기존 ADV | 실제 추정 | 핵심 시도 |
+|---|---|---|---|
+| v1 | 46.7% | ~45% | 기본 학습 |
+| v2 | 58.3% | ~55% | 패턴 다양화 |
+| v3 | 75.0% | ~70% | 오답 분석 + 골든 데이터 |
+| v3+후처리 | 81.7% | ~75% | 키워드 기반 후처리 규칙 |
+| v4 | 90.0% | **~77%** | 2차 오답 보강 (과적합 확인) |
+| v4+Threshold | 93.3% | ~80% | Per-label threshold |
+
+#### 핵심 교훈
+
+1. **데이터 품질 > 모델 크기 > 규칙**: 학습 데이터 다양화가 가장 큰 성능 향상 요인
+2. **과적합 주의**: 테스트셋 오답을 보고 데이터를 만들면 같은 테스트에서 성능은 오르지만 일반화 안 됨
+3. **Held-out 테스트 필수**: 한 번도 안 본 데이터로 검증해야 진짜 성능을 알 수 있음
+4. **모델 이해력의 한계**: koelectra(112M)는 doc_search↔doc_qa 같은 미묘한 구분에 한계
+5. **후처리 규칙의 양면성**: 모델이 약할 때는 효과적, 모델이 충분히 좋으면 오히려 해가 됨
+
+#### 다음 단계: 모델 교체
+
+| 항목 | koelectra (현재) | klue/roberta-large (다음) |
+|---|---|---|
+| 파라미터 | 112M | 338M (3배) |
+| 특징 | 한국어 ELECTRA | KLUE 벤치마크 분류 1위 |
+| 기대 효과 | - | doc_search↔doc_qa 구분 개선 |
+
 ### 다음 할 일
 
-- RunPod에서 `python -m ai.experiments.eval_holdout` 실행하여 과적합 검증
-- 결과에 따라 다른 base 모델 (klue/roberta-base, klue/roberta-large) 시도 검토
-- 최종 모델 확정 후 production 코드 반영
+- RunPod에서 klue/roberta-large 학습 + held-out 평가
+- 결과 비교 후 최종 모델 확정
+- production 코드 반영 + 오케스트레이터 연결
 
 ---
 
