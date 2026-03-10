@@ -579,10 +579,11 @@ export default function SchedulesPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => boardActions.refresh()}
+                disabled={boardActions.loading}
                 className="btn-outline flex items-center gap-1.5"
                 title="새로고침"
               >
-                <RefreshCw size={14} />
+                <RefreshCw size={14} className={boardActions.loading ? 'animate-spin' : ''} />
               </button>
               {boardActions.inProject && boardActions.openCreate && (
                 <button

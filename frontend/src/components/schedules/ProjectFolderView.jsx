@@ -42,6 +42,7 @@ export default function ProjectFolderView({ externalActions, onReady }) {
     }, [selectedProject]);
 
     const fetchAll = useCallback(async () => {
+        setLoading(true);
         // 각각 독립적으로 fetch (하나 실패해도 다른 건 유지)
         try {
             const tasksRes = await listPipelineTasks();
