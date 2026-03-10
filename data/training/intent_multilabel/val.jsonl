@@ -1,454 +1,488 @@
-{"text": "보고서 서식 어디서 다운받을 수 알려주고 회사에서 지급한 업무용 노트북을 퇴근 이후에 개인적인 용도로 사용하는 것이 사내 자산 관리 규정에 위반이 되는 건가요도 해줘", "labels": ["doc_search", "judgment"]}
-{"text": "성과급규정 어딧어?", "labels": ["doc_search"]}
-{"text": "오후 2시에 미팅 있나? 그리고 출장 계획 문서 작성해줘", "labels": ["doc_generate", "schedule_view"]}
-{"text": "이 데이터로 분석 보고서 만들어줘", "labels": ["doc_generate"]}
-{"text": "급여 명세서를 만들어 주세요 그리고 보안 절차 문서 새로 작성해줘", "labels": ["doc_generate"]}
-{"text": "지각했을 때 어떻게 처리돼?", "labels": ["judgment"]}
-{"text": "이탈률 몇이야?", "labels": ["doc_qa"]}
-{"text": "연차 문서 요약 조용히 부탁해", "labels": ["doc_summary"]}
-{"text": "다음주 수요일에 팀 빌딩 일정을 넣어 주시겠어요?", "labels": ["schedule_add"]}
-{"text": "출장 중 식사비는 얼마까지 청구 가능?", "labels": ["judgment"]}
-{"text": "징계 규정 열람 급여 관련 문서도", "labels": ["doc_search", "doc_summary"]}
-{"text": "퇴직금 산정 기준 자료 검색해줘", "labels": ["doc_search"]}
-{"text": "프로젝트 문서 요약 정리해서 출장 보고서 부탁", "labels": ["doc_generate", "doc_summary"]}
-{"text": "직원 혜택 목록 문서, 겸직 허용이야도 해줘", "labels": ["doc_search", "judgment"]}
-{"text": "급여 문서 주요 내용만 얘기해줘", "labels": ["doc_summary"]}
-{"text": "잠깐 쉬었다가 다시 하자 잠시만 기다려", "labels": ["general"]}
-{"text": "이번주 금요일에 스터디 그룹", "labels": ["schedule_add"]}
-{"text": "4월 첫째 주 일정을 확인 확인 후 결재 승인 없이 구매 가능한가요 결과를 다음주 화요일 3시 세미나 등록해 해줘", "labels": ["judgment", "schedule_add", "schedule_view"]}
-{"text": "오랜만에 날씨가 좋으니까 기분 전환되네", "labels": ["general"]}
-{"text": "주 52시간을 초과해서 근무하면 근로기준법 위반으로 회사에 제재가, 점심시간에 외출 가능할까도 해줘", "labels": ["judgment"]}
-{"text": "복리후생 규정 찾아이랑 연차 사용 규칙이 해줘", "labels": ["doc_qa", "doc_search"]}
-{"text": "퇴근 후에 회사 장비 집에 가져가도 판단하고 AWS에서 GCP로 클라우드를 이전하는 작업에 대한 단계별 세부 마이그레이션 계획서를 비용 분석과 함께 상세하게 작성 해줘", "labels": ["doc_generate", "judgment"]}
-{"text": "수습기간 급여 깍아도됨?", "labels": ["judgment"]}
-{"text": "복리후생 문서, 요점 요약 부탁할게", "labels": ["doc_summary"]}
-{"text": "해당 인사 평가 결과 보고서에서 각 팀별 상위 평가자 비율과 하위 평가자 비율이 어떻게 분포되어 있으며 전체 평균 점수는 몇 점으로 집계되었습니까?", "labels": ["doc_qa"]}
-{"text": "사내 교육 일정이 어떻게, 감사보고서에 시정 권고 사항이 무엇도 해줘", "labels": ["doc_qa"]}
-{"text": "오늘 기분이 너무 좋아 진짜 최고야", "labels": ["general"]}
-{"text": "이번주 출장 일정 있어?", "labels": ["schedule_view"]}
-{"text": "회의 일정이 어떻게 되어 있어?", "labels": ["doc_qa"]}
-{"text": "다음 달 보안 미팅 일정 있나, 이번 주 수요일 오전 스케줄도 해줘", "labels": ["schedule_view"]}
-{"text": "다음주 목요일 오후 2시에 인사팀과 채용 계획 논의 미팅을 넣어 주시기 바랍니다", "labels": ["schedule_add"]}
-{"text": "부서 간 협력 방안 문서 볼 수이랑 인사평가 문서 요점만 요약 부탁해 해줘", "labels": ["doc_search", "doc_summary"]}
-{"text": "내일 아침 8시 반에 경영진 브리핑 준비 회의를 잡아줘", "labels": ["schedule_add"]}
-{"text": "이 연간 교육 계획서에 명시된 직급별 필수 이수 과목과 각 과목의 교육 시간 그리고 외부 위탁 교육 예산이 총 얼마로 책정되어 있는지 확인하고 싶습니다 그리고 연구 목적으로 경쟁사 제품을 회사 예산으로 구매하는 것이 이해충돌에 해당하나요?", "labels": ["doc_qa", "judgment"]}
-{"text": "연차 사유 필수야, 어제 진행한 전체까지", "labels": ["doc_generate", "judgment"]}
-{"text": "3월 중순에 해외 파트너 화상 회의를 일정에 추가하여 주시기 바랍니다", "labels": ["schedule_add"]}
-{"text": "이번주 수요일 오후 4시에 법무팀과 계약 검토 회의를 넣어주시면 감사하겠습니다", "labels": ["schedule_add"]}
-{"text": "인사평가 기준 요약 부탁해", "labels": ["doc_summary"]}
-{"text": "이번 주 회의 일정 있으면 3월 28일 프로젝트 회고 해줘", "labels": ["schedule_add", "schedule_view"]}
-{"text": "오늘 남은 일정 확인해", "labels": ["schedule_view"]}
-{"text": "네 이해했습니다 자세한 설명 감사합니다 많은 도움이 됐어요 고맙습니다", "labels": ["general"]}
-{"text": "이번 주 출장 일정 확인이랑 사업계획서 써 해줘", "labels": ["doc_generate", "schedule_view"]}
-{"text": "하반기 신규 인력 채용을 위한 각 직무별 채용 공고를 현재 시장 현황과 사내 기준에 맞춰 각각 작성해 주시기 바랍니다", "labels": ["doc_generate"]}
-{"text": "해당 규정 문서의 핵심 조항을 발췌하여 간결하게 정리해 주십시오", "labels": ["doc_summary"]}
-{"text": "사내 홍보물 승인 절차 문서 어디 확인하고 출장 계획 보고서를 작성 해줘", "labels": ["doc_generate", "doc_search"]}
-{"text": "작년 연차 사용내역 요약해줘", "labels": ["doc_summary"]}
-{"text": "사내 여비 규정 검색해봐 그리고 기업 보안 문서에서 사용 금지된 소프트웨어가 뭐야?", "labels": ["doc_qa", "doc_search"]}
-{"text": "팀 내 코드 리뷰 프로세스에 대한 가이드라인 문서를 새로 만들어줘", "labels": ["doc_generate"]}
-{"text": "잘 가", "labels": ["general"]}
-{"text": "정보보안 관리 체계 운영에 관한 내부 지침 문서를 조회 바탕으로 내 연차 계획서 작성 해줘", "labels": ["doc_generate", "doc_search"]}
-{"text": "인수인계 문서 서식 있어?", "labels": ["doc_search"]}
-{"text": "이 문서에 저작권 관련 조항이 뭐라고 써 있는지 알려주세요", "labels": ["doc_qa"]}
-{"text": "사내에서 정치적인 발언이나 의견을 표명하는 것이 사규상 징계 사유에 해당이 될 수 있는 것인지 규정을 확인하고 싶습니다 그리고 교육 결과 보고서 작성해줘", "labels": ["doc_generate", "judgment"]}
-{"text": "인력 배치 기준 문서 제공 가능 참고해서 전사 디지털 트랜스포메이션 추진 현황과 차년도 세부 로드맵을 포함한 전략 보고서를 관련 데이터와 함께 상세히 작성 해줘", "labels": ["doc_generate", "doc_search"]}
-{"text": "오늘 점심 뭐 먹었어?", "labels": ["general"]}
-{"text": "결재 승인 없이 구매 가능한가요? 그리고 신규 서비스 관련 기획서 작성해줘", "labels": ["doc_generate", "judgment"]}
-{"text": "본사 주소가 확인하고 핵심만 ㄱ 해줘", "labels": ["doc_qa", "doc_summary"]}
-{"text": "보안 규정 문서 작성해줘", "labels": ["doc_generate"]}
-{"text": "사내 웹사이트 사용 지침 문서 볼 수 찾아서 급여 명세서 요약 필요해 해줘", "labels": ["doc_search", "doc_summary"]}
-{"text": "보고서, 다른 회의록 작성 부탁해도 해줘", "labels": ["doc_generate"]}
-{"text": "인사드립니다 이번에 새로 팀에 합류하게 된 김민수입니다 잘 부탁드립니다", "labels": ["general"]}
-{"text": "주말에 뭐 했어?", "labels": ["general"]}
-{"text": "이번 주 팀 회의에서 다음 마일스톤 날짜가 언제야?", "labels": ["doc_qa"]}
-{"text": "사내 장비 사용 규정 문서 보여줘", "labels": ["doc_search"]}
-{"text": "마케팅 캠페인 기획서 내용 정리해줄래?", "labels": ["doc_summary"]}
-{"text": "다음 주 회의 시간 있나? 그리고 내일 아침 9시에 스탠드업 미팅 넣어줘", "labels": ["schedule_add", "schedule_view"]}
-{"text": "이 문서에서 명시하고 있는 고객 데이터 처리 절차와 관련하여 제3자에게 위탁하는 경우의 동의 절차가 어떻게 규정되어 있는지 알려주세요", "labels": ["doc_qa"]}
-{"text": "급여관련 제안서 써줘", "labels": ["doc_generate"]}
-{"text": "법카규정 어딧지 이번 주 인사평가도", "labels": ["doc_search", "schedule_view"]}
-{"text": "이번 회의록에 참석자가 몇 명이었어?", "labels": ["doc_qa"]}
-{"text": "복장 규정 찾아서 보안 계획서 작성 해줘", "labels": ["doc_generate", "doc_search"]}
-{"text": "복리후생 규정 있으면 찾아서 퇴직 예정자가 남은 연차를 한꺼번에 전부 다 사용을 하겠다고 신청하면 회사 측에서 이것을 거부할 수 있는 건가 해줘", "labels": ["doc_search", "judgment"]}
-{"text": "신입사원 교육 계획 문서 있니이랑 해당 규정에 따른 초과근무 수당 산정 방식은 어떻게 되어 있습니까 해줘", "labels": ["doc_qa", "doc_search"]}
-{"text": "고객사 미팅 회의록 요약, 이번 주 회의록 작성도 해줘", "labels": ["doc_generate", "doc_summary"]}
-{"text": "다음주 데모 일정이 언제인지 확인해 주세요", "labels": ["schedule_view"]}
-{"text": "지난 분기 성과 지표 확인하고 이 연차 문서 핵심만 얘기해줄래 다음에 내년도 AI 플랫폼 구축 사업에 대한 투자 유치를 위한 제안서를 구체적인 시장 데이터를 포함하여 작성 해줘", "labels": ["doc_generate", "doc_qa", "doc_summary"]}
-{"text": "프로젝트 계획서 샘플, 복지 포인트 사용 부탁", "labels": ["doc_qa", "doc_search"]}
-{"text": "오늘 저녁 7시에 팀 회식 넣어줘", "labels": ["schedule_add"]}
-{"text": "납품처 어디야 내용으로 ㅂㄱㅅ 작성 해줘", "labels": ["doc_generate", "doc_qa"]}
-{"text": "오늘 남은 일정 뭐였지, 빈 데 이번주 금욜 회식잡아 해줘", "labels": ["schedule_add", "schedule_view"]}
-{"text": "회사 보안정책 문서 위치 알려줄래?", "labels": ["doc_search"]}
-{"text": "이번 주 연차 계획 좀 확인하고 이번 주에 야근 40시간 더 해도 해줘", "labels": ["judgment", "schedule_view"]}
-{"text": "얼른 회복하세요", "labels": ["general"]}
-{"text": "사내 규정 어디서 찾을 수 찾아서 보안 매뉴얼에서 중요한 부분만, 보안 점검 제안서를 작성까지", "labels": ["doc_generate", "doc_qa", "doc_summary"]}
-{"text": "사내 출장 신청 양식 찾아줘", "labels": ["doc_search"]}
-{"text": "비밀유지 협약서 전문 보여줄래?", "labels": ["doc_search"]}
-{"text": "공유해주신 문서의 핵심을 정리해 주시겠어요?", "labels": ["doc_summary"]}
-{"text": "회의 기록 요약 가능해?", "labels": ["doc_summary"]}
-{"text": "다음에 또 연락해", "labels": ["general"]}
-{"text": "출퇴근 시간 기록 문서 보여줄래?", "labels": ["doc_search"]}
-{"text": "프로젝트 기획서에 명시된 최종 산출물 목록과 각 산출물의 완료 기한이 어떻게 되어 있나요?", "labels": ["doc_qa"]}
-{"text": "다음주 월요일 스케줄을 보여 주시겠어요?", "labels": ["schedule_view"]}
-{"text": "경위서 써줘", "labels": ["doc_generate"]}
-{"text": "사내 이벤트 규정 문서 어디 있니?", "labels": ["doc_search"]}
-{"text": "온보딩매뉴얼 찾아바", "labels": ["doc_search"]}
-{"text": "경조사 휴가가 주말을 포함하는 건지 궁금해요", "labels": ["judgment"]}
-{"text": "다음 달 복리후생 일정 있나, 프리랜서에서 정규직으로 전환되면 수습 기간을 다시 거쳐야 하는 건지 궁금도 해줘", "labels": ["judgment", "schedule_view"]}
-{"text": "복리후생 관련 문서 찾아줄래?", "labels": ["doc_search"]}
-{"text": "시장 동향 보고서에서 우리 업계에 관련된 핵심 트렌드 위주로 요약 정리해줘", "labels": ["doc_summary"]}
-{"text": "정보 보안 정책 관련 가이드라인 문서를 최신 기준에 맞춰 새로 만들어 주십시오", "labels": ["doc_generate"]}
-{"text": "경조사 규정, 연차 보고서, 인사평가 요약좀까지 전부", "labels": ["doc_generate", "doc_search", "doc_summary"]}
-{"text": "회의록 전체 파일 좀 찾아줘", "labels": ["doc_search"]}
-{"text": "예산 심의 관련 자료가 너무 복잡한데 각 부서별로 핵심 요청 사항 위주로 간략하게 요약 좀 부탁해", "labels": ["doc_summary"]}
-{"text": "목요일 아침 9시 스탠드업 잡아", "labels": ["schedule_add"]}
-{"text": "점심시간에 회사 밖에서 식사해도 되나요?", "labels": ["judgment"]}
-{"text": "잘 지냈어?", "labels": ["general"]}
-{"text": "다음주 스케줄 중에 빈 시간대가 어디 있는지 보여줘 그리고 프로젝트 진행 상황 보고서 만들어주세요", "labels": ["doc_generate", "schedule_view"]}
-{"text": "회의록에서 결정된 사항이 뭐였어, 마케팅 기획서 핵심 전략만 간략히도 해줘", "labels": ["doc_qa", "doc_summary"]}
-{"text": "다음 주 회의 일정 확인해줘", "labels": ["schedule_view"]}
-{"text": "업무 성공 사례집 문서 링크 좀 알려주고 사무실 내 개인 물품 보관은 허용도 해줘", "labels": ["doc_search", "judgment"]}
-{"text": "다음 달 보안이랑 비상근무 수당 받을", "labels": ["judgment", "schedule_view"]}
-{"text": "한줄 요약 해줘 그리고 보안 점검 문서 만들어줘", "labels": ["doc_generate", "doc_summary"]}
-{"text": "다음주에 고객사 미팅이 잡혀있는지 확인하고 날짜랑 시간을 알려줘", "labels": ["schedule_view"]}
-{"text": "사내 모바일 사용 규정 있니?", "labels": ["doc_search"]}
-{"text": "회의 안건 정리해서 문서로 만들어줘.", "labels": ["doc_generate"]}
-{"text": "식사는 하셨나요?", "labels": ["general"]}
-{"text": "근태 관리 문서 찾아줘", "labels": ["doc_search"]}
-{"text": "이번달 남은 기간 중에 하루 종일 비어있는 날이 있는지 확인해줘", "labels": ["schedule_view"]}
-{"text": "승인자 누구야?", "labels": ["doc_qa"]}
-{"text": "제안서 만들어 그리고 기획안 작성해줘", "labels": ["doc_generate"]}
-{"text": "다음주 화요일 오후에 보안 점검", "labels": ["schedule_add"]}
-{"text": "야근 수당 지급 기준에 관한 규정 문서를 보여 주실 수 있나요?", "labels": ["doc_search"]}
-{"text": "보안 가이드라인 요약 좀 부탁해", "labels": ["doc_summary"]}
-{"text": "연차 계획 문서 좀 만들어줘", "labels": ["doc_generate"]}
-{"text": "조직 개편에 따른 각 부서별 업무 분장과 역할 그리고 책임 범위를 구체적으로 정리한 문서를 만들어 주세요", "labels": ["doc_generate"]}
-{"text": "자택에서 프로젝트 자료 교육 프로그램 결과도", "labels": ["doc_generate", "judgment"]}
-{"text": "따뜻한 커피 마셔요", "labels": ["general"]}
-{"text": "이번달 면접 일정을 찾아서 4월 첫째주에 출장 일정 추가 그리고 겨적서 만 해줘", "labels": ["doc_generate", "schedule_add", "schedule_view"]}
-{"text": "매일 아침 9시 데일리 스크럼 잡아줘", "labels": ["schedule_add"]}
-{"text": "회의 일정은 어떻게 되어 있습니까 알아본 다음 사무실에서 개인 USB 사용해도 해줘", "labels": ["doc_qa", "judgment"]}
-{"text": "회의 참석자 명단 볼 수 있니?", "labels": ["doc_search"]}
-{"text": "복리후생 정보 간단히 정리해줘", "labels": ["doc_summary"]}
-{"text": "보안 관련 제안서를 작성해 주세요", "labels": ["doc_generate"]}
-{"text": "이번 보고서에 전월 대비 증감률이 어떻게 나와 있는지 알려줘", "labels": ["doc_qa"]}
-{"text": "회의실 예약 규정여부랑 급여 명세서 만", "labels": ["doc_generate", "doc_summary"]}
-{"text": "인사평가 기준 나와있는 문서 어디 있지, 출장비 관련 규정 문서도 해줘", "labels": ["doc_search"]}
-{"text": "연차 규정 어디?", "labels": ["doc_search"]}
-{"text": "지난달에 발생한 서버 장애 건에 대한 사후 분석 보고서를 작성해줘", "labels": ["doc_generate"]}
-{"text": "요약좀 부탁", "labels": ["doc_summary"]}
-{"text": "이번 주 회의 일정 보고 3월 말에 분기 회고 일정 해줘", "labels": ["schedule_add", "schedule_view"]}
-{"text": "복리후생 계획 문서 여기 있니 참고해서 급여 명세서를 만 해줘", "labels": ["doc_generate", "doc_search"]}
-{"text": "담주 빈시간 알려줘 그리고 내일 점심에 팀 런치 등록해줘", "labels": ["schedule_add", "schedule_view"]}
-{"text": "품의서 만들어", "labels": ["doc_generate"]}
-{"text": "연구 기술 보고서 핵심 내용 정리해줘", "labels": ["doc_summary"]}
-{"text": "계약금 얼마야?", "labels": ["doc_qa"]}
-{"text": "회사 프린터로 개인 서류를 출력해도 괜찮아 결과를 신규 사업 추진을 위한 기획서를 예상 비용과 일정을 포함하여 작성 해줘", "labels": ["doc_generate", "judgment"]}
-{"text": "3월 18일 10시에 경영진 보고를 등록해 주시기 바랍니다", "labels": ["schedule_add"]}
-{"text": "현재 운영 중인 시스템의 아키텍처를 정리한 기술 문서를 새로 작성해줘", "labels": ["doc_generate"]}
-{"text": "급여 발표 회의 추가해줘", "labels": ["schedule_add"]}
-{"text": "연차 며칠 남았어?", "labels": ["doc_qa"]}
-{"text": "연차 규정에 따르면 연차 어떻게 사용하지?", "labels": ["doc_qa"]}
-{"text": "이 보고서 핵심만 세 줄로 정리해줘", "labels": ["doc_summary"]}
-{"text": "금주 목요일의 면접 일정을 확인하여 주십시오 보고 복리후생 포인트는 가족도 사용 가능한가 해줘", "labels": ["judgment", "schedule_view"]}
-{"text": "다음 주 회의 시간 있나 확인하고 회사 모바일 앱 사용은 필수 해줘", "labels": ["judgment", "schedule_view"]}
-{"text": "이번 달 마지막 주 일정 어떻게 돼? 그리고 고객사 미팅 회의록 작성 부탁드립니다", "labels": ["doc_generate", "schedule_view"]}
-{"text": "교육 결과 보고서 양식 검색 중에 첨부 파일 읽기 귀찮은데 요약 좀 해줘", "labels": ["doc_search", "doc_summary"]}
-{"text": "보안 점검 계획이이랑 업무용 핸드폰을 퇴근", "labels": ["doc_qa", "judgment"]}
-{"text": "출장 결과 문서를 작성해 주세요", "labels": ["doc_generate"]}
-{"text": "사내 게시판에 광고 올려도 돼?", "labels": ["judgment"]}
-{"text": "비상연락 체계 관련 문서 공유, 이번 고객사 미팅 회의록 써도 해줘", "labels": ["doc_generate", "doc_search"]}
-{"text": "잔여예산 얼마야? 그리고 인사 관련 서류 만들어줘", "labels": ["doc_generate", "doc_qa"]}
-{"text": "평가 항목이 변경되었나?", "labels": ["doc_qa"]}
-{"text": "팀별 사내 경연대회 참여는 필수 결과를 분기별 실적 보고서 좀 작성 해줘", "labels": ["doc_generate", "judgment"]}
-{"text": "사내 채팅 사용은 허용되나요?", "labels": ["judgment"]}
-{"text": "3월 5일에 면접 일정 추가해줘", "labels": ["schedule_add"]}
-{"text": "이 매뉴얼에서 주요 내용만 요약 가능해?", "labels": ["doc_summary"]}
-{"text": "출장 신청 양식 어디? 그리고 보안 문서 핵심만 뽑아줘", "labels": ["doc_search", "doc_summary"]}
-{"text": "출장비 지급 기준 문서 찾아줘", "labels": ["doc_search"]}
-{"text": "회사 장비를 분실했을 때 개인이 변상해야 하는 것인지 자산 관리 규정을 확인하고 싶어요", "labels": ["judgment"]}
-{"text": "오늘 남은 일정 좀 확인해 그리고 매주 화요일 9시 스탠드업 미팅 등록", "labels": ["schedule_add", "schedule_view"]}
-{"text": "사내 회의 가이드 문서 볼 수 있니 확인하고 회사 차량 사용 시 개인 보험 적용 다음에 신규 제품 출시를 위한 마케팅 전략 기획서를 일정과 예산 포함하여 작성 해줘", "labels": ["doc_generate", "doc_search", "judgment"]}
-{"text": "복리후생 보고서 만들어줘", "labels": ["doc_generate"]}
-{"text": "이번 해 신규 채용을 위한 각 직무별 JD를 시장 수준에 맞게 작성해 주세요", "labels": ["doc_generate"]}
-{"text": "부서 간 협력 방안 문서 볼 수 있나요? 그리고 인사평가 문서 요점만 요약 부탁해", "labels": ["doc_search", "doc_summary"]}
-{"text": "상여금 지급 규정, 인사평가 보고서 써도", "labels": ["doc_generate", "doc_search"]}
-{"text": "사내 지식재산권 관리 규정이 수록된 공식 문서의 위치를 안내해 주십시오 찾아서 프로젝트 문서 요점만 요약 해줘", "labels": ["doc_search", "doc_summary"]}
-{"text": "사내 교육 일정 문서 확인해줄래?", "labels": ["doc_search"]}
-{"text": "보안 정책에서 비밀번호 변경 주기가 몇 개월이야?", "labels": ["doc_qa"]}
-{"text": "근로 계약서 전문 어디서 볼 수, 복장 규정에 뭐라고 적혀도 해줘", "labels": ["doc_qa", "doc_search"]}
-{"text": "임직원 복무 규정 전문이 담긴 문서가 어디 있는지 알려주세요", "labels": ["doc_search"]}
-{"text": "ㅇㅂ달 전체일정이랑 겸직 허용이야 해줘", "labels": ["judgment", "schedule_view"]}
-{"text": "스케줄 확인", "labels": ["schedule_view"]}
-{"text": "참석자 누구야 확인하고 지난 회의록 해줘", "labels": ["doc_qa", "doc_summary"]}
-{"text": "최근 회의록 파일 찾아서 프로젝트 완료 보고서 좀 써 그리고 ㅇㅋ 이거 너무 긴데 핵심 포인트만 간단히 뽑아서 해줘", "labels": ["doc_generate", "doc_search", "doc_summary"]}
-{"text": "연차촉진 안내 무시해도 되는건지 궁금함", "labels": ["judgment"]}
-{"text": "인사평가 문서, 보안 프로토콜 제안서 만도 해줘", "labels": ["doc_generate", "doc_search"]}
-{"text": "프로젝트 계획서 어딨어?", "labels": ["doc_search"]}
-{"text": "직원 평가 기준 문서 요청할래", "labels": ["doc_search"]}
-{"text": "사내 자원 이용 규정 볼 수 있을까요 확인하고 다음 주 출장 계획서 작성 해줘", "labels": ["doc_generate", "doc_search"]}
-{"text": "지난 회의 기록의 핵심 안건을 요약해 주세요", "labels": ["doc_summary"]}
-{"text": "내일 회의 있나 비어있는 데 맞춰 내일 오후에 보안 교육 해줘", "labels": ["schedule_add", "schedule_view"]}
-{"text": "회의록 작성 지침은 무엇입니까?", "labels": ["doc_qa"]}
-{"text": "다음 주 월요일에 뭐 보여주고 다음주 수요일 아침에 인사 회의 해줘", "labels": ["schedule_add", "schedule_view"]}
-{"text": "회사 정책 매뉴얼 파일 확인한 다음 회사 서버에 외부 자료 업로드 가능한가요 해줘", "labels": ["doc_search", "judgment"]}
-{"text": "이력서 만들어줘", "labels": ["doc_generate"]}
-{"text": "사내 자원 이용 보고 회사 차량 주말에", "labels": ["doc_search", "judgment"]}
-{"text": "오늘 남은 일정이이랑 인사 관리 제안서 만 해줘", "labels": ["doc_generate", "schedule_view"]}
-{"text": "주말 근무는 어떻게 신청하나요?", "labels": ["judgment"]}
-{"text": "프로젝트 중간에 부서 이동을 요청할 수 있어?", "labels": ["judgment"]}
-{"text": "평가 항목 변경 사항 보고 재택근무 시 사무실 출근 대신해도 됨 해줘", "labels": ["doc_qa", "judgment"]}
-{"text": "출장비 관련 문서 요약 바랍니다", "labels": ["doc_summary"]}
-{"text": "급여 인상 신청서 작성해줘", "labels": ["doc_generate"]}
-{"text": "오늘 일정 뭐야?", "labels": ["schedule_view"]}
-{"text": "이번달 마지막 주 일정을 보고 회사 주차장은 직원 전용 해줘", "labels": ["judgment", "schedule_view"]}
-{"text": "이번달에 신입사원 교육이나 직무 교육 관련 일정이 잡혀있으면 알려줘", "labels": ["schedule_view"]}
-{"text": "퇴사 후에 경업금지 약정의 기간을 어기고 경쟁사에 입사를 하면 실제로 손해배상 소송을 당할 수 있는 건지 알고 싶어 그리고 회의 안건 문서 작성해줘", "labels": ["doc_generate", "judgment"]}
-{"text": "다음 달 연차 일정 보고 모레 오전 11시에 기술 면접 추가 해줘", "labels": ["schedule_add", "schedule_view"]}
-{"text": "사내교육 메뉴얼 어딧는지 좀 알려줘", "labels": ["doc_search"]}
-{"text": "회사 행사 시 복장은 정해져 있나요?", "labels": ["judgment"]}
-{"text": "해당 운영 매뉴얼에 명시된 비상 상황 대응 절차와 각 단계별 담당자가 누구로 지정되어 있나요? 그리고 제안서 내용을 간략하게 요약해 주세요", "labels": ["doc_qa", "doc_summary"]}
-{"text": "프로젝트 킥오프 미팅 언제야?", "labels": ["schedule_view"]}
-{"text": "이 보고서에서 추천한 솔루션이, 내 연봉계약서 작성도 해줘", "labels": ["doc_generate", "doc_qa"]}
-{"text": "복지포인트 양도 가능임?", "labels": ["judgment"]}
-{"text": "성과급 산정 기준 적힌 문서 보여줘", "labels": ["doc_search"]}
-{"text": "올해 연차 사용 규칙은 무엇입니까 확인해서 인사고과 결과는 개인이 열람 가능 해줘", "labels": ["doc_qa", "judgment"]}
-{"text": "다음주 금요일 저녁에 인사 모임", "labels": ["schedule_add"]}
-{"text": "경영 지원 팀에서 관리하고 있는 사무 용품 구매 및 관리에 관한 규정 문서가 어디에 있는지 좀 궁금해 바탕으로 사업계획서 써 해줘", "labels": ["doc_generate", "doc_search"]}
-{"text": "인사고과 결과에 불만이 있으면 공식적으로 이의 제기를 할 수 있는 거야?", "labels": ["judgment"]}
-{"text": "일정 목록 확인하고 4월 중순에 팀 전체 반차 쓰고 워크숍 하는 일정 등록 해줘", "labels": ["schedule_add", "schedule_view"]}
-{"text": "회사 CCTV로 직원의 근무 태도를 모니터링하면 사생활 침해에 해당하나요?", "labels": ["judgment"]}
-{"text": "연차 사용 규정의 핵심 내용을 알고 싶어", "labels": ["doc_summary"]}
-{"text": "출장 관련 문서를 작성해 주세요", "labels": ["doc_generate"]}
-{"text": "퇴직사유서 양식 찾을 수 있니?", "labels": ["doc_search"]}
-{"text": "보안 규정 변경된 부분이, 이 기술 문서가 너무 전문적이고 분량도 상당히 긴데 비전공자도 쉽게 이해할 수 있도록 간략하게 요약도 해줘", "labels": ["doc_qa", "doc_summary"]}
-{"text": "고객 정보를 외부 메일로 보내면 위반이야?", "labels": ["judgment"]}
-{"text": "이번주 금요일 오후에 세미나 일정을 추가해 주시면 감사하겠습니다", "labels": ["schedule_add"]}
-{"text": "복리후생 규정 찾아 이 기술 문서가 너무 전문적이고 분량도 상당히 긴데 비전공자도 쉽게 이해할 수 있도록 간략하게 요약까지", "labels": ["doc_search", "doc_summary"]}
-{"text": "이번 달 프로젝트 마감일 언제지?", "labels": ["schedule_view"]}
-{"text": "내가 이 공모전에 나가도 되는지?", "labels": ["judgment"]}
-{"text": "프로젝트 팀원 배정 어떻게 됐어?", "labels": ["doc_qa"]}
-{"text": "이번 주 회의 일정 알려줄래?", "labels": ["schedule_view"]}
-{"text": "이번달 워크샵 있나 보고 회식 참석 의무 해줘", "labels": ["judgment", "schedule_view"]}
-{"text": "오늘 남은 일정이 있는지 확인하고 복리후생 자료 작성 해줘", "labels": ["doc_generate", "schedule_view"]}
-{"text": "내일 면접잡아줘 2시에", "labels": ["schedule_add"]}
-{"text": "스프린트 회고 보고서 작성해줘", "labels": ["doc_generate"]}
-{"text": "연봉 협상 관련 절차 문서 검색해줘", "labels": ["doc_search"]}
-{"text": "다음 달 회의록 작성해주세요", "labels": ["doc_generate"]}
-{"text": "이번 주 회의 일정 있어?", "labels": ["schedule_view"]}
-{"text": "이번 분기 매출이 얼마야 확인하고 인사 규정 개정안 요약 좀 해줘", "labels": ["doc_qa", "doc_summary"]}
-{"text": "분기 실적 보고서 핵심 수치만 좀 알려줘", "labels": ["doc_summary"]}
-{"text": "하 오늘도 야근인가 보다 집에 가고 싶다", "labels": ["general"]}
-{"text": "아침은 먹었어?", "labels": ["general"]}
-{"text": "이번 분기 실적 보고서 간략하게 요약해줘", "labels": ["doc_summary"]}
-{"text": "이사회 회의록이 너무 길어서 다 읽기가 정말 어려운데요 주요 결의 사항과 핵심 안건만 뽑아서 정리해 주세요", "labels": ["doc_summary"]}
-{"text": "급여 문서 요약 부탁드립니다", "labels": ["doc_summary"]}
-{"text": "오늘 회의 잘 했어?", "labels": ["general"]}
-{"text": "점심 뭐 먹었어?", "labels": ["general"]}
-{"text": "이번달 워크숍 언제야?", "labels": ["schedule_view"]}
-{"text": "4월 신입사원 교육 일정을 3일간 편성하여 주시기 바랍니다", "labels": ["schedule_add"]}
-{"text": "다음 달 프로젝트 스케줄 알려줄래?", "labels": ["schedule_view"]}
-{"text": "다음 주에 뭐 할 거야?", "labels": ["general"]}
-{"text": "기존 급여명세서 내용 간단히 정리이랑 인사 관련 계획서 만 해줘", "labels": ["doc_generate", "doc_summary"]}
-{"text": "다음주 월요일부터 수요일까지 워크숍 등록", "labels": ["schedule_add"]}
-{"text": "다음주 화요일 아침에 프로젝트 회의", "labels": ["schedule_add"]}
-{"text": "업무상 과실로 회사에 금전적 손해가 발생하면 개인이 직접 배상해야 하나요?", "labels": ["judgment"]}
-{"text": "목욜 오후 비어있어?", "labels": ["schedule_view"]}
-{"text": "인사 이동 절차 문서 확인 확인하고 휴가 신청 절차 문서 내용을 간단히 정리 다음에 휴직 중에 다른 회사의 면접을 보러 가는 것이 현행 사내 규정상 문제가 되는 행위에 해당하는 것 해줘", "labels": ["doc_search", "doc_summary", "judgment"]}
+{"text": "보안 정책 어떻게 되어, 이 보고서가 너무 전문적인데 핵심만 알기 쉽게 풀어서 정리도 해줘", "labels": ["doc_qa", "doc_summary"]}
 {"text": "내일 1:1 추가해줘 4시에", "labels": ["schedule_add"]}
-{"text": "이번 달 급여 보고서에서 총액이 얼마나 돼?", "labels": ["doc_qa"]}
-{"text": "사내 고충 처리 위원회 운영 규정이 명시된 문서를 열람할 수 있도록 안내를 좀 해 주실 수 있을까요 확인하고 사내 교육에 참석하는 시간이 근무시간에 포함, 그걸로 간단한 출장 보고서 써 해줘", "labels": ["doc_generate", "doc_search", "judgment"]}
-{"text": "성과급 규정 찾아봐", "labels": ["doc_search"]}
-{"text": "인사평가 내용 요약 가능해?", "labels": ["doc_summary"]}
-{"text": "복지 혜택에 변화가 있습니까?", "labels": ["doc_qa"]}
-{"text": "내일 아침에 급여 검토", "labels": ["schedule_add"]}
-{"text": "이번 분기 성과 평가 기준은 뭐야?", "labels": ["doc_qa"]}
-{"text": "이번주 금요일에 약속이 있는지이랑 졔안서 써 해줘", "labels": ["doc_generate", "schedule_view"]}
-{"text": "교육 프로그램 결과 보고서 요약 부탁", "labels": ["doc_summary"]}
-{"text": "복지 혜택에 변화가 있었는지요?", "labels": ["doc_qa"]}
-{"text": "출장 결과 문서 작성해줘", "labels": ["doc_generate"]}
-{"text": "다음 미팅 준비는 다 됐어요?", "labels": ["general"]}
-{"text": "해당 문서에서 승인 절차가 어떻게 되어있나요?", "labels": ["doc_qa"]}
-{"text": "경비 정산서 양식 보고 이 규정에서 징계", "labels": ["doc_qa", "doc_search"]}
-{"text": "신입사원도 팀장 회의 참석해도 되나?", "labels": ["judgment"]}
-{"text": "복리후생 규정 잇으면 좀 찾아줭이랑 4월에 연차나 휴가로 블록된 날짜가 있는지 캘린더에서 확인", "labels": ["doc_search", "schedule_view"]}
-{"text": "금일 오후 일정 현황을 확인하고 남은 미팅 건수를 알려 주시기 바랍니다", "labels": ["schedule_view"]}
-{"text": "직원 교육 자료 문서, 해외 근무 규정 문서도 해줘", "labels": ["doc_search"]}
-{"text": "이번주 화요일 스케줄 보여줘", "labels": ["schedule_view"]}
-{"text": "최근 회의록 파일부터 육아휴직 1년 넘게 써도 되는 거야까지 다 알려줘", "labels": ["doc_search", "judgment"]}
-{"text": "다음주 금요일 오후 3시에 QA팀과 버그 트리아지 미팅을 등록해줘", "labels": ["schedule_add"]}
-{"text": "이번 달 매출 실적이 목표 대비 어떻게 돼?", "labels": ["doc_qa"]}
-{"text": "일정 알려줘 그리고 업무용 핸드폰을 퇴근 후에 꺼놔도 돼?", "labels": ["judgment", "schedule_view"]}
-{"text": "이번 달 부서 회의 일정을 조회하여 주십시오", "labels": ["schedule_view"]}
-{"text": "퇴직 절차 안내하는 문서 좀 찾아 확인하고 이번 주 회의록 작성 해줘", "labels": ["doc_generate", "doc_search"]}
-{"text": "인사평가 문서 요약본 필요해", "labels": ["doc_summary"]}
-{"text": "사내 규정 어디에 있지?", "labels": ["doc_qa"]}
-{"text": "출장 계획서에 필요한 서류가 뭐야?", "labels": ["doc_qa"]}
-{"text": "사내 안전 보건 관리 규정 및 산업 재해 예방 지침이 수록된 공식 문서를 열람할 수 있도록 안내 바랍니다", "labels": ["doc_search"]}
-{"text": "신규 입사자 안내문 작성 부탁해", "labels": ["doc_generate"]}
-{"text": "ㄴㅇ 오전 스크럼 등록해줘", "labels": ["schedule_add"]}
-{"text": "연차 문서 요약 부탁드립니다", "labels": ["doc_summary"]}
-{"text": "해당 보고서에 분석된 올해 상반기 매출 추이와 전년 동기 대비 변화가 어떤가요 확인해서 사무실에서 개인 USB 사용해도 해줘", "labels": ["doc_qa", "judgment"]}
-{"text": "출장비 문서 요약해줄래?", "labels": ["doc_summary"]}
-{"text": "프로젝트 개요서 만들어줘", "labels": ["doc_generate"]}
-{"text": "4월 셋째 주에 예정된 교육이나 워크숍 일정이 있는지 확인하여 주십시오", "labels": ["schedule_view"]}
-{"text": "비자 발급 관련 지침 문서 어디?", "labels": ["doc_search"]}
-{"text": "오늘 저녁 약속 있었나 있으면 이번주 금요일 오후에 보안 인터뷰 해줘", "labels": ["schedule_add", "schedule_view"]}
-{"text": "이번주 금요일 저녁에 송별회 잡아줘", "labels": ["schedule_add"]}
-{"text": "근로시간 이외의 시간에 사용을 하는 회사에서 지급한 장비에 개인적인 용도의 소프트웨어를 설치해도 규정상 문제가 없는 것인가요?", "labels": ["judgment"]}
-{"text": "급여 규정 어디", "labels": ["doc_search"]}
-{"text": "보안 점검 계획은 어떻게 되어 있어? 그리고 신규 프로젝트 기획안이 상당히 길어서 의사 결정에 필요한 핵심만 뽑아서 요약해줘", "labels": ["doc_qa", "doc_summary"]}
-{"text": "기업 보안 문서의 핵심 포인트가 뭐야?", "labels": ["doc_summary"]}
-{"text": "보안 규정 파일 좀 첨부된 계약서의 주요 조건과 핵심 조항을 정리해 주시면 감사하겠습니다까지", "labels": ["doc_search", "doc_summary"]}
-{"text": "이번 달 남은 일정 공유해줄래 보고 금요일 오후 5시에 주간 회고를, 이번 프로젝트 보고서 작성도 해줘", "labels": ["doc_generate", "schedule_add", "schedule_view"]}
-{"text": "이번주 일정을 확인 약속 넣어줘도", "labels": ["schedule_add", "schedule_view"]}
-{"text": "올해 연차 사용 규칙은 무엇인지요 확인하고 수습 기간 중에 연봉 협상 요청해도 해줘", "labels": ["doc_qa", "judgment"]}
-{"text": "퇴사 후 경력증명서는 언제 발급되나요?", "labels": ["judgment"]}
-{"text": "오늘 남은 일정이 뭐야? 그리고 이번주 전체 일정을 한눈에 볼 수 있게 보여줘", "labels": ["schedule_view"]}
-{"text": "새로운 규정이 생겼어?", "labels": ["general"]}
-{"text": "이번주 토요일 오전에 팀 빌딩 액티비티 일정을 넣어줘", "labels": ["schedule_add"]}
-{"text": "보안 정책 제안서를 작성해 주세요", "labels": ["doc_generate"]}
-{"text": "이번 주 회의 일정 확인 확인하고 인턴이 외부 미팅에 단독 참석해도 해줘", "labels": ["judgment", "schedule_view"]}
-{"text": "금번 실적 보고서의 주요 성과 지표와 미달 항목을 중심으로 요약해 주십시오", "labels": ["doc_summary"]}
-{"text": "프로젝트 보고서 샘플 문서 있니?", "labels": ["doc_search"]}
-{"text": "위약금 얼마야, 제출된 기술 검토 부탁", "labels": ["doc_qa", "doc_summary"]}
-{"text": "퇴근 시간이다 모두 오늘 하루 수고하셨어요 내일 또 만나요 안녕히", "labels": ["general"]}
-{"text": "해당 ESG 경영 보고서에 기재된 탄소 배출 감축 목표와 실제 감축량 그리고 환경 관련 투자 금액이 각각 얼마로 기록되어 있는지 확인하고 싶습니다", "labels": ["doc_qa"]}
-{"text": "인사평가 자료 작성해 줘", "labels": ["doc_generate"]}
-{"text": "회사 컴퓨터 집에 가져가도 돼?", "labels": ["judgment"]}
-{"text": "출장 중에 개인 일정 소화해도, 차세대 플랫폼 개발 프로젝트의 기술 요구사항과 개발 일정 그리고 예상 비용을 포함한 상세 프로젝트 기획서를 만도 해줘", "labels": ["doc_generate", "judgment"]}
-{"text": "프로젝트 계획 문서 작성해줘", "labels": ["doc_generate"]}
-{"text": "사내 추천 채용 제도로 직계 가족을 추천하면 이해충돌 규정에 저촉됩니까 하고 회사에서 개인 이메일 사용해도 해줘", "labels": ["judgment"]}
-{"text": "주말에 뭐 했어?", "labels": ["general"]}
-{"text": "신입사원 교육은 의무인가요?", "labels": ["judgment"]}
-{"text": "운영 매뉴얼이 너무 두꺼운데 꼭 알아야 할 핵심 내용만 좀 알려줘", "labels": ["doc_summary"]}
-{"text": "이번 해커톤에서 우리 팀이 개발한 프로토타입의 기술 사양과 비즈니스 활용 가치를 담은 프로젝트 보고서를 만들어 주세요", "labels": ["doc_generate"]}
-{"text": "회사 정책 문서에서 연차 지급 기준이, 복리후생에 뭐 포함도 해줘", "labels": ["doc_qa"]}
-{"text": "업무 중에 개인 전화 받으면 안 되나?", "labels": ["judgment"]}
-{"text": "다음 회의 안건 정리 부탁해.", "labels": ["doc_generate"]}
-{"text": "차주 월요일 오전에 안전 교육을 캘린더에 편성해 주십시오", "labels": ["schedule_add"]}
-{"text": "부서 간 협력 방안 문서 볼 수, 이번주 뭐있지도 해줘", "labels": ["doc_search", "schedule_view"]}
-{"text": "금요일 저녁에 뭐 있나 보고 다음주 화요일 점심에 평가 회의, 월간 매출 분석 리포트 새로 작성도 해줘", "labels": ["doc_generate", "schedule_add", "schedule_view"]}
-{"text": "회사에서 제공한 장비 반납은 언제까지 해야 하나요?", "labels": ["judgment"]}
-{"text": "다음 주 금요일 일정이랑 다음 회의 회의록 해줘", "labels": ["doc_generate", "schedule_view"]}
-{"text": "사내 정보 보안 위반 시에 적용이 되는 제재 조치 및 징계 기준이 수록된 규정 문서의 소재를 파악하고자 참고해서 다음 회의록 작성 해줘", "labels": ["doc_generate", "doc_search"]}
-{"text": "신규 사업 기획안에서 타겟 고객층이 누구야?", "labels": ["doc_qa"]}
-{"text": "경쟁사 이직 제안 받았는데 면접 봐도 되나?", "labels": ["judgment"]}
-{"text": "다음주 데모 발표 일정이 어떻게 되나?", "labels": ["schedule_view"]}
-{"text": "다음주 목요일 1시에 인터뷰 넣어", "labels": ["schedule_add"]}
-{"text": "와 진짜 똑똑하다 너 대화하니까 진짜 신기해", "labels": ["general"]}
-{"text": "해당 보고서에 분석된 올해 상반기 매출 추이와 전년 동기 대비 변화가 어떤가요이랑 출장 중 호텔 업그레이드 해도 해줘", "labels": ["doc_qa", "judgment"]}
-{"text": "우리 회사 사내이랑 신입사원 JD 작성", "labels": ["doc_generate", "doc_search"]}
-{"text": "사내 규정 변동 사항 확인됐어?", "labels": ["doc_qa"]}
-{"text": "서버 증설 계획이 언제로 잡혀 확인해서 사내 연말 이벤트는 참석해야 해줘", "labels": ["doc_qa", "judgment"]}
-{"text": "인턴이 외부 미팅에 보고서 새로 작성도", "labels": ["doc_generate", "judgment"]}
-{"text": "신규 서비스 기획안 작성해주세요", "labels": ["doc_generate"]}
-{"text": "사내 지식 재산권 관리 및 특허 출원 절차에 관련된 규정이 정리된 문서가 어딘가에 있을 텐데 찾아줘", "labels": ["doc_search"]}
-{"text": "출장 보고서 양식이랑 업무용 차량은 개인용으로 전환 가능한가요 해줘", "labels": ["doc_search", "judgment"]}
-{"text": "출장보고서 제출 마감 언제야, 급여 관련 문서 작성도 해줘", "labels": ["doc_generate", "doc_qa"]}
-{"text": "인사평가 결과 문서 어디에 저장되어 검색하고 문서에서 결정된 담당자가 누구야 해줘", "labels": ["doc_qa", "doc_search"]}
-{"text": "경조사 관련 내규 파일 찾아줘", "labels": ["doc_search"]}
-{"text": "회의록 요점만 요약 프로젝트 발표자료 작성도", "labels": ["doc_generate", "doc_summary"]}
-{"text": "프로젝트 관리 가이드라인 자료 있어? 그리고 자료조사 결과로 보고서 만들어줘", "labels": ["doc_generate", "doc_search"]}
-{"text": "연차 규정에 반차 사용 횟수 제한이 있어?", "labels": ["doc_qa"]}
-{"text": "오늘 오전에 회의가 몇 개 있는지 확인하고 휴가 중에 업무 연락을 꼭 받아야, 그걸로 이번 주 금요일 17시에 송년 행사 준비 회의를 등록 해줘", "labels": ["judgment", "schedule_add", "schedule_view"]}
-{"text": "4월 1일에 신규 프로젝트 킥오프를 등록해 주세요", "labels": ["schedule_add"]}
-{"text": "전직금지 어기면 손배소당함 결과를 급여 명세서 작성해 달라 해줘", "labels": ["doc_generate", "judgment"]}
-{"text": "비상 대피 훈련 및 재난 대응 매뉴얼이 정리된 문서를 조회할 수 있도록 안내를 좀 부탁 드립니다 찾아서 법인카드 월 한도가 얼마로 설정되어 해줘", "labels": ["doc_qa", "doc_search"]}
-{"text": "회의록 작성 기준이 찾아서 이거 요약해 줄래?, 계약서 만들어까지", "labels": ["doc_generate", "doc_qa", "doc_summary"]}
-{"text": "회사 노트북으로 개인 작업 해도 돼?", "labels": ["judgment"]}
-{"text": "병가 낼때 진단서 안가져가면 안되는건지 아니면 없어도 괜찮은건지 좀 궁금 결과를 내 연차 계획서 작성 해줘", "labels": ["doc_generate", "judgment"]}
-{"text": "회의실 예약 규정 요약 뽑아서 분기 실적 보고서 작성 부탁해에 넣어줘", "labels": ["doc_generate", "doc_summary"]}
-{"text": "이번 분기 남은 기간 동안 예정된 워크숍과 교육 일정을 모두 조회하여 주십시오이랑 조퇴 반차 처리 해줘", "labels": ["judgment", "schedule_view"]}
-{"text": "회사 비전 문서 좀 보여줄래? 그리고 사업계획서 써줘", "labels": ["doc_generate", "doc_search"]}
-{"text": "조심히 가", "labels": ["general"]}
-{"text": "다음 달 복리후생 일정 좀, 개인 이메일을 업무에 사용해도 되는지도 해줘", "labels": ["judgment", "schedule_view"]}
-{"text": "내일 몇 개 미팅 있어?", "labels": ["schedule_view"]}
-{"text": "회의록에 어떤 내용이 들어있어?", "labels": ["doc_qa"]}
-{"text": "오늘 하루 어땠어?", "labels": ["general"]}
-{"text": "내일 팀미팅 시간 알려줘", "labels": ["schedule_view"]}
-{"text": "점유율 몇이야?", "labels": ["doc_qa"]}
-{"text": "근무 시간 중에 은행 다녀와도 되나?", "labels": ["judgment"]}
-{"text": "사내 윤리경영 지침이랑 최근 인사평가 결과", "labels": ["doc_qa", "doc_search"]}
-{"text": "마케팅 보고서에서 올해 광고 예산이 얼마야?", "labels": ["doc_qa"]}
-{"text": "기분이 어때?", "labels": ["general"]}
-{"text": "사내 정보를 개인 블로그나 SNS에 올리는 것이 보안 규정 위반인 거야?", "labels": ["judgment"]}
-{"text": "부서 회의록은 공유해야 보고 ㅂㄱㅅ 작성 해줘", "labels": ["doc_generate", "judgment"]}
-{"text": "내부 감사 규정 및 절차가 상세히 기술된 문서를 조회할 수 있습니까?", "labels": ["doc_search"]}
-{"text": "퇴직금 지급 기준, 보안 문서도 해줘", "labels": ["doc_qa", "doc_summary"]}
-{"text": "프로젝트 진행 자료를 작성해 주세요", "labels": ["doc_generate"]}
-{"text": "이번 주 연차 계획 보여줘", "labels": ["schedule_view"]}
-{"text": "3월 일정 보여줘", "labels": ["schedule_view"]}
-{"text": "직급별 결재 한도 문서 찾아 그리고 부서 이관 인수인계 문서 작성해줘", "labels": ["doc_generate", "doc_search"]}
-{"text": "다음주 금요일 오후에 클라이언트 피드백", "labels": ["schedule_add"]}
-{"text": "복리후생 문서 요약, 복리후생 개선안에 관한 문서를 작성도 해줘", "labels": ["doc_generate", "doc_summary"]}
-{"text": "분기 실적 보고서에서 영업이익이 얼마야?", "labels": ["doc_qa"]}
-{"text": "출근 잘 했어?", "labels": ["general"]}
-{"text": "복지 혜택에 변화가 있어?", "labels": ["doc_qa"]}
-{"text": "고객사에서 보내 온 계약서인데 우리한테 중요한 주요 조건만 정리 부탁", "labels": ["doc_summary"]}
-{"text": "야근 신청 관련 절차 규정 보여줘", "labels": ["doc_search"]}
-{"text": "개발팀에서 이번 달 진행한 작업 내역을 정리한 월간 보고서를 만들어줘", "labels": ["doc_generate"]}
-{"text": "비밀번호 변경 지침 문서 부탁해", "labels": ["doc_search"]}
-{"text": "수요일 점심시간에 뭐 있더라?", "labels": ["schedule_view"]}
-{"text": "출장 일정 다시 확인해줘", "labels": ["schedule_view"]}
-{"text": "3월 25일 오전 11시에 발표 리허설을 등록해 주세요", "labels": ["schedule_add"]}
-{"text": "사내 시스템 비밀번호를 같은 팀 동료와 공유하면 보안 규정 위반인가요?", "labels": ["judgment"]}
-{"text": "오늘 면접 일정이랑 자격증 취득 비용", "labels": ["judgment", "schedule_view"]}
-{"text": "신입사원 교육 가이드 문서 어디야 찾아서 회의록 작성 기준 해줘", "labels": ["doc_qa", "doc_search"]}
-{"text": "이번 사업연도 경영 성과와 재무 현황을 종합적으로 정리한 연간 경영 보고서를 주요 재무 지표와 함께 작성해 주시기 바랍니다", "labels": ["doc_generate"]}
-{"text": "SNS에 회사 얘기 올리면 안되는거임? 그리고 다음 분기 계획서 작성 부탁해.", "labels": ["doc_generate", "judgment"]}
-{"text": "직원 해외 연수여부랑 출장 보고서를 제출", "labels": ["doc_search", "judgment"]}
-{"text": "올해 사업 목표가 뭐라고 명시돼 있어?", "labels": ["doc_qa"]}
-{"text": "내일 오후 2시에서 5시 사이에 잡혀있는 일정이 있으면 모두 보고 연차 사용 시 결재가 필요한가요 해줘", "labels": ["judgment", "schedule_view"]}
-{"text": "이 JD에서 필수 자격 요건이 내용 내부 규정 주요 변경 사항만 좀 정리 부탁해 해줘", "labels": ["doc_qa", "doc_summary"]}
-{"text": "지난 한 달간의 고객 피드백 분석 보고서인데 주요 이슈와 개선이 필요한 사항들을 위주로 요약 좀 부탁드려요", "labels": ["doc_summary"]}
-{"text": "올해 보너스 지급 기준이, 회의록 작성 부탁해도 해줘", "labels": ["doc_generate", "doc_qa"]}
-{"text": "출장 결과 보고서 만들어줘", "labels": ["doc_generate"]}
-{"text": "보안 문서 요점만 요약해 줘", "labels": ["doc_summary"]}
-{"text": "이 서비스 운영 보고서에 기록된 월별 장애 발생 건수와 평균 복구 시간 그리고 서비스 가용률 목표 대비 달성률이 어떻게 나타나 있는지 알려주세요", "labels": ["doc_qa"]}
-{"text": "다음주 화요일 저녁에 보안 교육", "labels": ["schedule_add"]}
-{"text": "상사랑 회식 불참하면 불이익 있나?", "labels": ["judgment"]}
-{"text": "이 논문의 결론이랑 핵심만 간단히 뽑아줘", "labels": ["doc_summary"]}
-{"text": "부서 이동 요청 가능한 시기가 있나요?", "labels": ["judgment"]}
-{"text": "직원 급여 조정 문서 찾을 수 있어?", "labels": ["doc_search"]}
-{"text": "다음주 빈 날 있어?", "labels": ["schedule_view"]}
-{"text": "사내 동호회 활동 시간 인정되나요?", "labels": ["judgment"]}
-{"text": "아침에 일찍 일어났어?", "labels": ["general"]}
-{"text": "다음 주 출장 계획 있어?", "labels": ["schedule_view"]}
-{"text": "출장 보고서는 무엇을이랑 사내 메일 시스템을", "labels": ["doc_qa", "judgment"]}
-{"text": "4월 초에 보안 워크숍 일정 추가해", "labels": ["schedule_add"]}
-{"text": "오늘 하루도 파이팅!", "labels": ["general"]}
-{"text": "출퇴근 시간 조정 가능한가요?", "labels": ["judgment"]}
-{"text": "이 계약서에 자동갱신 조항이 들어가 있어?", "labels": ["doc_qa"]}
+{"text": "금번 분기에 발행된 전략 기획 보고서의 핵심 추진 과제와 기대 효과를 간결하게 요약하여 보고 정리하고 전직금지 어기면 손배소당함 해줘", "labels": ["doc_summary", "judgment"]}
+{"text": "복리후생 문서 요약 확인, 보고서 만도", "labels": ["doc_generate", "doc_summary"]}
+{"text": "오늘 기분이 너무 좋아 진짜 최고야", "labels": ["general"]}
+{"text": "핵심 좀 뽑아 정리한 다음 프로젝트 제안서 만 해줘", "labels": ["doc_generate", "doc_summary"]}
+{"text": "이 데이터로 분석 보고서 만들어줘", "labels": ["doc_generate"]}
+{"text": "업무상 과실로 회사에 금전적 손해가 발생하면 개인이 직접 배상해야 하나요?", "labels": ["judgment"]}
+{"text": "이 문서에 저작권 관련 조항이 뭐라고 써 있는지 알려주세요", "labels": ["doc_qa"]}
+{"text": "프로젝트 보고서 짧게 요약, 백엔드 엔지니어 채용 JD 만도 해줘", "labels": ["doc_generate", "doc_summary"]}
+{"text": "얼른 회복하세요", "labels": ["general"]}
+{"text": "이번주 출장 일정 있어?", "labels": ["schedule_view"]}
+{"text": "프로젝트 계획서 전체 요약 좀 요약하고 법인카드로 개인 식비를 결제한 게 적발되면 어떤 수준의 징계를 받는 거야 해줘", "labels": ["doc_summary", "judgment"]}
 {"text": "같은 팀원 간에 급여 정보를 서로 공유하는 것이 사내 규정 위반에 해당하나요?", "labels": ["judgment"]}
-{"text": "결재한도 관련 문서 좀 잇나요 확인 후 해당 문서에 수록된 조직도상 보고 체계 및 의사결정 구조는 어떻게 구성되어 있습니까 결과를 법인카드로 개인 식비를 결제한 게 적발되면 어떤 수준의 징계를 받는 거야 해줘", "labels": ["doc_qa", "doc_search", "judgment"]}
-{"text": "취업 규칙 주요 조항만 간단히 정리 부탁해 요약하고 우리 부서의 업무 프로세스를 정리한 매뉴얼 문서를 새로 작성 해줘", "labels": ["doc_generate", "doc_summary"]}
-{"text": "사내 입찰 및 조달 절차에 관한 규정 문서의 최신본을 열람하고자 하오니 해당 문서의 위치를 안내하여 주십시오 바탕으로 해당 프로젝트에 대한 최종 완료 보고서를 이번 주 안에 작성해 주시겠습니까 해줘", "labels": ["doc_generate", "doc_search"]}
-{"text": "처음 뵙겠습니다 앞으로 함께 일하게 됐는데 많이 배우고 싶습니다 잘 부탁드리겠습니다", "labels": ["general"]}
-{"text": "담주 전체일정 쭉 보여줘 요일별로 정리해서, USB 메모리 사용해도도 해줘", "labels": ["judgment", "schedule_view"]}
-{"text": "경조사 규정이랑 이번달 남은 기간 동안 잡혀있는 회의 일정을 날짜별로 정리해서 해줘", "labels": ["doc_search", "schedule_view"]}
-{"text": "사내 카페테리아 이용 및 식대 지원 규정 관련 문서가 있으면 보여줘 그리고 이번 주 회의 일정 좀 알려줘", "labels": ["doc_search", "schedule_view"]}
-{"text": "3월 전체 일정, 이번 주말 출장까지", "labels": ["doc_generate", "schedule_view"]}
-{"text": "직원 복장 코드 문서 찾아봐", "labels": ["doc_search"]}
-{"text": "임원 보수 및 퇴직위로금 지급에 관한 규정 문서를 열람하고자 합니다 그리고 인사평가 보고서 써줘", "labels": ["doc_generate", "doc_search"]}
-{"text": "3월 일정이 어떻게 돼?", "labels": ["schedule_view"]}
-{"text": "처음 사용해 보는데 기본 사용법 알려주실래요?", "labels": ["general"]}
-{"text": "금일 오전에 진행된 전체 회의에 대한 공식 회의록을 작성해 주십시오", "labels": ["doc_generate"]}
-{"text": "프로젝트 문서 간단히 요약 부탁드립니다", "labels": ["doc_summary"]}
-{"text": "신규 입사자 교육 기간이 며칠이야?", "labels": ["doc_qa"]}
-{"text": "제안서에 비용 항목이 어떻게 되어있어?", "labels": ["doc_qa"]}
-{"text": "보안 절차 문서의 중요한 부분만 요약, 보안 점검 계획서를 작성도 해줘", "labels": ["doc_generate", "doc_summary"]}
-{"text": "연봉 테이블 관련 규정 좀, 다음 주 금요일 일정도 해줘", "labels": ["doc_search", "schedule_view"]}
-{"text": "출장 규정 알려주고 업무용 차량은 개인용으로 전환 가능한가요도 해줘", "labels": ["doc_search", "judgment"]}
+{"text": "이 문서에 저작권 관련 조항이 뭐라고 써 알아보고 코드 리뷰 가이드라인에서 꼭 알아야 할 것만 요약해, 가능하면 보안 점검 결과로 보고서 만 해줘", "labels": ["doc_generate", "doc_qa", "doc_summary"]}
+{"text": "본 운영 보고서의 핵심 현황과 주요 이슈를 간결하게 요약 정리 핵심만 뽑아서 이 자료 기반으로 보고서 좀 뽑아줄래 해줘", "labels": ["doc_generate", "doc_summary"]}
+{"text": "금번 실적 보고서의 주요 성과 지표와 미달 항목을 중심으로 요약해 주십시오", "labels": ["doc_summary"]}
+{"text": "성과급 지급 조건은 어떻게 찾아서 부업으로 유튜브 해도 문제, 이번 월급 계산 좀 부탁해까지", "labels": ["doc_generate", "doc_qa", "judgment"]}
+{"text": "인사위원회 회의록 검색할 수 있니 확인하고 급여 보고서 작성, 그걸로 프로젝트 보고서 짧게 요약 해줘", "labels": ["doc_generate", "doc_search", "doc_summary"]}
+{"text": "재택근무 규정 문서 검색하고 공유좌석 사용은 선착순 해줘", "labels": ["doc_search", "judgment"]}
+{"text": "분기 실적 보고서에서 영업이익이 얼마야?", "labels": ["doc_qa"]}
+{"text": "연차 문서 요약 조용히 부탁해", "labels": ["doc_summary"]}
+{"text": "코드 리뷰 가이드라인 문서 위치 확인하고 이번 달 프로젝트 마감일 해줘", "labels": ["doc_search", "schedule_view"]}
+{"text": "내부 감사 규정 및 절차가 상세히 기술된 문서를 조회할 수 있습니까?", "labels": ["doc_search"]}
 {"text": "사내 공모전 수상 기준이 뭐야?", "labels": ["doc_qa"]}
-{"text": "이번 주 회의 언제야 비어있는 데 맞춰 4월 첫째주에 출장 일정 추가 해줘", "labels": ["schedule_add", "schedule_view"]}
-{"text": "성과급 지급 기준 규정 확인하고 이번 주 연차 계획 있나 해줘", "labels": ["doc_search", "schedule_view"]}
-{"text": "임원 보수 및 퇴직위로금 지급에 관한 규정 문서를 열람하고자 찾아서 복리후생 포인트는 가족도 사용 가능한가 해줘", "labels": ["doc_search", "judgment"]}
-{"text": "연차 관련 문서의 핵심 내용을 요약해 주세요", "labels": ["doc_summary"]}
-{"text": "3월 하순 일정 현황을 조회하고 빈 시간대도 같이 표시이랑 3월 28일 오전에 미팅이 있는지 확인하고 없으면 빈 시간을 해줘", "labels": ["schedule_view"]}
-{"text": "직원 교육 자료 문서 보여줘 그리고 출장 신청 양식 어디? 해줘", "labels": ["doc_search"]}
+{"text": "신입사원도 팀장 회의 참석해도 되나?", "labels": ["judgment"]}
+{"text": "이번 달 프로젝트 마감일 언제지?", "labels": ["schedule_view"]}
+{"text": "팀 내 코드 리뷰 프로세스에 대한 가이드라인 문서를 새로 만들어줘", "labels": ["doc_generate"]}
+{"text": "이 계약서에 자동갱신 조항이 들어가 있어?", "labels": ["doc_qa"]}
+{"text": "이 프로젝트 리스크 관리 보고서에서 식별한 상위 5개 리스크의 발생 확률과 영향도 그리고 각 리스크에 대한 대응 전략이 어떻게 수립되어 있습니까, 사업 제안서에서 ROI가 얼마로 예상되어도 해줘", "labels": ["doc_qa"]}
+{"text": "작년 연차 사용내역 요약해줘", "labels": ["doc_summary"]}
+{"text": "부서별 예산 문서이랑 동료한테 사내 기밀 해줘", "labels": ["doc_search", "judgment"]}
+{"text": "인사드립니다 이번에 새로 팀에 합류하게 된 김민수입니다 잘 부탁드립니다", "labels": ["general"]}
+{"text": "신입사원 교육은 의무인가요?", "labels": ["judgment"]}
+{"text": "연차 사용 규정 어디에, 급여 관련 자료 작성도 해줘", "labels": ["doc_generate", "doc_search"]}
+{"text": "오늘 하루도 파이팅!", "labels": ["general"]}
+{"text": "다음주 전체 스케줄을 요일별로 정리해서 보여 주시기 바랍니다 확인하고 내일 오후 2시에 회의를 잡아 주시겠어요 다음에 이번에 새로 출시하는 모바일 앱의 전체 기능 명세와 사용자 플로우를 담은 기획 문서를 각 화면별로 상세하게 만 해줘", "labels": ["doc_generate", "schedule_add", "schedule_view"]}
+{"text": "인수인계 문서 서식 있어?", "labels": ["doc_search"]}
+{"text": "금일 오전에 진행된 전체 회의에 대한 공식 회의록을 작성해 주십시오", "labels": ["doc_generate"]}
+{"text": "부서별 연락처 문서 어디에 보고 회의록에서 김 부장이 제안한 내용이, 회사에서 개인 이메일 사용해도도 해줘", "labels": ["doc_qa", "doc_search", "judgment"]}
+{"text": "출장비 문서 요약이랑 인사 관련 계획서", "labels": ["doc_generate", "doc_summary"]}
+{"text": "연차 규정에 반차 사용 횟수 제한이 있어?", "labels": ["doc_qa"]}
+{"text": "다음주 데모 일정이 언제인지 확인해 주세요", "labels": ["schedule_view"]}
+{"text": "인사고과 결과에 불만이 있으면 공식적으로 이의 제기를 할 수 있는 거야?", "labels": ["judgment"]}
+{"text": "사내 공모전 규정 문서 어디, 분기별 목표 대비 달성률이 어떻게도 해줘", "labels": ["doc_qa", "doc_search"]}
+{"text": "ㄴㅇ 오전 스크럼 등록해줘", "labels": ["schedule_add"]}
+{"text": "프로젝트 개요서 만들어줘", "labels": ["doc_generate"]}
+{"text": "금요일 오후에 잡혀있는이랑 수요일 점심시간에 런치", "labels": ["schedule_add", "schedule_view"]}
+{"text": "다음 회의 안건 정리 부탁해.", "labels": ["doc_generate"]}
+{"text": "해당 규정 문서의 핵심 조항을 발췌하여 간결하게 정리해 주십시오", "labels": ["doc_summary"]}
+{"text": "재택근무 정책 문서 어디서 볼 수 있어? 그리고 시간외근무 수당을 기본 연봉에 포함시켜서 지급하는 것이 근로기준법상 합법인가요?", "labels": ["doc_search", "judgment"]}
+{"text": "이번 주 회의 언제였더라 보고 전사 디지털 트랜스포메이션 추진 현황과 차년도 세부 로드맵을 포함한 전략 보고서를 관련 데이터와 함께 상세히 작성 해줘", "labels": ["doc_generate", "schedule_view"]}
+{"text": "이번 달 프로젝트 마감일 언제야 보고 신규 사업 추진을 위한 기획서를 예상 비용과 일정을 포함하여 작성 해줘", "labels": ["doc_generate", "schedule_view"]}
+{"text": "차주 금요일 오후의 일정 현황을 확인하고 빈 시간이 있는지 알려 주십시오 빈 시간 있으면 회식 잡아줘", "labels": ["schedule_add", "schedule_view"]}
+{"text": "이번 주 금요일, 고객 응대 매뉴얼까지", "labels": ["doc_generate", "schedule_view"]}
+{"text": "오늘 남은 일정 확인해", "labels": ["schedule_view"]}
+{"text": "이번주 세미나 일정이랑 팀별 사내 경연대회", "labels": ["judgment", "schedule_view"]}
+{"text": "사내교육 메뉴얼 어딧는지 좀 알려줘", "labels": ["doc_search"]}
+{"text": "복리후생 규정 간략하게 요약해줄래? 그리고 퇴직금은 언제 지급되나요?", "labels": ["doc_summary", "judgment"]}
+{"text": "이 서비스 운영 보고서에 기록된 월별 장애 발생 건수와 평균 복구 시간 그리고 서비스 가용률 목표 대비 달성률이 어떻게 나타나 있는지 알려주세요", "labels": ["doc_qa"]}
+{"text": "직원 급여 조정 문서 찾을 수 있어?", "labels": ["doc_search"]}
+{"text": "이 문서에서 명시하고 있는 고객 데이터 처리 절차와 관련하여 제3자에게 위탁하는 경우의 동의 절차가 어떻게 규정되어 있는지 알려주세요", "labels": ["doc_qa"]}
+{"text": "이번주 화요일 스케줄 보여줘", "labels": ["schedule_view"]}
+{"text": "정보 보안 정책 관련 가이드라인 문서를 최신 기준에 맞춰 새로 만들어 주십시오", "labels": ["doc_generate"]}
+{"text": "급여 문서 요약 부탁해 정리하고 그걸로 급여 관련 서류를 작성 해줘", "labels": ["doc_generate", "doc_summary"]}
+{"text": "최근 인사평가 결과는 어땠어 내용 확인하고 보안 점검 결과로 보고서 만 해줘", "labels": ["doc_generate", "doc_qa"]}
+{"text": "회의 일정 어떻게 되어 있는지 아세요 알려주고 프로젝트 문서 요약 부탁해도 해줘", "labels": ["doc_qa", "doc_summary"]}
+{"text": "출장 결과 문서 작성해줘", "labels": ["doc_generate"]}
+{"text": "이번 보고서에 전월 대비 증감률이 어떻게 나와 있는지 알려줘", "labels": ["doc_qa"]}
+{"text": "신입사원 교육 계획 문서 있니 확인하고 연차를 시간 단위로 쪼개서 사용하는 것이 사내 규정에서 허용이, 그걸로 교육 프로그램 결과 보고서 만 해줘", "labels": ["doc_generate", "doc_search", "judgment"]}
+{"text": "연차 문서 요약 부탁드립니다", "labels": ["doc_summary"]}
+{"text": "보안 가이드라인 요약 좀 부탁해", "labels": ["doc_summary"]}
+{"text": "사내 지식 재산권 관리 및 특허 출원 절차에 관련된 규정이 정리된 문서가 어딘가에 있을 텐데 찾아줘", "labels": ["doc_search"]}
+{"text": "비용 청구서 양식 다운로드 가능해? 그리고 우리 부서의 업무 프로세스를 정리한 매뉴얼 문서를 새로 작성해줘", "labels": ["doc_generate", "doc_search"]}
+{"text": "해당 인사 평가 결과 보고서에서 각 팀별 상위 평가자 비율과 하위 평가자 비율이 어떻게 분포되어 있으며 전체 평균 점수는 몇 점으로 집계되었습니까?", "labels": ["doc_qa"]}
+{"text": "3월 일정 전체, 수습 해고 가능해도 해줘", "labels": ["judgment", "schedule_view"]}
+{"text": "스프린트 회고 보고서 작성해줘", "labels": ["doc_generate"]}
+{"text": "복리후생 규정 있으면 검색하고 복지 포인트 어디서 쓸 수 해줘", "labels": ["doc_qa", "doc_search"]}
+{"text": "본 프로젝트 제안서에 포함된 기술적 내용이 많으므로 경영진이 이해할 수 있도록 비즈니스 관점에서 핵심만 정리해 주십시오 정리하고 그걸로 주간 업무 보고서 좀 써 해줘", "labels": ["doc_generate", "doc_summary"]}
+{"text": "해외 근무 규정 문서 보여줘 그리고 약속 있어?", "labels": ["doc_search", "schedule_view"]}
+{"text": "이 계약서 전체 내용을 다 읽기 어려우니 핵심 조건만 좀 요약해줄 핵심 정리하고 위반인지도 봐줘", "labels": ["doc_summary", "judgment"]}
+{"text": "복리후생 보고서 만들어줘", "labels": ["doc_generate"]}
+{"text": "이번주 수요일 오후 4시에 법무팀과 계약 검토 회의를 넣어주시면 감사하겠습니다", "labels": ["schedule_add"]}
+{"text": "하반기 신규 인력 채용을 위한 각 직무별 채용 공고를 현재 시장 현황과 사내 기준에 맞춰 각각 작성해 주시기 바랍니다", "labels": ["doc_generate"]}
+{"text": "지난 분기 성과이랑 지난 분기 경영 해줘", "labels": ["doc_qa", "doc_summary"]}
+{"text": "이번달에 신입사원 교육이나 직무 교육 관련 일정이 잡혀있으면 알려줘", "labels": ["schedule_view"]}
+{"text": "급여 규정 어디", "labels": ["doc_search"]}
+{"text": "복리후생 계획 문서 여기 있니? 그리고 이 JD에서 필수 자격 요건이 뭐야?", "labels": ["doc_qa", "doc_search"]}
+{"text": "경위서 써줘", "labels": ["doc_generate"]}
+{"text": "평가 항목이 변경되었나?", "labels": ["doc_qa"]}
+{"text": "담주 월욜 뭐잡혀 찾아서 지각비 공제 합법 판단하고 결과를 이번주 수요일 리더십 트레이닝 해줘", "labels": ["judgment", "schedule_add", "schedule_view"]}
+{"text": "이번 주 회의 업무상 발생한 비용은도", "labels": ["judgment", "schedule_view"]}
+{"text": "법인카드 사용 가이드라인 문서 좀 알아보고 1년 미만 근무자도 퇴직금 받을 수, 가능하면 경영진 회의록이 길어서 핵심 논의 사항과 결정된 내용만 간단히 요약 부탁", "labels": ["doc_search", "doc_summary", "judgment"]}
+{"text": "교육 프로그램 결과 보고서 요약 부탁", "labels": ["doc_summary"]}
+{"text": "사내 모바일 사용 규정 있니?", "labels": ["doc_search"]}
+{"text": "지각했을 때 어떻게 처리돼?", "labels": ["judgment"]}
+{"text": "사내 체육대회 참여는 선택인가요? 그리고 부모님 칠순에 특별휴가 써도 되나? 해줘", "labels": ["judgment"]}
+{"text": "다음 달 복리후생 일정 좀 확인하고 3월 첫째 주 월요일 9시에 분기 계획 회의를 등록 해줘", "labels": ["schedule_add", "schedule_view"]}
+{"text": "인사 평가 기준 문서 찾아서 내용 알려줘", "labels": ["doc_qa", "doc_search"]}
+{"text": "다음주 화요일 아침에 프로젝트 회의", "labels": ["schedule_add"]}
+{"text": "이번 프로젝트에서 선택한 기술 스택과 각 단계별 의사결정 과정을 상세하게 담은 기술 보고서를, 서버 이전 관련 계획서 작성도 해줘", "labels": ["doc_generate"]}
+{"text": "프로젝트 기획서에 명시된 최종 산출물 목록과 각 산출물의 완료 기한이 어떻게 되어 있나요?", "labels": ["doc_qa"]}
+{"text": "야근수당규정 잇나 찾아서 회사 주차장은 직원 전용 그리고 회의록 작성 부탁해 해줘", "labels": ["doc_generate", "doc_search", "judgment"]}
+{"text": "사내 시스템 비밀번호를 같은 팀 동료와 공유하면 보안 규정 위반인가요?", "labels": ["judgment"]}
+{"text": "올해 사업 목표가 뭐라고 명시돼 있어?", "labels": ["doc_qa"]}
+{"text": "근무 시간 중에 은행 다녀와도 되나?", "labels": ["judgment"]}
+{"text": "이사회 회의록이 너무 길어서 다 읽기가 정말 어려운데요 주요 결의 사항과 핵심 안건만 뽑아서 정리해 주세요", "labels": ["doc_summary"]}
+{"text": "연봉 협상 관련 절차 문서 검색해줘", "labels": ["doc_search"]}
+{"text": "사내 안전 보건 관리 규정 및 산업 재해 예방 지침이 수록된 공식 문서를 열람할 수 있도록 안내 바랍니다", "labels": ["doc_search"]}
 {"text": "직원 건강관리 프로그램 운영 규정이 담긴 문서를 찾아줄 수 있어?", "labels": ["doc_search"]}
-{"text": "출장비 문서 요약 뽑아서 서버 이전 관련 계획서 작성에 넣어줘", "labels": ["doc_generate", "doc_summary"]}
-{"text": "안녕하세요", "labels": ["general"]}
-{"text": "역할과 책임 문서 찾아줄 수 있나요?", "labels": ["doc_search"]}
+{"text": "사내 홍보물 승인 절차 문서 어디 참고해서 이번 회의록 작업 부탁해 해줘", "labels": ["doc_generate", "doc_search"]}
+{"text": "연차 사용 가능 시기가 언제인지 아나요 보고 신체검사는 근무 시간 중에 받으면 해줘", "labels": ["doc_qa", "judgment"]}
+{"text": "보안 정책 제안서를 작성해 주세요", "labels": ["doc_generate"]}
+{"text": "출장 일정 다시 확인해줘", "labels": ["schedule_view"]}
+{"text": "해당 문서에서 승인 절차가 어떻게 되어있나요?", "labels": ["doc_qa"]}
+{"text": "신규 입사자 교육 기간이 며칠이야?", "labels": ["doc_qa"]}
+{"text": "해당 계약 조건에서 지식재산권 귀속에 관한 조항은 어떻게 명시되어 있습니까이랑 이자율 몇이야 해줘", "labels": ["doc_qa"]}
+{"text": "이번주 매일 오전 10시에 스탠드업 미팅이 잘 들어가 있는지 확인 보고 회사 주차장은 직원 전용 해줘", "labels": ["judgment", "schedule_view"]}
+{"text": "부서별 업무 분장표 어디서 볼 수 있지이랑 이번 주 금요일 일정 해줘", "labels": ["doc_search", "schedule_view"]}
+{"text": "회사 행사 시 복장은 정해져 있나요?", "labels": ["judgment"]}
+{"text": "프로젝트 현황 보고서의 핵심 이슈와 진행 상황만 간략하게 정리이랑 야근 수당 안 받고 자발적으로 야근해도 되나 해줘", "labels": ["doc_summary", "judgment"]}
+{"text": "회사 주차장은 직원 전용 판단 후 결과를 경비 정산서 만 해줘", "labels": ["doc_generate", "judgment"]}
+{"text": "수요일 오전에 1시간 이상 연속으로 빈 시간이 있는지 확인해, 이번 주 인사평가 일정도 해줘", "labels": ["schedule_view"]}
+{"text": "이번주 금요일에 스터디 그룹", "labels": ["schedule_add"]}
+{"text": "회의 안건 중에서 세 번째 항목의 결론이 구체적으로 무엇인가요? 그리고 다음 회의 회의록 작성해줄래?", "labels": ["doc_generate", "doc_qa"]}
+{"text": "사내 교육 일정 문서 확인해줄래?", "labels": ["doc_search"]}
+{"text": "사내 규정 어디에 있지?", "labels": ["doc_qa"]}
+{"text": "내일 아침에 급여 검토", "labels": ["schedule_add"]}
+{"text": "복장 규정에 뭐라고 적혀, 이 규정 문서가 너무 길어서 읽기가 힘든데 주요 조항만 간단히 좀 정리, 올해 채용 계획에 맞춰서 PM 직무 관련 채용 공고를 작성까지 전부", "labels": ["doc_generate", "doc_qa", "doc_summary"]}
+{"text": "3월 10일부터 20일 사이에 잡혀있는 모든 미팅 일정을 시간순으로 찾아서 휴가 중에 업무 연락을 꼭 받아야, 4월 첫째주에 출장 일정 추가까지", "labels": ["judgment", "schedule_add", "schedule_view"]}
+{"text": "퇴근 시간이다 모두 오늘 하루 수고하셨어요 내일 또 만나요 안녕히", "labels": ["general"]}
+{"text": "차주 월요일 오전에 안전 교육을 캘린더에 편성해 주십시오", "labels": ["schedule_add"]}
+{"text": "인사평가 기준 요약 부탁해", "labels": ["doc_summary"]}
+{"text": "따뜻한 커피 마셔요", "labels": ["general"]}
+{"text": "4월 첫째 주 일정을 확인 확인하고 3월 5일에 팀 전체 회의 정리해서 급여 명세서 작성 해줘", "labels": ["doc_generate", "schedule_add", "schedule_view"]}
+{"text": "경조사 관련 내규 파일 찾아줘", "labels": ["doc_search"]}
+{"text": "점심시간에 외출해도 돼? 그리고 이번 분기 실적 보고서 새로 작성해주세요", "labels": ["doc_generate", "judgment"]}
+{"text": "3월 중순에 해외 파트너 화상 회의를 일정에 추가하여 주시기 바랍니다", "labels": ["schedule_add"]}
+{"text": "이 문서가 너무 길어서 회의 시간 안에 다 읽을 수가 없는데 핵심 내용만 요약해서 알려 주실 수 있나요? 그리고 교육 프로그램 결과 보고서 만들어줘", "labels": ["doc_generate", "doc_summary"]}
+{"text": "예산 심의 관련 자료가 너무 복잡한데 각 부서별로 핵심 요청 사항 위주로 간략하게 요약 좀 부탁해", "labels": ["doc_summary"]}
+{"text": "오늘 점심 뭐 먹었어?", "labels": ["general"]}
+{"text": "금일 오후 일정 현황을 확인하고 남은 미팅 건수를 알려 주시기 바랍니다", "labels": ["schedule_view"]}
+{"text": "출장 신청서 양식 어디에 있지 토대로 급여 관련 서류를 작성 해줘", "labels": ["doc_generate", "doc_search"]}
+{"text": "프로젝트 팀원 역할 분담 어떻게 되어 있는지 아시나요 알려주고 연차 문서 요악도 해줘", "labels": ["doc_qa", "doc_summary"]}
+{"text": "내일 일정? 그리고 데이터 분석가 JD 좀 작성해줘", "labels": ["doc_generate", "schedule_view"]}
+{"text": "프로젝트 진행 자료를 작성해 주세요", "labels": ["doc_generate"]}
+{"text": "아침에 일찍 일어났어?", "labels": ["general"]}
+{"text": "다음에 또 연락해", "labels": ["general"]}
+{"text": "연차를 당일에 신청해도 문제 있는지 보고 새로운 프로젝트 제안서 해줘", "labels": ["doc_generate", "judgment"]}
+{"text": "임원 보수 및 퇴직위로금 지급에 관한 규정 문서를 열람하고자 규정 확인하고 복리후생 포인트는 가족도 사용 가능한가 해줘", "labels": ["doc_search", "judgment"]}
+{"text": "지난 한 달간의 고객 피드백 분석 보고서인데 주요 이슈와 개선이 필요한 사항들을 위주로 요약 좀 부탁드려요", "labels": ["doc_summary"]}
+{"text": "이번달 워크숍 언제야?", "labels": ["schedule_view"]}
+{"text": "프로젝트 계획서에서 마감일이 언제야 확인하고 적용 가능한지도 봐줘", "labels": ["doc_qa", "judgment"]}
+{"text": "보안 정책에서 비밀번호 변경 주기가 몇 개월이야?", "labels": ["doc_qa"]}
+{"text": "운영 매뉴얼이 너무 두꺼운데 꼭 알아야 할 핵심 내용만 좀 알려줘", "labels": ["doc_summary"]}
+{"text": "성과급 규정 찾아봐", "labels": ["doc_search"]}
+{"text": "복리후생 문서, 요점 요약 부탁할게", "labels": ["doc_summary"]}
+{"text": "급여 발표 회의 추가해줘", "labels": ["schedule_add"]}
+{"text": "회사 보안정책 문서 위치 알려줄래?", "labels": ["doc_search"]}
+{"text": "조직 개편에 따른 각 부서별 업무 분장과 역할 그리고 책임 범위를 구체적으로 정리한 문서를 만들어 주세요", "labels": ["doc_generate"]}
+{"text": "인사 이동 절차 문서 확인 검색하고 연차 사용 가능 시기가 언제인지 아나요", "labels": ["doc_qa", "doc_search"]}
+{"text": "출장 중 식사비는 얼마까지 청구 가능?", "labels": ["judgment"]}
+{"text": "이번 사업연도 경영 성과와 재무 현황을 종합적으로 정리한 연간 경영 보고서를 주요 재무 지표와 함께 작성해 주시기 바랍니다", "labels": ["doc_generate"]}
+{"text": "퇴사 후 경력증명서는 언제 발급되나요?", "labels": ["judgment"]}
+{"text": "신규 서비스 기획안 작성해주세요", "labels": ["doc_generate"]}
+{"text": "경영진 의사 결정에 이 문서에서 개선도", "labels": ["doc_qa", "doc_search"]}
+{"text": "이번 분기 실적 보고서 간략하게 요약해줘", "labels": ["doc_summary"]}
+{"text": "사내 회의 가이드 문서 볼 수 있니 확인하고 이번 분기 재무 보고서 작성, 그걸로 이 문서 내용을 한눈에 보게 정리 해줘", "labels": ["doc_generate", "doc_search", "doc_summary"]}
+{"text": "다음주에 회식 잡혀, 야근 시 저녁 식사비 지원 받나요도 해줘", "labels": ["judgment", "schedule_view"]}
+{"text": "출퇴근 시간 기록 문서 보여줄래?", "labels": ["doc_search"]}
+{"text": "네 이해했습니다 자세한 설명 감사합니다 많은 도움이 됐어요 고맙습니다", "labels": ["general"]}
+{"text": "회의 날짜가 언제로여부랑 시스템 장애 관련", "labels": ["doc_generate", "doc_qa"]}
+{"text": "제안서에 비용 항목이 어떻게 되어있어?", "labels": ["doc_qa"]}
+{"text": "새로운 규정이 생겼어?", "labels": ["general"]}
+{"text": "분기 실적 보고서 핵심 수치만 좀 알려줘", "labels": ["doc_summary"]}
+{"text": "이번 분기 성과 평가 기준은 무엇인지요 확인 후 프로젝트 제안서 작성 결과를 이번 주 연차 계획 확인 해줘", "labels": ["doc_generate", "doc_qa", "schedule_view"]}
+{"text": "마케팅 캠페인 기획서 내용 정리해줄래?", "labels": ["doc_summary"]}
+{"text": "처음 사용해 보는데 기본 사용법 알려주실래요?", "labels": ["general"]}
+{"text": "사내 보안 정책여부랑 다음주에 회식 잡혀", "labels": ["doc_search", "schedule_view"]}
+{"text": "다음 주 수요일에 뭐, 유급휴가 기간 중에 해외여행을 다녀오는 것이 사내 규정상 아무런 문제가 없는 것인지 확인을 하고 싶은데 판단을도 해줘", "labels": ["judgment", "schedule_view"]}
+{"text": "복리후생 정보 간단히 정리해줘", "labels": ["doc_summary"]}
+{"text": "다음 주 화요일에 연차 있나? 그리고 복장 자유야?", "labels": ["judgment", "schedule_view"]}
+{"text": "우리 회사 연차 규정 좀 검색하고 회의록에 다음 회의 일정이 언제래 해줘", "labels": ["doc_qa", "doc_search"]}
+{"text": "약속 있어?, 회사에서 제공한 기기는 퇴사 후 반납해야도 해줘", "labels": ["judgment", "schedule_view"]}
+{"text": "이번 주 연차 계획 보여줘", "labels": ["schedule_view"]}
+{"text": "일정 목록 확인하고 4월 중순에 팀 전체 반차 쓰고 워크숍 하는 일정 등록 해줘", "labels": ["schedule_add", "schedule_view"]}
+{"text": "연구개발비 집행 및 정산 절차에 관한 내부 규정 문서를 조회하고자 찾아서 연구개발 보고서에서 현재 진행률이 몇 퍼센트야 그리고 팀장 승인 없이 반차를 쓰면 문제 해줘", "labels": ["doc_qa", "doc_search", "judgment"]}
+{"text": "연차 사용 시 결재가 필요한가요 하고 재택근무 시 사무실 출근 대신해도 됨 해줘", "labels": ["judgment"]}
+{"text": "해당 ESG 경영 보고서에 기재된 탄소 배출 감축 목표와 실제 감축량 그리고 환경 관련 투자 금액이 각각 얼마로 기록되어 있는지 확인하고 싶습니다", "labels": ["doc_qa"]}
+{"text": "공유해주신 문서의 핵심을 정리해 주시겠어요?", "labels": ["doc_summary"]}
+{"text": "프로젝트 중간에 부서 이동을 요청할 수 있어?", "labels": ["judgment"]}
+{"text": "회사 CCTV로 직원의 근무 태도를 모니터링하면 사생활 침해에 해당하나요?", "labels": ["judgment"]}
+{"text": "비상 대피 훈련 및 재난 대응 매뉴얼이 정리된 문서를 조회할 수 있도록 안내를 좀 부탁 드립니다 확인하고 연간 교육 계획서 작성 해줘", "labels": ["doc_generate", "doc_search"]}
+{"text": "회사 컴퓨터 집에 가져가도 돼?", "labels": ["judgment"]}
+{"text": "보안 문서 요점만 요약해 줘", "labels": ["doc_summary"]}
+{"text": "주말 근무는 어떻게 신청하나요?", "labels": ["judgment"]}
 {"text": "신입사원이 연차를 먼저 사용할 수 있나요?", "labels": ["judgment"]}
+{"text": "재택근무 관련 가이드라인 문서가 있는지 한번 좀 확인 인사 평가 문서 요약 부탁해까지", "labels": ["doc_search", "doc_summary"]}
+{"text": "안녕하세요", "labels": ["general"]}
+{"text": "이 보고서 핵심만 세 줄로 정리해줘", "labels": ["doc_summary"]}
+{"text": "직원 복지포인트 사용 보고 이 내용으로 보고서", "labels": ["doc_generate", "doc_search"]}
+{"text": "복지포인트 양도 가능임?", "labels": ["judgment"]}
+{"text": "이 문서에서 기재하고 있는 제품 보증 기간과 보증 범위가 어떻게 되어 확인하고 고객 피드백 리포트 요약 부탁", "labels": ["doc_qa", "doc_summary"]}
+{"text": "결재 한도 문서 보고 야근 시 저녁 식사비 지원 받나요, 거래처 납품 지연 건에 대한 상세 경위와 구체적인 재발 방지 대책을 포함한 경위서를 이번 주 안에 작성도 해줘", "labels": ["doc_generate", "doc_search", "judgment"]}
+{"text": "다음주 수요일에 팀 빌딩 일정을 넣어 주시겠어요?", "labels": ["schedule_add"]}
+{"text": "이번 주 회의 일정 어떻게 되는지에 맞춰서 이번주 금요일에 사내 발표회 해줘", "labels": ["schedule_add", "schedule_view"]}
+{"text": "회의 일정이 어떻게 되어 있어?", "labels": ["doc_qa"]}
+{"text": "역할과 책임 문서 찾아줄 수 있나요?", "labels": ["doc_search"]}
+{"text": "본 기획서의 핵심 전략 및 주요 목표를 요약이랑 이번 달 급여 보고서 내용 좀 요약 해줘", "labels": ["doc_summary"]}
+{"text": "고객 정보 외부에 공유해도 문제 없나 확인한 다음 차기 연도 사업 계획서를 실행 가능한 수준으로 이번 주 내로 작성 해줘", "labels": ["doc_generate", "judgment"]}
+{"text": "출장비 지급 기준 문서 찾아줘", "labels": ["doc_search"]}
+{"text": "복지 혜택에 변화가 있습니까?", "labels": ["doc_qa"]}
+{"text": "다음주 화요일 저녁에 보안 교육", "labels": ["schedule_add"]}
+{"text": "해당 계약서에서 계약 해제 시 위약금 비율이 어떻게 규정되어 내용 확인하고 오늘 회의 내용으로 회의록 작성 해줘", "labels": ["doc_generate", "doc_qa"]}
+{"text": "이번주 금요일 오후에 세미나 일정을 추가해 주시면 감사하겠습니다", "labels": ["schedule_add"]}
+{"text": "이번 주 출장 보고서 양식 좀 찾아줘. 그리고 대외비로 분류가 된 문서를 재택근무 환경에서 열어서 작업을 하는 것이 보안 규정상 허용이 되는 것인지 확인을 하고 싶습니다", "labels": ["doc_search", "judgment"]}
+{"text": "급여 문서 요약 부탁드립니다", "labels": ["doc_summary"]}
+{"text": "본사 주소가 결과로 복리후생 보고서를 작성 해줘", "labels": ["doc_generate", "doc_qa"]}
+{"text": "출장 결과 문서를 작성해 주세요", "labels": ["doc_generate"]}
+{"text": "사무실 시설물 관리 규정이 있으면 확인하고 이번 주 출장 일정 확인", "labels": ["doc_search", "schedule_view"]}
+{"text": "보안 교육 자료에 확인, 이번 달 보너스도", "labels": ["doc_qa", "judgment"]}
+{"text": "이번 달 매출 실적이 목표 대비 어떻게 돼?", "labels": ["doc_qa"]}
+{"text": "다음 달 전체 캘린더를 열람할 수 있도록 주요 일정 위주로 조회하여 주십시오 찾아서 ㅎㅇ 일정하나 잡아줘 내일 10시 그리고 복리후생 개선안 작성 해줘", "labels": ["doc_generate", "schedule_add", "schedule_view"]}
+{"text": "연간 사업 계획서 요약본 만 정리하고 프로젝트 변경 시, 팀원 합의가 필요한가요 해줘", "labels": ["doc_summary", "judgment"]}
+{"text": "내가 이 공모전에 나가도 되는지?", "labels": ["judgment"]}
+{"text": "4월 1일에 신규 프로젝트 킥오프를 등록해 주세요", "labels": ["schedule_add"]}
+{"text": "이번달 회의 일정을여부랑 회의록을 꼭 작성", "labels": ["doc_generate", "schedule_view"]}
+{"text": "사내 채팅 사용은 허용되나요?", "labels": ["judgment"]}
+{"text": "이 논문의 결론이랑 핵심만 간단히 뽑아줘", "labels": ["doc_summary"]}
+{"text": "문서에서 중요한 결론만 정리해줘 그리고 법인카드로 개인 식비를 결제한 게 적발되면 어떤 수준의 징계를 받는 거야?", "labels": ["doc_summary", "judgment"]}
+{"text": "와 진짜 똑똑하다 너 대화하니까 진짜 신기해", "labels": ["general"]}
+{"text": "사내 교육 정책 자료 어디 있는지 알아 확인하고 급여명세서 새로 만 해줘", "labels": ["doc_generate", "doc_search"]}
+{"text": "사내 동호회 활동 시간 인정되나요?", "labels": ["judgment"]}
+{"text": "이번 분기 성과 평가 기준은 뭐야?", "labels": ["doc_qa"]}
+{"text": "출장비 관련 문서 요약 바랍니다", "labels": ["doc_summary"]}
+{"text": "회의록에 어떤 내용이 들어있어?", "labels": ["doc_qa"]}
+{"text": "주말에 뭐 했어?", "labels": ["general"]}
+{"text": "보안 규정 요약해 줬으면 좋겠어 핵심 정리하고 위반인지도 봐줘", "labels": ["doc_summary", "judgment"]}
+{"text": "비상 대피 훈련 및 재난 대응 매뉴얼이 정리된 문서를 조회할 수 있도록 안내를 좀 부탁 드립니다이랑 오늘 남은 일정이 있는지 해줘", "labels": ["doc_search", "schedule_view"]}
+{"text": "프로젝트 문서 요약 핵심 정리하고 위반인지도 봐줘", "labels": ["doc_summary", "judgment"]}
+{"text": "비자 발급 관련 지침 문서 어디?", "labels": ["doc_search"]}
+{"text": "출퇴근 시간 조정 가능한가요?", "labels": ["judgment"]}
+{"text": "금주 남은 회의 일정과 참석자 명단을 함께 조회 있으면 금요일에 프로젝트 킥오프 회의 해줘", "labels": ["schedule_add", "schedule_view"]}
+{"text": "프로젝트 문서 간단히 요약 부탁드립니다", "labels": ["doc_summary"]}
+{"text": "퇴사 절차 문서 찾아서 우리 부서의 업무 프로세스를 정리한 매뉴얼 문서를 새로 작성 그리고 요약 부탁해 해줘", "labels": ["doc_generate", "doc_search", "doc_summary"]}
+{"text": "연구 기술 보고서 핵심 내용 정리해줘", "labels": ["doc_summary"]}
+{"text": "규정집 주요 항목 위주로 요약 좀 부탁해 그리고 회식 참석 의무인가요?", "labels": ["doc_summary", "judgment"]}
+{"text": "이번 주 인사평가 일정 확인하고 내일 오전에 코드 리뷰 일정 다음에 계약서 만들어 해줘", "labels": ["doc_generate", "schedule_add", "schedule_view"]}
+{"text": "오늘 회의 몇 시였어? 그리고 이번달 남은 일정 확인해줘", "labels": ["schedule_view"]}
+{"text": "점심시간에 회사 밖에서 식사해도 되나요?", "labels": ["judgment"]}
+{"text": "이 규정 문서에서 정하고 있는 개인정보 수집 및 이용에 관한 동의 절차와 보유 기간 및 파기 방법이 어떻게 명시되어 있는지, 복리후생 문서의 요점을 정리, 나 보고서 하나 급하게 만들어야 하는데 도와줄 수까지 전부", "labels": ["doc_generate", "doc_qa", "doc_summary"]}
+{"text": "복리후생 관련 문서 찾아줄래?", "labels": ["doc_search"]}
+{"text": "인사평가 내용 요약 가능해?", "labels": ["doc_summary"]}
+{"text": "복장 규정이랑 위반인지도 알려줘", "labels": ["doc_search", "judgment"]}
+{"text": "사내 이벤트 규정 문서 어디 있니?", "labels": ["doc_search"]}
+{"text": "이번 분기 매출이 얼마야 확인하고 그거 문서로 좀 만들어줘 이번 주 회의 때 쓸 거야 다음에 화욜 3시 뭐 해줘", "labels": ["doc_generate", "doc_qa", "schedule_view"]}
+{"text": "월간 매출 목표 얼마로 설정했는지 아세요? 그리고 인사평가 보고서 써줘", "labels": ["doc_generate", "doc_qa"]}
+{"text": "다음 주 금요일 일정 알아보고 다음 주 월요일 오전 10시에 회의 예약, 가능하면 오늘 미팅 노트 해줘", "labels": ["doc_generate", "schedule_add", "schedule_view"]}
+{"text": "복장 규정에 뭐라고 적혀, 급여명세서 작성법 문서 요약 부탁해도 해줘", "labels": ["doc_qa", "doc_summary"]}
+{"text": "출장비 관련 규정 문서 관련 부분 경쟁사 분석 보고서 분량이 엄청 방대한데 우리 사업에 직접적으로 영향이 있는 부분만 따로 요약해 주실 수 해줘", "labels": ["doc_search", "doc_summary"]}
+{"text": "이번 주 회의 일정 알려줄래?", "labels": ["schedule_view"]}
+{"text": "급여관련 제안서 써줘", "labels": ["doc_generate"]}
+{"text": "경쟁사 이직 제안 받았는데 면접 봐도 되나?", "labels": ["judgment"]}
+{"text": "회의록에 적힌 핵심 찾아줘, 회의록 작성 부탁해도", "labels": ["doc_generate", "doc_qa"]}
+{"text": "내일 아침 8시 반에 경영진 브리핑 준비 회의를 잡아줘", "labels": ["schedule_add"]}
+{"text": "성과급규정 어딧어?", "labels": ["doc_search"]}
+{"text": "이번 주 빈 시간 확인하고 워크숍 넣어줘", "labels": ["schedule_view", "schedule_add"]}
+{"text": "오늘 일정 뭐야?", "labels": ["schedule_view"]}
+{"text": "올해 보너스 책정이랑 보안 규정 요약", "labels": ["doc_qa", "doc_summary"]}
+{"text": "연차 관련 문서의 핵심 내용을 요약해 주세요", "labels": ["doc_summary"]}
+{"text": "다음주 월요일부터 수요일까지 워크숍 등록", "labels": ["schedule_add"]}
+{"text": "복지 혜택에 변화가 있었는지요?", "labels": ["doc_qa"]}
+{"text": "다음주 데모 발표 일정이 어떻게 되나?", "labels": ["schedule_view"]}
+{"text": "아침은 먹었어?", "labels": ["general"]}
+{"text": "보안 규정 파일 좀 토대로 출장 계획서 써 해줘", "labels": ["doc_generate", "doc_search"]}
+{"text": "야근 시 저녁 식사비 지원 받나요 하고 출장지에서 숙박비 초과분은 자비 부담인 건가 해줘", "labels": ["judgment"]}
+{"text": "규정 찾아줘, 위반인지도 봐줘", "labels": ["doc_search", "judgment"]}
+{"text": "이 매뉴얼에서 주요 내용만 요약 가능해?", "labels": ["doc_summary"]}
+{"text": "급여 규정 조회 토대로 보안 점검 문서 만 해줘", "labels": ["doc_generate", "doc_search"]}
+{"text": "지난달에 발생한 서버 장애 건에 대한 사후 분석 보고서를 작성해줘", "labels": ["doc_generate"]}
+{"text": "사내 메신저 사용 규정 문서를 검색하고 비상 상황 대응 매뉴얼 포인트만 정리 해줘", "labels": ["doc_search", "doc_summary"]}
+{"text": "프로젝트 계획서 어딨어?", "labels": ["doc_search"]}
+{"text": "다음 주에 뭐 할 거야?", "labels": ["general"]}
+{"text": "이번달 남은 기간 중에 하루 종일 비어있는 날이 있는지 확인해줘", "labels": ["schedule_view"]}
+{"text": "잘 지냈어?", "labels": ["general"]}
+{"text": "내일 면접잡아줘 2시에", "labels": ["schedule_add"]}
+{"text": "현재 운영 중인 시스템의 아키텍처를 정리한 기술 문서를 새로 작성해줘", "labels": ["doc_generate"]}
+{"text": "신규 사업 기획안에서 타겟 고객층이 누구야?", "labels": ["doc_qa"]}
+{"text": "오늘 남은 일정이 뭐가 있는지 시간순으로 정리해서 보고 다음달 첫째 주 화요일에 신입 사원 온보딩 교육 일정을 3일간 추가, 보안 프로토콜 제안서 만도 해줘", "labels": ["doc_generate", "schedule_add", "schedule_view"]}
+{"text": "연차 며칠 남았어?", "labels": ["doc_qa"]}
+{"text": "퇴직사유서 양식 찾을 수 있니?", "labels": ["doc_search"]}
+{"text": "주차장 이용 관련 규정 문서를도 보고 싶고 다음주 월요일 일정도 궁금해 해줘", "labels": ["doc_search", "schedule_view"]}
+{"text": "코드 리뷰 가이드라인 문서 위치 확인하고 차주 수요일의 미팅 스케줄을 확인하여 주십시오 해줘", "labels": ["doc_search", "schedule_view"]}
+{"text": "다음주 월요일에 팀 미팅 있어? 그리고 팀별 사내 경연대회 참여는 필수인가요?", "labels": ["judgment", "schedule_view"]}
+{"text": "신입사원 교육 가이드 문서 어디야 사례 정리해줘", "labels": ["doc_search", "doc_summary"]}
+{"text": "다음주에 고객사 미팅이 잡혀있는지 확인하고 날짜랑 시간을 알려줘", "labels": ["schedule_view"]}
+{"text": "1년 미만 근무자도 퇴직금 받을 수, 팀 프로젝트에서 역할 변경이 가능한가도 해줘", "labels": ["judgment"]}
+{"text": "점유율 몇이야?", "labels": ["doc_qa"]}
+{"text": "퇴직금 산정 기준 자료 검색해줘", "labels": ["doc_search"]}
+{"text": "다음주 금요일 오후 3시에 QA팀과 버그 트리아지 미팅을 등록해줘", "labels": ["schedule_add"]}
+{"text": "이번 주 회의 일정 좀 확인 확인하고 업무용 핸드폰을 퇴근 후에 꺼놔도 해줘", "labels": ["judgment", "schedule_view"]}
+{"text": "다음 미팅 준비는 다 됐어요?", "labels": ["general"]}
+{"text": "출장 계획서에 필요한 서류가 뭐야?", "labels": ["doc_qa"]}
+{"text": "야근 수당 규정이랑 적용 가능한지 봐줘", "labels": ["doc_search", "judgment"]}
+{"text": "연차 사용 규정의 핵심 내용을 알고 싶어", "labels": ["doc_summary"]}
+{"text": "부서 이동 요청 가능한 시기가 있나요?", "labels": ["judgment"]}
+{"text": "출장 결과 보고서 만들어줘", "labels": ["doc_generate"]}
+{"text": "이번 주 회의 일정 있어?", "labels": ["schedule_view"]}
+{"text": "고객사에서 보내 온 계약서인데 우리한테 중요한 주요 조건만 정리 부탁", "labels": ["doc_summary"]}
+{"text": "이번 해커톤에서 우리 팀이 개발한 프로토타입의 기술 사양과 비즈니스 활용 가치를 담은 프로젝트 보고서를 만들어 주세요", "labels": ["doc_generate"]}
+{"text": "법카규정 어딧지 보고 백엔드 개발자 JD에서", "labels": ["doc_qa", "doc_search"]}
+{"text": "회의록 작성 기준 알려주고 기존 급여명세서 내용 간단히 정리도 해줘", "labels": ["doc_qa", "doc_summary"]}
+{"text": "기업 보안 문서의 핵심 포인트가 뭐야?", "labels": ["doc_summary"]}
+{"text": "오늘 하루 어땠어?", "labels": ["general"]}
+{"text": "사내 메일 필터링여부랑 남은 일정", "labels": ["doc_search", "schedule_view"]}
+{"text": "총비용 얼마야, 재택근무 하는 날에 부탁", "labels": ["doc_qa", "judgment"]}
+{"text": "이 기획서에 필요한 장비 목록이 뭐야? 그리고 본 조직 개편안의 주요 변경 사항과 각 부서별 역할 변화를 한눈에 볼 수 있도록 요약 정리해 주시기 바랍니다", "labels": ["doc_qa", "doc_summary"]}
+{"text": "이번 주 회의 일정 빈 시간 있으면 다음주 화요일 저녁에 인사 리뷰 해줘", "labels": ["schedule_add", "schedule_view"]}
+{"text": "연차 계획 문서 좀 만들어줘", "labels": ["doc_generate"]}
+{"text": "다음주 빈 날 있어?", "labels": ["schedule_view"]}
+{"text": "화요일에 무슨 회의 확인하고 가능한지 판단해줘", "labels": ["judgment", "schedule_view"]}
+{"text": "경조사 휴가가 주말을 포함하는 건지 궁금해요", "labels": ["judgment"]}
+{"text": "건강검진 지원 규정 문서를 좀 찾아주실래요 찾아서 고객사 미팅 회의록 작성 그리고 사내 메신저 사용 정책 요약 해줘", "labels": ["doc_generate", "doc_search", "doc_summary"]}
+{"text": "회의실 예약 상황 찾아줘, 부서 간 협업도", "labels": ["doc_generate", "schedule_view"]}
+{"text": "오늘 회의가 총 몇 건이고 각각 몇 시에 시작하는지 비는지 보고 3월 첫째 주 월요일 9시에 분기 계획 회의를 등록 해줘", "labels": ["schedule_add", "schedule_view"]}
+{"text": "출장 관련 문서를 작성해 주세요", "labels": ["doc_generate"]}
+{"text": "3월 5일에 면접 일정 추가해줘", "labels": ["schedule_add"]}
+{"text": "회사 노트북으로 개인 작업 해도 돼?", "labels": ["judgment"]}
+{"text": "신규 입사자 안내책자 어디 확인하고 이번 분기 남은 기간 동안 예정된 워크숍과 교육 일정을 모두 조회하여 주십시오 해줘", "labels": ["doc_search", "schedule_view"]}
+{"text": "보안 구역에 외부인을여부랑 해외 지사 설립을", "labels": ["doc_generate", "judgment"]}
+{"text": "복리후생 제도 안내 문서를 확인할 수 있는 위치를 알려 주십시오 찾아서 요약해줘", "labels": ["doc_search", "doc_summary"]}
+{"text": "3월 전체 일정 중에서 고객사 관련 미팅만 따로, 3월 초에 인사평가 미팅, 시니어 풀스택 개발자 채용을 위한 JD를 우리 회사의 기술 스택과 조직 문화에 맞춰서 상세하게 작성까지 전부", "labels": ["doc_generate", "schedule_add", "schedule_view"]}
+{"text": "이번달 마지막 주이랑 이번주 목요일에 부서 해줘", "labels": ["schedule_add", "schedule_view"]}
+{"text": "매일 아침 9시 데일리 스크럼 잡아줘", "labels": ["schedule_add"]}
+{"text": "신규 입사자 안내문의 핵심 정리, 제안서 만도 해줘", "labels": ["doc_generate", "doc_summary"]}
+{"text": "온보딩매뉴얼 찾아바", "labels": ["doc_search"]}
+{"text": "이번 달 부서 회의 일정을 조회하여 주십시오", "labels": ["schedule_view"]}
+{"text": "급여 인상 신청서 작성해줘", "labels": ["doc_generate"]}
+{"text": "출퇴근 시간에 변경 사항이 있습니까 찾아서 사내 데이터를 개인 클라우드 계정에 백업하는 행위가 정보보안 규정을 위반하는 것에 해당이 되는 것인지 판단을 판단하고 결과를 보안 점검 제안서를 작성 해줘", "labels": ["doc_generate", "doc_qa", "judgment"]}
+{"text": "이번 주 수요일 오전 스케줄 확인하고 우리 팀에서 필요한 머신러닝 엔지니어 JD를 경력 3년 이상으로 작성 해줘", "labels": ["doc_generate", "schedule_view"]}
+{"text": "스케줄 확인", "labels": ["schedule_view"]}
+{"text": "직원 평가 기준 문서 요청할래", "labels": ["doc_search"]}
+{"text": "3월 18일 10시에 경영진 보고를 등록해 주시기 바랍니다", "labels": ["schedule_add"]}
+{"text": "이 계약서 해지 조건이 찾아서 파견 거부 가능 그리고 오늘 미팅 노트 해줘", "labels": ["doc_generate", "doc_qa", "judgment"]}
+{"text": "회의 기록 요약 가능해?", "labels": ["doc_summary"]}
+{"text": "품의서 만들어", "labels": ["doc_generate"]}
+{"text": "오늘 회의 잘 했어?", "labels": ["general"]}
+{"text": "잠깐 쉬었다가 다시 하자 잠시만 기다려", "labels": ["general"]}
+{"text": "개발팀에서 이번 달 진행한 작업 내역을 정리한 월간 보고서를 만들어줘", "labels": ["doc_generate"]}
+{"text": "부서별 연락처 문서 어디에이랑 복리후생 정책 문서 볼 수 해줘", "labels": ["doc_search"]}
+{"text": "기분이 어때?", "labels": ["general"]}
+{"text": "수습기간 급여 깍아도됨?", "labels": ["judgment"]}
+{"text": "오늘 저녁 7시에 팀 회식 넣어줘", "labels": ["schedule_add"]}
+{"text": "사내 회의 가이드, 프로젝트 킥오프 회의록 부탁", "labels": ["doc_generate", "doc_search"]}
+{"text": "업무 성공 사례집 문서 링크 좀 찾아서 출장비 문서 요약 간단히 부탁해, 병가를 전화로만 신청해도까지", "labels": ["doc_search", "doc_summary", "judgment"]}
+{"text": "조심히 가", "labels": ["general"]}
+{"text": "4월 신입사원 교육 일정을 3일간 편성하여 주시기 바랍니다", "labels": ["schedule_add"]}
+{"text": "상사랑 회식 불참하면 불이익 있나?", "labels": ["judgment"]}
+{"text": "내일 몇 개 미팅 있어?", "labels": ["schedule_view"]}
+{"text": "이번 분기 성과이랑 이 회의록 핵심 해줘", "labels": ["doc_qa", "doc_summary"]}
+{"text": "프로젝트 계획 문서 작성해줘", "labels": ["doc_generate"]}
+{"text": "업무 중에 개인 전화 받으면 안 되나?", "labels": ["judgment"]}
+{"text": "회의록 요점만 요약해 줘 그리고 보안 점검 보고서 작성해 줘", "labels": ["doc_generate", "doc_summary"]}
+{"text": "사내 정보를 개인 블로그나 SNS에 올리는 것이 보안 규정 위반인 거야?", "labels": ["judgment"]}
+{"text": "다음 주 출장 계획 있어?", "labels": ["schedule_view"]}
+{"text": "내일 팀미팅 시간 알려줘", "labels": ["schedule_view"]}
+{"text": "3월 일정 보여줘", "labels": ["schedule_view"]}
+{"text": "다음 주 금요일 일정 있나 확인이랑 기술 검토 보고서 만 해줘", "labels": ["doc_generate", "schedule_view"]}
+{"text": "본 계약서에 규정된 하자보수 책임 기간 및 보증 범위는 어떻게 명시되어 있습니까 찾아서 정시에 퇴근을 했는데 상사가 눈치를 주는 상황이라면 이것이 규정상으로는 아무런 문제가 없는 것이 맞는지 확인하고 싶습니다 판단하고 결과를 다음 주 출장 계획서 작성 해줘", "labels": ["doc_generate", "doc_qa", "judgment"]}
+{"text": "연구개발비 집행 및 정산 절차에 관한 내부 규정 문서를 조회하고자, 출장 보고서를 제출 안 하면 문제가, 복리후생 관련 문서 핵심 문장만까지 전부", "labels": ["doc_search", "doc_summary", "judgment"]}
+{"text": "사내 윤리 경영 실천 지침이 기재된 공식 규정 문서의 소재를 파악할 수 있도록 도움을 주실 수 있을까요부터 연차 소진을 안 하면 불이익이까지 다 알려줘", "labels": ["doc_search", "judgment"]}
+{"text": "비밀유지 협약서 전문 보여줄래?", "labels": ["doc_search"]}
+{"text": "인사 기록에 내 확인, 이 데이터로 보고서도", "labels": ["doc_generate", "doc_qa"]}
+{"text": "프로젝트 팀원 배정 어떻게 됐어?", "labels": ["doc_qa"]}
+{"text": "연차 규정에 따르면 연차 어떻게 사용하지?", "labels": ["doc_qa"]}
+{"text": "업무 시간에 대한, 복리후생 평가 보고서 부탁", "labels": ["doc_generate", "doc_qa"]}
+{"text": "출장비 문서 요약해줄래?", "labels": ["doc_summary"]}
+{"text": "본 제안서에 제시된 기대 효과 및 정량적 성과 지표는 무엇입니까 보고 근무 중에 이어폰 사용해도 해줘", "labels": ["doc_qa", "judgment"]}
+{"text": "회의록 전체 파일 좀 찾아줘", "labels": ["doc_search"]}
+{"text": "처음 뵙겠습니다 앞으로 함께 일하게 됐는데 많이 배우고 싶습니다 잘 부탁드리겠습니다", "labels": ["general"]}
+{"text": "보안 관련 제안서를 작성해 주세요", "labels": ["doc_generate"]}
+{"text": "3월 25일 오전 11시에 발표 리허설을 등록해 주세요", "labels": ["schedule_add"]}
+{"text": "예산 책정에 어떤이랑 이 자료 좀 해줘", "labels": ["doc_qa", "doc_summary"]}
+{"text": "임직원 해외 출장 시에 적용이 되는 경비 정산 규정 및 지침이 수록된 문서의 위치를 안내하여 주십시오 찾아서 출장비 회사에서 지원, 연차 문서까지", "labels": ["doc_search", "doc_summary", "judgment"]}
+{"text": "다음주 금요일 오후에 클라이언트 피드백", "labels": ["schedule_add"]}
+{"text": "연차촉진 안내 무시해도 되는건지 궁금함", "labels": ["judgment"]}
+{"text": "사내 게시판에 광고 올려도 돼?", "labels": ["judgment"]}
+{"text": "이력서 만들어줘", "labels": ["doc_generate"]}
+{"text": "프로젝트 보고서 샘플 문서 있니?", "labels": ["doc_search"]}
+{"text": "수요일 점심시간에 뭐 있더라?", "labels": ["schedule_view"]}
+{"text": "이번주 금요일 저녁에 송별회 잡아줘", "labels": ["schedule_add"]}
+{"text": "이번주 매일 오전 10시에 스탠드업 미팅이 잘 들어가 있는지 확인, 이번 주 회의 일정 좀 확인도 해줘", "labels": ["schedule_view"]}
+{"text": "연차 사용 관련 사내 규정 어디 확인하고 할인율 몇프로야 다음에 동료한테 사내 기밀 문서 공유해도 해줘", "labels": ["doc_qa", "doc_search", "judgment"]}
+{"text": "인사평가 문서 요점만 요약 핵심만 뽑아서 보안 점검 결과 보고서 좀 작성해 해줘", "labels": ["doc_generate", "doc_summary"]}
+{"text": "담당부서 어디야? 그리고 인사평가 문서 요점만 요약 부탁해", "labels": ["doc_qa", "doc_summary"]}
+{"text": "연차 사용 규정에서 신청 절차는 어떻게 찾아서 프로젝트 계획서 전체 요약 좀, 출장 결과 보고서를 작성까지", "labels": ["doc_generate", "doc_qa", "doc_summary"]}
+{"text": "식사는 하셨나요?", "labels": ["general"]}
+{"text": "이 규정에서 정한 연간 교육 이수 의무 시간과 대상 교육 과정은 무엇입니까 찾아서 경조사 허위 신고하면 어케돼 이거, 해당 프로젝트에 대한 최종 완료 보고서를 이번 주 안에 작성해 주시겠습니까까지", "labels": ["doc_generate", "doc_qa", "judgment"]}
+{"text": "내일 뭐야, 업무용 차량은 개인용으로 전환 가능한가요, 일정 추가까지 전부", "labels": ["judgment", "schedule_add", "schedule_view"]}
+{"text": "사내 규정 변동 사항 확인됐어?", "labels": ["doc_qa"]}
+{"text": "사내 장비 사용 규정 문서 보여줘", "labels": ["doc_search"]}
+{"text": "연말정산 정보 관련 자료 토대로 인수인계 문서 만 해줘", "labels": ["doc_generate", "doc_search"]}
+{"text": "사내 메일 템플릿 문서 어디, 출장비 정책 간단히 설명, 메일로 지시 받으면 문제가 되나까지 전부", "labels": ["doc_search", "doc_summary", "judgment"]}
+{"text": "사원증 발급 규정 문서 있어요, 오늘 남은 일정이 뭐가 있는지 시간순으로 정리해서도 해줘", "labels": ["doc_search", "schedule_view"]}
+{"text": "이번달 남은 기간 동안 잡혀있는 회의 일정을 날짜별로 정리해서 확인하고 이번주 월요일 오후에 브레인스토밍 세션을 추가 다음에 올해 채용 계획에 맞춰서 PM 직무 관련 채용 공고를 작성 해줘", "labels": ["doc_generate", "schedule_add", "schedule_view"]}
+{"text": "4월 셋째 주에 예정된 교육이나 워크숍 일정이 있는지 확인하여 주십시오", "labels": ["schedule_view"]}
+{"text": "보안 문서 요약 정리해서 회의록 작성해 주실래요 해줘", "labels": ["doc_generate", "doc_summary"]}
+{"text": "다음주 목요일 오후 2시에 인사팀과 채용 계획 논의 미팅을 넣어 주시기 바랍니다", "labels": ["schedule_add"]}
+{"text": "직원 복장 코드 문서 찾아봐", "labels": ["doc_search"]}
+{"text": "지난 회의록에 뭐가, 회의 내용 요약해서 부탁", "labels": ["doc_qa", "doc_summary"]}
+{"text": "다음주 목요일 1시에 인터뷰 넣어", "labels": ["schedule_add"]}
+{"text": "이번 해 신규 채용을 위한 각 직무별 JD를 시장 수준에 맞게 작성해 주세요", "labels": ["doc_generate"]}
+{"text": "인사평가 자료 작성해 줘", "labels": ["doc_generate"]}
+{"text": "이번 회의록에 참석자가 몇 명이었어?", "labels": ["doc_qa"]}
+{"text": "신규 입사자 안내문 작성 부탁해", "labels": ["doc_generate"]}
+{"text": "야근 수당 지급 기준에 관한 규정 문서를 보여 주실 수 있나요?", "labels": ["doc_search"]}
+{"text": "근로시간 이외의 시간에 사용을 하는 회사에서 지급한 장비에 개인적인 용도의 소프트웨어를 설치해도 규정상 문제가 없는 것인가요?", "labels": ["judgment"]}
+{"text": "성과급 산정 기준 적힌 문서 보여줘", "labels": ["doc_search"]}
+{"text": "급여 문서 주요 내용만 얘기해줘", "labels": ["doc_summary"]}
+{"text": "해당 문서에 수록된 조직도상 보고 체계 및 의사결정 구조는 어떻게 구성되어 있습니까 확인하고 연간 실적 보고서 요약 좀 해줄 수 해줘", "labels": ["doc_qa", "doc_summary"]}
+{"text": "사내 출장 신청 양식 찾아줘", "labels": ["doc_search"]}
+{"text": "4월 둘째 주의 교육 일정이 편성되어 있는지 상세히 조회 찾아서 3월 말에 회계 감사 일정, 프로젝트 문서 작성까지", "labels": ["doc_generate", "schedule_add", "schedule_view"]}
+{"text": "보안 점검 일정 언제야 찾아서 주 52시간을 초과해서 근무하면 근로기준법 위반으로 회사에 제재가 그리고 복리후생 자료 작성 해줘", "labels": ["doc_generate", "doc_qa", "judgment"]}
+{"text": "다음 주 회의 일정 확인해줘", "labels": ["schedule_view"]}
+{"text": "이번주 토요일 오전에 팀 빌딩 액티비티 일정을 넣어줘", "labels": ["schedule_add"]}
+{"text": "다음주 금요일 저녁에 인사 모임", "labels": ["schedule_add"]}
+{"text": "다음 달 회의록 작성해주세요", "labels": ["doc_generate"]}
+{"text": "인사평가 문서 위반 여부까지 확인해줘", "labels": ["doc_search", "judgment"]}
+{"text": "연차 규정 어디?", "labels": ["doc_search"]}
+{"text": "목요일 아침 9시 스탠드업 잡아", "labels": ["schedule_add"]}
+{"text": "이 보고서에서 분석한 확인, 주간보고 써도", "labels": ["doc_generate", "doc_qa"]}
+{"text": "실적 보고서 주요 성과 지표만 요약 좀 부탁해 요약하고 이번 평가는 작년보다 어려운가 해줘", "labels": ["doc_summary", "judgment"]}
+{"text": "시장 동향 보고서에서 우리 업계에 관련된 핵심 트렌드 위주로 요약 정리해줘", "labels": ["doc_summary"]}
+{"text": "이번 주 회의 일정 확인 그리고 주간보고 써줘", "labels": ["doc_generate", "schedule_view"]}
+{"text": "사내 교육 이수 의무에 대한 규정과 관련 문서가 어디에 있는지 알아보고 보안 절차 문서의 중요한 부분만 요약, 가능하면 사내 추천 채용 제도로 직계 가족을 추천하면 이해충돌 규정에 저촉됩니까 해줘", "labels": ["doc_search", "doc_summary", "judgment"]}
+{"text": "점심 뭐 먹었어?", "labels": ["general"]}
+{"text": "해외 출장 체크리스트 문서 있어? 그리고 예산 책정 기준이 뭐야?", "labels": ["doc_qa", "doc_search"]}
+{"text": "사내 동호회 활동 도중에 부상을 당하면 산업재해로 인정이 되는 건가 검토하고 수정본 만들어줘", "labels": ["doc_generate", "judgment"]}
+{"text": "이탈률 몇이야?", "labels": ["doc_qa"]}
+{"text": "회의 참석자 명단 볼 수 있니?", "labels": ["doc_search"]}
+{"text": "보안 감사 결과 어떻게 나왔어 확인해서 내부 세미나 관련 회의록 만 해줘", "labels": ["doc_generate", "doc_qa"]}
+{"text": "마케팅 보고서에서 올해 광고 예산이 얼마야?", "labels": ["doc_qa"]}
+{"text": "이번 달 급여 보고서에서 총액이 얼마나 돼?", "labels": ["doc_qa"]}
+{"text": "임원 보수 및 퇴직위로금 지급에 관한 규정 문서를 열람하고자 검색하고 기존 급여명세서 내용 간단히 정리 해줘", "labels": ["doc_search", "doc_summary"]}
+{"text": "목욜 오후 비어있어?", "labels": ["schedule_view"]}
+{"text": "법인카드 사용 가이드이랑 이 기획서에 기술된 해줘", "labels": ["doc_qa", "doc_search"]}
+{"text": "주말에 뭐 했어?", "labels": ["general"]}
+{"text": "수욜에 면접있나 그리고 나 보고서 하나 급하게 만들어야 하는데 도와줄 수 있어?", "labels": ["doc_generate", "schedule_view"]}
+{"text": "야근 신청 관련 절차 규정 보여줘", "labels": ["doc_search"]}
+{"text": "계약금 얼마야?", "labels": ["doc_qa"]}
+{"text": "초과근무 규정에 월 한도 시간이 몇 시간이야, 인수인계 문서 만도 해줘", "labels": ["doc_generate", "doc_qa"]}
+{"text": "사내 메일 필터링 규정 찾아이랑 이번 프로젝트에서 선택한 기술 스택과 각 단계별 의사결정 과정을 상세하게 담은 기술 보고서를 해줘", "labels": ["doc_generate", "doc_search"]}
+{"text": "3월 일정이 어떻게 돼?", "labels": ["schedule_view"]}
+{"text": "잘 가", "labels": ["general"]}
+{"text": "4월 초에 보안 워크숍 일정 추가해", "labels": ["schedule_add"]}
+{"text": "임직원 겸업 및 겸직 금지에 관한 규정 문서를 열람하고 싶은데 해당 문서 위치를 안내 보고 프로젝트 제안서 내용 요약 좀 해줄래요, 법인카드로 택시비를 결제해도 되는 건가요도 해줘", "labels": ["doc_search", "doc_summary", "judgment"]}
+{"text": "비밀번호 변경 지침 문서 부탁해", "labels": ["doc_search"]}
+{"text": "사내 정보보안 교육 관련 규정 문서를 한번 보여 주실 수 찾아서 인사평가 문서 작성 그리고 회의록 주요 내용 정리 해줘", "labels": ["doc_generate", "doc_search", "doc_summary"]}
+{"text": "다음 달 프로젝트 스케줄 알려줄래?", "labels": ["schedule_view"]}
+{"text": "지난 회의 기록의 핵심 안건을 요약해 주세요", "labels": ["doc_summary"]}
+{"text": "이번 주 팀 회의에서 다음 마일스톤 날짜가 언제야?", "labels": ["doc_qa"]}
+{"text": "야근 수당 관련 규정 있으면이랑 이번 주 회의 언제였지 해줘", "labels": ["doc_search", "schedule_view"]}
+{"text": "ㅂㄱㅅ 작성, 오늘 회의 내용으로 회의록 만도 해줘", "labels": ["doc_generate"]}
+{"text": "프레젠테이션 템플릿 검색, 인사 규정 개정안에서 변경된 조항이도 해줘", "labels": ["doc_qa", "doc_search"]}
+{"text": "내일 오전 스케줄이 어떻게 되는지 알려 주세요 그리고 해외 출장 시 통역 서비스 지원되나요?", "labels": ["judgment", "schedule_view"]}
+{"text": "승인자 누구야?", "labels": ["doc_qa"]}
+{"text": "보안 규정 문서 작성해줘", "labels": ["doc_generate"]}
+{"text": "오랜만에 날씨가 좋으니까 기분 전환되네", "labels": ["general"]}
+{"text": "임직원 복무 규정 전문이 담긴 문서가 어디 있는지 알려주세요", "labels": ["doc_search"]}
+{"text": "회의록 작성 지침은 무엇입니까?", "labels": ["doc_qa"]}
+{"text": "출근 잘 했어?", "labels": ["general"]}
+{"text": "고객 정보를 외부 메일로 보내면 위반이야?", "labels": ["judgment"]}
+{"text": "근태 관리 문서 찾아줘", "labels": ["doc_search"]}
+{"text": "연구개발비 집행 및 정산 절차에 관한 내부 규정 문서를 조회하고자, 사내 Wi-Fi에 개인 기기를 연결해도, 인사 관련 계획서를 작성까지 전부", "labels": ["doc_generate", "doc_search", "judgment"]}
+{"text": "복지 혜택에 변화가 있어?", "labels": ["doc_qa"]}
+{"text": "요약좀 부탁", "labels": ["doc_summary"]}
+{"text": "회사에서 제공한 장비 반납은 언제까지 해야 하나요?", "labels": ["judgment"]}
+{"text": "3월 일정 전체이랑 출장 결과 보고서 작성 해줘", "labels": ["doc_generate", "schedule_view"]}
+{"text": "인사평가 문서 요약본 필요해", "labels": ["doc_summary"]}
+{"text": "하 오늘도 야근인가 보다 집에 가고 싶다", "labels": ["general"]}
+{"text": "다음주 월요일 스케줄을 보여 주시겠어요?", "labels": ["schedule_view"]}
+{"text": "회의 안건 정리해서 문서로 만들어줘.", "labels": ["doc_generate"]}
+{"text": "개인정보 보호 관련 지침 문서를 찾아주세요 그리고 내일 오후에 미팅이 있는지 알려 주세요", "labels": ["doc_search", "schedule_view"]}
+{"text": "프로젝트 킥오프 미팅 언제야?", "labels": ["schedule_view"]}
+{"text": "출장 보고서는 무엇을 포함해야 해? 그리고 핵심 좀 뽑아", "labels": ["doc_qa", "doc_summary"]}
+{"text": "이 문서가 너무 길어서 회의 시간 안에 다 읽을 수가 없는데 핵심 내용만 요약해서 알려 주실 수 정리하고 회사 보안 정책 어기면 어떻게 해줘", "labels": ["doc_summary", "judgment"]}
+{"text": "다음주 화요일 오후에 보안 점검", "labels": ["schedule_add"]}
+{"text": "회사 장비를 분실했을 때 개인이 변상해야 하는 것인지 자산 관리 규정을 확인하고 싶어요", "labels": ["judgment"]}
