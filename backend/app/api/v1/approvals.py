@@ -106,8 +106,8 @@ async def list_approval_history(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """내가 보낸 요청 중 처리 완료된 목록 (approved / rejected)"""
-    if status not in ("approved", "rejected"):
+    """내가 보낸 요청 목록 (pending / approved / rejected)"""
+    if status not in ("approved", "rejected", "pending"):
         status = "approved"
     query = (
         select(ApprovalRequest)

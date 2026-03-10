@@ -119,15 +119,17 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
     const loadAll = async () => {
         setLoading(true);
         try {
-            const [pendingRes, approvedRes, rejectedRes] = await Promise.all([
+            const [pendingRes, approvedRes, rejectedRes, myPendingRes] = await Promise.all([
                 client.get('/approvals/', { params: { status: 'pending' } }).catch(() => ({ data: [] })),
                 client.get('/approvals/history', { params: { status: 'approved' } }).catch(() => ({ data: [] })),
                 client.get('/approvals/history', { params: { status: 'rejected' } }).catch(() => ({ data: [] })),
+                client.get('/approvals/history', { params: { status: 'pending' } }).catch(() => ({ data: [] })),
             ]);
             const all = [
                 ...(Array.isArray(pendingRes.data) ? pendingRes.data : []),
                 ...(Array.isArray(approvedRes.data) ? approvedRes.data : []),
                 ...(Array.isArray(rejectedRes.data) ? rejectedRes.data : []),
+                ...(Array.isArray(myPendingRes.data) ? myPendingRes.data : []),
             ];
             setItems(all);
         } catch {
@@ -463,14 +465,17 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
         );
     };
 
-    /* ── Sent 카드 (보낸 요청 - Approved/Rejected 통합) ── */
+    /* ── Sent 카드 (보낸 요청 - Pending/Approved/Rejected) ── */
     const renderSentCard = (item) => {
         const cfg = typeConfig[item.type] || defaultTypeConfig;
         const IconComp = cfg.icon;
         const isApproved = item.status === 'approved';
-        const cardBg = isApproved
-            ? 'bg-emerald-50/40 dark:bg-emerald-900/10'
-            : 'bg-rose-50/40 dark:bg-rose-900/10';
+        const isPending = item.status === 'pending';
+        const cardBg = isPending
+            ? 'bg-white/60 dark:bg-neutral-800/60'
+            : isApproved
+                ? 'bg-emerald-50/40 dark:bg-emerald-900/10'
+                : 'bg-rose-50/40 dark:bg-rose-900/10';
         return (
             <motion.div
                 key={item.id}
@@ -489,12 +494,15 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                         </div>
                         <span className="text-[11px] font-semibold text-slate-400">{cfg.label}</span>
                     </div>
-                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${isApproved
-                        ? 'bg-emerald-50 text-emerald-500 dark:bg-emerald-900/30'
-                        : 'bg-rose-50 text-rose-500 dark:bg-rose-900/30'
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        isPending
+                            ? 'bg-slate-100 text-slate-400 dark:bg-slate-700/40'
+                            : isApproved
+                                ? 'bg-emerald-50 text-emerald-500 dark:bg-emerald-900/30'
+                                : 'bg-rose-50 text-rose-500 dark:bg-rose-900/30'
                     }`}>
-                        {isApproved ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
-                        {isApproved ? 'Approved' : 'Rejected'}
+                        {isPending ? <Clock size={10} /> : isApproved ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
+                        {isPending ? '대기중' : isApproved ? 'Approved' : 'Rejected'}
                     </span>
                 </div>
                 <h4 className="text-[13px] font-bold text-slate-700 dark:text-slate-200 leading-snug mb-1 line-clamp-2">{item.title}</h4>
@@ -514,7 +522,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                     {item.requester_avatar ? (
                         <img src={item.requester_avatar} alt="" className="w-7 h-7 rounded-full object-cover ring-2 ring-white dark:ring-neutral-800" />
                     ) : (
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${isApproved ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-500'}`}>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${isPending ? 'bg-slate-100 dark:bg-slate-700/30 text-slate-500' : isApproved ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-500'}`}>
                             {(item.requester_name || '?')[0]}
                         </div>
                     )}
@@ -529,8 +537,8 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
         );
     };
 
-    const pendingItems = items.filter(i => i.status === 'pending');
-    const sentItems = items.filter(i => (i.status === 'approved' || i.status === 'rejected') && (!user || String(i.requester_id) === String(user.id)));
+    const pendingItems = items.filter(i => i.status === 'pending' && (!user || String(i.requester_id) !== String(user.id)));
+    const sentItems = items.filter(i => user && String(i.requester_id) === String(user.id));
 
     /* ── New Tasks 탭 전환 시 데이터 로드 ── */
     const switchNewTasksTab = (tab) => {
@@ -981,7 +989,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                     <motion.div
                         initial={{ scale: 0.95, opacity: 0, y: 20 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
-                        className={`relative backdrop-blur-xl rounded-[2.5rem] shadow-2xl w-full max-w-lg mx-4 overflow-hidden ${selectedSent.status === 'approved' ? 'bg-emerald-50/70 dark:bg-emerald-950/60' : 'bg-rose-50/70 dark:bg-rose-950/60'}`}
+                        className={`relative backdrop-blur-xl rounded-[2.5rem] shadow-2xl w-full max-w-lg mx-4 overflow-hidden ${selectedSent.status === 'approved' ? 'bg-emerald-50/70 dark:bg-emerald-950/60' : selectedSent.status === 'pending' ? 'bg-white/80 dark:bg-neutral-900/80' : 'bg-rose-50/70 dark:bg-rose-950/60'}`}
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* 헤더 */}
