@@ -55,6 +55,8 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
     const [bulkSending, setBulkSending] = useState(false);
     const [showGoogleTasksPanel, setShowGoogleTasksPanel] = useState(false);
     const [activeProject, setActiveProject] = useState('all'); // 'all' or project name
+    const [deleteTarget, setDeleteTarget] = useState(null); // task to delete
+    const [deleting, setDeleting] = useState(false);
 
     const fetchTasks = useCallback(async () => {
         try {
@@ -81,7 +83,7 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
                 refresh: () => fetchTasks(),
                 openCreate: () => {
                     setEditingTask(null);
-                    setForm(EMPTY_FORM);
+                    setForm({ ...EMPTY_FORM, project: filterProject || '' });
                     setShowModal(true);
                 },
                 loading,
@@ -90,12 +92,12 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
                 selectMode,
             });
         }
-    }, [onReady, externalActions, fetchTasks, loading, selectMode]);
+    }, [onReady, externalActions, fetchTasks, loading, selectMode, filterProject]);
 
     /* ── Modal ── */
     const openCreate = () => {
         setEditingTask(null);
-        setForm({ ...EMPTY_FORM, project: filterProject && filterProject !== '미분류' ? filterProject : '' });
+        setForm({ ...EMPTY_FORM, project: filterProject || '' });
         setShowModal(true);
     };
 
@@ -181,14 +183,17 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
     };
 
     /* ── Delete ── */
-    const handleDelete = async (e, id) => {
-        e.stopPropagation();
-        if (!confirm('태스크를 삭제하시겠습니까?')) return;
+    const confirmDelete = async () => {
+        if (!deleteTarget) return;
+        setDeleting(true);
         try {
-            await deletePipelineTask(id);
-            setTasks(prev => prev.filter(t => t.id !== id));
+            await deletePipelineTask(deleteTarget.id);
+            setTasks(prev => prev.filter(t => t.id !== deleteTarget.id));
+            setDeleteTarget(null);
         } catch (err) {
             console.error('Delete failed', err);
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -362,7 +367,9 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                     {stageConfig.map((stage) => {
                         const filteredTasks = filterProject
-                            ? (filterProject === '미분류' ? tasks.filter(t => !t.project) : tasks.filter(t => t.project === filterProject))
+                            ? (filterProject === '미분류'
+                                ? tasks.filter(t => !t.project || t.project === '미분류')
+                                : tasks.filter(t => t.project === filterProject))
                             : activeProject === 'all' ? tasks
                             : activeProject === 'none' ? tasks.filter(t => !t.project)
                             : tasks.filter(t => t.project === activeProject);
@@ -439,7 +446,7 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
                                                                 <Pencil size={13} />
                                                             </button>
                                                             <button
-                                                                onClick={(e) => handleDelete(e, task.id)}
+                                                                onClick={(e) => { e.stopPropagation(); setDeleteTarget(task); }}
                                                                 className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-neutral-muted hover:text-red-500 transition-all"
                                                                 title="삭제"
                                                             >
@@ -687,6 +694,56 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* ── Task Delete Confirm Modal ── */}
+            {deleteTarget && createPortal(
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
+                        onClick={() => !deleting && setDeleteTarget(null)}
+                    />
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-[380px] p-8 mx-4 border border-white/40 dark:border-white/10"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-14 h-14 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4">
+                                <Trash2 size={24} className="text-red-500" />
+                            </div>
+                            <h3 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight mb-2">태스크 삭제</h3>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-1">
+                                <span className="font-bold text-neutral-700 dark:text-neutral-200">"{deleteTarget.title}"</span>
+                            </p>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">
+                                이 태스크를 삭제하시겠습니까?<br />이 작업은 되돌릴 수 없습니다.
+                            </p>
+                            <div className="flex gap-3 w-full">
+                                <button
+                                    onClick={() => setDeleteTarget(null)}
+                                    disabled={deleting}
+                                    className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
+                                >
+                                    취소
+                                </button>
+                                <button
+                                    onClick={confirmDelete}
+                                    disabled={deleting}
+                                    className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-red-500 text-white hover:bg-red-600 shadow-lg transition-colors disabled:opacity-50"
+                                >
+                                    {deleting ? '삭제 중...' : '삭제'}
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 }

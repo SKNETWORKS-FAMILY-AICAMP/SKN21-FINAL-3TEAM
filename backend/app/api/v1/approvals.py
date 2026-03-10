@@ -2,7 +2,10 @@
 Approval Request API (팀원 D 담당)
 - 결재/승인 요청 CRUD
 - 같은 팀 소속끼리 공유
+- AI 기반 요청 추천
 """
+import json
+import logging
 import mimetypes
 import os
 import uuid
@@ -10,7 +13,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
@@ -18,8 +21,11 @@ from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User
 from app.models.approval_request import ApprovalRequest
+from app.models.pipeline_task import PipelineTask
+from app.models.schedule import Schedule
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads" / "approvals"
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt", ".png", ".jpg", ".jpeg", ".gif", ".webp"}
@@ -249,3 +255,184 @@ async def seed_approvals(
         ))
     await db.flush()
     return {"seeded": len(samples)}
+
+
+@router.post("/suggest")
+async def suggest_approvals(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """캘린더 일정 + 파이프라인 태스크를 분석하여 AI 기반 승인 요청 추천"""
+    from datetime import datetime, timedelta
+
+    pipeline_tasks = []
+    schedules = []
+    stage_counts = {"todo": 0, "in_progress": 0, "review": 0, "done": 0}
+    schedule_summary = []
+    total_tasks = 0
+    done_pct = 0
+
+    # 1. 데이터 수집 (실패해도 fallback으로 넘어감)
+    try:
+        task_query = select(PipelineTask).order_by(PipelineTask.created_at.desc())
+        if current_user.team:
+            task_query = task_query.where(
+                or_(
+                    PipelineTask.team == current_user.team,
+                    PipelineTask.assignee == current_user.name,
+                )
+            )
+        else:
+            task_query = task_query.where(
+                or_(
+                    PipelineTask.created_by == current_user.id,
+                    PipelineTask.assignee == current_user.name,
+                )
+            )
+        task_result = await db.execute(task_query)
+        pipeline_tasks = task_result.scalars().all()
+    except Exception as e:
+        logger.error(f"파이프라인 태스크 조회 실패: {e}")
+
+    try:
+        now = datetime.now()
+        week_later = now + timedelta(days=7)
+        schedule_query = (
+            select(Schedule)
+            .where(
+                Schedule.user_id == current_user.id,
+                Schedule.start_time >= now,
+                Schedule.start_time <= week_later,
+            )
+            .order_by(Schedule.start_time)
+        )
+        schedule_result = await db.execute(schedule_query)
+        schedules = schedule_result.scalars().all()
+    except Exception as e:
+        logger.error(f"일정 조회 실패: {e}")
+
+    # 2. 컨텍스트 구성
+    now = datetime.now()
+    task_summary = []
+    for t in pipeline_tasks:
+        stage_counts[t.stage] = stage_counts.get(t.stage, 0) + 1
+        task_summary.append({
+            "title": t.title,
+            "stage": t.stage,
+            "priority": t.priority,
+            "assignee": t.assignee,
+            "due_date": t.due_date.strftime("%Y-%m-%d") if t.due_date else None,
+            "project": t.project,
+            "tags": t.tags,
+        })
+
+    for s in schedules:
+        schedule_summary.append({
+            "title": s.title,
+            "start": s.start_time.strftime("%Y-%m-%d %H:%M") if s.start_time else None,
+            "end": s.end_time.strftime("%Y-%m-%d %H:%M") if s.end_time else None,
+            "type": s.schedule_type,
+        })
+
+    total_tasks = len(pipeline_tasks)
+    done_pct = round(stage_counts["done"] / total_tasks * 100) if total_tasks > 0 else 0
+
+    context = f"""## 현재 사용자 정보
+- 이름: {current_user.name}
+- 팀: {current_user.team or '없음'}
+- 오늘 날짜: {now.strftime('%Y-%m-%d')}
+
+## 파이프라인 태스크 현황
+- 전체: {total_tasks}개
+- To Do: {stage_counts['todo']}개, In Progress: {stage_counts['in_progress']}개, Review: {stage_counts['review']}개, Done: {stage_counts['done']}개
+- 완료율: {done_pct}%
+- 태스크 상세 (최근 20개):
+{json.dumps(task_summary[:20], ensure_ascii=False, indent=2)}
+
+## 향후 7일 캘린더 일정
+{json.dumps(schedule_summary, ensure_ascii=False, indent=2) if schedule_summary else '예정된 일정 없음'}
+"""
+
+    # 3. LLM 호출
+    try:
+        from ai.llm import get_llm
+        from ai.llm.prompts import APPROVAL_SUGGEST_SYSTEM_PROMPT
+
+        llm = get_llm()
+        response = await llm.generate(
+            prompt=context,
+            system_prompt=APPROVAL_SUGGEST_SYSTEM_PROMPT,
+            json_mode=True,
+            temperature=0.4,
+            max_tokens=1500,
+        )
+
+        result = json.loads(response.content)
+        return {
+            "suggestions": result.get("suggestions", []),
+            "context": {
+                "total_tasks": total_tasks,
+                "stage_counts": stage_counts,
+                "done_pct": done_pct,
+                "upcoming_events": len(schedule_summary),
+            },
+        }
+    except Exception as e:
+        logger.error(f"AI 추천 실패: {e}", exc_info=True)
+
+    # 4. LLM 실패 시 규칙 기반 폴백 (항상 도달)
+    fallback = []
+    if stage_counts.get("review", 0) > 0:
+        review_tasks = [t for t in pipeline_tasks if t.stage == "review"]
+        if review_tasks:
+            fallback.append({
+                "type": "review",
+                "title": f"PR 리뷰 요청 - {review_tasks[0].title}",
+                "detail": f"현재 Review 단계 태스크 {stage_counts['review']}개가 대기 중입니다.",
+                "reason": "Review 단계에 있는 태스크가 있어 리뷰 요청이 필요합니다.",
+                "priority": "high",
+            })
+    if done_pct >= 80 and total_tasks > 0:
+        fallback.append({
+            "type": "deploy",
+            "title": "배포 승인 요청",
+            "detail": f"프로젝트 완료율 {done_pct}%. 배포 준비가 필요합니다.",
+            "reason": f"태스크 완료율이 {done_pct}%로 높아 배포를 고려할 시점입니다.",
+            "priority": "medium",
+        })
+    if stage_counts.get("in_progress", 0) > 0:
+        in_progress_tasks = [t for t in pipeline_tasks if t.stage == "in_progress"]
+        if in_progress_tasks:
+            fallback.append({
+                "type": "budget",
+                "title": f"진행 중 태스크 비용 결재 - {in_progress_tasks[0].title}",
+                "detail": f"현재 In Progress 태스크 {stage_counts['in_progress']}개 진행 중입니다.",
+                "reason": "진행 중인 태스크 관련 비용 결재가 필요할 수 있습니다.",
+                "priority": "medium",
+            })
+    if schedule_summary:
+        fallback.append({
+            "type": "room",
+            "title": f"회의실 예약 - {schedule_summary[0]['title']}",
+            "detail": f"일정: {schedule_summary[0]['start']}",
+            "reason": "예정된 회의가 있어 회의실 예약이 필요할 수 있습니다.",
+            "priority": "medium",
+        })
+    if not fallback:
+        fallback.append({
+            "type": "budget",
+            "title": "프로젝트 비용 결재",
+            "detail": "진행 중인 프로젝트 관련 비용 결재를 확인하세요.",
+            "reason": "정기적인 비용 결재 확인을 추천합니다.",
+            "priority": "low",
+        })
+    return {
+        "suggestions": fallback,
+        "context": {
+            "total_tasks": total_tasks,
+            "stage_counts": stage_counts,
+            "done_pct": done_pct,
+            "upcoming_events": len(schedule_summary),
+        },
+        "fallback": True,
+    }
