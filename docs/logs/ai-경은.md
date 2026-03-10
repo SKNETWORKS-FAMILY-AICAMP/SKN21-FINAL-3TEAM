@@ -971,7 +971,92 @@ RAG 개선(3단계)과 LoRA 파인튜닝(4단계)은 독립적 구조:
 | Intent 분류 (KoELECTRA) | 추론 속도 | 7.9ms |
 
 **다음 할 일:**
-- RAG 개선 환경에서 LoRA v1 모델 재평가 (실질 정확도 변화 측정)
-- 재평가 결과 90%+ 미달 시 → v2 보강 데이터로 LoRA v2 학습 실행
-- v2 목표: no 82%→88%+, conditional 84%→87%+, 전체 86.6%→90%+
+- ~~RAG 개선 환경에서 LoRA v1 모델 재평가 (실질 정확도 변화 측정)~~ ✅ 완료 (3/10)
+- ~~재평가 결과 90%+ 미달 시 → v2 보강 데이터로 LoRA v2 학습 실행~~ ✅ 완료 (3/10)
+- ~~v2 목표: no 82%→88%+, conditional 84%→87%+, 전체 86.6%→90%+~~ ❌ v2 실패
+- 5단계 성능 평가 (#13) — 전체 파이프라인 E2E 정량 평가
+
+---
+
+## 2026-03-10 (월) — v1 RAG 재평가 + v2 LoRA 학습 실행
+
+### 1. v1 LoRA RAG 환경 재평가 (RunPod)
+
+`scripts/eval_lora_v1_rag_improved.py`로 3가지 모드 비교 실행:
+
+| 모드 | 정확도 | JSON 유효율 | 설명 |
+|------|--------|------------|------|
+| baseline | **83.3%** | 100% | eval.jsonl 하드코딩 컨텍스트 |
+| rag-improved | **16.7%** | 56.7% | 라이브 RAG (Reranker+HyDE) |
+| rag-baseline | **16.7%** | 56.7% | 라이브 RAG (RRF만) |
+
+**분석:**
+- baseline 83.3%로 목표 90% 미달 (이전 eval 86.6%보다 하락 — eval 데이터가 328→338로 변경)
+- RAG 적용 시 16.7%로 폭락 — Qdrant에 문서 미적재 또는 RAG 검색 결과 불일치 추정
+- 주요 오분류: `no_regulation→conditional` 4건, `no→no_regulation` 3건
+
+### 2. v2 데이터 보강 (`augment_v2_no_conditional.py`)
+
+| 항목 | 결과 |
+|------|------|
+| 생성 건수 | **98건** (rejected 0) |
+| 분포 | no: 48, conditional: 50 |
+| train 병합 | 2,949 + 88 = **3,037건** |
+| eval 병합 | 328 + 10 = **338건** |
+
+### 3. v2 LoRA 학습 + 평가 (RunPod A100)
+
+**v2 설정 (`configs/v2_judgment.yaml`):**
+- LR: 2e-4 → **1.5e-4** (기존 학습 보존 + 새 데이터 흡수)
+- Output: `outputs/v2_judgment/`
+- 나머지 v1과 동일 (QLoRA 4-bit, r=16, epochs=3)
+
+**v2 평가 결과 — v1 대비 하락:**
+
+| 카테고리 | v1 (86.6%) | v2 (83.4%) | 변화 |
+|----------|------------|------------|------|
+| conditional | 84.0% | **74.3%** | **-9.7%p** |
+| no | 82.0% | **78.8%** | **-3.2%p** |
+| yes | 85.0% | **87.0%** | +2.0%p |
+| no_regulation | 97.0% | **97.0%** | 동일 |
+| JSON 유효율 | 98.2% | **97.0%** | -1.2%p |
+
+**결론:**
+- v2 보강 데이터(98건)가 no/conditional 경계를 더 혼란시킴
+- **v1 어댑터(86.6%)를 최종 모델로 유지**
+- v2는 실패 기록으로 보관 (`outputs/v2_judgment/eval_results.json`)
+
+### 4. 학습 스크립트 범용화
+
+- `train_v1_judgment.py` — OUTPUT_BASE를 config에서 동적으로 읽도록 수정
+- `--config` 옵션으로 v1/v2 config 전환 가능
+- `configs/v2_judgment.yaml` 신규 생성
+
+### 5. 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `ai/finetuning/train_v1_judgment.py` | 수정 — config 기반 output_dir, v1/v2 범용화 |
+| `ai/finetuning/configs/v2_judgment.yaml` | 신규 — v2 학습 설정 |
+| `outputs/v2_judgment/eval_results.json` | 신규 — v2 평가 결과 |
+| `data/training/v1_judgment/train.jsonl` | 수정 — v2 보강 98건 병합 (3,037건) |
+| `data/training/v1_judgment/eval.jsonl` | 수정 — v2 보강 10건 병합 (338건) |
+
+### 6. 현재 최종 성능 요약
+
+| 모듈 | 지표 | 결과 |
+|------|------|------|
+| RAG 검색 | Hit Rate | 95.24% |
+| RAG 검색 | MRR | 0.636 |
+| **판단 Agent (LoRA v1)** | **전체 정확도** | **86.6% (최종 채택)** |
+| 판단 Agent (LoRA v1) | no_regulation | 97.0% |
+| 판단 Agent (LoRA v1) | yes | 85.0% |
+| 판단 Agent (LoRA v1) | conditional | 84.0% |
+| 판단 Agent (LoRA v1) | no | 82.0% |
+| 판단 Agent (LoRA v2) | 전체 정확도 | 83.4% (하락, 폐기) |
+| Intent 분류 (KoELECTRA) | Adversarial F1 | 0.8758 |
+
+**다음 할 일:**
+- RAG 라이브 검색 시 16.7% 폭락 원인 디버깅 (Qdrant 문서 적재 상태, 검색 결과 확인)
+- 문서 분석 sLLM 프롬프트 개선 (요약 → 태그 파이프라인)
 - 5단계 성능 평가 (#13) — 전체 파이프라인 E2E 정량 평가

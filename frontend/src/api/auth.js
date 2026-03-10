@@ -24,3 +24,5 @@ export const changePassword = (currentPassword, newPassword) =>
 export const updateProfile = (data) => client.put('/auth/me', data)
 
 export const getTeamMembers = () => client.get('/auth/team-members')
+
+export const getAllMembers = () => client.get('/auth/all-members')

@@ -361,7 +361,8 @@ APPROVAL_SUGGEST_SYSTEM_PROMPT = """\
             "title": "추천 요청 제목",
             "detail": "상세 내용 (왜 이 요청이 필요한지)",
             "reason": "추천 이유 (사용자에게 보여줄 간단한 설명)",
-            "priority": "high" | "medium" | "low"
+            "priority": "high" | "medium" | "low",
+            "related_project": "관련 프로젝트명 (태스크 데이터의 project 필드에서 가져옴, 없으면 null)"
         }
     ]
 }
