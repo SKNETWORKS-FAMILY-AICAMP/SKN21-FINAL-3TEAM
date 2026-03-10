@@ -4,7 +4,7 @@ import { TEMPLATE_CATEGORIES } from '../../utils/constants';
 export default function TemplateUploadDialog({ isOpen, onClose, onUpload }) {
   const [file, setFile] = useState(null);
   const [name, setName] = useState('');
-  const [category, setCategory] = useState('custom');
+  const [category, setCategory] = useState('meeting_minutes');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const fileRef = useRef(null);

@@ -258,7 +258,9 @@ export default function DocumentGeneratePage() {
 
   useEffect(() => { fetchCustomTemplates(); }, []);
 
-  const isMeeting = selectedTemplate === 'meeting_minutes';
+  // 회의록 카테고리이거나, 양식 필드에 attendees/team이 있으면 팀+참석자 UI 표시
+  const hasAttendeeFields = templateFields.some(f => f.key === 'attendees' || f.key === 'team');
+  const isMeeting = selectedTemplate === 'meeting_minutes' || hasAttendeeFields;
 
   // 템플릿 선택 → parsed_structure 로드 → 동적 폼 초기화
   const handleTemplateSelect = async (template, customTpl = null) => {
