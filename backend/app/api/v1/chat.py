@@ -333,6 +333,12 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                     elif node_name == "document_agent":
                         # 2-2. 문서 Agent 스트리밍
                         agent_response = node_output.get("agent_response", {})
+
+                        # 관련 문서 없음 등 stream_pending 없이 바로 응답하는 경우 → token으로 메시지 전송
+                        if not agent_response.get("stream_pending") and agent_response.get("message"):
+                            msg = agent_response["message"]
+                            yield f"data: {json.dumps({'type': 'token', 'value': msg}, ensure_ascii=False)}\n\n"
+
                         if agent_response.get("stream_pending"):
                             # RAG 검색은 완료, LLM 답변만 스트리밍
                             import os as _os2
