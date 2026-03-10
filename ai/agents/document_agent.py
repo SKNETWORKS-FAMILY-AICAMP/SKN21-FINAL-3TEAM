@@ -553,11 +553,17 @@ async def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
         "meeting_type": data.get("meeting_type", "정기"),
         "attendees": attendees,
         "author": data.get("author", attendees[0] if attendees else ""),
-        "content": data.get("summary", ""),
+        "content": data.get("summary", data.get("content", "")),
         "decisions": data.get("decisions", []),
         "action_items": data.get("action_items", []),
         "notes": data.get("notes", ""),
     }
+
+    # 디버깅: LLM 응답 → docx_data 매핑 확인
+    print(f"[DocumentAgent] LLM data keys: {list(data.keys())}")
+    for k, v in docx_data.items():
+        val_preview = str(v)[:80] if v else '(empty)'
+        print(f"[DocumentAgent] docx_data[{k}] = {val_preview}")
 
     try:
         from ai.skills.create_meeting_minutes import create_meeting_minutes
