@@ -62,8 +62,9 @@ async def document_agent(state: AgentState) -> AgentState:
             # template_type 결정: ① state에서 프론트가 보낸 값 ② LLM 판단 ③ 키워드 fallback
             document_content = state.get("document_content") or state.get("extracted_text")
             template_type = state.get("template_type") or await _llm_detect_template_type(user_input)
-            print(f"[DocumentAgent] → _handle_doc_generate 호출 | template={template_type}")
-            response_data = await _handle_doc_generate(user_input, template_type, document_content)
+            template_id = state.get("template_id")  # 커스텀 양식 ID (DB)
+            print(f"[DocumentAgent] → _handle_doc_generate 호출 | template={template_type}, template_id={template_id}")
+            response_data = await _handle_doc_generate(user_input, template_type, document_content, template_id=template_id)
 
         elif intent == "doc_summary":
             print("[DocumentAgent] → _handle_doc_summary 호출")
@@ -334,10 +335,10 @@ async def _handle_doc_search(query: str, context: List[str], user_id: int = None
         "context": context,
     }
 
-async def _handle_doc_generate(user_input: str, template_type: str, document_content: str = None) -> Dict[str, Any]:
-    """문서 생성 처리 (보고서/회의록/JD/제안서)"""
+async def _handle_doc_generate(user_input: str, template_type: str, document_content: str = None, template_id: int = None) -> Dict[str, Any]:
+    """문서 생성 처리 (보고서/회의록/JD/제안서 + 커스텀 양식)"""
     _t = time.time()
-    print(f"[DocumentAgent] _handle_doc_generate | template_type={template_type}")
+    print(f"[DocumentAgent] _handle_doc_generate | template_type={template_type}, template_id={template_id}")
 
     if document_content:
         user_input = f"{user_input}\n\n[첨부 문서 내용]\n{document_content}"
@@ -347,6 +348,10 @@ async def _handle_doc_generate(user_input: str, template_type: str, document_con
             "type": "clarify",
             "message": "문서 생성을 위한 내용이 부족합니다.\n화면의 **[📎 첨부 버튼]**을 눌러 기준 문서를 업로드하시거나, 작성할 내용을 좀 더 자세히 입력해주세요."
         }
+
+    # 커스텀 양식 (DB에 등록된 template_id)이 있으면 동적 필드로 생성
+    if template_id:
+        return await _generate_with_custom_template(user_input, template_id, template_type)
 
     if template_type == "meeting_minutes":
         return await _generate_meeting_minutes(user_input)
@@ -739,6 +744,120 @@ async def _generate_proposal(user_input: str) -> Dict[str, Any]:
         "data": data,
         "document_id": doc_uuid,
         "docx_path": output_path,
+        "download_url": f"/api/v1/documents/{doc_uuid}/download",
+    }
+
+
+async def _generate_with_custom_template(user_input: str, template_id: int, template_type: str) -> Dict[str, Any]:
+    """커스텀 양식(DB 등록)으로 문서 생성 — 동적 필드 명세"""
+    _t = time.time()
+    print(f"[DocumentAgent] _generate_with_custom_template | template_id={template_id}")
+
+    # DB에서 parsed_structure 조회
+    try:
+        import asyncio
+        from sqlalchemy import select
+        from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+        from sqlalchemy.orm import sessionmaker
+        import os
+
+        db_url = os.getenv("DATABASE_URL", "")
+        engine = create_async_engine(db_url)
+        async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        async with async_session() as session:
+            from app.models.document_template import DocumentTemplate
+            result = await session.execute(
+                select(DocumentTemplate).where(DocumentTemplate.id == template_id)
+            )
+            template = result.scalar_one_or_none()
+
+        await engine.dispose()
+
+        if not template or not template.parsed_structure:
+            print(f"[DocumentAgent] template_id={template_id} 없거나 parsed_structure 없음 → 기본 생성")
+            if template_type == "meeting_minutes":
+                return await _generate_meeting_minutes(user_input)
+            elif template_type == "report":
+                return await _generate_report(user_input)
+            elif template_type == "proposal":
+                return await _generate_proposal(user_input)
+
+        fields = json.loads(template.parsed_structure)
+        template_name = template.name
+        print(f"[DocumentAgent] 커스텀 양식 '{template_name}' 로드 | {len(fields)}개 필드")
+
+    except Exception as e:
+        print(f"[DocumentAgent] DB 조회 실패: {e} → 기본 생성 fallback")
+        import traceback
+        traceback.print_exc()
+        if template_type == "meeting_minutes":
+            return await _generate_meeting_minutes(user_input)
+        elif template_type == "report":
+            return await _generate_report(user_input)
+        return await _generate_proposal(user_input)
+
+    # 동적 필드 명세 생성
+    from ai.document_parser.template_extractor import fields_to_prompt
+    field_spec = fields_to_prompt(fields)
+
+    # 문서 유형명 결정
+    doc_type_names = {
+        "meeting_minutes": "회의록",
+        "report": "업무보고서",
+        "proposal": "제안서",
+    }
+    doc_type_name = doc_type_names.get(template_type, template_name)
+    input_label = {
+        "meeting_minutes": "회의 내용",
+        "report": "업무 내용",
+        "proposal": "제안 내용",
+    }.get(template_type, "내용")
+
+    # sLLM용 프롬프트 (학습 데이터와 동일한 형식)
+    from ai.llm.prompts import DOC_GENERATE_SLLM_PROMPT
+    sys_prompt = DOC_GENERATE_SLLM_PROMPT
+    user_prompt = (
+        f"다음 내용을 바탕으로 문서를 JSON 형식으로 작성해주세요.\n\n"
+        f"[문서 유형] {doc_type_name}\n\n"
+        f"[필드 명세]\n{field_spec}\n\n"
+        f"[{input_label}]\n{user_input}"
+    )
+
+    print(f"[DocumentAgent] 동적 프롬프트 생성 | 필드 {len(fields)}개, 문서유형={doc_type_name}")
+    generated_json_str = await _call_llm(sys_prompt, user_prompt, json_mode=True, task="generate")
+
+    try:
+        data = json.loads(generated_json_str)
+        print(f"[DocumentAgent] JSON 파싱 성공 | keys={list(data.keys())}")
+    except Exception:
+        print(f"[DocumentAgent] !!! JSON 파싱 실패")
+        data = {"content": generated_json_str}
+
+    # 미리보기 생성
+    preview_parts = [f"# {data.get('title', doc_type_name)}"]
+    for f in fields:
+        key = f["key"]
+        val = data.get(key, "")
+        if val and key != "title":
+            label = f.get("label", key)
+            if isinstance(val, list):
+                val_str = "\n".join([f"- {item}" if isinstance(item, str) else f"- {json.dumps(item, ensure_ascii=False)}" for item in val])
+                preview_parts.append(f"\n## {label}\n{val_str}")
+            else:
+                preview_parts.append(f"\n## {label}\n{val}")
+    preview = "\n".join(preview_parts)
+
+    doc_uuid = str(uuid.uuid4())
+
+    return {
+        "type": "doc_generate",
+        "template_type": template_type,
+        "template_id": template_id,
+        "template_name": template_name,
+        "preview": preview,
+        "data": data,
+        "document_id": doc_uuid,
         "download_url": f"/api/v1/documents/{doc_uuid}/download",
     }
 
