@@ -13,7 +13,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
 from fastapi.responses import FileResponse
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
@@ -34,6 +34,7 @@ ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt", ".png", ".jpg", ".jpeg", 
 def _serialize_approval(i, users_map=None):
     """공통 직렬화 헬퍼"""
     user = (users_map or {}).get(i.requester_id)
+    target_user = (users_map or {}).get(i.target_user_id) if i.target_user_id else None
     return {
         "id": i.id,
         "type": i.type,
@@ -44,13 +45,21 @@ def _serialize_approval(i, users_map=None):
         "requester_name": user.name if user else None,
         "requester_avatar": user.avatar if user else None,
         "target_team": i.target_team,
+        "target_user_id": i.target_user_id,
+        "target_user_name": target_user.name if target_user else None,
+        "target_user_avatar": target_user.avatar if target_user else None,
         "file_name": i.file_name,
         "created_at": i.created_at.isoformat() if i.created_at else None,
     }
 
 
 async def _get_users_map(db, items):
-    user_ids = list({i.requester_id for i in items})
+    user_ids = set()
+    for i in items:
+        user_ids.add(i.requester_id)
+        if i.target_user_id:
+            user_ids.add(i.target_user_id)
+    user_ids = list(user_ids)
     users_map = {}
     if user_ids:
         users_result = await db.execute(select(User).where(User.id.in_(user_ids)))
@@ -66,10 +75,23 @@ async def list_approvals(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """모든 pending 요청 목록 (팀 구분 없이 전체 조회)"""
+    """내가 받은 pending 요청 목록 (나에게 보내진 것 또는 내 팀/전체 대상)"""
     query = (
         select(ApprovalRequest)
-        .where(ApprovalRequest.status == "pending")
+        .where(
+            ApprovalRequest.status == "pending",
+            ApprovalRequest.requester_id != current_user.id,  # 내가 보낸 건 제외
+            or_(
+                ApprovalRequest.target_user_id == current_user.id,  # 나에게 직접 보낸 것
+                and_(
+                    ApprovalRequest.target_user_id.is_(None),
+                    or_(
+                        ApprovalRequest.target_team == current_user.team,  # 내 팀 대상
+                        ApprovalRequest.target_team.is_(None),  # 전체 대상
+                    ),
+                ),
+            ),
+        )
         .order_by(ApprovalRequest.created_at.desc())
     )
     result = await db.execute(query)
@@ -84,12 +106,15 @@ async def list_approval_history(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """처리 완료된 요청 목록 (approved / rejected)"""
+    """내가 보낸 요청 중 처리 완료된 목록 (approved / rejected)"""
     if status not in ("approved", "rejected"):
         status = "approved"
     query = (
         select(ApprovalRequest)
-        .where(ApprovalRequest.status == status)
+        .where(
+            ApprovalRequest.status == status,
+            ApprovalRequest.requester_id == current_user.id,  # 내가 보낸 것만
+        )
         .order_by(ApprovalRequest.updated_at.desc())
     )
     result = await db.execute(query)
@@ -103,11 +128,13 @@ async def create_approval(
     type: str = Form(...),
     title: str = Form(...),
     detail: Optional[str] = Form(None),
+    target_team: Optional[str] = Form(None),
+    target_user_id: Optional[int] = Form(None),
     file: Optional[UploadFile] = File(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """새 결재/승인 요청 생성 (파일 첨부 가능)"""
+    """새 결재/승인 요청 생성 (파일 첨부 가능, 대상 팀/팀원 지정)"""
     saved_path = None
     saved_name = None
 
@@ -129,7 +156,8 @@ async def create_approval(
         detail=detail,
         status="pending",
         requester_id=current_user.id,
-        target_team=current_user.team,
+        target_team=target_team or current_user.team,
+        target_user_id=target_user_id,
         file_path=saved_path,
         file_name=saved_name,
     )
@@ -227,17 +255,52 @@ async def delete_approval(
     return {"deleted": True, "id": approval_id}
 
 
+@router.put("/{approval_id}")
+async def update_approval(
+    approval_id: int,
+    title: str = Form(None),
+    detail: str = Form(None),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """요청 수정 (본인이 올린 요청만)"""
+    result = await db.execute(select(ApprovalRequest).where(ApprovalRequest.id == approval_id))
+    approval = result.scalar_one_or_none()
+    if not approval:
+        raise HTTPException(status_code=404, detail="요청을 찾을 수 없습니다")
+    if approval.requester_id != current_user.id:
+        raise HTTPException(status_code=403, detail="본인이 올린 요청만 수정할 수 있습니다")
+
+    if title is not None:
+        approval.title = title
+    if detail is not None:
+        approval.detail = detail
+    await db.flush()
+
+    users_map = await _get_users_map(db, [approval])
+    return _serialize_approval(approval, users_map)
+
+
 @router.post("/seed", status_code=201)
 async def seed_approvals(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """초기 샘플 데이터 시드 (기존 pending 없을 때만)"""
+    """초기 샘플 데이터 시드 (기존 pending 없을 때만) — 윤경은(영업팀)이 보낸 것으로 생성"""
     existing = await db.execute(
         select(ApprovalRequest).where(ApprovalRequest.status == "pending").limit(1)
     )
     if existing.scalar_one_or_none():
         return {"seeded": 0, "message": "이미 pending 데이터가 있습니다"}
+
+    # 윤경은 계정 찾기 (없으면 현재 사용자로 폴백)
+    sender = current_user
+    kyeongeun_result = await db.execute(
+        select(User).where(User.name == "윤경은").limit(1)
+    )
+    kyeongeun = kyeongeun_result.scalar_one_or_none()
+    if kyeongeun:
+        sender = kyeongeun
 
     samples = [
         {"type": "leave", "title": "연차 신청서", "detail": "3일 (Feb 12 - Feb 14)"},
@@ -250,11 +313,11 @@ async def seed_approvals(
             title=s["title"],
             detail=s["detail"],
             status="pending",
-            requester_id=current_user.id,
-            target_team=current_user.team,
+            requester_id=sender.id,
+            target_team=sender.team or "영업",
         ))
     await db.flush()
-    return {"seeded": len(samples)}
+    return {"seeded": len(samples), "sender": sender.name}
 
 
 @router.post("/checklist")
@@ -756,14 +819,22 @@ async def suggest_approvals(
                 "detail": f"현재 Review 단계 태스크 {stage_counts['review']}개가 대기 중입니다.",
                 "reason": "Review 단계에 있는 태스크가 있어 리뷰 요청이 필요합니다.",
                 "priority": "high",
+                "related_project": review_tasks[0].project,
             })
     if done_pct >= 80 and total_tasks > 0:
+        # 가장 많은 프로젝트 찾기
+        proj_counts = {}
+        for t in pipeline_tasks:
+            if t.project:
+                proj_counts[t.project] = proj_counts.get(t.project, 0) + 1
+        top_project = max(proj_counts, key=proj_counts.get) if proj_counts else None
         fallback.append({
             "type": "deploy",
             "title": "배포 승인 요청",
             "detail": f"프로젝트 완료율 {done_pct}%. 배포 준비가 필요합니다.",
             "reason": f"태스크 완료율이 {done_pct}%로 높아 배포를 고려할 시점입니다.",
             "priority": "medium",
+            "related_project": top_project,
         })
     if stage_counts.get("in_progress", 0) > 0:
         in_progress_tasks = [t for t in pipeline_tasks if t.stage == "in_progress"]
@@ -774,6 +845,7 @@ async def suggest_approvals(
                 "detail": f"현재 In Progress 태스크 {stage_counts['in_progress']}개 진행 중입니다.",
                 "reason": "진행 중인 태스크 관련 비용 결재가 필요할 수 있습니다.",
                 "priority": "medium",
+                "related_project": in_progress_tasks[0].project,
             })
     if schedule_summary:
         fallback.append({
@@ -782,6 +854,7 @@ async def suggest_approvals(
             "detail": f"일정: {schedule_summary[0]['start']}",
             "reason": "예정된 회의가 있어 회의실 예약이 필요할 수 있습니다.",
             "priority": "medium",
+            "related_project": None,
         })
     if not fallback:
         fallback.append({
@@ -790,6 +863,7 @@ async def suggest_approvals(
             "detail": "진행 중인 프로젝트 관련 비용 결재를 확인하세요.",
             "reason": "정기적인 비용 결재 확인을 추천합니다.",
             "priority": "low",
+            "related_project": None,
         })
     return {
         "suggestions": fallback,

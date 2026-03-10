@@ -7,6 +7,8 @@ export const createApproval = (data, file) => {
   formData.append('type', data.type);
   formData.append('title', data.title);
   if (data.detail) formData.append('detail', data.detail);
+  if (data.target_team) formData.append('target_team', data.target_team);
+  if (data.target_user_id) formData.append('target_user_id', data.target_user_id);
   if (file) formData.append('file', file);
   return client.post('/approvals/', formData, {
     headers: { 'Content-Type': undefined },
@@ -16,6 +18,14 @@ export const createApproval = (data, file) => {
 export const approveRequest = (id) => client.put(`/approvals/${id}/approve`);
 export const rejectRequest = (id) => client.put(`/approvals/${id}/reject`);
 export const deleteApproval = (id) => client.delete(`/approvals/${id}`);
+export const updateApproval = (id, data) => {
+  const formData = new FormData();
+  if (data.title != null) formData.append('title', data.title);
+  if (data.detail != null) formData.append('detail', data.detail);
+  return client.put(`/approvals/${id}`, formData, {
+    headers: { 'Content-Type': undefined },
+  });
+};
 export const seedApprovals = () => client.post('/approvals/seed');
 export const suggestApprovals = () => client.post('/approvals/suggest');
 export const generateChecklist = () => client.post('/approvals/checklist');

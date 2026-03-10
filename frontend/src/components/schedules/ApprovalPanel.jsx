@@ -3,15 +3,20 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Check, X, Clock, Coffee, GitPullRequest, FileText, FileSignature,
-    Filter, Search, BellRing, CheckCircle2, XCircle, Trash2,
+    Filter, Search, BellRing, CheckCircle2, XCircle, Trash2, Paperclip,
     Home, DoorOpen, Palette, Award, Receipt, Rocket, Server, ShieldCheck, RefreshCw,
     Sparkles, ArrowRight, Zap, Plus, CheckSquare, Square, ListChecks,
-    CalendarPlus, CalendarClock
+    CalendarPlus, CalendarClock, Download, Eye, Send, User, FolderOpen, Pencil
 } from 'lucide-react';
-import { listApprovals, createApproval, approveRequest, rejectRequest, deleteApproval, suggestApprovals } from '../../api/approvals';
+import { listApprovals, createApproval, approveRequest, rejectRequest, deleteApproval, updateApproval, suggestApprovals, downloadApprovalFile, getApprovalFileBlobUrl } from '../../api/approvals';
 import { createSchedule } from '../../api/schedules';
+import { listPipelineTasks } from '../../api/tasks';
+import { getAllMembers } from '../../api/auth';
 import client from '../../api/client';
 import useAuthStore from '../../store/authStore';
+import MemberDropdown from '../common/MemberDropdown';
+
+const TEAMS = ['개발', 'QA기획', 'UI/UX', '영업', '마케팅', 'CS'];
 
 const typeConfig = {
     leave: { icon: Coffee, color: 'text-orange-500 bg-orange-50', label: '연차/반차 신청' },
@@ -68,18 +73,27 @@ function resolveSuggestedDay(day) {
     return isNaN(parsed.getTime()) ? now : parsed;
 }
 
-export default function ApprovalPanel({ onReady, externalActions }) {
+export default function ApprovalPanel({ onReady, externalActions, onScheduleAdded }) {
     const user = useAuthStore((s) => s.user);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
-    const [formData, setFormData] = useState({ type: 'leave', title: '', detail: '' });
+    const [formData, setFormData] = useState({ type: 'leave', title: '', detail: '', target_team: '', target_user_id: '' });
+    const [formFile, setFormFile] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+    const [allMembers, setAllMembers] = useState([]);
     const [suggestions, setSuggestions] = useState([]);
     const [suggestLoading, setSuggestLoading] = useState(false);
     const [suggestContext, setSuggestContext] = useState(null);
     const [suggestError, setSuggestError] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
+    const [selectedSent, setSelectedSent] = useState(null);
+    const [previewUrl, setPreviewUrl] = useState(null);
+    const [editMode, setEditMode] = useState(false);
+    const [editTitle, setEditTitle] = useState('');
+    const [editDetail, setEditDetail] = useState('');
+    const [editSaving, setEditSaving] = useState(false);
+    const [pipelineTasks, setPipelineTasks] = useState([]);
 
     // Schedule checklist state
     const [checklist, setChecklist] = useState([]);
@@ -91,6 +105,13 @@ export default function ApprovalPanel({ onReady, externalActions }) {
     const [schedSuggestLoading, setSchedSuggestLoading] = useState(false);
     const [schedSuggestError, setSchedSuggestError] = useState(null);
     const [addingScheduleId, setAddingScheduleId] = useState(null);
+
+    // Date picker modal for schedule suggestions
+    const [schedulePickerData, setSchedulePickerData] = useState(null); // { suggestion, idx }
+    const [pickerTitle, setPickerTitle] = useState('');
+    const [pickerDate, setPickerDate] = useState('');
+    const [pickerStartTime, setPickerStartTime] = useState('10:00');
+    const [pickerEndTime, setPickerEndTime] = useState('11:00');
 
     // New Tasks tab: 'approvals' | 'schedules'
     const [newTasksTab, setNewTasksTab] = useState('approvals');
@@ -163,14 +184,19 @@ export default function ApprovalPanel({ onReady, externalActions }) {
         }
     };
 
-    useEffect(() => { loadAll(); loadChecklist(); }, []);
+    useEffect(() => {
+        loadAll();
+        loadChecklist();
+        getAllMembers().then(res => setAllMembers(res.data || [])).catch(() => {});
+        listPipelineTasks().then(res => setPipelineTasks(Array.isArray(res.data) ? res.data : [])).catch(() => {});
+    }, []);
 
     useEffect(() => {
         if (onReady && externalActions) {
             onReady({
                 refresh: () => { loadAll(); loadChecklist(); if (newTasksTab === 'schedules') loadScheduleSuggestions(); else handleSuggest(); },
                 openCreate: () => {
-                    setFormData({ type: 'leave', title: '', detail: '' });
+                    setFormData({ type: 'leave', title: '', detail: '', target_team: '', target_user_id: '' });
                     setShowModal(true);
                 },
                 loading
@@ -178,7 +204,15 @@ export default function ApprovalPanel({ onReady, externalActions }) {
         }
     }, [onReady, externalActions, loading]);
 
-    const myItems = items.filter(i => i.requester_id === user?.id);
+    const handleApproval = async (id, approve) => {
+        try {
+            if (approve) await approveRequest(id);
+            else await rejectRequest(id);
+            await loadAll();
+        } catch (err) {
+            console.error('Action failed', err);
+        }
+    };
 
     const handleDeleteClick = (item) => {
         setDeleteConfirm({ id: item.id, title: item.title });
@@ -197,14 +231,69 @@ export default function ApprovalPanel({ onReady, externalActions }) {
         }
     };
 
+    const timeAgo = (dateStr) => {
+        if (!dateStr) return '';
+        const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+        if (diff < 60) return '방금 전';
+        if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+        return `${Math.floor(diff / 86400)}일 전`;
+    };
+
+    const openSentDetail = async (item) => {
+        setSelectedSent(item);
+        setPreviewUrl(null);
+        if (item.file_name) {
+            try {
+                const url = await getApprovalFileBlobUrl(item.id, item.file_name);
+                setPreviewUrl(url);
+            } catch { }
+        }
+    };
+
+    const closeSentDetail = () => {
+        if (previewUrl) window.URL.revokeObjectURL(previewUrl);
+        setSelectedSent(null);
+        setPreviewUrl(null);
+        setEditMode(false);
+    };
+
+    const startEdit = () => {
+        setEditTitle(selectedSent.title);
+        setEditDetail(selectedSent.detail || '');
+        setEditMode(true);
+    };
+
+    const saveEdit = async () => {
+        if (!selectedSent || !editTitle.trim()) return;
+        setEditSaving(true);
+        try {
+            await updateApproval(selectedSent.id, { title: editTitle.trim(), detail: editDetail.trim() });
+            setSelectedSent({ ...selectedSent, title: editTitle.trim(), detail: editDetail.trim() });
+            setEditMode(false);
+            await loadAll();
+        } catch (err) {
+            alert(err.response?.data?.detail || '수정에 실패했습니다.');
+        } finally {
+            setEditSaving(false);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.title.trim()) return;
         setSubmitting(true);
         try {
-            await createApproval({ type: formData.type, title: formData.title.trim(), detail: formData.detail.trim() || null });
+            await createApproval({
+                type: formData.type,
+                title: formData.title.trim(),
+                detail: formData.detail.trim() || null,
+                target_team: formData.target_team || null,
+                target_user_id: formData.target_user_id || null,
+            }, formFile);
             setShowModal(false);
-            setFormData({ type: 'leave', title: '', detail: '' });
+            setFormData({ type: 'leave', title: '', detail: '', target_team: '', target_user_id: '' });
+            setFormFile(null);
             await loadAll();
         } catch {
             alert('요청 생성에 실패했습니다.');
@@ -233,22 +322,43 @@ export default function ApprovalPanel({ onReady, externalActions }) {
     };
 
     const applySuggestion = (s) => {
-        setFormData({ type: s.type, title: s.title, detail: s.detail || '' });
+        setFormData({ type: s.type, title: s.title, detail: s.detail || '', target_team: '', target_user_id: '' });
         setShowModal(true);
     };
 
-    /** 추천 일정을 캘린더에 추가 */
-    const addScheduleToCalendar = async (s, idx) => {
+    /** 날짜 선택 모달 열기 */
+    const openSchedulePicker = (s, idx) => {
+        const defaultDate = resolveSuggestedDay(s.suggested_day);
+        const yyyy = defaultDate.getFullYear();
+        const mm = String(defaultDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(defaultDate.getDate()).padStart(2, '0');
+        setPickerDate(`${yyyy}-${mm}-${dd}`);
+        const duration = s.duration_minutes || 60;
+        setPickerStartTime('10:00');
+        const endH = Math.floor((600 + duration) / 60);
+        const endM = (600 + duration) % 60;
+        setPickerEndTime(`${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`);
+        setPickerTitle(s.title);
+        setSchedulePickerData({ suggestion: s, idx });
+    };
+
+    /** 추천 일정을 캘린더에 추가 (날짜 선택 후 확정) */
+    const confirmAddSchedule = async () => {
+        if (!schedulePickerData || !pickerDate) return;
+        const { suggestion: s, idx } = schedulePickerData;
         setAddingScheduleId(idx);
         try {
-            const startDate = resolveSuggestedDay(s.suggested_day);
-            startDate.setHours(10, 0, 0, 0); // 기본 시작 10시
+            const startDate = new Date(`${pickerDate}T${pickerStartTime}:00`);
+            const endDate = new Date(`${pickerDate}T${pickerEndTime}:00`);
 
-            const endDate = new Date(startDate);
-            endDate.setMinutes(endDate.getMinutes() + (s.duration_minutes || 60));
+            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                alert('유효한 날짜와 시간을 입력해주세요.');
+                setAddingScheduleId(null);
+                return;
+            }
 
             await createSchedule({
-                title: s.title,
+                title: pickerTitle.trim() || s.title,
                 description: s.description || s.reason || '',
                 start_time: startDate.toISOString(),
                 end_time: endDate.toISOString(),
@@ -256,8 +366,10 @@ export default function ApprovalPanel({ onReady, externalActions }) {
                 priority: s.priority || 'medium',
             });
 
-            // 추가 성공 → 해당 항목 제거
+            // 추가 성공 → 해당 항목 제거 & 모달 닫기 & 캘린더 새로고침
             setScheduleSuggestions(prev => prev.filter((_, i) => i !== idx));
+            setSchedulePickerData(null);
+            if (onScheduleAdded) onScheduleAdded();
         } catch (err) {
             const msg = err.response?.data?.detail || '캘린더 추가에 실패했습니다.';
             alert(msg);
@@ -279,11 +391,10 @@ export default function ApprovalPanel({ onReady, externalActions }) {
     // Load initial suggestions based on active tab
     useEffect(() => { handleSuggest(); }, []);
 
-    /* ── Process 카드 ── */
-    const renderProcessCard = (item) => {
+    /* ── Pending 카드 (받은 요청) ── */
+    const renderPendingCard = (item) => {
         const cfg = typeConfig[item.type] || defaultTypeConfig;
         const IconComp = cfg.icon;
-        const badge = statusBadge[item.status] || statusBadge.pending;
         return (
             <motion.div
                 key={item.id}
@@ -301,34 +412,125 @@ export default function ApprovalPanel({ onReady, externalActions }) {
                         </div>
                         <span className="text-[11px] font-semibold text-slate-400">{cfg.label}</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badge.color} flex items-center gap-1`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
-                            {badge.label}
-                        </span>
-                        <button
-                            onClick={() => handleDeleteClick(item)}
-                            className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-red-50 text-slate-300 hover:text-red-400 transition-all"
-                            title="삭제"
-                        >
-                            <Trash2 size={12} />
-                        </button>
-                    </div>
+                    <button
+                        onClick={() => handleDeleteClick(item)}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-red-50 text-slate-300 hover:text-red-400 transition-all"
+                        title="삭제"
+                    >
+                        <Trash2 size={12} />
+                    </button>
                 </div>
                 <h4 className="text-[13px] font-bold text-slate-700 dark:text-slate-200 leading-snug mb-1 line-clamp-2">{item.title}</h4>
                 {item.detail && (
                     <p className="text-[11px] text-slate-400 line-clamp-2 mb-3">{item.detail}</p>
                 )}
-                {item.created_at && (
-                    <div className="flex items-center pt-2.5 border-t border-slate-100 dark:border-slate-700">
-                        <span className="text-[10px] text-slate-300">
-                            {new Date(item.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' })}
+                <div className="flex items-center gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-700">
+                    {item.requester_avatar ? (
+                        <img src={item.requester_avatar} alt="" className="w-7 h-7 rounded-full object-cover ring-2 ring-white dark:ring-neutral-800" />
+                    ) : (
+                        <div className="w-7 h-7 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center text-[11px] font-bold text-sky-500">
+                            {(item.requester_name || '?')[0]}
+                        </div>
+                    )}
+                    <span className="text-[11px] font-medium text-slate-500 truncate">{item.requester_name || '알 수 없음'}</span>
+                    {item.created_at && (
+                        <span className="text-[10px] text-slate-300 ml-auto shrink-0">
+                            {timeAgo(item.created_at)}
                         </span>
+                    )}
+                </div>
+                {item.file_name && (
+                    <div className="flex items-center gap-1 mt-2 text-[10px] text-slate-400">
+                        <Paperclip size={10} className="text-slate-300" />
+                        <span className="truncate">{item.file_name}</span>
                     </div>
                 )}
+                <div className="flex gap-2 mt-3">
+                    <button
+                        onClick={() => handleApproval(item.id, true)}
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-sky-50 hover:bg-sky-500 text-sky-500 hover:text-white text-[11px] font-semibold rounded-lg transition-all"
+                    >
+                        <Check size={12} /> Approve
+                    </button>
+                    <button
+                        onClick={() => handleApproval(item.id, false)}
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-rose-50 hover:bg-rose-500 text-rose-500 hover:text-white text-[11px] font-semibold rounded-lg transition-all"
+                    >
+                        <X size={12} /> Reject
+                    </button>
+                </div>
             </motion.div>
         );
     };
+
+    /* ── Sent 카드 (보낸 요청 - Approved/Rejected 통합) ── */
+    const renderSentCard = (item) => {
+        const cfg = typeConfig[item.type] || defaultTypeConfig;
+        const IconComp = cfg.icon;
+        const isApproved = item.status === 'approved';
+        const cardBg = isApproved
+            ? 'bg-emerald-50/40 dark:bg-emerald-900/10'
+            : 'bg-rose-50/40 dark:bg-rose-900/10';
+        return (
+            <motion.div
+                key={item.id}
+                layout
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => openSentDetail(item)}
+                className={`${cardBg} backdrop-blur-sm p-4 rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-all group cursor-pointer hover:scale-[1.01]`}
+            >
+                <div className="flex items-center justify-between mb-2.5">
+                    <div className="flex items-center gap-2">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${cfg.color}`}>
+                            <IconComp size={14} />
+                        </div>
+                        <span className="text-[11px] font-semibold text-slate-400">{cfg.label}</span>
+                    </div>
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${isApproved
+                        ? 'bg-emerald-50 text-emerald-500 dark:bg-emerald-900/30'
+                        : 'bg-rose-50 text-rose-500 dark:bg-rose-900/30'
+                    }`}>
+                        {isApproved ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
+                        {isApproved ? 'Approved' : 'Rejected'}
+                    </span>
+                </div>
+                <h4 className="text-[13px] font-bold text-slate-700 dark:text-slate-200 leading-snug mb-1 line-clamp-2">{item.title}</h4>
+                {item.detail && (
+                    <p className="text-[11px] text-slate-400 line-clamp-1 mb-2">{item.detail}</p>
+                )}
+                {/* 첨부파일 표시 */}
+                {item.file_name && (
+                    <div className="flex items-center gap-1 mb-2">
+                        <Paperclip size={10} className="text-slate-300" />
+                        <span className="text-[10px] text-slate-400 truncate">{item.file_name}</span>
+                    </div>
+                )}
+                {/* 받는 사람 표시 */}
+                <div className="flex items-center gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-700">
+                    <Send size={10} className="text-slate-300 shrink-0" />
+                    {item.requester_avatar ? (
+                        <img src={item.requester_avatar} alt="" className="w-7 h-7 rounded-full object-cover ring-2 ring-white dark:ring-neutral-800" />
+                    ) : (
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${isApproved ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-500'}`}>
+                            {(item.requester_name || '?')[0]}
+                        </div>
+                    )}
+                    <span className="text-[11px] font-medium text-slate-500 truncate">{item.requester_name || '알 수 없음'}</span>
+                    {item.created_at && (
+                        <span className="text-[10px] text-slate-300 ml-auto shrink-0">
+                            {timeAgo(item.created_at)}
+                        </span>
+                    )}
+                </div>
+            </motion.div>
+        );
+    };
+
+    const pendingItems = items.filter(i => i.status === 'pending');
+    const sentItems = items.filter(i => (i.status === 'approved' || i.status === 'rejected') && (!user || String(i.requester_id) === String(user.id)));
 
     /* ── New Tasks 탭 전환 시 데이터 로드 ── */
     const switchNewTasksTab = (tab) => {
@@ -346,139 +548,49 @@ export default function ApprovalPanel({ onReady, externalActions }) {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {/* ── Column 1: Process (내 요청) ── */}
+                    {/* ── Pending column ── */}
                     <div className="flex flex-col min-h-[420px]">
                         <div className="flex items-center justify-center gap-2 mb-3">
                             <div className="w-2 h-2 rounded-full bg-sky-400" />
-                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300 tracking-tight">Process</span>
+                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300 tracking-tight">Pending</span>
                             <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
-                                {myItems.length}
+                                {pendingItems.length}
                             </span>
                         </div>
-                        <div className="flex-1 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-200/50 dark:border-slate-700/50 overflow-y-auto max-h-[600px]">
+                        <div className="flex-1 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-200/50 dark:border-slate-700/50">
                             <div className="space-y-3">
                                 <AnimatePresence mode="popLayout">
-                                    {myItems.map(renderProcessCard)}
+                                    {pendingItems.map(renderPendingCard)}
                                 </AnimatePresence>
-                                {myItems.length === 0 && (
+                                {pendingItems.length === 0 && (
                                     <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-600">
-                                        <FileSignature size={16} className="text-slate-300 mb-1" />
-                                        <span className="text-[11px] text-slate-300 dark:text-slate-500">보낸 요청이 없습니다</span>
+                                        <span className="text-[11px] text-slate-300 dark:text-slate-500">비어 있음</span>
                                     </div>
                                 )}
                             </div>
                         </div>
                     </div>
 
-                    {/* ── Column 2: Schedule (체크리스트) ── */}
+                    {/* ── Sent column (Approved + Rejected 통합) ── */}
                     <div className="flex flex-col min-h-[420px]">
                         <div className="flex items-center justify-center gap-2 mb-3">
-                            <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300 tracking-tight">Schedule</span>
+                            <div className="w-2 h-2 rounded-full bg-amber-400" />
+                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300 tracking-tight">Sent</span>
                             <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
-                                {checklist.length}
+                                {sentItems.length}
                             </span>
-                            <button
-                                onClick={loadChecklist}
-                                disabled={checklistLoading}
-                                className="p-1 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-600/40 text-slate-400 hover:text-slate-600 transition-colors"
-                                title="새로고침"
-                            >
-                                <RefreshCw size={12} className={checklistLoading ? 'animate-spin' : ''} />
-                            </button>
                         </div>
-                        <div className="flex-1 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-200/50 dark:border-slate-700/50 overflow-y-auto max-h-[600px]">
-                            {checklistLoading ? (
-                                <div className="flex flex-col items-center justify-center py-12">
-                                    <div className="relative w-10 h-10 mb-3">
-                                        <div className="absolute inset-0 rounded-full border-2 border-emerald-100" />
-                                        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-emerald-400 animate-spin" />
-                                        <ListChecks size={14} className="absolute inset-0 m-auto text-emerald-400" />
+                        <div className="flex-1 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-200/50 dark:border-slate-700/50">
+                            <div className="space-y-3">
+                                <AnimatePresence mode="popLayout">
+                                    {sentItems.map(renderSentCard)}
+                                </AnimatePresence>
+                                {sentItems.length === 0 && (
+                                    <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-600">
+                                        <span className="text-[11px] text-slate-300 dark:text-slate-500">비어 있음</span>
                                     </div>
-                                    <p className="text-xs text-slate-400">AI 분석 중...</p>
-                                </div>
-                            ) : checklistError ? (
-                                <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-rose-200 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-900/10">
-                                    <XCircle size={14} className="text-rose-300 mb-1" />
-                                    <span className="text-[10px] text-rose-400">{checklistError}</span>
-                                    <button onClick={loadChecklist} className="mt-1.5 text-[10px] text-sky-500 hover:underline">다시 시도</button>
-                                </div>
-                            ) : checklist.length === 0 ? (
-                                <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-600">
-                                    <ListChecks size={16} className="text-slate-300 mb-1" />
-                                    <span className="text-[11px] text-slate-300 dark:text-slate-500">할 일이 없습니다</span>
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {checklist.length > 0 && (
-                                        <div className="mb-3">
-                                            <div className="flex items-center justify-between mb-1.5">
-                                                <span className="text-[10px] font-semibold text-slate-400">진행률</span>
-                                                <span className="text-[10px] font-bold text-emerald-500">
-                                                    {checklist.filter(c => c.done).length}/{checklist.length}
-                                                </span>
-                                            </div>
-                                            <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-emerald-400 rounded-full transition-all duration-500"
-                                                    style={{ width: `${(checklist.filter(c => c.done).length / checklist.length) * 100}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                    <AnimatePresence mode="popLayout">
-                                        {checklist.map((item) => {
-                                            const catColors = {
-                                                meeting: 'bg-indigo-50 text-indigo-500',
-                                                task: 'bg-sky-50 text-sky-500',
-                                                review: 'bg-amber-50 text-amber-500',
-                                                prepare: 'bg-violet-50 text-violet-500',
-                                                report: 'bg-teal-50 text-teal-500',
-                                            };
-                                            const priColors = {
-                                                high: 'text-red-400',
-                                                medium: 'text-amber-400',
-                                                low: 'text-slate-300',
-                                            };
-                                            return (
-                                                <motion.div
-                                                    key={item.id}
-                                                    layout
-                                                    initial={{ opacity: 0, y: 4 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    exit={{ opacity: 0, x: -20 }}
-                                                    className={`flex items-start gap-3 p-3 rounded-xl bg-white dark:bg-neutral-800 shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] cursor-pointer transition-all ${item.done ? 'opacity-60' : ''}`}
-                                                    onClick={() => toggleCheckItem(item.id)}
-                                                >
-                                                    <div className="mt-0.5 shrink-0">
-                                                        {item.done ? (
-                                                            <CheckSquare size={16} className="text-emerald-500" />
-                                                        ) : (
-                                                            <Square size={16} className={priColors[item.priority] || 'text-slate-300'} />
-                                                        )}
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <h4 className={`text-[12px] font-bold leading-snug line-clamp-2 ${item.done ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>
-                                                            {item.title}
-                                                        </h4>
-                                                        <div className="flex items-center gap-1.5 mt-1">
-                                                            <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md ${catColors[item.category] || catColors.task}`}>
-                                                                {item.category}
-                                                            </span>
-                                                            {item.due && (
-                                                                <span className="text-[9px] text-slate-300">{item.due}</span>
-                                                            )}
-                                                        </div>
-                                                        {item.related && (
-                                                            <span className="text-[9px] text-slate-300 mt-0.5 block truncate">→ {item.related}</span>
-                                                        )}
-                                                    </div>
-                                                </motion.div>
-                                            );
-                                        })}
-                                    </AnimatePresence>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -549,6 +661,21 @@ export default function ApprovalPanel({ onReady, externalActions }) {
                                             <AnimatePresence mode="popLayout">
                                                 {suggestions.map((s, idx) => {
                                                     const cfg = typeConfig[s.type] || defaultTypeConfig;
+                                                    // 백엔드에서 related_project가 없으면 파이프라인 태스크에서 추론
+                                                    const project = s.related_project || (() => {
+                                                        const match = pipelineTasks.find(t => t.stage !== 'done' && t.project && s.title?.includes(t.title));
+                                                        if (match) return match.project;
+                                                        // review 타입이면 review 단계 태스크의 프로젝트
+                                                        if (s.type === 'review') {
+                                                            const rt = pipelineTasks.find(t => t.stage === 'review' && t.project);
+                                                            if (rt) return rt.project;
+                                                        }
+                                                        // 가장 많은 프로젝트
+                                                        const projCounts = {};
+                                                        pipelineTasks.filter(t => t.project && t.stage !== 'done').forEach(t => { projCounts[t.project] = (projCounts[t.project] || 0) + 1; });
+                                                        const entries = Object.entries(projCounts);
+                                                        return entries.length > 0 ? entries.sort((a, b) => b[1] - a[1])[0][0] : null;
+                                                    })();
                                                     return (
                                                         <motion.div
                                                             key={idx}
@@ -560,11 +687,19 @@ export default function ApprovalPanel({ onReady, externalActions }) {
                                                             className="bg-white dark:bg-neutral-800 p-3 rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] cursor-pointer transition-all group"
                                                         >
                                                             <div className="flex flex-col items-center text-center gap-1.5">
-                                                                {s.priority && (
-                                                                    <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md self-end ${priorityBadge[s.priority] || priorityBadge.medium}`}>
-                                                                        {s.priority.toUpperCase()}
-                                                                    </span>
-                                                                )}
+                                                                <div className="flex items-center justify-between w-full">
+                                                                    {project && (
+                                                                        <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-500 dark:bg-indigo-900/30 flex items-center gap-0.5">
+                                                                            <FolderOpen size={8} /> {project}
+                                                                        </span>
+                                                                    )}
+                                                                    {!project && <span />}
+                                                                    {s.priority && (
+                                                                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md ${priorityBadge[s.priority] || priorityBadge.medium}`}>
+                                                                            {s.priority.toUpperCase()}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                                 <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-200 group-hover:text-violet-500 transition-colors line-clamp-2 leading-snug">
                                                                     {s.title}
                                                                 </h4>
@@ -648,7 +783,7 @@ export default function ApprovalPanel({ onReady, externalActions }) {
                                                                 </span>
                                                             )}
                                                             <button
-                                                                onClick={() => addScheduleToCalendar(s, idx)}
+                                                                onClick={() => openSchedulePicker(s, idx)}
                                                                 disabled={isAdding}
                                                                 className="w-full flex items-center justify-center gap-1.5 py-2 bg-violet-50 hover:bg-violet-500 text-violet-500 hover:text-white text-[11px] font-bold rounded-lg transition-all disabled:opacity-50"
                                                             >
@@ -750,6 +885,28 @@ export default function ApprovalPanel({ onReady, externalActions }) {
                                     ))}
                                 </select>
                             </div>
+                            {/* 대상 팀 / 팀원 선택 */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">보낼 팀</label>
+                                    <select
+                                        value={formData.target_team}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, target_team: e.target.value, target_user_id: '' }))}
+                                        className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition-all"
+                                    >
+                                        <option value="">전체</option>
+                                        {TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">보낼 팀원</label>
+                                    <MemberDropdown
+                                        members={allMembers.filter(m => !formData.target_team || m.team === formData.target_team)}
+                                        value={formData.target_user_id}
+                                        onChange={(id) => setFormData(prev => ({ ...prev, target_user_id: id }))}
+                                    />
+                                </div>
+                            </div>
                             <div>
                                 <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">제목</label>
                                 <input
@@ -771,6 +928,24 @@ export default function ApprovalPanel({ onReady, externalActions }) {
                                     className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent resize-none transition-all placeholder:text-slate-300"
                                 />
                             </div>
+                            <div>
+                                <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">첨부파일 (선택)</label>
+                                <input
+                                    type="file"
+                                    accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg,.gif,.webp"
+                                    onChange={(e) => setFormFile(e.target.files[0] || null)}
+                                    className="w-full text-sm text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-500 hover:file:bg-slate-200 dark:file:bg-slate-700 dark:file:text-slate-300"
+                                />
+                                {formFile && (
+                                    <div className="flex items-center gap-1 mt-1 text-xs text-slate-400">
+                                        <Paperclip size={12} />
+                                        <span className="truncate">{formFile.name}</span>
+                                        <button type="button" onClick={() => setFormFile(null)} className="ml-1 p-0.5 rounded hover:bg-red-100 text-red-400 hover:text-red-600 transition-colors">
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                             <div className="flex gap-3 pt-3">
                                 <button
                                     type="button"
@@ -788,6 +963,285 @@ export default function ApprovalPanel({ onReady, externalActions }) {
                                 </button>
                             </div>
                         </form>
+                    </motion.div>
+                </div>,
+                document.body
+            )}
+
+            {/* ── Sent 상세 모달 ── */}
+            {selectedSent && createPortal(
+                <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
+                        onClick={closeSentDetail}
+                    />
+                    <motion.div
+                        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        className={`relative backdrop-blur-xl rounded-[2.5rem] shadow-2xl w-full max-w-lg mx-4 overflow-hidden ${selectedSent.status === 'approved' ? 'bg-emerald-50/70 dark:bg-emerald-950/60' : 'bg-rose-50/70 dark:bg-rose-950/60'}`}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* 헤더 */}
+                        <div className="px-6 pt-6 pb-4">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${(typeConfig[selectedSent.type] || defaultTypeConfig).color}`}>
+                                        {(() => { const IC = (typeConfig[selectedSent.type] || defaultTypeConfig).icon; return <IC size={20} />; })()}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <span className="text-[11px] font-semibold text-slate-400">{(typeConfig[selectedSent.type] || defaultTypeConfig).label}</span>
+                                        {editMode ? (
+                                            <input
+                                                value={editTitle}
+                                                onChange={(e) => setEditTitle(e.target.value)}
+                                                className="w-full text-lg font-bold text-slate-800 dark:text-white bg-white/60 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-sky-400"
+                                            />
+                                        ) : (
+                                            <h3 className="text-lg font-bold text-slate-800 dark:text-white leading-tight">{selectedSent.title}</h3>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <span className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full ${selectedSent.status === 'approved'
+                                        ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
+                                        : 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400'
+                                    }`}>
+                                        {selectedSent.status === 'approved' ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                                        {selectedSent.status === 'approved' ? 'Approved' : 'Rejected'}
+                                    </span>
+                                    <button onClick={closeSentDetail} className="w-8 h-8 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 transition-colors flex items-center justify-center">
+                                        <X size={18} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="px-6 pb-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                            {/* 상세 내용 */}
+                            <div className="mt-4">
+                                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">상세 내용</h4>
+                                {editMode ? (
+                                    <textarea
+                                        value={editDetail}
+                                        onChange={(e) => setEditDetail(e.target.value)}
+                                        rows={4}
+                                        className="w-full text-sm text-slate-600 dark:text-slate-300 bg-white/60 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-sky-400 resize-none"
+                                        placeholder="상세 내용을 입력하세요"
+                                    />
+                                ) : (
+                                    <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl">
+                                        {selectedSent.detail || '(내용 없음)'}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* 받는 사람 */}
+                            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">받는 사람</span>
+                                <div className="flex items-center gap-3 mt-2">
+                                    {selectedSent.requester_avatar ? (
+                                        <img src={selectedSent.requester_avatar} alt="" className="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-neutral-800" />
+                                    ) : (
+                                        <div className="w-9 h-9 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-sm font-bold text-violet-500">
+                                            {(selectedSent.requester_name || '?')[0]}
+                                        </div>
+                                    )}
+                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{selectedSent.requester_name || '알 수 없음'}</span>
+                                </div>
+                            </div>
+
+                            {/* 시간 정보 */}
+                            <div className="flex items-center gap-4 text-[11px] text-slate-400">
+                                <div className="flex items-center gap-1.5">
+                                    <Clock size={12} />
+                                    <span>요청일: {selectedSent.created_at ? new Date(selectedSent.created_at).toLocaleString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                                </div>
+                                <span className="text-slate-300">•</span>
+                                <span>{timeAgo(selectedSent.created_at)}</span>
+                            </div>
+
+                            {/* 첨부파일 */}
+                            {selectedSent.file_name && (
+                                <div>
+                                    <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">첨부파일</h4>
+                                    <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                                        {/* 미리보기 (이미지/PDF) */}
+                                        {previewUrl && /\.(png|jpg|jpeg|gif|webp)$/i.test(selectedSent.file_name) && (
+                                            <div className="bg-slate-50 dark:bg-slate-800 p-2">
+                                                <img src={previewUrl} alt={selectedSent.file_name} className="max-h-64 mx-auto rounded-lg object-contain" />
+                                            </div>
+                                        )}
+                                        {previewUrl && /\.pdf$/i.test(selectedSent.file_name) && (
+                                            <div className="bg-slate-50 dark:bg-slate-800">
+                                                <iframe src={previewUrl} className="w-full h-64" title="PDF Preview" />
+                                            </div>
+                                        )}
+                                        <div className="flex items-center justify-between p-3 bg-white dark:bg-neutral-800">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <Paperclip size={14} className="text-slate-400 shrink-0" />
+                                                <span className="text-sm text-slate-600 dark:text-slate-300 truncate">{selectedSent.file_name}</span>
+                                            </div>
+                                            <div className="flex gap-1.5 shrink-0">
+                                                {previewUrl && (
+                                                    <a
+                                                        href={previewUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-500 transition-colors"
+                                                        title="미리보기"
+                                                    >
+                                                        <Eye size={14} />
+                                                    </a>
+                                                )}
+                                                <button
+                                                    onClick={() => downloadApprovalFile(selectedSent.id, selectedSent.file_name)}
+                                                    className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/20 dark:hover:bg-sky-900/40 text-sky-500 transition-colors"
+                                                    title="다운로드"
+                                                >
+                                                    <Download size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 액션 버튼 */}
+                            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex gap-2">
+                                {editMode ? (
+                                    <>
+                                        <button
+                                            onClick={() => setEditMode(false)}
+                                            className="flex-1 py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all"
+                                        >
+                                            취소
+                                        </button>
+                                        <button
+                                            onClick={saveEdit}
+                                            disabled={editSaving || !editTitle.trim()}
+                                            className="flex-1 py-2.5 text-xs font-semibold text-white bg-sky-500 hover:bg-sky-600 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                        >
+                                            <Check size={13} /> {editSaving ? '저장 중...' : '저장'}
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={startEdit}
+                                            className="flex-1 py-2.5 text-xs font-semibold text-sky-500 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                                        >
+                                            <Pencil size={13} /> 수정
+                                        </button>
+                                        <button
+                                            onClick={() => { closeSentDetail(); handleDeleteClick(selectedSent); }}
+                                            className="flex-1 py-2.5 text-xs font-semibold text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                                        >
+                                            <Trash2 size={13} /> 삭제
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>,
+                document.body
+            )}
+
+            {/* ── 일정 날짜 선택 모달 ── */}
+            {schedulePickerData && createPortal(
+                <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/40 p-4">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute inset-0"
+                        onClick={() => setSchedulePickerData(null)}
+                    />
+                    <motion.div
+                        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl p-6 w-full max-w-sm border border-white/40 dark:border-white/10"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between mb-5">
+                            <div className="flex items-center gap-2">
+                                <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center">
+                                    <CalendarPlus size={20} className="text-violet-500" />
+                                </div>
+                                <h3 className="text-base font-bold text-slate-800 dark:text-white">캘린더에 추가</h3>
+                            </div>
+                            <button onClick={() => setSchedulePickerData(null)} className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 transition-colors flex items-center justify-center">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* 일정 제목 (수정 가능) */}
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">일정 이름</label>
+                                <input
+                                    type="text"
+                                    value={pickerTitle}
+                                    onChange={(e) => setPickerTitle(e.target.value)}
+                                    placeholder="일정 이름을 입력하세요"
+                                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all placeholder:text-slate-300"
+                                />
+                                {schedulePickerData.suggestion.reason && (
+                                    <p className="text-[10px] text-slate-400 mt-1.5 ml-0.5 line-clamp-2">{schedulePickerData.suggestion.reason}</p>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">날짜</label>
+                                <input
+                                    type="date"
+                                    value={pickerDate}
+                                    onChange={(e) => setPickerDate(e.target.value)}
+                                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">시작 시간</label>
+                                    <input
+                                        type="time"
+                                        value={pickerStartTime}
+                                        onChange={(e) => setPickerStartTime(e.target.value)}
+                                        className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">종료 시간</label>
+                                    <input
+                                        type="time"
+                                        value={pickerEndTime}
+                                        onChange={(e) => setPickerEndTime(e.target.value)}
+                                        className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-5">
+                            <button
+                                onClick={() => setSchedulePickerData(null)}
+                                className="flex-1 py-2.5 text-xs font-black rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all"
+                            >
+                                취소
+                            </button>
+                            <button
+                                onClick={confirmAddSchedule}
+                                disabled={addingScheduleId != null || !pickerDate}
+                                className="flex-1 py-2.5 bg-violet-500 text-white text-xs font-black rounded-xl shadow-xl shadow-violet-500/20 hover:bg-violet-600 hover:scale-105 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                            >
+                                {addingScheduleId != null ? (
+                                    <><RefreshCw size={12} className="animate-spin" /> 추가 중...</>
+                                ) : (
+                                    <><CalendarPlus size={12} /> 추가</>
+                                )}
+                            </button>
+                        </div>
                     </motion.div>
                 </div>,
                 document.body
