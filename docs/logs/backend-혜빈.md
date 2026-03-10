@@ -859,3 +859,59 @@
 - EC2 서버 수동 재시작 (점수 개선 반영 확인)
 - AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
 - vLLM 백엔드 연동 + sLLM 교체 및 평가
+
+---
+
+## 2026-03-10 (세션 19) — 문서 분석 sLLM 전환 준비 + 성능 비교
+
+### 한 일
+
+**문서 검색/질문 응답 품질 개선**
+- `ai/agents/document_agent.py`:
+  - 검색 결과에 문서 제목 포함: `[문서 제목: {title}]` 태그로 Context 구성 → LLM이 실제 제목을 그대로 사용하도록
+  - "find" 프롬프트 강화: 관련성 판단 기준 명시, 모든 관련 문서 나열, 제목 임의 생성 금지
+  - `_build_sources`에서 content 200자 truncation 제거 → 전체 보기 시 전체 내용 표시
+  - `_call_llm`에 temperature 파라미터 추가: 검색/QA는 0.1(일관성), 생성은 0.7(창의성)
+  - top_k 5 → 10으로 증가 (더 많은 검색 결과 반환)
+- `ai/agents/intent_classifier.py`: 오타 허용 instruction 추가 ("문ㅁ서" → "문서" 등)
+- `ai/agents/preprocessing.py`: 자음 끼인 오타 패턴 추가 ("문ㅁ서", "일ㅈ정", "검ㅅ색" 등)
+- `backend/app/services/document_service.py`: Qdrant 인덱싱 시 태그 프리픽스 제거 (태그는 metadata에만 저장)
+
+**문서 분석 sLLM(Kanana-1.5-8B) 전환 작업**
+- 현재 문서 분석(summary, category, tags)은 GPT API 사용
+- sLLM 전환 시 기능 유지 확인: `DOC_ANALYSIS_MODE` 환경변수로 api/sllm 전환 가능 (이전 세션에서 구현 완료)
+
+**sLLM base 모델 성능 비교 (프롬프트 최적화 전후)**
+- `scripts/compare_doc_analysis.py` — GPT vs sLLM 비교 스크립트 (이전 세션에서 생성)
+- 프롬프트 최적화: few-shot 예시 + 카테고리 분류 기준 명시
+  - `backend/app/services/document_service.py`, `scripts/compare_doc_analysis.py` 양쪽 적용
+- EC2에서 비교 실행 결과:
+  - **최적화 전**: Category 43%, Tags F1 26%, Summary 33%
+  - **최적화 후**: Category **67%** (+24%p), Tags F1 20%, Summary 33%
+  - 14개 중 5개 문서는 vLLM 서버 500 에러 (문서 길이 초과)
+  - 결론: 카테고리 개선됐으나 파인튜닝 필요
+
+**LoRA 파인튜닝 학습 데이터 export**
+- `scripts/export_analysis_training_data.py` 실행 (EC2)
+- DB의 GPT 분석 결과 14건 × 3(프롬프트 변형 증강) = **42건** 생성
+  - Train: 37건, Val: 5건
+  - 출력: `ai/finetuning/data/doc_analysis_train.jsonl`, `doc_analysis_val.jsonl`
+
+**LoRA 학습 config + 학습 스크립트 생성**
+- `ai/finetuning/configs/v2_analysis.yaml` 신규:
+  - 모델: Kanana-1.5-8B, QLoRA 4bit
+  - r=16, alpha=32, epoch=10, lr=2e-4, batch=2
+- `ai/finetuning/train_v2_analysis.py` 신규:
+  - `--mode train/eval/all` 지원
+  - 평가 메트릭: category 일치율, tags F1, summary 유사도
+
+**AI Hub 학습 데이터 검토**
+- `data/training/v2_summary/ai_hub_summary.jsonl` (700건) 확인
+- 형식: 마크다운 요약 (핵심요약 + 주요포인트 + 키워드) → 우리 분석 형식(JSON)과 다름
+- **결정: category는 제외하고 summary + tags만 학습**
+  - AI Hub 데이터에 카테고리 정보 없음
+  - category는 별도 규칙 기반 처리 예정
+- 현재 **보류** — AI Hub 700건 → JSON 변환 스크립트 필요
+
+### 다음 할 일
+- category는 규칙 기반 or 별도 처리 방안 결정
