@@ -290,8 +290,19 @@ class HybridSearcher:
                 if len(diverse_results) >= top_k:
                     break
 
-        # RRF 점수 min-max 정규화 (0~1 범위)
-        # RRF 원본 점수는 0.01~0.033 범위라 프론트엔드에서 *100 해도 3%로 표시됨
+        # 절대 점수 필터링: RRF 원본 점수가 너무 낮으면 관련 없는 문서로 판단하여 제거
+        # RRF 단일 출처 최고 점수 = 1/(60+1) ≈ 0.0164, 양쪽 모두 1위 = 0.0328
+        # 임계값 0.005 = 양쪽 모두 10위 이하인 문서 제거
+        MIN_RRF_ABSOLUTE = 0.005
+        before_abs_filter = len(diverse_results)
+        diverse_results = [doc for doc in diverse_results if doc["rrf_score"] >= MIN_RRF_ABSOLUTE]
+        if len(diverse_results) < before_abs_filter:
+            logger.info(
+                f"[HybridSearch] 절대 점수 필터링: {before_abs_filter}개 → {len(diverse_results)}개 "
+                f"(임계값: {MIN_RRF_ABSOLUTE})"
+            )
+
+        # RRF 점수 정규화 (0~1 범위)
         if not diverse_results:
             return []
         rrf_scores_list = [doc["rrf_score"] for doc in diverse_results]

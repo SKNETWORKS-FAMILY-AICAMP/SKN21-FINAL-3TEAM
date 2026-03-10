@@ -289,14 +289,14 @@ async def _handle_doc_search(query: str, context: List[str], user_id: int = None
     sources = _build_sources(search_results)
     print(f"[DocumentAgent] 출처 정보: {len(sources)}개")
 
-    # 3. Context가 없으면 검색 실패
+    # 3. Context가 없으면 검색 실패 (절대 점수 필터링으로 모두 제거된 경우 포함)
     if not context:
-        print("[DocumentAgent] context 비어있음 → 검색 실패 응답")
+        print("[DocumentAgent] context 비어있음 → 관련 문서 없음 응답")
         return {
             "type": "doc_search",
             "answer": "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요.",
             "message": "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요.",
-            "sources": sources,
+            "sources": [],
             "context": context,
         }
 
@@ -845,14 +845,14 @@ async def _handle_doc_qa(query: str, context: list = None, user_id: int = None, 
     # 출처 정보 구성
     sources = _build_sources(search_results)
 
-    # Context가 없으면 실패
+    # Context가 없으면 실패 (절대 점수 필터링으로 모두 제거된 경우 포함)
     if not context:
-        print("[DocumentAgent] context 비어있음 → 검색 실패 응답")
+        print("[DocumentAgent] context 비어있음 → 관련 문서 없음 응답")
         return {
             "type": "doc_qa",
             "answer": "관련 문서를 찾지 못했습니다. 다른 질문을 시도해보세요.",
             "message": "관련 문서를 찾지 못했습니다. 다른 질문을 시도해보세요.",
-            "sources": sources,
+            "sources": [],
             "citations": [],
             "confidence": 0.0,
         }
