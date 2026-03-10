@@ -286,15 +286,17 @@ def _build_search_prompt(query: str, context: list) -> tuple:
         sys_prompt = """당신은 문서 검색 전문가입니다.
 
     [관련성 판단 기준]
-    - 사용자의 검색 키워드(사람 이름, 주제, 문서 유형 등)가 문서 내용에 포함되어 있으면 관련 문서입니다
-    - 검색 키워드와 전혀 상관없는 문서는 나열하지 마세요
+    - 사용자가 "보고서 찾아줘"처럼 문서 유형으로 검색하면, 해당 유형에 해당하는 모든 문서를 나열하세요
+    - 사용자의 검색 키워드(사람 이름, 주제, 문서 유형 등)가 문서 제목이나 내용에 포함되어 있으면 관련 문서입니다
+    - 검색 키워드와 전혀 상관없는 문서만 제외하세요. 조금이라도 관련 있으면 포함하세요.
+    - "보고서 문서 찾아줘"와 "보고서 찾아줘"는 같은 의미입니다. 오타나 중복 표현에 유연하게 대응하세요.
 
     [출력 규칙]
     - 각 문서의 제목은 반드시 Context의 [문서 제목: ...] 에 표시된 실제 제목을 사용하세요. 내용에서 추측하지 마세요.
     - 출력할 때 "[문서 제목: ]" 태그는 포함하지 마세요. 제목만 **볼드체**로 표시하세요.
     - 관련 문서가 있으면 "다음 문서들을 찾았습니다:" 형식으로 시작하고, 각 문서의 **제목**과 핵심 내용을 한 줄로 요약하세요
+    - Context에 포함된 관련 문서는 전부 나열하세요. 1개만 골라내지 마세요.
     - 관련 문서가 하나도 없으면 "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요."라고만 답하세요
-    - 관련 있는 문서는 빠뜨리지 마세요
 
     답변 시 Context에 포함된 정보만 사용하고, 추측하지 마세요."""
 
@@ -328,7 +330,7 @@ async def _handle_doc_search(query: str, context: List[str], user_id: int = None
             _t_rag = time.time()
             print(f"[DocumentAgent] RAG 검색 수행: '{query[:50]}'")
             rag_pipeline = get_qdrant_pipeline()
-            search_results = rag_pipeline.retrieve(query, user_id=user_id, user_team=user_team, top_k=5, filter={"source": "documents"})
+            search_results = rag_pipeline.retrieve(query, user_id=user_id, user_team=user_team, top_k=10, filter={"source": "documents"})
 
             # 검색된 문서의 content를 context로 사용
             context = [f"[문서 제목: {doc.get('title', '')}]\n{doc['content']}" for doc in search_results]
