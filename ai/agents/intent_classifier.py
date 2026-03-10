@@ -123,17 +123,17 @@ class IntentClassifier:
         """
         self.load_model()
 
-        # fallback: 모델 없으면 LLM 기반 분류
-        if self.model is None or self.tokenizer is None:
-            return self._llm_based_predict(text, return_candidates=return_candidates)
-
-        # 전처리
+        # 전처리 (오타 교정 등)
         try:
             from ai.agents.preprocessing import preprocess
 
             processed = preprocess(text)
         except ImportError:
             processed = text
+
+        # fallback: 모델 없으면 LLM 기반 분류 (전처리된 텍스트 사용)
+        if self.model is None or self.tokenizer is None:
+            return self._llm_based_predict(processed, return_candidates=return_candidates)
 
         # 추론
         import torch
@@ -192,9 +192,12 @@ class IntentClassifier:
             client = OpenAI(api_key=api_key)
 
             # return_candidates 요청 시 top-3 반환 프롬프트 추가
-            if return_candidates:
-                system_prompt = """사용자 입력의 의도를 분류하세요.
+            _typo_instruction = """
+                [중요] 사용자 입력에 오타나 탈자가 있을 수 있습니다. 오타를 자동으로 교정하여 의도를 파악하세요.
+                예: "문ㅁ서" → "문서", "일젇" → "일정", "검색해죠" → "검색해줘", "보곶서" → "보고서"
+                오타가 있더라도 문맥상 의도가 명확하면 해당 카테고리로 분류하세요."""
 
+            _categories = """
                 카테고리:
                 - judgment: 규정/규칙 기반 판단 요청 (예: "이거 규정 위반이야?", "이렇게 해도 돼?")
                 - doc_search: 문서 검색 — 어떤 문서가 있는지 찾기 (예: "마케팅 문서 찾아줘", "보고서 검색")
@@ -203,26 +206,23 @@ class IntentClassifier:
                 - doc_qa: 문서 QA — 문서 내용 기반 질의응답 (예: "지난 회의 결정사항이 뭐야?", "예산 얼마야?")
                 - schedule_add: 일정 추가/등록 (예: "내일 2시 회의 일정 추가해줘", "스케줄 등록해줘")
                 - schedule_view: 일정 조회/확인 (예: "오늘 일정 보여줘", "이번 주 스케줄 확인해줘")
-                - general: 위 카테고리에 해당하지 않는 일반 질문
+                - general: 위 카테고리에 해당하지 않는 일반 질문"""
+
+            if return_candidates:
+                system_prompt = f"""사용자 입력의 의도를 분류하세요.
+                {_typo_instruction}
+                {_categories}
 
                 반드시 아래 JSON 형식으로만 응답하세요:
-                {"intent": "카테고리명", "confidence": 0.0~1.0, "candidates": [{"intent": "카테고리명", "confidence": 0.0~1.0}, ...]}
+                {{"intent": "카테고리명", "confidence": 0.0~1.0, "candidates": [{{"intent": "카테고리명", "confidence": 0.0~1.0}}, ...]}}
                 candidates에는 가장 가능성 높은 상위 3개를 포함하세요."""
             else:
-                system_prompt = """사용자 입력의 의도를 분류하세요.
-
-                카테고리:
-                - judgment: 규정/규칙 기반 판단 요청 (예: "이거 규정 위반이야?", "이렇게 해도 돼?")
-                - doc_search: 문서 검색 — 어떤 문서가 있는지 찾기 (예: "마케팅 문서 찾아줘", "보고서 검색")
-                - doc_generate: 문서 작성 — 보고서/회의록/JD/제안서 생성 (예: "보고서 작성해줘", "회의록 만들어줘")
-                - doc_summary: 문서 요약 — 특정 문서의 핵심 정리 (예: "이 문서 요약해줘", "핵심만 정리해줘")
-                - doc_qa: 문서 QA — 문서 내용 기반 질의응답 (예: "지난 회의 결정사항이 뭐야?", "예산 얼마야?")
-                - schedule_add: 일정 추가/등록 (예: "내일 2시 회의 일정 추가해줘", "스케줄 등록해줘")
-                - schedule_view: 일정 조회/확인 (예: "오늘 일정 보여줘", "이번 주 스케줄 확인해줘")
-                - general: 위 카테고리에 해당하지 않는 일반 질문
+                system_prompt = f"""사용자 입력의 의도를 분류하세요.
+                {_typo_instruction}
+                {_categories}
 
                 반드시 아래 JSON 형식으로만 응답하세요:
-                {"intent": "카테고리명", "confidence": 0.0~1.0}"""
+                {{"intent": "카테고리명", "confidence": 0.0~1.0}}"""
 
             response = client.chat.completions.create(
                 model="gpt-4o-mini",

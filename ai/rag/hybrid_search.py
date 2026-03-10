@@ -290,8 +290,15 @@ class HybridSearcher:
                 if len(diverse_results) >= top_k:
                     break
 
-        # RRF 점수 min-max 정규화 (0~1 범위)
-        # RRF 원본 점수는 0.01~0.033 범위라 프론트엔드에서 *100 해도 3%로 표시됨
+        # Vector 최고 유사도 로깅 (디버깅용, 필터링하지 않음)
+        # 관련 없는 문서 필터링은 LLM 프롬프트에서 처리
+        if vector_results:
+            max_vector_score = max(doc.get("score", 0) for doc in vector_results)
+            logger.info(f"[HybridSearch] Vector 최고 유사도: {max_vector_score:.3f}")
+        else:
+            logger.info("[HybridSearch] Vector 검색 결과 없음")
+
+        # RRF 점수 정규화 (0~1 범위)
         if not diverse_results:
             return []
         rrf_scores_list = [doc["rrf_score"] for doc in diverse_results]

@@ -205,7 +205,7 @@ export default function AIChatPopup({ isOpen: externalOpen, onClose }) {
   }, [isOpen, setIsOpen]);
 
   return (
-    <div className="fixed bottom-32 right-16 z-50 flex items-end justify-end pointer-events-none">
+    <div className="fixed bottom-[5.5rem] right-24 z-50 flex items-end justify-end pointer-events-none">
 
       {/* 팝업 창 */}
       <AnimatePresence>
@@ -215,7 +215,7 @@ export default function AIChatPopup({ isOpen: externalOpen, onClose }) {
             initial={{ opacity: 0, x: 20, scale: 0.95 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}
-            className="bg-white/40 dark:bg-neutral-900/40 backdrop-blur-xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.12)] rounded-[2rem] border border-white/30 dark:border-white/10 w-[400px] max-h-[600px] mb-4 overflow-hidden pointer-events-auto origin-right flex flex-col"
+            className="bg-white/40 dark:bg-neutral-900/40 backdrop-blur-xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.12)] rounded-[2rem] border border-white/30 dark:border-white/10 w-[400px] max-h-[calc(100vh-10rem)] mb-4 overflow-hidden pointer-events-auto origin-right flex flex-col"
           >
             {/* Header */}
             <div className="px-6 py-5 flex items-center justify-between border-b border-neutral-200/30 dark:border-white/10 flex-shrink-0 bg-white/50 dark:bg-black/20">

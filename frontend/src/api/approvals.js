@@ -17,6 +17,9 @@ export const approveRequest = (id) => client.put(`/approvals/${id}/approve`);
 export const rejectRequest = (id) => client.put(`/approvals/${id}/reject`);
 export const deleteApproval = (id) => client.delete(`/approvals/${id}`);
 export const seedApprovals = () => client.post('/approvals/seed');
+export const suggestApprovals = () => client.post('/approvals/suggest');
+export const generateChecklist = () => client.post('/approvals/checklist');
+export const suggestSchedules = () => client.post('/approvals/suggest-schedules');
 
 export const getApprovalFileUrl = (id) => `/api/v1/approvals/${id}/file`;
 

@@ -37,13 +37,29 @@ async def analyze_document_with_llm(text: str, title: str) -> dict | None:
     """
     LLM으로 문서를 분석하여 summary, category, tags를 추출한다.
     실패 시 None 반환 (문서 업로드는 정상 진행).
+
+    DOC_ANALYSIS_MODE 환경변수:
+      - "api" (기본): GPT/Claude API 사용
+      - "sllm": vLLM(Kanana-1.5-8B) 사용
     """
     try:
-        print("[DocumentAnalysis] LLM 모듈 import 시도...")
-        from ai.llm import get_llm
+        import os
+        mode = os.getenv("DOC_ANALYSIS_MODE", "api")
+        print(f"[DocumentAnalysis] mode={mode}")
 
-        llm = get_llm()
-        print(f"[DocumentAnalysis] LLM 인스턴스 획득: {type(llm).__name__}")
+        if mode == "sllm":
+            from ai.serving.vllm_client import VLLMProvider
+            use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
+            if use_lora:
+                llm = VLLMProvider().with_lora("v2_analysis")
+                print("[DocumentAnalysis] sLLM: v2_analysis LoRA 어댑터")
+            else:
+                llm = VLLMProvider()
+                print(f"[DocumentAnalysis] sLLM: base model ({llm.model})")
+        else:
+            from ai.llm import get_llm
+            llm = get_llm()
+            print(f"[DocumentAnalysis] API: {type(llm).__name__}")
 
         truncated = text[:3000]
 
@@ -277,16 +293,10 @@ async def upload_and_parse(
                 "category": doc.category or "",
                 "tags": ", ".join(doc.tags) if doc.tags else "",
             }
-            # 태그 키워드를 본문 앞에 추가하여 BM25 검색 정확도 향상
-            tags_prefix = ""
-            if doc.tags:
-                tags_prefix = f"{' '.join(doc.tags)} {doc.category or ''} "
-            if doc.summary:
-                tags_prefix += f"{doc.summary} "
-            indexed_text = tags_prefix + text
-
+            # 태그/요약은 메타데이터에만 저장 (BM25 태그 부스트는 hybrid_search에서 처리)
+            # content에 prefix를 붙이면 사용자에게 태그 텍스트가 그대로 노출됨
             pipeline.add_documents(
-                documents=[indexed_text],
+                documents=[text],
                 metadatas=[qdrant_meta],
             )
             logger.info(f"문서 Qdrant 인덱싱 완료: document_id={doc.id}, title={doc.title}")
@@ -518,13 +528,8 @@ async def reindex_all_documents(db: AsyncSession) -> dict:
             except Exception:
                 pass
 
-            # 태그/분류/요약을 본문 앞에 추가
-            tags_prefix = ""
-            if doc.tags:
-                tags_prefix = f"{' '.join(doc.tags)} {doc.category or ''} "
-            if doc.summary:
-                tags_prefix += f"{doc.summary} "
-            indexed_text = tags_prefix + doc.content
+            # 태그/요약은 메타데이터에만 저장 (content에 prefix 붙이지 않음)
+            indexed_text = doc.content
 
             qdrant_meta = {
                 "source": "documents",

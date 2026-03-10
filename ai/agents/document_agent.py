@@ -287,11 +287,18 @@ def _build_search_prompt(query: str, context: list) -> tuple:
     elif intent_type == "find":
         sys_prompt = """당신은 문서 검색 전문가입니다.
 
-    [중요 지시사항]
-    - Context에 포함된 모든 문서를 빠짐없이 목록으로 나열하세요
-    - 각 문서의 제목과 핵심 내용을 한 줄로 요약하세요
-    - 문서를 하나도 빠뜨리지 마세요. Context에 5개 문서가 있으면 5개 모두 나열하세요
-    - "다음 문서들을 찾았습니다:" 형식으로 시작하세요
+    [관련성 판단 기준]
+    - 사용자가 "보고서 찾아줘"처럼 문서 유형으로 검색하면, 해당 유형에 해당하는 모든 문서를 나열하세요
+    - 사용자의 검색 키워드(사람 이름, 주제, 문서 유형 등)가 문서 제목이나 내용에 포함되어 있으면 관련 문서입니다
+    - 검색 키워드와 전혀 상관없는 문서만 제외하세요. 조금이라도 관련 있으면 포함하세요.
+    - "보고서 문서 찾아줘"와 "보고서 찾아줘"는 같은 의미입니다. 오타나 중복 표현에 유연하게 대응하세요.
+
+    [출력 규칙]
+    - 각 문서의 제목은 반드시 Context의 [문서 제목: ...] 에 표시된 실제 제목을 그대로 사용하세요. 제목을 수정하거나 만들어내지 마세요.
+    - 출력할 때 "[문서 제목: ]" 태그는 포함하지 마세요. 제목만 **볼드체**로 표시하세요.
+    - 관련 문서가 있으면 "다음 문서들을 찾았습니다:" 형식으로 시작하고, 각 문서의 **제목**과 핵심 내용을 한 줄로 요약하세요
+    - Context에 포함된 관련 문서는 전부 나열하세요. 1개만 골라내지 마세요.
+    - 관련 문서가 하나도 없으면 "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요."라고만 답하세요
 
     답변 시 Context에 포함된 정보만 사용하고, 추측하지 마세요."""
 
@@ -325,10 +332,10 @@ async def _handle_doc_search(query: str, context: List[str], user_id: int = None
             _t_rag = time.time()
             print(f"[DocumentAgent] RAG 검색 수행: '{query[:50]}'")
             rag_pipeline = get_qdrant_pipeline()
-            search_results = rag_pipeline.retrieve(query, user_id=user_id, user_team=user_team, top_k=5, filter={"source": "documents"})
+            search_results = rag_pipeline.retrieve(query, user_id=user_id, user_team=user_team, top_k=10, filter={"source": "documents"})
 
             # 검색된 문서의 content를 context로 사용
-            context = [doc["content"] for doc in search_results]
+            context = [f"[문서 제목: {doc.get('title', '')}]\n{doc['content']}" for doc in search_results]
             print(f"[DocumentAgent] RAG 검색 완료 ({time.time()-_t_rag:.2f}s): {len(context)}개 문서 검색됨")
 
         except Exception as e:
@@ -341,14 +348,14 @@ async def _handle_doc_search(query: str, context: List[str], user_id: int = None
     sources = _build_sources(search_results)
     print(f"[DocumentAgent] 출처 정보: {len(sources)}개")
 
-    # 3. Context가 없으면 검색 실패
+    # 3. Context가 없으면 검색 실패 (절대 점수 필터링으로 모두 제거된 경우 포함)
     if not context:
-        print("[DocumentAgent] context 비어있음 → 검색 실패 응답")
+        print("[DocumentAgent] context 비어있음 → 관련 문서 없음 응답")
         return {
             "type": "doc_search",
             "answer": "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요.",
             "message": "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요.",
-            "sources": sources,
+            "sources": [],
             "context": context,
         }
 
@@ -1055,7 +1062,7 @@ async def _handle_doc_qa(query: str, context: list = None, user_id: int = None, 
             print(f"[DocumentAgent] RAG 검색 수행 (doc_qa): '{query[:50]}'")
             rag_pipeline = get_qdrant_pipeline()
             search_results = rag_pipeline.retrieve(query, user_id=user_id, user_team=user_team, top_k=5, filter={"source": "documents"})
-            context = [doc["content"] for doc in search_results]
+            context = [f"[문서 제목: {doc.get('title', '')}]\n{doc['content']}" for doc in search_results]
             print(f"[DocumentAgent] RAG 검색 완료 ({time.time()-_t_rag:.2f}s): {len(context)}개 문서")
 
         except Exception as e:
@@ -1067,14 +1074,14 @@ async def _handle_doc_qa(query: str, context: list = None, user_id: int = None, 
     # 출처 정보 구성
     sources = _build_sources(search_results)
 
-    # Context가 없으면 실패
+    # Context가 없으면 실패 (절대 점수 필터링으로 모두 제거된 경우 포함)
     if not context:
-        print("[DocumentAgent] context 비어있음 → 검색 실패 응답")
+        print("[DocumentAgent] context 비어있음 → 관련 문서 없음 응답")
         return {
             "type": "doc_qa",
             "answer": "관련 문서를 찾지 못했습니다. 다른 질문을 시도해보세요.",
             "message": "관련 문서를 찾지 못했습니다. 다른 질문을 시도해보세요.",
-            "sources": sources,
+            "sources": [],
             "citations": [],
             "confidence": 0.0,
         }
@@ -1149,7 +1156,7 @@ def _build_sources(search_results: list) -> list:
                 "title": doc.get("title") or doc.get("chapter") or doc.get("source", "제목 없음"),
                 "source": doc.get("source", ""),
                 "score": doc.get("score", 0.0),
-                "content": doc.get("content", "")[:200] + "...",
+                "content": doc.get("content", ""),
                 "document_id": doc.get("document_id"),
             })
     return sources
@@ -1157,7 +1164,7 @@ def _build_sources(search_results: list) -> list:
 
 _last_model_name = "unknown"
 
-async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, task: str = None) -> str:
+async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, task: str = None, temperature: float = None) -> str:
     """
     LLM 호출 — 모드에 따라 LLM API 또는 sLLM(vLLM + LoRA) 사용
 
@@ -1165,12 +1172,16 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
         task: 파인튜닝 태스크명 ("generate", "qa", "summary").
               DOC_AGENT_MODE=sllm일 때 해당 LoRA 어댑터로 라우팅.
               None이면 항상 LLM API 사용 (template_type 감지 등).
+        temperature: LLM 온도. None이면 task에 따라 자동 결정
+                     (generate=0.7, 검색/QA=0.1)
     """
     global _last_model_name
+    if temperature is None:
+        temperature = 0.7 if task == "generate" else 0.1
     _t_llm = time.time()
     mode = os.getenv("DOC_AGENT_MODE", "api")
-    sllm_tasks = os.getenv("DOC_SLLM_TASKS", "generate").split(",")  # sLLM 적용 태스크 (쉼표 구분)
-    print(f"[DocumentAgent] _call_llm 호출 | mode={mode}, task={task}, sllm_tasks={sllm_tasks}, json_mode={json_mode}")
+    sllm_tasks = os.getenv("DOC_SLLM_TASKS", "generate").split(",")
+    print(f"[DocumentAgent] _call_llm 호출 | mode={mode}, task={task}, temperature={temperature}, json_mode={json_mode}")
     try:
         if mode == "sllm" and task in sllm_tasks:
             # sLLM 모드: vLLM + LoRA 어댑터
@@ -1188,7 +1199,7 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
                 response = await llm.generate(
                     prompt=user_prompt,
                     system_prompt=sys_prompt,
-                    temperature=0.7,
+                    temperature=temperature,
                     json_mode=json_mode,
                 )
                 result = response.content
@@ -1209,7 +1220,7 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
         response = await llm.generate(
             prompt=user_prompt,
             system_prompt=sys_prompt,
-            temperature=0.7,
+            temperature=temperature,
             json_mode=json_mode,
         )
 
