@@ -917,59 +917,20 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
     GENERATED_DOCS_DIR.mkdir(parents=True, exist_ok=True)
     output_path = str(GENERATED_DOCS_DIR / f"{doc_uuid}.docx")
 
-    # category에 맞는 기존 DOCX 빌더 재활용
+    # 커스텀 양식: 원본 DOCX가 있으면 채워넣기, 없으면 범용 레이아웃 생성
     try:
-        if template_type == "meeting_minutes":
-            from ai.skills.create_meeting_minutes import create_meeting_minutes
-            attendees = data.get("attendees", [])
-            docx_data = {
-                "title": data.get("title", "회의록"),
-                "date": data.get("date", ""),
-                "time": data.get("time", ""),
-                "location": data.get("location", ""),
-                "meeting_type": data.get("meeting_type", "정기"),
-                "attendees": attendees,
-                "author": data.get("author", attendees[0] if attendees else ""),
-                "content": data.get("summary", data.get("content", "")),
-                "decisions": data.get("decisions", []),
-                "action_items": data.get("action_items", []),
-                "notes": data.get("notes", ""),
-            }
-            create_meeting_minutes(output_path, docx_data)
-        elif template_type == "report":
-            from ai.skills.create_report import create_report
-            docx_data = {
-                "title": data.get("title", "업무보고서"),
-                "author": data.get("author", ""),
-                "date": data.get("date", ""),
-                "department": data.get("department", ""),
-                "position": data.get("position", ""),
-                "report_to": data.get("report_to", ""),
-                "report_type": data.get("report_type", "수시"),
-                "overview": data.get("overview", ""),
-                "main_content": data.get("main_content", ""),
-                "tasks": data.get("tasks", []),
-                "issues": data.get("issues", ""),
-                "next_plan": data.get("next_plan", ""),
-            }
-            create_report(output_path, docx_data)
-        elif template_type == "proposal":
-            from ai.skills.create_proposal import create_proposal
-            docx_data = {
-                "title": data.get("title", "제안서"),
-                "submit_date": data.get("submit_date", data.get("date", "")),
-                "submit_to": data.get("submit_to", ""),
-                "company": data.get("company", ""),
-                "manager": data.get("manager", ""),
-                "contact": data.get("contact", ""),
-                "purpose": data.get("purpose", ""),
-                "background": data.get("background", ""),
-                "content": data.get("content", ""),
-                "schedule": data.get("schedule", []),
-                "budget": data.get("budget", []),
-                "expected_effect": data.get("expected_effect", ""),
-            }
-            create_proposal(output_path, docx_data)
+        from ai.skills.create_from_template import fill_template_docx, create_generic_document
+
+        template_file = getattr(template, "file_path", None) if template else None
+        if template_file and Path(template_file).exists():
+            # 원본 양식 DOCX에 LLM 데이터를 채워넣기
+            print(f"[DocumentAgent] 원본 양식으로 DOCX 생성: {template_file}")
+            fill_template_docx(template_file, output_path, data)
+        else:
+            # 원본 파일 없음 → 범용 레이아웃으로 생성
+            print(f"[DocumentAgent] 원본 양식 없음 → 범용 레이아웃 생성")
+            doc_type_names = {"meeting_minutes": "회의록", "report": "보고서", "proposal": "제안서"}
+            create_generic_document(output_path, data, fields, doc_type_names.get(template_type, template_name))
         print(f"[DocumentAgent] 커스텀 DOCX 생성 완료: {output_path}")
     except Exception as e:
         print(f"[DocumentAgent] !!! 커스텀 DOCX 생성 실패: {e}")
