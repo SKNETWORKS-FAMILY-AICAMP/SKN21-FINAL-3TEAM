@@ -682,7 +682,7 @@ export default function ChatPage() {
               // AI 완료 — agentResponse 카드 렌더링
               if (msg.agentResponse && msg.resultIntent) {
                 return (
-                  <MessageBubble key={i} type="bot" intent={msg.resultIntent || msg.intent}>
+                  <MessageBubble key={i} type="bot" intent={msg.resultIntent || msg.intent} modelName={msg.agentResponse?.model_name}>
                     {renderCardMessage(msg, handleSend, setDocViewDoc, messages, i)}
                   </MessageBubble>
                 );
@@ -690,7 +690,7 @@ export default function ChatPage() {
 
               // AI 완료 — 기본 텍스트 버블
               return (
-                <MessageBubble key={i} type="bot" intent={msg.intent}>
+                <MessageBubble key={i} type="bot" intent={msg.intent} modelName={msg.agentResponse?.model_name}>
                   <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
                     <MarkdownText>{msg.content}</MarkdownText>
                   </div>

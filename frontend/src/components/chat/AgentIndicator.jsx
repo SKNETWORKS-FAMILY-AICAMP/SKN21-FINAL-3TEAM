@@ -11,7 +11,7 @@ const agentConfig = {
   general: { icon: MessageCircle, label: '일반 질문 Agent', color: 'text-neutral-sub bg-surface-hover' },
 };
 
-export default function AgentIndicator({ intent, status }) {
+export default function AgentIndicator({ intent, status, modelName }) {
   const config = agentConfig[intent] || agentConfig.general;
   const Icon = config.icon;
 
@@ -19,6 +19,12 @@ export default function AgentIndicator({ intent, status }) {
     <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-sm text-[0.8125rem] font-medium mb-3 ${config.color}`}>
       <Icon size={16} />
       <span>{config.label}</span>
+      {modelName && (
+        <>
+          <span className="text-neutral-muted">·</span>
+          <span className="text-[0.6875rem] font-normal opacity-70">{modelName}</span>
+        </>
+      )}
       {status && (
         <>
           <span className="text-neutral-muted">·</span>

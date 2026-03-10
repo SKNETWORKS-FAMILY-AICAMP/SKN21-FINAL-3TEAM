@@ -206,6 +206,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         final_state["agent_response"] = {
                             "type": "general",
                             "message": full_response,
+                            "model_name": "gpt-4o-mini",
                         }
 
                     elif node_name == "judgment_agent":
@@ -326,6 +327,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             agent_response.pop("user_prompt", None)
                             agent_response.pop("_rag_context", None)
                             agent_response.update(parsed)
+                            agent_response["model_name"] = openai_model
                             final_state["agent_response"] = agent_response
                         else:
                             yield f"data: {json.dumps({'type': 'status', 'value': 'judgment_agent 처리 완료'}, ensure_ascii=False)}\n\n"
@@ -366,6 +368,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             # 최종 응답 업데이트
                             agent_response["message"] = full_doc_response
                             agent_response["answer"] = full_doc_response
+                            agent_response["model_name"] = "gpt-4o-mini"
                             agent_response.pop("stream_pending", None)
                             agent_response.pop("sys_prompt", None)
                             agent_response.pop("user_prompt", None)

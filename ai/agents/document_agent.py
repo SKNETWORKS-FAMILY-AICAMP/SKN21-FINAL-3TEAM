@@ -102,6 +102,9 @@ async def document_agent(state: AgentState) -> AgentState:
 
     print(f"[DocumentAgent] 완료 ({time.time()-_t_agent:.2f}s) | response type={response_data.get('type')}, keys={list(response_data.keys())}")
 
+    # 모델명 추가 (프론트에서 표시용)
+    response_data["model_name"] = _last_model_name
+
     # State 업데이트
     state["agent_response"] = response_data
     return state
@@ -933,6 +936,8 @@ def _build_sources(search_results: list) -> list:
     return sources
 
 
+_last_model_name = "unknown"
+
 async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, task: str = None) -> str:
     """
     LLM 호출 — 모드에 따라 LLM API 또는 sLLM(vLLM + LoRA) 사용
@@ -942,6 +947,7 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
               DOC_AGENT_MODE=sllm일 때 해당 LoRA 어댑터로 라우팅.
               None이면 항상 LLM API 사용 (template_type 감지 등).
     """
+    global _last_model_name
     _t_llm = time.time()
     mode = os.getenv("DOC_AGENT_MODE", "api")
     print(f"[DocumentAgent] _call_llm 호출 | mode={mode}, task={task}, json_mode={json_mode}")
@@ -953,9 +959,11 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
                 use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
                 if use_lora:
                     llm = VLLMProvider().with_lora(f"v2_{task}")
+                    _last_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + f" (LoRA v2_{task})"
                     print(f"[DocumentAgent] _call_llm | sLLM: v2_{task} LoRA 어댑터")
                 else:
                     llm = VLLMProvider()
+                    _last_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B")
                     print(f"[DocumentAgent] _call_llm | sLLM: base model (LoRA 없음)")
                 response = await llm.generate(
                     prompt=user_prompt,
@@ -968,12 +976,14 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
                 return result
             except Exception as e:
                 print(f"[DocumentAgent] _call_llm | sLLM 실패, API fallback: {e}")
+                _last_model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini") + " (fallback)"
                 from ai.llm import get_llm
                 llm = get_llm()
         else:
             # API 모드: 기존 LLM Factory (GPT/Claude)
             from ai.llm import get_llm
             llm = get_llm()
+            _last_model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
             print(f"[DocumentAgent] _call_llm | API: {llm.__class__.__name__}")
 
         response = await llm.generate(
