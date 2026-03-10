@@ -258,7 +258,10 @@ async def main():
         f1_color = GREEN if tags_f1["f1"] >= 0.7 else YELLOW if tags_f1["f1"] >= 0.4 else RED
         sim_color = GREEN if summary_sim >= 0.5 else YELLOW if summary_sim >= 0.3 else RED
 
-        print(f"  결과: category {cat_icon}  tags F1={colored(f'{tags_f1[\"f1\"]:.0%}', f1_color)}  summary 유사도={colored(f'{summary_sim:.0%}', sim_color)}")
+        f1_val = tags_f1["f1"]
+        f1_str = colored(f"{f1_val:.0%}", f1_color)
+        sim_str = colored(f"{summary_sim:.0%}", sim_color)
+        print(f"  결과: category {cat_icon}  tags F1={f1_str}  summary 유사도={sim_str}")
         print()
 
         results.append({
