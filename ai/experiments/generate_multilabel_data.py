@@ -1,14 +1,15 @@
 """
-멀티라벨 Intent 학습 데이터 생성기 v4
+멀티라벨 Intent 학습 데이터 생성기 v5
 
-v3 대비 변경사항 (v3+후처리 오답 11건 분석 반영):
-- judgment 단독 인식 강화: "판단도 부탁", "위반 여부랑", "쓸 수 있는지" 패턴
-- doc_generate vs doc_summary 구분: "회의록 정리/공유"=generate, "보고서로 정리"=generate
-- doc_qa vs doc_summary 구분: "핵심 수치 알려줘"=qa, "핵심만 정리"=summary
-- connector trap 보강: "X이랑 Y 판단해줘"=단일judgment, "규정 검토 분석"=judgment
-- doc_search 누락 방지: 3중에서 "찾아서" 포함 패턴 강화
-- 골든 데이터 40→70개 (30개 추가)
-- 3중 intent 템플릿 확대 (10→15개)
+v4 대비 변경사항 (학습 데이터 대폭 확대 — 성능 천장 77% 돌파 목표):
+- 복합 쌍당 30→50개 생성 (전체 복합 ~65% 증가)
+- 짧은 복합 200→400개 (템플릿 11→18개)
+- 3중 intent 30→40개/조합, 조합 10→14개 (템플릿 15→20개)
+- 함정 단일 20→30개/intent (템플릿 7→12개)
+- 골든 데이터 96→180+개 (doc_search↔doc_qa 구분 집중 강화)
+- 새 복합 쌍 추가: judgment↔doc_summary, general+doc_search, doc_qa↔schedule_view
+- 각 쌍 템플릿 2~5개씩 추가 (특히 doc_search↔doc_qa)
+- 목표: train 3,300→5,500+개
 
 사용법:
   cd /path/to/SKN21-FINAL-3TEAM
@@ -51,14 +52,17 @@ COMPOUND_PAIRS = [
         "{A_short}부터 {B_short}까지 다 알려줘",
         "{A_short} 확인 후 {B_short}",
         "{A_short} 알려주고 {B_short}도",
-        # v3 추가 — 조건절/순차 의존
         "{A_short} 위반 여부까지 확인해줘",
         "{A_short}이랑 위반인지도 알려줘",
         "{A_short}, 가능한지도 판단해줘",
         "{A_short} 알려주고 위반 여부도 봐줘",
         "{A_short} 규정 확인하고 {B_short}",
+        # v5 추가
+        "{A_short} 관련 규정 보여주고 {B_short}",
+        "{A_short} 문서 열어서 {B_short}",
+        "{A_short} 내용 검색 후 {B_short}",
     ]),
-    # 일정 조회 → 일정 추가 (v2 오답: 있으면/보고 패턴 약함)
+    # 일정 조회 → 일정 추가
     ("schedule_view", "schedule_add", [
         "{A_short} 확인하고 {B_short}",
         "{A_short} 보여주고 {B_short}",
@@ -69,13 +73,16 @@ COMPOUND_PAIRS = [
         "{A_short}, {B_short}",
         "{A_short}, 빈 데 {B_short}",
         "{A_short}에 맞춰서 {B_short}",
-        # v3 추가
         "{A_short} 비는지 보고 {B_short}",
         "{A_short} 겹치는 거 없는지 확인 후 {B_short}",
         "{A_short} 빈 시간 있으면 {B_short}",
         "{A_short}, 빈 날에 {B_short}",
+        # v5 추가
+        "{A_short} 다음에 {B_short}",
+        "{A_short} 앞뒤로 {B_short}",
+        "{A_short} 괜찮으면 {B_short}",
     ]),
-    # 문서 검색 → 문서 생성 (v2 오답: 참고해서 패턴)
+    # 문서 검색 → 문서 생성
     ("doc_search", "doc_generate", [
         "{A_short} 바탕으로 {B_short}",
         "{A_short} 찾아서 {B_short}",
@@ -85,10 +92,13 @@ COMPOUND_PAIRS = [
         "{A_short} 내용으로 {B_short}",
         "{A_short}, {B_short}도",
         "{A_short}이랑 {B_short}",
-        # v3 추가
         "{A_short} 참고해서 이번 {B_short}",
         "{A_short} 기반으로 {B_short}",
         "{A_short} 찾아서 그걸로 {B_short}",
+        # v5 추가
+        "{A_short} 보고 {B_short}",
+        "{A_short} 검색해서 {B_short}",
+        "{A_short} 양식 찾아서 {B_short}",
     ]),
     # 문서 요약 → 문서 생성
     ("doc_summary", "doc_generate", [
@@ -98,11 +108,14 @@ COMPOUND_PAIRS = [
         "{A_short}, {B_short}도",
         "{A_short}이랑 {B_short}",
         "{A_short} 뽑아서 {B_short}에 넣어줘",
-        # v3 추가
         "{A_short} 핵심만 뽑아서 {B_short}",
         "{A_short} 정리하고 그걸로 {B_short}",
+        # v5 추가
+        "{A_short} 요점 정리 후 {B_short}",
+        "{A_short} 축약해서 {B_short}에 활용",
+        "{A_short} 간추려서 {B_short}",
     ]),
-    # 문서 QA → 판단 (v2 오답: 확인하고+적용 패턴)
+    # 문서 QA → 판단
     ("doc_qa", "judgment", [
         "{A_short} 확인하고 {B_short}",
         "{A_short} 알아본 다음 {B_short}",
@@ -110,12 +123,15 @@ COMPOUND_PAIRS = [
         "{A_short}, {B_short}도",
         "{A_short} 보고 {B_short}",
         "{A_short}이랑 {B_short}",
-        # v3 추가
         "{A_short} 확인하고 적용 가능한지도 봐줘",
         "{A_short} 알아보고 위반인지 판단해줘",
         "{A_short} 내용 확인하고 {B_short}",
+        # v5 추가
+        "{A_short} 답변해주고 {B_short}",
+        "{A_short} 읽어보고 {B_short}",
+        "{A_short} 파악한 다음 {B_short}",
     ]),
-    # 문서 검색 → 문서 요약 (v2 오답: 압축 표현)
+    # 문서 검색 → 문서 요약
     ("doc_search", "doc_summary", [
         "{A_short} 찾아서 {B_short}",
         "{A_short} 검색하고 {B_short}",
@@ -124,12 +140,15 @@ COMPOUND_PAIRS = [
         "{A_short}, {B_short}",
         "{A_short}이랑 {B_short}",
         "{A_short} {B_short}까지",
-        # v3 추가 — 압축 표현 (검색+정리가 한 문장)
         "{A_short} 사례 정리해줘",
         "{A_short} 찾아서 요약해줘",
         "{A_short} 관련 내용 요약본 알려줘",
+        # v5 추가
+        "{A_short} 문서 찾아서 핵심만 {B_short}",
+        "{A_short} 가져와서 {B_short}",
+        "{A_short} 검색 결과 {B_short}",
     ]),
-    # 판단 → 문서 생성 (v2 오답: 검토하고+수정본)
+    # 판단 → 문서 생성
     ("judgment", "doc_generate", [
         "{A_short} 판단하고 {B_short}",
         "{A_short} 확인한 다음 {B_short}",
@@ -137,10 +156,12 @@ COMPOUND_PAIRS = [
         "{A_short}, {B_short}도",
         "{A_short} 보고 {B_short}",
         "{A_short} 결과를 {B_short}",
-        # v3 추가
         "{A_short} 검토하고 수정본 만들어줘",
         "{A_short} 문제 있는지 보고 {B_short}",
         "{A_short} 판단 후 결과를 {B_short}",
+        # v5 추가
+        "{A_short} 위반 여부 확인하고 {B_short}",
+        "{A_short} 검토 결과 {B_short}",
     ]),
     # 일정 조회 → 판단
     ("schedule_view", "judgment", [
@@ -148,10 +169,13 @@ COMPOUND_PAIRS = [
         "{A_short} 보고 {B_short}",
         "{A_short}, {B_short}도",
         "{A_short}이랑 {B_short}",
-        # v3 추가
         "{A_short} 확인하고 가능한지 판단해줘",
+        # v5 추가
+        "{A_short} 체크하고 {B_short}",
+        "{A_short} 보여주고 {B_short}",
+        "{A_short} 이후에 {B_short}",
     ]),
-    # 문서 QA → 문서 생성 (v2 오답: 토대로/내용으로 패턴)
+    # 문서 QA → 문서 생성
     ("doc_qa", "doc_generate", [
         "{A_short} 확인해서 {B_short}",
         "{A_short} 알아보고 {B_short}",
@@ -159,57 +183,108 @@ COMPOUND_PAIRS = [
         "{A_short} 내용으로 {B_short}",
         "{A_short}, {B_short}도",
         "{A_short} 참고해서 {B_short}",
-        # v3 추가 — 순차 의존 강화
         "{A_short} 토대로 후속 {B_short}",
         "{A_short} 내용으로 보고서 만들어줘",
         "{A_short} 내용 확인하고 {B_short}",
         "{A_short} 결과로 {B_short}",
+        # v5 추가
+        "{A_short} 데이터 가져와서 {B_short}",
+        "{A_short} 수치 확인하고 {B_short}",
     ]),
-    # 문서 검색 → 문서 QA
+    # 문서 검색 → 문서 QA (v5: 핵심 — 가장 많이 혼동되는 쌍, 템플릿 대폭 확대)
     ("doc_search", "doc_qa", [
         "{A_short} 찾아서 {B_short}",
         "{A_short} 검색하고 {B_short}",
         "{A_short}, {B_short}도",
         "{A_short}이랑 {B_short}",
-        # v3 추가
         "{A_short} 찾아서 내용 알려줘",
+        # v5 추가 — doc_search+doc_qa 구분 핵심 데이터
+        "{A_short} 검색해서 {B_short} 알려줘",
+        "{A_short} 가져와서 {B_short}",
+        "{A_short} 열어서 {B_short}",
+        "{A_short} 찾아보고 {B_short} 답변해줘",
+        "{A_short} 문서에서 {B_short}",
+        "{A_short} 조회하고 {B_short}",
+        "{A_short} 중에서 {B_short} 뽑아줘",
+        "{A_short} 확인 후 {B_short}",
     ]),
     # 문서 QA → 문서 요약
     ("doc_qa", "doc_summary", [
         "{A_short} 확인하고 {B_short}",
         "{A_short} 내용 {B_short}",
         "{A_short}, {B_short}도",
-        # v3 추가
         "{A_short} 알려주고 {B_short}도",
         "{A_short} 확인하고 핵심만 정리해줘",
+        # v5 추가
+        "{A_short} 읽어보고 {B_short}",
+        "{A_short} 파악하고 {B_short}",
+        "{A_short} 답변 후 {B_short}",
     ]),
     # 일정 조회 → 문서 생성
     ("schedule_view", "doc_generate", [
         "{A_short} 확인하고 {B_short}",
         "{A_short}, {B_short}도",
         "{A_short}이랑 {B_short}",
-        # v3 추가
         "{A_short} 보고 {B_short}",
+        # v5 추가
+        "{A_short} 체크하고 {B_short}",
+        "{A_short} 일정 보면서 {B_short}",
     ]),
     # 문서 검색 → 일정 조회
     ("doc_search", "schedule_view", [
         "{A_short}이랑 {B_short}",
         "{A_short}, {B_short}도",
         "{A_short} 확인하고 {B_short}",
-        # v3 추가
         "{A_short}도 보고 싶고 {B_short}도 궁금해",
+        # v5 추가
+        "{A_short} 찾아보고 {B_short}",
+        "{A_short} 보여주고 {B_short}",
     ]),
-    # ── v3 새 쌍 추가 ──
-    # 문서 요약 → 판단 (v2 오답 id15: 요약본이랑 위반 기준)
+    # 문서 요약 → 판단
     ("doc_summary", "judgment", [
         "{A_short}이랑 {B_short}",
         "{A_short}, {B_short}도",
         "{A_short} 정리하고 {B_short}",
         "{A_short} 요약하고 {B_short}",
         "{A_short} 핵심 정리하고 위반인지도 봐줘",
-        # v4 추가 — [오답 15] "요약본이랑 처벌 기준" 패턴
         "{A_short} 요약본이랑 {B_short}",
         "{A_short} 요약해주고 {B_short}도",
+        # v5 추가
+        "{A_short} 간추리고 {B_short}",
+        "{A_short} 정리 후 {B_short}",
+    ]),
+    # ── v5 새 쌍 추가 ──
+    # 판단 → 일정 추가 (위반 확인 후 후속 조치 일정)
+    ("judgment", "schedule_add", [
+        "{A_short} 확인하고 {B_short}",
+        "{A_short} 판단하고 {B_short}",
+        "{A_short}, {B_short}도",
+        "{A_short} 결과 보고 {B_short}",
+        "{A_short} 후에 {B_short}",
+    ]),
+    # 문서 QA → 일정 조회 (문서 내용 확인 + 일정 확인)
+    ("doc_qa", "schedule_view", [
+        "{A_short} 확인하고 {B_short}",
+        "{A_short}, {B_short}도",
+        "{A_short}이랑 {B_short}",
+        "{A_short} 알려주고 {B_short}",
+        "{A_short} 보고 {B_short}",
+    ]),
+    # 일정 추가 → 문서 생성 (일정 등록 + 관련 문서)
+    ("schedule_add", "doc_generate", [
+        "{A_short} 등록하고 {B_short}",
+        "{A_short}, {B_short}도",
+        "{A_short} 추가한 다음 {B_short}",
+        "{A_short} 넣고 {B_short}",
+        "{A_short} 잡아주고 {B_short}",
+    ]),
+    # 문서 요약 → 문서 QA (요약 + 특정 질문)
+    ("doc_summary", "doc_qa", [
+        "{A_short} 요약하고 {B_short}",
+        "{A_short} 정리해주고 {B_short}",
+        "{A_short}, {B_short}도 알려줘",
+        "{A_short} 간추리고 {B_short}",
+        "{A_short} 핵심이랑 {B_short}",
     ]),
 ]
 
@@ -223,10 +298,14 @@ TRIPLE_COMBOS = [
     ("schedule_view", "judgment", "schedule_add"),
     ("doc_search", "doc_qa", "judgment"),
     ("doc_search", "doc_generate", "doc_summary"),
-    # v3 추가 조합
     ("doc_qa", "judgment", "doc_generate"),
     ("doc_search", "judgment", "doc_summary"),
     ("doc_qa", "doc_generate", "schedule_view"),
+    # v5 추가 조합
+    ("doc_search", "doc_qa", "doc_generate"),
+    ("doc_search", "doc_qa", "doc_summary"),
+    ("judgment", "doc_generate", "schedule_add"),
+    ("doc_qa", "judgment", "schedule_view"),
 ]
 
 TRIPLE_TEMPLATES = [
@@ -237,16 +316,20 @@ TRIPLE_TEMPLATES = [
     "{A_short} 확인 후 {B_short} 결과를 {C_short}",
     "{A_short} 찾아서 {B_short} 그리고 {C_short}",
     "{A_short} 확인하고 {B_short}, 그걸로 {C_short}",
-    # v3 추가 — 순차 의존형
     "{A_short} 찾아서 {B_short} 판단하고 결과를 {C_short}",
     "{A_short} 확인하고 {B_short} 정리해서 {C_short}",
     "{A_short} 알아보고 {B_short}, 가능하면 {C_short}",
-    # v4 추가 — [오답 46,48] "찾아서" 포함 3중, 순차 의존 강화
     "{A_short} 찾아서 {B_short}해주고 {C_short}도",
     "{A_short} 검색해서 {B_short}, 결과를 {C_short}",
     "{A_short} 찾아서 {B_short} 후에 {C_short}",
     "{A_short} 확인한 다음 {B_short}, {C_short}까지",
     "{A_short} 찾아서 {B_short}하고 그걸로 {C_short}",
+    # v5 추가
+    "{A_short} 검색하고 {B_short}, 이어서 {C_short}",
+    "{A_short} 가져와서 {B_short} 다음 {C_short}",
+    "{A_short} 조회해서 {B_short}, 마지막으로 {C_short}",
+    "{A_short}, {B_short} 확인하고 {C_short}도",
+    "{A_short} 열어서 {B_short}, {C_short}까지 전부",
 ]
 
 # ── "그리고" 함정 단일 — 같은 intent 내 나열 ─────────────────────────────────
@@ -256,14 +339,19 @@ CONNECTOR_TRAP_TEMPLATES = [
     "{A_short}이랑 {B_short}",
     "{A_short}, {B_short}도",
     "{A_short} 하고 {B_short}",
-    # v4 추가 — [오답 59] "X이랑 Y + 단일동사" 패턴
     "{A_short}이랑 {B_short} 알려줘",
     "{A_short}이랑 {B_short} 확인해줘",
     "{A_short}랑 {B_short}",
+    # v5 추가 — 더 다양한 연결 패턴
+    "{A_short}, {B_short} 둘 다",
+    "{A_short}이랑 {B_short} 해줘",
+    "{A_short} 그리고 {B_short}",
+    "{A_short}하고 {B_short} 부탁",
+    "{A_short}, {B_short} 같이 알려줘",
 ]
 
 # 함정 생성 대상 intent (같은 intent 문장 2개를 연결)
-TRAP_INTENTS = ["doc_search", "schedule_view", "judgment", "doc_generate", "doc_summary", "doc_qa"]
+TRAP_INTENTS = ["doc_search", "schedule_view", "judgment", "doc_generate", "doc_summary", "doc_qa", "general", "schedule_add"]
 
 
 # ── 문장 단축 ────────────────────────────────────────────────────────────────
@@ -409,11 +497,18 @@ SHORT_COMPOUND_TEMPLATES = [
     "{A_kw}여부랑 {B_kw}",
     "{A_kw}, {B_kw}까지",
     "{A_kw} 보고 {B_kw}",
-    # v3 추가 — 동사 연쇄형 짧은 패턴
     "{A_kw} 보여주고 {B_kw}",
     "{A_kw} 확인, {B_kw}도",
     "{A_kw} 찾아줘, {B_kw}도",
     "{A_kw}이랑 {B_kw} 해줘",
+    # v5 추가
+    "{A_kw}랑 {B_kw}",
+    "{A_kw}, {B_kw}",
+    "{A_kw} 하고 {B_kw}",
+    "{A_kw} + {B_kw}",
+    "{A_kw} 그리고 {B_kw}",
+    "{A_kw} 후에 {B_kw}",
+    "{A_kw}, {B_kw} 둘 다",
 ]
 
 def generate_short_compounds(intent_groups, n_total=200):
@@ -442,8 +537,8 @@ def generate_short_compounds(intent_groups, n_total=200):
             template = random.choice(SHORT_COMPOUND_TEMPLATES)
             text = template.format(A_kw=a_kw, B_kw=b_kw)
 
-            # v3: 글자수 제한 25→30으로 완화
-            if len(text) > 30:
+            # v5: 글자수 제한 30→35으로 완화 (템플릿 다양화 대응)
+            if len(text) > 35:
                 continue
 
             if text not in seen:
@@ -599,7 +694,6 @@ GOLDEN_COMPOUND = [
     # ═══ v4 추가 — 오답 11건 분석 반영 (30개) ═══
 
     # ── [오답 1,41,43] judgment 짧은/암묵적 패턴 ──
-    # "쓸 수 있는지", "판단도 부탁", "위반 여부랑" → 모델이 judgment 확률 낮게 예측
     {"text": "연차 규정이랑 이번 달 사용 가능한지 알려줘", "labels": ["doc_search", "judgment"]},
     {"text": "출장비 이번 건 쓸 수 있는지 알려줘", "labels": ["judgment"]},
     {"text": "경조사비 사용 가능한지 알려줘", "labels": ["judgment"]},
@@ -610,7 +704,6 @@ GOLDEN_COMPOUND = [
     {"text": "복리후생 어떤 거 있는지 알려줘", "labels": ["doc_search"]},
 
     # ── [오답 17,46] doc_generate vs doc_summary 구분 ──
-    # "회의록 정리/공유" = generate, "보고서로 정리" = generate
     {"text": "회의록 깔끔하게 정리해줘", "labels": ["doc_generate"]},
     {"text": "회의록 정리해서 팀에 공유해줘", "labels": ["doc_generate"]},
     {"text": "미팅 내용 정리해서 회의록 만들어줘", "labels": ["doc_generate"]},
@@ -619,30 +712,119 @@ GOLDEN_COMPOUND = [
     {"text": "이 내용 요약해서 보고서 작성해줘", "labels": ["doc_summary", "doc_generate"]},
 
     # ── [오답 31] doc_qa vs doc_summary 구분 ──
-    # "핵심 수치/금액/데이터 알려줘" = doc_qa (정보 추출)
     {"text": "보고서에서 핵심 수치 알려줘", "labels": ["doc_qa"]},
     {"text": "매출 데이터 얼마인지 알려줘", "labels": ["doc_qa"]},
     {"text": "예산 남은 금액 확인해줘", "labels": ["doc_qa"]},
     {"text": "실적 보고서에서 핵심 수치 뽑아주고 발표 자료 만들어줘", "labels": ["doc_qa", "doc_generate"]},
 
     # ── [오답 51,59] connector trap 보강 ──
-    # "규정 검토 분석 결과" = judgment (단일)
     {"text": "규정 검토 결과 알려줘", "labels": ["judgment"]},
     {"text": "분석 결과를 알려줘", "labels": ["judgment"]},
     {"text": "규정 검토해서 분석 결과 정리해줘", "labels": ["judgment"]},
-    # "X이랑 Y 판단해줘" = judgment 단일 (같은 주제 나열)
     {"text": "야근 수당이랑 초과근무 수당 알려줘", "labels": ["judgment"]},
     {"text": "연차이랑 병가 기준 판단해줘", "labels": ["judgment"]},
     {"text": "통상임금이랑 시간외수당 기준 알려줘", "labels": ["judgment"]},
 
-    # ── [오답 15] doc_summary+judgment 과잉 doc_search 방지 ──
-    # "요약본이랑 처벌 기준" = doc_summary+judgment (doc_search 아님)
+    # ── [오답 15] doc_summary+judgment ──
     {"text": "규정 요약본이랑 처벌 기준 알려줘", "labels": ["doc_summary", "judgment"]},
     {"text": "규정 요약해주고 위반 시 처벌 기준도 알려줘", "labels": ["doc_summary", "judgment"]},
 
-    # ── [오답 12] "어떤 거 있는지" = doc_search ──
+    # ── "어떤 거 있는지" = doc_search ──
     {"text": "복리후생 어떤 거 있는지 알려줘", "labels": ["doc_search"]},
     {"text": "지원 제도 뭐가 있는지 알려줘", "labels": ["doc_search"]},
+
+    # ═══ v5 추가 — doc_search↔doc_qa 구분 집중 강화 (80+개) ═══
+
+    # ── doc_search 단일 (규정/문서 "찾기/검색/조회" 자체가 목적) ──
+    {"text": "출장 규정 찾아줘", "labels": ["doc_search"]},
+    {"text": "야근 관련 규정 검색해줘", "labels": ["doc_search"]},
+    {"text": "복지 제도 문서 보여줘", "labels": ["doc_search"]},
+    {"text": "인사 규정 어디 있어", "labels": ["doc_search"]},
+    {"text": "경비 처리 매뉴얼 찾아줘", "labels": ["doc_search"]},
+    {"text": "보안 정책 문서 보여줘", "labels": ["doc_search"]},
+    {"text": "휴가 관련 서류 검색해줘", "labels": ["doc_search"]},
+    {"text": "최신 사내 규정 찾아봐", "labels": ["doc_search"]},
+    {"text": "계약서 템플릿 어디 있어", "labels": ["doc_search"]},
+    {"text": "연봉 테이블 문서 가져와줘", "labels": ["doc_search"]},
+    {"text": "교통비 지원 규정 조회해줘", "labels": ["doc_search"]},
+    {"text": "퇴직금 산정 기준 문서 찾아줘", "labels": ["doc_search"]},
+    {"text": "재택근무 관련 규정 있어?", "labels": ["doc_search"]},
+    {"text": "성과 평가 기준 문서 보여줘", "labels": ["doc_search"]},
+    {"text": "휴직 관련 문서 검색", "labels": ["doc_search"]},
+
+    # ── doc_qa 단일 (문서에서 "특정 정보 추출/질문 답변"이 목적) ──
+    {"text": "연차 며칠 남았어?", "labels": ["doc_qa"]},
+    {"text": "이번 분기 매출 얼마야?", "labels": ["doc_qa"]},
+    {"text": "프로젝트 마감일이 언제야?", "labels": ["doc_qa"]},
+    {"text": "지난 회의에서 결정된 사항이 뭐야?", "labels": ["doc_qa"]},
+    {"text": "예산 집행률 몇 퍼센트야?", "labels": ["doc_qa"]},
+    {"text": "담당자가 누구야?", "labels": ["doc_qa"]},
+    {"text": "계약 기간이 언제까지야?", "labels": ["doc_qa"]},
+    {"text": "지난달 경비 사용 금액 알려줘", "labels": ["doc_qa"]},
+    {"text": "팀 인원 현황 알려줘", "labels": ["doc_qa"]},
+    {"text": "올해 목표 매출이 얼마야?", "labels": ["doc_qa"]},
+    {"text": "최근 채용 현황 알려줘", "labels": ["doc_qa"]},
+    {"text": "수습 기간이 몇 개월이야?", "labels": ["doc_qa"]},
+    {"text": "보고서에 뭐라고 적혀있어?", "labels": ["doc_qa"]},
+    {"text": "의사결정 내용이 뭐였어?", "labels": ["doc_qa"]},
+    {"text": "작년 실적이 얼마였어?", "labels": ["doc_qa"]},
+
+    # ── doc_search+doc_qa 복합 (문서 찾고 + 거기서 정보 추출) ──
+    {"text": "인사 규정 찾아서 수습 기간 알려줘", "labels": ["doc_search", "doc_qa"]},
+    {"text": "출장비 문서 검색하고 한도 얼마인지 알려줘", "labels": ["doc_search", "doc_qa"]},
+    {"text": "연봉 테이블 찾아서 내 등급 확인해줘", "labels": ["doc_search", "doc_qa"]},
+    {"text": "복지 규정 가져와서 지원 가능한 항목 알려줘", "labels": ["doc_search", "doc_qa"]},
+    {"text": "경비 처리 매뉴얼 찾아서 상한선 얼마인지 확인해줘", "labels": ["doc_search", "doc_qa"]},
+    {"text": "교육비 지원 문서 보여주고 신청 조건 알려줘", "labels": ["doc_search", "doc_qa"]},
+    {"text": "휴가 규정 찾아서 연차 며칠인지 봐줘", "labels": ["doc_search", "doc_qa"]},
+    {"text": "성과 평가 기준 검색하고 S등급 조건 알려줘", "labels": ["doc_search", "doc_qa"]},
+    {"text": "재택근무 규정 찾아서 주 몇 회 가능한지 알려줘", "labels": ["doc_search", "doc_qa"]},
+    {"text": "야근 수당 문서 가져와서 계산 방식 알려줘", "labels": ["doc_search", "doc_qa"]},
+
+    # ── doc_search vs doc_qa 헷갈리는 경계 케이스 ──
+    # "규정 내용 알려줘" = doc_search (규정 자체를 찾아달라는 것)
+    {"text": "출장 규정 내용 알려줘", "labels": ["doc_search"]},
+    {"text": "복리후생 규정 내용 보여줘", "labels": ["doc_search"]},
+    {"text": "인사 제도 관련 규정 알려줘", "labels": ["doc_search"]},
+    # "~에서 ~알려줘" = doc_qa (이미 문서를 알고 거기서 추출)
+    {"text": "인사 규정에서 징계 기준 알려줘", "labels": ["doc_qa"]},
+    {"text": "복리후생 규정에서 지원 금액 알려줘", "labels": ["doc_qa"]},
+    {"text": "출장 규정에서 일비가 얼마야", "labels": ["doc_qa"]},
+
+    # ── v5 추가: 다양한 복합 패턴 보강 ──
+
+    # judgment 복합 — 다양한 동사 패턴
+    {"text": "이거 규정 위반인지 검토하고 관련 조항도 찾아줘", "labels": ["judgment", "doc_search"]},
+    {"text": "적용 가능한지 판단하고 보고서도 작성해줘", "labels": ["judgment", "doc_generate"]},
+    {"text": "위반 여부 확인 후 일정도 잡아줘", "labels": ["judgment", "schedule_add"]},
+    {"text": "이 조항 위반인지 봐주고 요약도 해줘", "labels": ["judgment", "doc_summary"]},
+
+    # schedule 복합 — 다양한 상황
+    {"text": "내일 미팅 잡아주고 관련 문서도 찾아줘", "labels": ["schedule_add", "doc_search"]},
+    {"text": "이번 주 일정 보여주고 빈 시간에 면담 넣어줘", "labels": ["schedule_view", "schedule_add"]},
+    {"text": "오늘 회의 있는지 확인하고 회의록 준비해줘", "labels": ["schedule_view", "doc_generate"]},
+    {"text": "금요일 일정 확인하고 가능하면 워크숍 등록해줘", "labels": ["schedule_view", "schedule_add"]},
+
+    # doc_generate 복합
+    {"text": "기획서 초안 잡아주고 관련 자료도 검색해줘", "labels": ["doc_generate", "doc_search"]},
+    {"text": "보고서 작성하고 주요 수치도 정리해줘", "labels": ["doc_generate", "doc_summary"]},
+    {"text": "제안서 만들어주고 예산 데이터도 넣어줘", "labels": ["doc_generate", "doc_qa"]},
+
+    # 함정 단일 — 길지만 단일 intent
+    {"text": "출장비 규정이랑 교통비 규정 같이 검색해줘", "labels": ["doc_search"]},
+    {"text": "연차랑 병가 관련 규정 찾아줘", "labels": ["doc_search"]},
+    {"text": "이번 분기 매출이랑 지난 분기 매출 비교해줘", "labels": ["doc_qa"]},
+    {"text": "내일 회의랑 모레 미팅 확인해줘", "labels": ["schedule_view"]},
+    {"text": "제안서랑 기획서 둘 다 작성해줘", "labels": ["doc_generate"]},
+    {"text": "이번 건이랑 저번 건 위반 여부 판단해줘", "labels": ["judgment"]},
+    {"text": "프로젝트 보고서 요약이랑 실적 보고서 요약 해줘", "labels": ["doc_summary"]},
+
+    # 암묵적 복합 — 접속사 없이 의미적으로 복합
+    {"text": "규정 위반 소지가 있는 건 찾아서 정리해줘", "labels": ["doc_search", "judgment"]},
+    {"text": "빈 시간 골라서 팀 미팅 넣어줘", "labels": ["schedule_view", "schedule_add"]},
+    {"text": "실적 데이터 뽑아서 발표 자료 만들어줘", "labels": ["doc_qa", "doc_generate"]},
+    {"text": "문서 내용 파악해서 위반 사항 체크해줘", "labels": ["doc_qa", "judgment"]},
+    {"text": "관련 규정 검색해서 요점만 뽑아줘", "labels": ["doc_search", "doc_summary"]},
 ]
 
 
@@ -714,7 +896,7 @@ def print_stats(items, title):
 # ── 메인 ─────────────────────────────────────────────────────────────────────
 
 def main():
-    print("멀티라벨 Intent 학습 데이터 생성 v4")
+    print("멀티라벨 Intent 학습 데이터 생성 v5")
     print("=" * 50)
 
     # 1. 기존 v2 데이터 로드
@@ -730,26 +912,25 @@ def main():
 
     intent_groups = load_by_intent(train_single)
 
-    # 3. 2중 복합 데이터 생성 (다양한 패턴)
-    n_pairs = len(COMPOUND_PAIRS)
-    n_per_pair = max(30, len(train_single) // 3 // n_pairs + 1)
+    # 3. 2중 복합 데이터 생성 (v5: 조합당 50개)
+    n_per_pair = 50
     print(f"\n[2중 복합] 조합당 {n_per_pair}개 생성 (비율: 그리고 20% / 템플릿 80%)")
     compounds = generate_compound_examples(intent_groups, n_per_pair=n_per_pair)
     print(f"  → 생성: {len(compounds)}개")
 
-    # 4. 짧은 복합 데이터 생성 (v3: 150→200)
+    # 4. 짧은 복합 데이터 생성 (v5: 200→400)
     print(f"\n[짧은 복합] 생성 중...")
-    short_compounds = generate_short_compounds(intent_groups, n_total=200)
+    short_compounds = generate_short_compounds(intent_groups, n_total=400)
     print(f"  → 생성: {len(short_compounds)}개")
 
-    # 5. 3중 intent 데이터 생성 (v4: 25→30개/조합, 템플릿 15개)
-    print(f"\n[3중 복합] 조합당 30개 생성...")
-    triple_compounds = generate_triple_compounds(intent_groups, n_per_combo=30)
+    # 5. 3중 intent 데이터 생성 (v5: 30→40개/조합, 조합 14개, 템플릿 20개)
+    print(f"\n[3중 복합] 조합당 40개 생성...")
+    triple_compounds = generate_triple_compounds(intent_groups, n_per_combo=40)
     print(f"  → 생성: {len(triple_compounds)}개")
 
-    # 6. "그리고" 함정 단일 데이터 생성 (v4: 15→20개/intent, 템플릿 7개)
-    print(f"\n[함정 단일] intent당 20개 생성...")
-    connector_traps = generate_connector_traps(intent_groups, n_per_intent=20)
+    # 6. "그리고" 함정 단일 데이터 생성 (v5: 20→30개/intent, intent 8개, 템플릿 12개)
+    print(f"\n[함정 단일] intent당 30개 생성...")
+    connector_traps = generate_connector_traps(intent_groups, n_per_intent=30)
     print(f"  → 생성: {len(connector_traps)}개")
 
     # 7. 수동 골든 데이터 (v3 신규)
@@ -795,24 +976,24 @@ def main():
     print_stats(final_test,  "Test 데이터")
     print_stats(all_compounds, "복합 데이터 전체")
 
-    # 13. v3 vs v4 비교
+    # 13. v4 vs v5 비교
     print(f"\n{'─'*50}")
-    print("  v3 vs v4 데이터 비교")
+    print("  v4 vs v5 데이터 비교")
     print(f"{'─'*50}")
     n_total = len(final_train) + len(final_val) + len(final_test)
     n_compound = len(all_compounds)
     n_trap = len(connector_traps)
-    print(f"  {'항목':<20} {'v3':>8} {'v4':>8}")
-    print(f"  {'─'*20} {'─'*8} {'─'*8}")
-    print(f"  {'전체 데이터':<20} {'4,272':>8} {n_total:>8}")
-    print(f"  {'복합 데이터':<20} {'1,269':>8} {n_compound:>8}")
-    print(f"  {'짧은 복합':<18} {'210':>10} {len(short_compounds):>8}")
-    print(f"  {'3중 복합':<18} {'250':>10} {len(triple_compounds):>8}")
-    print(f"  {'함정 단일':<18} {'90':>10} {n_trap:>8}")
-    print(f"  {'골든 데이터':<18} {'40':>10} {len(golden):>8}")
-    print(f"  {'쌍별 템플릿수':<18} {'~12개':>10} {'~14개':>8}")
-    print(f"  {'3중 템플릿수':<18} {'10개':>10} {'15개':>8}")
-    print(f"  {'함정 템플릿수':<18} {'4개':>10} {'7개':>8}")
+    print(f"  {'항목':<20} {'v4':>8} {'v5':>8} {'증가':>8}")
+    print(f"  {'─'*20} {'─'*8} {'─'*8} {'─'*8}")
+    print(f"  {'전체 데이터':<20} {'4,272':>8} {n_total:>8} {'+' + str(n_total - 4272):>7}")
+    print(f"  {'복합 데이터':<20} {'1,269':>8} {n_compound:>8} {'+' + str(n_compound - 1269):>7}")
+    print(f"  {'짧은 복합':<18} {'210':>10} {len(short_compounds):>8} {'+' + str(len(short_compounds) - 210):>7}")
+    print(f"  {'3중 복합':<18} {'300':>10} {len(triple_compounds):>8} {'+' + str(len(triple_compounds) - 300):>7}")
+    print(f"  {'함정 단일':<18} {'120':>10} {n_trap:>8} {'+' + str(n_trap - 120):>7}")
+    print(f"  {'골든 데이터':<18} {'96':>10} {len(golden):>8} {'+' + str(len(golden) - 96):>7}")
+    print(f"  {'쌍별 조합수':<18} {'15쌍':>10} {len(COMPOUND_PAIRS)}{'쌍':>6}")
+    print(f"  {'3중 조합수':<18} {'10조합':>10} {len(TRIPLE_COMBOS)}{'조합':>5}")
+    print(f"  {'함정 intent수':<18} {'6개':>10} {len(TRAP_INTENTS)}{'개':>7}")
 
     # 14. 샘플 출력
     print(f"\n{'─'*50}")
