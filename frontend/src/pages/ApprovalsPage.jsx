@@ -30,6 +30,7 @@ const typeConfig = {
   deploy: { icon: Rocket, color: 'text-green-500 bg-green-50 dark:bg-green-900/30', label: '배포 승인 요청' },
   infra: { icon: Server, color: 'text-slate-500 bg-slate-50 dark:bg-slate-900/30', label: '인프라/권한 신청' },
   security: { icon: ShieldCheck, color: 'text-red-500 bg-red-50 dark:bg-red-900/30', label: '보안 예외 처리' },
+  other: { icon: FileSignature, color: 'text-gray-500 bg-gray-50 dark:bg-gray-900/30', label: '기타' },
 };
 const defaultTypeConfig = { icon: FileSignature, color: 'text-neutral-sub bg-surface-sub', label: '요청' };
 
@@ -61,7 +62,7 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ type: 'leave', title: '', detail: '', target_team: '', target_user_id: '' });
+  const [formData, setFormData] = useState({ type: 'leave', title: '', detail: '', target_team: '', target_user_id: '', customType: '' });
   const [formFile, setFormFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [allMembers, setAllMembers] = useState([]);
@@ -141,15 +142,15 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title.trim()) return;
-    if (!formData.target_team || !formData.target_user_id) {
-      alert('보낼 팀과 팀원을 선택해주세요.');
+    if (!formData.target_user_id) {
+      alert('보낼 팀원을 선택해주세요.');
       return;
     }
     setSubmitting(true);
     try {
       await createApproval(
         {
-          type: formData.type,
+          type: formData.type === 'other' ? (formData.customType.trim() || 'other') : formData.type,
           title: formData.title.trim(),
           detail: formData.detail.trim() || null,
           target_team: formData.target_team || null,
@@ -158,7 +159,7 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
         formFile
       );
       setShowModal(false);
-      setFormData({ type: 'leave', title: '', detail: '', target_team: '', target_user_id: '' });
+      setFormData({ type: 'leave', title: '', detail: '', target_team: '', target_user_id: '', customType: '' });
       setFormFile(null);
       await loadAll();
     } catch (err) {
@@ -204,7 +205,7 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
   };
 
   const applySuggestion = (s) => {
-    setFormData({ type: s.type, title: s.title, detail: s.detail || '', target_team: '', target_user_id: '' });
+    setFormData({ type: s.type, title: s.title, detail: s.detail || '', target_team: '', target_user_id: '', customType: '' });
     setShowModal(true);
   };
 
@@ -878,6 +879,18 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
                     ))}
                   </select>
                 </div>
+                {formData.type === 'other' && (
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-main mb-1">유형 직접 입력</label>
+                    <input
+                      type="text"
+                      value={formData.customType}
+                      onChange={(e) => setFormData(prev => ({ ...prev, customType: e.target.value }))}
+                      placeholder="예: 출장 신청, 장비 요청 등"
+                      className="w-full px-3 py-2 rounded-lg border border-neutral-border bg-surface-card text-neutral-main text-sm"
+                    />
+                  </div>
+                )}
                 {/* 대상 팀 / 팀원 선택 */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -942,10 +955,10 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
                 <div className="flex gap-3 pt-6">
                   <button
                     type="submit"
-                    disabled={submitting || !formData.target_team || !formData.target_user_id}
+                    disabled={submitting || !formData.target_user_id}
                     className="flex-1 py-4 bg-primary-700 text-white text-xs font-black rounded-xl shadow-xl hover:bg-primary-900 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
                   >
-                    {submitting ? '제출 중...' : !formData.target_team || !formData.target_user_id ? '팀/팀원 선택 필요' : '요청 제출'}
+                    {submitting ? '제출 중...' : !formData.target_user_id ? '팀원 선택 필요' : '요청 제출'}
                   </button>
                   <button
                     type="button"

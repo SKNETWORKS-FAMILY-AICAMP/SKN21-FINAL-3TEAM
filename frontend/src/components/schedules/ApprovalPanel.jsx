@@ -15,6 +15,7 @@ import { getAllMembers } from '../../api/auth';
 import client from '../../api/client';
 import useAuthStore from '../../store/authStore';
 import MemberDropdown from '../common/MemberDropdown';
+import DatePicker from '../common/DatePicker';
 
 const TEAMS = ['개발', 'QA기획', 'UI/UX', '영업', '마케팅', 'CS'];
 
@@ -29,6 +30,7 @@ const typeConfig = {
     deploy: { icon: Rocket, color: 'text-green-500 bg-green-50', label: '배포 승인 요청' },
     infra: { icon: Server, color: 'text-slate-500 bg-slate-50', label: '인프라/권한 신청' },
     security: { icon: ShieldCheck, color: 'text-red-500 bg-red-50', label: '보안 예외 처리' },
+    other: { icon: FileSignature, color: 'text-gray-500 bg-gray-50', label: '기타' },
 };
 const defaultTypeConfig = { icon: FileSignature, color: 'text-gray-500 bg-gray-50', label: '요청' };
 
@@ -78,7 +80,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
-    const [formData, setFormData] = useState({ type: 'leave', title: '', detail: '', target_team: '', target_user_id: '' });
+    const [formData, setFormData] = useState({ type: 'leave', title: '', detail: '', target_team: '', target_user_id: '', customType: '' });
     const [formFile, setFormFile] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [allMembers, setAllMembers] = useState([]);
@@ -112,6 +114,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
     const [pickerDate, setPickerDate] = useState('');
     const [pickerStartTime, setPickerStartTime] = useState('10:00');
     const [pickerEndTime, setPickerEndTime] = useState('11:00');
+    const [pickerAllDay, setPickerAllDay] = useState(false);
 
     // New Tasks tab: 'approvals' | 'schedules'
     const [newTasksTab, setNewTasksTab] = useState('approvals');
@@ -125,12 +128,19 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                 client.get('/approvals/history', { params: { status: 'rejected' } }).catch(() => ({ data: [] })),
                 client.get('/approvals/history', { params: { status: 'pending' } }).catch(() => ({ data: [] })),
             ]);
-            const all = [
+            const raw = [
                 ...(Array.isArray(pendingRes.data) ? pendingRes.data : []),
                 ...(Array.isArray(approvedRes.data) ? approvedRes.data : []),
                 ...(Array.isArray(rejectedRes.data) ? rejectedRes.data : []),
                 ...(Array.isArray(myPendingRes.data) ? myPendingRes.data : []),
             ];
+            // Deduplicate by id
+            const seen = new Set();
+            const all = raw.filter(item => {
+                if (seen.has(item.id)) return false;
+                seen.add(item.id);
+                return true;
+            });
             setItems(all);
         } catch {
             setItems([]);
@@ -198,7 +208,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
             onReady({
                 refresh: () => { loadAll(); loadChecklist(); if (newTasksTab === 'schedules') loadScheduleSuggestions(); else handleSuggest(); },
                 openCreate: () => {
-                    setFormData({ type: 'leave', title: '', detail: '', target_team: '', target_user_id: '' });
+                    setFormData({ type: 'leave', title: '', detail: '', target_team: '', target_user_id: '', customType: '' });
                     setShowModal(true);
                 },
                 loading
@@ -284,22 +294,27 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.title.trim()) return;
-        if (!formData.target_team || !formData.target_user_id) {
-            alert('보낼 팀과 팀원을 선택해주세요.');
+        if (!formData.target_user_id) {
+            alert('보낼 팀원을 선택해주세요.');
             return;
         }
         setSubmitting(true);
         try {
             await createApproval({
-                type: formData.type,
+                type: formData.type === 'other' ? (formData.customType.trim() || 'other') : formData.type,
                 title: formData.title.trim(),
                 detail: formData.detail.trim() || null,
                 target_team: formData.target_team || null,
                 target_user_id: formData.target_user_id || null,
             }, formFile);
             setShowModal(false);
-            setFormData({ type: 'leave', title: '', detail: '', target_team: '', target_user_id: '' });
+            setFormData({ type: 'leave', title: '', detail: '', target_team: '', target_user_id: '', customType: '' });
             setFormFile(null);
+            // Remove the applied suggestion from New Tasks
+            if (appliedSuggestionIdx !== null) {
+                setSuggestions(prev => prev.filter((_, i) => i !== appliedSuggestionIdx));
+                setAppliedSuggestionIdx(null);
+            }
             await loadAll();
         } catch {
             alert('요청 생성에 실패했습니다.');
@@ -327,8 +342,11 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
         }
     };
 
-    const applySuggestion = (s) => {
-        setFormData({ type: s.type, title: s.title, detail: s.detail || '', target_team: '', target_user_id: '' });
+    const [appliedSuggestionIdx, setAppliedSuggestionIdx] = useState(null);
+
+    const applySuggestion = (s, idx) => {
+        setFormData({ type: s.type, title: s.title, detail: s.detail || '', target_team: '', target_user_id: '', customType: '' });
+        setAppliedSuggestionIdx(idx);
         setShowModal(true);
     };
 
@@ -345,6 +363,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
         const endM = (600 + duration) % 60;
         setPickerEndTime(`${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`);
         setPickerTitle(s.title);
+        setPickerAllDay(false);
         setSchedulePickerData({ suggestion: s, idx });
     };
 
@@ -354,8 +373,14 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
         const { suggestion: s, idx } = schedulePickerData;
         setAddingScheduleId(idx);
         try {
-            const startDate = new Date(`${pickerDate}T${pickerStartTime}:00`);
-            const endDate = new Date(`${pickerDate}T${pickerEndTime}:00`);
+            let startDate, endDate;
+            if (pickerAllDay) {
+                startDate = new Date(`${pickerDate}T00:00:00`);
+                endDate = new Date(`${pickerDate}T23:59:59`);
+            } else {
+                startDate = new Date(`${pickerDate}T${pickerStartTime}:00`);
+                endDate = new Date(`${pickerDate}T${pickerEndTime}:00`);
+            }
 
             if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
                 alert('유효한 날짜와 시간을 입력해주세요.');
@@ -695,7 +720,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                                             initial={{ opacity: 0, y: 6 }}
                                                             animate={{ opacity: 1, y: 0 }}
                                                             transition={{ delay: idx * 0.05 }}
-                                                            onClick={() => applySuggestion(s)}
+                                                            onClick={() => applySuggestion(s, idx)}
                                                             className="bg-white dark:bg-neutral-800 p-3 rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] cursor-pointer transition-all group"
                                                         >
                                                             <div className="flex flex-col items-center text-center gap-1.5">
@@ -869,7 +894,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             className="absolute inset-0"
-                            onClick={() => setShowModal(false)}
+                            onClick={() => { setShowModal(false); setAppliedSuggestionIdx(null); }}
                         />
                     </AnimatePresence>
                     <motion.div
@@ -880,7 +905,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                     >
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-lg font-bold text-slate-800 dark:text-white">새 요청 올리기</h3>
-                            <button onClick={() => setShowModal(false)} className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 transition-colors flex items-center justify-center">
+                            <button onClick={() => { setShowModal(false); setAppliedSuggestionIdx(null); }} className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 transition-colors flex items-center justify-center">
                                 <X size={18} />
                             </button>
                         </div>
@@ -897,6 +922,18 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                     ))}
                                 </select>
                             </div>
+                            {formData.type === 'other' && (
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">유형 직접 입력</label>
+                                    <input
+                                        type="text"
+                                        value={formData.customType}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, customType: e.target.value }))}
+                                        placeholder="예: 출장 신청, 장비 요청 등"
+                                        className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition-all"
+                                    />
+                                </div>
+                            )}
                             {/* 대상 팀 / 팀원 선택 */}
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
@@ -961,17 +998,17 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                             <div className="flex gap-3 pt-3">
                                 <button
                                     type="button"
-                                    onClick={() => setShowModal(false)}
+                                    onClick={() => { setShowModal(false); setAppliedSuggestionIdx(null); }}
                                     className="flex-1 py-2.5 text-xs font-black rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all"
                                 >
                                     취소
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={submitting || !formData.target_team || !formData.target_user_id}
+                                    disabled={submitting || !formData.target_user_id}
                                     className="flex-1 py-2.5 bg-primary-700 text-white text-xs font-black rounded-xl shadow-xl shadow-primary-700/20 hover:bg-primary-800 hover:scale-105 transition-all disabled:opacity-50"
                                 >
-                                    {submitting ? '제출 중...' : !formData.target_team || !formData.target_user_id ? '팀/팀원 선택 필요' : '요청 제출'}
+                                    {submitting ? '제출 중...' : !formData.target_user_id ? '팀원 선택 필요' : '요청 제출'}
                                 </button>
                             </div>
                         </form>
@@ -1206,33 +1243,43 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                             </div>
                             <div>
                                 <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">날짜</label>
-                                <input
-                                    type="date"
+                                <DatePicker
                                     value={pickerDate}
-                                    onChange={(e) => setPickerDate(e.target.value)}
-                                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all"
+                                    onChange={(date) => setPickerDate(date)}
+                                    placeholder="날짜를 선택하세요"
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">시작 시간</label>
-                                    <input
-                                        type="time"
-                                        value={pickerStartTime}
-                                        onChange={(e) => setPickerStartTime(e.target.value)}
-                                        className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all"
-                                    />
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={pickerAllDay}
+                                    onChange={(e) => setPickerAllDay(e.target.checked)}
+                                    className="w-4 h-4 rounded border-slate-300 accent-violet-500"
+                                />
+                                <span className="text-sm text-slate-600 dark:text-slate-300">종일</span>
+                            </label>
+                            {!pickerAllDay && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">시작 시간</label>
+                                        <input
+                                            type="time"
+                                            value={pickerStartTime}
+                                            onChange={(e) => setPickerStartTime(e.target.value)}
+                                            className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">종료 시간</label>
+                                        <input
+                                            type="time"
+                                            value={pickerEndTime}
+                                            onChange={(e) => setPickerEndTime(e.target.value)}
+                                            className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all"
+                                        />
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">종료 시간</label>
-                                    <input
-                                        type="time"
-                                        value={pickerEndTime}
-                                        onChange={(e) => setPickerEndTime(e.target.value)}
-                                        className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all"
-                                    />
-                                </div>
-                            </div>
+                            )}
                         </div>
 
                         <div className="flex gap-3 mt-5">

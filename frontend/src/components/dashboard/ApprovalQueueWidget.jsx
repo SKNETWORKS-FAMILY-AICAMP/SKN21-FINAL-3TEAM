@@ -286,7 +286,7 @@ export default function ApprovalQueueWidget() {
         className="flex items-center justify-between mb-4 cursor-pointer"
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
-        <h3 className="text-xl font-bold text-neutral-main flex items-center gap-2">
+        <h3 className="text-sm font-bold text-neutral-main flex items-center gap-2">
           Needs Attention
           {visibleItems.length > 0 && (
             <span className="bg-accent-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full ml-1">
