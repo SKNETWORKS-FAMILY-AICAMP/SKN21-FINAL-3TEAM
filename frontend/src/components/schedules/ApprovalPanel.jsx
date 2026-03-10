@@ -284,6 +284,10 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.title.trim()) return;
+        if (!formData.target_team || !formData.target_user_id) {
+            alert('보낼 팀과 팀원을 선택해주세요.');
+            return;
+        }
         setSubmitting(true);
         try {
             await createApproval({
@@ -964,10 +968,10 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={submitting}
+                                    disabled={submitting || !formData.target_team || !formData.target_user_id}
                                     className="flex-1 py-2.5 bg-primary-700 text-white text-xs font-black rounded-xl shadow-xl shadow-primary-700/20 hover:bg-primary-800 hover:scale-105 transition-all disabled:opacity-50"
                                 >
-                                    {submitting ? '제출 중...' : '요청 제출'}
+                                    {submitting ? '제출 중...' : !formData.target_team || !formData.target_user_id ? '팀/팀원 선택 필요' : '요청 제출'}
                                 </button>
                             </div>
                         </form>

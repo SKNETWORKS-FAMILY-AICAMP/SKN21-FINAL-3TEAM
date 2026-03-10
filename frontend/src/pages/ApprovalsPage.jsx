@@ -141,6 +141,10 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title.trim()) return;
+    if (!formData.target_team || !formData.target_user_id) {
+      alert('보낼 팀과 팀원을 선택해주세요.');
+      return;
+    }
     setSubmitting(true);
     try {
       await createApproval(
@@ -938,10 +942,10 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
                 <div className="flex gap-3 pt-6">
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || !formData.target_team || !formData.target_user_id}
                     className="flex-1 py-4 bg-primary-700 text-white text-xs font-black rounded-xl shadow-xl hover:bg-primary-900 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
                   >
-                    {submitting ? '제출 중...' : '요청 제출'}
+                    {submitting ? '제출 중...' : !formData.target_team || !formData.target_user_id ? '팀/팀원 선택 필요' : '요청 제출'}
                   </button>
                   <button
                     type="button"
