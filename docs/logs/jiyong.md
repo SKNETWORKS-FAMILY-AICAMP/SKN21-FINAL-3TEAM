@@ -1128,3 +1128,32 @@ v2_generate AI Hub 데이터 탈락:
 - sLLM(Kanana 8B)으로 회의록 생성 품질 재검증
 - LoRA fine-tuned 모델 서빙 연결 후 base vs fine-tuned 비교
 - 템플릿 업로드 버튼 반응 없는 버그 확인 (미해결)
+
+---
+
+## 2026-03-11 (화)
+
+**v2_summary LoRA 재학습 데이터 준비:**
+- `evaluate.py` 업데이트: 태그+요약 포맷 평가 함수 (`_check_tag_format`, 태그수 준수율, 길이별 분석)
+- `train_v2_document.py` 업데이트: `_eval_doc_summary` 태그+요약 형식 검증으로 변경
+- `merge_training_data.py` docstring 수정 (300 AI Hub + 700 합성)
+- AI Hub 데이터 변환 (`convert_ai_hub_summary.py`): LENGTH_BINS 조정 (500~1500 범위, 3구간 각 100건)
+- 300건 변환 완료 (299 + 1건 추가 보충)
+- GPT-4o 합성 데이터 700건 생성 (synthesize_summary.py 실행)
+
+**프론트엔드 ChatPage.jsx doc_summary UI 개선:**
+- 문서관리 "AI 자동 분석"과 동일한 형식으로 변경
+- `data.tags` 배열 → 배지(badge) 표시, `data.summary` → 텍스트 표시
+- 기존 raw MarkdownText 렌더링 → 구조화된 UI로 전환
+
+**5주차 산출물 docx 4건 편집 (경은 파트 유지, 지용 파트 수정/추가):**
+1. `수집된 데이터 및 전처리 문서.docx`: 제출일 03.11, 총 11,556건, v2_summary 1,000건, Document Summary v2 재수집 섹션 추가
+2. `LLM 활용 소프트웨어.docx`: 제출일 03.11, sLLM 전환 구조(DOC_AGENT_MODE) 섹션 추가
+3. `자체 LLM 인공지능.docx`: Intent v2 멀티 LLM 혼합, Document Summary LoRA v2 섹션 추가
+4. `테스트 계획 및 결과 보고서.docx`: 제출일 03.11, Intent 모델 비교/Document Summary v2 테스트 계획 섹션 추가
+
+**다음 할 일:**
+- 합성 데이터 생성 완료 후 `merge_training_data.py` 실행 → 1,000건 병합
+- RunPod에서 v2_summary LoRA 재학습
+- Intent v2 멀티 LLM 혼합 데이터 생성 + 3모델 비교 실험 실행
+- 3-Way 비교 (Base vs LoRA v2 vs GPT-4o) 평가

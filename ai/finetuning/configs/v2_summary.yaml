@@ -1,8 +1,8 @@
 # LoRA v2: 문서 요약 (doc_summary) 전용 어댑터
-# 문서 → 마크다운 요약 (핵심요약 + 주요포인트 + 키워드)
-# 베이스 모델: Qwen3-8B (1차 추천) — 비교 대상: EXAONE-3.5-7.8B, Kanana-1.5-8B
+# 문서 → 태그 + 요약
+# 베이스 모델: Kanana 1.5 8B Instruct
 model:
-  base_model: "Qwen/Qwen3-8B"
+  base_model: "kakaocorp/kanana-1.5-8b-instruct-2505"
   quantization: "4bit"  # QLoRA
 
 model_candidates:
@@ -28,20 +28,19 @@ training:
   gradient_accumulation_steps: 4  # effective batch = 16
   learning_rate: 1e-4
   warmup_ratio: 0.1
-  max_length: 2560
+  max_length: 8192
   early_stopping_patience: 3
 
 data:
   train_path: "data/training/v2_summary/train.jsonl"
   eval_path: "data/training/v2_summary/eval.jsonl"
-  eval_ratio: 0.15            # 1000개 중 ~150개 eval (마크다운 출력 검증 강화)
+  eval_ratio: 0.15            # 1000개 중 ~150개 eval
   total_target: 1000
 
-# 데이터 소스별 구성 (AI Hub 70% + 합성 20% + 변형 10%)
+# 데이터 소스별 구성 (AI Hub 30% + 합성 70%)
 data_sources:
-  aihub: 700                  # 10개 카테고리에서 고품질 선별 (70%)
-  synthetic: 200              # 추상형 마크다운 모범답안 + 문체 다양성 (20%)
-  variants: 100               # 짧은/긴/표 많은 문서 엣지케이스 (10%)
+  aihub: 300                  # 실데이터 신뢰성 (30%)
+  synthetic: 700              # 기업 문서 유형 + 길이 다양성 (70%)
 
 output:
   output_dir: "outputs/v2_summary"

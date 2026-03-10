@@ -1,0 +1,7 @@
+{
+  "model": "kakaocorp/kanana-1.5-8b-instruct-2505",
+  "task": "v2_summary",
+  "total": 100,
+  "format_compliance": 1.0,
+  "rouge_l": 0.4055
+}

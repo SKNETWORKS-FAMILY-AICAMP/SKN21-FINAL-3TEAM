@@ -29,6 +29,72 @@ from ai.templates import get_system_template
 # 로거 설정
 logger = logging.getLogger(__name__)
 
+
+def parse_summary_output(text: str) -> dict:
+    """
+    sLLM 요약 출력을 파싱하여 tags, summary를 추출한다.
+
+    입력 형식:
+        태그: #태그1 #태그2 #태그3
+        요약: 요약문 2~3문장
+
+    Returns:
+        {"tags": ["태그1", "태그2", ...], "summary": "요약문", "raw": "원본 텍스트"}
+    """
+    tags = []
+    summary = ""
+
+    for line in text.strip().splitlines():
+        line = line.strip()
+        if line.startswith("태그:"):
+            tag_part = line[len("태그:"):].strip()
+            tags = [t.strip().lstrip("#").strip() for t in tag_part.split("#") if t.strip()]
+        elif line.startswith("요약:"):
+            summary = line[len("요약:"):].strip()
+
+    # 요약이 여러 줄일 수 있음 (요약: 이후 전체)
+    if "요약:" in text:
+        summary_part = text.split("요약:", 1)[1].strip()
+        summary = summary_part
+
+    return {"tags": tags, "summary": summary, "raw": text}
+
+
+def truncate_by_paragraph(text: str, max_chars: int = 8000) -> str:
+    """문단 기준으로 텍스트를 자른다. 문장 중간 잘림 방지."""
+    if len(text) <= max_chars:
+        return text
+    paragraphs = text.split('\n\n')
+    truncated = ""
+    for p in paragraphs:
+        if len(truncated) + len(p) + 2 > max_chars:
+            break
+        truncated += p + "\n\n"
+    truncated = truncated.rstrip()
+    if not truncated:
+        truncated = text[:max_chars]
+    return truncated
+
+
+async def summarize_document(text: str) -> dict:
+    """
+    공통 문서 요약 함수 (문서 업로드 / 채팅 모두 사용)
+
+    Args:
+        text: 파싱된 문서 텍스트
+
+    Returns:
+        {"tags": list[str], "summary": str, "raw": str}
+    """
+    from ai.llm.prompts import DOC_SUMMARY_SLLM_PROMPT
+
+    truncated = truncate_by_paragraph(text, max_chars=10000)
+    user_prompt = f"다음 문서를 요약해주세요.\n\n문서 내용:\n{truncated}"
+
+    answer = await _call_llm(DOC_SUMMARY_SLLM_PROMPT, user_prompt, task="summary")
+    return parse_summary_output(answer)
+
+
 async def document_agent(state: AgentState) -> AgentState:
     """
     문서 Agent 노드 함수 (LangGraph 노드 인터페이스)
@@ -69,9 +135,11 @@ async def document_agent(state: AgentState) -> AgentState:
         elif intent == "doc_summary":
             print("[DocumentAgent] → _handle_doc_summary 호출")
             document_content = state.get("document_content") or state.get("extracted_text")
+            document_id = state.get("document_id")
             response_data = await _handle_doc_summary(
                 user_input,
                 document_content=document_content,
+                document_id=document_id,
                 user_id=user_id,
                 user_team=user_team,
                 stream_mode=stream_mode,
@@ -999,15 +1067,10 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
     }
 
 
-async def _handle_doc_summary(user_input: str, document_content: str = None, user_id: int = None, user_team: str = None, stream_mode: bool = False) -> Dict[str, Any]:
-    """문서 요약 처리"""
+async def _handle_doc_summary(user_input: str, document_content: str = None, document_id: int = None, user_id: int = None, user_team: str = None, stream_mode: bool = False) -> Dict[str, Any]:
+    """문서 요약 처리 — DB 저장된 요약 우선, 없으면 sLLM 호출"""
     _t = time.time()
-    print(f"[DocumentAgent] _handle_doc_summary | content_len={len(document_content) if document_content else 0}, stream_mode={stream_mode}")
-    # DEBUG: document_content 앞부분 미리보기
-    if document_content:
-        print(f"[DocumentAgent] document_content 미리보기 (앞 300자):\n{document_content[:300]}")
-    else:
-        print(f"[DocumentAgent] document_content 없음 → Qdrant 문서 목록 조회")
+    print(f"[DocumentAgent] _handle_doc_summary | document_id={document_id}, content_len={len(document_content) if document_content else 0}, stream_mode={stream_mode}")
 
     # 문서 내용이 없으면 Qdrant에서 문서 목록 조회 후 doc_pick 반환
     if not document_content:
@@ -1026,14 +1089,42 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, use
             "documents": doc_list,
         }
 
-    from ai.llm.prompts import DOC_SUMMARY_SYSTEM_PROMPT
+    # ── DB에 이미 요약이 있으면 바로 반환 (sLLM 호출 스킵) ──
+    if document_id:
+        try:
+            from sqlalchemy import select
+            from app.db.session import AsyncSessionLocal
+            from app.models.document import Document
 
-    sys_prompt = DOC_SUMMARY_SYSTEM_PROMPT
-    # 문서 내용이 너무 길면 앞부분만 사용 (토큰 제한)
-    truncated = document_content[:8000] if len(document_content) > 8000 else document_content
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(select(Document).where(Document.id == document_id))
+                doc = result.scalar_one_or_none()
+                if doc and doc.summary and doc.tags:
+                    # 새 형식 체크: tags가 있으면 새 형식으로 간주
+                    tags = doc.tags or []
+                    tags_str = " ".join(f"#{t}" for t in tags)
+                    answer = f"태그: {tags_str}\n요약: {doc.summary}"
+                    print(f"[DocumentAgent] DB 요약 사용 (document_id={document_id}, {time.time()-_t:.2f}s)")
+                    return {
+                        "type": "doc_summary",
+                        "answer": answer,
+                        "message": answer,
+                        "tags": tags,
+                        "summary": doc.summary,
+                    }
+                elif doc and doc.summary and not doc.tags:
+                    # 구 형식: summary만 있고 tags 없음 → sLLM 재호출로 넘어감
+                    print(f"[DocumentAgent] 구 형식 요약 감지 (tags 없음) → sLLM 재호출")
+        except Exception as e:
+            print(f"[DocumentAgent] DB 요약 조회 실패, sLLM fallback: {e}")
+
+    # ── DB에 요약 없음 → sLLM 호출 ──
+    from ai.llm.prompts import DOC_SUMMARY_SLLM_PROMPT
+    sys_prompt = DOC_SUMMARY_SLLM_PROMPT
+    truncated = truncate_by_paragraph(document_content, max_chars=10000)
     user_prompt = f"다음 문서를 요약해주세요.\n\n사용자 요청: {user_input}\n\n문서 내용:\n{truncated}"
 
-    # 스트리밍 모드: stream_pending 패턴 (doc_search와 동일)
+    # 스트리밍 모드: stream_pending 패턴
     if stream_mode:
         print(f"[DocumentAgent] stream_mode=True → stream_pending 반환 ({time.time()-_t:.2f}s)")
         return {
@@ -1041,19 +1132,41 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, use
             "stream_pending": True,
             "sys_prompt": sys_prompt,
             "user_prompt": user_prompt,
+            "document_id": document_id,
             "answer": "",
             "message": "",
         }
 
-    # 비스트리밍: LLM 직접 호출
-    print("[DocumentAgent] stream_mode=False → LLM 직접 호출 (doc_summary)")
+    # 비스트리밍: sLLM 직접 호출
+    print("[DocumentAgent] stream_mode=False → sLLM 직접 호출 (doc_summary)")
     answer = await _call_llm(sys_prompt, user_prompt, task="summary")
-    print(f"[DocumentAgent] LLM 응답 길이: {len(answer)}자")
+    parsed = parse_summary_output(answer)
+    print(f"[DocumentAgent] sLLM 응답 | tags={parsed['tags']}, summary_len={len(parsed['summary'])}자")
+
+    # DB에 요약 결과 업데이트 (구 형식 갱신 또는 신규 저장)
+    if document_id and parsed["tags"]:
+        try:
+            from sqlalchemy import select
+            from app.db.session import AsyncSessionLocal
+            from app.models.document import Document
+
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(select(Document).where(Document.id == document_id))
+                doc = result.scalar_one_or_none()
+                if doc:
+                    doc.summary = parsed["summary"]
+                    doc.tags = parsed["tags"]
+                    await db.commit()
+                    print(f"[DocumentAgent] DB 요약 업데이트 완료 (document_id={document_id})")
+        except Exception as e:
+            print(f"[DocumentAgent] DB 요약 업데이트 실패: {e}")
 
     return {
         "type": "doc_summary",
         "answer": answer,
         "message": answer,
+        "tags": parsed["tags"],
+        "summary": parsed["summary"],
     }
 
 

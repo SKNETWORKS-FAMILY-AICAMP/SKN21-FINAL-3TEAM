@@ -1,12 +1,12 @@
 """
 v2_summary 합성 데이터 생성 스크립트
 
-GPT-4o를 활용하여 완전 합성 요약 데이터 200개를 생성합니다.
-기존 AI Hub 700개를 보완하여 새로운 문서 유형(이메일, 사내공지, 계약서 등) 추가.
+GPT-4o를 활용하여 완전 합성 요약 데이터 700개를 생성합니다.
+AI Hub 300개를 보완하여 다양한 문서 유형과 길이를 커버.
 
 카테고리별 배분:
-  회의록 35, 보고서 35, 간행물 20, 뉴스/보도자료 25,
-  사설/연설문 30, 이메일 40, 사내공지 30, 계약서/법률문서 30
+  회의록 100, 보고서 100, 간행물 60, 뉴스/보도자료 80,
+  사설/연설문 60, 이메일 100, 사내공지 80, 계약서/법률문서 120
 
 2단계 파이프라인:
   Step A: GPT-4o -> 문서 원문 생성
@@ -24,10 +24,8 @@ import json
 import io
 import os
 import random
-import re
 import sys
 import time
-from collections import Counter
 from pathlib import Path
 
 if sys.platform == "win32":
@@ -49,14 +47,26 @@ SYSTEM_PROMPT = DOC_SUMMARY_SLLM_PROMPT
 # ── 카테고리별 합성 목표 ──
 
 CATEGORY_TARGETS = {
-    "회의록": 35,
-    "보고서": 35,
-    "간행물": 20,
-    "뉴스/보도자료": 25,
-    "사설/연설문": 20,
-    "이메일": 25,
-    "사내공지": 20,
-    "계약서/법률문서": 20,
+    "회의록": 100,
+    "보고서": 100,
+    "간행물": 60,
+    "뉴스/보도자료": 80,
+    "사설/연설문": 60,
+    "이메일": 100,
+    "사내공지": 80,
+    "계약서/법률문서": 120,
+}
+
+# 카테고리별 문서 길이 구간 (실제 기업 문서 기준)
+CATEGORY_LENGTH_RANGES = {
+    "회의록":       (300, 8000),
+    "보고서":       (1000, 10000),
+    "간행물":       (1000, 8000),
+    "뉴스/보도자료": (300, 5000),
+    "사설/연설문":   (500, 6000),
+    "이메일":       (300, 2000),
+    "사내공지":     (300, 2000),
+    "계약서/법률문서": (2000, 10000),
 }
 
 # ── 업종 풀 ──
@@ -73,73 +83,45 @@ DOCUMENT_GENERATION_PROMPTS = {
     "회의록": (
         "{industry} 업종의 회의 기록을 작성해주세요.\n"
         "참석자 이름, 논의 내용, 결정사항, 후속 조치를 포함하세요.\n"
-        "500~2000자로 작성하세요."
+        "{length_range}자로 작성하세요."
     ),
     "보고서": (
         "{industry} 업종의 업무 보고서를 작성해주세요.\n"
         "업무 진행 현황, 실적 수치, 이슈사항, 향후 계획을 포함하세요.\n"
-        "500~2000자로 작성하세요."
+        "{length_range}자로 작성하세요."
     ),
     "간행물": (
         "{industry} 관련 간행물/백서의 일부를 작성해주세요.\n"
         "전문적인 분석과 데이터, 정책 제안을 포함하세요.\n"
-        "500~2000자로 작성하세요."
+        "{length_range}자로 작성하세요."
     ),
     "뉴스/보도자료": (
         "{industry} 업종 관련 보도자료를 작성해주세요.\n"
         "육하원칙에 맞게 사실적으로 작성하고, 인용문을 포함하세요.\n"
-        "500~2000자로 작성하세요."
+        "{length_range}자로 작성하세요."
     ),
     "사설/연설문": (
         "{industry} 관련 주제로 사설 또는 연설문을 작성해주세요.\n"
         "명확한 주장과 논거를 포함하세요.\n"
-        "500~2000자로 작성하세요."
+        "{length_range}자로 작성하세요."
     ),
     "이메일": (
         "{industry} 업종의 업무 이메일을 작성해주세요.\n"
         "발신자, 수신자, 제목, 인사말, 본론, 마무리를 포함한 완전한 이메일 형식으로 작성하세요.\n"
         "업무 협조 요청, 보고, 일정 조율 등의 내용을 포함하세요.\n"
-        "300~1000자로 작성하세요."
+        "{length_range}자로 작성하세요."
     ),
     "사내공지": (
         "{industry} 업종 기업의 사내 공지사항을 작성해주세요.\n"
         "제목, 시행일, 대상, 세부 내용, 문의처를 포함하세요.\n"
         "인사 발령, 제도 변경, 시설 안내, 보안 공지 등의 주제로 작성하세요.\n"
-        "300~1000자로 작성하세요."
+        "{length_range}자로 작성하세요."
     ),
     "계약서/법률문서": (
         "{industry} 관련 계약서 또는 법률 문서의 일부를 작성해주세요.\n"
         "당사자, 계약 목적, 주요 조항, 의무사항, 위약금, 분쟁 해결 등을 포함하세요.\n"
-        "500~1500자로 작성하세요."
+        "{length_range}자로 작성하세요."
     ),
-}
-
-# ── 사용자 요청 변형 (기존 convert_aihub_summary.py와 동일 풀 활용) ──
-
-USER_REQUEST_VARIATIONS = [
-    "이 문서 요약해줘",
-    "요약 부탁해",
-    "핵심 정리해줘",
-    "간단히 요약해줘",
-    "핵심 내용만 정리",
-    "이거 정리 좀 해줘",
-    "주요 내용 요약",
-    "문서 요약 해줘",
-    "이 내용 요약해줄래?",
-    "요약본 만들어줘",
-    "브리핑 해줘",
-    "3줄 요약 해줘",
-    "핵심만 뽑아줘",
-    "간략하게 정리해줘",
-    "이거 한번 정리해볼래?",
-]
-
-CATEGORY_SPECIFIC_REQUESTS = {
-    "회의록": ["이 회의록 요약해줘", "회의 내용 정리해줘", "회의 결과 요약"],
-    "보고서": ["보고서 요약 부탁해", "이 보고서 핵심 정리", "보고서 내용 요약해줘"],
-    "이메일": ["이 이메일 요약해줘", "메일 내용 정리해줘", "이메일 핵심만"],
-    "사내공지": ["이 공지 요약해줘", "공지사항 정리해줘"],
-    "계약서/법률문서": ["계약서 핵심 정리해줘", "이 계약 내용 요약해줘"],
 }
 
 # ── 요약 생성 프롬프트 ──
@@ -148,6 +130,19 @@ CATEGORY_SPECIFIC_REQUESTS = {
 # → GPT-4o가 sLLM과 동일한 형식으로 요약 생성
 SUMMARY_GENERATION_SYSTEM = DOC_SUMMARY_SLLM_PROMPT
 
+
+_openai_client = None
+
+def _get_client():
+    global _openai_client
+    if _openai_client is None:
+        try:
+            from openai import OpenAI
+        except ImportError:
+            print("[오류] openai 패키지가 필요합니다: pip install openai")
+            sys.exit(1)
+        _openai_client = OpenAI()
+    return _openai_client
 
 def call_openai(
     system_prompt: str,
@@ -158,13 +153,7 @@ def call_openai(
     max_retries: int = 3,
 ) -> str | None:
     """OpenAI API 호출"""
-    try:
-        from openai import OpenAI
-    except ImportError:
-        print("[오류] openai 패키지가 필요합니다: pip install openai")
-        sys.exit(1)
-
-    client = OpenAI()
+    client = _get_client()
 
     for attempt in range(max_retries):
         try:
@@ -187,18 +176,34 @@ def call_openai(
 
 
 def generate_document(category: str, industry: str, model: str = "gpt-4o") -> str | None:
-    """Step A: 카테고리별 문서 원문 생성"""
+    """Step A: 카테고리별 문서 원문 생성 (길이 범위 반영)"""
     doc_system = (
         "당신은 한국 기업 문서 작성 전문가입니다.\n"
         "주어진 조건에 맞는 현실적인 업무 문서를 생성하세요.\n"
         "구체적인 이름, 수치, 날짜를 포함하여 사실적으로 작성하세요.\n"
+        "반드시 지정된 글자수 범위를 지켜주세요.\n"
         "한국어로 작성하세요."
     )
 
     prompt_template = DOCUMENT_GENERATION_PROMPTS.get(category, DOCUMENT_GENERATION_PROMPTS["보고서"])
-    user_prompt = prompt_template.format(industry=industry)
+    cat_min, cat_max = CATEGORY_LENGTH_RANGES.get(category, (1000, 5000))
+    # 랜덤으로 구체적인 목표 길이를 지정하여 길이 분포를 다양하게 만듦
+    target_len = random.randint(cat_min, cat_max)
+    # ±20% 범위로 요청 (너무 넓으면 GPT가 무시함)
+    range_min = max(cat_min, int(target_len * 0.8))
+    range_max = min(cat_max, int(target_len * 1.2))
+    length_range = f"{range_min}~{range_max}"
+    user_prompt = prompt_template.format(industry=industry, length_range=length_range)
 
-    return call_openai(doc_system, user_prompt, model=model, temperature=0.9, max_tokens=2048)
+    # 문서 길이에 맞게 max_tokens 조정 (1자 ≈ 0.6토큰 + 여유)
+    if range_max > 8000:
+        max_tokens = 8192
+    elif range_max > 5000:
+        max_tokens = 4096
+    else:
+        max_tokens = 2048
+
+    return call_openai(doc_system, user_prompt, model=model, temperature=0.9, max_tokens=max_tokens)
 
 
 def generate_summary(passage: str, model: str = "gpt-4o") -> str | None:
@@ -213,56 +218,44 @@ def generate_summary(passage: str, model: str = "gpt-4o") -> str | None:
 
 
 def validate_summary(summary: str) -> tuple[bool, list[str]]:
-    """요약 형식 검증"""
+    """요약 형식 검증 (태그 + 요약 형식)"""
     errors = []
-    if "## 주요 포인트" not in summary:
-        errors.append("'## 주요 포인트' 섹션 없음")
-    if "## 키워드" not in summary:
-        errors.append("'## 키워드' 섹션 없음")
-    if "- " not in summary:
-        errors.append("불릿 포인트 없음")
 
-    # 포인트 개수 검증 (3~5개)
-    if "## 주요 포인트" in summary and "## 키워드" in summary:
-        points_section = summary.split("## 주요 포인트")[1].split("## 키워드")[0]
-        bullets = [line.strip() for line in points_section.strip().splitlines() if line.strip().startswith("- ")]
-        if len(bullets) < 3 or len(bullets) > 5:
-            errors.append(f"포인트 개수 부적합: {len(bullets)}개 (3~5개 필요)")
+    if "태그:" not in summary:
+        errors.append("'태그:' 없음")
+    if "요약:" not in summary:
+        errors.append("'요약:' 없음")
 
-    # 키워드 개수 검증 (3~7개)
-    if "## 키워드" in summary:
-        kw_part = summary.split("## 키워드")[-1].strip()
-        keywords = [kw.strip() for kw in kw_part.split(",") if kw.strip()]
-        if len(keywords) < 3 or len(keywords) > 7:
-            errors.append(f"키워드 개수 부적합: {len(keywords)}개 (3~7개 필요)")
+    # 태그 개수 검증 (3~7개)
+    if "태그:" in summary:
+        tag_line = summary.split("태그:")[1].split("\n")[0].strip()
+        tags = [t.strip().lstrip("#").strip() for t in tag_line.split("#") if t.strip()]
+        if len(tags) < 3 or len(tags) > 7:
+            errors.append(f"태그 개수 부적합: {len(tags)}개 (3~7개 필요)")
+
+    # 요약 길이 검증
+    if "요약:" in summary:
+        summary_text = summary.split("요약:", 1)[1].strip()
+        if len(summary_text) < 30:
+            errors.append(f"요약 너무 짧음: {len(summary_text)}자 (30자 이상 필요)")
 
     # 메타 지시문 복사 감지
     meta_patterns = [
-        "핵심 요약 2-3문장",
-        "빈 줄",
-        "불릿(-)",
-        "명사/명사구",
-        "쉼표로 구분",
+        "2~3문장",
+        "3~7개",
+        "원문에 없는",
     ]
     for pattern in meta_patterns:
         if pattern in summary:
             errors.append(f"메타 지시문 복사: '{pattern}'")
             break
-    # "포인트" + "작성하세요" 동시 존재
-    if "포인트" in summary and "작성하세요" in summary:
-        errors.append("메타 지시문 복사: '포인트'+'작성하세요'")
 
     return len(errors) == 0, errors
 
 
 def build_user_prompt(passage: str, category: str) -> str:
-    """프로덕션 형식의 user 프롬프트 (기존 aihub_summary와 동일)"""
-    if category in CATEGORY_SPECIFIC_REQUESTS and random.random() < 0.3:
-        request = random.choice(CATEGORY_SPECIFIC_REQUESTS[category])
-    else:
-        request = random.choice(USER_REQUEST_VARIATIONS)
-
-    return f"다음 문서를 요약해주세요.\n\n사용자 요청: {request}\n\n문서 내용:\n{passage}"
+    """프로덕션 형식의 user 프롬프트 (summarize_document()와 동일 형식)"""
+    return f"다음 문서를 요약해주세요.\n\n문서 내용:\n{passage}"
 
 
 def synthesize_all(
@@ -323,6 +316,7 @@ def synthesize_all(
                 }
 
                 f.write(json.dumps(sample, ensure_ascii=False) + "\n")
+                f.flush()
                 cat_success += 1
                 print("- OK")
 
@@ -342,7 +336,7 @@ def synthesize_all(
 def main():
     parser = argparse.ArgumentParser(description="v2_summary 합성 데이터 생성")
     parser.add_argument("--output", type=str, default=str(OUTPUT_DIR / "synthetic_summary.jsonl"))
-    parser.add_argument("--count", type=int, default=0, help="총 생성 수 (0=기본값 200)")
+    parser.add_argument("--count", type=int, default=0, help="총 생성 수 (0=기본값 700)")
     parser.add_argument("--model", type=str, default="gpt-4o")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--append", action="store_true", help="기존 파일에 추가")
@@ -355,7 +349,7 @@ def main():
 
     # 목표 수 결정
     if args.count > 0:
-        ratio = args.count / 200
+        ratio = args.count / 700
         targets = {k: max(1, int(v * ratio)) for k, v in CATEGORY_TARGETS.items()}
     else:
         targets = dict(CATEGORY_TARGETS)
@@ -372,7 +366,7 @@ def main():
         print(f"    {cat}: {cnt}건")
 
     if args.dry_run:
-        est_cost = total_target * 2 * 0.02
+        est_cost = total_target * 2 * 0.01  # gpt-4o 평균
         print(f"\n[DRY RUN]")
         print(f"  예상 API 호출: {total_target * 2}회 (원문 + 요약)")
         print(f"  예상 비용: ~${est_cost:.1f}")
@@ -397,7 +391,7 @@ def main():
         for line in lines:
             sample = json.loads(line)
             content = sample["messages"][2]["content"]
-            if "## 주요 포인트" in content and "## 키워드" in content:
+            if "태그:" in content and "요약:" in content:
                 valid_format += 1
 
         pct = valid_format / len(lines) * 100 if lines else 0

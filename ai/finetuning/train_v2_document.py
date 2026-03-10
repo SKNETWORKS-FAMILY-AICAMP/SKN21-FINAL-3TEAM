@@ -504,10 +504,16 @@ def evaluate(task: str, config: dict, adapter_path: str, base_model_override: st
     elif task == "summary":
         format_rate = stats["format_ok"] / total if total else 0
         avg_rouge = stats["rouge_l_sum"] / total if total else 0
+        tag_count_rate = stats.get("tag_count_ok", 0) / total if total else 0
+        avg_tags = stats.get("tag_count_sum", 0) / total if total else 0
         print(f"    포맷 준수율:    {stats['format_ok']}/{total} ({format_rate*100:.1f}%)")
+        print(f"    태그수 준수율:  {stats.get('tag_count_ok', 0)}/{total} ({tag_count_rate*100:.1f}%)")
+        print(f"    평균 태그 수:   {avg_tags:.1f}")
         print(f"    ROUGE-L:        {avg_rouge:.4f}")
         eval_results.update({
             "format_compliance": round(format_rate, 4),
+            "tag_count_compliance": round(tag_count_rate, 4),
+            "avg_tag_count": round(avg_tags, 1),
             "rouge_l": round(avg_rouge, 4),
         })
 
@@ -601,14 +607,37 @@ def _eval_doc_qa(st: dict, pred_text: str, gold_text: str):
 
 
 def _eval_doc_summary(st: dict, pred_text: str, gold_text: str):
-    """doc_summary 평가"""
-    # 포맷 준수: 마크다운 구조 체크
-    has_structure = (
-        ("##" in pred_text or "주요 포인트" in pred_text or "키워드" in pred_text)
-        and len(pred_text) > 50
-    )
-    if has_structure:
+    """doc_summary 평가 — 태그+요약 형식
+
+    기대 형식:
+        태그: #태그1 #태그2 #태그3
+        요약: 2~3문장 요약 텍스트
+    """
+    # 포맷 준수: 태그+요약 구조 체크
+    lines = pred_text.strip().split("\n")
+    has_tag = any(line.strip().startswith("태그:") for line in lines)
+    has_summary = any(line.strip().startswith("요약:") for line in lines)
+
+    # 태그 개수 체크 (3~7개)
+    tag_count = 0
+    for line in lines:
+        if line.strip().startswith("태그:"):
+            tag_count = line.count("#")
+            break
+
+    tag_count_ok = 3 <= tag_count <= 7
+    format_ok = has_tag and has_summary and tag_count_ok
+
+    if format_ok:
         st["format_ok"] += 1
+
+    # 태그 개수 통계 (별도 집계)
+    if "tag_count_ok" not in st:
+        st["tag_count_ok"] = 0
+        st["tag_count_sum"] = 0
+    if tag_count_ok:
+        st["tag_count_ok"] += 1
+    st["tag_count_sum"] += tag_count
 
     # ROUGE-L (간이 구현 — LCS 기반)
     rouge_l = _compute_rouge_l(pred_text, gold_text)

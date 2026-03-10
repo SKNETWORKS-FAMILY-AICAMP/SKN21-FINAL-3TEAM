@@ -35,86 +35,28 @@ logger = logging.getLogger(__name__)
 
 async def analyze_document_with_llm(text: str, title: str) -> dict | None:
     """
-    LLM으로 문서를 분석하여 summary, category, tags를 추출한다.
+    문서를 분석하여 summary, tags를 추출한다.
+    document_agent의 summarize_document() 공통 함수를 사용.
     실패 시 None 반환 (문서 업로드는 정상 진행).
-
-    DOC_ANALYSIS_MODE 환경변수:
-      - "api" (기본): GPT/Claude API 사용
-      - "sllm": vLLM(Kanana-1.5-8B) 사용
     """
     try:
-        import os
-        mode = os.getenv("DOC_ANALYSIS_MODE", "api")
-        print(f"[DocumentAnalysis] mode={mode}")
+        from ai.agents.document_agent import summarize_document
+        print(f"[DocumentAnalysis] summarize_document 호출 | title={title}")
 
-        if mode == "sllm":
-            from ai.serving.vllm_client import VLLMProvider
-            use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
-            if use_lora:
-                llm = VLLMProvider().with_lora("v2_analysis")
-                print("[DocumentAnalysis] sLLM: v2_analysis LoRA 어댑터")
-            else:
-                llm = VLLMProvider()
-                print(f"[DocumentAnalysis] sLLM: base model ({llm.model})")
-        else:
-            from ai.llm import get_llm
-            llm = get_llm()
-            print(f"[DocumentAnalysis] API: {type(llm).__name__}")
+        result = await summarize_document(text)
 
-        truncated = text[:3000]
-
-        # sLLM(8B)에 최적화된 프롬프트: few-shot + 명확한 분류 기준
-        system_prompt = """당신은 문서 분석 전문가입니다.
-문서를 읽고 summary, category, tags를 JSON으로 반환합니다.
-반드시 유효한 JSON만 출력하세요. 설명이나 마크다운 없이 JSON 객체만 반환합니다."""
-
-        prompt = f"""아래 문서를 분석하고 JSON으로 응답하세요.
-
-[카테고리 분류 기준]
-- 계약서: 계약 조건, 갑/을, 계약금, 계약기간이 포함된 문서
-- 회의록: 회의 날짜, 참석자, 논의 내용, 결정사항이 포함된 문서
-- 제안서: 제안 목적, 추진 일정, 예산, 기대효과가 포함된 문서
-- 정책문서: 사내 규정, 정책, 지침, 가이드라인 문서
-- 인사문서: 채용, 온보딩, 인사평가, 급여, 복리후생 관련 문서
-- 보고서: 업무 보고, 실적, 성과, 진행현황을 정리한 문서
-- 기타: 위 카테고리에 해당하지 않는 문서
-
-[예시 1]
-문서 제목: 2026년 1분기 마케팅 실적 보고
-→ {{"summary": "2026년 1분기 마케팅팀의 캠페인 성과와 매출 기여도를 정리한 보고서이다. 온라인 광고 ROI 150% 달성, SNS 팔로워 30% 증가 등 주요 성과가 포함되어 있다.", "category": "보고서", "tags": ["마케팅", "실적", "ROI", "2026", "1분기"]}}
-
-[예시 2]
-문서 제목: 신입사원 온보딩 가이드
-→ {{"summary": "신입사원의 입사 첫날부터 수습 기간까지의 절차와 활동을 안내하는 가이드 문서이다. 인사팀 방문, 멘토 배정, 월별 성과 리뷰 등이 포함되어 있다.", "category": "인사문서", "tags": ["신입사원", "온보딩", "수습기간", "인사"]}}
-
-[분석 대상]
-문서 제목: {title}
-문서 내용:
-{truncated}
-
-위 문서의 summary, category, tags를 JSON으로 응답하세요.
-{{"summary": "2-3문장 요약", "category": "카테고리", "tags": ["태그1", "태그2", ...]}}"""
-
-        response = await llm.generate(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            json_mode=True,
-            temperature=0.1,
-        )
-
-        import json
-        result = json.loads(response.content)
-        # category를 tags 첫 번째에 포함
-        category = result.get("category", "")
         tags = result.get("tags", [])
-        if category and category not in tags:
-            tags = [category] + tags
-        result["tags"] = tags
-        logger.info(f"문서 LLM 분석 완료: category={result.get('category')}, tags={tags}")
-        return result
+        summary = result.get("summary", "")
+        logger.info(f"문서 분석 완료: tags={tags}, summary_len={len(summary)}자")
+
+        return {
+            "summary": summary,
+            "category": None,  # 사용자가 직접 선택
+            "tags": tags,
+        }
 
     except Exception as e:
-        print(f"[DocumentAnalysis] LLM 분석 실패: {type(e).__name__}: {e}")
+        print(f"[DocumentAnalysis] 분석 실패: {type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()
         return None
