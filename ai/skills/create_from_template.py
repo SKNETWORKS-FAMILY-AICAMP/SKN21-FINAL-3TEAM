@@ -50,6 +50,7 @@ _LABEL_TO_KEY = {
     # 기타
     "비고": "notes", "특이사항": "notes", "특이 사항": "notes",
     "다음회의일정": "notes", "다음 회의 일정": "notes",
+    "비고/다음회의일정": "notes", "비고 / 다음 회의 일정": "notes",
     "회의유형": "meeting_type", "회의 유형": "meeting_type",
     "목적": "purpose", "배경": "background",
     "기대효과": "expected_effect", "기대 효과": "expected_effect",
@@ -119,11 +120,12 @@ def fill_template_docx(template_path: str, output_path: str, data: dict) -> bool
 
     # 1. 테이블 셀에서 필드명 찾아 값 주입
     for table in doc.tables:
-        for row in table.rows:
+        rows = table.rows
+        for ri, row in enumerate(rows):
             cells = row.cells
             for i, cell in enumerate(cells):
                 cell_text = cell.text.strip()
-                if not cell_text or len(cell_text) > 25:
+                if not cell_text or len(cell_text) > 35:
                     continue
 
                 key = _normalize_label(cell_text)
@@ -142,15 +144,21 @@ def fill_template_docx(template_path: str, output_path: str, data: dict) -> bool
                 if not val:
                     continue
 
-                # 같은 행의 다음 셀(값 셀)에 주입
-                # 병합된 셀일 수 있으므로 다음 고유 셀 찾기
+                # 같은 행의 다음 셀(옆)에 주입 시도
+                injected = False
                 for j in range(i + 1, len(cells)):
                     if cells[j]._tc != cells[i]._tc:  # 다른 셀인지 확인
-                        target_cell = cells[j]
-                        # 라벨 옆 값 셀은 무조건 덮어쓰기 (플레이스홀더 텍스트 포함)
-                        _inject_cell_text(target_cell, val)
+                        _inject_cell_text(cells[j], val)
                         filled_keys.add(key)
+                        injected = True
                         break
+
+                # 옆 셀이 없으면 (1열 테이블 등) 다음 행의 같은 열(아래)에 주입
+                if not injected and ri + 1 < len(rows):
+                    next_row_cells = rows[ri + 1].cells
+                    if i < len(next_row_cells):
+                        _inject_cell_text(next_row_cells[i], val)
+                        filled_keys.add(key)
 
     # 2. 본문 "필드명:" 패턴 아래에 값 주입
     paragraphs = doc.paragraphs
