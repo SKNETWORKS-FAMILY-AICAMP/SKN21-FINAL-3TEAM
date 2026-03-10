@@ -868,6 +868,20 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
             return await _generate_report(user_input)
         return await _generate_proposal(user_input)
 
+    # 회의록 카테고리: summary, decisions, action_items 필드 자동 보강
+    if template_type == "meeting_minutes":
+        existing_keys = {f["key"] for f in fields}
+        meeting_extras = [
+            {"key": "summary", "description": "회의에서 논의된 주요 내용을 3~5문장으로 요약"},
+            {"key": "decisions", "description": "결정된 사항 목록 (JSON 배열)"},
+            {"key": "action_items", "description": '후속 조치 목록. 각 항목은 {"task": "할 일", "assignee": "담당자", "due_date": "기한"} 형태의 JSON 배열'},
+            {"key": "risks", "description": '리스크 목록. 각 항목은 {"description": "설명", "level": "상/중/하", "mitigation": "대응방안"} 형태의 JSON 배열'},
+        ]
+        for extra in meeting_extras:
+            if extra["key"] not in existing_keys:
+                fields.append(extra)
+                print(f"[DocumentAgent] 회의록 필수 필드 보강: {extra['key']}")
+
     # 동적 필드 명세 생성
     from ai.document_parser.template_extractor import fields_to_prompt
     field_spec = fields_to_prompt(fields)
@@ -904,6 +918,35 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
     except Exception:
         print(f"[DocumentAgent] !!! JSON 파싱 실패")
         data = {"content": generated_json_str}
+
+    # 회의록: action_items 정규화 + 문자열 필드 변환
+    if template_type == "meeting_minutes":
+        for str_field in ("title", "summary"):
+            data[str_field] = _to_readable_str(data.get(str_field, ""))
+
+        _TASK_KEYS     = ("task", "content", "item", "action", "할일", "내용", "업무", "name")
+        _ASSIGNEE_KEYS = ("assignee", "person", "담당자", "owner", "assigned_to")
+        _DUE_KEYS      = ("due_date", "deadline", "기한", "due", "end_date", "완료일")
+        def _first_val_custom(d: dict, keys):
+            for k in keys:
+                if k in d and d[k]:
+                    return str(d[k])
+            return ""
+        raw_ai = data.get("action_items", [])
+        if isinstance(raw_ai, dict):
+            raw_ai = list(raw_ai.values())
+        normalized_ai = []
+        for item in (raw_ai if isinstance(raw_ai, list) else []):
+            if isinstance(item, str):
+                normalized_ai.append({"task": item, "assignee": "", "due_date": ""})
+            elif isinstance(item, dict):
+                normalized_ai.append({
+                    "task":     _first_val_custom(item, _TASK_KEYS),
+                    "assignee": _first_val_custom(item, _ASSIGNEE_KEYS),
+                    "due_date": _first_val_custom(item, _DUE_KEYS),
+                })
+        data["action_items"] = normalized_ai
+        print(f"[DocumentAgent] 커스텀 회의록 action_items 정규화: {len(normalized_ai)}개")
 
     # 미리보기 생성
     preview_parts = [f"# {data.get('title', doc_type_name)}"]
