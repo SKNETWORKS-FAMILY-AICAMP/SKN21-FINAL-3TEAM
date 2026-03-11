@@ -22,6 +22,9 @@ export const uploadDocument = (file, scope) => {
 export const deleteDocument = (id) =>
   client.delete(`/documents/${id}`)
 
+export const updateDocumentAnalysis = (id, data) =>
+  client.patch(`/documents/${id}/analysis`, data)
+
 export const analyzeAllDocuments = () =>
   client.post('/documents/analyze-all')
 

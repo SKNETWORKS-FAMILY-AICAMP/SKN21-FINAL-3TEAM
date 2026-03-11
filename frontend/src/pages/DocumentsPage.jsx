@@ -252,6 +252,10 @@ export default function DocumentsPage() {
           documentDetail={documentDetail}
           searchQuery={searchQuery}
           onDelete={handleDeleteDoc}
+          onAnalysisUpdate={(updated) => {
+            setDocumentDetail(prev => prev ? { ...prev, ...updated } : prev);
+            loadDocuments();
+          }}
         />
       </div>
 

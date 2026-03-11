@@ -322,6 +322,36 @@ async def delete_template(
 # ── 동적 경로 (/{document_id}) ──
 
 
+class UpdateAnalysisRequest(BaseModel):
+    category: str | None = None
+    tags: list[str] | None = None
+    summary: str | None = None
+
+
+@router.patch("/{document_id}/analysis")
+async def update_analysis(
+    document_id: int,
+    request: UpdateAnalysisRequest,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """문서 분석 결과(카테고리, 태그, 요약) 수정"""
+    doc = await document_service.get_document(db, document_id)
+    if request.category is not None:
+        doc.category = request.category
+    if request.tags is not None:
+        doc.tags = request.tags
+    if request.summary is not None:
+        doc.summary = request.summary
+    await db.commit()
+    return {
+        "id": doc.id,
+        "category": doc.category,
+        "tags": doc.tags,
+        "summary": doc.summary,
+    }
+
+
 @router.get("/{document_id}")
 async def get_document(
     document_id: int,
