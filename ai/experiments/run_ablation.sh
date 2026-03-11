@@ -22,7 +22,7 @@ echo "════════════════════════�
 pip install transformers datasets accelerate scikit-learn matplotlib seaborn
 
 # GPU 확인
-python3 -c "import torch; print(f'GPU: {torch.cuda.get_device_name(0)}'); print(f'VRAM: {torch.cuda.get_device_properties(0).total_mem/1e9:.1f}GB')"
+python3 -c "import torch; print(f'GPU: {torch.cuda.get_device_name(0)}'); print(f'VRAM: {torch.cuda.get_device_properties(0).total_memory/1e9:.1f}GB')"
 
 MODEL="klue/roberta-large"
 RESULTS_DIR="ai/experiments/results"
