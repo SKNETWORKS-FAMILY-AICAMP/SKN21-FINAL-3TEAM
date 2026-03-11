@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Badge from '../common/Badge';
-import { Calendar, MapPin, Users, CalendarClock, ChevronUp, ChevronDown } from 'lucide-react';
+import { Calendar, MapPin, Users, CalendarClock, ChevronUp, ChevronDown, ClipboardList, AlertTriangle, FileSignature } from 'lucide-react';
 import dayjs from 'dayjs';
 
 const getMeetingStatus = (m) => {
@@ -20,8 +20,14 @@ const getMeetingStatus = (m) => {
   return { variant: 'status-scheduled', label: '예정' };
 };
 
+const priorityConfig = {
+  high: { label: 'HIGH', className: 'bg-error-bg text-error dark:bg-red-900/40 dark:text-red-400' },
+  medium: { label: 'MED', className: 'bg-warning-bg text-warning dark:bg-orange-900/40 dark:text-orange-400' },
+  low: { label: 'LOW', className: 'bg-success-bg text-success dark:bg-green-900/40 dark:text-green-400' },
+};
 
-export default function TodaySchedule({ meetings = [], actions = [], loading = false }) {
+
+export default function TodaySchedule({ meetings = [], actions = [], loading = false, todayDueTasks = [], overdueTasks = [], pendingApprovalCount = 0 }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [, setNow] = useState(dayjs());
 
@@ -31,16 +37,49 @@ export default function TodaySchedule({ meetings = [], actions = [], loading = f
   }, []);
 
   const displayMeetings = isCollapsed ? meetings.slice(0, 1) : meetings;
+  const hasBriefingData = meetings.length > 0 || todayDueTasks.length > 0 || overdueTasks.length > 0 || pendingApprovalCount > 0;
 
   return (
     <div className="card flex flex-col p-5 shadow-soft transition-all duration-300">
+      {/* 브리핑 요약바 */}
+      {!loading && hasBriefingData && (
+        <div className="flex items-center gap-3 mb-4 p-3 rounded-2xl bg-primary-50/60 dark:bg-white/[0.04] border border-primary-100 dark:border-white/[0.08]">
+          <div className="flex flex-wrap items-center gap-2 text-[12px] font-bold">
+            {meetings.length > 0 && (
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300">
+                <Calendar size={12} />
+                회의 {meetings.length}건
+              </span>
+            )}
+            {todayDueTasks.length > 0 && (
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-warning-bg text-warning">
+                <ClipboardList size={12} />
+                마감 태스크 {todayDueTasks.length}건
+              </span>
+            )}
+            {overdueTasks.length > 0 && (
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-bg text-error">
+                <AlertTriangle size={12} />
+                초과 {overdueTasks.length}건
+              </span>
+            )}
+            {pendingApprovalCount > 0 && (
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
+                <FileSignature size={12} />
+                결재 대기 {pendingApprovalCount}건
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 섹션 1: 오늘 일정 */}
       <div
         className="flex items-center justify-between mb-3 cursor-pointer"
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
         <h3 className="text-lg font-bold text-neutral-main flex items-center gap-2">
-          <Calendar className="text-primary-500" size={20} />
+          <Calendar className="text-primary-500" size={24} />
           오늘 일정
         </h3>
         <button className="text-neutral-muted hover:text-primary-500 transition-colors p-1 rounded-full hover:bg-surface-hover">
@@ -95,12 +134,81 @@ export default function TodaySchedule({ meetings = [], actions = [], loading = f
 
       {!isCollapsed && (
         <>
+          {/* 섹션 2: 오늘 마감 태스크 */}
+          {!loading && (todayDueTasks.length > 0 || overdueTasks.length > 0) && (
+            <>
+              <div className="pt-1" />
+              <div className="flex items-center justify-between mb-3 mt-1">
+                <h3 className="text-[15px] font-bold text-neutral-main flex items-center gap-2">
+                  <ClipboardList className="text-warning" size={22} />
+                  오늘 마감 태스크
+                  {(todayDueTasks.length + overdueTasks.length) > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-warning-bg text-warning">
+                      {todayDueTasks.length + overdueTasks.length}
+                    </span>
+                  )}
+                </h3>
+              </div>
+              <div className="space-y-2">
+                {/* 마감 초과 태스크 */}
+                {overdueTasks.map((task, i) => (
+                  <Link
+                    key={`overdue-${i}`}
+                    to="/schedules"
+                    className="group flex items-center gap-3 p-3 rounded-2xl border border-red-200 dark:border-red-900/30 bg-red-50/50 dark:bg-red-900/10 hover:border-red-300 hover:shadow-soft transition-all duration-300 relative overflow-hidden"
+                  >
+                    <div className="text-center flex-shrink-0 bg-red-100 dark:bg-red-900/30 w-12 h-12 rounded-xl flex flex-col items-center justify-center">
+                      <AlertTriangle size={16} className="text-error" />
+                      <div className="text-[8px] text-error font-bold mt-0.5">초과</div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-[13px] font-bold text-neutral-main flex items-center gap-2">
+                        {task.title}
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${priorityConfig[task.priority]?.className || priorityConfig.medium.className}`}>
+                          {priorityConfig[task.priority]?.label || 'MED'}
+                        </span>
+                      </div>
+                      {task.assignee && (
+                        <div className="mt-1 text-[11px] text-neutral-muted font-medium">{task.assignee}</div>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+                {/* 오늘 마감 태스크 */}
+                {todayDueTasks.map((task, i) => (
+                  <Link
+                    key={`due-${i}`}
+                    to="/schedules"
+                    className="group flex items-center gap-3 p-3 rounded-2xl border border-transparent bg-white/40 dark:bg-white/[0.06] dark:border-white/[0.08] hover:border-warning/30 hover:shadow-soft transition-all duration-300 relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-warning/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                    <div className="relative z-10 text-center flex-shrink-0 bg-warning-bg dark:bg-orange-900/20 w-12 h-12 rounded-xl flex flex-col items-center justify-center">
+                      <ClipboardList size={16} className="text-warning" />
+                      <div className="text-[8px] text-warning font-bold mt-0.5">{task.stage === 'in_progress' ? '진행중' : '할일'}</div>
+                    </div>
+                    <div className="relative z-10 flex-1">
+                      <div className="text-[13px] font-bold text-neutral-main flex items-center gap-2">
+                        {task.title}
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${priorityConfig[task.priority]?.className || priorityConfig.medium.className}`}>
+                          {priorityConfig[task.priority]?.label || 'MED'}
+                        </span>
+                      </div>
+                      {task.assignee && (
+                        <div className="mt-1 text-[11px] text-neutral-muted font-medium">{task.assignee}</div>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
+
           <div className="pt-1" />
 
-          {/* 섹션 2: 내일 일정 */}
+          {/* 섹션 3: 내일 일정 */}
           <div className="flex items-center justify-between mb-3 mt-1">
             <h3 className="text-[15px] font-bold text-neutral-main flex items-center gap-2">
-              <CalendarClock className="text-primary-500" size={18} />
+              <CalendarClock className="text-primary-500" size={22} />
               내일 일정
             </h3>
           </div>

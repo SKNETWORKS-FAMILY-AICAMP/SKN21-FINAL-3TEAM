@@ -98,7 +98,7 @@ export default function ScheduleTimelineWidget({ meetings = [], loading = false 
                 onClick={() => setIsCollapsed(!isCollapsed)}
             >
                 <h3 className="text-lg font-bold text-neutral-main flex items-center gap-2">
-                    <Clock className="text-primary-500" size={20} />
+                    <Clock className="text-primary-500" size={24} />
                     Today Schedule
                 </h3>
                 <button className="text-neutral-muted hover:text-primary-500 transition-colors p-1 rounded-full hover:bg-surface-hover">
