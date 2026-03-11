@@ -120,7 +120,7 @@ export default function DocumentDetail({ doc, documentDetail, searchQuery = '', 
                 <button onClick={cancelEdit} disabled={saving} className="text-[0.75rem] px-3 py-1 rounded border border-neutral-border text-neutral-muted hover:bg-surface-hover flex items-center gap-1">
                   <X size={12} /> 취소
                 </button>
-                <button onClick={saveEdit} disabled={saving} className="text-[0.75rem] px-3 py-1 rounded bg-primary-600 text-white hover:bg-primary-700 flex items-center gap-1 disabled:opacity-50">
+                <button onClick={saveEdit} disabled={saving} className="text-[0.75rem] px-3 py-1 rounded border border-primary-600 bg-primary-50 text-primary-700 hover:bg-primary-700 hover:text-white hover:border-primary-700 flex items-center gap-1 disabled:opacity-50 dark:bg-primary-900/20 dark:text-primary-300 dark:hover:bg-primary-700 dark:hover:text-white">
                   <Check size={12} /> {saving ? '저장 중...' : '저장'}
                 </button>
               </div>
