@@ -1,0 +1,24 @@
+{
+  "total": 338,
+  "json_valid": 328,
+  "json_valid_rate": 0.9704,
+  "result_accuracy": 0.8343,
+  "category_stats": {
+    "yes": {
+      "correct": 87,
+      "total": 100
+    },
+    "no": {
+      "correct": 52,
+      "total": 66
+    },
+    "conditional": {
+      "correct": 78,
+      "total": 105
+    },
+    "no_regulation": {
+      "correct": 65,
+      "total": 67
+    }
+  }
+}

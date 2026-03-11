@@ -666,7 +666,7 @@ export default function SchedulesPage() {
       )}
 
       {activeTab === 'pipeline' && <ProjectFolderView externalActions onReady={setBoardActions} />}
-      {activeTab === 'approvals' && <ApprovalPanel externalActions onReady={setApprovalActions} />}
+      {activeTab === 'approvals' && <ApprovalPanel externalActions onReady={setApprovalActions} onScheduleAdded={() => setRefreshKey(k => k + 1)} />}
       {activeTab === 'sheets' && <SheetsDashboard externalActions onReady={setSheetActions} />}
     </div>
   );

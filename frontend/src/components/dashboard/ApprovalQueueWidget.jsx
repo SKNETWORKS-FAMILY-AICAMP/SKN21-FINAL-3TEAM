@@ -3,14 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import {
-  Check, X, Clock, AlertTriangle, UserX, CalendarClock,
-  BellRing, ChevronUp, ChevronDown, ArrowRight, Plus, Paperclip,
+  Check, X, Clock, AlertTriangle, UserX, CalendarClock, ClipboardList,
+  ChevronUp, ChevronDown, ArrowRight, Plus, Paperclip, ExternalLink,
   Coffee, FileSignature, HelpCircle, FileText, GitPullRequest,
   Home, DoorOpen, Palette, Award, Receipt, Rocket, Server, ShieldCheck
 } from 'lucide-react';
 import { listPipelineTasks } from '../../api/tasks';
 import { listApprovals, createApproval, approveRequest, rejectRequest, seedApprovals } from '../../api/approvals';
+import { getAllMembers } from '../../api/auth';
 import client from '../../api/client';
+import useAuthStore from '../../store/authStore';
+import MemberDropdown from '../common/MemberDropdown';
+
+const TEAMS = ['개발', 'QA기획', 'UI/UX', '영업', '마케팅', 'CS'];
 
 /**
  * Needs Attention 위젯
@@ -35,19 +40,24 @@ const defaultTypeConfig = { icon: FileSignature, color: 'text-neutral-sub bg-sur
 
 export default function ApprovalQueueWidget() {
   const navigate = useNavigate();
+  const currentUser = useAuthStore((s) => s.user);
   const [items, setItems] = useState([]);
   const [dismissed, setDismissed] = useState([]);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [members, setMembers] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ type: 'leave', title: '', detail: '' });
+  const [formData, setFormData] = useState({ type: 'leave', title: '', detail: '', target_team: '', target_user_id: '' });
   const [formFile, setFormFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [allMembers, setAllMembers] = useState([]);
 
   useEffect(() => {
     client.get('/auth/team-members')
       .then(res => setMembers(res.data || []))
+      .catch(() => { });
+    getAllMembers()
+      .then(res => setAllMembers(res.data || []))
       .catch(() => { });
   }, []);
 
@@ -56,7 +66,7 @@ export default function ApprovalQueueWidget() {
       if (trySeed) {
         try { await seedApprovals(); } catch { }
       }
-      const res = await listApprovals();
+      const res = await client.get('/approvals/', { params: { status: 'pending' } });
       const approvals = (Array.isArray(res.data) ? res.data : []).map(a => {
         const cfg = typeConfig[a.type] || defaultTypeConfig;
         return {
@@ -87,16 +97,42 @@ export default function ApprovalQueueWidget() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const alerts = [];
+      const myName = currentUser?.name;
+      const addedTaskIds = new Set();
 
       tasks.forEach(task => {
         if (task.stage === 'done') return;
 
-        if (task.dueDate) {
+        // 나에게 할당된 태스크 → 무조건 표시
+        if (myName && task.assignee === myName && !addedTaskIds.has(task.id)) {
+          addedTaskIds.add(task.id);
+          const stageLabels = { todo: 'To Do', in_progress: '진행 중', review: '리뷰 중' };
+          let detail = stageLabels[task.stage] || task.stage;
+          if (task.dueDate) {
+            const due = new Date(task.dueDate);
+            due.setHours(0, 0, 0, 0);
+            const diff = Math.ceil((due - today) / 86400000);
+            if (diff < 0) detail += ` · ${Math.abs(diff)}일 초과`;
+            else if (diff === 0) detail += ' · 오늘 마감!';
+            else if (diff <= 2) detail += ` · D-${diff}`;
+          }
+          alerts.push({
+            id: `my-task-${task.id}`, category: 'task', taskId: task.id,
+            type: 'my_task', icon: ClipboardList,
+            color: 'text-sky-500 bg-sky-100 dark:bg-sky-900/30',
+            title: task.title,
+            detail,
+            assignee: task.assignee, priority: task.dueDate ? 3 : 2,
+          });
+        }
+
+        if (task.dueDate && !addedTaskIds.has(task.id)) {
           const due = new Date(task.dueDate);
           due.setHours(0, 0, 0, 0);
           const diff = Math.ceil((due - today) / 86400000);
 
           if (diff < 0) {
+            addedTaskIds.add(task.id);
             alerts.push({
               id: `overdue-${task.id}`, category: 'task', taskId: task.id,
               type: 'overdue', icon: AlertTriangle,
@@ -106,6 +142,7 @@ export default function ApprovalQueueWidget() {
               assignee: task.assignee, priority: 4,
             });
           } else if (diff <= 2) {
+            addedTaskIds.add(task.id);
             alerts.push({
               id: `due-soon-${task.id}`, category: 'task', taskId: task.id,
               type: 'due_soon', icon: CalendarClock,
@@ -117,7 +154,8 @@ export default function ApprovalQueueWidget() {
           }
         }
 
-        if (!task.assignee) {
+        if (!task.assignee && !addedTaskIds.has(task.id)) {
+          addedTaskIds.add(task.id);
           alerts.push({
             id: `unassigned-${task.id}`, category: 'task', taskId: task.id,
             type: 'unassigned', icon: UserX,
@@ -128,10 +166,11 @@ export default function ApprovalQueueWidget() {
           });
         }
 
-        if (task.stage === 'review' && task.created_at) {
+        if (task.stage === 'review' && task.created_at && !addedTaskIds.has(task.id)) {
           const created = new Date(task.created_at);
           const daysSince = Math.floor((today - created) / 86400000);
           if (daysSince >= 3) {
+            addedTaskIds.add(task.id);
             alerts.push({
               id: `stale-review-${task.id}`, category: 'task', taskId: task.id,
               type: 'stale_review', icon: Clock,
@@ -193,9 +232,11 @@ export default function ApprovalQueueWidget() {
         type: formData.type,
         title: formData.title.trim(),
         detail: formData.detail.trim() || null,
+        target_team: formData.target_team || null,
+        target_user_id: formData.target_user_id || null,
       }, formFile);
       setShowModal(false);
-      setFormData({ type: 'leave', title: '', detail: '' });
+      setFormData({ type: 'leave', title: '', detail: '', target_team: '', target_user_id: '' });
       setFormFile(null);
       await loadAll();
     } catch (err) {
@@ -207,6 +248,7 @@ export default function ApprovalQueueWidget() {
   };
 
   const typeLabels = {
+    my_task: '내 태스크',
     overdue: '마감 초과',
     due_soon: '마감 임박',
     unassigned: '미지정',
@@ -225,11 +267,13 @@ export default function ApprovalQueueWidget() {
 
   const badgeStyle = (item) => {
     if (item.type === 'overdue') return 'text-red-700 bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-800';
+    if (item.type === 'my_task') return 'text-sky-700 bg-sky-50 dark:bg-sky-900/20 border-sky-300 dark:border-sky-800';
     return 'text-accent-700 bg-accent-50 dark:bg-orange-900/20 border-accent-300 dark:border-orange-800';
   };
 
   const badgeText = (item) => {
     if (item.type === 'overdue') return 'Urgent';
+    if (item.type === 'my_task') return 'Assigned';
     return 'Pending';
   };
 
@@ -242,8 +286,7 @@ export default function ApprovalQueueWidget() {
         className="flex items-center justify-between mb-4 cursor-pointer"
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
-        <h3 className="text-xl font-bold text-neutral-main flex items-center gap-2">
-          <BellRing className="text-accent-500" size={24} />
+        <h3 className="text-sm font-bold text-neutral-main flex items-center gap-2">
           Needs Attention
           {visibleItems.length > 0 && (
             <span className="bg-accent-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full ml-1">
@@ -251,22 +294,26 @@ export default function ApprovalQueueWidget() {
             </span>
           )}
         </h3>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
-            className="p-1.5 rounded-lg text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 transition-all"
+            className="w-9 h-9 rounded-full bg-surface-hover hover:bg-primary-50 hover:text-primary-600 flex items-center justify-center text-neutral-sub shadow-sm border border-neutral-divider transition-all"
             onClick={(e) => { e.stopPropagation(); setShowModal(true); }}
             title="새 요청 올리기"
           >
-            <Plus size={18} />
+            <Plus size={16} />
           </button>
           <button
-            className="text-xs font-bold text-primary-600 hover:text-primary-700 transition-colors"
-            onClick={(e) => { e.stopPropagation(); navigate('/approvals'); }}
+            className="w-9 h-9 rounded-full bg-surface-hover hover:bg-primary-50 hover:text-primary-600 flex items-center justify-center text-neutral-sub shadow-sm border border-neutral-divider transition-all"
+            onClick={(e) => { e.stopPropagation(); navigate('/schedules?tab=approvals'); }}
+            title="전체 보기"
           >
-            View All
+            <ExternalLink size={14} />
           </button>
-          <button className="text-neutral-muted hover:text-primary-500 transition-colors p-1 rounded-full hover:bg-surface-hover">
-            {isCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+          <button
+            className="w-9 h-9 rounded-full bg-surface-hover hover:bg-primary-50 hover:text-primary-600 flex items-center justify-center text-neutral-sub shadow-sm border border-neutral-divider transition-all"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+          >
+            {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
           </button>
         </div>
       </div>
@@ -419,6 +466,28 @@ export default function ApprovalQueueWidget() {
                   <option value="infra">인프라/권한 신청</option>
                   <option value="security">보안 예외 처리</option>
                 </select>
+              </div>
+              {/* 대상 팀 / 팀원 선택 */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">보낼 팀</label>
+                  <select
+                    value={formData.target_team}
+                    onChange={(e) => setFormData(prev => ({ ...prev, target_team: e.target.value, target_user_id: '' }))}
+                    className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">전체</option>
+                    {TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">보낼 팀원</label>
+                  <MemberDropdown
+                    members={allMembers.filter(m => !formData.target_team || m.team === formData.target_team)}
+                    value={formData.target_user_id}
+                    onChange={(id) => setFormData(prev => ({ ...prev, target_user_id: id }))}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">제목</label>
