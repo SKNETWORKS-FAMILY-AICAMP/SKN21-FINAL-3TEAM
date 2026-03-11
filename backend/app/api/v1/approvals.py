@@ -48,6 +48,7 @@ def _serialize_approval(i, users_map=None):
         "target_user_id": i.target_user_id,
         "target_user_name": target_user.name if target_user else None,
         "target_user_avatar": target_user.avatar if target_user else None,
+        "target_user_team": target_user.team if target_user else None,
         "file_name": i.file_name,
         "created_at": i.created_at.isoformat() if i.created_at else None,
     }

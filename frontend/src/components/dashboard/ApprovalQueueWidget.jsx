@@ -42,7 +42,11 @@ export default function ApprovalQueueWidget() {
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
   const [items, setItems] = useState([]);
-  const [dismissed, setDismissed] = useState([]);
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('approvalQueue_dismissed') || '[]');
+    } catch { return []; }
+  });
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [members, setMembers] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -207,7 +211,11 @@ export default function ApprovalQueueWidget() {
   };
 
   const handleDismiss = (id) => {
-    setDismissed(prev => [...prev, id]);
+    setDismissed(prev => {
+      const next = [...prev, id];
+      localStorage.setItem('approvalQueue_dismissed', JSON.stringify(next));
+      return next;
+    });
   };
 
   const handleApproval = async (item, approved) => {
@@ -217,7 +225,11 @@ export default function ApprovalQueueWidget() {
       } else {
         await rejectRequest(item.backendId);
       }
-      setDismissed(prev => [...prev, item.id]);
+      setDismissed(prev => {
+        const next = [...prev, item.id];
+        localStorage.setItem('approvalQueue_dismissed', JSON.stringify(next));
+        return next;
+      });
     } catch (err) {
       console.error('Approval action failed', err);
     }

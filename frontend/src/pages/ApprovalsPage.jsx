@@ -88,16 +88,19 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [pendingRes, approvedRes, rejectedRes] = await Promise.all([
+      const [pendingRes, approvedRes, rejectedRes, pendingSentRes] = await Promise.all([
         client.get('/approvals/', { params: { status: 'pending' } }).catch(() => ({ data: [] })),
         client.get('/approvals/history', { params: { status: 'approved' } }).catch(() => ({ data: [] })),
         client.get('/approvals/history', { params: { status: 'rejected' } }).catch(() => ({ data: [] })),
+        client.get('/approvals/history', { params: { status: 'pending' } }).catch(() => ({ data: [] })),
       ]);
-      const all = [
-        ...(Array.isArray(pendingRes.data) ? pendingRes.data : []),
-        ...(Array.isArray(approvedRes.data) ? approvedRes.data : []),
-        ...(Array.isArray(rejectedRes.data) ? rejectedRes.data : []),
-      ];
+      // 받은 pending 요청에 _received 마킹
+      const received = (Array.isArray(pendingRes.data) ? pendingRes.data : []).map(i => ({ ...i, _received: true }));
+      // 내가 보낸 요청들에 _sent 마킹
+      const sentApproved = (Array.isArray(approvedRes.data) ? approvedRes.data : []).map(i => ({ ...i, _sent: true }));
+      const sentRejected = (Array.isArray(rejectedRes.data) ? rejectedRes.data : []).map(i => ({ ...i, _sent: true }));
+      const sentPending = (Array.isArray(pendingSentRes.data) ? pendingSentRes.data : []).map(i => ({ ...i, _sent: true }));
+      const all = [...received, ...sentApproved, ...sentRejected, ...sentPending];
       setItems(all);
     } catch {
       setItems([]);
@@ -162,6 +165,9 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
       setFormData({ type: 'leave', title: '', detail: '', target_team: '', target_user_id: '', customType: '' });
       setFormFile(null);
       await loadAll();
+      // 추천 목록에서 방금 보낸 요청 제거
+      setSuggestions(prev => prev.filter(s => !(s.type === formData.type && s.title === formData.title.trim())));
+      handleSuggest();
     } catch (err) {
       console.error('Approval create error:', err.response?.status, err.response?.data, err);
       alert('요청 생성에 실패했습니다. (' + (err.response?.data?.detail || err.message) + ')');
@@ -239,8 +245,13 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
     }
   };
 
-  const pendingItems = items.filter(i => i.status === 'pending');
-  const sentItems = items.filter(i => i.status === 'approved' || i.status === 'rejected');
+  const pendingItems = items.filter(i => i._received);
+  const sentItems = items.filter(i => i._sent);
+
+  // 이미 보낸 요청과 같은 type의 추천은 제외
+  const filteredSuggestions = suggestions.filter(s =>
+    !sentItems.some(sent => sent.type === s.type && sent.title === s.title)
+  );
 
   /* ── 칸반 카드 렌더 (Pending - 받은 요청) ── */
   const renderPendingCard = (item) => {
@@ -311,11 +322,12 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
     );
   };
 
-  /* ── 보낸 결재 카드 (Approved / Rejected 통합) ── */
+  /* ── 보낸 결재 카드 (Sent - pending/approved/rejected) ── */
   const renderSentCard = (item) => {
     const cfg = typeConfig[item.type] || defaultTypeConfig;
     const IconComp = cfg.icon;
     const isApproved = item.status === 'approved';
+    const isPending = item.status === 'pending';
     return (
       <motion.div
         key={item.id}
@@ -334,29 +346,36 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
             </div>
             <span className="text-[11px] font-semibold text-slate-400">{cfg.label}</span>
           </div>
-          {/* 승인/거절 상태 배지 */}
-          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${isApproved
-            ? 'bg-emerald-50 text-emerald-500 dark:bg-emerald-900/30'
-            : 'bg-rose-50 text-rose-500 dark:bg-rose-900/30'
+          {/* 상태 배지 */}
+          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+            isPending
+              ? 'bg-amber-50 text-amber-500 dark:bg-amber-900/30'
+              : isApproved
+                ? 'bg-emerald-50 text-emerald-500 dark:bg-emerald-900/30'
+                : 'bg-rose-50 text-rose-500 dark:bg-rose-900/30'
           }`}>
-            {isApproved ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
-            {isApproved ? 'Approved' : 'Rejected'}
+            {isPending ? <Clock size={10} /> : isApproved ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
+            {isPending ? '대기중' : isApproved ? 'Approved' : 'Rejected'}
           </span>
         </div>
         <h4 className="text-[13px] font-bold text-slate-700 dark:text-slate-200 leading-snug mb-1 line-clamp-2">{item.title}</h4>
         {item.detail && (
           <p className="text-[11px] text-slate-400 line-clamp-2 mb-3">{item.detail}</p>
         )}
-        {/* 요청자 프로필 */}
+        {/* 받는 사람 프로필 */}
         <div className="flex items-center gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-700">
-          {item.requester_avatar ? (
-            <img src={item.requester_avatar} alt="" className="w-7 h-7 rounded-full object-cover ring-2 ring-white dark:ring-neutral-800" />
+          <span className="text-[9px] text-slate-300 shrink-0">To</span>
+          {item.target_user_avatar ? (
+            <img src={item.target_user_avatar} alt="" className="w-7 h-7 rounded-full object-cover ring-2 ring-white dark:ring-neutral-800" />
           ) : (
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${isApproved ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-500'}`}>
-              {(item.requester_name || '?')[0]}
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${isPending ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-500' : isApproved ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-500'}`}>
+              {(item.target_user_name || item.target_team || '?')[0]}
             </div>
           )}
-          <span className="text-[11px] font-medium text-slate-500 truncate">{item.requester_name || '알 수 없음'}</span>
+          <span className="text-[11px] font-medium text-slate-500 truncate">
+            {item.target_user_name || item.target_team || '알 수 없음'}
+            {(item.target_user_team || item.target_team) && <span className="text-[9px] text-slate-300 ml-1">({item.target_user_team || item.target_team})</span>}
+          </span>
           {item.file_name && (
             <Paperclip size={11} className="text-slate-300 shrink-0" />
           )}
@@ -492,7 +511,7 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
                       <span className="text-[10px] text-rose-400 text-center px-2 leading-relaxed">{suggestError}</span>
                       <button onClick={handleSuggest} className="mt-1.5 text-[10px] text-sky-500 hover:underline">다시 시도</button>
                     </div>
-                  ) : suggestions.length === 0 ? (
+                  ) : filteredSuggestions.length === 0 ? (
                     <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-600">
                       <Zap size={14} className="text-slate-300 mb-1" />
                       <span className="text-[11px] text-slate-300">추천 없음</span>
@@ -500,7 +519,7 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
                   ) : (
                     <div className="grid grid-cols-2 gap-2.5">
                       <AnimatePresence mode="popLayout">
-                        {suggestions.map((s, idx) => {
+                        {filteredSuggestions.map((s, idx) => {
                           const cfg = typeConfig[s.type] || defaultTypeConfig;
                           return (
                             <motion.div
@@ -628,12 +647,13 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
           const IconComp = cfg.icon;
           const isImage = detailItem.file_name && /\.(png|jpg|jpeg|gif|webp)$/i.test(detailItem.file_name);
           const isPdf = detailItem.file_name && /\.pdf$/i.test(detailItem.file_name);
-          const stLabel = detailItem.status === 'approved' ? 'Approved' : detailItem.status === 'rejected' ? 'Rejected' : 'Pending';
+          const stLabel = detailItem.status === 'approved' ? 'Approved' : detailItem.status === 'rejected' ? 'Rejected' : '대기중';
           const stColor = detailItem.status === 'approved'
             ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30'
             : detailItem.status === 'rejected'
               ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/30'
-              : 'bg-sky-50 text-sky-600 dark:bg-sky-900/30';
+              : 'bg-amber-50 text-amber-600 dark:bg-amber-900/30';
+          const isSentItem = !!detailItem._sent;
           return (
             <motion.div
               initial={{ opacity: 0 }}
@@ -673,20 +693,34 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
                   </span>
                 </div>
 
-                <div className="flex items-center gap-3 mb-4 p-3 bg-surface-sub rounded-xl">
-                  {detailItem.requester_avatar ? (
-                    <img src={detailItem.requester_avatar} alt="" className="w-9 h-9 rounded-full" />
-                  ) : (
-                    <div className="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-sm font-bold text-primary-600">
-                      {(detailItem.requester_name || '?')[0]}
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm font-semibold text-neutral-main">{detailItem.requester_name || '알 수 없음'}</p>
-                    <div className="flex items-center gap-2 text-xs text-neutral-muted">
-                      {detailItem.target_team && <span>{detailItem.target_team}</span>}
-                      {detailItem.created_at && <span>· {new Date(detailItem.created_at).toLocaleString('ko-KR')}</span>}
-                    </div>
+                <div className="mb-4 p-3 bg-surface-sub rounded-xl">
+                  <p className="text-[10px] font-bold text-neutral-muted mb-2">{isSentItem ? '받는 사람' : '보낸 사람'}</p>
+                  <div className="flex items-center gap-3">
+                    {(() => {
+                      const avatar = isSentItem ? (detailItem.target_user_avatar || null) : (detailItem.requester_avatar || null);
+                      const name = isSentItem ? (detailItem.target_user_name || detailItem.target_team || '알 수 없음') : (detailItem.requester_name || '알 수 없음');
+                      const team = isSentItem ? (detailItem.target_user_team || detailItem.target_team) : detailItem.target_team;
+                      return (
+                        <>
+                          {avatar ? (
+                            <img src={avatar} alt="" className="w-9 h-9 rounded-full" />
+                          ) : (
+                            <div className="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-sm font-bold text-primary-600">
+                              {(name || '?')[0]}
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-sm font-semibold text-neutral-main">
+                              {name}
+                              {team && <span className="text-xs text-neutral-muted font-normal ml-1">({team})</span>}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-neutral-muted">
+                              {detailItem.created_at && <span>요청일: {new Date(detailItem.created_at).toLocaleString('ko-KR')}</span>}
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
