@@ -112,15 +112,15 @@ class EmailSendResponse(BaseModel):
 
 # ── Google Sheets ──
 
-class SheetCreateRequest(BaseModel):
-    """스프레드시트 생성 요청"""
-    title: str = "Action Items 추적"
-    meeting_id: Optional[int] = None
+class SheetExportProjectRequest(BaseModel):
+    """프로젝트 Sheets 내보내기 요청"""
+    project_name: str
+    title: Optional[str] = None
 
 
 class SheetSyncRequest(BaseModel):
     """스프레드시트 동기화 요청"""
-    meeting_id: Optional[int] = None
+    project_name: str
 
 
 class SheetCreateResponse(BaseModel):
@@ -128,6 +128,7 @@ class SheetCreateResponse(BaseModel):
     spreadsheet_id: str
     spreadsheet_url: str
     title: str
+    task_count: int = 0
 
 
 class SheetSyncResponse(BaseModel):
@@ -142,7 +143,7 @@ class SheetListItem(BaseModel):
     spreadsheet_id: str
     spreadsheet_url: str
     sheet_name: str
-    meeting_id: Optional[int] = None
+    project_name: Optional[str] = None
     created_at: datetime
 
 

@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FolderOpen, ArrowLeft, Users, Clock, CheckCircle2, Plus, Pencil, Check, X, Trash2 } from 'lucide-react';
+import { FolderOpen, ArrowLeft, Users, Clock, CheckCircle2, Plus, Pencil, Check, X, Trash2, FileSpreadsheet } from 'lucide-react';
 import { listPipelineTasks, updatePipelineTask, deletePipelineTask, listProjects, createProject as createProjectApi, updateProject as updateProjectApi, deleteProject as deleteProjectApi } from '../../api/tasks';
 import client from '../../api/client';
+import useGoogleServices from '../../hooks/useGoogleServices';
+import { toast } from '../../store/toastStore';
 import KanbanBoard from './KanbanBoard';
 
 export default function ProjectFolderView({ externalActions, onReady }) {
@@ -21,7 +23,9 @@ export default function ProjectFolderView({ externalActions, onReady }) {
     const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'in_progress' | 'done'
     const [deleteTarget, setDeleteTarget] = useState(null); // project name to delete
     const [deleting, setDeleting] = useState(false);
+    const [exportingProject, setExportingProject] = useState(null);
     const isNavigatingRef = useRef(false);
+    const { hasScope, exportProjectToSheet } = useGoogleServices();
 
     // 프로젝트 선택 시 history에 state push → 브라우저 뒤로가기로 목록 복귀
     const selectProject = useCallback((name) => {
@@ -353,14 +357,36 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                                     onClick={() => selectProject(proj.name)}
                                     className="relative bg-white/40 dark:bg-white/5 backdrop-blur-xl pt-8 pb-5 px-5 rounded-3xl border border-neutral-200/60 dark:border-white/10 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group flex flex-col items-center text-center"
                                 >
-                                    {/* Delete button */}
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(proj.name); }}
-                                        className="absolute top-3 right-3 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/20 text-neutral-300 hover:text-red-500 transition-all"
-                                        title="프로젝트 삭제"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
+                                    {/* Action buttons */}
+                                    <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                        {hasScope('sheets') && proj.tasks.length > 0 && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setExportingProject(proj.name);
+                                                    exportProjectToSheet(proj.name)
+                                                        .then(res => {
+                                                            if (res?.spreadsheet_url) window.open(res.spreadsheet_url, '_blank');
+                                                            toast.success(`"${proj.name}" Sheets 내보내기 완료`);
+                                                        })
+                                                        .catch(() => toast.error('Sheets 내보내기 실패'))
+                                                        .finally(() => setExportingProject(null));
+                                                }}
+                                                disabled={exportingProject === proj.name}
+                                                className="p-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 text-neutral-300 hover:text-green-600 transition-all"
+                                                title="Sheets로 내보내기"
+                                            >
+                                                <FileSpreadsheet size={14} className={exportingProject === proj.name ? 'animate-pulse' : ''} />
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(proj.name); }}
+                                            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-neutral-300 hover:text-red-500 transition-all"
+                                            title="프로젝트 삭제"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
 
                                     {/* Centered avatars at top */}
                                     <div className="flex items-center justify-center mb-3">

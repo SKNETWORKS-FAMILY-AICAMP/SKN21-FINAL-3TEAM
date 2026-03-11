@@ -617,17 +617,11 @@ export default function SchedulesPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => sheetActions.refresh?.()}
-                className="btn-outline"
+                disabled={sheetActions.sheetsLoading}
+                className="btn-outline flex items-center gap-1.5"
                 title="새로고침"
               >
-                <RefreshCw size={14} />
-              </button>
-              <button
-                onClick={() => sheetActions.create()}
-                disabled={sheetActions.creating || sheetActions.sheetsLoading}
-                className="btn-primary"
-              >
-                {sheetActions.creating ? '생성 중...' : '+ 새 시트'}
+                <RefreshCw size={14} className={sheetActions.sheetsLoading ? 'animate-spin' : ''} />
               </button>
             </div>
           )}

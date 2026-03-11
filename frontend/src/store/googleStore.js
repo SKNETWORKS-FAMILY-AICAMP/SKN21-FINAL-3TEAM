@@ -172,14 +172,14 @@ const useGoogleStore = create((set, get) => ({
     }
   },
 
-  createSheet: async (title, meetingId = null) => {
+  exportProjectToSheet: async (projectName, title = null) => {
     set({ sheetsLoading: true, sheetsError: null })
     try {
-      const { data } = await googleApi.createSheet(title, meetingId)
+      const { data } = await googleApi.exportProjectToSheet(projectName, title)
       await get().fetchSheets()
       return data
     } catch (err) {
-      set({ sheetsLoading: false, sheetsError: err.response?.data?.detail || 'Sheets 생성 실패' })
+      set({ sheetsLoading: false, sheetsError: err.response?.data?.detail || 'Sheets 내보내기 실패' })
       throw err
     }
   },
@@ -196,9 +196,9 @@ const useGoogleStore = create((set, get) => ({
     }
   },
 
-  syncSheet: async (spreadsheetId, meetingId = null) => {
+  syncSheet: async (spreadsheetId, projectName) => {
     try {
-      await googleApi.syncSheet(spreadsheetId, meetingId)
+      await googleApi.syncSheet(spreadsheetId, projectName)
     } catch (err) {
       set({ sheetsError: err.response?.data?.detail || 'Sheets 동기화 실패' })
     }
