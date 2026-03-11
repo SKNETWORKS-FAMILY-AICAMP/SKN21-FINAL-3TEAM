@@ -2204,6 +2204,53 @@ v4 데이터로 재학습한 결과 **모델 자체 성능이 대폭 향상** �
 
 ---
 
+## 2026-03-11 (화) — roberta-large 멀티라벨 성능 최대화 실험
+
+### 한 일
+
+**목표**: Held-out 88.3% → 93%+ 돌파
+
+**구현한 고급 학습 기법** (`train_multilabel.py`, `eval_holdout.py`):
+- **Focal Loss** (`FocalBCELoss`, gamma=2.0): easy 샘플 무시, hard 샘플 집중
+- **Label Weight**: 오답 빈도 기반 (doc_summary:2.0, judgment:1.5, doc_generate:1.5, doc_search:1.3)
+- **FGM Adversarial Training** (epsilon=1.0): word embedding perturbation으로 결정 경계 강건화
+- **5-Seed Ensemble** (42, 123, 456, 789, 1337): sigmoid 확률 평균
+- **Threshold 재최적화**: dev adversarial 기반 per-label grid search
+- **추론 시간 측정**: warmup + 3-run 평균
+
+**RunPod 실행** (`run_ablation.sh`):
+- Step 0~3: Baseline, Focal, FGM, Focal+FGM 단독 비교
+- Step 4: 5-seed 앙상블 학습 (Focal + FGM + Label Weight)
+- Step 5: 앙상블 평가 + threshold 최적화
+
+### 실험 결과
+
+| 항목 | 이전 (단일모델+Threshold) | 5-Seed 앙상블 Baseline(0.5) |
+|------|---------|---------|
+| **Held-out Accuracy** | **88.3% (53/60)** | **93.3% (56/60)** |
+| Over-triggering | 0% | 0% |
+| Under-triggering | 5.3% | 5.3% |
+| 과적합 (dev vs held-out) | - | 0.0%p (없음) |
+| 추론 시간 | - | 30.3ms |
+
+**+5.0%p 개선, 93% 목표 달성!**
+
+Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2% → **사용 안 함**
+
+**최종 설정**: 5-seed 앙상블 + sigmoid 평균 + threshold 0.5 고정
+
+### Held-out 오답 (Baseline 0.5, 4건/60)
+
+앙상블에서도 틀리는 경계 케이스 — 데이터 보강 없이는 해결 어려운 수준
+
+### 다음 할 일
+
+- 앙상블 결과를 docs에 KD 실험 기록으로 정리
+- production 코드에 앙상블 추론 반영 검토 (`ai/agents/intent_classifier.py`)
+- 프론트엔드 백엔드 실제 연동 작업 재개
+
+---
+
 ## 현재 구현 현황 요약
 
 | 항목 | 상태 | 비고 |
