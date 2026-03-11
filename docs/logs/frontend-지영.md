@@ -2243,9 +2243,34 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 
 앙상블에서도 틀리는 경계 케이스 — 데이터 보강 없이는 해결 어려운 수준
 
+#### 크로스 모델 실험 — 다른 아키텍처 large 모델 후보 탐색
+
+**목적**: roberta-large 외 다른 아키텍처로 크로스 모델 앙상블 가능성 확인 (93.3% → 95%+)
+
+**1차 시도: base 모델 3종** (`run_cross_model.sh`):
+
+| 모델 | 파라미터 | 결과 |
+|------|---------|------|
+| klue/roberta-base | 110M | 88.3% (base라 약함) |
+| beomi/KcELECTRA-base-v2022 | ~110M | 실패 (torch 버전 CVE 체크) |
+| lighthouse/mdeberta-v3-base-kor-further | ~180M | 실패 (sentencepiece/tiktoken 누락) |
+
+> base 모델(110M)은 roberta-large(338M) 대비 파라미터가 2-3배 작아 크로스 앙상블 기여도 낮음
+
+**2차 시도: large 모델 3종 준비** (`run_cross_model_large.sh`):
+
+| 모델 | 파라미터 | 아키텍처 | 기대 |
+|------|---------|---------|------|
+| xlm-roberta-large | 550M | 다국어 RoBERTa | 파라미터 최대, 한국어 포함 |
+| microsoft/deberta-v3-large | 304M | DeBERTa (Disentangled Attention) | GLUE SOTA 아키텍처 |
+| beomi/KcBERT-large | 335M | 한국어 BERT | 한국어 댓글 기반 사전학습 |
+
+- RunPod에서 `pip install --upgrade torch sentencepiece tiktoken` 설치 후 실행 예정
+
 ### 다음 할 일
 
-- 앙상블 결과를 docs에 KD 실험 기록으로 정리
+- RunPod에서 large 모델 3종 학습 실험 실행 (`bash ai/experiments/run_cross_model_large.sh`)
+- 결과 비교 → 최고 large 모델로 크로스 앙상블 구성
 - production 코드에 앙상블 추론 반영 검토 (`ai/agents/intent_classifier.py`)
 - 프론트엔드 백엔드 실제 연동 작업 재개
 
