@@ -1153,7 +1153,43 @@ v2_generate AI Hub 데이터 탈락:
 4. `테스트 계획 및 결과 보고서.docx`: 제출일 03.11, Intent 모델 비교/Document Summary v2 테스트 계획 섹션 추가
 
 **다음 할 일:**
-- 합성 데이터 생성 완료 후 `merge_training_data.py` 실행 → 1,000건 병합
-- RunPod에서 v2_summary LoRA 재학습
+- RunPod에서 v2_summary LoRA 재학습 (998건 데이터)
 - Intent v2 멀티 LLM 혼합 데이터 생성 + 3모델 비교 실험 실행
+- 3-Way 비교 (Base vs LoRA v2 vs GPT-4o) 평가
+
+---
+
+## 2026-03-12 (수)
+
+**v2_summary 합성 데이터 v2 재생성 (긴 문서 포함):**
+- 기존 합성 700건 문제 발견: 전부 3K 이하 (GPT-4o max_tokens 계산 오류 — Kanana 기준 0.6토큰/자를 GPT-4o에 적용)
+- 멀티턴 이어쓰기 방식 도입: GPT-4o 1회 한국어 ~2,500자 한계 → 부족하면 "이어서 계속 작성하세요" 추가 호출
+- 테스트: 3K~5K 10/10, 5K~10K 5/5, 8K+ 5/5 전부 통과
+
+**DOC_SUMMARY_SLLM_PROMPT 개선:**
+- 요약 2~3문장 → 2~5문장 (긴 문서 대응)
+- 태그 구체성 가이드 추가 (예: #회의 → #Q3매출회의)
+- 사실 중심 요약 명시
+
+**데이터 생성 (A→B→C 순차):**
+- A: 기존 300건 선별 (짧은50 + 중간250) → 새 프롬프트로 요약 재생성 300/300
+- B: 중간+ 3K~5K 149/150건 생성 (멀티턴)
+- C: 긴 5K~10K 249/250건 생성 (멀티턴, 최대 7라운드)
+- 합성 합계: 698건 → AI Hub 300 + 합성 698 = 998건
+
+**최종 검증 결과:**
+- 포맷 OK: 998/998 (100%)
+- 중복: 0건
+- 태그: 5~7개, 평균 6.1개
+- 길이 분포: ~1.5K 350건(35%), 1.5K~3K 250건(25%), 3K~5K 93건(9%), 5K~8K 165건(17%), 8K~10K 83건(8%), 10K+ 57건(6%)
+
+**스크립트 수정/추가:**
+- `synthesize_summary.py`: 멀티턴 이어쓰기 추가, `--length-range` 옵션 (medium_plus/long)
+- `select_existing_synthetic.py` (신규): 기존 데이터 선별
+- `resummarize_selected.py` (신규): 선별 데이터 요약 재생성
+- `combine_synthetic.py` (신규): 합성 데이터 합치기
+
+**다음 할 일:**
+- RunPod에서 v2_summary LoRA 재학습 (998건)
+- Intent v2 멀티 LLM 혼합 데이터 생성 + 3모델 비교 실험
 - 3-Way 비교 (Base vs LoRA v2 vs GPT-4o) 평가
