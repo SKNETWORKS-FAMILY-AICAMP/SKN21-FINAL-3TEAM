@@ -2257,21 +2257,155 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 
 > base 모델(110M)은 roberta-large(338M) 대비 파라미터가 2-3배 작아 크로스 앙상블 기여도 낮음
 
-**2차 시도: large 모델 3종 준비** (`run_cross_model_large.sh`):
+**2차 시도: large 모델 3종** (`run_cross_model_large.sh`):
 
-| 모델 | 파라미터 | 아키텍처 | 기대 |
-|------|---------|---------|------|
-| xlm-roberta-large | 550M | 다국어 RoBERTa | 파라미터 최대, 한국어 포함 |
-| microsoft/deberta-v3-large | 304M | DeBERTa (Disentangled Attention) | GLUE SOTA 아키텍처 |
-| beomi/KcBERT-large | 335M | 한국어 BERT | 한국어 댓글 기반 사전학습 |
+| 모델 | 파라미터 | 아키텍처 | Held-out (Baseline) | Held-out (Threshold) | 과적합 |
+|------|---------|---------|-----|-----|------|
+| xlm-roberta-large | 550M | 다국어 RoBERTa | **85.0%** | 83.3% | -10.0%p ⚠️ |
+| microsoft/deberta-v3-large | 304M | DeBERTa | 실패 (protobuf/spm 호환) | - | - |
+| beomi/KcBERT-large | 335M | 한국어 BERT | **85.0%** | 83.3% | -5.0%p ⚠️ |
 
-- RunPod에서 `pip install --upgrade torch sentencepiece tiktoken` 설치 후 실행 예정
+**xlm-roberta-large (550M, 단일 모델)**:
+- Test: 93.4%, Held-out Baseline: 85.0%
+- 과적합 -10.0%p (ADV 95.0% vs Held-out 85.0%)
+- 파라미터 최대(550M)임에도 roberta-large 앙상블(93.3%)에 크게 못 미침
+- Over-triggering 9.1% (doc_summary 과잉 등)
+
+**beomi/KcBERT-large (335M, 단일 모델)**:
+- Test: 93.9%, Held-out Baseline: 85.0%
+- 과적합 -5.0%p (ADV 90.0% vs Held-out 85.0%)
+- short compound 100% 달성 (8/8)
+- 한국어 댓글 기반 사전학습이라 구어체에 강점
+- Over-triggering 9.1%
+
+**microsoft/deberta-v3-large (1차)**: SentencePiece 모델 파일(spm.model) 파싱 에러. protobuf 미설치 + 캐시 손상으로 실패.
+
+#### 3차 시도: 5-seed 앙상블 비교 + DeBERTa 재시도
+
+**beomi/KcBERT-large 5-seed 앙상블**:
+- 5개 seed (42, 123, 456, 789, 1337) 학습 완료
+- seed별 Test 정확도: 93.9%, 94.2%, 92.2%, 93.5%, 92.8%
+- seed 1337 학습 중 디스크 부족으로 크래시 → 체크포인트 정리 후 재학습 성공
+- **Held-out 앙상블 결과: 88.3%** (7/60 오답)
+- Baseline(0.5): 86.7%, Threshold 최적화: 88.3%
+- 과적합 판정: Baseline -3.3%p (양호), Threshold -8.3%p (과적합 의심)
+- 추론 시간: 28.7ms
+- **roberta-large 앙상블(93.3%) 대비 5.0%p 낮음 → KcBERT-large는 앙상블해도 부족**
+
+**microsoft/deberta-v3-large (2차 — bf16 전환)**:
+- 1차 실패 원인: fp16 gradient unscaling 에러 → bf16으로 코드 수정 (`train_multilabel.py`)
+- 2차 실패 원인: LayerNorm 가중치 이름 불일치
+  - DeBERTa-v3는 `LayerNorm.gamma/beta` 사용, transformers는 `LayerNorm.weight/bias` 기대
+  - 사전학습 LayerNorm 가중치가 전부 랜덤 초기화 → 모델 붕괴
+- **결과: Subset Accuracy 0.0%** — 모든 입력에 `['judgment', 'doc_generate', 'doc_summary']`만 예측
+- 해결책: `pip install transformers>=4.40.0`으로 자동 gamma/beta 매핑 가능 (미시도)
+
+**xlm-roberta-large 5-seed 앙상블**: 현재 진행 중
+
+**xlm-roberta-large 5-seed 앙상블 시도**:
+- seed 42: 85.0% (정상 학습) / seed 123: 정상
+- seed 456: 94.4% (정상 학습, 디스크 부족 후 재시도 성공)
+- **seed 789: 39.1% (학습 붕괴)** — epoch 1에서 38% 달성 후 epoch 2부터 0%로 추락, 10 에포크 동안 회복 불가
+- transformers 5.3.0 업그레이드 + 캐시 정리 후 재시도해도 동일 결과
+- **원인**: xlm-roberta-large는 특정 seed에서 gradient 불안정 → 학습 붕괴 발생 (모델 고유 문제)
+- **결론: 5개 seed 중 일부가 붕괴 → 안정적인 앙상블 구성 불가능**
+
+---
+
+#### 전체 모델 비교 — 종합 표 (발표용)
+
+##### 1. 전체 모델 성능 비교 (단일 + 앙상블)
+
+| 모델 | 파라미터 | 사전학습 데이터 | 아키텍처 | Held-out (단일) | Held-out (5-seed 앙상블) | 과적합 gap | 학습 안정성 |
+|------|---------|---------------|---------|----------------|----------------------|-----------|-----------|
+| monologg/koelectra-base-v3 | 112M | 한국어 뉴스+위키 | ELECTRA | 76.7% | 미시도 | -13.3%p ⚠️⚠️ | 안정 |
+| klue/roberta-base | 110M | 한국어 KLUE | RoBERTa | 88.3% | 미시도 | - | - |
+| **klue/roberta-large** | **338M** | **한국어 KLUE** | **RoBERTa** | **88.3%** | **93.3% (+5.0%p)** | **0.0%p ✅** | **5/5 성공** |
+| beomi/KcBERT-large | 335M | 한국어 댓글 | BERT | 85.0% | 88.3% (+3.3%p) | -3.3%p | 5/5 성공 |
+| xlm-roberta-large | 550M | 100개국어 | RoBERTa | 85.0% | 앙상블 불가 | -10.0%p ⚠️⚠️ | seed 붕괴 ⚠️ |
+| microsoft/deberta-v3-large | 304M | 영어 | DeBERTa | 학습 실패 | - | - | 전체 실패 ❌ |
+
+> **핵심 발견 1**: Test/ADV 정확도는 모든 모델이 90%+로 비슷하지만, **Held-out(진짜 성능)에서 큰 차이** 발생
+> **핵심 발견 2**: koelectra는 ADV 90%였지만 Held-out 76.7% → **과적합이 가장 심함** (-13.3%p)
+> **핵심 발견 3**: 파라미터가 크다고 성능이 좋은 게 아님 (xlm-r 550M < roberta-large 338M)
+> **핵심 발견 4**: roberta-large만 앙상블로 **+5.0%p** 도약. KcBERT-large는 앙상블해도 88.3%로 roberta-large 단일 수준에 그침
+
+##### 3. 전체 실험 성능 추이 — koelectra부터 최종 앙상블까지
+
+| # | 단계 | 모델 | Train 데이터 | ADV (Dev) | Held-out (진짜) | 과적합 gap | 핵심 변화 |
+|---|------|------|------------|-----------|----------------|-----------|----------|
+| 1 | Phase 1 규칙 | 규칙 기반 | - | 41.7% | - | - | 키워드+접속사 분리 |
+| 2 | v1 BERT | koelectra (112M) | 2,873개 | 46.7% | - | - | 기본 멀티라벨 학습 |
+| 3 | v2 BERT | koelectra | 3,107개 | 58.3% | - | - | 패턴 다양화 |
+| 4 | v3 BERT | koelectra | 3,292개 | 75.0% | - | - | 오답 분석 + 골든 데이터 |
+| 5 | v3+후처리 | koelectra | 3,292개 | 81.7% | - | - | 키워드 기반 후처리 |
+| 6 | v4 BERT | koelectra | 3,491개 | 90.0% | **76.7%** | -13.3%p ⚠️ | 2차 오답 보강 |
+| 7 | **모델 교체** | **roberta-large (338M)** | 3,491개 | 80.0% | 76.7% | -3.3%p ✅ | **koelectra→roberta** |
+| 8 | v5 데이터 확대 | roberta-large | 3,925개 | 81.7% | 78.3% | -3.3%p ✅ | 템플릿 20% 확대 |
+| 9 | v6 GPT KD R1 | roberta-large | 4,287개 | 85.0% | 80.0% | -5.0%p ✅ | Knowledge Distillation |
+| 10 | v7 GPT KD R2 | roberta-large | ~4,500개 | 91.7% | 86.7% | -5.0%p ✅ | 오답 타겟 보강 |
+| 11 | v8 GPT KD R3 | roberta-large | ~4,660개 | 91.7% | 88.3% | -3.3%p ✅ | doc_summary 경계 보강 |
+| 12 | +Focal+FGM | roberta-large | ~4,660개 | - | 88.3% | - | 고급 학습 기법 |
+| **13** | **+5-Seed Ensemble** | **roberta-large** | **~4,660개** | **93.3%** | **93.3%** | **0.0%p ✅** | **앙상블 (+5.0%p)** |
+
+> **총 13단계 실험: 규칙 41.7% → koelectra 76.7% → roberta-large 88.3% → 앙상블 93.3%**
+> 가장 큰 점프: ① 5-Seed Ensemble (+5.0%p) ② GPT KD R2 오답 타겟 (+6.7%p) ③ 모델 교체 시 과적합 해소 (-13.3%p→-3.3%p)
+
+##### 4. koelectra vs roberta-large 직접 비교 (같은 데이터 기준)
+
+| 항목 | koelectra (112M) | roberta-large (338M) | 차이 |
+|------|-----------------|---------------------|------|
+| 파라미터 | 112M | 338M | 3배 |
+| 아키텍처 | ELECTRA (판별자) | RoBERTa (마스킹) | 다름 |
+| 사전학습 | 한국어 뉴스+위키 | 한국어 KLUE 벤치마크 | KLUE가 다양 |
+| 같은 데이터 ADV | 90.0% | 80.0% | koelectra +10%p |
+| **같은 데이터 Held-out** | **76.7%** | **76.7%** | **동일** |
+| 과적합 gap | -13.3%p ⚠️ | -3.3%p ✅ | **roberta가 건강** |
+| 최종 Held-out (최적화 후) | 76.7% (한계) | **93.3%** (앙상블) | **+16.6%p** |
+| 앙상블 가능성 | 미시도 (단일 한계) | 5-seed 모두 안정 | roberta만 가능 |
+
+> **핵심**: 같은 데이터에서 ADV는 koelectra가 높지만(90% vs 80%), 실제 성능(Held-out)은 동일(76.7%).
+> koelectra는 시험지를 외운 것(과적합), roberta-large는 진짜 이해한 것(일반화).
+> roberta-large는 여기서 데이터 보강 + 앙상블로 93.3%까지 성장 가능했지만, koelectra는 76.7%에서 정체.
+
+##### 5. 학습 기법별 효과 (roberta-large 기준)
+
+| 기법 | Held-out ACC | 이전 대비 | Over-triggering | 비고 |
+|------|-------------|----------|----------------|------|
+| BCE Baseline | 83.3% | - | 0% | 기본 학습 |
+| +Per-label Threshold | 88.3% | +5.0%p | 0% | 라벨별 최적 임계값 |
+| +Focal Loss + FGM | 88.3% | +0.0%p | 0% | hard 샘플 집중 + 적대적 학습 |
+| **+5-Seed Ensemble** | **93.3%** | **+5.0%p** | **0%** | **sigmoid 확률 평균** |
+
+> **핵심 발견**: 가장 큰 성능 점프는 **5-Seed Ensemble (+5.0%p)**. Focal/FGM은 단일 모델에서 체감 효과 적지만, 앙상블 안정성에 기여
+
+##### 4. 모델 실패 원인 분석
+
+| 모델 | 실패 유형 | 원인 | 시도한 해결책 | 결과 |
+|------|----------|------|-------------|------|
+| DeBERTa-v3 (1차) | spm.model 파싱 에러 | protobuf 미설치 + 캐시 손상 | 캐시 삭제 + protobuf 설치 | 2차 시도로 이동 |
+| DeBERTa-v3 (2차) | fp16 gradient 에러 | DeBERTa-v3 fp16 미지원 | bf16 전환 코드 수정 | 3차 시도로 이동 |
+| DeBERTa-v3 (3차) | Subset ACC 0.0% | LayerNorm gamma/beta→weight/bias 매핑 실패 | transformers 5.3.0 업그레이드 | **해결 안 됨** (모델 자체 호환 문제) |
+| xlm-r (seed 789) | 학습 붕괴 (39.1%) | epoch 2부터 gradient 불안정 → 동일 라벨만 예측 | transformers 업그레이드 + 캐시 정리 | **해결 안 됨** (seed별 불안정) |
+
+##### 7. 왜 klue/roberta-large를 선택했는가 (발표 핵심)
+
+| 기준 | koelectra (112M) | klue/roberta-large (338M) | 다른 large 모델 |
+|------|-----------------|--------------------------|----------------|
+| **Held-out 정확도** | 76.7% (한계) | **93.3% (최고)** | 85.0~88.3% |
+| **과적합** | -13.3%p ⚠️⚠️ | **0.0%p ✅** | -5.0~-10.0%p |
+| **학습 안정성** | 안정 | **5/5 seed 성공** | 일부 붕괴/실패 |
+| **성장 가능성** | 76.7%에서 정체 | **+16.6%p 성장** | 앙상블 불가/부족 |
+| **한국어 특화** | 뉴스+위키 | **KLUE 벤치마크** | 다국어/영어/댓글 |
+| **추론 시간** | ~6ms | 30ms (앙상블 5개) | 앙상블 불가 |
+| **Over-triggering** | 높음 | **0%** | 9.1~13.6% |
+
+> **결론: klue/roberta-large × 5-seed 앙상블 + Focal Loss + FGM + Baseline 0.5 = Held-out 93.3%**
+> 한국어에 특화된 사전학습 + 학습 안정성 + 앙상블 효과 극대화 → 최종 선택
 
 ### 다음 할 일
 
-- RunPod에서 large 모델 3종 학습 실험 실행 (`bash ai/experiments/run_cross_model_large.sh`)
-- 결과 비교 → 최고 large 모델로 크로스 앙상블 구성
-- production 코드에 앙상블 추론 반영 검토 (`ai/agents/intent_classifier.py`)
+- production 코드에 앙상블 추론 반영 (`ai/agents/intent_classifier.py`)
 - 프론트엔드 백엔드 실제 연동 작업 재개
 
 ---
