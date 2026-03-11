@@ -9,10 +9,22 @@ Phase 2: 멀티라벨 Intent 분류 모델 학습
   - problem_type: "multi_label_classification"
   - 평가 지표: Subset Accuracy, Hamming Loss, Jaccard, Macro/Micro F1
 
+고급 학습 기법:
+  - Focal Loss: easy 샘플 가중치 감소, hard 샘플 집중 (--focal)
+  - FGM Adversarial Training: 임베딩 perturbation으로 강건화 (--fgm)
+  - Multi-Seed Ensemble: 여러 seed로 학습 후 앙상블 (--ensemble-seeds)
+
 사용법 (RunPod 등 GPU 환경):
   pip install transformers datasets accelerate scikit-learn matplotlib seaborn
-  python -m ai.experiments.train_multilabel
-  python -m ai.experiments.train_multilabel --model klue/bert-base --epochs 10
+
+  # 기본 학습
+  python -m ai.experiments.train_multilabel --model klue/roberta-large
+
+  # Focal Loss + FGM
+  python -m ai.experiments.train_multilabel --model klue/roberta-large --focal --fgm
+
+  # 5-Seed 앙상블 (Focal + FGM)
+  python -m ai.experiments.train_multilabel --model klue/roberta-large --focal --fgm --ensemble-seeds 42,123,456,789,1337
 """
 
 import argparse
@@ -20,6 +32,8 @@ import json
 import random
 import time
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 from pathlib import Path
 from datasets import Dataset
@@ -77,6 +91,109 @@ def set_seed(seed):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+
+
+# ── Focal Loss ────────────────────────────────────────────────────────────────
+
+class FocalBCELoss(nn.Module):
+    """
+    Focal Loss for multi-label classification.
+    easy 샘플(확률 높은)의 loss 가중치를 줄이고, hard 샘플(경계 케이스)에 집중.
+
+    gamma=0 → 일반 BCE와 동일
+    gamma=2 → 표준 Focal Loss (추천)
+    """
+    def __init__(self, gamma=2.0, label_weights=None):
+        super().__init__()
+        self.gamma = gamma
+        self.label_weights = label_weights  # [NUM_LABELS] tensor
+
+    def forward(self, logits, targets):
+        bce = F.binary_cross_entropy_with_logits(logits, targets, reduction='none')
+        probs = torch.sigmoid(logits)
+        pt = targets * probs + (1 - targets) * (1 - probs)
+        focal_weight = (1 - pt) ** self.gamma
+        loss = focal_weight * bce
+        if self.label_weights is not None:
+            loss = loss * self.label_weights.to(loss.device)
+        return loss.mean()
+
+
+# ── FGM Adversarial Training ─────────────────────────────────────────────────
+
+class FGM:
+    """
+    Fast Gradient Method — 학습 중 word embedding에 미세 perturbation 추가.
+    임베딩 공간에서 결정 경계를 더 robust하게 만듦.
+    """
+    def __init__(self, model, epsilon=1.0):
+        self.model = model
+        self.epsilon = epsilon
+        self.backup = {}
+
+    def attack(self):
+        for name, param in self.model.named_parameters():
+            if param.requires_grad and 'word_embeddings' in name:
+                self.backup[name] = param.data.clone()
+                if param.grad is not None:
+                    norm = torch.norm(param.grad)
+                    if norm != 0 and not torch.isnan(norm):
+                        r_at = self.epsilon * param.grad / norm
+                        param.data.add_(r_at)
+
+    def restore(self):
+        for name, param in self.model.named_parameters():
+            if name in self.backup:
+                param.data = self.backup[name]
+        self.backup = {}
+
+
+# ── Custom Trainer (Focal Loss + FGM) ────────────────────────────────────────
+
+class AdvancedTrainer(Trainer):
+    """Focal Loss + FGM 지원 Trainer"""
+
+    def __init__(self, *args, focal_loss=None, fgm=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.focal_loss = focal_loss
+        self.fgm = fgm
+
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        labels = inputs.pop("labels")
+        outputs = model(**inputs)
+
+        if self.focal_loss is not None:
+            loss = self.focal_loss(outputs.logits, labels)
+        else:
+            loss = F.binary_cross_entropy_with_logits(outputs.logits, labels)
+
+        inputs["labels"] = labels
+        return (loss, outputs) if return_outputs else loss
+
+    def training_step(self, model, inputs, num_items_in_batch=None):
+        model.train()
+        inputs = self._prepare_inputs(inputs)
+
+        with self.compute_loss_context_manager():
+            loss = self.compute_loss(model, inputs)
+
+        if self.args.n_gpu > 1:
+            loss = loss.mean()
+
+        # 정상 backward
+        self.accelerator.backward(loss)
+
+        # FGM: 적대적 학습
+        if self.fgm is not None:
+            self.fgm.attack()
+            with self.compute_loss_context_manager():
+                loss_adv = self.compute_loss(model, inputs)
+            if self.args.n_gpu > 1:
+                loss_adv = loss_adv.mean()
+            self.accelerator.backward(loss_adv)
+            self.fgm.restore()
+
+        return loss.detach() / self.args.gradient_accumulation_steps
 
 
 # ── 데이터 로드 ──────────────────────────────────────────────────────────────
@@ -185,14 +302,27 @@ def compute_metrics(eval_pred: EvalPrediction, threshold=0.5):
 
 # ── 학습 ─────────────────────────────────────────────────────────────────────
 
-def train_model(model_name, train_data, val_data, hp, seed=42):
-    """멀티라벨 모델 학습"""
+def train_model(model_name, train_data, val_data, hp, seed=42,
+                use_focal=False, focal_gamma=2.0, label_weights=None,
+                use_fgm=False, fgm_epsilon=1.0,
+                save_dir=None):
+    """멀티라벨 모델 학습 (Focal Loss + FGM 지원)"""
     set_seed(seed)
+
+    features = []
+    if use_focal:
+        features.append(f"Focal(γ={focal_gamma})")
+    if use_fgm:
+        features.append(f"FGM(ε={fgm_epsilon})")
+    feat_str = " + ".join(features) if features else "Baseline(BCE)"
 
     print(f"\n{'='*60}")
     print(f"  모델: {model_name}")
-    print(f"  HP: epochs={hp['epochs']}, lr={hp['learning_rate']}, bs={hp['batch_size']}")
+    print(f"  학습 기법: {feat_str}")
+    print(f"  HP: epochs={hp['epochs']}, lr={hp['learning_rate']}, bs={hp['batch_size']}, seed={seed}")
     print(f"  max_length={hp['max_length']}, threshold={hp['threshold']}")
+    if label_weights:
+        print(f"  Label Weights: {label_weights}")
     print(f"{'='*60}")
 
     # 토크나이저 + 모델
@@ -202,16 +332,34 @@ def train_model(model_name, train_data, val_data, hp, seed=42):
         num_labels=NUM_LABELS,
         id2label=ID2LABEL,
         label2id=LABEL2ID,
-        problem_type="multi_label_classification",  # ← 핵심: BCEWithLogitsLoss 자동 사용
+        problem_type="multi_label_classification",
     )
 
     # 데이터셋
     train_ds = to_dataset(train_data, tokenizer, hp["max_length"])
     val_ds   = to_dataset(val_data,   tokenizer, hp["max_length"])
 
+    # Focal Loss 설정
+    focal_loss_fn = None
+    if use_focal:
+        lw_tensor = None
+        if label_weights:
+            lw_tensor = torch.tensor(
+                [label_weights.get(label, 1.0) for label in INTENT_LABELS],
+                dtype=torch.float32,
+            )
+        focal_loss_fn = FocalBCELoss(gamma=focal_gamma, label_weights=lw_tensor)
+        print(f"  ✓ Focal Loss 활성화 (gamma={focal_gamma})")
+
+    # FGM 설정
+    fgm = None
+    if use_fgm:
+        fgm = FGM(model, epsilon=fgm_epsilon)
+        print(f"  ✓ FGM Adversarial Training 활성화 (epsilon={fgm_epsilon})")
+
     # 학습 설정
-    output_dir = RESULTS_DIR / f"multilabel_{model_name.split('/')[-1]}"
-    args = TrainingArguments(
+    output_dir = RESULTS_DIR / f"multilabel_{model_name.split('/')[-1]}_seed{seed}"
+    training_args = TrainingArguments(
         output_dir=str(output_dir),
         num_train_epochs=hp["epochs"],
         per_device_train_batch_size=hp["batch_size"],
@@ -219,6 +367,7 @@ def train_model(model_name, train_data, val_data, hp, seed=42):
         learning_rate=hp["learning_rate"],
         weight_decay=hp["weight_decay"],
         warmup_ratio=hp["warmup_ratio"],
+        gradient_accumulation_steps=hp.get("grad_accum", 1),
         seed=seed,
         data_seed=seed,
         eval_strategy="epoch",
@@ -232,17 +381,29 @@ def train_model(model_name, train_data, val_data, hp, seed=42):
         fp16=torch.cuda.is_available(),
     )
 
-    trainer = Trainer(
-        model=model,
-        args=args,
-        train_dataset=train_ds,
-        eval_dataset=val_ds,
-        compute_metrics=compute_metrics,
-    )
+    # Trainer 선택 (Focal/FGM 사용 시 AdvancedTrainer)
+    if use_focal or use_fgm:
+        trainer = AdvancedTrainer(
+            model=model,
+            args=training_args,
+            train_dataset=train_ds,
+            eval_dataset=val_ds,
+            compute_metrics=compute_metrics,
+            focal_loss=focal_loss_fn,
+            fgm=fgm,
+        )
+    else:
+        trainer = Trainer(
+            model=model,
+            args=training_args,
+            train_dataset=train_ds,
+            eval_dataset=val_ds,
+            compute_metrics=compute_metrics,
+        )
 
     # 학습
     start = time.time()
-    train_result = trainer.train()
+    trainer.train()
     train_time = time.time() - start
 
     # Validation 평가
@@ -252,6 +413,25 @@ def train_model(model_name, train_data, val_data, hp, seed=42):
         if k.startswith("eval_"):
             print(f"    {k}: {v}")
     print(f"  학습 시간: {train_time:.1f}s")
+
+    # 모델 저장 (save_dir 지정 시)
+    if save_dir:
+        save_dir = Path(save_dir)
+        save_dir.mkdir(parents=True, exist_ok=True)
+        model.save_pretrained(str(save_dir))
+        tokenizer.save_pretrained(str(save_dir))
+        model_info = {
+            "base_model": model_name,
+            "problem_type": "multi_label_classification",
+            "num_labels": NUM_LABELS,
+            "threshold": hp["threshold"],
+            "labels": INTENT_LABELS,
+            "seed": seed,
+            "features": feat_str,
+        }
+        with open(save_dir / "model_info.json", "w", encoding="utf-8") as f:
+            json.dump(model_info, f, ensure_ascii=False, indent=2)
+        print(f"  모델 저장: {save_dir}")
 
     return trainer, tokenizer, model, eval_results, train_time
 
@@ -453,7 +633,34 @@ def main():
     parser.add_argument("--max-length", type=int, default=DEFAULT_HP["max_length"])
     parser.add_argument("--threshold", type=float, default=DEFAULT_HP["threshold"])
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--grad-accum", type=int, default=1,
+                        help="Gradient accumulation steps (effective batch = batch_size * grad_accum)")
+
+    # Focal Loss
+    parser.add_argument("--focal", action="store_true", help="Focal Loss 사용")
+    parser.add_argument("--focal-gamma", type=float, default=2.0, help="Focal Loss gamma (default: 2.0)")
+    parser.add_argument("--label-weights", action="store_true",
+                        help="오답 빈도 기반 label weight 적용 (doc_summary:2.0, judgment:1.5, ...)")
+
+    # FGM
+    parser.add_argument("--fgm", action="store_true", help="FGM Adversarial Training 사용")
+    parser.add_argument("--fgm-epsilon", type=float, default=1.0, help="FGM epsilon (default: 1.0)")
+
+    # 앙상블
+    parser.add_argument("--ensemble-seeds", type=str, default=None,
+                        help="앙상블 학습용 seed 리스트 (콤마 구분, 예: 42,123,456,789,1337)")
+
     args = parser.parse_args()
+
+    # Label weights (오답 분석 기반)
+    lw = None
+    if args.label_weights:
+        lw = {
+            "doc_summary": 2.0,
+            "judgment": 1.5,
+            "doc_generate": 1.5,
+            "doc_search": 1.3,
+        }
 
     hp = {
         "model_name": args.model,
@@ -464,6 +671,7 @@ def main():
         "threshold": args.threshold,
         "warmup_ratio": DEFAULT_HP["warmup_ratio"],
         "weight_decay": DEFAULT_HP["weight_decay"],
+        "grad_accum": args.grad_accum,
     }
 
     print("Phase 2: 멀티라벨 Intent 분류 모델 학습")
@@ -473,9 +681,69 @@ def main():
     # 데이터 로드
     train_data, val_data, test_data = load_splits()
 
-    # 학습
+    # ── 앙상블 모드 ──
+    if args.ensemble_seeds:
+        seeds = [int(s.strip()) for s in args.ensemble_seeds.split(",")]
+        print(f"\n{'▶'*3} 앙상블 모드: {len(seeds)}개 seed {seeds}")
+
+        ensemble_dir = MODEL_SAVE_DIR.parent / "intent_multilabel_ensemble"
+        ensemble_dir.mkdir(parents=True, exist_ok=True)
+        ensemble_results = []
+
+        for i, seed in enumerate(seeds):
+            print(f"\n{'━'*60}")
+            print(f"  앙상블 [{i+1}/{len(seeds)}] seed={seed}")
+            print(f"{'━'*60}")
+
+            seed_save_dir = ensemble_dir / f"seed_{seed}"
+            trainer, tokenizer, model, eval_results, train_time = train_model(
+                args.model, train_data, val_data, hp, seed,
+                use_focal=args.focal, focal_gamma=args.focal_gamma, label_weights=lw,
+                use_fgm=args.fgm, fgm_epsilon=args.fgm_epsilon,
+                save_dir=str(seed_save_dir),
+            )
+
+            test_results = evaluate_detailed(model, tokenizer, test_data, hp, f"Test(seed={seed})")
+            ensemble_results.append({
+                "seed": seed,
+                "train_time": round(train_time, 1),
+                "val": {k.replace("eval_", ""): v for k, v in eval_results.items()},
+                "test": test_results,
+            })
+
+            # GPU 메모리 해제
+            del model, trainer
+            torch.cuda.empty_cache()
+
+        # 앙상블 메타 저장
+        meta = {
+            "model": args.model,
+            "seeds": seeds,
+            "features": [],
+            "hp": hp,
+            "results": ensemble_results,
+        }
+        if args.focal:
+            meta["features"].append(f"FocalLoss(gamma={args.focal_gamma})")
+        if args.fgm:
+            meta["features"].append(f"FGM(epsilon={args.fgm_epsilon})")
+        if lw:
+            meta["features"].append(f"LabelWeights({lw})")
+
+        with open(ensemble_dir / "ensemble_meta.json", "w", encoding="utf-8") as f:
+            json.dump(meta, f, ensure_ascii=False, indent=2)
+
+        print(f"\n{'='*60}")
+        print(f"  앙상블 학습 완료! {len(seeds)}개 모델 저장: {ensemble_dir}")
+        print(f"  → eval_holdout.py --ensemble-dir {ensemble_dir} 로 앙상블 평가")
+        print(f"{'='*60}")
+        return
+
+    # ── 단일 모델 학습 ──
     trainer, tokenizer, model, eval_results, train_time = train_model(
         args.model, train_data, val_data, hp, args.seed,
+        use_focal=args.focal, focal_gamma=args.focal_gamma, label_weights=lw,
+        use_fgm=args.fgm, fgm_epsilon=args.fgm_epsilon,
     )
 
     # Test 평가
@@ -500,11 +768,19 @@ def main():
     all_results = {
         "model": args.model,
         "hp": hp,
+        "features": [],
         "train_time_sec": round(train_time, 1),
         "val": {k.replace("eval_", ""): v for k, v in eval_results.items()},
         "test": test_results,
         "compound": compound_results,
     }
+    if args.focal:
+        all_results["features"].append(f"FocalLoss(gamma={args.focal_gamma})")
+    if args.fgm:
+        all_results["features"].append(f"FGM(epsilon={args.fgm_epsilon})")
+    if lw:
+        all_results["features"].append(f"LabelWeights({lw})")
+
     results_path = RESULTS_DIR / "multilabel_results.json"
     with open(results_path, "w", encoding="utf-8") as f:
         json.dump(all_results, f, ensure_ascii=False, indent=2)

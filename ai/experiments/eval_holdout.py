@@ -5,11 +5,19 @@ Held-out Adversarial 테스트 — 과적합 검증
 기존 adversarial 결과와 비교하여 과적합 여부를 판단.
 
 사용법 (RunPod):
+  # 단일 모델 평가
   python -m ai.experiments.eval_holdout
+
+  # 앙상블 평가 (여러 seed 모델의 sigmoid 평균)
+  python -m ai.experiments.eval_holdout --ensemble-dir ai/models/intent_multilabel_ensemble
+
+  # 앙상블 + threshold 재최적화 (dev adversarial 기반)
+  python -m ai.experiments.eval_holdout --ensemble-dir ai/models/intent_multilabel_ensemble --optimize-thresholds
 """
 
 import argparse
 import json
+import time
 import numpy as np
 import torch
 from pathlib import Path
@@ -51,6 +59,67 @@ def load_model(model_dir):
     return model, tokenizer, device
 
 
+def load_ensemble(ensemble_dir):
+    """앙상블 디렉토리에서 모든 seed 모델 로드"""
+    ensemble_dir = Path(ensemble_dir)
+    meta_path = ensemble_dir / "ensemble_meta.json"
+    if not meta_path.exists():
+        raise FileNotFoundError(f"ensemble_meta.json 없음: {ensemble_dir}")
+
+    with open(meta_path, "r", encoding="utf-8") as f:
+        meta = json.load(f)
+
+    seeds = meta["seeds"]
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    models = []
+    tokenizer = None
+
+    for seed in seeds:
+        seed_dir = ensemble_dir / f"seed_{seed}"
+        if not seed_dir.exists():
+            print(f"  ⚠️  seed_{seed} 디렉토리 없음, 건너뜀")
+            continue
+
+        with open(seed_dir / "model_info.json", "r", encoding="utf-8") as f:
+            model_info = json.load(f)
+
+        if tokenizer is None:
+            base_model = model_info.get("base_model", "monologg/koelectra-base-v3-discriminator")
+            tokenizer = AutoTokenizer.from_pretrained(base_model)
+
+        model = AutoModelForSequenceClassification.from_pretrained(str(seed_dir))
+        model.eval()
+        model.to(device)
+        models.append({"seed": seed, "model": model})
+        print(f"  앙상블 모델 로드: seed_{seed}")
+
+    print(f"앙상블 모델 {len(models)}개 로드 완료 (device: {device})")
+    return models, tokenizer, device, meta
+
+
+def get_ensemble_probs(models, tokenizer, texts, device):
+    """여러 모델의 sigmoid 확률을 평균"""
+    all_model_probs = []
+
+    for m_info in models:
+        model = m_info["model"]
+        model_probs = []
+        for text in texts:
+            inputs = tokenizer(
+                text, return_tensors="pt", padding=True,
+                truncation=True, max_length=128,
+            ).to(device)
+            with torch.no_grad():
+                outputs = model(**inputs)
+            probs = torch.sigmoid(outputs.logits)[0].cpu().numpy()
+            model_probs.append(probs)
+        all_model_probs.append(np.array(model_probs))
+
+    # 모든 모델의 확률 평균
+    avg_probs = np.mean(all_model_probs, axis=0)
+    return avg_probs
+
+
 def get_all_probs(model, tokenizer, texts, device):
     all_probs = []
     for text in texts:
@@ -63,6 +132,79 @@ def get_all_probs(model, tokenizer, texts, device):
         probs = torch.sigmoid(outputs.logits)[0].cpu().numpy()
         all_probs.append(probs)
     return np.array(all_probs)
+
+
+def optimize_thresholds(all_probs, y_true):
+    """
+    Dev adversarial 데이터에서 per-label 최적 threshold를 grid search.
+    각 label 독립적으로 F1 최대화 threshold 탐색.
+    """
+    search_range = np.arange(0.10, 0.90, 0.05)
+    best_thresholds = np.array([0.5] * NUM_LABELS)
+
+    print(f"\n{'─'*60}")
+    print("  Per-label Threshold 재최적화 (Dev Adversarial 기반)")
+    print(f"{'─'*60}")
+    print(f"  탐색 범위: {search_range[0]:.2f} ~ {search_range[-1]:.2f} (step 0.05)")
+
+    for i, label in enumerate(INTENT_LABELS):
+        true_col = y_true[:, i]
+        if true_col.sum() == 0:
+            print(f"  {label:<16} → 0.50 (양성 샘플 없음)")
+            continue
+
+        best_f1 = 0.0
+        best_t = 0.5
+        for t in search_range:
+            pred_col = (all_probs[:, i] >= t).astype(float)
+            f1 = f1_score(true_col, pred_col, zero_division=0)
+            if f1 > best_f1:
+                best_f1 = f1
+                best_t = t
+
+        best_thresholds[i] = round(best_t, 2)
+        bar = "█" * int(best_f1 * 20)
+        print(f"  {label:<16} → {best_t:.2f}  (F1: {best_f1:.4f})  {bar}")
+
+    return best_thresholds
+
+
+def measure_inference_time(models_or_model, tokenizer, texts, device, is_ensemble=False, n_runs=3):
+    """앙상블/단일 모델 추론 시간 측정 (warmup 1회 + n_runs 평균)"""
+    sample_text = texts[0] if texts else "테스트 입력입니다."
+
+    def single_inference():
+        inputs = tokenizer(
+            sample_text, return_tensors="pt", padding=True,
+            truncation=True, max_length=128,
+        ).to(device)
+        if is_ensemble:
+            for m_info in models_or_model:
+                with torch.no_grad():
+                    m_info["model"](**inputs)
+        else:
+            with torch.no_grad():
+                models_or_model(**inputs)
+
+    # warmup
+    single_inference()
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+
+    # measure
+    times = []
+    for _ in range(n_runs):
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+        start = time.perf_counter()
+        single_inference()
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+        end = time.perf_counter()
+        times.append((end - start) * 1000)  # ms
+
+    avg_ms = np.mean(times)
+    return avg_ms
 
 
 def evaluate(all_probs, y_true, threshold=0.5, per_label_thresholds=None):
@@ -119,9 +261,19 @@ def evaluate(all_probs, y_true, threshold=0.5, per_label_thresholds=None):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-dir", default=str(ROOT / "ai" / "models" / "intent_multilabel"))
+    parser.add_argument("--ensemble-dir", default=None,
+                        help="앙상블 모델 디렉토리 (예: ai/models/intent_multilabel_ensemble)")
+    parser.add_argument("--optimize-thresholds", action="store_true",
+                        help="Dev adversarial 데이터에서 per-label threshold 재최적화")
     args = parser.parse_args()
 
-    model, tokenizer, device = load_model(args.model_dir)
+    is_ensemble = args.ensemble_dir is not None
+
+    if is_ensemble:
+        models, tokenizer, device, ensemble_meta = load_ensemble(args.ensemble_dir)
+        print(f"\n앙상블 평가 모드 ({len(models)}개 모델)")
+    else:
+        model, tokenizer, device = load_model(args.model_dir)
 
     # ── 1) 기존 adversarial (개발용) ──
     adv_path = ROOT / "data" / "training" / "intent_multilabel" / "adversarial_compound_test.json"
@@ -156,14 +308,27 @@ def main():
     # ── 기존 adversarial 평가 ──
     adv_texts = [item["text"] for item in adv_data]
     adv_y_true = np.array([labels_to_vector(item["labels"]) for item in adv_data])
-    adv_probs = get_all_probs(model, tokenizer, adv_texts, device)
+    if is_ensemble:
+        adv_probs = get_ensemble_probs(models, tokenizer, adv_texts, device)
+    else:
+        adv_probs = get_all_probs(model, tokenizer, adv_texts, device)
     adv_result = evaluate(adv_probs, adv_y_true)
 
     # ── Held-out 평가 ──
     holdout_texts = [item["text"] for item in holdout_data]
     holdout_y_true = np.array([labels_to_vector(item["labels"]) for item in holdout_data])
-    holdout_probs = get_all_probs(model, tokenizer, holdout_texts, device)
+    if is_ensemble:
+        holdout_probs = get_ensemble_probs(models, tokenizer, holdout_texts, device)
+    else:
+        holdout_probs = get_all_probs(model, tokenizer, holdout_texts, device)
     holdout_result = evaluate(holdout_probs, holdout_y_true)
+
+    # ── Threshold 재최적화 (--optimize-thresholds) ──
+    if args.optimize_thresholds:
+        opt_thresholds = optimize_thresholds(adv_probs, adv_y_true)
+        print(f"\n  재최적화된 Threshold:")
+        for label, th in zip(INTENT_LABELS, opt_thresholds):
+            print(f"    {label:<16}: {th:.2f}")
 
     # ── Per-label Threshold 평가 ──
     adv_result_th = None
@@ -172,11 +337,19 @@ def main():
         adv_result_th = evaluate(adv_probs, adv_y_true, per_label_thresholds=opt_thresholds)
         holdout_result_th = evaluate(holdout_probs, holdout_y_true, per_label_thresholds=opt_thresholds)
 
+    # ── 추론 시간 측정 ──
+    if is_ensemble:
+        infer_ms = measure_inference_time(models, tokenizer, holdout_texts, device, is_ensemble=True)
+    else:
+        infer_ms = measure_inference_time(model, tokenizer, holdout_texts, device, is_ensemble=False)
+    print(f"\n  추론 시간 (1건): {infer_ms:.1f}ms {'✅' if infer_ms < 100 else '⚠️  100ms 초과'}")
+
     # ── 비교 출력 ──
     sep = "─" * 60
 
+    mode_label = f"앙상블 {len(models)}개 모델" if is_ensemble else "단일 모델"
     print(f"\n{'═'*60}")
-    print("  과적합 검증 — 기존 vs Held-out 비교 (Baseline 0.5)")
+    print(f"  과적합 검증 — 기존 vs Held-out 비교 [{mode_label}] (Baseline 0.5)")
     print(f"{'═'*60}")
     print(f"\n  {'지표':<24} {'기존 ADV':>12} {'Held-out':>12} {'차이':>10}")
     print(f"  {'─'*24} {'─'*12} {'─'*12} {'─'*10}")
@@ -317,17 +490,27 @@ def main():
 
     # ── 결과 저장 ──
     out = {
+        "mode": "ensemble" if is_ensemble else "single",
         "dev_adversarial": {k: round(v, 4) if isinstance(v, float) else v for k, v in adv_result.items()},
         "holdout_adversarial": {k: round(v, 4) if isinstance(v, float) else v for k, v in holdout_result.items()},
         "accuracy_diff": round(acc_diff, 4),
         "holdout_errors": errors,
     }
+    if is_ensemble:
+        out["ensemble_info"] = {
+            "n_models": len(models),
+            "seeds": [m["seed"] for m in models],
+            "features": ensemble_meta.get("features", []),
+        }
     if adv_result_th and holdout_result_th:
         out["dev_adversarial_threshold"] = {k: round(v, 4) if isinstance(v, float) else v for k, v in adv_result_th.items()}
         out["holdout_adversarial_threshold"] = {k: round(v, 4) if isinstance(v, float) else v for k, v in holdout_result_th.items()}
         out["accuracy_diff_threshold"] = round(holdout_result_th["subset_accuracy"] - adv_result_th["subset_accuracy"], 4)
         out["optimal_thresholds"] = {label: float(th) for label, th in zip(INTENT_LABELS, opt_thresholds)}
-    out_path = ROOT / "ai" / "experiments" / "results" / "holdout_evaluation_results.json"
+        out["thresholds_optimized"] = bool(args.optimize_thresholds)
+    out["inference_time_ms"] = round(infer_ms, 1)
+    out_name = "holdout_ensemble_results.json" if is_ensemble else "holdout_evaluation_results.json"
+    out_path = ROOT / "ai" / "experiments" / "results" / out_name
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=2)
