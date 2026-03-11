@@ -41,7 +41,8 @@ class GoogleSheetsService(GoogleBaseService):
     def _calc_dday(self, due_date) -> str:
         if not due_date:
             return ""
-        d = due_date if isinstance(due_date, date) else due_date.date()
+        from datetime import datetime as dt
+        d = due_date.date() if isinstance(due_date, dt) else due_date
         diff = (d - date.today()).days
         if diff < 0:
             return f"{abs(diff)}일 초과"
