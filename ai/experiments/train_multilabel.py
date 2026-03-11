@@ -378,7 +378,8 @@ def train_model(model_name, train_data, val_data, hp, seed=42,
         logging_steps=50,
         save_total_limit=1,
         report_to="none",
-        fp16=torch.cuda.is_available(),
+        fp16=torch.cuda.is_available() and "deberta" not in model_name.lower(),
+        bf16=torch.cuda.is_available() and "deberta" in model_name.lower(),
     )
 
     # Trainer 선택 (Focal/FGM 사용 시 AdvancedTrainer)
