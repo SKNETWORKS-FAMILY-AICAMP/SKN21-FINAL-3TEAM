@@ -2,7 +2,6 @@
 DB 세션 관리 (팀원 D 담당)
 """
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.pool import AsyncAdaptedQueuePool
 
 from app.config import get_settings
 
@@ -11,7 +10,6 @@ settings = get_settings()
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
-    poolclass=AsyncAdaptedQueuePool,
     pool_size=10,
     max_overflow=20,
     pool_timeout=30,

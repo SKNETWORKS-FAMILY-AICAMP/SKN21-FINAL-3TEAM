@@ -175,14 +175,16 @@ async def startup_preload():
     except Exception as e:
         print(f"[Startup] RAG 파이프라인 로드 실패 (서비스는 계속 가능): {e}")
 
-    # 문서 Qdrant 재인덱싱
+    # 문서 Qdrant 재인덱싱 (30초 타임아웃)
     try:
         from app.db.session import async_session
         from app.services.document_service import reindex_all_documents
 
         async with async_session() as db:
-            result = await reindex_all_documents(db)
+            result = await asyncio.wait_for(reindex_all_documents(db), timeout=30)
             print(f"[Startup] 문서 재인덱싱 완료: {result}")
+    except asyncio.TimeoutError:
+        print("[Startup] 문서 재인덱싱 타임아웃 (30초 초과, 건너뜀)")
     except Exception as e:
         print(f"[Startup] 문서 재인덱싱 실패 (서비스는 계속 가능): {e}")
 
