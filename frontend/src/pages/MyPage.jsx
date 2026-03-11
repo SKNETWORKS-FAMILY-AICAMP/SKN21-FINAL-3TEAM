@@ -239,7 +239,7 @@ const [showEditModal, setShowEditModal] = useState(false);
                     <div className="grid grid-cols-3 gap-4">
                         {[
                             { label: 'AI 대화', value: stats.chats, icon: MessageSquare, color: 'text-primary-600', bg: 'bg-primary-50', key: 'chats' },
-                            { label: '문서 생성', value: stats.docs, icon: FileText, color: 'text-accent-600', bg: 'bg-accent-50', key: 'docs' },
+                            { label: '최근 문서', value: stats.docs, icon: FileText, color: 'text-accent-600', bg: 'bg-accent-50', key: 'docs' },
                             { label: '남은 일정', value: stats.schedules, icon: Calendar, color: 'text-indigo-600', bg: 'bg-indigo-50', key: 'schedules' },
                         ].map((stat, i) => (
                             <div
@@ -376,7 +376,7 @@ const [showEditModal, setShowEditModal] = useState(false);
                                 {/* 최근 문서 */}
                                 <div className="space-y-3">
                                     <h3 className="text-xs font-bold text-neutral-sub uppercase tracking-wider flex items-center gap-1.5">
-                                        <FileText size={12} /> 최근 생성 문서
+                                        <FileText size={12} /> 최근 사용 문서
                                     </h3>
                                     {recentDocs.map(d => (
                                         <div key={d.id} onClick={() => handleDocPreview(d)} className="p-3 bg-surface-hover rounded-xl border border-transparent hover:border-neutral-divider transition-all flex items-center justify-between cursor-pointer">
