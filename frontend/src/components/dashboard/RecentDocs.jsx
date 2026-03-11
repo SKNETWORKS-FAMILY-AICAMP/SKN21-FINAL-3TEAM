@@ -12,7 +12,7 @@ export default function RecentDocs({ docs = [], loading = false }) {
         className="flex items-center justify-between mb-4 cursor-pointer"
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
-        <h3 className="text-xl font-bold text-neutral-main flex items-center gap-2">
+        <h3 className="text-lg font-bold text-neutral-main flex items-center gap-2">
           <FileText className="text-primary-500" size={24} />
           팀 최근 문서
         </h3>

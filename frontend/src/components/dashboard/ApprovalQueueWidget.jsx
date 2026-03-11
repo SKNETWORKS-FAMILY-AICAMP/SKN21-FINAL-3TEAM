@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import {
-  Check, X, Clock, AlertTriangle, UserX, CalendarClock, ClipboardList,
+  Check, X, Clock, AlertTriangle, UserX, CalendarClock, ClipboardList, Bell,
   ChevronUp, ChevronDown, ArrowRight, Plus, Paperclip, ExternalLink,
   Coffee, FileSignature, HelpCircle, FileText, GitPullRequest,
   Home, DoorOpen, Palette, Award, Receipt, Rocket, Server, ShieldCheck
@@ -298,7 +298,8 @@ export default function ApprovalQueueWidget() {
         className="flex items-center justify-between mb-4 cursor-pointer"
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
-        <h3 className="text-sm font-bold text-neutral-main flex items-center gap-2">
+        <h3 className="text-lg font-bold text-neutral-main flex items-center gap-2">
+          <Bell className="text-warning" size={24} />
           Needs Attention
           {visibleItems.length > 0 && (
             <span className="bg-accent-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full ml-1">

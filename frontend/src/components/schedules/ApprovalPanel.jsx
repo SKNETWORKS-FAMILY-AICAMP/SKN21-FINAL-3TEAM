@@ -548,14 +548,17 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                 {/* 받는 사람 표시 */}
                 <div className="flex items-center gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-700">
                     <Send size={10} className="text-slate-300 shrink-0" />
-                    {item.requester_avatar ? (
-                        <img src={item.requester_avatar} alt="" className="w-7 h-7 rounded-full object-cover ring-2 ring-white dark:ring-neutral-800" />
+                    {item.target_user_avatar ? (
+                        <img src={item.target_user_avatar} alt="" className="w-7 h-7 rounded-full object-cover ring-2 ring-white dark:ring-neutral-800" />
                     ) : (
                         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${isPending ? 'bg-slate-100 dark:bg-slate-700/30 text-slate-500' : isApproved ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-500'}`}>
-                            {(item.requester_name || '?')[0]}
+                            {(item.target_user_name || item.target_team || '?')[0]}
                         </div>
                     )}
-                    <span className="text-[11px] font-medium text-slate-500 truncate">{item.requester_name || '알 수 없음'}</span>
+                    <span className="text-[11px] font-medium text-slate-500 truncate">
+                        {item.target_user_name || item.target_team || '알 수 없음'}
+                        {(item.target_user_team || item.target_team) && <span className="text-[9px] text-slate-300 ml-1">({item.target_user_team || item.target_team})</span>}
+                    </span>
                     {item.created_at && (
                         <span className="text-[10px] text-slate-300 ml-auto shrink-0">
                             {timeAgo(item.created_at)}
@@ -568,6 +571,11 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
 
     const pendingItems = items.filter(i => i.status === 'pending' && (!user || String(i.requester_id) !== String(user.id)));
     const sentItems = items.filter(i => user && String(i.requester_id) === String(user.id));
+
+    // 이미 보낸 요청과 같은 type+title인 추천은 제외
+    const filteredSuggestions = suggestions.filter(s =>
+        !sentItems.some(sent => sent.type === s.type && sent.title === s.title)
+    );
 
     /* ── New Tasks 탭 전환 시 데이터 로드 ── */
     const switchNewTasksTab = (tab) => {
@@ -688,7 +696,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                             <span className="text-[10px] text-rose-400 text-center px-2 leading-relaxed">{suggestError}</span>
                                             <button onClick={handleSuggest} className="mt-1.5 text-[10px] text-sky-500 hover:underline">다시 시도</button>
                                         </div>
-                                    ) : suggestions.length === 0 ? (
+                                    ) : filteredSuggestions.length === 0 ? (
                                         <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-600">
                                             <Zap size={14} className="text-slate-300 mb-1" />
                                             <span className="text-[11px] text-slate-300">추천 없음</span>
@@ -696,7 +704,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                     ) : (
                                         <div className="grid grid-cols-2 gap-2.5">
                                             <AnimatePresence mode="popLayout">
-                                                {suggestions.map((s, idx) => {
+                                                {filteredSuggestions.map((s, idx) => {
                                                     const cfg = typeConfig[s.type] || defaultTypeConfig;
                                                     // 백엔드에서 related_project가 없으면 파이프라인 태스크에서 추론
                                                     const project = s.related_project || (() => {
@@ -1056,10 +1064,12 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                 <div className="flex items-center gap-2 shrink-0">
                                     <span className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full ${selectedSent.status === 'approved'
                                         ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
-                                        : 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400'
+                                        : selectedSent.status === 'pending'
+                                            ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400'
+                                            : 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400'
                                     }`}>
-                                        {selectedSent.status === 'approved' ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
-                                        {selectedSent.status === 'approved' ? 'Approved' : 'Rejected'}
+                                        {selectedSent.status === 'approved' ? <CheckCircle2 size={14} /> : selectedSent.status === 'pending' ? <Clock size={14} /> : <XCircle size={14} />}
+                                        {selectedSent.status === 'approved' ? 'Approved' : selectedSent.status === 'pending' ? '대기중' : 'Rejected'}
                                     </span>
                                     <button onClick={closeSentDetail} className="w-8 h-8 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 transition-colors flex items-center justify-center">
                                         <X size={18} />
@@ -1091,14 +1101,17 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                             <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">받는 사람</span>
                                 <div className="flex items-center gap-3 mt-2">
-                                    {selectedSent.requester_avatar ? (
-                                        <img src={selectedSent.requester_avatar} alt="" className="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-neutral-800" />
+                                    {selectedSent.target_user_avatar ? (
+                                        <img src={selectedSent.target_user_avatar} alt="" className="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-neutral-800" />
                                     ) : (
                                         <div className="w-9 h-9 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-sm font-bold text-violet-500">
-                                            {(selectedSent.requester_name || '?')[0]}
+                                            {(selectedSent.target_user_name || selectedSent.target_team || '?')[0]}
                                         </div>
                                     )}
-                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{selectedSent.requester_name || '알 수 없음'}</span>
+                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                        {selectedSent.target_user_name || selectedSent.target_team || '알 수 없음'}
+                                        {(selectedSent.target_user_team || selectedSent.target_team) && <span className="text-xs text-slate-400 font-normal ml-1">({selectedSent.target_user_team || selectedSent.target_team})</span>}
+                                    </span>
                                 </div>
                             </div>
 

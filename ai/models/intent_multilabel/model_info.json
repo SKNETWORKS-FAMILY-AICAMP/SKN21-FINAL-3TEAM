@@ -1,0 +1,16 @@
+{
+  "base_model": "monologg/koelectra-base-v3-discriminator",
+  "problem_type": "multi_label_classification",
+  "num_labels": 8,
+  "threshold": 0.5,
+  "labels": [
+    "judgment",
+    "doc_search",
+    "doc_generate",
+    "doc_summary",
+    "schedule_add",
+    "schedule_view",
+    "general",
+    "doc_qa"
+  ]
+}

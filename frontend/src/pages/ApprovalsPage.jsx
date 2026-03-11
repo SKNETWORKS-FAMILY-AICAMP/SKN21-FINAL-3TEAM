@@ -248,6 +248,8 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
   const pendingItems = items.filter(i => i._received);
   const sentItems = items.filter(i => i._sent);
 
+
+
   // 이미 보낸 요청과 같은 type의 추천은 제외
   const filteredSuggestions = suggestions.filter(s =>
     !sentItems.some(sent => sent.type === s.type && sent.title === s.title)

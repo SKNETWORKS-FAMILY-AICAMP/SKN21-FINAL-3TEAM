@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import {
-    GitMerge, Clock, CheckCircle2, AlertTriangle,
+    GitMerge, Clock, CheckCircle2, AlertTriangle, Columns3,
     ArrowRight, Plus, X, Mail, Phone, Briefcase, ExternalLink, ChevronDown
 } from 'lucide-react';
 import { listPipelineTasks, updatePipelineTask, createPipelineTask, listProjects } from '../../api/tasks';
@@ -157,7 +157,7 @@ export default function TaskPipelineWidget() {
             {/* Top Bar: Team & Utilities */}
             <div className="flex items-center justify-between mb-8 w-full relative">
                 <div className="flex-1">
-                    <h3 className="text-xl font-extrabold text-neutral-main tracking-tight">Task Pipeline</h3>
+                    <h3 className="text-lg font-bold text-neutral-main flex items-center gap-2"><Columns3 className="text-primary-500" size={24} />Task Pipeline</h3>
                 </div>
 
                 {/* Center: Team Avatars Pill */}

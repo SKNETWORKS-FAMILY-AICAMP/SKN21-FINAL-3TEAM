@@ -46,6 +46,8 @@ def _build_initial_state(request: ChatRequest, user, stream_mode: bool = False) 
         "google_services_result": None,
         "stream_mode": stream_mode,
         "intent_candidates": None,
+        "sub_queries": None,
+        "sub_responses": None,
     }
 
 
@@ -152,7 +154,81 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             node_output = {k: v for k, v in node_output.items() if k != "agent_response"}
                     final_state.update(node_output)
 
-                    if node_name == "classify_intent":
+                    if node_name == "decompose_query":
+                        # 복합 질문 감지 결과
+                        sub_queries = node_output.get("sub_queries", [])
+                        if sub_queries:
+                            yield f"data: {json.dumps({'type': 'status', 'value': f'복합 질문 감지: {len(sub_queries)}개 하위 질문'}, ensure_ascii=False)}\n\n"
+
+                    elif node_name == "compound_pending":
+                        # 복합 질문: 각 sub_query를 순차 처리 + 스트리밍
+                        agent_response = node_output.get("agent_response", {})
+                        sub_queries = agent_response.get("sub_queries", [])
+
+                        yield f"data: {json.dumps({'type': 'compound_start', 'total': len(sub_queries)}, ensure_ascii=False)}\n\n"
+
+                        all_sub_responses = []
+                        for i, sq in enumerate(sub_queries):
+                            sq_query = sq["query"]
+                            sq_hint = sq.get("hint", "general")
+
+                            yield f"data: {json.dumps({'type': 'compound_sub', 'index': i, 'total': len(sub_queries), 'query': sq_query, 'hint': sq_hint}, ensure_ascii=False)}\n\n"
+
+                            # sub_query를 독립 state로 graph 실행 (비스트리밍)
+                            sub_state = {
+                                **initial_state,
+                                "user_input": sq_query,
+                                "stream_mode": False,
+                                "sub_queries": None,  # 재귀 방지
+                                "sub_responses": None,
+                            }
+
+                            try:
+                                sub_result = await graph.ainvoke(sub_state)
+                                sub_response = sub_result.get("agent_response", {})
+                            except Exception as sub_err:
+                                logger.error("[Chat] compound sub_query 처리 실패: %s", sub_err)
+                                sub_response = {
+                                    "type": sq_hint,
+                                    "message": f"처리 중 오류: {sub_err}",
+                                }
+
+                            # sub_response 메시지를 토큰 단위로 스트리밍
+                            sub_message = sub_response.get("message", "")
+                            if sub_message:
+                                # 적당한 크기로 잘라서 스트리밍 (자연스러운 UX)
+                                chunk_size = 10
+                                for j in range(0, len(sub_message), chunk_size):
+                                    token = sub_message[j:j + chunk_size]
+                                    yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
+
+                            sub_intent = sq_hint
+                            try:
+                                sub_intent = sub_result.get("intent", sq_hint)
+                            except NameError:
+                                pass
+
+                            all_sub_responses.append({
+                                "query": sq_query,
+                                "intent": sub_intent,
+                                "response": sub_response,
+                            })
+
+                            yield f"data: {json.dumps({'type': 'compound_sub_done', 'index': i}, ensure_ascii=False)}\n\n"
+
+                        # 전체 병합
+                        compound_response = {
+                            "type": "compound",
+                            "message": "\n\n---\n\n".join(
+                                r["response"].get("message", "") for r in all_sub_responses
+                            ),
+                            "sub_responses": all_sub_responses,
+                        }
+                        final_state["agent_response"] = compound_response
+                        final_state["sub_responses"] = all_sub_responses
+                        final_state["intent"] = "compound"
+
+                    elif node_name == "classify_intent":
                         # 1. Intent 분류 결과 즉시 전송
                         intent = node_output.get("intent", "general")
                         confidence = node_output.get("confidence", 0.0)
@@ -468,7 +544,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         else:
                             # 선택지(template_pick, doc_pick) / clarify는 token 스트리밍 불필요
                             skip_token = agent_response.get("stream_pending") or resp_type in ("template_pick", "doc_pick", "clarify")
-                            if not skip_token and intent not in ("general", "doc_search", "doc_summary", "doc_qa", "judgment"):
+                            if not skip_token and intent not in ("general", "doc_search", "doc_summary", "doc_qa", "judgment", "compound"):
                                 yield f"data: {json.dumps({'type': 'token', 'value': message}, ensure_ascii=False)}\n\n"
 
                             yield f"data: {json.dumps({'type': 'result', 'intent': resp_type, 'data': agent_response}, ensure_ascii=False)}\n\n"
