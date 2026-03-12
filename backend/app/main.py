@@ -155,36 +155,40 @@ async def startup_slack_scheduler():
 
 @app.on_event("startup")
 async def startup_preload():
-    """서버 시작 시 RAG 파이프라인 pre-loading (첫 요청 지연 방지)
+    """서버 시작 시 RAG 파이프라인 pre-loading — 백그라운드로 실행하여 서버 즉시 가동
 
     get_qdrant_pipeline() → initialize() 내부에서:
       1) 임베딩 모델 로드
       2) Qdrant 컬렉션 초기화
       3) BM25 인덱스 구축 (Qdrant에서 전체 문서 조회 → 토크나이징)
     를 모두 수행하므로, 별도 reindex_all_documents()는 불필요.
+    (Qdrant는 영속 스토리지이므로 매 startup마다 임베딩 재생성/upsert 불필요)
 
-    Note: reindex_all_documents()는 DB→Qdrant 재동기화 + 임베딩 재생성이 필요한
-    경우에만 관리자 API(/api/v1/documents/reindex)로 수동 실행.
+    Note: reindex_all_documents()는 DB→Qdrant 재동기화가 필요한 경우에만
+    관리자 API(POST /api/v1/documents/reindex-all)로 수동 실행.
     """
     import asyncio
-    import time
 
-    print("[Startup] RAG 파이프라인 pre-loading 시작...")
-    _t = time.time()
+    async def _background_preload():
+        import time
+        await asyncio.sleep(3)  # 서버가 먼저 요청을 받을 수 있도록 대기
+        print("[Background] RAG 파이프라인 pre-loading 시작...")
+        _t = time.time()
 
-    try:
-        from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+        try:
+            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+            await asyncio.wait_for(
+                asyncio.get_event_loop().run_in_executor(None, get_qdrant_pipeline),
+                timeout=60
+            )
+            print(f"[Background] RAG 파이프라인 로드 완료 — 임베딩+Qdrant+BM25 ({time.time()-_t:.2f}s)")
+        except asyncio.TimeoutError:
+            print("[Background] RAG 파이프라인 로드 타임아웃 (60초 초과, 건너뜀)")
+        except Exception as e:
+            print(f"[Background] RAG 파이프라인 로드 실패 (서비스는 계속 가능): {e}")
 
-        await asyncio.wait_for(
-            asyncio.get_event_loop().run_in_executor(None, get_qdrant_pipeline),
-            timeout=60
-        )
-        print(f"[Startup] RAG 파이프라인 로드 완료 — 임베딩+Qdrant+BM25 ({time.time()-_t:.2f}s)")
-    except asyncio.TimeoutError:
-        print("[Startup] RAG 파이프라인 로드 타임아웃 (60초 초과, 건너뜀)")
-    except Exception as e:
-        print(f"[Startup] RAG 파이프라인 로드 실패 (서비스는 계속 가능): {e}")
-
+    asyncio.create_task(_background_preload())
+    print("[Startup] RAG pre-loading 백그라운드 등록 완료 (서버 즉시 가동)")
 
 @app.on_event("shutdown")
 async def shutdown_dispose_engine():

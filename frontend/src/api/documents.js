@@ -29,6 +29,9 @@ export const updateDocumentAnalysis = (id, data) =>
 export const updateDocumentCategory = (id, category) =>
   client.patch(`/documents/${id}/category`, { category })
 
+export const updateDocumentScope = (id, scope) =>
+  client.patch(`/documents/${id}/scope`, { scope })
+
 export const analyzeAllDocuments = () =>
   client.post('/documents/analyze-all')
 

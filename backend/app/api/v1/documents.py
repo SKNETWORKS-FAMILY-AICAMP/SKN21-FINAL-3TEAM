@@ -405,6 +405,34 @@ async def update_document_category(
     return {"id": doc.id, "category": doc.category}
 
 
+class UpdateScopeRequest(BaseModel):
+    scope: str
+
+
+@router.patch("/{document_id}/scope")
+async def update_document_scope(
+    document_id: int,
+    req: UpdateScopeRequest,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """문서 공개범위 변경 (company/team/personal)"""
+    if req.scope not in ("company", "team", "personal"):
+        raise HTTPException(status_code=400, detail="유효하지 않은 scope 값입니다")
+    from sqlalchemy import select
+    from app.models.document import Document
+
+    result = await db.execute(select(Document).where(Document.id == document_id))
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
+    doc.scope = req.scope
+    if req.scope == "team":
+        doc.team_name = user.team
+    await db.commit()
+    return {"id": doc.id, "scope": doc.scope}
+
+
 @router.delete("/{document_id}")
 async def delete_document(
     document_id: int,

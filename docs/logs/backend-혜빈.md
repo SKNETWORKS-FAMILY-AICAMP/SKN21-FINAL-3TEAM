@@ -974,3 +974,54 @@
 
 ### 다음 할 일
 - category 규칙 기반 처리 방안 결정
+
+---
+
+## 2026-03-12 (세션 21) — 테스트 문서 추가 + 문서 관리 UI 개선 + EC2 서버 안정화
+
+### 한 일
+
+**테스트 문서 추가 생성 (총 7개)**
+- `backend/test_docs/create_long_meetings2.py` 실행: 회의록 3개 추가
+  - MA 실사결과 보고 회의록 (42KB)
+  - 서비스 장애 사후분석 Postmortem (41KB)
+  - 데이터거버넌스 위원회 회의록 (41KB)
+- `backend/test_docs/create_long_contracts2.py` 실행: 계약서 3개 추가
+  - 클라우드 인프라 운영위탁 MSP 계약서 (42KB)
+  - 개인정보 처리위탁 계약서 (40KB)
+  - 기술라이선스 공동연구개발 계약서 KAIST (40KB)
+- `backend/test_docs/create_long_hr2.py` 신규 생성+실행: 인사문서 1개 추가
+  - 2025년 하반기 교육훈련 종합계획서 (56KB) — 10장+부록 3개
+
+**문서 관리 UI 개선**
+- `frontend/src/components/common/DataTable.jsx`: `<th>`에 `whitespace-pre-line` 추가 (줄바꿈 지원)
+- `frontend/src/components/documents/DocumentList.jsx`: '공개범위' → '공개\n범위' (열 헤더 줄 맞춤)
+- `frontend/src/components/documents/DocumentDetail.jsx`: 공개범위(scope) 수정 기능 추가
+  - 기본 정보 영역에 연필 아이콘 클릭 → 회사/팀 드롭다운 선택 → 저장/취소
+  - `updateDocumentScope` API 연동
+- `frontend/src/api/documents.js`: `updateDocumentScope()` API 함수 추가
+
+**백엔드 — scope 업데이트 API**
+- `backend/app/api/v1/documents.py`: `PATCH /{document_id}/scope` 엔드포인트 추가
+  - company/team/personal 값 검증
+  - team 선택 시 user.team 자동 설정
+
+**EC2 서버 안정화 (OOM 해결)**
+- 문제: EC2(3.7GB RAM)에서 startup 시 임베딩 모델 로딩 + Qdrant 재인덱싱이 메모리 초과 → OOM SIGKILL → 무한 재시작 루프
+- 해결:
+  - `backend/app/main.py`: startup_preload를 백그라운드 태스크로 변경 (서버 먼저 기동, 모델 로딩은 3초 후 백그라운드)
+  - 문서 재인덱싱은 startup에서 제외 → `POST /documents/reindex-all`로 수동 실행
+  - EC2에 배포 후 서버 정상 기동 확인 (health 200 OK, login API 정상 응답)
+
+### 이슈 및 해결
+
+**이슈 1: EC2 서버 OOM 반복 재시작**
+- 증상: `SIGKILL (status=9)` + `Failed with result 'signal'` 반복
+- 원인: startup에서 임베딩 모델(ko-sbert-nli) 동기 로딩 → 메모리 1.5G+ 점유 중 요청 처리 불가
+- 해결: 백그라운드 태스크 전환 + 재인덱싱 비활성화
+
+**이슈 2: 로컬 로그인 500 에러**
+- 증상: 로컬 백엔드에서 POST /auth/login 시 Internal Server Error
+- 원인: `.env`의 DATABASE_URL이 AWS RDS를 가리키는데, 로컬 IP가 RDS 보안 그룹에 없음 → DB 연결 타임아웃
+- 해결: EC2에서 테스트 (EC2는 RDS 보안 그룹 허용됨)
+
