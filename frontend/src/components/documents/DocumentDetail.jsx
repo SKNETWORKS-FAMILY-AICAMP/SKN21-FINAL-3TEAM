@@ -2,7 +2,7 @@ import { useRef, useCallback, useState } from 'react';
 import Badge from '../common/Badge';
 import KeywordHighlight from '../common/KeywordHighlight';
 import { Pencil, Check, X } from 'lucide-react';
-import { updateDocumentAnalysis } from '../../api/documents';
+import { updateDocumentAnalysis, updateDocumentScope } from '../../api/documents';
 
 const CATEGORIES = ['회의록', '계약서', '제안서', '보고서', '정책문서', '인사문서', '공지사항', '이메일', '기타'];
 
@@ -13,6 +13,32 @@ export default function DocumentDetail({ doc, documentDetail, searchQuery = '', 
   const [editTags, setEditTags] = useState('');
   const [editSummary, setEditSummary] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editingScope, setEditingScope] = useState(false);
+  const [scopeValue, setScopeValue] = useState('');
+  const [savingScope, setSavingScope] = useState(false);
+
+  const SCOPE_OPTIONS = [
+    { value: 'company', label: '회사' },
+    { value: 'team', label: '팀' },
+  ];
+
+  const startScopeEdit = () => {
+    setScopeValue(doc.scope || documentDetail?.scope || 'company');
+    setEditingScope(true);
+  };
+
+  const saveScopeEdit = async () => {
+    setSavingScope(true);
+    try {
+      await updateDocumentScope(doc.id, scopeValue);
+      onAnalysisUpdate?.({ ...documentDetail, scope: scopeValue });
+      setEditingScope(false);
+    } catch {
+      alert('공개범위 변경에 실패했습니다.');
+    } finally {
+      setSavingScope(false);
+    }
+  };
 
   const handlePrint = useCallback(() => {
     if (!printRef.current) return;
@@ -66,7 +92,37 @@ export default function DocumentDetail({ doc, documentDetail, searchQuery = '', 
       </div>
       <div className="mb-4">
         <div className="text-[0.8125rem] font-bold text-neutral-main mb-2 flex items-center gap-1.5">기본 정보</div>
-        <div className="text-[0.8125rem] text-neutral-sub leading-[1.7]">분류: {isRealDocument && documentDetail?.category ? documentDetail.category : doc.category} · 버전: {doc.version} · 수정일: {doc.date}<br/>범위: 회사 문서 · 파싱 상태: 완료</div>
+        <div className="text-[0.8125rem] text-neutral-sub leading-[1.7]">
+          분류: {isRealDocument && documentDetail?.category ? documentDetail.category : doc.category} · 버전: {doc.version} · 수정일: {doc.date}
+          <br/>
+          <span className="inline-flex items-center gap-1">
+            범위:
+            {isRealDocument && editingScope ? (
+              <>
+                <select
+                  value={scopeValue}
+                  onChange={e => setScopeValue(e.target.value)}
+                  className="text-[0.8125rem] px-1.5 py-0.5 rounded border border-neutral-border bg-surface-card ml-1"
+                >
+                  {SCOPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                <button onClick={saveScopeEdit} disabled={savingScope} className="text-primary-600 hover:text-primary-800 ml-1"><Check size={14} /></button>
+                <button onClick={() => setEditingScope(false)} disabled={savingScope} className="text-neutral-muted hover:text-neutral-main"><X size={14} /></button>
+              </>
+            ) : (
+              <>
+                {(() => {
+                  const s = isRealDocument ? (documentDetail?.scope || doc.scope) : doc.scope;
+                  return s === 'company' ? '회사' : s === 'team' ? '팀' : s === 'personal' ? '개인' : '회사';
+                })()}
+                {isRealDocument && (
+                  <button onClick={startScopeEdit} className="text-primary-600 hover:text-primary-800 ml-1"><Pencil size={12} /></button>
+                )}
+              </>
+            )}
+          </span>
+          {' '}· 파싱 상태: 완료
+        </div>
       </div>
 
       {/* AI 분석 섹션 — 항상 표시 (분석 결과 없으면 수정 버튼만) */}

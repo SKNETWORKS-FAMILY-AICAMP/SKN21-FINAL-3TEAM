@@ -155,40 +155,35 @@ async def startup_slack_scheduler():
 
 @app.on_event("startup")
 async def startup_preload():
-    """서버 시작 시 모델 pre-loading (첫 요청 지연 방지)"""
-    import time
+    """서버 시작 시 모델 pre-loading — 백그라운드로 실행하여 서버 즉시 가동"""
     import asyncio
 
-    print("[Startup] 모델 pre-loading 시작...")
-    _t = time.time()
+    async def _background_preload():
+        import time
+        await asyncio.sleep(3)  # 서버가 먼저 요청을 받을 수 있도록 대기
+        print("[Background] 모델 pre-loading 시작...")
+        _t = time.time()
 
-    try:
-        from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+        try:
+            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+            await asyncio.wait_for(
+                asyncio.get_event_loop().run_in_executor(None, get_qdrant_pipeline),
+                timeout=60
+            )
+            print(f"[Background] RAG 파이프라인 로드 완료 ({time.time()-_t:.2f}s)")
+        except asyncio.TimeoutError:
+            print("[Background] RAG 파이프라인 로드 타임아웃 (60초 초과, 건너뜀)")
+        except Exception as e:
+            print(f"[Background] RAG 파이프라인 로드 실패 (서비스는 계속 가능): {e}")
 
-        await asyncio.wait_for(
-            asyncio.get_event_loop().run_in_executor(None, get_qdrant_pipeline),
-            timeout=30
-        )
-        print(f"[Startup] RAG 파이프라인 로드 완료 ({time.time()-_t:.2f}s)")
-    except asyncio.TimeoutError:
-        print("[Startup] RAG 파이프라인 로드 타임아웃 (30초 초과, 건너뜀)")
-    except Exception as e:
-        print(f"[Startup] RAG 파이프라인 로드 실패 (서비스는 계속 가능): {e}")
+        # 재인덱싱은 메모리 부족 환경에서 서버를 블로킹하므로 startup에서 제외
+        # 필요 시 POST /api/v1/documents/reindex-all 로 수동 실행
+        print("[Background] 문서 재인덱싱 건너뜀 (수동 실행: POST /documents/reindex-all)")
 
-    # 문서 Qdrant 재인덱싱 (30초 타임아웃)
-    try:
-        from app.db.session import async_session
-        from app.services.document_service import reindex_all_documents
+        print(f"[Background] 모델 pre-loading 완료 (총 {time.time()-_t:.2f}s)")
 
-        async with async_session() as db:
-            result = await asyncio.wait_for(reindex_all_documents(db), timeout=30)
-            print(f"[Startup] 문서 재인덱싱 완료: {result}")
-    except asyncio.TimeoutError:
-        print("[Startup] 문서 재인덱싱 타임아웃 (30초 초과, 건너뜀)")
-    except Exception as e:
-        print(f"[Startup] 문서 재인덱싱 실패 (서비스는 계속 가능): {e}")
-
-    print(f"[Startup] 모델 pre-loading 완료 (총 {time.time()-_t:.2f}s)")
+    asyncio.create_task(_background_preload())
+    print("[Startup] 모델 pre-loading 백그라운드 등록 완료 (서버 즉시 가동)")
 
 
 @app.on_event("shutdown")
