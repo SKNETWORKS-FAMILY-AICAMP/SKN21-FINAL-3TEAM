@@ -347,6 +347,30 @@ async def get_document(
     }
 
 
+class UpdateCategoryRequest(BaseModel):
+    category: str
+
+
+@router.patch("/{document_id}/category")
+async def update_document_category(
+    document_id: int,
+    req: UpdateCategoryRequest,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """문서 카테고리(타입) 변경"""
+    from sqlalchemy import select
+    from app.models.document import Document
+
+    result = await db.execute(select(Document).where(Document.id == document_id))
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
+    doc.category = req.category
+    await db.commit()
+    return {"id": doc.id, "category": doc.category}
+
+
 @router.delete("/{document_id}")
 async def delete_document(
     document_id: int,

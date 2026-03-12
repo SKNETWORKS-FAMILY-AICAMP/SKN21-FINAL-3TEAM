@@ -51,7 +51,7 @@ async def analyze_document_with_llm(text: str, title: str) -> dict | None:
 
         return {
             "summary": summary,
-            "category": None,  # 사용자가 직접 선택
+            "category": result.get("category"),
             "tags": tags,
         }
 
