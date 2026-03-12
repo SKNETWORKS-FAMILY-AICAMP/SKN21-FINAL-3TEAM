@@ -85,6 +85,9 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
   const [schedSuggestError, setSchedSuggestError] = useState(null);
   const [addingScheduleId, setAddingScheduleId] = useState(null);
 
+  // Schedule result modal (success / failure)
+  const [scheduleResult, setScheduleResult] = useState(null); // { success: bool, title: string, message: string }
+
   const loadAll = async () => {
     setLoading(true);
     try {
@@ -222,17 +225,24 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
       startDate.setHours(10, 0, 0, 0);
       const endDate = new Date(startDate);
       endDate.setMinutes(endDate.getMinutes() + (s.duration_minutes || 60));
+
+      // 타임존 없는 로컬 시간 문자열 (DB: TIMESTAMP WITHOUT TIME ZONE)
+      const pad = (n) => String(n).padStart(2, '0');
+      const toLocalStr = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
       await createSchedule({
         title: s.title,
         description: s.description || s.reason || '',
-        start_time: startDate.toISOString(),
-        end_time: endDate.toISOString(),
+        start_time: toLocalStr(startDate),
+        end_time: toLocalStr(endDate),
         schedule_type: s.schedule_type || 'task',
         priority: s.priority || 'medium',
       });
       setScheduleSuggestions(prev => prev.filter((_, i) => i !== idx));
+      setScheduleResult({ success: true, title: s.title, message: `"${s.title}" 일정이 캘린더에 추가되었습니다.` });
     } catch (err) {
-      alert(err.response?.data?.detail || '캘린더 추가에 실패했습니다.');
+      const detail = err.response?.data?.detail || '캘린더 추가에 실패했습니다.';
+      setScheduleResult({ success: false, title: '', message: typeof detail === 'string' ? detail : '캘린더 추가에 실패했습니다.' });
     } finally {
       setAddingScheduleId(null);
     }
@@ -1009,6 +1019,57 @@ export default function ApprovalsPage({ embedded = false, onReady, externalActio
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── 캘린더 추가 결과 모달 (성공/실패) ── */}
+      {scheduleResult && createPortal(
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
+            onClick={() => setScheduleResult(null)}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="relative bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-[340px] p-8 mx-4 border border-white/40 dark:border-white/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center text-center">
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+                scheduleResult.success
+                  ? 'bg-emerald-50 dark:bg-emerald-900/20'
+                  : 'bg-red-50 dark:bg-red-900/20'
+              }`}>
+                {scheduleResult.success
+                  ? <CheckCircle2 size={32} className="text-emerald-500" />
+                  : <XCircle size={32} className="text-red-500" />
+                }
+              </div>
+              <h3 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight mb-2">
+                {scheduleResult.success ? '추가 완료' : '추가 실패'}
+              </h3>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6 leading-relaxed">
+                {scheduleResult.message}
+              </p>
+              <button
+                onClick={() => setScheduleResult(null)}
+                className={`w-full py-3 text-sm font-extrabold rounded-xl shadow-lg transition-all ${
+                  scheduleResult.success
+                    ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                    : 'bg-red-500 text-white hover:bg-red-600'
+                }`}
+              >
+                확인
+              </button>
+            </div>
+          </motion.div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

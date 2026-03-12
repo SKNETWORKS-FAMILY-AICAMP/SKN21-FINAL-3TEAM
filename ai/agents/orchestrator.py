@@ -201,6 +201,32 @@ async def safe_document_agent(state: AgentState) -> AgentState:
         return state
 
 
+async def safe_action_agent(state: AgentState) -> AgentState:
+    """액션 Agent 안전 래퍼 (파이프라인/결재)"""
+    _t = time.time()
+    logger.info("[Orchestrator] safe_action_agent 진입 | intent=%s", state.get('intent'))
+    try:
+        from ai.agents.action_agent import action_agent
+
+        result = await action_agent(state)
+        logger.info("[Orchestrator] safe_action_agent 완료 (%.2fs) | response type=%s", time.time()-_t, result.get('agent_response', {}).get('type'))
+        return result
+    except NotImplementedError:
+        state["agent_response"] = {
+            "type": state.get("intent", "pipeline_create"),
+            "message": "액션 Agent는 현재 구현 중입니다. 곧 사용 가능합니다.",
+        }
+        return state
+    except Exception as e:
+        logger.error("Action agent error: %s", e)
+        state["agent_response"] = {
+            "type": state.get("intent", "pipeline_create"),
+            "message": f"액션 처리 중 오류가 발생했습니다: {e}",
+        }
+        state["error"] = str(e)
+        return state
+
+
 async def safe_schedule_agent(state: AgentState) -> AgentState:
     """일정 Agent 안전 래퍼 (팀원 D)"""
     _t = time.time()
@@ -377,6 +403,8 @@ def route_by_intent(state: AgentState) -> str:
         route = "document_agent"
     elif intent.startswith("schedule_"):
         route = "schedule_agent"
+    elif intent in ("pipeline_create", "approval_create"):
+        route = "action_agent"
     else:
         route = "general_response"
 
@@ -398,6 +426,8 @@ def clarify_with_candidates(state: AgentState) -> AgentState:
         "doc_qa": "문서 QA",
         "schedule_add": "일정 추가",
         "schedule_view": "일정 조회",
+        "pipeline_create": "태스크 생성",
+        "approval_create": "결재 요청",
         "general": "일반 질문",
     }
 
@@ -455,6 +485,7 @@ def build_graph():
     graph.add_node("judgment_agent", safe_judgment_agent)
     graph.add_node("document_agent", safe_document_agent)
     graph.add_node("schedule_agent", safe_schedule_agent)
+    graph.add_node("action_agent", safe_action_agent)
     graph.add_node("general_response", general_response_node)
     graph.add_node("format_response", format_response)
 
@@ -480,6 +511,7 @@ def build_graph():
             "judgment_agent": "judgment_agent",
             "document_agent": "document_agent",
             "schedule_agent": "schedule_agent",
+            "action_agent": "action_agent",
             "general_response": "general_response",
         },
     )
@@ -489,6 +521,7 @@ def build_graph():
     graph.add_edge("judgment_agent", "format_response")
     graph.add_edge("document_agent", "format_response")
     graph.add_edge("schedule_agent", "format_response")
+    graph.add_edge("action_agent", "format_response")
     graph.add_edge("general_response", "format_response")
     graph.add_edge("clarify_with_candidates", "format_response")
     graph.add_edge("format_response", END)

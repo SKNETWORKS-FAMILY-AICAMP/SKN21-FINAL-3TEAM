@@ -59,6 +59,8 @@ def _get_agent_type(intent: str) -> str:
         return "document_agent"
     elif intent.startswith("schedule_"):
         return "schedule_agent"
+    elif intent in ("pipeline_create", "approval_create"):
+        return "action_agent"
     return "general"
 
 
@@ -525,6 +527,17 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         agent_response = node_output.get("agent_response", {})
                         yield f"data: {json.dumps({'type': 'status', 'value': 'schedule_agent 처리 완료'}, ensure_ascii=False)}\n\n"
 
+                    elif node_name == "action_agent":
+                        # 2-5. 액션 Agent (파이프라인/결재 — 스트리밍 불필요, 결과만 전송)
+                        agent_response = node_output.get("agent_response", {})
+                        message = agent_response.get("message", "")
+                        if message:
+                            chunk_size = 10
+                            for j in range(0, len(message), chunk_size):
+                                token = message[j:j + chunk_size]
+                                yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
+                        yield f"data: {json.dumps({'type': 'status', 'value': 'action_agent 처리 완료'}, ensure_ascii=False)}\n\n"
+
                     elif node_name == "format_response":
                         # 3. 최종 응답 전송
                         agent_response = node_output.get("agent_response", final_state.get("agent_response", {}))
@@ -544,7 +557,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         else:
                             # 선택지(template_pick, doc_pick) / clarify는 token 스트리밍 불필요
                             skip_token = agent_response.get("stream_pending") or resp_type in ("template_pick", "doc_pick", "clarify")
-                            if not skip_token and intent not in ("general", "doc_search", "doc_summary", "doc_qa", "judgment", "compound"):
+                            if not skip_token and intent not in ("general", "doc_search", "doc_summary", "doc_qa", "judgment", "compound", "pipeline_create", "approval_create"):
                                 yield f"data: {json.dumps({'type': 'token', 'value': message}, ensure_ascii=False)}\n\n"
 
                             yield f"data: {json.dumps({'type': 'result', 'intent': resp_type, 'data': agent_response}, ensure_ascii=False)}\n\n"
