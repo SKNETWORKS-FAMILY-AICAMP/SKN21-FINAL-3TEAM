@@ -1193,3 +1193,55 @@ v2_generate AI Hub 데이터 탈락:
 - RunPod에서 v2_summary LoRA 재학습 (998건)
 - Intent v2 멀티 LLM 혼합 데이터 생성 + 3모델 비교 실험
 - 3-Way 비교 (Base vs LoRA v2 vs GPT-4o) 평가
+
+---
+
+## 2026-03-12 (수) — 오후
+
+**form 플래그 기반 입력/출력 필드 분리 + DB 경로 통합 (`82d8bc4`)**
+
+문제: 시스템 템플릿 `parsed_structure`에 입력 필드(5개)만 있어서 DB 경로로 가면 LLM 프롬프트에 출력 필드가 빠짐 → DOCX 테이블 빈 칸 (tasks, schedule, budget 등)
+
+수정 파일 3개:
+- `backend/app/services/template_service.py`
+  - 시스템 템플릿에 `form: true` (UI 폼 표시) / `form: false` (LLM 생성) 플래그 추가
+  - 회의록 13개 (4+9), 보고서 13개 (5+8), 제안서 13개 (5+8)
+  - 모든 필드에 `description` 추가 (하드코딩 프롬프트에서 복사)
+- `frontend/src/pages/DocumentGeneratePage.jsx`
+  - `FORM_KEYS` 상수 추가 (카테고리별 폼 필드 키)
+  - `DynamicForm`에서 `form: false` 필드 숨김 처리
+  - `handleTemplateSelect`에서 formData 초기값도 폼 필드만
+- `ai/agents/document_agent.py`
+  - `generate_document()`에서 `template_id=None`이면 `_get_system_template_id()`로 시스템 ID 조회 → DB 경로 사용
+  - 하드코딩 함수 3개는 DB에 시스템 템플릿 없을 때만 fallback
+
+**EC2 테스트 결과 (SSH 직접):**
+- DB 시딩 OK: 회의록 id=2, 보고서 id=3, 제안서 id=4 (form 플래그 + description 전부 확인)
+- `fields_to_prompt()`: 13개 필드 전부 프롬프트에 포함
+- `_get_system_template_id()`: meeting_minutes→2, report→3, proposal→4
+- **보고서 실제 LLM 호출**: template_id=None → DB 경로 → 13개 키 전부 생성 (tasks, overview, main_content, next_plan 채워짐!)
+- DOCX 빌더 정상 생성
+
+**앞으로 고민/할 일:**
+
+1. **서버 startup 블로킹 이슈**
+   - `startup_preload()`의 RAG 파이프라인 로드 + `reindex_all_documents()`에서 2분 이상 블로킹
+   - timeout 30초 설정인데 실제로 안 걸리는 것 같음 (asyncio.TimeoutError가 안 잡힘?)
+   - uvicorn이 포트 8000을 열지 못하고 startup에서 계속 대기
+   - 해결안: timeout 동작 확인, preload를 background task로 전환, 또는 preload 비활성화
+
+2. **하드코딩 함수 3개 정리**
+   - `_generate_meeting_minutes`, `_generate_report`, `_generate_proposal`은 이제 DB 경로가 우선이라 거의 안 불림
+   - 검증 후 삭제 또는 deprecated 표시 (코드 700줄+ 절약)
+
+3. **커스텀 템플릿 form 플래그 자동 할당**
+   - 현재: 커스텀 템플릿은 form 플래그 없음 → `FORM_KEYS`로 fallback
+   - 개선: 업로드 시 template_extractor에서 카테고리 감지 → form 플래그 자동 세팅
+
+4. **제안서/회의록 LLM 호출 테스트**
+   - 보고서만 실제 LLM 테스트 완료, 제안서/회의록도 확인 필요
+   - 특히 제안서 schedule/budget 배열, 회의록 action_items 배열
+
+5. **프론트 E2E 테스트**
+   - Playwright E2E 미실행 (서버 startup 블로킹으로 못 돌림)
+   - 서버 정상화 후 `npx playwright test e2e/document-generate.spec.js` 실행 필요
