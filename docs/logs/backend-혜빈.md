@@ -915,3 +915,62 @@
 
 ### 다음 할 일
 - category는 규칙 기반 or 별도 처리 방안 결정
+
+---
+
+## 2026-03-11 (세션 20) — Pipeline→Sheets 내보내기 + DB 커넥션 풀 최적화 + EC2 배포
+
+### 한 일
+
+**화면설계서 PDF 완성**
+- 35페이지째 다크모드 페이지(SC-12-001) 추가
+- `docs/화면설계서_DUDE.pdf` 35페이지 최종 완성
+
+**Pipeline → Google Sheets 내보내기 기능 전체 구현**
+- 기존 ActionItem 기반 Sheets 기능을 Pipeline 프로젝트 기반으로 전면 교체
+- 컬럼 구성: [No, 태스크명, 담당자, 우선순위, 상태, 마감일, D-day, 태그, 설명]
+- 백엔드 수정 파일:
+  - `backend/app/models/google_sheet_tracker.py`: `project_name` 컬럼 추가
+  - `backend/app/services/sheets_service.py`: 전면 재작성 — `export_project_to_sheet()`, `sync_project_to_sheet()`, `_apply_formatting()`, `_calc_dday()`
+  - `backend/app/api/v1/sheets.py`: `POST /export-project`, `POST /{id}/sync` (project_name 기반)
+  - `backend/app/schemas/google_services.py`: `SheetExportProjectRequest`, `SheetSyncRequest` 등 스키마 변경
+  - `backend/alembic/versions/d1f2e3a4b5c6_add_project_name_to_sheet_tracker.py`: 마이그레이션 (RDS 적용 완료)
+- 프론트엔드 수정 파일:
+  - `frontend/src/api/google.js`: `exportProjectToSheet()`, `syncSheet()` API 함수 교체
+  - `frontend/src/store/googleStore.js`: store 액션 교체
+  - `frontend/src/components/schedules/SheetsDashboard.jsx`: 전면 재작성 — DB 프로젝트 + 태스크 그룹핑으로 프로젝트 목록 표시
+  - `frontend/src/components/schedules/ProjectFolderView.jsx`: 프로젝트 카드에 Sheets 내보내기 아이콘 버튼 추가
+  - `frontend/src/pages/SchedulesPage.jsx`: Sheets 탭 "새 시트" 버튼 제거
+
+**DB 커넥션 풀 최적화 (타임아웃 에러 해결)**
+- `backend/app/db/session.py`: 커넥션 풀 설정 추가
+  - `pool_size=10`, `max_overflow=20`, `pool_timeout=30`, `pool_recycle=1800`, `pool_pre_ping=True`
+  - `connect_args`: `command_timeout=30`, `timeout=10`
+- `backend/app/main.py`: startup 이벤트 8개 → 단일 커넥션으로 통합 + 30초 타임아웃
+  - shutdown 이벤트 추가 (`engine.dispose()`)
+  - 문서 재인덱싱에 30초 타임아웃 추가
+
+**EC2 배포 + systemd 설정 수정**
+- `start.sh`에 `PYTHONUNBUFFERED=1` 추가 (로그 즉시 출력)
+- `workflow-agent.service`에 `TimeoutStartSec=300` 추가 (startup 156초 소요 대응)
+- 3개 커밋 push + EC2 배포 완료
+
+**버그 수정**
+- Sheets D-day 계산: `datetime` - `date` 타입 불일치 → `isinstance` 체크 순서 수정
+
+### 이슈 및 해결
+
+**이슈 1: 프론트엔드 405 Method Not Allowed**
+- 원인: Vite 프록시가 EC2(`3.37.118.197:8000`)를 바라보는데 EC2에 새 코드 미배포
+- 해결: EC2에 코드 배포 + 백엔드 재시작
+
+**이슈 2: EC2 서버 startup 무한 대기 + 재시작 루프**
+- 원인: systemd 기본 TimeoutStartSec(90초) < startup 소요시간(156초) → 프로세스 kill → 재시작 반복
+- 해결: `TimeoutStartSec=300`으로 증가 + `PYTHONUNBUFFERED=1`로 로그 확인 가능하게
+
+**이슈 3: Sheets 내보내기 500 에러**
+- 원인: `_calc_dday()`에서 `datetime` - `date` 연산 실패 (`datetime`이 `date` 서브클래스라 isinstance 체크 통과)
+- 해결: `isinstance(due_date, datetime)` 먼저 체크하여 `.date()` 변환
+
+### 다음 할 일
+- category 규칙 기반 처리 방안 결정

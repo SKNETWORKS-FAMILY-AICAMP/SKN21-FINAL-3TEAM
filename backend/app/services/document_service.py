@@ -239,10 +239,26 @@ async def upload_and_parse(
     """
     settings = get_settings()
 
+    title = Path(file.filename or "untitled").stem
+    file_ext = Path(file.filename or "").suffix.lstrip(".").lower() or "txt"
+
+    # 0. 중복 체크: 같은 사용자가 같은 제목+파일타입으로 이미 업로드한 문서가 있으면 기존 문서 반환
+    from sqlalchemy import select as sa_select
+    existing_result = await db.execute(
+        sa_select(Document).where(
+            Document.title == title,
+            Document.file_type == file_ext,
+            Document.uploaded_by == user_id,
+            Document.status != "failed",
+        ).limit(1)
+    )
+    existing_doc = existing_result.scalar_one_or_none()
+    if existing_doc:
+        logger.info(f"중복 문서 감지 — 기존 문서 반환: id={existing_doc.id}, title={title}")
+        return existing_doc
+
     # 1. 파일 저장
     saved_path, file_type = await save_file(file, settings.UPLOAD_DIR)
-
-    title = Path(file.filename or "untitled").stem
 
     # 2. DB 레코드 생성 (status: processing)
     doc = Document(

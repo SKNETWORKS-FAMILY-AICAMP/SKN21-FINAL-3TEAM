@@ -16,6 +16,7 @@ export const uploadDocument = (file, scope) => {
   formData.append('file', file)
   return client.post(`/documents/upload?scope=${scope}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
   })
 }
 

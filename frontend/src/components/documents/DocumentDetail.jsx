@@ -1,8 +1,8 @@
-import { useRef, useCallback, useState, useEffect } from 'react';
+import { useRef, useCallback, useState } from 'react';
 import Badge from '../common/Badge';
 import KeywordHighlight from '../common/KeywordHighlight';
 import { Pencil, Check, X } from 'lucide-react';
-import { updateDocumentAnalysis, updateDocumentCategory } from '../../api/documents';
+import { updateDocumentAnalysis } from '../../api/documents';
 
 const CATEGORIES = ['회의록', '계약서', '제안서', '보고서', '정책문서', '인사문서', '공지사항', '이메일', '기타'];
 
@@ -13,11 +13,6 @@ export default function DocumentDetail({ doc, documentDetail, searchQuery = '', 
   const [editTags, setEditTags] = useState('');
   const [editSummary, setEditSummary] = useState('');
   const [saving, setSaving] = useState(false);
-  const [category, setCategory] = useState(documentDetail?.category || '');
-
-  useEffect(() => {
-    setCategory(documentDetail?.category || '');
-  }, [documentDetail?.category]);
 
   const handlePrint = useCallback(() => {
     if (!printRef.current) return;
@@ -71,7 +66,7 @@ export default function DocumentDetail({ doc, documentDetail, searchQuery = '', 
       </div>
       <div className="mb-4">
         <div className="text-[0.8125rem] font-bold text-neutral-main mb-2 flex items-center gap-1.5">기본 정보</div>
-        <div className="text-[0.8125rem] text-neutral-sub leading-[1.7]">분류: {isRealDocument && category ? category : doc.category} · 버전: {doc.version} · 수정일: {doc.date}<br/>범위: 회사 문서 · 파싱 상태: 완료</div>
+        <div className="text-[0.8125rem] text-neutral-sub leading-[1.7]">분류: {isRealDocument && documentDetail?.category ? documentDetail.category : doc.category} · 버전: {doc.version} · 수정일: {doc.date}<br/>범위: 회사 문서 · 파싱 상태: 완료</div>
       </div>
 
       {/* AI 분석 섹션 — 항상 표시 (분석 결과 없으면 수정 버튼만) */}
@@ -134,25 +129,7 @@ export default function DocumentDetail({ doc, documentDetail, searchQuery = '', 
             <div className="bg-surface-main p-3 rounded border border-neutral-border space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-[0.75rem] text-neutral-muted">타입:</span>
-                <select
-                  value={category}
-                  onChange={async (e) => {
-                    const newCategory = e.target.value;
-                    const prevCategory = category;
-                    setCategory(newCategory);
-                    try {
-                      await updateDocumentCategory(doc.id, newCategory);
-                    } catch {
-                      setCategory(prevCategory);
-                    }
-                  }}
-                  className="text-[0.75rem] px-2 py-0.5 rounded border border-neutral-border bg-surface-main text-neutral-sub cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary-500"
-                >
-                  <option value="">미분류</option>
-                  {CATEGORIES.map((opt) => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
+                <Badge variant="document">{documentDetail.category || '미분류'}</Badge>
               </div>
               {documentDetail.tags?.length > 0 && (
                 <div className="flex items-center gap-2 flex-wrap">
