@@ -275,6 +275,37 @@ async def _query_custom_templates(category: str) -> list:
         return []
 
 
+async def _get_system_template_id(category: str) -> int | None:
+    """DB에서 해당 카테고리의 시스템 기본 템플릿 ID 조회"""
+    try:
+        from sqlalchemy import select
+        from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+        from sqlalchemy.orm import sessionmaker
+
+        db_url = os.getenv("DATABASE_URL", "")
+        if not db_url:
+            return None
+
+        engine = create_async_engine(db_url)
+        async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        async with async_session() as session:
+            from app.models.document_template import DocumentTemplate
+            result = await session.execute(
+                select(DocumentTemplate.id).where(
+                    DocumentTemplate.category == category,
+                    DocumentTemplate.is_system == True,  # noqa: E712
+                ).limit(1)
+            )
+            row = result.scalar_one_or_none()
+
+        await engine.dispose()
+        return row
+    except Exception as e:
+        print(f"[DocumentAgent] 시스템 템플릿 ID 조회 실패: {e}")
+        return None
+
+
 async def _llm_detect_template_type(user_input: str) -> str:
     """LLM을 사용해 사용자가 어떤 문서를 만들려는지 판단
 
@@ -490,9 +521,10 @@ async def _handle_doc_generate(user_input: str, template_type: str, document_con
         }
         type_label = doc_type_names.get(template_type, template_type)
 
-        # 시스템 기본 + 커스텀 목록 구성
+        # 시스템 기본 템플릿 DB ID 조회
+        system_tpl_id = await _get_system_template_id(template_type)
         system_field_counts = {"meeting_minutes": 4, "report": 5, "proposal": 5}
-        all_templates = [{"template_id": None, "name": f"기본 {type_label}", "is_system": True, "field_count": system_field_counts.get(template_type, 4)}]
+        all_templates = [{"template_id": system_tpl_id, "name": f"기본 {type_label}", "is_system": True, "field_count": system_field_counts.get(template_type, 4)}]
         all_templates.extend(custom_templates)
 
         if len(all_templates) >= 2:
@@ -508,8 +540,8 @@ async def _handle_doc_generate(user_input: str, template_type: str, document_con
                 "template_type": template_type,
             }
 
-        # 1개(기본만)면 바로 생성
-        return await generate_document(category=template_type, user_input=user_input)
+        # 1개(기본만)면 바로 생성 — system_tpl_id 전달
+        return await generate_document(category=template_type, user_input=user_input, template_id=system_tpl_id)
 
     # 지원되지 않는 카테고리 fallback
     return await generate_document(category=template_type or "report", user_input=user_input)
@@ -1020,6 +1052,86 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
         data["action_items"] = normalized_ai
         print(f"[DocumentAgent] 커스텀 회의록 action_items 정규화: {len(normalized_ai)}개")
 
+    # 보고서: tasks 정규화
+    elif template_type == "report":
+        for str_field in ("title", "overview", "main_content", "issues", "next_plan"):
+            data[str_field] = _to_readable_str(data.get(str_field, ""))
+
+        _ITEM_KEYS     = ("item", "task", "업무항목", "업무", "내용", "task_name", "name")
+        _ASSIGNEE_KEYS = ("assignee", "person", "담당자", "owner", "assigned_to")
+        _PROGRESS_KEYS = ("progress", "진행률", "rate", "completion", "status")
+        _START_KEYS    = ("start_date", "start", "시작일", "started_at")
+        _END_KEYS      = ("end_date", "end", "완료예정일", "due_date", "deadline", "due")
+
+        def _fv_report(d: dict, keys):
+            for k in keys:
+                if k in d and d[k]:
+                    return str(d[k])
+            return ""
+
+        raw_tasks = data.get("tasks", [])
+        if isinstance(raw_tasks, dict):
+            raw_tasks = list(raw_tasks.values())
+        normalized_tasks = []
+        for t in (raw_tasks if isinstance(raw_tasks, list) else []):
+            if isinstance(t, str):
+                normalized_tasks.append({"item": t, "assignee": "", "progress": "", "start_date": "", "end_date": ""})
+            elif isinstance(t, dict):
+                normalized_tasks.append({
+                    "item":       _fv_report(t, _ITEM_KEYS),
+                    "assignee":   _fv_report(t, _ASSIGNEE_KEYS),
+                    "progress":   _fv_report(t, _PROGRESS_KEYS),
+                    "start_date": _fv_report(t, _START_KEYS),
+                    "end_date":   _fv_report(t, _END_KEYS),
+                })
+        data["tasks"] = normalized_tasks
+        print(f"[DocumentAgent] 커스텀 보고서 tasks 정규화: {len(normalized_tasks)}개")
+
+    # 제안서: schedule + budget 정규화
+    elif template_type == "proposal":
+        for str_field in ("title", "background", "purpose", "analysis", "content", "expected_effect"):
+            data[str_field] = _to_readable_str(data.get(str_field, ""))
+
+        _SCH_ITEM_KEYS = ("item", "task", "추진항목", "업무", "name", "내용")
+        _PHASE1_KEYS   = ("phase1", "1단계", "phase_1", "step1", "1차")
+        _PHASE2_KEYS   = ("phase2", "2단계", "phase_2", "step2", "2차")
+        _PHASE3_KEYS   = ("phase3", "3단계", "phase_3", "step3", "3차")
+        _PHASE4_KEYS   = ("phase4", "4단계", "phase_4", "step4", "4차")
+
+        def _fv_proposal(d: dict, keys):
+            for k in keys:
+                if k in d and d[k]:
+                    return str(d[k])
+            return ""
+
+        raw_sch = data.get("schedule", [])
+        if isinstance(raw_sch, dict):
+            raw_sch = list(raw_sch.values())
+        data["schedule"] = [
+            {"item": _fv_proposal(s, _SCH_ITEM_KEYS), "phase1": _fv_proposal(s, _PHASE1_KEYS),
+             "phase2": _fv_proposal(s, _PHASE2_KEYS), "phase3": _fv_proposal(s, _PHASE3_KEYS),
+             "phase4": _fv_proposal(s, _PHASE4_KEYS)}
+            if isinstance(s, dict) else {"item": str(s), "phase1": "", "phase2": "", "phase3": "", "phase4": ""}
+            for s in (raw_sch if isinstance(raw_sch, list) else [])
+        ]
+        print(f"[DocumentAgent] 커스텀 제안서 schedule 정규화: {len(data['schedule'])}개")
+
+        _BUD_ITEM_KEYS = ("item", "항목", "name", "내용", "task")
+        _QTY_KEYS      = ("quantity", "수량", "qty", "count")
+        _UPRICE_KEYS   = ("unit_price", "단가", "price", "unit_cost", "단위가격")
+        _AMOUNT_KEYS   = ("amount", "금액", "total", "합계", "비용", "cost")
+
+        raw_bud = data.get("budget", [])
+        if isinstance(raw_bud, dict):
+            raw_bud = list(raw_bud.values())
+        data["budget"] = [
+            {"item": _fv_proposal(b, _BUD_ITEM_KEYS), "quantity": _fv_proposal(b, _QTY_KEYS),
+             "unit_price": _fv_proposal(b, _UPRICE_KEYS), "amount": _fv_proposal(b, _AMOUNT_KEYS)}
+            if isinstance(b, dict) else {"item": str(b), "quantity": "", "unit_price": "", "amount": ""}
+            for b in (raw_bud if isinstance(raw_bud, list) else [])
+        ]
+        print(f"[DocumentAgent] 커스텀 제안서 budget 정규화: {len(data['budget'])}개")
+
     # 미리보기 생성
     preview_parts = [f"# {data.get('title', doc_type_name)}"]
     for f in fields:
@@ -1038,7 +1150,7 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
     GENERATED_DOCS_DIR.mkdir(parents=True, exist_ok=True)
     output_path = str(GENERATED_DOCS_DIR / f"{doc_uuid}.docx")
 
-    # 커스텀 양식: 원본 DOCX가 있으면 채워넣기, 없으면 범용 레이아웃 생성
+    # DOCX 생성: 원본 양식 → 시스템 빌더 → 범용 레이아웃 순으로 분기
     try:
         from ai.skills.create_from_template import fill_template_docx, create_generic_document
 
@@ -1047,11 +1159,36 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
             # 원본 양식 DOCX에 LLM 데이터를 채워넣기
             print(f"[DocumentAgent] 원본 양식으로 DOCX 생성: {template_file}")
             fill_template_docx(template_file, output_path, data)
+        elif template_type == "meeting_minutes":
+            from ai.skills.create_meeting_minutes import create_meeting_minutes
+            docx_data = {
+                "title": data.get("title", "회의록"),
+                "date": data.get("date", ""),
+                "time": data.get("time", ""),
+                "location": data.get("location", ""),
+                "meeting_type": data.get("meeting_type", "정기"),
+                "attendees": data.get("attendees", []),
+                "author": data.get("author", ""),
+                "content": data.get("summary", data.get("content", "")),
+                "decisions": data.get("decisions", []),
+                "action_items": data.get("action_items", []),
+                "notes": data.get("notes", ""),
+            }
+            print(f"[DocumentAgent] 시스템 회의록 빌더로 DOCX 생성")
+            create_meeting_minutes(output_path, docx_data)
+        elif template_type == "report":
+            from ai.skills.create_report import create_report
+            print(f"[DocumentAgent] 시스템 보고서 빌더로 DOCX 생성")
+            create_report(output_path, data)
+        elif template_type == "proposal":
+            from ai.skills.create_proposal import create_proposal
+            print(f"[DocumentAgent] 시스템 제안서 빌더로 DOCX 생성")
+            create_proposal(output_path, data)
         else:
-            # 원본 파일 없음 → 범용 레이아웃으로 생성
-            print(f"[DocumentAgent] 원본 양식 없음 → 범용 레이아웃 생성")
-            doc_type_names = {"meeting_minutes": "회의록", "report": "보고서", "proposal": "제안서"}
-            create_generic_document(output_path, data, fields, doc_type_names.get(template_type, template_name))
+            # 커스텀 카테고리 → 범용 레이아웃
+            print(f"[DocumentAgent] 범용 레이아웃으로 DOCX 생성")
+            doc_type_names_docx = {"meeting_minutes": "회의록", "report": "보고서", "proposal": "제안서"}
+            create_generic_document(output_path, data, fields, doc_type_names_docx.get(template_type, template_name))
         print(f"[DocumentAgent] 커스텀 DOCX 생성 완료: {output_path}")
     except Exception as e:
         print(f"[DocumentAgent] !!! 커스텀 DOCX 생성 실패: {e}")

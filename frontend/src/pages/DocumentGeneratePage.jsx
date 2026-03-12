@@ -320,24 +320,25 @@ export default function DocumentGeneratePage() {
     if (!selectedTemplate) return;
     setLoading(true);
     try {
-      // formData를 텍스트로 조립
+      // formData를 텍스트로 조립 (title/date는 top-level, 나머지 전부 content에 포함)
       const lines = [];
       for (const field of templateFields) {
         if (isMeeting && (field.key === 'attendees' || field.key === 'team')) continue;
+        if (field.key === 'title' || field.key === 'date') continue;
         const val = formData[field.key] || '';
         if (val) lines.push(`${field.label}: ${val}`);
       }
-      const userInput = lines.join('\n');
+      const contentText = lines.join('\n');
 
       const payload = {
         template_type: selectedTemplate,
-        template_id: selectedCustomTemplate?.id || null,
+        template_id: selectedTemplateId || null,
         title: formData.title || '',
         date: formData.date || '',
         attendees: isMeeting
           ? selectedAttendees
           : (formData.attendees ? formData.attendees.split(',').map(s => s.trim()).filter(Boolean) : []),
-        content: formData.content || userInput,
+        content: contentText,
       };
 
       const response = await generateDocument(payload);

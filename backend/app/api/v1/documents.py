@@ -113,12 +113,16 @@ async def generate_document(
     try:
         from ai.agents.document_agent import generate_document as ai_generate
 
-        user_input = (
-            f"제목: {request.title}\n"
-            f"날짜: {request.date}\n"
-            f"참석자: {', '.join(request.attendees)}\n"
-            f"내용: {request.content}"
-        )
+        parts = []
+        if request.title:
+            parts.append(f"제목: {request.title}")
+        if request.date:
+            parts.append(f"날짜: {request.date}")
+        if request.attendees:
+            parts.append(f"참석자: {', '.join(request.attendees)}")
+        if request.content:
+            parts.append(request.content)
+        user_input = "\n".join(parts)
 
         result = await ai_generate(
             category=request.template_type,
