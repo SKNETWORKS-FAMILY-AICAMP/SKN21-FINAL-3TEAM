@@ -559,6 +559,12 @@ async def generate_document(category: str, user_input: str, template_id: int | N
     if template_id:
         return await _generate_with_custom_template(user_input, template_id, category)
 
+    # template_id 없으면 시스템 템플릿 ID 자동 조회 → DB 경로 (form 플래그 기반 전체 필드 명세)
+    system_tpl_id = await _get_system_template_id(category)
+    if system_tpl_id:
+        return await _generate_with_custom_template(user_input, system_tpl_id, category)
+
+    # DB에 시스템 템플릿 없으면 하드코딩 fallback
     if category == "meeting_minutes":
         return await _generate_meeting_minutes(user_input)
     elif category == "report":

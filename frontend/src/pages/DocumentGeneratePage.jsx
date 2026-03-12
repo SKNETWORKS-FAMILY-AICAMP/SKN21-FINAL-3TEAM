@@ -145,16 +145,33 @@ function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendee
 }
 
 
+// 카테고리별 폼에 표시할 필드 키 (form 플래그 없는 커스텀 템플릿용 fallback)
+const FORM_KEYS = {
+  meeting_minutes: ['title', 'date', 'attendees', 'team', 'content'],
+  report: ['title', 'date', 'author', 'department', 'content'],
+  proposal: ['title', 'date', 'company', 'manager', 'content'],
+};
+
 /**
  * 동적 폼 렌더링 — parsed_structure.fields 기반
  * attendees/team 필드는 회의록일 때 TeamAttendeePicker로 대체되므로 스킵
+ * form: false 필드는 LLM이 생성하므로 UI에 표시하지 않음
  */
-function DynamicForm({ fields, formData, onChange, skipKeys = [] }) {
+function DynamicForm({ fields, formData, onChange, skipKeys = [], category }) {
   if (!fields || fields.length === 0) return null;
 
   const inputClass = 'w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500';
 
-  const filteredFields = fields.filter(f => !skipKeys.includes(f.key));
+  const filteredFields = fields
+    .filter(f => !skipKeys.includes(f.key))
+    .filter(f => {
+      // form 플래그가 명시적이면 그대로 사용
+      if (f.form === false) return false;
+      if (f.form === true) return true;
+      // form 없으면 (커스텀 템플릿) → FORM_KEYS로 판단
+      const formKeys = FORM_KEYS[category] || ['title', 'date', 'content'];
+      return formKeys.includes(f.key);
+    });
   if (filteredFields.length === 0) return null;
 
   return (
@@ -297,7 +314,11 @@ export default function DocumentGeneratePage() {
           setTemplateFields(Array.isArray(fields) ? fields : []);
 
           const defaults = {};
+          const formKeys = FORM_KEYS[template] || ['title', 'date', 'content'];
           for (const f of (Array.isArray(fields) ? fields : [])) {
+            // form: false 필드는 폼 초기값에서 제외 (LLM이 생성)
+            if (f.form === false) continue;
+            if (f.form !== true && !formKeys.includes(f.key)) continue;
             if (f.key === 'date') defaults[f.key] = new Date().toISOString().split('T')[0];
             else if (f.key === 'author' || f.key === 'manager') defaults[f.key] = user?.name || '';
             else if (f.key === 'department') defaults[f.key] = user?.team || '';
@@ -487,6 +508,7 @@ export default function DocumentGeneratePage() {
                 formData={formData}
                 onChange={handleFieldChange}
                 skipKeys={meetingSkipKeys}
+                category={selectedTemplate}
               />
 
               <div className="flex justify-end">
