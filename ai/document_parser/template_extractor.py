@@ -235,5 +235,6 @@ def fields_to_prompt(fields: list[dict]) -> str:
     """추출된 필드를 [필드 명세] 프롬프트 문자열로 변환 (sLLM 호출용)"""
     lines = []
     for f in fields:
-        lines.append(f"- {f['key']}: {f['description']}")
+        desc = f.get('description') or f.get('label', f['key'])
+        lines.append(f"- {f['key']}: {desc}")
     return "\n".join(lines)
