@@ -104,27 +104,30 @@ def extract_question_from_user_msg(user_content: str) -> str:
 
 
 def build_user_prompt_with_rag_context(question: str, rag_results: list[dict]) -> str:
-    """RAG 검색 결과 + 질문 → user prompt 생성 (eval.jsonl과 동일 형식)"""
+    """RAG 검색 결과 + 질문 → user prompt 생성 (eval.jsonl 학습 데이터와 동일 형식)
+
+    학습 데이터 헤더 형식:
+        ### 제9조 (원격근무)
+        ### 개인정보처리규정 — 제5조 (개인정보 수집 원칙)
+    """
     if not rag_results:
         return f"## 관련 규정 문서\n(관련 규정을 찾지 못했습니다)\n\n## 사용자 질문\n{question}"
 
     context_parts = []
-    for i, doc in enumerate(rag_results, 1):
-        source = doc.get("source", "규정")
-        # .pdf 확장자 제거
-        source = re.sub(r"\.pdf$", "", source)
-        article = doc.get("article", "")
+    for doc in rag_results:
         title = doc.get("title", "")
+        article = doc.get("article", "")
         content = doc.get("content", "")
 
-        if article:
+        # 학습 데이터와 동일한 헤더 형식
+        if article and title and title != article:
+            header = f"### {title} — {article}"
+        elif article:
             header = f"### {article}"
-            if title and title != article:
-                header = f"### {source} — {article}"
         elif title:
             header = f"### {title}"
         else:
-            header = f"### {source}"
+            header = f"### 규정"
 
         context_parts.append(f"{header}\n{content}")
 

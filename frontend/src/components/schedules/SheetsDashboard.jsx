@@ -1,12 +1,63 @@
 import { useState, useEffect } from 'react';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, RefreshCw, FolderOpen } from 'lucide-react';
 import useGoogleServices from '../../hooks/useGoogleServices';
+import { listProjects, listPipelineTasks } from '../../api/tasks';
 import { confirm, toast } from '../../store/toastStore';
 
 export default function SheetsDashboard({ externalActions, onReady }) {
-  const { sheets, sheetsLoading, sheetsError, hasScope, createSheet, syncSheet, deleteSheet } = useGoogleServices();
-  const [creating, setCreating] = useState(false);
+  const { sheets, sheetsLoading, sheetsError, hasScope, exportProjectToSheet, syncSheet, deleteSheet } = useGoogleServices();
+  const [tasks, setTasks] = useState([]);
+  const [dbProjects, setDbProjects] = useState([]);
+  const [exporting, setExporting] = useState(null);
+  const [syncingId, setSyncingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+
+  useEffect(() => {
+    listProjects().then(res => setDbProjects(Array.isArray(res.data) ? res.data : [])).catch(() => {});
+    listPipelineTasks().then(res => setTasks(Array.isArray(res.data) ? res.data : [])).catch(() => {});
+  }, []);
+
+  // Pipeline 탭과 동일한 방식으로 프로젝트 목록 생성 (DB + 태스크 그룹핑)
+  const projects = (() => {
+    const map = {};
+    dbProjects.forEach(p => {
+      if (!map[p.name]) map[p.name] = { id: p.id, name: p.name, tasks: [] };
+    });
+    tasks.forEach(t => {
+      const key = t.project || '미분류';
+      if (!map[key]) map[key] = { id: key, name: key, tasks: [] };
+      map[key].tasks.push(t);
+    });
+    return Object.values(map).filter(p => p.name !== '미분류').sort((a, b) => b.tasks.length - a.tasks.length);
+  })();
+
+  const handleExport = async (projectName) => {
+    setExporting(projectName);
+    try {
+      const result = await exportProjectToSheet(projectName);
+      if (result?.spreadsheet_url) {
+        window.open(result.spreadsheet_url, '_blank');
+      }
+      toast.success(`"${projectName}" 프로젝트가 Sheets로 내보내기 되었습니다.`);
+    } catch {
+      toast.error('Sheets 내보내기에 실패했습니다.');
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleSync = async (sheet) => {
+    if (!sheet.project_name) return;
+    setSyncingId(sheet.spreadsheet_id);
+    try {
+      await syncSheet(sheet.spreadsheet_id, sheet.project_name);
+      toast.success('시트가 동기화되었습니다.');
+    } catch {
+      toast.error('동기화에 실패했습니다.');
+    } finally {
+      setSyncingId(null);
+    }
+  };
 
   const handleDelete = async (spreadsheetId) => {
     if (!await confirm('이 시트를 삭제하시겠습니까?')) return;
@@ -21,107 +72,148 @@ export default function SheetsDashboard({ externalActions, onReady }) {
     }
   };
 
-  const handleCreate = async () => {
-    setCreating(true);
-    try {
-      const result = await createSheet('Action Items 추적');
-      if (result?.spreadsheet_url) {
-        window.open(result.spreadsheet_url, '_blank');
-      }
-    } catch {
-      // error handled in store
-    } finally {
-      setCreating(false);
-    }
+  const refreshAll = () => {
+    listProjects().then(res => setDbProjects(Array.isArray(res.data) ? res.data : [])).catch(() => {});
+    listPipelineTasks().then(res => setTasks(Array.isArray(res.data) ? res.data : [])).catch(() => {});
   };
 
   useEffect(() => {
     if (externalActions && onReady) {
-      onReady({ create: handleCreate, creating, sheetsLoading });
+      onReady({ refresh: refreshAll, exporting, sheetsLoading });
     }
-  }, [externalActions, onReady, creating, sheetsLoading]);
+  }, [externalActions, onReady, exporting, sheetsLoading]);
 
-  if (!hasScope('sheets')) {
-    return (
-      <div className="card">
-        <div className="card-header"><span className="card-title">Google Sheets 추적</span></div>
-        <div className="card-body text-center py-8">
-          <p className="text-sm text-neutral-muted">Google Sheets가 연결되지 않았습니다</p>
-          <p className="text-xs text-neutral-muted mt-1">Google 서비스 연결에서 Sheets를 활성화하세요</p>
-        </div>
-      </div>
-    );
-  }
+  // 이미 내보낸 프로젝트인지 확인
+  const isExported = (projectName) => sheets.some(s => s.project_name === projectName);
+
+  const sheetsConnected = hasScope('sheets');
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <span className="card-title">Google Sheets 추적</span>
-        {!externalActions && (
-          <button
-            onClick={handleCreate}
-            disabled={creating || sheetsLoading}
-            className="text-xs px-2.5 py-1.5 rounded-md border border-neutral-border text-neutral-sub hover:bg-primary-50 hover:text-primary-700 transition"
-          >
-            {creating ? '생성 중...' : '+ 새 시트'}
-          </button>
-        )}
-      </div>
-      <div className="card-body">
-        {sheetsError && <p className="text-xs text-error mb-3">{sheetsError}</p>}
+    <div className="space-y-6">
+      {/* Google Sheets 미연결 안내 */}
+      {!sheetsConnected && (
+        <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Google Sheets가 연결되지 않았습니다</p>
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">내보내기를 사용하려면 Google 서비스 연결에서 Sheets를 활성화하세요</p>
+        </div>
+      )}
 
-        {sheets.length === 0 ? (
-          <div className="text-center py-6">
-            <p className="text-sm text-neutral-muted">생성된 추적 시트가 없습니다</p>
-            <p className="text-xs text-neutral-muted mt-1">"새 시트" 버튼으로 Action Item 추적 시트를 만드세요</p>
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {sheets.map((sheet) => (
-              <li
-                key={sheet.spreadsheet_id || sheet.id}
-                className="flex items-center gap-3 px-3 py-3 rounded-md border border-neutral-divider hover:border-primary-300 transition"
-              >
-                <div className="w-8 h-8 rounded-md bg-success-bg flex items-center justify-center text-success">
-                  <BarChart3 size={16} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-neutral-main truncate">
-                    {sheet.sheet_name || sheet.title || 'Action Items 추적'}
-                  </p>
-                  {sheet.meeting_title && (
-                    <span className="text-[0.6875rem] text-neutral-muted">{sheet.meeting_title}</span>
-                  )}
-                </div>
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={() => syncSheet(sheet.spreadsheet_id)}
-                    className="text-[0.6875rem] px-2 py-1 rounded border border-neutral-divider text-neutral-muted hover:bg-surface-hover transition"
+      {/* 프로젝트 내보내기 */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">프로젝트 → Sheets 내보내기</span>
+        </div>
+        <div className="card-body">
+          {projects.length === 0 ? (
+            <div className="text-center py-6">
+              <FolderOpen size={28} className="mx-auto mb-2 text-neutral-300" />
+              <p className="text-sm text-neutral-muted">프로젝트가 없습니다</p>
+              <p className="text-xs text-neutral-muted mt-1">Pipeline 탭에서 프로젝트를 먼저 생성하세요</p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {projects.map((proj) => {
+                const exported = isExported(proj.name);
+                return (
+                  <li
+                    key={proj.id || proj.name}
+                    className="flex items-center gap-3 px-3 py-3 rounded-md border border-neutral-divider hover:border-primary-300 transition"
                   >
-                    동기화
-                  </button>
-                  {sheet.spreadsheet_url && (
-                    <a
-                      href={sheet.spreadsheet_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[0.6875rem] px-2 py-1 rounded border border-primary-300 text-primary-700 bg-primary-50 hover:bg-primary-100 transition"
+                    <div className="w-8 h-8 rounded-md bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center text-primary-600">
+                      <FolderOpen size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-neutral-main truncate">{proj.name}</p>
+                      <span className="text-[0.6875rem] text-neutral-muted">{proj.tasks.length}개 태스크</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!sheetsConnected) {
+                          toast.error('Google Sheets를 먼저 연결하세요');
+                          return;
+                        }
+                        handleExport(proj.name);
+                      }}
+                      disabled={exporting === proj.name || proj.tasks.length === 0}
+                      className={`text-[0.6875rem] px-3 py-1.5 rounded font-bold transition ${
+                        exported
+                          ? 'border border-success text-success hover:bg-green-50'
+                          : 'border border-primary-300 text-primary-700 bg-primary-50 hover:bg-primary-100'
+                      } disabled:opacity-50`}
                     >
-                      열기
-                    </a>
-                  )}
-                  <button
-                    onClick={() => handleDelete(sheet.spreadsheet_id)}
-                    disabled={deletingId === sheet.spreadsheet_id}
-                    className="text-[0.6875rem] px-2 py-1 rounded border border-error text-error hover:bg-red-50 transition disabled:opacity-50"
-                  >
-                    {deletingId === sheet.spreadsheet_id ? '삭제 중...' : '삭제'}
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+                      {exporting === proj.name ? '내보내는 중...' : exported ? '다시 내보내기' : 'Sheets로 내보내기'}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* 내보낸 시트 목록 */}
+      <div className="card">
+        <div className="card-header">
+          <span className="card-title">내보낸 시트 목록</span>
+        </div>
+        <div className="card-body">
+          {sheetsError && <p className="text-xs text-error mb-3">{sheetsError}</p>}
+
+          {sheets.length === 0 ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-neutral-muted">내보낸 시트가 없습니다</p>
+              <p className="text-xs text-neutral-muted mt-1">위에서 프로젝트를 Sheets로 내보내세요</p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {sheets.map((sheet) => (
+                <li
+                  key={sheet.spreadsheet_id || sheet.id}
+                  className="flex items-center gap-3 px-3 py-3 rounded-md border border-neutral-divider hover:border-primary-300 transition"
+                >
+                  <div className="w-8 h-8 rounded-md bg-success-bg flex items-center justify-center text-success">
+                    <BarChart3 size={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-neutral-main truncate">
+                      {sheet.sheet_name || '프로젝트 문서'}
+                    </p>
+                    {sheet.project_name && (
+                      <span className="text-[0.6875rem] text-neutral-muted">프로젝트: {sheet.project_name}</span>
+                    )}
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => handleSync(sheet)}
+                      disabled={syncingId === sheet.spreadsheet_id}
+                      className="text-[0.6875rem] px-2 py-1 rounded border border-neutral-divider text-neutral-muted hover:bg-surface-hover transition flex items-center gap-1"
+                    >
+                      <RefreshCw size={12} className={syncingId === sheet.spreadsheet_id ? 'animate-spin' : ''} />
+                      동기화
+                    </button>
+                    {sheet.spreadsheet_url && (
+                      <a
+                        href={sheet.spreadsheet_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[0.6875rem] px-2 py-1 rounded border border-primary-300 text-primary-700 bg-primary-50 hover:bg-primary-100 transition"
+                      >
+                        열기
+                      </a>
+                    )}
+                    <button
+                      onClick={() => handleDelete(sheet.spreadsheet_id)}
+                      disabled={deletingId === sheet.spreadsheet_id}
+                      className="text-[0.6875rem] px-2 py-1 rounded border border-error text-error hover:bg-red-50 transition disabled:opacity-50"
+                    >
+                      {deletingId === sheet.spreadsheet_id ? '삭제 중...' : '삭제'}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );

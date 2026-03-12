@@ -78,6 +78,13 @@ async def get_schedule(
     return schedule
 
 
+def _strip_tz(dt: Optional[datetime]) -> Optional[datetime]:
+    """timezone-aware datetime → naive datetime 변환 (TIMESTAMP WITHOUT TIME ZONE 호환)"""
+    if dt is None:
+        return None
+    return dt.replace(tzinfo=None) if dt.tzinfo else dt
+
+
 async def create_schedule(
     db: AsyncSession,
     user_id: int,
@@ -87,14 +94,17 @@ async def create_schedule(
     """
     일정 생성 — DB 저장 + Google Calendar 연동 (선택적, best-effort)
     """
-    # 1. DB 저장
+    # 1. DB 저장 (timezone-aware → naive 변환: TIMESTAMP WITHOUT TIME ZONE 호환)
+    start_naive = _strip_tz(data.start_time)
+    end_naive = _strip_tz(data.end_time)
+
     schedule = Schedule(
         title=data.title,
         description=data.description,
-        start_time=data.start_time,
-        end_time=data.end_time,
+        start_time=start_naive,
+        end_time=end_naive,
         schedule_type=data.schedule_type,
-        priority=data.priority or calculate_priority(data.end_time),
+        priority=data.priority or calculate_priority(end_naive),
         user_id=user_id,
         team_name=user_team,
         is_team_visible=data.is_team_visible,

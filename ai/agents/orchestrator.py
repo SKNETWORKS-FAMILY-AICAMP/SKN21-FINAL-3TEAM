@@ -4,6 +4,10 @@ LangGraph Agent 오케스트레이터 (팀원 A 담당)
 그래프 구조:
   [사용자 입력]
        |
+  [decompose_query]  ← 복합 질문 감지 (규칙 기반)
+       | (route_after_decompose)
+    +-- compound       → compound_pending (chat.py에서 스트리밍 처리)
+    +-- single         ↓
   [classify_intent]  ← BERT (→ Solar fallback → 임베딩 fallback)
        | (route_by_intent)
     +-- low_confidence  → clarify_with_candidates (top-3 후보 제시)
@@ -21,8 +25,8 @@ import time
 from langgraph.graph import StateGraph, END
 
 from ai.agents.state import AgentState
-from ai.agents.intent_classifier import get_classifier
-from ai.agents.config import INTENT_CONFIDENCE_THRESHOLD
+from ai.agents.intent_classifier import get_classifier, detect_compound_query
+from ai.agents.config import INTENT_CONFIDENCE_THRESHOLD, ENABLE_COMPLEX_QUERY
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +201,32 @@ async def safe_document_agent(state: AgentState) -> AgentState:
         return state
 
 
+async def safe_action_agent(state: AgentState) -> AgentState:
+    """액션 Agent 안전 래퍼 (파이프라인/결재)"""
+    _t = time.time()
+    logger.info("[Orchestrator] safe_action_agent 진입 | intent=%s", state.get('intent'))
+    try:
+        from ai.agents.action_agent import action_agent
+
+        result = await action_agent(state)
+        logger.info("[Orchestrator] safe_action_agent 완료 (%.2fs) | response type=%s", time.time()-_t, result.get('agent_response', {}).get('type'))
+        return result
+    except NotImplementedError:
+        state["agent_response"] = {
+            "type": state.get("intent", "pipeline_create"),
+            "message": "액션 Agent는 현재 구현 중입니다. 곧 사용 가능합니다.",
+        }
+        return state
+    except Exception as e:
+        logger.error("Action agent error: %s", e)
+        state["agent_response"] = {
+            "type": state.get("intent", "pipeline_create"),
+            "message": f"액션 처리 중 오류가 발생했습니다: {e}",
+        }
+        state["error"] = str(e)
+        return state
+
+
 async def safe_schedule_agent(state: AgentState) -> AgentState:
     """일정 Agent 안전 래퍼 (팀원 D)"""
     _t = time.time()
@@ -221,6 +251,54 @@ async def safe_schedule_agent(state: AgentState) -> AgentState:
         }
         state["error"] = str(e)
         return state
+
+
+# ── 복합 질문 노드 ──
+
+
+def decompose_query(state: AgentState) -> AgentState:
+    """복합 질문 감지 — 규칙 기반 접속사 패턴으로 분리"""
+    _t = time.time()
+    user_input = state["user_input"]
+
+    if not ENABLE_COMPLEX_QUERY:
+        state["sub_queries"] = []
+        return state
+
+    sub_queries = detect_compound_query(user_input)
+    state["sub_queries"] = sub_queries
+
+    if sub_queries:
+        logger.info(
+            "[Orchestrator] 복합 질문 감지 (%.2fs) | %d개 서브쿼리: %s",
+            time.time() - _t,
+            len(sub_queries),
+            [sq["hint"] for sq in sub_queries],
+        )
+    else:
+        logger.debug("[Orchestrator] 단일 질문 (%.2fs)", time.time() - _t)
+
+    return state
+
+
+def route_after_decompose(state: AgentState) -> str:
+    """decompose 후 라우팅: 복합이면 compound_pending, 단일이면 classify_intent"""
+    if state.get("sub_queries"):
+        return "compound_pending"
+    return "classify_intent"
+
+
+def compound_pending(state: AgentState) -> AgentState:
+    """복합 질문 처리 대기 — chat.py에서 각 sub_query를 순차 스트리밍"""
+    sub_queries = state.get("sub_queries", [])
+    state["agent_response"] = {
+        "type": "compound",
+        "message": "",
+        "stream_pending": True,
+        "sub_queries": sub_queries,
+    }
+    logger.info("[Orchestrator] compound_pending | %d개 서브쿼리 대기", len(sub_queries))
+    return state
 
 
 # ── 핵심 노드 ──
@@ -325,6 +403,8 @@ def route_by_intent(state: AgentState) -> str:
         route = "document_agent"
     elif intent.startswith("schedule_"):
         route = "schedule_agent"
+    elif intent in ("pipeline_create", "approval_create"):
+        route = "action_agent"
     else:
         route = "general_response"
 
@@ -346,6 +426,8 @@ def clarify_with_candidates(state: AgentState) -> AgentState:
         "doc_qa": "문서 QA",
         "schedule_add": "일정 추가",
         "schedule_view": "일정 조회",
+        "pipeline_create": "태스크 생성",
+        "approval_create": "결재 요청",
         "general": "일반 질문",
     }
 
@@ -396,16 +478,29 @@ def build_graph():
     graph = StateGraph(AgentState)
 
     # 노드 등록
+    graph.add_node("decompose_query", decompose_query)
+    graph.add_node("compound_pending", compound_pending)
     graph.add_node("classify_intent", classify_intent)
     graph.add_node("clarify_with_candidates", clarify_with_candidates)
     graph.add_node("judgment_agent", safe_judgment_agent)
     graph.add_node("document_agent", safe_document_agent)
     graph.add_node("schedule_agent", safe_schedule_agent)
+    graph.add_node("action_agent", safe_action_agent)
     graph.add_node("general_response", general_response_node)
     graph.add_node("format_response", format_response)
 
-    # 엔트리 포인트
-    graph.set_entry_point("classify_intent")
+    # 엔트리 포인트 — 복합 질문 감지부터 시작
+    graph.set_entry_point("decompose_query")
+
+    # decompose_query → 복합/단일 분기
+    graph.add_conditional_edges(
+        "decompose_query",
+        route_after_decompose,
+        {
+            "compound_pending": "compound_pending",
+            "classify_intent": "classify_intent",
+        },
+    )
 
     # classify_intent → intent + confidence 기반 분기
     graph.add_conditional_edges(
@@ -416,14 +511,17 @@ def build_graph():
             "judgment_agent": "judgment_agent",
             "document_agent": "document_agent",
             "schedule_agent": "schedule_agent",
+            "action_agent": "action_agent",
             "general_response": "general_response",
         },
     )
 
     # 모든 Agent/노드 → format_response → END
+    graph.add_edge("compound_pending", "format_response")
     graph.add_edge("judgment_agent", "format_response")
     graph.add_edge("document_agent", "format_response")
     graph.add_edge("schedule_agent", "format_response")
+    graph.add_edge("action_agent", "format_response")
     graph.add_edge("general_response", "format_response")
     graph.add_edge("clarify_with_candidates", "format_response")
     graph.add_edge("format_response", END)

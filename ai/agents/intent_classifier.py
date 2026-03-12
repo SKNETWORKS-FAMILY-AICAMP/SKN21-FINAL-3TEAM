@@ -34,6 +34,8 @@ INTENT_LABELS = [
     "schedule_view",
     "general",
     "doc_qa",
+    "pipeline_create",
+    "approval_create",
 ]
 
 # 모델 weights 경로 (RunPod 학습 후 저장되는 위치)
@@ -55,6 +57,8 @@ class IntentClassifier:
         self.tokenizer = None
         self.id2label = None
         self._loaded = False
+        self._is_multilabel = False
+        self._multilabel_threshold = 0.5
 
     def load_model(self):
         """모델 로드 — weights 없으면 fallback 모드로 동작"""
@@ -97,10 +101,17 @@ class IntentClassifier:
                     model_info = json.load(f)
                 base_model = model_info.get("base_model", base_model)
 
+            # 멀티라벨 모델 감지
+            if model_info_file.exists():
+                problem_type = model_info.get("problem_type", "single_label_classification")
+                self._is_multilabel = (problem_type == "multi_label_classification")
+                self._multilabel_threshold = model_info.get("threshold", 0.5)
+
             self.tokenizer = AutoTokenizer.from_pretrained(base_model)
             self.model = AutoModelForSequenceClassification.from_pretrained(str(model_dir))
             self.model.eval()
-            logger.info("Intent classifier loaded from %s (tokenizer: %s)", model_dir, base_model)
+            mode_str = "multi-label" if self._is_multilabel else "single-label"
+            logger.info("Intent classifier loaded from %s (tokenizer: %s, mode: %s)", model_dir, base_model, mode_str)
         except Exception as e:
             logger.error("Failed to load intent classifier: %s", e)
             self.model = None
@@ -174,6 +185,107 @@ class IntentClassifier:
 
         return result
 
+    def predict_multilabel(self, text: str) -> dict:
+        """
+        멀티라벨 Intent 분류 추론 (Phase 2).
+
+        sigmoid + threshold 기반으로 여러 intent를 동시에 반환.
+        멀티라벨 모델이 없으면 규칙 기반 detect_compound_query()로 fallback.
+
+        Returns:
+            {
+                "intents": [
+                    {"intent": "doc_search", "confidence": 0.92},
+                    {"intent": "judgment", "confidence": 0.87},
+                ],
+                "is_compound": True,
+                "primary_intent": "doc_search",   # 최고 confidence
+                "primary_confidence": 0.92,
+            }
+        """
+        self.load_model()
+
+        # 멀티라벨 모델이 없으면 규칙 기반 fallback
+        if not self._is_multilabel or self.model is None or self.tokenizer is None:
+            return self._fallback_compound_detect(text)
+
+        # 전처리
+        try:
+            from ai.agents.preprocessing import preprocess
+            processed = preprocess(text)
+        except ImportError:
+            processed = text
+
+        import torch
+
+        inputs = self.tokenizer(
+            processed,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=128,
+        )
+
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+
+        # sigmoid (멀티라벨)
+        probs = torch.sigmoid(outputs.logits)[0]
+
+        # threshold 이상인 intent 수집
+        intents = []
+        for idx in range(len(INTENT_LABELS)):
+            conf = probs[idx].item()
+            if conf >= self._multilabel_threshold:
+                intents.append({
+                    "intent": self.id2label.get(idx, "general"),
+                    "confidence": round(conf, 4),
+                })
+
+        # threshold 이상이 하나도 없으면 최고 confidence intent 반환
+        if not intents:
+            best_idx = torch.argmax(probs).item()
+            intents = [{
+                "intent": self.id2label.get(best_idx, "general"),
+                "confidence": round(probs[best_idx].item(), 4),
+            }]
+
+        # confidence 내림차순 정렬
+        intents.sort(key=lambda x: x["confidence"], reverse=True)
+
+        return {
+            "intents": intents,
+            "is_compound": len(intents) >= 2,
+            "primary_intent": intents[0]["intent"],
+            "primary_confidence": intents[0]["confidence"],
+        }
+
+    def _fallback_compound_detect(self, text: str) -> dict:
+        """멀티라벨 모델 없을 때 규칙 기반 fallback"""
+        sub_queries = detect_compound_query(text)
+
+        if sub_queries:
+            # 복합 감지됨: hint intent 사용
+            intents = [
+                {"intent": sq["hint"], "confidence": 0.7}
+                for sq in sub_queries
+            ]
+            return {
+                "intents": intents,
+                "is_compound": True,
+                "primary_intent": intents[0]["intent"],
+                "primary_confidence": 0.7,
+            }
+
+        # 단일: 기존 predict() 결과를 멀티라벨 형식으로 변환
+        result = self.predict(text)
+        return {
+            "intents": [{"intent": result["intent"], "confidence": result["confidence"]}],
+            "is_compound": False,
+            "primary_intent": result["intent"],
+            "primary_confidence": result["confidence"],
+        }
+
     def _llm_based_predict(self, text: str, return_candidates: bool = False) -> dict:
         """LLM 기반 intent 분류 (Solar API)"""
         import time as _time
@@ -206,6 +318,8 @@ class IntentClassifier:
                 - doc_qa: 문서 QA — 문서 내용 기반 질의응답 (예: "지난 회의 결정사항이 뭐야?", "예산 얼마야?")
                 - schedule_add: 일정 추가/등록 (예: "내일 2시 회의 일정 추가해줘", "스케줄 등록해줘")
                 - schedule_view: 일정 조회/확인 (예: "오늘 일정 보여줘", "이번 주 스케줄 확인해줘")
+                - pipeline_create: 파이프라인/칸반 태스크 생성 (예: "태스크 만들어줘", "보드에 추가해줘")
+                - approval_create: 결재/승인 요청 생성 (예: "연차 신청해줘", "결재 올려줘")
                 - general: 위 카테고리에 해당하지 않는 일반 질문"""
 
             if return_candidates:
@@ -334,6 +448,22 @@ class IntentClassifier:
                     "스케줄 확인해줘",
                     "일정 조회해줘",
                 ],
+                "pipeline_create": [
+                    "태스크 만들어줘",
+                    "파이프라인에 추가해줘",
+                    "칸반 보드에 등록해줘",
+                    "코드 리뷰 태스크 생성해줘",
+                    "할 일 추가해줘",
+                    "프로젝트 하나 추가하려고 해",
+                    "프로젝트 만들어줘",
+                ],
+                "approval_create": [
+                    "결재 올려줘",
+                    "연차 신청해줘",
+                    "승인 요청 등록해줘",
+                    "휴가 결재 올려줘",
+                    "리뷰 결재 신청해줘",
+                ],
             }
 
             # 임베딩 모델 로드
@@ -430,6 +560,12 @@ KNOWN_OVERRIDES = {
     # doc_qa 패턴: "문서에 뭐라고 써있어?", "결정사항이 뭐야?"
     r"(문서에|보고서에|회의록에).*(뭐라고|어떻게|뭐야|뭐가)": "doc_qa",
     r"(결정사항|합의|결론|핵심 이슈).*(뭐야|뭐였|알려|있어)": "doc_qa",
+    # pipeline_create 패턴: "태스크 만들어줘", "파이프라인에 추가해줘", "프로젝트 추가해줘"
+    r"(태스크|task|파이프라인|pipeline|칸반|보드|프로젝트).*(만들|생성|추가|등록)": "pipeline_create",
+    r"(만들|생성|추가|등록).*(태스크|task|파이프라인|pipeline|칸반|프로젝트)": "pipeline_create",
+    # approval_create 패턴: "결재 올려줘", "연차 신청해줘"
+    r"(결재|승인|결재요청|결재 요청).*(올려|신청|등록|만들)": "approval_create",
+    r"(연차|휴가|반차|조퇴|출장).*(신청|올려|결재|요청)": "approval_create",
 }
 
 
@@ -448,3 +584,119 @@ def get_classifier() -> IntentClassifier:
     if _classifier_instance is None:
         _classifier_instance = IntentClassifier()
     return _classifier_instance
+
+
+# ── 복합 질문 감지 (규칙 기반) ──
+
+# 복합 감지 키워드 (문장 안에 서로 다른 intent 동사가 2개 이상)
+_INTENT_VERB_PATTERNS = {
+    "judgment": r"(판단|위반|허용|가능한가|되나요|해도 되|해도 돼)",
+    "doc_search": r"(찾아|검색|어디|어떤 문서|검토)",
+    "doc_generate": r"(작성|생성|만들어|써 줘|써줘|작성해|만들어 줘)",
+    "doc_summary": r"(요약|정리|핵심만)",
+    "doc_qa": r"(뭐라고|뭐야|뭐였|결정사항|내용이)",
+    "schedule_add": r"(일정.*(?:추가|등록|잡아|넣어)|(?:추가|등록|잡아|넣어).*일정|회의.*(?:잡아|등록))",
+    "schedule_view": r"(일정.*(?:보여|조회|확인|알려)|(?:보여|조회|확인).*일정|스케줄.*(?:보여|확인))",
+    "pipeline_create": r"(태스크|task|파이프라인|pipeline|칸반|보드|프로젝트).*(?:만들|생성|추가|등록)",
+    "approval_create": r"(결재|승인|연차|휴가|반차|조퇴|출장).*(?:올려|신청|등록|만들|요청)",
+}
+
+# 동사 어간 + "하고"/"주고" 패턴 (분리점으로 사용)
+_VERB_CONNECTOR_PATTERN = r"((?:추가|등록|잡아|검색|찾아|조회|확인|판단|생성|작성|요약|정리)하고|(?:해|찾아|보여|알려|잡아|확인해|조회해)(?:줘|주고))\s+"
+
+
+# "~해서/~어서" 순차 연결 패턴
+_SEQUENTIAL_CONNECTOR_PATTERN = r"((?:찾아|검색해|확인해|정리해|검토해|조회해)서)\s+"
+
+# "~보고", "바탕으로", "한 다음" 등 순차 패턴
+_SEQUENTIAL_PHRASE_PATTERNS = [
+    r"(.+?(?:찾아|검색해|확인해)보고)\s+(.+)",      # "찾아보고 ~해줘"
+    r"(.+?)\s*(?:바탕으로|기반으로|토대로)\s+(.+)",   # "규정을 바탕으로 JD 작성해줘"
+    r"(.+?(?:요약|정리|확인|검색)한\s*(?:다음|후에?))\s+(.+)",  # "요약한 다음 ~해줘"
+    r"(.+?)\s*있으면\s*(.+?)\s*없으면\s*(.+)",        # "있으면 ~ 없으면 ~"
+]
+
+
+def _split_compound_text(text: str) -> list[str]:
+    """복합 질문 텍스트를 서브쿼리 파트로 분리"""
+    # 1. "그리고" / 쉼표로 분리
+    if "그리고" in text:
+        return [p.strip() for p in text.split("그리고") if p.strip()]
+    if ", " in text or "," in text:
+        parts = [p.strip() for p in re.split(r",\s*", text) if p.strip()]
+        if len(parts) >= 2:
+            return parts
+
+    # 2. "~하고 ", "~주고 " 동사 연결 패턴
+    segments = re.split(_VERB_CONNECTOR_PATTERN, text)
+    if len(segments) >= 3:
+        parts = [segments[0] + segments[1]]
+        remaining = "".join(segments[2:])
+        if remaining.strip():
+            parts.append(remaining.strip())
+        return parts
+
+    # 3. "~해서/~어서" 순차 연결 패턴
+    segments = re.split(_SEQUENTIAL_CONNECTOR_PATTERN, text)
+    if len(segments) >= 3:
+        parts = [segments[0] + segments[1]]
+        remaining = "".join(segments[2:])
+        if remaining.strip():
+            parts.append(remaining.strip())
+        return parts
+
+    # 4. "~보고", "바탕으로", "한 다음" 등 순차 구문
+    for pattern in _SEQUENTIAL_PHRASE_PATTERNS:
+        m = re.match(pattern, text)
+        if m:
+            parts = [p.strip() for p in m.groups() if p and p.strip()]
+            if len(parts) >= 2:
+                return parts
+
+    return []
+
+
+def detect_compound_query(text: str) -> list[dict]:
+    """
+    규칙 기반 복합 질문 감지 + 분리.
+
+    Returns:
+        복합이면: [{"query": "일정 추가해줘", "hint": "schedule_add"}, ...]
+        단일이면: []
+    """
+    # 1단계: intent 동사 패턴으로 2개 이상 intent 감지
+    matched_intents = []
+    for intent, pattern in _INTENT_VERB_PATTERNS.items():
+        if re.search(pattern, text):
+            matched_intents.append(intent)
+
+    if len(matched_intents) < 2:
+        return []
+
+    # 2단계: 명확한 구분자로 문장 분리
+    parts = _split_compound_text(text)
+
+    if len(parts) < 2:
+        return []
+
+    # 3단계: 각 part에 intent hint 매칭
+    sub_queries = []
+    for part in parts:
+        hint = "general"
+        for intent, pattern in _INTENT_VERB_PATTERNS.items():
+            if re.search(pattern, part):
+                hint = intent
+                break
+        sub_queries.append({"query": part, "hint": hint})
+
+    # 모든 sub_query가 같은 intent면 복합이 아님
+    hints = set(sq["hint"] for sq in sub_queries)
+    if len(hints) < 2:
+        return []
+
+    logger.info(
+        "Compound query detected: '%s' → %s",
+        text,
+        [sq["hint"] for sq in sub_queries],
+    )
+    return sub_queries

@@ -20,6 +20,8 @@ import ErrorBoundary from '../components/common/ErrorBoundary';
 import { listSchedules } from '../api/schedules';
 import { listDocuments } from '../api/documents';
 import { listSessions } from '../api/chat';
+import { listPipelineTasks } from '../api/tasks';
+import { listApprovals } from '../api/approvals';
 import dayjs from 'dayjs';
 
 // ── 날짜 유틸 ──
@@ -62,6 +64,8 @@ function useDashboardData() {
   const [schedules, setSchedules] = useState([]);
   const [docs, setDocs] = useState([]);
   const [sessions, setSessions] = useState([]);
+  const [pipelineTasks, setPipelineTasks] = useState([]);
+  const [approvals, setApprovals] = useState([]);
   const [loading, setLoading] = useState(true);
   const calendarEvents = useGoogleStore((s) => s.calendarEvents);
   const googleConnected = useGoogleStore((s) => s.connected);
@@ -81,6 +85,14 @@ function useDashboardData() {
 
     listSessions()
       .then(data => { if (!isCancelled()) setSessions(data || []); })
+      .catch(() => {});
+
+    listPipelineTasks()
+      .then(r => { if (!isCancelled()) setPipelineTasks(r.data || []); })
+      .catch(() => {});
+
+    listApprovals()
+      .then(r => { if (!isCancelled()) setApprovals(r.data || []); })
       .catch(() => {});
   };
 
@@ -285,6 +297,38 @@ function useDashboardData() {
   activities.sort((a, b) => b._ts - a._ts);
   const recentActivities = activities.slice(0, 6);
 
+  // 브리핑용: 오늘 마감 태스크 (done 제외)
+  const todayKey2 = dayjs().format('YYYY-MM-DD');
+  const todayDueTasks = (Array.isArray(pipelineTasks) ? pipelineTasks : [])
+    .filter(t => {
+      if (!t.due_date || t.stage === 'done') return false;
+      return dayjs(t.due_date).format('YYYY-MM-DD') === todayKey2;
+    })
+    .map(t => ({
+      title: t.title,
+      assignee: t.assignee || '',
+      priority: t.priority || 'medium',
+      stage: t.stage || 'todo',
+    }));
+
+  // 브리핑용: 마감 초과 태스크 (done 제외)
+  const overdueTasks = (Array.isArray(pipelineTasks) ? pipelineTasks : [])
+    .filter(t => {
+      if (!t.due_date || t.stage === 'done') return false;
+      return dayjs(t.due_date).format('YYYY-MM-DD') < todayKey2;
+    })
+    .map(t => ({
+      title: t.title,
+      assignee: t.assignee || '',
+      priority: t.priority || 'medium',
+      stage: t.stage || 'todo',
+      dueDate: t.due_date,
+    }));
+
+  // 브리핑용: 대기 결재 건수
+  const pendingApprovalCount = (Array.isArray(approvals) ? approvals : [])
+    .filter(a => a.status === 'pending').length;
+
   // GreetingBanner 카운트
   const meetingCount = todayMeetings.length;
   const actionCount = upcomingActions.length;
@@ -300,6 +344,9 @@ function useDashboardData() {
     recentActivities,
     meetingCount,
     actionCount,
+    todayDueTasks,
+    overdueTasks,
+    pendingApprovalCount,
   };
 }
 
@@ -414,13 +461,16 @@ export default function DashboardPage() {
     recentActivities,
     meetingCount,
     actionCount,
+    todayDueTasks,
+    overdueTasks,
+    pendingApprovalCount,
   } = useDashboardData();
 
   // 위젯별 props 매핑
   const widgetProps = {
     WhatsOnWidget: {},
     ScheduleTimelineWidget: { meetings: timelineMeetings, loading },
-    TodaySchedule: { meetings: [...inProgressMeetings, ...todayMeetings], actions: upcomingActions, loading },
+    TodaySchedule: { meetings: [...inProgressMeetings, ...todayMeetings], actions: upcomingActions, loading, todayDueTasks, overdueTasks, pendingApprovalCount },
     ActivityTimeline: { activities: recentActivities, loading },
     AIChatWidget: {},
     CalendarWidget: { allSchedules },
@@ -480,7 +530,7 @@ export default function DashboardPage() {
 
   return (
     <div className="py-6">
-      <GreetingBanner meetingCount={meetingCount} actionCount={actionCount} riskCount={0} />
+      <GreetingBanner meetingCount={meetingCount} actionCount={actionCount} riskCount={0} taskCount={todayDueTasks.length} overdueCount={overdueTasks.length} approvalCount={pendingApprovalCount} />
 
 
       {loading ? (

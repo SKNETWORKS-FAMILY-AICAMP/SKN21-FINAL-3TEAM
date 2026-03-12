@@ -72,29 +72,40 @@ def _group_regulations(context: list[dict]) -> dict[str, list[dict]]:
 
 
 def _build_context_prompt(context: list[dict]) -> str:
-    """RAG 검색 결과를 규정별로 그룹핑하여 LLM에 전달할 텍스트 블록으로 변환"""
-    if not context:
-        return "관련 규정 문서를 찾지 못했습니다."
+    """RAG 검색 결과를 학습 데이터(eval.jsonl)와 동일한 형식으로 변환.
 
-    groups = _group_regulations(context)
+    학습 데이터 형식:
+        ### 제9조 (원격근무)
+        {규정 내용}
+
+        ### 개인정보처리규정 — 제5조 (개인정보 수집 원칙)
+        {규정 내용}
+    """
+    if not context:
+        return "(관련 규정을 찾지 못했습니다)"
 
     parts = []
-    doc_idx = 1
-    for reg_name, docs in groups.items():
-        parts.append(f"### 📋 {reg_name} ({len(docs)}건)")
-        for doc in docs:
-            source = doc.get("source", "출처 불명")
-            content = doc.get("content", "")
-            score = doc.get("score", 0.0)
-            parts.append(f"[규정 {doc_idx}] {source} (관련도: {score:.3f})\n{content}")
-            doc_idx += 1
-        parts.append("")  # 규정 그룹 간 빈 줄
+    for doc in context:
+        title = doc.get("title", "")
+        article = doc.get("article", "")
+        content = doc.get("content", "")
 
-    if len(groups) > 1:
-        reg_names = ", ".join(groups.keys())
-        parts.insert(0, f"⚠️ 다중 규정 교차 분석 필요: {reg_names}\n")
+        # 학습 데이터와 동일한 헤더 형식 구성
+        if article and title and title != article:
+            # "### 개인정보처리규정 — 제5조 (개인정보 수집 원칙)"
+            header = f"### {title} — {article}"
+        elif article:
+            # "### 제9조 (원격근무)"
+            header = f"### {article}"
+        elif title:
+            # "### 출장규정"
+            header = f"### {title}"
+        else:
+            header = "### 규정"
 
-    return "\n".join(parts)
+        parts.append(f"{header}\n{content}")
+
+    return "\n\n".join(parts)
 
 
 # ── 판단 이력 추출 ──

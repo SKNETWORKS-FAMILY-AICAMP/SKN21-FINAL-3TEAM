@@ -116,6 +116,9 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
     const [pickerEndTime, setPickerEndTime] = useState('11:00');
     const [pickerAllDay, setPickerAllDay] = useState(false);
 
+    // Schedule result modal (success / failure)
+    const [scheduleResult, setScheduleResult] = useState(null); // { success: bool, title: string, message: string }
+
     // New Tasks tab: 'approvals' | 'schedules'
     const [newTasksTab, setNewTasksTab] = useState('approvals');
 
@@ -373,26 +376,28 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
         const { suggestion: s, idx } = schedulePickerData;
         setAddingScheduleId(idx);
         try {
-            let startDate, endDate;
+            // 타임존 없는 로컬 시간 문자열 (DB: TIMESTAMP WITHOUT TIME ZONE)
+            let startStr, endStr;
             if (pickerAllDay) {
-                startDate = new Date(`${pickerDate}T00:00:00`);
-                endDate = new Date(`${pickerDate}T23:59:59`);
+                startStr = `${pickerDate}T00:00:00`;
+                endStr = `${pickerDate}T23:59:59`;
             } else {
-                startDate = new Date(`${pickerDate}T${pickerStartTime}:00`);
-                endDate = new Date(`${pickerDate}T${pickerEndTime}:00`);
+                startStr = `${pickerDate}T${pickerStartTime}:00`;
+                endStr = `${pickerDate}T${pickerEndTime}:00`;
             }
 
-            if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-                alert('유효한 날짜와 시간을 입력해주세요.');
+            if (isNaN(new Date(startStr).getTime()) || isNaN(new Date(endStr).getTime())) {
+                setScheduleResult({ success: false, title: '', message: '유효한 날짜와 시간을 입력해주세요.' });
                 setAddingScheduleId(null);
                 return;
             }
 
+            const addedTitle = pickerTitle.trim() || s.title;
             await createSchedule({
-                title: pickerTitle.trim() || s.title,
+                title: addedTitle,
                 description: s.description || s.reason || '',
-                start_time: startDate.toISOString(),
-                end_time: endDate.toISOString(),
+                start_time: startStr,
+                end_time: endStr,
                 schedule_type: s.schedule_type || 'task',
                 priority: s.priority || 'medium',
             });
@@ -400,10 +405,11 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
             // 추가 성공 → 해당 항목 제거 & 모달 닫기 & 캘린더 새로고침
             setScheduleSuggestions(prev => prev.filter((_, i) => i !== idx));
             setSchedulePickerData(null);
+            setScheduleResult({ success: true, title: addedTitle, message: `"${addedTitle}" 일정이 캘린더에 추가되었습니다.` });
             if (onScheduleAdded) onScheduleAdded();
         } catch (err) {
-            const msg = err.response?.data?.detail || '캘린더 추가에 실패했습니다.';
-            alert(msg);
+            const detail = err.response?.data?.detail || '캘린더 추가에 실패했습니다.';
+            setScheduleResult({ success: false, title: '', message: typeof detail === 'string' ? detail : '캘린더 추가에 실패했습니다.' });
         } finally {
             setAddingScheduleId(null);
         }
@@ -548,14 +554,17 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                 {/* 받는 사람 표시 */}
                 <div className="flex items-center gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-700">
                     <Send size={10} className="text-slate-300 shrink-0" />
-                    {item.requester_avatar ? (
-                        <img src={item.requester_avatar} alt="" className="w-7 h-7 rounded-full object-cover ring-2 ring-white dark:ring-neutral-800" />
+                    {item.target_user_avatar ? (
+                        <img src={item.target_user_avatar} alt="" className="w-7 h-7 rounded-full object-cover ring-2 ring-white dark:ring-neutral-800" />
                     ) : (
                         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${isPending ? 'bg-slate-100 dark:bg-slate-700/30 text-slate-500' : isApproved ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-500'}`}>
-                            {(item.requester_name || '?')[0]}
+                            {(item.target_user_name || item.target_team || '?')[0]}
                         </div>
                     )}
-                    <span className="text-[11px] font-medium text-slate-500 truncate">{item.requester_name || '알 수 없음'}</span>
+                    <span className="text-[11px] font-medium text-slate-500 truncate">
+                        {item.target_user_name || item.target_team || '알 수 없음'}
+                        {(item.target_user_team || item.target_team) && <span className="text-[9px] text-slate-300 ml-1">({item.target_user_team || item.target_team})</span>}
+                    </span>
                     {item.created_at && (
                         <span className="text-[10px] text-slate-300 ml-auto shrink-0">
                             {timeAgo(item.created_at)}
@@ -568,6 +577,11 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
 
     const pendingItems = items.filter(i => i.status === 'pending' && (!user || String(i.requester_id) !== String(user.id)));
     const sentItems = items.filter(i => user && String(i.requester_id) === String(user.id));
+
+    // 이미 보낸 요청과 같은 type+title인 추천은 제외
+    const filteredSuggestions = suggestions.filter(s =>
+        !sentItems.some(sent => sent.type === s.type && sent.title === s.title)
+    );
 
     /* ── New Tasks 탭 전환 시 데이터 로드 ── */
     const switchNewTasksTab = (tab) => {
@@ -688,7 +702,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                             <span className="text-[10px] text-rose-400 text-center px-2 leading-relaxed">{suggestError}</span>
                                             <button onClick={handleSuggest} className="mt-1.5 text-[10px] text-sky-500 hover:underline">다시 시도</button>
                                         </div>
-                                    ) : suggestions.length === 0 ? (
+                                    ) : filteredSuggestions.length === 0 ? (
                                         <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-600">
                                             <Zap size={14} className="text-slate-300 mb-1" />
                                             <span className="text-[11px] text-slate-300">추천 없음</span>
@@ -696,7 +710,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                     ) : (
                                         <div className="grid grid-cols-2 gap-2.5">
                                             <AnimatePresence mode="popLayout">
-                                                {suggestions.map((s, idx) => {
+                                                {filteredSuggestions.map((s, idx) => {
                                                     const cfg = typeConfig[s.type] || defaultTypeConfig;
                                                     // 백엔드에서 related_project가 없으면 파이프라인 태스크에서 추론
                                                     const project = s.related_project || (() => {
@@ -1056,10 +1070,12 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                 <div className="flex items-center gap-2 shrink-0">
                                     <span className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full ${selectedSent.status === 'approved'
                                         ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
-                                        : 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400'
+                                        : selectedSent.status === 'pending'
+                                            ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400'
+                                            : 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400'
                                     }`}>
-                                        {selectedSent.status === 'approved' ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
-                                        {selectedSent.status === 'approved' ? 'Approved' : 'Rejected'}
+                                        {selectedSent.status === 'approved' ? <CheckCircle2 size={14} /> : selectedSent.status === 'pending' ? <Clock size={14} /> : <XCircle size={14} />}
+                                        {selectedSent.status === 'approved' ? 'Approved' : selectedSent.status === 'pending' ? '대기중' : 'Rejected'}
                                     </span>
                                     <button onClick={closeSentDetail} className="w-8 h-8 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 transition-colors flex items-center justify-center">
                                         <X size={18} />
@@ -1091,14 +1107,17 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                             <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">받는 사람</span>
                                 <div className="flex items-center gap-3 mt-2">
-                                    {selectedSent.requester_avatar ? (
-                                        <img src={selectedSent.requester_avatar} alt="" className="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-neutral-800" />
+                                    {selectedSent.target_user_avatar ? (
+                                        <img src={selectedSent.target_user_avatar} alt="" className="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-neutral-800" />
                                     ) : (
                                         <div className="w-9 h-9 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-sm font-bold text-violet-500">
-                                            {(selectedSent.requester_name || '?')[0]}
+                                            {(selectedSent.target_user_name || selectedSent.target_team || '?')[0]}
                                         </div>
                                     )}
-                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{selectedSent.requester_name || '알 수 없음'}</span>
+                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                        {selectedSent.target_user_name || selectedSent.target_team || '알 수 없음'}
+                                        {(selectedSent.target_user_team || selectedSent.target_team) && <span className="text-xs text-slate-400 font-normal ml-1">({selectedSent.target_user_team || selectedSent.target_team})</span>}
+                                    </span>
                                 </div>
                             </div>
 
@@ -1299,6 +1318,57 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                 ) : (
                                     <><CalendarPlus size={12} /> 추가</>
                                 )}
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>,
+                document.body
+            )}
+
+            {/* ── 캘린더 추가 결과 모달 (성공/실패) ── */}
+            {scheduleResult && createPortal(
+                <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
+                        onClick={() => setScheduleResult(null)}
+                    />
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                        className="relative bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-[340px] p-8 mx-4 border border-white/40 dark:border-white/10"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex flex-col items-center text-center">
+                            <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+                                scheduleResult.success
+                                    ? 'bg-emerald-50 dark:bg-emerald-900/20'
+                                    : 'bg-red-50 dark:bg-red-900/20'
+                            }`}>
+                                {scheduleResult.success
+                                    ? <CheckCircle2 size={32} className="text-emerald-500" />
+                                    : <XCircle size={32} className="text-red-500" />
+                                }
+                            </div>
+                            <h3 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight mb-2">
+                                {scheduleResult.success ? '추가 완료' : '추가 실패'}
+                            </h3>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6 leading-relaxed">
+                                {scheduleResult.message}
+                            </p>
+                            <button
+                                onClick={() => setScheduleResult(null)}
+                                className={`w-full py-3 text-sm font-extrabold rounded-xl shadow-lg transition-all ${
+                                    scheduleResult.success
+                                        ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                                        : 'bg-red-500 text-white hover:bg-red-600'
+                                }`}
+                            >
+                                확인
                             </button>
                         </div>
                     </motion.div>

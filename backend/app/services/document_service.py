@@ -33,12 +33,47 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def classify_category(title: str, text: str) -> str:
+    """제목+본문 키워드 기반 카테고리 분류 (규칙 기반)"""
+    t = (title + " " + text[:2000]).lower()
+
+    # 회의록
+    if any(k in t for k in ["회의록", "회의 기록", "미팅 노트", "meeting minutes", "회의 결과",
+                             "참석자", "안건", "회의 일시", "meeting note"]):
+        return "회의록"
+    # 계약서
+    if any(k in t for k in ["계약서", "계약 조건", "contract", "agreement", "서약서",
+                             "비밀유지", "nda", "업무 위탁", "용역 계약"]):
+        return "계약서"
+    # 제안서
+    if any(k in t for k in ["제안서", "proposal", "기획서", "기획안", "사업 제안",
+                             "프로젝트 기획", "프로젝트 제안", "제안 배경"]):
+        return "제안서"
+    # 보고서
+    if any(k in t for k in ["보고서", "report", "업무보고", "분석 보고", "결과 보고",
+                             "실적 보고", "주간 보고", "월간 보고", "성과 보고"]):
+        return "보고서"
+    # 정책문서
+    if any(k in t for k in ["정책", "규정", "가이드라인", "지침", "policy", "regulation",
+                             "내규", "취업규칙", "복무", "보안 정책", "개인정보"]):
+        return "정책문서"
+    # 인사문서
+    if any(k in t for k in ["인사", "채용", "연차", "휴가", "급여", "퇴직", "온보딩",
+                             "jd", "job description", "직무기술서", "입사", "경력증명"]):
+        return "인사문서"
+    return "기타"
+
+
 async def analyze_document_with_llm(text: str, title: str) -> dict | None:
     """
-    문서를 분석하여 summary, tags를 추출한다.
-    document_agent의 summarize_document() 공통 함수를 사용.
+    문서를 분석하여 summary, tags, category를 추출한다.
+    - summary, tags: LLM(sLLM/GPT) 분석
+    - category: 규칙 기반 분류 (LLM 불필요)
     실패 시 None 반환 (문서 업로드는 정상 진행).
     """
+    category = classify_category(title, text)
+    logger.info(f"[DocumentAnalysis] 규칙 기반 카테고리 분류: {category} | title={title}")
+
     try:
         from ai.agents.document_agent import summarize_document
         print(f"[DocumentAnalysis] summarize_document 호출 | title={title}")
@@ -47,19 +82,21 @@ async def analyze_document_with_llm(text: str, title: str) -> dict | None:
 
         tags = result.get("tags", [])
         summary = result.get("summary", "")
-        logger.info(f"문서 분석 완료: tags={tags}, summary_len={len(summary)}자")
+        logger.info(f"문서 분석 완료: category={category}, tags={tags}, summary_len={len(summary)}자")
 
         return {
             "summary": summary,
-            "category": result.get("category"),
+            "category": result.get("category") or category,
             "tags": tags,
         }
 
     except Exception as e:
-        print(f"[DocumentAnalysis] 분석 실패: {type(e).__name__}: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
+        print(f"[DocumentAnalysis] LLM 분석 실패 (카테고리는 규칙 기반 적용): {type(e).__name__}: {e}")
+        return {
+            "summary": None,
+            "category": category,
+            "tags": [],
+        }
 
 
 async def save_file(file: UploadFile, upload_dir: str) -> tuple[str, str]:
@@ -202,10 +239,26 @@ async def upload_and_parse(
     """
     settings = get_settings()
 
+    title = Path(file.filename or "untitled").stem
+    file_ext = Path(file.filename or "").suffix.lstrip(".").lower() or "txt"
+
+    # 0. 중복 체크: 같은 사용자가 같은 제목+파일타입으로 이미 업로드한 문서가 있으면 기존 문서 반환
+    from sqlalchemy import select as sa_select
+    existing_result = await db.execute(
+        sa_select(Document).where(
+            Document.title == title,
+            Document.file_type == file_ext,
+            Document.uploaded_by == user_id,
+            Document.status != "failed",
+        ).limit(1)
+    )
+    existing_doc = existing_result.scalar_one_or_none()
+    if existing_doc:
+        logger.info(f"중복 문서 감지 — 기존 문서 반환: id={existing_doc.id}, title={title}")
+        return existing_doc
+
     # 1. 파일 저장
     saved_path, file_type = await save_file(file, settings.UPLOAD_DIR)
-
-    title = Path(file.filename or "untitled").stem
 
     # 2. DB 레코드 생성 (status: processing)
     doc = Document(

@@ -16,11 +16,15 @@ export const uploadDocument = (file, scope) => {
   formData.append('file', file)
   return client.post(`/documents/upload?scope=${scope}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
   })
 }
 
 export const deleteDocument = (id) =>
   client.delete(`/documents/${id}`)
+
+export const updateDocumentAnalysis = (id, data) =>
+  client.patch(`/documents/${id}/analysis`, data)
 
 export const updateDocumentCategory = (id, category) =>
   client.patch(`/documents/${id}/category`, { category })

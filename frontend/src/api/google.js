@@ -56,20 +56,17 @@ export const sendBulkReminders = (daysBefore = 3, recipientMap = {}) =>
 
 // ── Google Sheets ──
 
-export const createSheet = (title = 'Action Items 추적', meetingId = null) =>
-  client.post('/sheets/create', { title, meeting_id: meetingId })
+export const exportProjectToSheet = (projectName, title = null) =>
+  client.post('/sheets/export-project', { project_name: projectName, title })
 
-export const syncSheet = (spreadsheetId, meetingId = null) =>
-  client.post(`/sheets/${spreadsheetId}/sync`, { meeting_id: meetingId })
+export const syncSheet = (spreadsheetId, projectName) =>
+  client.post(`/sheets/${spreadsheetId}/sync`, { project_name: projectName })
 
 export const listSheets = () =>
   client.get('/sheets/')
 
 export const deleteSheet = (spreadsheetId) =>
   client.delete(`/sheets/${spreadsheetId}`)
-
-export const getSheetUrl = (meetingId) =>
-  client.get(`/sheets/${meetingId}/url`)
 
 // ── Calendar + Meet ──
 
