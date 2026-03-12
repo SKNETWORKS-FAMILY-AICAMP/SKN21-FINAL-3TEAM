@@ -958,7 +958,10 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
             elif template_type == "proposal":
                 return await _generate_proposal(user_input)
 
-        fields = json.loads(template.parsed_structure)
+        raw_ps = json.loads(template.parsed_structure)
+        fields = raw_ps.get("fields", raw_ps) if isinstance(raw_ps, dict) else raw_ps
+        if not isinstance(fields, list):
+            fields = []
         template_name = template.name
         print(f"[DocumentAgent] 커스텀 양식 '{template_name}' 로드 | {len(fields)}개 필드")
 
