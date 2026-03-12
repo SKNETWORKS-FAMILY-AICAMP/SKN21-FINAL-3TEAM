@@ -1,7 +1,7 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
 import Badge from '../common/Badge';
 import KeywordHighlight from '../common/KeywordHighlight';
-import { updateDocumentCategory } from '@/api/documents';
+import { updateDocumentCategory } from '../../api/documents';
 
 const CATEGORY_OPTIONS = ['회의록', '보고서', '제안서', '계약서', '정책문서', '인사문서', '공지사항', '이메일', '기타'];
 
