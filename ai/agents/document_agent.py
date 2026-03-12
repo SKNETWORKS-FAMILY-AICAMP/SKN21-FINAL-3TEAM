@@ -32,21 +32,25 @@ logger = logging.getLogger(__name__)
 
 def parse_summary_output(text: str) -> dict:
     """
-    sLLM 요약 출력을 파싱하여 tags, summary를 추출한다.
+    sLLM 요약 출력을 파싱하여 category, tags, summary를 추출한다.
 
     입력 형식:
+        분류: 회의록
         태그: #태그1 #태그2 #태그3
         요약: 요약문 2~3문장
 
     Returns:
-        {"tags": ["태그1", "태그2", ...], "summary": "요약문", "raw": "원본 텍스트"}
+        {"category": "회의록" | None, "tags": ["태그1", ...], "summary": "요약문", "raw": "원본 텍스트"}
     """
+    category = None
     tags = []
     summary = ""
 
     for line in text.strip().splitlines():
         line = line.strip()
-        if line.startswith("태그:"):
+        if line.startswith("분류:"):
+            category = line[len("분류:"):].strip()
+        elif line.startswith("태그:"):
             tag_part = line[len("태그:"):].strip()
             tags = [t.strip().lstrip("#").strip() for t in tag_part.split("#") if t.strip()]
         elif line.startswith("요약:"):
@@ -57,7 +61,7 @@ def parse_summary_output(text: str) -> dict:
         summary_part = text.split("요약:", 1)[1].strip()
         summary = summary_part
 
-    return {"tags": tags, "summary": summary, "raw": text}
+    return {"category": category, "tags": tags, "summary": summary, "raw": text}
 
 
 def truncate_by_paragraph(text: str, max_chars: int = 8000) -> str:

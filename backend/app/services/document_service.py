@@ -86,7 +86,7 @@ async def analyze_document_with_llm(text: str, title: str) -> dict | None:
 
         return {
             "summary": summary,
-            "category": category,
+            "category": result.get("category") or category,
             "tags": tags,
         }
 

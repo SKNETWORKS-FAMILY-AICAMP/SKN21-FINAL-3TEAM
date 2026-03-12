@@ -25,6 +25,9 @@ export const deleteDocument = (id) =>
 export const updateDocumentAnalysis = (id, data) =>
   client.patch(`/documents/${id}/analysis`, data)
 
+export const updateDocumentCategory = (id, category) =>
+  client.patch(`/documents/${id}/category`, { category })
+
 export const analyzeAllDocuments = () =>
   client.post('/documents/analyze-all')
 
