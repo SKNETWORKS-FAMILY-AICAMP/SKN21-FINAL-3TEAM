@@ -12,6 +12,10 @@ export default defineConfig(({ mode }) => {
           target: process.env.BACKEND_URL || env.BACKEND_URL || 'http://3.37.118.197:8000',
           changeOrigin: true,
         },
+        '/health': {
+          target: process.env.BACKEND_URL || env.BACKEND_URL || 'http://3.37.118.197:8000',
+          changeOrigin: true,
+        },
       },
     },
   }

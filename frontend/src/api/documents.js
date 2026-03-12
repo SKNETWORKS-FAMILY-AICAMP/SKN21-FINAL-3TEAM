@@ -41,7 +41,7 @@ export const reindexAllDocuments = () =>
 // ── 문서 생성 ──
 
 export const generateDocument = (data) =>
-  client.post('/documents/generate', data)
+  client.post('/documents/generate', data, { timeout: 180000 })
 
 export const downloadDocument = (id, format = 'docx') =>
   client.get(`/documents/${id}/download`, {

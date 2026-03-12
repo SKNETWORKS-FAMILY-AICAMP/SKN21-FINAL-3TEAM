@@ -140,6 +140,7 @@ async def generate_document(
             "preview": result.get("preview", ""),
             "download_url": f"/api/v1/documents/{result['document_id']}/download",
             "data": data,
+            "model_name": result.get("model_name", ""),
         }
 
         # 회의록: action_items 포함

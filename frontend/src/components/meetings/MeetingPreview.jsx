@@ -87,7 +87,14 @@ export default function MeetingPreview({ data, onDownload, loading }) {
   return (
     <div className="card" ref={printRef}>
       <div className="card-header no-print">
-        <div className="card-title">생성된 회의록</div>
+        <div className="card-title">
+          생성된 회의록
+          {data.model_name && (
+            <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.6875rem] font-medium bg-violet-100 text-violet-700">
+              {data.model_name.includes('LoRA') ? '🔧 ' : '🤖 '}{data.model_name}
+            </span>
+          )}
+        </div>
         <div className="flex gap-2">
           <button onClick={handlePrint} className="btn-outline text-xs">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1">
@@ -128,7 +135,7 @@ export default function MeetingPreview({ data, onDownload, loading }) {
               {data.decisions.map((d, i) => (
                 <div key={i} className="flex items-start gap-2 text-sm text-neutral-main">
                   <span className="text-success flex-shrink-0">✓</span>
-                  <span className="leading-relaxed">{d}</span>
+                  <span className="leading-relaxed">{typeof d === 'object' ? (d.decision || d.content || JSON.stringify(d)) : d}</span>
                 </div>
               ))}
             </div>

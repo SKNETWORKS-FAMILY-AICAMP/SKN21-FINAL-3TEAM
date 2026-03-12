@@ -376,6 +376,7 @@ export default function DocumentGeneratePage() {
           decisions: apiData.decisions || apiData.data?.decisions || [],
           actionItems: apiData.action_items || apiData.data?.action_items || [],
           document_id: apiData.document_id,
+          model_name: apiData.model_name || '',
         });
       } else {
         const data = apiData.data || apiData;
@@ -395,6 +396,7 @@ export default function DocumentGeneratePage() {
             ? displayFields
             : [{ label: '미리보기', value: apiData.preview || '내용 없음' }],
           document_id: apiData.document_id,
+          model_name: apiData.model_name || '',
         });
       }
     } catch (err) {

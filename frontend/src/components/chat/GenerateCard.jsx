@@ -1,6 +1,6 @@
 import Badge from '../common/Badge';
 
-export default function GenerateCard({ title, templateType, fields = [], actionItems = [], downloadUrl, onDownload }) {
+export default function GenerateCard({ title, templateType, fields = [], actionItems = [], downloadUrl, onDownload, modelName }) {
   const typeLabels = { meeting_minutes: '회의록', report: '보고서', jd: '채용 공고', proposal: '제안서' };
 
   return (
@@ -9,7 +9,14 @@ export default function GenerateCard({ title, templateType, fields = [], actionI
         <div className="flex items-center gap-2 font-bold text-sm text-primary-700">
 {title || '문서 생성 완료'}
         </div>
-        {templateType && <Badge variant="document">{typeLabels[templateType] || templateType}</Badge>}
+        <div className="flex items-center gap-2">
+          {templateType && <Badge variant="document">{typeLabels[templateType] || templateType}</Badge>}
+          {modelName && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.6875rem] font-medium bg-violet-100 text-violet-700">
+              {modelName.includes('LoRA') ? '🔧 ' : '🤖 '}{modelName}
+            </span>
+          )}
+        </div>
       </div>
       <div className="p-4">
         {fields.length > 0 && (

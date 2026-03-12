@@ -21,7 +21,7 @@ export default function MeetingSummaryCard({ title, date, attendees = [], decisi
               {decisions.map((d, i) => (
                 <div key={i} className="flex items-start gap-2 text-[0.8125rem] text-neutral-main">
                   <span className="text-success flex-shrink-0 mt-0.5">✓</span>
-                  <span className="leading-relaxed">{d}</span>
+                  <span className="leading-relaxed">{typeof d === 'object' ? (d.decision || d.content || JSON.stringify(d)) : d}</span>
                 </div>
               ))}
             </div>

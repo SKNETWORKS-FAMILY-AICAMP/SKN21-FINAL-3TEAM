@@ -56,9 +56,11 @@ class VLLMProvider(BaseLLM):
         """AsyncOpenAI 클라이언트 (지연 초기화)"""
         if self._client is None:
             from openai import AsyncOpenAI
+            import httpx
             self._client = AsyncOpenAI(
                 api_key=self.api_key,
                 base_url=self.base_url,
+                timeout=httpx.Timeout(300.0, connect=30.0),
             )
         return self._client
 

@@ -274,6 +274,46 @@ function MemoPanel() {
   );
 }
 
+/** 백엔드 상태 표시 (dev용 — 제거 시 이 컴포넌트 + 사용처 1줄 삭제) */
+function BackendStatus() {
+  const [status, setStatus] = useState('checking'); // 'ok' | 'down' | 'checking'
+  const checkRef = useRef(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const check = async () => {
+      try {
+        const res = await fetch('/health', { signal: AbortSignal.timeout(3000) });
+        if (mounted) setStatus(res.ok ? 'ok' : 'down');
+      } catch {
+        if (mounted) setStatus('down');
+      }
+    };
+    checkRef.current = check;
+    check();
+    const id = setInterval(check, 10_000);
+    return () => { mounted = false; clearInterval(id); };
+  }, []);
+
+  const colors = {
+    ok: 'bg-emerald-400 shadow-[0_0_6px_#34d399]',
+    down: 'bg-red-400 shadow-[0_0_6px_#f87171] animate-pulse',
+    checking: 'bg-yellow-400 shadow-[0_0_6px_#facc15] animate-pulse',
+  };
+  const labels = { ok: 'API 연결됨', down: 'API 끊김', checking: '확인 중...' };
+
+  return (
+    <div
+      className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/30 dark:bg-white/5 border border-neutral-200/30 dark:border-white/10 cursor-pointer"
+      title={`${labels[status]} (클릭: 재확인)`}
+      onClick={() => { setStatus('checking'); checkRef.current?.(); }}
+    >
+      <div className={`w-2 h-2 rounded-full ${colors[status]}`} />
+      <span className="text-[10px] font-bold text-neutral-600 dark:text-neutral-300 select-none">{labels[status]}</span>
+    </div>
+  );
+}
+
 // ── 상단바 컴포넌트 ──
 export default function Topbar({ isScrolled = false }) {
   const user = useAuthStore((s) => s.user);
@@ -682,6 +722,7 @@ export default function Topbar({ isScrolled = false }) {
 
           {/* 우측 - 유틸리티 (데스크톱) */}
           <div className="flex-1 hidden md:flex items-center justify-end gap-3 transition-opacity duration-300">
+            <BackendStatus />
             <ThemeToggle />
             <MemoPanel />
 

@@ -1245,3 +1245,44 @@ v2_generate AI Hub 데이터 탈락:
 5. **프론트 E2E 테스트**
    - Playwright E2E 미실행 (서버 startup 블로킹으로 못 돌림)
    - 서버 정상화 후 `npx playwright test e2e/document-generate.spec.js` 실행 필요
+
+---
+
+## 2026-03-13 (목)
+
+**vLLM RunPod Serverless — Base Model 연결 복구**
+
+1. **엔드포인트 재생성**
+   - 기존 `ertldwoybwbzdh` (삭제됨) → `u6k937j4tg2u24` (Initializing 무한 — 삭제) → **`qrntiuzpvcj4l7`** (새로 생성, 정상 동작)
+   - 설정: vLLM v2.14.0, kanana-1.5-8b-instruct-2505, bfloat16, MAX_MODEL_LEN=4096, GPU_MEMORY_UTILIZATION=0.85
+   - Network Volume: US-NC-1에 있으나, 해당 지역 GPU 부족(throttled) → 일단 전체 지역으로 변경, Volume 미연결
+   - GPU: RTX 5090 / RTX A6000 (24GB)
+
+2. **`.env` 업데이트**
+   - `VLLM_BASE_URL` → `https://api.runpod.ai/v2/qrntiuzpvcj4l7/openai/v1`
+   - `VLLM_USE_LORA` → `false` (base model만 우선)
+
+3. **무한로딩 디버깅**
+   - 증상: 회의록 생성 시 "AI 생성 중" 무한 대기
+   - 원인: Serverless Active workers=0 + Idle timeout=5초 → 매 요청마다 cold start (모델 로딩 1~2분)
+   - 해결: Idle timeout을 60초로 올림 → worker 유지되어 정상 응답 확인
+   - Playwright E2E 디버그 테스트로 네트워크 추적하여 원인 파악 (`e2e/debug-generate.spec.js`)
+
+4. **포트 충돌 해결**
+   - local-dev.sh 실행 시 포트 8000에 이전 프로세스(PID 26732) 잔존 → taskkill로 제거 후 정상화
+
+5. **curl 테스트 성공**
+   - base model 직접 호출 정상 응답 확인
+   - 문서 생성 페이지에서 회의록 AI 생성 정상 동작 확인
+
+**다음 할 일:**
+
+1. **LoRA 연결 테스트**
+   - RunPod 환경변수 추가 필요: `ENABLE_LORA=true`, `LORA_MODULES`
+   - `.env`에서 `VLLM_USE_LORA=true`로 변경
+   - 이전 시도에서 계속 막힘 — 환경변수 key-value 추가가 잘 안 됨
+   - Network Volume을 US-NC-1에서 GPU 잡히는 지역으로 옮기거나, US-NC-1 GPU 여유 생기면 재연결 필요
+   - LoRA 어댑터 경로: Network Volume `/workspace/outputs/v2_*/kanana-1.5-8b-instruct-2505/final`
+
+2. **문서 생성 temperature 튜닝** (우선순위 낮음)
+   - 현재 전체 0.3 — 회의록은 OK, 보고서/제안서는 0.5~0.7 고려

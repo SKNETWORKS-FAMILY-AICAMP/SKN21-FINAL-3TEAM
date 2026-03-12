@@ -238,7 +238,7 @@ def create_meeting_minutes(output_path: str = "회의록_test.docx", data: dict 
             parts = []
             for d in decisions:
                 if isinstance(d, dict):
-                    parts.append(d.get("decision", d.get("content", str(d))))
+                    parts.append(d.get("decision", d.get("description", d.get("content", str(d)))))
                 else:
                     parts.append(str(d))
             decisions_text = "\n".join(parts)

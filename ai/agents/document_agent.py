@@ -557,22 +557,23 @@ async def generate_document(category: str, user_input: str, template_id: int | N
         template_id: 커스텀 템플릿 ID (None이면 시스템 기본)
     """
     if template_id:
-        return await _generate_with_custom_template(user_input, template_id, category)
-
-    # template_id 없으면 시스템 템플릿 ID 자동 조회 → DB 경로 (form 플래그 기반 전체 필드 명세)
-    system_tpl_id = await _get_system_template_id(category)
-    if system_tpl_id:
-        return await _generate_with_custom_template(user_input, system_tpl_id, category)
-
-    # DB에 시스템 템플릿 없으면 하드코딩 fallback
-    if category == "meeting_minutes":
-        return await _generate_meeting_minutes(user_input)
+        result = await _generate_with_custom_template(user_input, template_id, category)
+    elif (system_tpl_id := await _get_system_template_id(category)):
+        # template_id 없으면 시스템 템플릿 ID 자동 조회 → DB 경로 (form 플래그 기반 전체 필드 명세)
+        result = await _generate_with_custom_template(user_input, system_tpl_id, category)
+    elif category == "meeting_minutes":
+        # DB에 시스템 템플릿 없으면 하드코딩 fallback
+        result = await _generate_meeting_minutes(user_input)
     elif category == "report":
-        return await _generate_report(user_input)
+        result = await _generate_report(user_input)
     elif category == "proposal":
-        return await _generate_proposal(user_input)
+        result = await _generate_proposal(user_input)
     else:
         raise ValueError(f"지원하지 않는 문서 카테고리: {category}")
+
+    # 사용된 모델명 추가 (프론트에서 LoRA/Base 표시용)
+    result["model_name"] = _last_model_name
+    return result
 
 
 async def _generate_meeting_minutes(user_input: str) -> Dict[str, Any]:
@@ -1450,7 +1451,7 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
     """
     global _last_model_name
     if temperature is None:
-        temperature = 0.7 if task == "generate" else 0.1
+        temperature = 0.3 if task == "generate" else 0.1
     _t_llm = time.time()
     mode = os.getenv("DOC_AGENT_MODE", "api")
     sllm_tasks = os.getenv("DOC_SLLM_TASKS", "generate").split(",")

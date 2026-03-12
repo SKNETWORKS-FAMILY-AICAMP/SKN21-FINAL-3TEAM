@@ -182,6 +182,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
           fields={fields}
           actionItems={actionItems}
           onDownload={handleDocDownload}
+          modelName={data.model_name || ''}
         />
       );
     }

@@ -6,7 +6,7 @@ import axios from 'axios'
 const client = axios.create({
   baseURL: '/api/v1',
   headers: { 'Content-Type': 'application/json' },
-  timeout: 15000,
+  timeout: 30000,
 })
 
 // 요청 인터셉터: JWT 토큰 자동 첨부
