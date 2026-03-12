@@ -63,13 +63,34 @@ async def list_pipeline_tasks(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """같은 팀 또는 본인이 assignee인 Pipeline Task 목록"""
+    """본인이 생성했거나 참여 중인 프로젝트의 Pipeline Task 목록"""
+    # 본인이 참여 중인 프로젝트명 수집
+    assigned_q = select(PipelineTask.project).where(
+        or_(
+            PipelineTask.assignee == current_user.name,
+            PipelineTask.assignee_id == current_user.id,
+        ),
+        PipelineTask.project.isnot(None),
+    ).distinct()
+    assigned_result = await db.execute(assigned_q)
+    participated_projects = [r[0] for r in assigned_result.all()]
+
+    # 본인이 생성한 프로젝트명도 수집
+    created_q = select(Project.name).where(Project.created_by == current_user.id)
+    created_result = await db.execute(created_q)
+    created_projects = [r[0] for r in created_result.all()]
+
+    # 참여 + 생성 프로젝트 합집합
+    visible_projects = list(set(participated_projects + created_projects))
+
     query = select(PipelineTask).order_by(PipelineTask.sort_order, PipelineTask.created_at)
-    if current_user.team:
+    if visible_projects:
         query = query.where(
             or_(
-                PipelineTask.team == current_user.team,
+                PipelineTask.created_by == current_user.id,
                 PipelineTask.assignee == current_user.name,
+                PipelineTask.assignee_id == current_user.id,
+                PipelineTask.project.in_(visible_projects),
             )
         )
     else:
@@ -77,6 +98,7 @@ async def list_pipeline_tasks(
             or_(
                 PipelineTask.created_by == current_user.id,
                 PipelineTask.assignee == current_user.name,
+                PipelineTask.assignee_id == current_user.id,
             )
         )
 
@@ -235,36 +257,29 @@ async def list_projects(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """같은 팀 또는 본인이 assignee인 태스크가 있는 프로젝트 목록"""
-    # 본인이 assignee인 태스크의 프로젝트명 수집
+    """본인이 생성했거나 태스크에 참여 중인 프로젝트만 표시"""
+    # 본인이 assignee인 태스크의 프로젝트명 수집 (참여자 판별)
     assigned_q = select(PipelineTask.project).where(
-        PipelineTask.assignee == current_user.name,
+        or_(
+            PipelineTask.assignee == current_user.name,
+            PipelineTask.assignee_id == current_user.id,
+        ),
         PipelineTask.project.isnot(None),
     ).distinct()
     assigned_result = await db.execute(assigned_q)
     assigned_project_names = [r[0] for r in assigned_result.all()]
 
+    # 본인이 생성한 프로젝트 OR 태스크에 참여 중인 프로젝트만 반환
     query = select(Project).order_by(Project.created_at)
-    if current_user.team:
-        if assigned_project_names:
-            query = query.where(
-                or_(
-                    Project.team == current_user.team,
-                    Project.name.in_(assigned_project_names),
-                )
+    if assigned_project_names:
+        query = query.where(
+            or_(
+                Project.created_by == current_user.id,
+                Project.name.in_(assigned_project_names),
             )
-        else:
-            query = query.where(Project.team == current_user.team)
+        )
     else:
-        if assigned_project_names:
-            query = query.where(
-                or_(
-                    Project.created_by == current_user.id,
-                    Project.name.in_(assigned_project_names),
-                )
-            )
-        else:
-            query = query.where(Project.created_by == current_user.id)
+        query = query.where(Project.created_by == current_user.id)
 
     result = await db.execute(query)
     items = result.scalars().all()
