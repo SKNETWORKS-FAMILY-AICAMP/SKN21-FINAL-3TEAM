@@ -155,11 +155,21 @@ async def startup_slack_scheduler():
 
 @app.on_event("startup")
 async def startup_preload():
-    """서버 시작 시 모델 pre-loading (첫 요청 지연 방지)"""
-    import time
-    import asyncio
+    """서버 시작 시 RAG 파이프라인 pre-loading (첫 요청 지연 방지)
 
-    print("[Startup] 모델 pre-loading 시작...")
+    get_qdrant_pipeline() → initialize() 내부에서:
+      1) 임베딩 모델 로드
+      2) Qdrant 컬렉션 초기화
+      3) BM25 인덱스 구축 (Qdrant에서 전체 문서 조회 → 토크나이징)
+    를 모두 수행하므로, 별도 reindex_all_documents()는 불필요.
+
+    Note: reindex_all_documents()는 DB→Qdrant 재동기화 + 임베딩 재생성이 필요한
+    경우에만 관리자 API(/api/v1/documents/reindex)로 수동 실행.
+    """
+    import asyncio
+    import time
+
+    print("[Startup] RAG 파이프라인 pre-loading 시작...")
     _t = time.time()
 
     try:
@@ -167,28 +177,13 @@ async def startup_preload():
 
         await asyncio.wait_for(
             asyncio.get_event_loop().run_in_executor(None, get_qdrant_pipeline),
-            timeout=30
+            timeout=60
         )
-        print(f"[Startup] RAG 파이프라인 로드 완료 ({time.time()-_t:.2f}s)")
+        print(f"[Startup] RAG 파이프라인 로드 완료 — 임베딩+Qdrant+BM25 ({time.time()-_t:.2f}s)")
     except asyncio.TimeoutError:
-        print("[Startup] RAG 파이프라인 로드 타임아웃 (30초 초과, 건너뜀)")
+        print("[Startup] RAG 파이프라인 로드 타임아웃 (60초 초과, 건너뜀)")
     except Exception as e:
         print(f"[Startup] RAG 파이프라인 로드 실패 (서비스는 계속 가능): {e}")
-
-    # 문서 Qdrant 재인덱싱 (30초 타임아웃)
-    try:
-        from app.db.session import async_session
-        from app.services.document_service import reindex_all_documents
-
-        async with async_session() as db:
-            result = await asyncio.wait_for(reindex_all_documents(db), timeout=30)
-            print(f"[Startup] 문서 재인덱싱 완료: {result}")
-    except asyncio.TimeoutError:
-        print("[Startup] 문서 재인덱싱 타임아웃 (30초 초과, 건너뜀)")
-    except Exception as e:
-        print(f"[Startup] 문서 재인덱싱 실패 (서비스는 계속 가능): {e}")
-
-    print(f"[Startup] 모델 pre-loading 완료 (총 {time.time()-_t:.2f}s)")
 
 
 @app.on_event("shutdown")

@@ -234,7 +234,16 @@ def create_meeting_minutes(output_path: str = "회의록_test.docx", data: dict 
         _inject_cell_text(t1.rows[1].cells[0], data.get("content", ""))
 
         decisions = data.get("decisions", [])
-        decisions_text = "\n".join(decisions) if isinstance(decisions, list) else str(decisions)
+        if isinstance(decisions, list):
+            parts = []
+            for d in decisions:
+                if isinstance(d, dict):
+                    parts.append(d.get("decision", d.get("content", str(d))))
+                else:
+                    parts.append(str(d))
+            decisions_text = "\n".join(parts)
+        else:
+            decisions_text = str(decisions)
         _inject_cell_text(t2.rows[1].cells[0], decisions_text)
 
         action_items = data.get("action_items", [])
