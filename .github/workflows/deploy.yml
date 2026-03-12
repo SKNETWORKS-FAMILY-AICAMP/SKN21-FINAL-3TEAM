@@ -44,7 +44,29 @@ jobs:
             "
             cd ..
             sudo systemctl restart workflow-agent
-            sleep 5
+            echo "서버 재시작 완료, 헬스체크 대기..."
+            for i in $(seq 1 24); do
+              if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+                echo "서버 정상 가동 (${i}회차, $((i*5))초)"
+                exit 0
+              fi
+              echo "  대기 중... (${i}/24)"
+              sleep 5
+            done
+            echo "서버 응답 없음 (120초 타임아웃)"
             sudo systemctl status workflow-agent --no-pager || true
-            curl -s http://localhost:8000/health || echo "서버 시작 대기 중..."
-            echo "배포 완료"
+            exit 1
+
+      - name: Discord 알림 (성공)
+        if: success()
+        run: |
+          curl -s -X POST "${{ secrets.DISCORD_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"embeds\":[{\"title\":\"✅ 배포 성공\",\"description\":\"백엔드 서버가 정상 가동 중입니다.\",\"color\":3066993,\"fields\":[{\"name\":\"브랜치\",\"value\":\"\`develop\`\",\"inline\":true},{\"name\":\"커밋\",\"value\":\"\`${{ github.sha }}\`\",\"inline\":true},{\"name\":\"실행자\",\"value\":\"${{ github.actor }}\",\"inline\":true}],\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}]}"
+
+      - name: Discord 알림 (실패)
+        if: failure()
+        run: |
+          curl -s -X POST "${{ secrets.DISCORD_WEBHOOK }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"embeds\":[{\"title\":\"❌ 배포 실패\",\"description\":\"서버가 정상 가동되지 않았습니다. EC2 확인 필요.\",\"color\":15158332,\"fields\":[{\"name\":\"브랜치\",\"value\":\"\`develop\`\",\"inline\":true},{\"name\":\"커밋\",\"value\":\"\`${{ github.sha }}\`\",\"inline\":true},{\"name\":\"실행자\",\"value\":\"${{ github.actor }}\",\"inline\":true}],\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}]}"
