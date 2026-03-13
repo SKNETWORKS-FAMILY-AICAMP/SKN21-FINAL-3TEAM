@@ -1,8 +1,13 @@
 """
-Planner 비교 결과 재평가 스크립트 (v3 지표)
+Planner 비교 결과 재평가 스크립트 (v3.1 지표)
 
 지표 구조:
-  [전제 조건] JSON Valid + Plan 존재 → pass/fail
+  [전제 조건] "유효 응답" = JSON Valid + Plan 존재 + Plan 비어있지 않음
+     - JSON 파싱 실패 (Qwen <think> 절삭 등) → 실패
+     - 빈 plan [] 출력 (Kanana general intent 등) → 실패
+     - 둘 다 사용자에게는 무응답이므로 동일하게 실패 처리
+  [모델 비교] 양쪽 다 유효 응답인 공통 케이스에서만 planning 지표 비교
+  [카테고리 편향 검증] 공통 케이스의 카테고리 생존율 보고
   [핵심 지표]
     Intent Recall      30%  — 정답 intent를 빠뜨리지 않았는가
     Order Accuracy     25%  — intent 순서가 맞는가 (LCS 기반)
@@ -65,6 +70,7 @@ class EvalResult:
     # 전제 조건 (pass/fail)
     json_valid: bool = False
     plan_extracted: bool = False
+    plan_nonempty: bool = False       # plan에 1개 이상의 step 존재
 
     # 핵심 지표 (0.0 ~ 1.0)
     intent_recall: float = 0.0       # 정답 intent 중 찾은 비율
@@ -84,8 +90,9 @@ class EvalResult:
     details: dict = field(default_factory=dict)
 
     @property
-    def passed_prereq(self) -> bool:
-        return self.json_valid and self.plan_extracted
+    def usable(self) -> bool:
+        """유효 응답 = JSON 성공 + plan 존재 + plan 비어있지 않음"""
+        return self.json_valid and self.plan_extracted and self.plan_nonempty
 
 
 # ── 핵심 평가 함수 ─────────────────────────────────────────
@@ -227,6 +234,20 @@ def evaluate(test_case: dict, model_name: str,
     result.plan_extracted = True
 
     plan = parsed["plan"]
+    result.plan_nonempty = len(plan) > 0
+
+    if not result.plan_nonempty:
+        result.details["error"] = "빈 plan"
+        result.details["actual_intents"] = []
+        result.details["expected_intents"] = [
+            s["intent"] for s in test_case["expected"]["plan"]]
+        result.details["actual_steps"] = 0
+        result.details["expected_steps"] = test_case["expected"]["num_steps"]
+        # 빈 plan도 efficiency만 부분 점수 (나머지 0)
+        result.efficiency = _calc_efficiency(0, test_case["expected"]["num_steps"])
+        result.score = result.efficiency * WEIGHTS["efficiency"]
+        return result
+
     expected = test_case["expected"]
 
     expected_intents = [s["intent"] for s in expected["plan"]]
@@ -291,7 +312,7 @@ def evaluate(test_case: dict, model_name: str,
 
 def print_report(all_results: dict[str, list[EvalResult]]):
     print("\n" + "=" * 80)
-    print("PLANNER EVALUATION REPORT (v3 metrics)")
+    print("PLANNER EVALUATION REPORT (v3.1 metrics)")
     print("=" * 80)
     print(f"\n  가중치: Recall={WEIGHTS['intent_recall']:.0%} "
           f"Order={WEIGHTS['order_accuracy']:.0%} "
@@ -301,8 +322,8 @@ def print_report(all_results: dict[str, list[EvalResult]]):
 
     for model_name, results in all_results.items():
         total = len(results)
-        passed_results = [r for r in results if r.passed_prereq]
-        failed_results = [r for r in results if not r.passed_prereq]
+        passed_results = [r for r in results if r.usable]
+        failed_results = [r for r in results if not r.usable]
         passed = len(passed_results)
         failed = len(failed_results)
 
@@ -310,11 +331,20 @@ def print_report(all_results: dict[str, list[EvalResult]]):
         print(f"  Model: {model_name}")
         print(f"{'━' * 55}")
 
-        # ── JSON 신뢰성 (별도 보고) ──
-        print(f"\n  [JSON 신뢰성]")
-        print(f"    Pass Rate:            {passed}/{total} ({passed/total*100:.1f}%)")
+        # ── 유효 응답률 ──
+        json_ok = sum(1 for r in results if r.json_valid and r.plan_extracted)
+        empty_plan = sum(1 for r in results if r.json_valid and r.plan_extracted
+                         and not r.plan_nonempty)
+        json_fail = sum(1 for r in results if not r.json_valid or not r.plan_extracted)
+
+        print(f"\n  [유효 응답률]")
+        print(f"    Usable:               {passed}/{total} ({passed/total*100:.1f}%)")
         if failed > 0:
-            print(f"    실패:                 {failed}건")
+            print(f"    실패 내역:")
+            if json_fail > 0:
+                print(f"      JSON 파싱 실패:     {json_fail}건")
+            if empty_plan > 0:
+                print(f"      빈 plan 출력:       {empty_plan}건")
             # 카테고리별 실패 분포
             fail_cats = {}
             for r in failed_results:
@@ -322,14 +352,14 @@ def print_report(all_results: dict[str, list[EvalResult]]):
             for cat, cnt in sorted(fail_cats.items(), key=lambda x: -x[1]):
                 print(f"      {cat}: {cnt}건")
 
-        # ── Planning 능력 (JSON 성공 케이스만) ──
+        # ── Planning 능력 (유효 응답만) ──
         if passed == 0:
-            print(f"\n  [Planning 능력] — JSON 성공 케이스 없음, 평가 불가")
+            print(f"\n  [Planning 능력] — 유효 응답 없음, 평가 불가")
             continue
 
         pavg = lambda attr: sum(getattr(r, attr) for r in passed_results) / passed
 
-        print(f"\n  [Planning 능력] — JSON 성공 {passed}건 기준")
+        print(f"\n  [Planning 능력] — 유효 {passed}건 기준")
         print(f"    Intent Recall:         {pavg('intent_recall'):.3f}     (30%  빠뜨린 intent)")
         print(f"    Order Accuracy:        {pavg('order_accuracy'):.3f}     (25%  순서 정확도)")
         print(f"    Intent Precision:      {pavg('intent_precision'):.3f}     (20%  불필요 단계)")
@@ -346,8 +376,8 @@ def print_report(all_results: dict[str, list[EvalResult]]):
         print(f"    Perfect Score:         {perfect}/{passed} ({perfect/passed*100:.1f}%)")
         print(f"    Avg Latency:           {pavg('latency_ms'):.0f}ms")
 
-        # 카테고리별 (JSON 성공 케이스만)
-        print(f"\n  [카테고리별] — JSON 성공 케이스 기준")
+        # 카테고리별 (유효 응답만)
+        print(f"\n  [카테고리별] — 유효 응답 기준")
         cats = sorted(set(r.category for r in passed_results))
         print(f"    {'Category':<15} {'Score':>6} {'Recall':>7} {'Order':>7} "
               f"{'Prec':>6} {'DepC':>6} {'Eff':>5} {'N':>3}")
@@ -362,7 +392,7 @@ def print_report(all_results: dict[str, list[EvalResult]]):
                   f"{cavg('order_accuracy'):>7.3f} {cavg('intent_precision'):>6.3f} "
                   f"{cavg('dep_correctness'):>6.3f} {cavg('efficiency'):>5.3f} {n:>3}")
 
-        # 실패 케이스 (JSON 성공했지만 점수 낮은 것만)
+        # 유효 응답 중 점수 낮은 케이스
         low_score = [r for r in passed_results if r.score < 0.7]
         if low_score:
             print(f"\n  [Planning 낮은 점수 (< 0.7)] — {len(low_score)}건")
@@ -386,7 +416,7 @@ def print_report(all_results: dict[str, list[EvalResult]]):
 
         # ── 공통 성공 케이스 추출 ──
         passed_ids_per_model = {
-            model: {r.test_id for r in rs if r.passed_prereq}
+            model: {r.test_id for r in rs if r.usable}
             for model, rs in all_results.items()
         }
         common_ids = set.intersection(*passed_ids_per_model.values())
@@ -397,24 +427,25 @@ def print_report(all_results: dict[str, list[EvalResult]]):
         }
 
         print(f"\n{'━' * 65}")
-        print("  MODEL COMPARISON — 공통 JSON 성공 케이스 기준")
+        print("  MODEL COMPARISON — 공통 유효 응답 케이스 기준")
         print(f"{'━' * 65}")
 
+        total_cases = len(list(all_results.values())[0])
         header = f"  {'Metric':<24}"
         for name in model_names:
             header += f"{name:>18}"
         print(header)
         print(f"  {'─' * (24 + 18 * len(model_names))}")
 
-        # JSON 신뢰성 (전체 기준, 참고용)
-        line = f"  {'JSON Pass Rate':<24}"
+        # 유효 응답률 (참고용)
+        line = f"  {'Usable Rate':<24}"
         for model in model_names:
             rs = all_results[model]
-            val = sum(r.passed_prereq for r in rs) / len(rs) * 100
+            val = sum(r.usable for r in rs) / len(rs) * 100
             line += f"{val:>17.1f}%"
         print(line)
 
-        line = f"  {'Common Sample Size':<24}"
+        line = f"  {'Common Usable Size':<24}"
         for model in model_names:
             line += f"{len(common_results[model]):>18d}"
         print(line)
@@ -473,11 +504,29 @@ def print_report(all_results: dict[str, list[EvalResult]]):
                     line += f"{val:>18.0f}"
             print(line)
 
+        # 카테고리 편향 검증
+        all_cats = sorted({r.category for rs in all_results.values()
+                           for r in rs})
+        if all_cats:
+            print(f"\n  [카테고리 편향 검증]")
+            print(f"    {'Category':<15} {'전체':>5} {'공통':>5} {'생존율':>7} "
+                  f"{'편향':>6}")
+            print(f"    {'─' * 42}")
+            for cat in all_cats:
+                cat_total = sum(1 for r in list(all_results.values())[0]
+                                if r.category == cat)
+                cat_common = sum(1 for r in list(common_results.values())[0]
+                                 if r.category == cat)
+                survival = cat_common / cat_total * 100 if cat_total > 0 else 0
+                bias = "⚠ LOW" if survival < 50 else ""
+                print(f"    {cat:<15} {cat_total:>5} {cat_common:>5} "
+                      f"{survival:>6.1f}% {bias:>6}")
+
         # 카테고리별 공통 비교
         common_cats = sorted({r.category for rs in common_results.values()
                               for r in rs})
         if common_cats:
-            print(f"\n  [카테고리별 Planning Score — 공통 케이스]")
+            print(f"\n  [카테고리별 Planning Score — 공통 유효 케이스]")
             header = f"    {'Category':<15}"
             for name in model_names:
                 header += f"{name:>18}"
@@ -572,7 +621,7 @@ def main():
     output_path = report_path.parent / "evaluation_v3_report.json"
     v3_report = {
         "timestamp": __import__("time").strftime("%Y-%m-%d %H:%M:%S"),
-        "metrics_version": "v3",
+        "metrics_version": "v3.1",
         "weights": WEIGHTS,
         "results": {
             model: [
@@ -582,6 +631,8 @@ def main():
                     "input": r.input_text,
                     "json_valid": r.json_valid,
                     "plan_extracted": r.plan_extracted,
+                    "plan_nonempty": r.plan_nonempty,
+                    "usable": r.usable,
                     "intent_recall": round(r.intent_recall, 4),
                     "order_accuracy": round(r.order_accuracy, 4),
                     "intent_precision": round(r.intent_precision, 4),
@@ -601,7 +652,7 @@ def main():
         "summary": {
             model: (lambda total, passed: {
                 "total_cases": len(total),
-                "json_pass_rate": round(sum(r.passed_prereq for r in total) / len(total), 4),
+                "usable_rate": round(sum(r.usable for r in total) / len(total), 4),
                 "eval_sample_size": len(passed),
                 "planning_metrics": {
                     "intent_recall": round(sum(r.intent_recall for r in passed) / len(passed), 4),
@@ -616,7 +667,7 @@ def main():
                     "struct_invalid": sum(not r.dep_structural_valid for r in passed),
                     "avg_latency_ms": round(sum(r.latency_ms for r in passed) / len(passed), 1),
                 } if passed else None,
-            })(rs, [r for r in rs if r.passed_prereq])
+            })(rs, [r for r in rs if r.usable])
             for model, rs in all_results.items()
         },
     }
@@ -624,7 +675,7 @@ def main():
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(v3_report, f, ensure_ascii=False, indent=2)
 
-    print(f"\nv3 Report saved: {output_path}")
+    print(f"\nv3.1 Report saved: {output_path}")
 
 
 if __name__ == "__main__":
