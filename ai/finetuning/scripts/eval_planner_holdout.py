@@ -204,6 +204,8 @@ def evaluate_single(test_case: dict, pred_text: str, latency_ms: float) -> dict:
     }
     result["hallucinated"] = hallucinated
     result["perfect"] = score >= 0.99
+    result["expected_steps"] = expected["num_steps"]
+    result["actual_steps"] = len(plan)
 
     return result
 
@@ -355,28 +357,30 @@ def main():
     print(f"  HELD-OUT 평가 결과 ({mode.upper()}, v3.1 지표)")
     print(f"{'='*65}")
     print(f"  총 평가:        {total}건")
-    print(f"  유효 응답:      {usable}/{total} ({usable/total*100:.1f}%)")
 
     if failed_results:
+        print(f"  응답 실패:      {len(failed_results)}건")
         json_fail = sum(1 for r in failed_results if not r["json_valid"])
         empty_plan = sum(1 for r in failed_results
                          if r["json_valid"] and not r["plan_nonempty"])
-        print(f"  실패 내역:")
         if json_fail > 0:
             print(f"    JSON 파싱 실패: {json_fail}건")
         if empty_plan > 0:
             print(f"    빈 plan 출력:   {empty_plan}건")
-        # 카테고리별 실패
         fail_cats = {}
         for r in failed_results:
             fail_cats[r["category"]] = fail_cats.get(r["category"], 0) + 1
         for cat, cnt in sorted(fail_cats.items(), key=lambda x: -x[1]):
             print(f"    {cat}: {cnt}건")
 
-    if usable > 0:
-        avg = lambda key: sum(r["metrics"][key] for r in usable_results) / usable
+    # 평가 대상: usable 응답만 (JSON 파싱 성공 + plan 비어있지 않음)
+    eval_count = usable
+    if eval_count == 0:
+        print(f"\n  평가 가능한 응답 없음")
+    else:
+        avg = lambda key: sum(r["metrics"][key] for r in usable_results) / eval_count
 
-        print(f"\n  [Planning 능력] — 유효 {usable}건 기준")
+        print(f"\n  [Planning 능력] — {eval_count}건 평가")
         print(f"    Intent Recall:     {avg('intent_recall'):.3f}")
         print(f"    Order Accuracy:    {avg('order_accuracy'):.3f}")
         print(f"    Intent Precision:  {avg('intent_precision'):.3f}")
@@ -386,8 +390,8 @@ def main():
         print(f"    Weighted Score:    {avg('score'):.3f}")
 
         perfect = sum(1 for r in usable_results if r["perfect"])
-        print(f"\n    Perfect Score:     {perfect}/{usable} ({perfect/usable*100:.1f}%)")
-        avg_lat = sum(r["latency_ms"] for r in usable_results) / usable
+        print(f"\n    Perfect Match:     {perfect}/{total} ({perfect/total*100:.1f}%)")
+        avg_lat = sum(r["latency_ms"] for r in usable_results) / eval_count
         print(f"    Avg Latency:       {avg_lat:.0f}ms")
 
         # 카테고리별
@@ -405,6 +409,79 @@ def main():
                   f"{cavg('order_accuracy'):>7.3f} {cavg('intent_precision'):>6.3f} "
                   f"{cavg('dep_correctness'):>6.3f} {cavg('efficiency'):>5.3f} "
                   f"{n:>3}/{total_cat:>3}")
+
+        # ── Step Collapse Rate (단계 축소율) ──
+        multi_step_results = [r for r in usable_results if r["expected_steps"] >= 2]
+        if multi_step_results:
+            collapsed = sum(1 for r in multi_step_results
+                            if r["actual_steps"] < r["expected_steps"])
+            collapse_rate = collapsed / len(multi_step_results)
+            over_split = sum(1 for r in usable_results
+                             if r["actual_steps"] > r["expected_steps"])
+            print(f"\n  [Step Collapse]")
+            print(f"    Multi-step 케이스:  {len(multi_step_results)}건 "
+                  f"(2+ step expected)")
+            print(f"    단계 축소 발생:    {collapsed}건 "
+                  f"({collapse_rate*100:.1f}%)")
+            if over_split > 0:
+                print(f"    과잉 분리 발생:    {over_split}건")
+
+        # ── Exact Match by Step Count (단계 수별 정확도) ──
+        step_counts = sorted(set(r["expected_steps"] for r in results))
+        print(f"\n  [단계 수별 Perfect Match]")
+        print(f"    {'Steps':>5}  {'Perfect':>8}  {'Total':>5}  {'Rate':>7}")
+        print(f"    {'─'*35}")
+        for sc in step_counts:
+            sc_all = [r for r in results if r.get("expected_steps") == sc]
+            sc_perfect = sum(1 for r in sc_all
+                             if r.get("usable") and r.get("perfect"))
+            sc_total = len(sc_all)
+            rate = sc_perfect / sc_total * 100 if sc_total > 0 else 0
+            bar = "█" * int(rate / 5) + "░" * (20 - int(rate / 5))
+            print(f"    {sc:>5}  {sc_perfect:>5}/{sc_total:<3} {rate:>6.1f}%  {bar}")
+
+        # ── Intent Confusion Matrix (혼동 행렬) ──
+        intent_list = sorted(VALID_INTENTS)
+        # expected의 각 intent에 대해 actual에서 매칭되는 intent 집계
+        confusion = {exp: Counter() for exp in intent_list}
+        for r in usable_results:
+            exp_intents = r["expected_intents"]
+            act_intents = r["actual_intents"]
+            # step 단위로 positional matching
+            for idx, exp_i in enumerate(exp_intents):
+                if idx < len(act_intents):
+                    confusion[exp_i][act_intents[idx]] += 1
+                else:
+                    confusion[exp_i]["(누락)"] += 1
+            # actual이 더 긴 경우 (과잉 분리)
+            for idx in range(len(exp_intents), len(act_intents)):
+                act_i = act_intents[idx]
+                confusion.setdefault("(과잉)", Counter())[act_i] += 1
+
+        # 혼동이 있는 경우만 출력
+        has_confusion = False
+        for exp_i in intent_list:
+            for act_i, cnt in confusion[exp_i].items():
+                if act_i != exp_i and cnt > 0:
+                    has_confusion = True
+                    break
+        has_missing = any(confusion[e].get("(누락)", 0) > 0 for e in intent_list)
+        has_oversplit = "(과잉)" in confusion and sum(confusion["(과잉)"].values()) > 0
+
+        if has_confusion or has_missing or has_oversplit:
+            print(f"\n  [Intent 혼동 행렬] — 오분류만 표시")
+            print(f"    {'expected':<16} → {'predicted':<16} {'건수':>4}")
+            print(f"    {'─'*42}")
+            for exp_i in intent_list:
+                for act_i, cnt in confusion[exp_i].most_common():
+                    if act_i != exp_i and cnt > 0:
+                        print(f"    {exp_i:<16} → {act_i:<16} {cnt:>4}")
+                if confusion[exp_i].get("(누락)", 0) > 0:
+                    print(f"    {exp_i:<16} → {'(누락)':<16} "
+                          f"{confusion[exp_i]['(누락)']:>4}")
+            if has_oversplit:
+                for act_i, cnt in confusion["(과잉)"].most_common():
+                    print(f"    {'(과잉 추가)':<16} → {act_i:<16} {cnt:>4}")
 
         # 오답 상세
         wrong = [r for r in usable_results if not r["perfect"]]
@@ -429,19 +506,35 @@ def main():
         root / "outputs" / "v3_planner" / f"holdout_eval_{mode}.json"
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Step Collapse / Exact Match by Step Count 집계
+    multi_step_all = [r for r in usable_results if r["expected_steps"] >= 2]
+    step_collapse_rate = (
+        round(sum(1 for r in multi_step_all
+                  if r["actual_steps"] < r["expected_steps"]) / len(multi_step_all), 4)
+        if multi_step_all else 0
+    )
+    step_counts_summary = {}
+    for sc in sorted(set(r.get("expected_steps", 1) for r in results)):
+        sc_all = [r for r in results if r.get("expected_steps") == sc]
+        sc_perfect = sum(1 for r in sc_all if r.get("usable") and r.get("perfect"))
+        step_counts_summary[str(sc)] = {
+            "total": len(sc_all), "perfect": sc_perfect,
+            "rate": round(sc_perfect / len(sc_all), 4) if sc_all else 0,
+        }
+
     save_data = {
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "model_mode": mode,
         "adapter_path": adapter_path,
         "test_cases_path": str(test_path),
         "total": total,
-        "usable": usable,
-        "usable_rate": round(usable / total, 4) if total else 0,
         "metrics": {k: round(avg(k), 4) for k in WEIGHTS} if usable > 0 else None,
         "weighted_score": round(avg("score"), 4) if usable > 0 else None,
         "perfect_rate": round(
-            sum(1 for r in usable_results if r["perfect"]) / usable, 4
-        ) if usable > 0 else 0,
+            sum(1 for r in usable_results if r["perfect"]) / total, 4
+        ) if total > 0 else 0,
+        "step_collapse_rate": step_collapse_rate,
+        "exact_match_by_steps": step_counts_summary,
         "results": results,
     }
 
