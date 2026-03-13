@@ -401,10 +401,8 @@ def route_by_intent(state: AgentState) -> str:
         route = "judgment_agent"
     elif intent in ("doc_search", "doc_generate", "doc_summary", "doc_qa"):
         route = "document_agent"
-    elif intent.startswith("schedule_"):
+    elif intent.startswith("schedule_") or intent in ("pipeline_create", "approval_create"):
         route = "schedule_agent"
-    elif intent in ("pipeline_create", "approval_create"):
-        route = "action_agent"
     else:
         route = "general_response"
 
@@ -485,7 +483,6 @@ def build_graph():
     graph.add_node("judgment_agent", safe_judgment_agent)
     graph.add_node("document_agent", safe_document_agent)
     graph.add_node("schedule_agent", safe_schedule_agent)
-    graph.add_node("action_agent", safe_action_agent)
     graph.add_node("general_response", general_response_node)
     graph.add_node("format_response", format_response)
 
@@ -511,7 +508,6 @@ def build_graph():
             "judgment_agent": "judgment_agent",
             "document_agent": "document_agent",
             "schedule_agent": "schedule_agent",
-            "action_agent": "action_agent",
             "general_response": "general_response",
         },
     )
@@ -521,7 +517,6 @@ def build_graph():
     graph.add_edge("judgment_agent", "format_response")
     graph.add_edge("document_agent", "format_response")
     graph.add_edge("schedule_agent", "format_response")
-    graph.add_edge("action_agent", "format_response")
     graph.add_edge("general_response", "format_response")
     graph.add_edge("clarify_with_candidates", "format_response")
     graph.add_edge("format_response", END)
