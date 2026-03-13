@@ -1,14 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitMerge, Clock, CheckCircle2, AlertTriangle, Plus, Trash2, X, Pencil, ExternalLink, CheckSquare, Square, Send, FolderOpen, ChevronDown, RefreshCw, Sparkles, FileCheck, CalendarPlus, Loader2 } from 'lucide-react';
+import { GitMerge, Clock, CheckCircle2, AlertTriangle, Plus, Trash2, X, Pencil, ExternalLink, CheckSquare, Square, Send, FolderOpen, ChevronDown, RefreshCw, Sparkles, FileCheck, CalendarPlus, Loader2, Paperclip } from 'lucide-react';
 import { listPipelineTasks, createPipelineTask, updatePipelineTask, deletePipelineTask } from '../../api/tasks';
 import { createTask as createGoogleTask } from '../../api/google';
 import useGoogleServices from '../../hooks/useGoogleServices';
-import { suggestForProject } from '../../api/approvals';
+import { suggestForProject, createApproval } from '../../api/approvals';
 import { createSchedule } from '../../api/schedules';
+import { getAllMembers } from '../../api/auth';
 import client from '../../api/client';
 import { toast } from '../../store/toastStore';
+import MemberDropdown from '../common/MemberDropdown';
+import DatePicker from '../common/DatePicker';
 
 const priorityColors = {
     high: 'bg-error-bg text-error dark:bg-red-900/40 dark:text-red-400',
@@ -36,6 +39,32 @@ const stageConfig = [
     { id: 'review', label: 'Review', icon: AlertTriangle, color: 'text-amber-600', headerBg: 'bg-amber-50/70 dark:bg-amber-900/40', accent: 'border-amber-200' },
     { id: 'done', label: 'Done', icon: CheckCircle2, color: 'text-emerald-600', headerBg: 'bg-emerald-50/70 dark:bg-emerald-900/40', accent: 'border-emerald-200' },
 ];
+
+const TEAMS = ['개발', 'QA기획', 'UI/UX', '영업', '마케팅', 'CS'];
+
+const approvalTypeConfig = {
+    leave: { label: '연차/반차 신청' },
+    remote: { label: '재택근무 신청' },
+    room: { label: '회의실 예약' },
+    design: { label: '디자인 에셋 요청' },
+    certificate: { label: '증명서 발급 요청' },
+    budget: { label: '결재 요청' },
+    review: { label: 'PR 리뷰 요청' },
+    deploy: { label: '배포 승인 요청' },
+    infra: { label: '인프라/권한 신청' },
+    security: { label: '보안 예외 처리' },
+    other: { label: '기타' },
+};
+
+/** suggested_day → 실제 날짜 변환 */
+function resolveSuggestedDay(day) {
+    const now = new Date();
+    if (!day || day === 'today') return now;
+    if (day === 'tomorrow') { const d = new Date(now); d.setDate(d.getDate() + 1); return d; }
+    if (day === 'this_week') { const d = new Date(now); d.setDate(d.getDate() + 2); return d; }
+    const parsed = new Date(day);
+    return isNaN(parsed.getTime()) ? now : parsed;
+}
 
 const EMPTY_FORM = { title: '', description: '', assignee: '', dueDate: '', priority: 'medium', tags: '', project: '' };
 const INPUT_CLS = 'w-full px-3 py-2 border border-neutral-border rounded-lg bg-surface-card text-neutral-main focus:outline-none focus:ring-2 focus:ring-primary-500';
@@ -71,6 +100,23 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
     const [aiGlow, setAiGlow] = useState(!!filterProject); // 프로젝트 안에 들어왔을 때 반짝임
     const [addingScheduleIdx, setAddingScheduleIdx] = useState(null); // AI 추천 일정 추가 중인 인덱스
 
+    // 결재 추천 → 결재 신청 모달
+    const [showApprovalModal, setShowApprovalModal] = useState(false);
+    const [approvalForm, setApprovalForm] = useState({ type: 'leave', title: '', detail: '', target_team: '', target_user_id: '', customType: '' });
+    const [approvalFile, setApprovalFile] = useState(null);
+    const [approvalSubmitting, setApprovalSubmitting] = useState(false);
+    const [appliedApprovalIdx, setAppliedApprovalIdx] = useState(null);
+    const [allMembers, setAllMembers] = useState([]);
+
+    // 일정 추천 → 일정 등록 모달
+    const [schedulePickerData, setSchedulePickerData] = useState(null); // { suggestion, idx }
+    const [pickerTitle, setPickerTitle] = useState('');
+    const [pickerDate, setPickerDate] = useState('');
+    const [pickerStartTime, setPickerStartTime] = useState('10:00');
+    const [pickerEndTime, setPickerEndTime] = useState('11:00');
+    const [pickerAllDay, setPickerAllDay] = useState(false);
+    const [pickerScheduleType, setPickerScheduleType] = useState('meeting');
+
     const fetchTasks = useCallback(async () => {
         try {
             const res = await listPipelineTasks();
@@ -92,11 +138,11 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                 client.get('/auth/all-members'),
             ]).then(([teamRes, allRes]) => {
                 const teamMembers = teamRes.data || [];
-                const allMembers = allRes.data || [];
+                const allMembersData = allRes.data || [];
                 // 중복 제거하여 합침
                 const map = new Map();
                 teamMembers.forEach(m => map.set(m.name, m));
-                allMembers.forEach(m => { if (!map.has(m.name)) map.set(m.name, m); });
+                allMembersData.forEach(m => { if (!map.has(m.name)) map.set(m.name, m); });
                 setMembers([...map.values()]);
             }).catch(() => {
                 client.get('/auth/team-members')
@@ -108,6 +154,8 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                 .then(res => setMembers(res.data || []))
                 .catch(() => setMembers([]));
         }
+        // 결재 모달용 전체 멤버 로드
+        getAllMembers().then(res => setAllMembers(res.data || [])).catch(() => {});
     }, [projectMembers.length]);
 
     useEffect(() => {
@@ -322,42 +370,104 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
         }
     };
 
-    /* ── AI 추천 일정 → 프로젝트 공유 일정으로 등록 ── */
-    const handleAddAiSchedule = async (item, idx) => {
+    /* ── 결재 추천 카드 클릭 → 결재 신청 모달 열기 ── */
+    const openApprovalModal = (item, idx) => {
+        setApprovalForm({
+            type: item.type || 'budget',
+            title: item.title || '',
+            detail: item.detail || '',
+            target_team: '',
+            target_user_id: '',
+            customType: '',
+        });
+        setApprovalFile(null);
+        setAppliedApprovalIdx(idx);
+        setShowApprovalModal(true);
+    };
+
+    const handleApprovalSubmit = async (e) => {
+        e.preventDefault();
+        if (!approvalForm.title.trim()) return;
+        if (!approvalForm.target_user_id) {
+            toast.error('보낼 팀원을 선택해주세요.');
+            return;
+        }
+        setApprovalSubmitting(true);
+        try {
+            await createApproval({
+                type: approvalForm.type === 'other' ? (approvalForm.customType.trim() || 'other') : approvalForm.type,
+                title: approvalForm.title.trim(),
+                detail: approvalForm.detail.trim() || null,
+                target_team: approvalForm.target_team || null,
+                target_user_id: approvalForm.target_user_id || null,
+            }, approvalFile);
+            toast.success('결재 요청이 전송되었습니다!');
+            setShowApprovalModal(false);
+            // 추천 목록에서 제거
+            if (appliedApprovalIdx !== null) {
+                setAiApprovals(prev => prev.filter((_, i) => i !== appliedApprovalIdx));
+                setAppliedApprovalIdx(null);
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.detail || '결재 요청에 실패했습니다.');
+        } finally {
+            setApprovalSubmitting(false);
+        }
+    };
+
+    /* ── 일정 추천 → 날짜 선택 모달 열기 ── */
+    const openSchedulePicker = (item, idx) => {
+        const defaultDate = resolveSuggestedDay(item.suggested_day);
+        const yyyy = defaultDate.getFullYear();
+        const mm = String(defaultDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(defaultDate.getDate()).padStart(2, '0');
+        setPickerDate(`${yyyy}-${mm}-${dd}`);
+        const duration = item.duration_minutes || 60;
+        setPickerStartTime('10:00');
+        const endH = Math.floor((600 + duration) / 60);
+        const endM = (600 + duration) % 60;
+        setPickerEndTime(`${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`);
+        setPickerTitle(item.title);
+        setPickerAllDay(false);
+        setPickerScheduleType(item.schedule_type || 'meeting');
+        setSchedulePickerData({ suggestion: item, idx });
+    };
+
+    const confirmAddSchedule = async () => {
+        if (!schedulePickerData || !pickerDate) return;
+        const { suggestion: s, idx } = schedulePickerData;
         const projName = filterProject || activeProject;
-        if (!projName || projName === 'all') return;
         setAddingScheduleIdx(idx);
         try {
-            // suggested_day 기반 날짜 계산
-            const now = new Date();
-            let startDate = new Date(now);
-            if (item.suggested_day === 'tomorrow') {
-                startDate.setDate(startDate.getDate() + 1);
-            } else if (item.suggested_day === 'this_week') {
-                // 이번 주 금요일
-                const dayOfWeek = startDate.getDay();
-                const daysUntilFri = dayOfWeek <= 5 ? 5 - dayOfWeek : 0;
-                startDate.setDate(startDate.getDate() + (daysUntilFri || 1));
+            let startStr, endStr;
+            if (pickerAllDay) {
+                startStr = `${pickerDate}T00:00:00`;
+                endStr = `${pickerDate}T23:59:59`;
+            } else {
+                startStr = `${pickerDate}T${pickerStartTime}:00`;
+                endStr = `${pickerDate}T${pickerEndTime}:00`;
             }
-            const dateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
-            const durationMin = item.duration_minutes || 60;
-            const startTime = `${dateStr}T10:00:00`;
-            const endHour = 10 + Math.floor(durationMin / 60);
-            const endMin = durationMin % 60;
-            const endTime = `${dateStr}T${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}:00`;
 
+            if (isNaN(new Date(startStr).getTime()) || isNaN(new Date(endStr).getTime())) {
+                toast.error('유효한 날짜와 시간을 입력해주세요.');
+                setAddingScheduleIdx(null);
+                return;
+            }
+
+            const addedTitle = pickerTitle.trim() || s.title;
             await createSchedule({
-                title: item.title,
-                description: item.description || '',
-                start_time: startTime,
-                end_time: endTime,
-                schedule_type: item.schedule_type || 'meeting',
-                priority: item.priority || 'medium',
-                project_name: projName,
+                title: addedTitle,
+                description: s.description || s.reason || '',
+                start_time: startStr,
+                end_time: endStr,
+                schedule_type: pickerScheduleType || s.schedule_type || 'meeting',
+                priority: s.priority || 'medium',
+                project_name: projName && projName !== 'all' ? projName : undefined,
             });
+
             toast.success(`[${projName}] 프로젝트 일정 등록 완료!`);
-            // 등록된 항목 제거
-            setAiSchedules((prev) => prev.filter((_, i) => i !== idx));
+            setAiSchedules(prev => prev.filter((_, i) => i !== idx));
+            setSchedulePickerData(null);
         } catch (err) {
             toast.error(err.response?.data?.detail || '일정 등록 실패');
         } finally {
@@ -906,7 +1016,8 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                                             initial={{ opacity: 0, y: 10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: idx * 0.1 }}
-                                            className="bg-white/60 dark:bg-neutral-800/60 backdrop-blur-md rounded-2xl p-4 border border-white/60 dark:border-white/10 shadow-md hover:shadow-lg hover:border-violet-300 dark:hover:border-violet-600 transition-all"
+                                            onClick={() => openApprovalModal(item, idx)}
+                                            className="bg-white/60 dark:bg-neutral-800/60 backdrop-blur-md rounded-2xl p-4 border border-white/60 dark:border-white/10 shadow-md hover:shadow-lg hover:border-violet-300 dark:hover:border-violet-600 transition-all cursor-pointer"
                                         >
                                             <div className="flex items-start gap-3">
                                                 <span className="text-xl">{approvalTypeIcons[item.type] || '📋'}</span>
@@ -921,6 +1032,11 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                                                     <p className="text-[11px] text-neutral-sub leading-relaxed mb-2">{item.detail}</p>
                                                     <p className="text-[10px] text-violet-500 dark:text-violet-400 font-medium">{item.reason}</p>
                                                 </div>
+                                            </div>
+                                            <div className="mt-2 pt-2 border-t border-neutral-100 dark:border-neutral-700">
+                                                <span className="text-[10px] text-violet-500 font-bold flex items-center gap-1">
+                                                    <FileCheck size={11} /> 클릭하여 결재 신청하기
+                                                </span>
                                             </div>
                                         </motion.div>
                                     ))
@@ -962,15 +1078,10 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                                                 )}
                                             </div>
                                             <button
-                                                onClick={() => handleAddAiSchedule(item, idx)}
-                                                disabled={addingScheduleIdx === idx}
-                                                className="w-full mt-1 px-3 py-1.5 text-[11px] font-bold rounded-lg bg-violet-500 text-white hover:bg-violet-600 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm"
+                                                onClick={() => openSchedulePicker(item, idx)}
+                                                className="w-full mt-1 px-3 py-1.5 text-[11px] font-bold rounded-lg bg-violet-500 text-white hover:bg-violet-600 active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm"
                                             >
-                                                {addingScheduleIdx === idx ? (
-                                                    <><Loader2 size={12} className="animate-spin" /> 등록 중...</>
-                                                ) : (
-                                                    <><CalendarPlus size={12} /> [{filterProject || activeProject}] 일정 추가</>
-                                                )}
+                                                <CalendarPlus size={12} /> [{filterProject || activeProject}] 일정 등록
                                             </button>
                                         </motion.div>
                                     ))
@@ -1030,6 +1141,266 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                                     {deleting ? '삭제 중...' : '삭제'}
                                 </button>
                             </div>
+                        </div>
+                    </motion.div>
+                </div>,
+                document.body
+            )}
+
+            {/* ── 결재 신청 모달 (AI 추천 → 결재 요청) ── */}
+            {showApprovalModal && createPortal(
+                <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/40 p-4">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0"
+                        onClick={() => { setShowApprovalModal(false); setAppliedApprovalIdx(null); }}
+                    />
+                    <motion.div
+                        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-md mx-4 overflow-hidden border border-white/40 dark:border-white/10 max-h-[85vh] flex flex-col"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between mb-6 flex-shrink-0">
+                            <div className="flex items-center gap-2">
+                                <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center">
+                                    <FileCheck size={20} className="text-violet-600" />
+                                </div>
+                                <h3 className="text-lg font-bold text-neutral-main dark:text-white">결재 신청</h3>
+                            </div>
+                            <button onClick={() => { setShowApprovalModal(false); setAppliedApprovalIdx(null); }} className="w-8 h-8 rounded-lg hover:bg-surface-sub dark:hover:bg-white/5 text-neutral-muted transition-colors flex items-center justify-center">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleApprovalSubmit} className="space-y-4 flex-1 min-h-0 overflow-y-auto">
+                            <div>
+                                <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">유형</label>
+                                <select
+                                    value={approvalForm.type}
+                                    onChange={(e) => setApprovalForm(prev => ({ ...prev, type: e.target.value }))}
+                                    className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                >
+                                    {Object.entries(approvalTypeConfig).map(([key, cfg]) => (
+                                        <option key={key} value={key}>{cfg.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            {approvalForm.type === 'other' && (
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">유형 직접 입력</label>
+                                    <input
+                                        type="text"
+                                        value={approvalForm.customType}
+                                        onChange={(e) => setApprovalForm(prev => ({ ...prev, customType: e.target.value }))}
+                                        placeholder="예: 출장 신청, 장비 요청 등"
+                                        className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                    />
+                                </div>
+                            )}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">보낼 팀</label>
+                                    <select
+                                        value={approvalForm.target_team}
+                                        onChange={(e) => setApprovalForm(prev => ({ ...prev, target_team: e.target.value, target_user_id: '' }))}
+                                        className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                    >
+                                        <option value="">전체</option>
+                                        {TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">보낼 팀원</label>
+                                    <MemberDropdown
+                                        members={allMembers.filter(m => !approvalForm.target_team || m.team === approvalForm.target_team)}
+                                        value={approvalForm.target_user_id}
+                                        onChange={(id) => setApprovalForm(prev => ({ ...prev, target_user_id: id }))}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">제목</label>
+                                <input
+                                    type="text"
+                                    value={approvalForm.title}
+                                    onChange={(e) => setApprovalForm(prev => ({ ...prev, title: e.target.value }))}
+                                    placeholder="요청 제목을 입력하세요"
+                                    className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all placeholder:text-neutral-muted"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">상세 내용</label>
+                                <textarea
+                                    value={approvalForm.detail}
+                                    onChange={(e) => setApprovalForm(prev => ({ ...prev, detail: e.target.value }))}
+                                    placeholder="상세 내용을 입력하세요 (선택)"
+                                    rows={4}
+                                    className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none transition-all placeholder:text-neutral-muted"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">첨부파일 (선택)</label>
+                                <input
+                                    type="file"
+                                    accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg,.gif,.webp"
+                                    onChange={(e) => setApprovalFile(e.target.files[0] || null)}
+                                    className="w-full text-sm text-neutral-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-surface-sub file:text-neutral-sub hover:file:bg-neutral-divider dark:file:bg-surface-hover dark:file:text-neutral-sub"
+                                />
+                                {approvalFile && (
+                                    <div className="flex items-center gap-1 mt-1 text-xs text-neutral-muted">
+                                        <Paperclip size={12} />
+                                        <span className="truncate">{approvalFile.name}</span>
+                                        <button type="button" onClick={() => setApprovalFile(null)} className="ml-1 p-0.5 rounded hover:bg-error-bg text-error hover:text-error transition-colors">
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex gap-3 pt-3">
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowApprovalModal(false); setAppliedApprovalIdx(null); }}
+                                    className="flex-1 py-2.5 text-xs font-black rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all"
+                                >
+                                    취소
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={approvalSubmitting || !approvalForm.target_user_id}
+                                    className="flex-1 py-2.5 bg-violet-600 text-white text-xs font-black rounded-xl shadow-xl shadow-violet-600/20 hover:bg-violet-700 hover:scale-105 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                >
+                                    {approvalSubmitting ? (
+                                        <><Loader2 size={12} className="animate-spin" /> 제출 중...</>
+                                    ) : !approvalForm.target_user_id ? (
+                                        '팀원 선택 필요'
+                                    ) : (
+                                        <><Send size={12} /> 결재 요청</>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </motion.div>
+                </div>,
+                document.body
+            )}
+
+            {/* ── 일정 날짜 선택 모달 (AI 추천 → 일정 등록) ── */}
+            {schedulePickerData && createPortal(
+                <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/40 p-4">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute inset-0"
+                        onClick={() => setSchedulePickerData(null)}
+                    />
+                    <motion.div
+                        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-white/40 dark:border-white/10"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between mb-5">
+                            <div className="flex items-center gap-2">
+                                <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center">
+                                    <CalendarPlus size={20} className="text-violet-600" />
+                                </div>
+                                <h3 className="text-base font-bold text-neutral-main dark:text-white">일정 등록</h3>
+                            </div>
+                            <button onClick={() => setSchedulePickerData(null)} className="w-8 h-8 rounded-lg hover:bg-surface-sub dark:hover:bg-white/5 text-neutral-muted transition-colors flex items-center justify-center">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">일정 이름</label>
+                                <input
+                                    type="text"
+                                    value={pickerTitle}
+                                    onChange={(e) => setPickerTitle(e.target.value)}
+                                    placeholder="일정 이름을 입력하세요"
+                                    className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm font-semibold outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all placeholder:text-neutral-muted"
+                                />
+                                {schedulePickerData.suggestion.reason && (
+                                    <p className="text-[10px] text-neutral-muted mt-1.5 ml-0.5 line-clamp-2">{schedulePickerData.suggestion.reason}</p>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">일정 유형</label>
+                                <select
+                                    value={pickerScheduleType}
+                                    onChange={(e) => setPickerScheduleType(e.target.value)}
+                                    className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
+                                >
+                                    <option value="meeting">회의</option>
+                                    <option value="task">작업</option>
+                                    <option value="deadline">마감</option>
+                                    <option value="review">리뷰</option>
+                                    <option value="milestone">마일스톤</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">날짜</label>
+                                <DatePicker
+                                    value={pickerDate}
+                                    onChange={(date) => setPickerDate(date)}
+                                    placeholder="날짜를 선택하세요"
+                                />
+                            </div>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={pickerAllDay}
+                                    onChange={(e) => setPickerAllDay(e.target.checked)}
+                                    className="w-4 h-4 rounded border-neutral-border accent-violet-600"
+                                />
+                                <span className="text-sm text-neutral-main dark:text-neutral-sub">종일</span>
+                            </label>
+                            {!pickerAllDay && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">시작 시간</label>
+                                        <input
+                                            type="time"
+                                            value={pickerStartTime}
+                                            onChange={(e) => setPickerStartTime(e.target.value)}
+                                            className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">종료 시간</label>
+                                        <input
+                                            type="time"
+                                            value={pickerEndTime}
+                                            onChange={(e) => setPickerEndTime(e.target.value)}
+                                            className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex gap-3 mt-5">
+                            <button
+                                onClick={() => setSchedulePickerData(null)}
+                                className="flex-1 py-2.5 text-xs font-black rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all"
+                            >
+                                취소
+                            </button>
+                            <button
+                                onClick={confirmAddSchedule}
+                                disabled={addingScheduleIdx != null || !pickerDate}
+                                className="flex-1 py-2.5 bg-violet-600 text-white text-xs font-black rounded-xl shadow-xl shadow-violet-600/20 hover:bg-violet-700 hover:scale-105 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                            >
+                                {addingScheduleIdx != null ? (
+                                    <><Loader2 size={12} className="animate-spin" /> 등록 중...</>
+                                ) : (
+                                    <><CalendarPlus size={12} /> 일정 등록</>
+                                )}
+                            </button>
                         </div>
                     </motion.div>
                 </div>,
