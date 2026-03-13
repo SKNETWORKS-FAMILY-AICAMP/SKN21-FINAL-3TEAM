@@ -2579,10 +2579,52 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 - RunPod git divergent branches: `git fetch origin && git reset --hard origin/FEAT/frontend`
 - RunPod git identity 미설정: 셸 스크립트 `|| true`로 우회
 
+#### 8) Planner LoRA 학습 데이터 합성 + 학습 실행
+
+**배경**: 베이스 모델 비교(7번)에서 Kanana-1.5-8B 선정 완료. LoRA 파인튜닝으로 planning 능력 강화.
+
+**학습 데이터**: 800건 (train 720 / eval 80)
+- `ai/finetuning/data/planner/` 에 저장
+- 6개 intent 기반: judgment, doc_retrieve, doc_generate, schedule_add, schedule_view, general
+- single_step, sequential, parallel, complex, edge_case 패턴 포함
+
+**학습 환경**:
+- RunPod H200 (143GB VRAM)
+- Kanana-1.5-8B-instruct-2505 + QLoRA 4-bit
+- LoRA r=16, alpha=32, trainable params: 13.6M (전체의 0.17%)
+- epochs=3, batch=4, lr=2e-4, bf16
+
+**학습 결과**:
+- Loss 수렴: 2.296 → 0.155 (안정적 감소)
+- Eval loss: 0.248 → 0.164 → 0.158 (epoch마다 감소, 과적합 징후 없음)
+- 학습 시간: 약 6분 40초 (399.9초)
+- 어댑터 저장: `outputs/v3_planner/final`
+
+**Eval split 평가 결과 (80건, 학습 데이터와 동일 분포)**:
+
+| 지표 | 점수 |
+|------|------|
+| Usable Rate | 100% (80/80) |
+| Intent Recall | 0.988 |
+| Order Accuracy | 0.988 |
+| Intent Precision | 0.988 |
+| Dep Correctness | 1.000 |
+| Efficiency | 1.000 |
+| **Weighted Score** | **0.991** |
+| Perfect Score | 98.8% (79/80) |
+
+**⚠️ 주의**: 이 평가는 학습 데이터에서 분리한 eval split으로, **학습 데이터와 동일한 분포**. 100%/0.991 같은 높은 수치는 "학습이 잘 수렴했다"는 의미이지 일반화 성능이 아님. 과적합 여부 확인을 위해 **held-out 테스트** (base 비교 때 사용한 `planner_test_cases.json` 95건) 필요.
+
+**생성/수정 파일**:
+- `ai/finetuning/configs/v3_planner.yaml` — 학습 설정
+- `ai/finetuning/scripts/train_planner_lora.py` — 학습 + eval 스크립트
+- `ai/finetuning/runpod_planner_train.sh` — RunPod 실행 셸 스크립트
+- `outputs/v3_planner/final/` — LoRA 어댑터 저장
+
 ### 다음 할 일
 
-- 현재 결과 기반 최종 베이스 모델 선정 (또는 테스트 케이스 추가 확대)
-- Planner LoRA 학습 데이터 합성 시작
+- **Held-out 테스트**: `planner_test_cases.json` 95건으로 LoRA 모델 평가 → base와 공정 비교
+- Held-out 결과에 따라 오답 분석 + 학습 데이터 보강 검토
 - 프론트엔드 백엔드 실제 연동 작업 재개
 
 ---
