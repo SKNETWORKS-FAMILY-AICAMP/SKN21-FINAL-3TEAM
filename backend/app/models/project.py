@@ -15,4 +15,5 @@ class Project(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(300))
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     team: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    members: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # 쉼표 구분 멤버 이름
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))

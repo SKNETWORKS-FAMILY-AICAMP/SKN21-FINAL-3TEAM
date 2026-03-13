@@ -75,12 +75,17 @@ async def list_pipeline_tasks(
     assigned_result = await db.execute(assigned_q)
     participated_projects = [r[0] for r in assigned_result.all()]
 
-    # 본인이 생성한 프로젝트명도 수집
-    created_q = select(Project.name).where(Project.created_by == current_user.id)
+    # 본인이 생성했거나 members에 포함된 프로젝트명 수집
+    created_q = select(Project.name).where(
+        or_(
+            Project.created_by == current_user.id,
+            Project.members.contains(current_user.name),
+        )
+    )
     created_result = await db.execute(created_q)
     created_projects = [r[0] for r in created_result.all()]
 
-    # 참여 + 생성 프로젝트 합집합
+    # 참여 + 생성 + 멤버 프로젝트 합집합
     visible_projects = list(set(participated_projects + created_projects))
 
     query = select(PipelineTask).order_by(PipelineTask.sort_order, PipelineTask.created_at)
@@ -160,13 +165,43 @@ async def update_pipeline_task(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Pipeline Task 수정 (같은 팀만)"""
+    """Pipeline Task 수정 (같은 팀 또는 같은 프로젝트 참여자)"""
     result = await db.execute(select(PipelineTask).where(PipelineTask.id == task_id))
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task를 찾을 수 없습니다")
-    if task.team and task.team != current_user.team:
-        raise HTTPException(status_code=403, detail="같은 팀의 태스크만 수정할 수 있습니다")
+
+    # 권한 확인: 같은 팀, 프로젝트 멤버, 프로젝트 참여자(assignee), 또는 본인 생성
+    has_access = False
+    if not task.team or task.team == current_user.team:
+        has_access = True
+    elif task.created_by == current_user.id:
+        has_access = True
+    elif task.project:
+        proj_result = await db.execute(
+            select(Project).where(Project.name == task.project)
+        )
+        proj = proj_result.scalar_one_or_none()
+        if proj:
+            if proj.members and current_user.name in proj.members.split(","):
+                has_access = True
+            elif proj.created_by == current_user.id:
+                has_access = True
+        # 해당 프로젝트의 태스크에 assignee로 참여 중이면 접근 허용
+        if not has_access:
+            assigned_q = await db.execute(
+                select(PipelineTask.id).where(
+                    PipelineTask.project == task.project,
+                    or_(
+                        PipelineTask.assignee == current_user.name,
+                        PipelineTask.assignee_id == current_user.id,
+                    ),
+                ).limit(1)
+            )
+            if assigned_q.first():
+                has_access = True
+    if not has_access:
+        raise HTTPException(status_code=403, detail="이 태스크를 수정할 권한이 없습니다")
 
     data = req.model_dump(exclude_none=True)
     if "tags" in data:
@@ -245,11 +280,13 @@ async def create_from_action_items(
 class ProjectCreate(BaseModel):
     name: str
     description: Optional[str] = None
+    members: Optional[list[str]] = None  # 멤버 이름 목록
 
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    members: Optional[list[str]] = None
 
 
 @router.get("/projects")
@@ -269,17 +306,14 @@ async def list_projects(
     assigned_result = await db.execute(assigned_q)
     assigned_project_names = [r[0] for r in assigned_result.all()]
 
-    # 본인이 생성한 프로젝트 OR 태스크에 참여 중인 프로젝트만 반환
+    # 본인이 생성, 태스크 참여, 또는 members에 포함된 프로젝트 반환
     query = select(Project).order_by(Project.created_at)
+    conditions = [Project.created_by == current_user.id]
     if assigned_project_names:
-        query = query.where(
-            or_(
-                Project.created_by == current_user.id,
-                Project.name.in_(assigned_project_names),
-            )
-        )
-    else:
-        query = query.where(Project.created_by == current_user.id)
+        conditions.append(Project.name.in_(assigned_project_names))
+    # members 컬럼에 이름이 포함된 프로젝트도 표시
+    conditions.append(Project.members.contains(current_user.name))
+    query = query.where(or_(*conditions))
 
     result = await db.execute(query)
     items = result.scalars().all()
@@ -289,6 +323,7 @@ async def list_projects(
             "name": p.name,
             "description": p.description,
             "team": p.team,
+            "members": p.members.split(",") if p.members else [],
             "created_by": p.created_by,
             "created_at": p.created_at.isoformat() if p.created_at else None,
         }
@@ -313,11 +348,12 @@ async def create_project(
         name=req.name,
         description=req.description,
         team=current_user.team,
+        members=",".join(req.members) if req.members else None,
         created_by=current_user.id,
     )
     db.add(project)
     await db.flush()
-    return {"id": project.id, "name": project.name}
+    return {"id": project.id, "name": project.name, "members": req.members or []}
 
 
 @router.put("/projects/{project_id}")
@@ -339,9 +375,15 @@ async def update_project(
         project.name = req.name
     if req.description is not None:
         project.description = req.description
+    if req.members is not None:
+        project.members = ",".join(req.members) if req.members else None
 
     await db.flush()
-    return {"id": project.id, "name": project.name}
+    return {
+        "id": project.id,
+        "name": project.name,
+        "members": project.members.split(",") if project.members else [],
+    }
 
 
 @router.delete("/projects/{project_id}")
