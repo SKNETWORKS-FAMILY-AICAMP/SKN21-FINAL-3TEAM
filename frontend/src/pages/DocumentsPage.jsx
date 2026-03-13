@@ -127,8 +127,10 @@ export default function DocumentsPage() {
       const response = await uploadDocument(file, scope);
       const uploadedDoc = response.data;
 
-      // 업로드 응답의 status 확인
-      if (uploadedDoc.status === 'failed') {
+      // 업로드 응답 확인
+      if (uploadedDoc.duplicate) {
+        toast.info(`이미 업로드된 문서입니다: ${uploadedDoc.title}`);
+      } else if (uploadedDoc.status === 'failed') {
         toast.warning(`텍스트 추출에 실패했습니다. 스캔 이미지 PDF이거나 손상된 파일일 수 있습니다.\n파일: ${uploadedDoc.title}`);
       } else if (uploadedDoc.status === 'completed') {
         toast.success('문서가 성공적으로 업로드되었습니다.');
