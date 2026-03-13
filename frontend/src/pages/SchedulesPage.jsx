@@ -596,11 +596,11 @@ export default function SchedulesPage() {
               {connected && hasScope('calendar') && (
                 <button
                   onClick={() => fetchCalendarEvents()}
-                  disabled={calendarLoading}
-                  className="btn-outline"
+                  disabled={calendarLoading || dbSchedulesLoading}
+                  className="btn-outline flex items-center gap-1.5"
                   title="Google Calendar 동기화"
                 >
-                  {calendarLoading ? '동기화 중...' : '새로고침'}
+                  <RefreshCw size={14} className={calendarLoading || dbSchedulesLoading ? 'animate-spin' : ''} />
                 </button>
               )}
               <button

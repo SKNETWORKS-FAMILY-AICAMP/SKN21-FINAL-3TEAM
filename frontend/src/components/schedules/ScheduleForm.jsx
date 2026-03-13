@@ -213,19 +213,21 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [projects, setProjects] = useState([]);
-  const [projectsLoaded, setProjectsLoaded] = useState(false);
+  const [shareToProject, setShareToProject] = useState(!!initialData?.projectName);
 
   useEffect(() => {
     listProjects().then((res) => {
       const list = res.data || [];
-      const myProjects = list.filter((p) => {
-        const memberList = Array.isArray(p.members) ? p.members : (p.members ? p.members.split(',').map((m) => m.trim()) : []);
-        return memberList.includes(user?.name);
+      // 이름 기준 중복 제거
+      const seen = new Set();
+      const unique = list.filter((p) => {
+        if (seen.has(p.name)) return false;
+        seen.add(p.name);
+        return true;
       });
-      setProjects(myProjects);
-    }).catch(() => setProjects([]))
-      .finally(() => setProjectsLoaded(true));
-  }, [user?.name]);
+      setProjects(unique);
+    }).catch(() => setProjects([]));
+  }, []);
 
   const canMeet = connected && hasScope('calendar');
 
@@ -297,61 +299,55 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
           </div>
         </div>
 
-        {/* 팀에 공유 */}
-        {hasTeam && (
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-md border border-neutral-divider bg-surface-hover">
-            <label className="flex items-center gap-2 cursor-pointer flex-1">
-              <input
-                type="checkbox"
-                checked={form.isTeamVisible}
-                onChange={(e) => setForm({ ...form, isTeamVisible: e.target.checked })}
-                className="w-4 h-4 rounded border-neutral-border accent-primary-700"
-              />
-              <div className="flex items-center gap-1.5">
-                <Users size={16} className="text-primary-500" />
-                <span className="text-sm font-medium text-neutral-main">팀에 공유</span>
-              </div>
-            </label>
-            <span className="text-[0.6875rem] text-neutral-muted">{user.team}팀 멤버에게 표시됩니다</span>
+        {/* 공유 설정 */}
+        {(hasTeam || projects.length > 0) && (
+          <div className="space-y-2">
+            <div className="flex justify-center gap-2">
+              {hasTeam && (
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, isTeamVisible: !form.isTeamVisible })}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] font-black transition-all ${form.isTeamVisible
+                    ? 'border-emerald-500 bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                    : 'border-neutral-divider dark:border-white/10 bg-white/50 dark:bg-black/20 text-neutral-500'
+                  }`}
+                >
+                  <Users size={13} />
+                  {user.team}팀 공유
+                </button>
+              )}
+              {projects.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !shareToProject;
+                    setShareToProject(next);
+                    if (!next) setForm({ ...form, projectName: '' });
+                    else setForm({ ...form, projectName: projects[0]?.name || '' });
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] font-black transition-all ${shareToProject
+                    ? 'border-violet-500 bg-violet-500 text-white shadow-lg shadow-violet-500/20'
+                    : 'border-neutral-divider dark:border-white/10 bg-white/50 dark:bg-black/20 text-neutral-500'
+                  }`}
+                >
+                  <FolderOpen size={13} />
+                  프로젝트 공유
+                </button>
+              )}
+            </div>
+            {shareToProject && projects.length > 0 && (
+              <select
+                value={form.projectName}
+                onChange={(e) => setForm({ ...form, projectName: e.target.value })}
+                className="w-full px-3 py-2 border border-neutral-border rounded-lg text-sm bg-white dark:bg-black/20 outline-none focus:border-primary-500 transition"
+              >
+                {projects.map((p) => (
+                  <option key={p.id} value={p.name}>{p.name}</option>
+                ))}
+              </select>
+            )}
           </div>
         )}
-
-        {/* 프로젝트에 공유 */}
-        <div className="px-3 py-2.5 rounded-md border border-neutral-divider bg-surface-hover space-y-2">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={!!form.projectName}
-              onChange={(e) => setForm({ ...form, projectName: e.target.checked ? (projects[0]?.name || '') : '' })}
-              className="w-4 h-4 rounded border-neutral-border accent-primary-700"
-            />
-            <div className="flex items-center gap-1.5">
-              <FolderOpen size={16} className="text-violet-500" />
-              <span className="text-sm font-medium text-neutral-main">프로젝트에 공유</span>
-            </div>
-          </label>
-          {form.projectName !== undefined && form.projectName !== '' && projects.length > 0 ? (
-            <select
-              value={form.projectName}
-              onChange={(e) => setForm({ ...form, projectName: e.target.value })}
-              className="w-full px-3 py-2 border border-neutral-border rounded-lg text-sm bg-white dark:bg-black/20 outline-none focus:border-primary-500 transition"
-            >
-              {projects.map((p) => (
-                <option key={p.id} value={p.name}>{p.name}</option>
-              ))}
-            </select>
-          ) : form.projectName !== undefined && form.projectName !== '' ? (
-            <input
-              value={form.projectName}
-              onChange={(e) => setForm({ ...form, projectName: e.target.value })}
-              placeholder="프로젝트명 입력"
-              className="w-full px-3 py-2 border border-neutral-border rounded-lg text-sm bg-white dark:bg-black/20 outline-none focus:border-primary-500 transition"
-            />
-          ) : null}
-          {form.projectName && (
-            <p className="text-[0.6875rem] text-neutral-muted ml-1">[{form.projectName}] 프로젝트 멤버에게 표시됩니다</p>
-          )}
-        </div>
 
         {/* 날짜 */}
         <div>

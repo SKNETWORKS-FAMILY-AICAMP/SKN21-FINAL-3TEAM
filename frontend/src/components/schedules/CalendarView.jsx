@@ -85,7 +85,7 @@ function getKoreanHolidays(year) {
   return [...fixed, ...lunar].map((h) => ({ ...h, type: 'holiday' }));
 }
 
-function DayDetailPopup({ day, month, year, events, typeColorMap, typeLabelMap, onClose, onDeleteEvent, onCanDelete, onEditEvent, onCanEdit }) {
+function DayDetailPopup({ day, month, year, events, getEventColor, typeLabelMap, onClose, onDeleteEvent, onCanDelete, onEditEvent, onCanEdit }) {
   const ref = useRef(null);
   const [deletingId, setDeletingId] = useState(null);
 
@@ -125,7 +125,7 @@ function DayDetailPopup({ day, month, year, events, typeColorMap, typeLabelMap, 
           ) : (
             <ul className="space-y-2.5">
               {events.map((e, i) => {
-                const dotColor = typeColorMap[e.type] || '#9CA3AF';
+                const dotColor = getEventColor(e) || '#9CA3AF';
                 const typeLabel = typeLabelMap[e.type] || e.type;
                 const eventKey = e.scheduleId || e.id;
                 const isDeleting = deletingId === eventKey;
@@ -238,6 +238,26 @@ function YearView({ year, events, todayYear, todayMonth, todayDate, onMonthClick
   );
 }
 
+// 안정적인 문자열 해시 함수 (프로젝트 이름 → 고유 색상 추출용)
+function stringToColor(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  let color = '#';
+  for (let i = 0; i < 3; i++) {
+    const value = (hash >> (i * 8)) & 0xFF;
+    color += ('00' + value.toString(16)).substr(-2);
+  }
+  return color;
+}
+
+// 프로젝트명 추출 헬퍼 ("[테스트] 제목" -> "테스트", 안매칭되면 null)
+function extractProjectName(label) {
+  const match = label.match(/^\[(.*?)\]/);
+  return match ? match[1] : null;
+}
+
 export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, onEditEvent, onCanEdit }) {
   const now = new Date();
   const [currentYear, setCurrentYear] = useState(now.getFullYear());
@@ -250,7 +270,24 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
   const allTypes = [...DEFAULT_TYPES, ...customTypes];
   const allFilterTypes = [...allTypes, { id: 'holiday', label: '공휴일', color: '#C06060' }];
 
-  // 타입 ID → 색상 맵
+  // 동적 색상 매핑 함수
+  const getEventColor = (e) => {
+    // 공휴일
+    if (e.type === 'holiday') return '#C06060';
+    // 프로젝트(동적 색상) — 라벨 "[프로젝트명]" 기반 추출
+    if (e.type === 'project' && e.label) {
+      const pName = extractProjectName(e.label);
+      if (pName && pName !== '팀') {
+        return stringToColor(pName); // 프로젝트별 고유 컬러
+      }
+      return '#8B5CF6'; // 기본 프로젝트 연보라색 (폴백)
+    }
+    // 그 외 커스텀/기본 속성 색상
+    const foundType = allTypes.find((t) => t.id === e.type);
+    return foundType?.color || '#9CA3AF'; // 기본 회색
+  };
+
+  // 타입 ID → 색상 맵 (호환성을 위한 기존 맵. 가능하면 getEventColor 사용)
   const typeColorMap = {
     holiday: '#C06060',
     ...Object.fromEntries(allTypes.map((t) => [t.id, t.color])),
@@ -453,8 +490,11 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
                 >
                   <div className={`font-semibold mb-1 ${d.other ? 'text-neutral-muted' : (i % 7 === 0 || isHoliday) ? 'text-red-500' : i % 7 === 6 ? 'text-blue-500' : 'text-neutral-main'}`}>{d.day}</div>
                   {dayEvents.map((e, j) => {
-                    const builtInStyle = DEFAULT_TYPE_STYLES[e.type];
-                    const color = typeColorMap[e.type];
+                    let builtInStyle = DEFAULT_TYPE_STYLES[e.type];
+                    // 프로젝트 타입은 동적 색상을 쓰기 위해 내장 스타일 제거
+                    if (e.type === 'project') builtInStyle = null;
+
+                    const color = builtInStyle ? null : getEventColor(e);
                     return (
                       <div key={j} className="mb-0.5">
                         <div
@@ -476,7 +516,7 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
                     const isEnd = cellDate.getTime() === eventEnd.getTime();
                     const isWeekStart = i % 7 === 0;
                     const showLabel = isStart || isWeekStart;
-                    const color = typeColorMap[event.type] || '#9CA3AF';
+                    const color = getEventColor(event) || '#9CA3AF';
                     const row = multiDayRowMap.get(event.scheduleId || event.id) ?? 0;
                     return (
                       <div
@@ -514,7 +554,7 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
           month={currentMonth}
           year={currentYear}
           events={selectedEvents}
-          typeColorMap={typeColorMap}
+          getEventColor={getEventColor}
           typeLabelMap={typeLabelMap}
           onClose={() => setSelectedDay(null)}
           onDeleteEvent={onDeleteEvent}
