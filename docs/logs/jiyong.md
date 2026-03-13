@@ -1286,3 +1286,34 @@ v2_generate AI Hub 데이터 탈락:
 
 2. **문서 생성 temperature 튜닝** (우선순위 낮음)
    - 현재 전체 0.3 — 회의록은 OK, 보고서/제안서는 0.5~0.7 고려
+
+---
+
+## 2026-03-13 (목)
+
+**doc_retrieve 통합 파이프라인 설계 완료:**
+
+1. **Intent 통합 설계**
+   - 기존 8개 intent 중 `doc_search`, `doc_qa`, `doc_summary` 3개를 `doc_retrieve` 1개로 통합
+   - 8개 → 6개 intent로 축소하여 BERT 분류 정확도 향상 목적
+   - 세부 처리는 sLLM(카나나)이 자연어로 판단 (요약 요청만 doc_pick으로 분리)
+
+2. **설계 문서 작성**: `docs/지용/DOC_RETRIEVE_PIPELINE_DESIGN.md`
+   - 파이프라인 흐름도 (BERT → Document Agent → RAG → sLLM)
+   - 통합 프롬프트 (`DOC_RETRIEVE_SYSTEM_PROMPT`) — 자연어 응답, JSON 모드 X
+   - 응답 형식: `type: "doc_retrieve"`, `message` + `sources[]`
+   - RAG 파라미터: top_k=7, reranker/hyde 미사용 (RRF 기본 검색)
+   - 스트리밍: 기존 stream_pending 패턴 재사용
+   - LoRA: base model 사용 (기존 v2_summary LoRA는 호환 안 됨)
+
+3. **수정 대상 파일 4개 파악 + 코드 사전 분석**
+   - `ai/llm/prompts.py` — DOC_RETRIEVE_SYSTEM_PROMPT 추가
+   - `ai/agents/document_agent.py` — `_handle_doc_retrieve()` 추가, dispatch 분기
+   - `ai/agents/orchestrator.py` — route_by_intent에 doc_retrieve 추가
+   - `backend/app/api/v1/chat.py` — 스트리밍 task 매핑에 retrieve 추가
+
+**다음 할 일:**
+
+1. **doc_retrieve 구현** — 설계 문서 기반으로 4개 파일 수정
+2. **BERT 재학습** — 6개 intent 데이터셋 생성 + 학습 (doc_search/qa/summary → doc_retrieve 통합)
+3. **LoRA 연결 테스트** (이전 세션에서 계속 막힘)
