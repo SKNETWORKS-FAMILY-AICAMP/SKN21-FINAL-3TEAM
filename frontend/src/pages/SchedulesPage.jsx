@@ -438,7 +438,7 @@ export default function SchedulesPage() {
               y: 0,
               transition: { type: 'spring', damping: 25, stiffness: 300 }
             }}
-            className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[1.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] w-full max-w-sm overflow-hidden border border-white/40 dark:border-white/10"
+            className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] w-full max-w-sm overflow-hidden border border-white/40 dark:border-white/10"
           >
             {/* Modal Inner Shadow/Glow */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-primary-400/30 to-transparent rounded-full" />
@@ -464,7 +464,7 @@ export default function SchedulesPage() {
               <div className="space-y-4">
                 {(settingsTab === 'all' || settingsTab === 'google') && (
                   <div className="relative group">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-[1.5rem] blur opacity-0 group-hover:opacity-100 transition duration-500" />
+                    <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-xl blur opacity-0 group-hover:opacity-100 transition duration-500" />
                     <div className="relative">
                       <GoogleServicesConnect />
                     </div>
@@ -473,7 +473,7 @@ export default function SchedulesPage() {
 
                 {(settingsTab === 'all' || settingsTab === 'slack') && (
                   <div className="relative group">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-[#4A154B]/5 to-[#611f69]/5 rounded-[1.5rem] blur opacity-0 group-hover:opacity-100 transition duration-500" />
+                    <div className="absolute -inset-1 bg-gradient-to-r from-[#4A154B]/5 to-[#611f69]/5 rounded-xl blur opacity-0 group-hover:opacity-100 transition duration-500" />
                     <div className="relative">
                       <SlackConnect />
                     </div>

@@ -870,7 +870,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                     <motion.div
                         initial={{ scale: 0.95, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl p-6 w-full max-w-sm border border-white/40 dark:border-white/10"
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-white/40 dark:border-white/10"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex flex-col items-center text-center">
@@ -914,7 +914,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                     <motion.div
                         initial={{ scale: 0.95, opacity: 0, y: 20 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
-                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl p-8 w-full max-w-md mx-4 overflow-hidden border border-white/40 dark:border-white/10"
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-md mx-4 overflow-hidden border border-white/40 dark:border-white/10"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between mb-6">
@@ -1044,7 +1044,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                     <motion.div
                         initial={{ scale: 0.95, opacity: 0, y: 20 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
-                        className={`relative backdrop-blur-xl rounded-[2.5rem] shadow-2xl w-full max-w-lg mx-4 overflow-hidden ${selectedSent.status === 'approved' ? 'bg-success-bg/70 dark:bg-success-bg/20' : selectedSent.status === 'pending' ? 'bg-white/80 dark:bg-neutral-900/80' : 'bg-error-bg/70 dark:bg-error-bg/20'}`}
+                        className={`relative backdrop-blur-xl rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden ${selectedSent.status === 'approved' ? 'bg-success-bg/70 dark:bg-success-bg/20' : selectedSent.status === 'pending' ? 'bg-white/80 dark:bg-neutral-900/80' : 'bg-error-bg/70 dark:bg-error-bg/20'}`}
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* 헤더 */}
@@ -1230,7 +1230,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                     <motion.div
                         initial={{ scale: 0.95, opacity: 0, y: 20 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
-                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl p-6 w-full max-w-sm border border-white/40 dark:border-white/10"
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-white/40 dark:border-white/10"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between mb-5">
@@ -1340,7 +1340,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="relative bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-[340px] p-8 mx-4 border border-white/40 dark:border-white/10"
+                        className="relative bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-[340px] p-8 mx-4 border border-white/40 dark:border-white/10"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex flex-col items-center text-center">

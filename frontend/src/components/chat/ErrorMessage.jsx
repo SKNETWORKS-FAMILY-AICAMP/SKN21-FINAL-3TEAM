@@ -1,7 +1,7 @@
 export default function ErrorMessage({ message, onRetry }) {
   return (
     <div className="flex gap-2.5 mb-5">
-      <div className="w-8 h-8 rounded-[10px] bg-error-bg flex-shrink-0 flex items-center justify-center text-error text-sm font-bold">!</div>
+      <div className="w-8 h-8 rounded-md bg-error-bg flex-shrink-0 flex items-center justify-center text-error text-sm font-bold">!</div>
       <div className="flex-1">
         <div className="bg-error-bg border border-error/20 rounded-2xl rounded-bl-sm p-4">
           <p className="text-sm text-error font-medium mb-1">요청을 처리하지 못했습니다</p>

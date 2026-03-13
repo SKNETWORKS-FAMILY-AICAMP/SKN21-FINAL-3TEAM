@@ -69,7 +69,7 @@ export default function MessageBubble({ type = 'user', children, intent, modelNa
 
   return (
     <div className="flex gap-2.5 mb-5 group" data-testid="bot-message">
-      <div className="w-8 h-8 rounded-[10px] bg-accent-500 flex-shrink-0 flex items-center justify-center text-white"><Wand2 size={18} /></div>
+      <div className="w-8 h-8 rounded-md bg-accent-500 flex-shrink-0 flex items-center justify-center text-white"><Wand2 size={18} /></div>
       <div className="max-w-[70%]">
         {intent && <AgentIndicator intent={intent} modelName={modelName} />}
         <div className="flex items-start gap-1">

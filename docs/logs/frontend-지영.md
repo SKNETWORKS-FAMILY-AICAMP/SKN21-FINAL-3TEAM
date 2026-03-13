@@ -2346,10 +2346,13 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 | 10 | v7 GPT KD R2 | roberta-large | ~4,500개 | 91.7% | 86.7% | -5.0%p ✅ | 오답 타겟 보강 |
 | 11 | v8 GPT KD R3 | roberta-large | ~4,660개 | 91.7% | 88.3% | -3.3%p ✅ | doc_summary 경계 보강 |
 | 12 | +Focal+FGM | roberta-large | ~4,660개 | - | 88.3% | - | 고급 학습 기법 |
-| **13** | **+5-Seed Ensemble** | **roberta-large** | **~4,660개** | **93.3%** | **93.3%** | **0.0%p ✅** | **앙상블 (+5.0%p)** |
+| 13 | 8-label 5-Seed Ensemble | roberta-large | ~4,660개 | 93.3% | 93.3% | 0.0%p ✅ | 앙상블 (+5.0%p) |
+| 14 | 7-label 통합 (doc_qa 제거) | roberta-large | ~4,660개 | 96.7% | 86.7% | -10.0%p ⚠️ | doc_qa 병합 |
+| **15** | **6-label + Threshold (0.60)** | **roberta-large** | **~4,653개** | **-** | **93.3%** | **0.0%p ✅** | **doc_retrieve 병합 및 최적화** |
 
-> **총 13단계 실험: 규칙 41.7% → koelectra 76.7% → roberta-large 88.3% → 앙상블 93.3%**
+> **총 15단계 실험: 규칙 41.7% → koelectra 76.7% → roberta-large 88.3% → 최종 6-label 앙상블 93.3%**
 > 가장 큰 점프: ① 5-Seed Ensemble (+5.0%p) ② GPT KD R2 오답 타겟 (+6.7%p) ③ 모델 교체 시 과적합 해소 (-13.3%p→-3.3%p)
+> **핵심 성과**: 의도를 6개로 압축하여 판단 로직을 단순화하면서도 8-label 최고 성능(93.3%)을 완벽히 복구 및 유지!
 
 ##### 4. koelectra vs roberta-large 직접 비교 (같은 데이터 기준)
 
@@ -2478,11 +2481,28 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 - **문서 목록 compact/detailed 뷰 토글** (`DocumentList.jsx`) — compact 3컬럼(문서명+서브정보, 분류, 태그) / detailed 6컬럼 전환
 - **DataTable 컬럼 스타일 확장** (`DataTable.jsx`) — `className`, `headerClassName` props 지원 추가
 
+#### 6) 6-label 앙상블 평가 및 Threshold 최적화 결과 반영
+
+- **결과**: **93.3% 달성!** (8-label 앙상블 모델과 동일한 최고 성능)
+- `doc_retrieve` 통합으로 인해 검색 범위가 지나치게 넓어지면서 과잉 트리거 현상이 발생했으나, `doc_retrieve` 의도만의 특화된 임계값(Threshold)을 상향 설정하여 안정적으로 해결함.
+
+| 설정 | Held-out 정확도 | 오답 건수 | 특이사항 |
+|---|---|---|---|
+| 8-label (이전) | 93.3% | 4건 | 5-seed 앙상블 |
+| **6-label + threshold 최적화** | **93.3%** | **4건** | `doc_retrieve` 통합 및 임계값 0.60 |
+
+- **최적 Threshold 설정**:
+  - `doc_retrieve` : **0.60** (과잉 트리거 방지용 최적화)
+  - `judgment`     : 0.50 (기본값 유지)
+  - `doc_generate` : 0.50 (기본값 유지)
+  - `schedule_add` : 0.50 (기본값 유지)
+  - `schedule_view`: 0.50 (기본값 유지)
+  - `general`      : 0.50 (기본값 유지)
+
+- **결론**: 최적화된 threshold 값들을 `ai/agents/intent_classifier.py` 프로덕션 코드에 반영 완료.
+
 ### 다음 할 일
 
-- RunPod에서 6-label 5-seed 앙상블 재학습
-- Held-out 60개 앙상블 평가 → 8-label 93.3% 대비 성능 비교
-- per-label threshold 최적화 (doc_retrieve × judgment)
 - 프론트엔드 백엔드 실제 연동 작업 재개
 
 ---
