@@ -32,14 +32,15 @@ from pathlib import Path
 import torch
 import yaml
 from datasets import Dataset
-from peft import LoraConfig, PeftModel
+from peft import LoraConfig, PeftModel, get_peft_model, prepare_model_for_kbit_training
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     BitsAndBytesConfig,
+    Trainer,
     TrainingArguments,
+    DataCollatorForLanguageModeling,
 )
-from trl import SFTTrainer
 
 # ── 경로 ──
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -93,22 +94,45 @@ def format_chat_sample(tokenizer, sample: dict) -> str:
         return "\n\n".join(parts)
 
 
+def tokenize_samples(tokenizer, samples: list[dict], max_length: int) -> Dataset:
+    """JSONL samples → 토크나이즈된 Dataset"""
+    input_ids_list = []
+    attention_mask_list = []
+    labels_list = []
+
+    for sample in samples:
+        text = format_chat_sample(tokenizer, sample)
+        encoded = tokenizer(
+            text, truncation=True, max_length=max_length,
+            padding="max_length", return_tensors="np",
+        )
+        ids = encoded["input_ids"][0].tolist()
+        mask = encoded["attention_mask"][0].tolist()
+        # labels = input_ids (causal LM), pad 토큰은 -100
+        labels = [i if m == 1 else -100 for i, m in zip(ids, mask)]
+        input_ids_list.append(ids)
+        attention_mask_list.append(mask)
+        labels_list.append(labels)
+
+    return Dataset.from_dict({
+        "input_ids": input_ids_list,
+        "attention_mask": attention_mask_list,
+        "labels": labels_list,
+    })
+
+
 def load_train_eval_datasets(
     tokenizer, config: dict
 ) -> tuple[Dataset, Dataset]:
     train_path = BASE_DIR / config["data"]["train_path"]
     eval_path = BASE_DIR / config["data"]["eval_path"]
+    max_length = config["training"].get("max_length", 1024)
 
     train_samples = load_jsonl(train_path)
     eval_samples = load_jsonl(eval_path)
 
-    train_texts = [{"text": format_chat_sample(tokenizer, s)}
-                   for s in train_samples]
-    eval_texts = [{"text": format_chat_sample(tokenizer, s)}
-                  for s in eval_samples]
-
-    train_dataset = Dataset.from_list(train_texts)
-    eval_dataset = Dataset.from_list(eval_texts)
+    train_dataset = tokenize_samples(tokenizer, train_samples, max_length)
+    eval_dataset = tokenize_samples(tokenizer, eval_samples, max_length)
 
     print(f"  Train: {len(train_dataset)}건 / Eval: {len(eval_dataset)}건")
     return train_dataset, eval_dataset
@@ -171,8 +195,11 @@ def train(config: dict):
         task_type="CAUSAL_LM",
     )
 
+    model = prepare_model_for_kbit_training(model)
+    model = get_peft_model(model, lora_config)
+    model.print_trainable_parameters()
+
     train_cfg = config["training"]
-    max_length = train_cfg.get("max_length", 1024)
     checkpoint_dir = str(output_base / "checkpoints")
 
     training_args = TrainingArguments(
@@ -195,14 +222,12 @@ def train(config: dict):
     )
 
     print("\n[3/4] 학습 시작...")
-    trainer = SFTTrainer(
+    trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        dataset_text_field="text",
-        max_seq_length=max_length,
-        peft_config=lora_config,
+        data_collator=DataCollatorForLanguageModeling(tokenizer, mlm=False),
     )
 
     trainer.train()
