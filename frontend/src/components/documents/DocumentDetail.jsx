@@ -4,7 +4,7 @@ import KeywordHighlight from '../common/KeywordHighlight';
 import { Pencil, Check, X } from 'lucide-react';
 import { updateDocumentAnalysis, updateDocumentScope } from '../../api/documents';
 
-const CATEGORIES = ['회의록', '계약서', '제안서', '보고서', '정책문서', '인사문서', '공지사항', '이메일', '기타'];
+const CATEGORIES = ['회의록', '계약서', '제안서', '보고서', '정책문서', '인사문서', '기타'];
 
 export default function DocumentDetail({ doc, documentDetail, searchQuery = '', onDelete, onAnalysisUpdate }) {
   const printRef = useRef(null);
