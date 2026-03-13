@@ -598,7 +598,7 @@ class GoogleSheetsService(GoogleBaseService):
     # ── 확장: Gantt 차트 탭 ──
 
     async def _generate_gantt_tab(self, service, spreadsheet_id, tasks, schedules=None) -> bool:
-        """태스크 + 일정의 시작일~마감일을 셀 색칠로 간트 차트 표현"""
+        """태스크의 마감일 기반 간트 차트 표현 (Pipeline 태스크 + 관련 캘린더 일정)"""
         from datetime import datetime as dt, timedelta
 
         # 간트 항목 수집: (title, assignee, status_label, bar_start, bar_end, color_key)
@@ -617,20 +617,19 @@ class GoogleSheetsService(GoogleBaseService):
                 bar_start, bar_end, t.stage or "todo",
             ))
 
-        # Schedule: start_time ~ end_time
-        for s in (schedules or []):
-            if not s.start_time:
-                continue
-            s_start = s.start_time.date() if isinstance(s.start_time, dt) else s.start_time
-            if s.end_time:
-                s_end = s.end_time.date() if isinstance(s.end_time, dt) else s.end_time
-            else:
-                s_end = s_start
-            type_label = {"meeting": "회의", "task": "태스크", "deadline": "마감"}.get(s.schedule_type, s.schedule_type or "")
-            gantt_items.append((
-                f"{s.title or ''}", "",
-                type_label, s_start, s_end, f"schedule_{s.schedule_type}",
-            ))
+        # 캘린더 일정 (schedules가 전달된 경우)
+        if schedules:
+            for s in schedules:
+                if not s.start_time:
+                    continue
+                s_start = s.start_time.date() if isinstance(s.start_time, dt) else s.start_time
+                s_end = s.end_time.date() if s.end_time and isinstance(s.end_time, dt) else (s.end_time if s.end_time else s_start)
+                stype = s.schedule_type or "meeting"
+                gantt_items.append((
+                    f"[일정] {s.title or ''}", "",
+                    stype.capitalize(),
+                    s_start, s_end, f"schedule_{stype}",
+                ))
 
         if not gantt_items:
             return False
@@ -693,13 +692,15 @@ class GoogleSheetsService(GoogleBaseService):
 
         # 포맷팅
         stage_colors = {
-            "done":              {"red": 0.30, "green": 0.75, "blue": 0.40},  # 녹색
-            "in_progress":       {"red": 0.29, "green": 0.53, "blue": 0.91},  # 파란색
-            "review":            {"red": 0.98, "green": 0.74, "blue": 0.18},  # 주황색
-            "todo":              {"red": 0.75, "green": 0.75, "blue": 0.75},  # 회색
-            "schedule_meeting":  {"red": 0.60, "green": 0.20, "blue": 0.80},  # 보라색 (회의)
-            "schedule_task":     {"red": 0.20, "green": 0.70, "blue": 0.70},  # 청록색 (일정태스크)
-            "schedule_deadline": {"red": 0.90, "green": 0.30, "blue": 0.30},  # 빨간색 (마감)
+            "done":        {"red": 0.30, "green": 0.75, "blue": 0.40},  # 녹색
+            "in_progress": {"red": 0.29, "green": 0.53, "blue": 0.91},  # 파란색
+            "review":      {"red": 0.98, "green": 0.74, "blue": 0.18},  # 주황색
+            "todo":        {"red": 0.75, "green": 0.75, "blue": 0.75},  # 회색
+            "schedule_meeting":  {"red": 0.56, "green": 0.36, "blue": 0.80},  # 보라색
+            "schedule_task":     {"red": 0.40, "green": 0.73, "blue": 0.65},  # 청록색
+            "schedule_deadline": {"red": 0.90, "green": 0.35, "blue": 0.35},  # 빨간색
+            "schedule_review":   {"red": 0.95, "green": 0.65, "blue": 0.30},  # 주황색
+            "schedule_milestone":{"red": 0.65, "green": 0.45, "blue": 0.85},  # 연보라색
         }
         requests = [
             # 헤더 스타일
