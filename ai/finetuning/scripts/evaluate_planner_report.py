@@ -382,33 +382,46 @@ def print_report(all_results: dict[str, list[EvalResult]]):
 
     # 모델 간 비교
     if len(all_results) > 1:
+        model_names = list(all_results.keys())
+
+        # ── 공통 성공 케이스 추출 ──
+        passed_ids_per_model = {
+            model: {r.test_id for r in rs if r.passed_prereq}
+            for model, rs in all_results.items()
+        }
+        common_ids = set.intersection(*passed_ids_per_model.values())
+
+        common_results: dict[str, list[EvalResult]] = {
+            model: [r for r in rs if r.test_id in common_ids]
+            for model, rs in all_results.items()
+        }
+
         print(f"\n{'━' * 65}")
-        print("  MODEL COMPARISON")
+        print("  MODEL COMPARISON — 공통 JSON 성공 케이스 기준")
         print(f"{'━' * 65}")
 
-        # JSON 신뢰성 비교
         header = f"  {'Metric':<24}"
-        for name in all_results:
+        for name in model_names:
             header += f"{name:>18}"
         print(header)
-        print(f"  {'─' * (24 + 18 * len(all_results))}")
+        print(f"  {'─' * (24 + 18 * len(model_names))}")
 
-        # JSON 별도
+        # JSON 신뢰성 (전체 기준, 참고용)
         line = f"  {'JSON Pass Rate':<24}"
-        for model, rs in all_results.items():
+        for model in model_names:
+            rs = all_results[model]
             val = sum(r.passed_prereq for r in rs) / len(rs) * 100
             line += f"{val:>17.1f}%"
         print(line)
 
-        print(f"  {'─' * (24 + 18 * len(all_results))}")
-
-        # Planning 능력 (JSON 성공만)
-        line = f"  {'Eval Sample Size':<24}"
-        for model, rs in all_results.items():
-            passed = [r for r in rs if r.passed_prereq]
-            line += f"{len(passed):>18d}"
+        line = f"  {'Common Sample Size':<24}"
+        for model in model_names:
+            line += f"{len(common_results[model]):>18d}"
         print(line)
 
+        print(f"  {'─' * (24 + 18 * len(model_names))}")
+
+        # Planning 능력 (공통 케이스만)
         planning_metrics = [
             ("Intent Recall (30%)",
              lambda rs: sum(r.intent_recall for r in rs) / len(rs)),
@@ -426,16 +439,16 @@ def print_report(all_results: dict[str, list[EvalResult]]):
 
         for name, fn in planning_metrics:
             line = f"  {name:<24}"
-            for model, rs in all_results.items():
-                passed = [r for r in rs if r.passed_prereq]
-                if passed:
-                    val = fn(passed)
+            for model in model_names:
+                crs = common_results[model]
+                if crs:
+                    val = fn(crs)
                     line += f"{val:>18.3f}"
                 else:
                     line += f"{'N/A':>18}"
             print(line)
 
-        print(f"  {'─' * (24 + 18 * len(all_results))}")
+        print(f"  {'─' * (24 + 18 * len(model_names))}")
 
         aux_metrics = [
             ("Hallucinations",
@@ -448,17 +461,43 @@ def print_report(all_results: dict[str, list[EvalResult]]):
 
         for name, fn, fmt in aux_metrics:
             line = f"  {name:<24}"
-            for model, rs in all_results.items():
-                passed = [r for r in rs if r.passed_prereq]
-                if not passed:
+            for model in model_names:
+                crs = common_results[model]
+                if not crs:
                     line += f"{'N/A':>18}"
                     continue
-                val = fn(passed)
+                val = fn(crs)
                 if fmt == "d":
                     line += f"{val:>18d}"
                 elif fmt == "ms":
                     line += f"{val:>18.0f}"
             print(line)
+
+        # 카테고리별 공통 비교
+        common_cats = sorted({r.category for rs in common_results.values()
+                              for r in rs})
+        if common_cats:
+            print(f"\n  [카테고리별 Planning Score — 공통 케이스]")
+            header = f"    {'Category':<15}"
+            for name in model_names:
+                header += f"{name:>18}"
+            header += f"{'N':>5}"
+            print(header)
+            print(f"    {'─' * (15 + 18 * len(model_names) + 5)}")
+            for cat in common_cats:
+                line = f"    {cat:<15}"
+                n = 0
+                for model in model_names:
+                    cat_rs = [r for r in common_results[model]
+                              if r.category == cat]
+                    n = len(cat_rs)
+                    if cat_rs:
+                        avg = sum(r.score for r in cat_rs) / len(cat_rs)
+                        line += f"{avg:>18.3f}"
+                    else:
+                        line += f"{'N/A':>18}"
+                line += f"{n:>5}"
+                print(line)
 
 
 # ── 메인 ───────────────────────────────────────────────────
