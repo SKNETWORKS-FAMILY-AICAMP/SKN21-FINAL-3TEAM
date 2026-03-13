@@ -9,10 +9,10 @@ import MarkdownText from './MarkdownText';
 
 const AGENT_CONFIG = {
   judgment: { icon: Scale, label: '규정 판단', color: 'text-primary-700 bg-primary-50 dark:text-primary-300 dark:bg-primary-900/30' },
-  doc_search: { icon: Search, label: '문서 검색', color: 'text-accent-700 bg-accent-50 dark:text-accent-300 dark:bg-accent-900/30' },
+  doc_retrieve: { icon: Search, label: '문서 검색/조회', color: 'text-accent-700 bg-accent-50 dark:text-accent-300 dark:bg-accent-900/30' },
+  doc_search: { icon: Search, label: '문서 검색/조회', color: 'text-accent-700 bg-accent-50 dark:text-accent-300 dark:bg-accent-900/30' },
   doc_generate: { icon: FileText, label: '문서 생성', color: 'text-accent-700 bg-accent-50 dark:text-accent-300 dark:bg-accent-900/30' },
   doc_summary: { icon: FileSearch, label: '문서 요약', color: 'text-accent-700 bg-accent-50 dark:text-accent-300 dark:bg-accent-900/30' },
-  doc_qa: { icon: HelpCircle, label: '문서 QA', color: 'text-accent-700 bg-accent-50 dark:text-accent-300 dark:bg-accent-900/30' },
   schedule_add: { icon: CalendarPlus, label: '일정 추가', color: 'text-green-700 bg-green-50 dark:text-green-300 dark:bg-green-900/30' },
   schedule_view: { icon: CalendarDays, label: '일정 조회', color: 'text-green-700 bg-green-50 dark:text-green-300 dark:bg-green-900/30' },
   general: { icon: MessageCircle, label: '일반', color: 'text-neutral-500 bg-neutral-100 dark:text-neutral-400 dark:bg-neutral-800' },
@@ -94,8 +94,8 @@ function AgentResultCard({ msg }) {
     );
   }
 
-  // ── Document Search Agent ──
-  if (resultIntent === 'doc_search') {
+  // ── Document Search/Retrieve Agent ──
+  if (resultIntent === 'doc_search' || resultIntent === 'doc_retrieve') {
     const sources = data.sources || data.references || [];
     if (sources.length === 0) return null;
     return (

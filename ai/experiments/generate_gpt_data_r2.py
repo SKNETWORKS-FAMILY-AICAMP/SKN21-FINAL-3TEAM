@@ -28,7 +28,7 @@ OUT_DIR = ROOT / "data" / "training" / "intent_multilabel"
 
 INTENT_LABELS = [
     "judgment", "doc_search", "doc_generate", "doc_summary",
-    "schedule_add", "schedule_view", "general", "doc_qa",
+    "schedule_add", "schedule_view", "general", "doc_search",
 ]
 
 # ── GPT 호출 ──────────────────────────────────────────────────────────────────
@@ -196,8 +196,8 @@ JSON 배열만 응답하세요."""
 SECOND_INTENT_CONFIGS = [
     {
         "intent1": "doc_generate",
-        "intent2": "doc_qa",
-        "labels": ["doc_generate", "doc_qa"],
+        "intent2": "doc_search",
+        "labels": ["doc_generate", "doc_search"],
         "patterns": '- "기획안 내용으로 보고서 만들어줘" → 기획안 내용 확인(doc_qa) + 보고서 작성(doc_generate)\n- "실적 보고서 내용으로 월간 리뷰 만들어줘" → 실적 확인(doc_qa) + 리뷰 작성(doc_generate)\n- "계약서에서 조건 확인하고 요약 보고서 써줘" → 조건 확인(doc_qa) + 보고서 작성(doc_generate)',
     },
     {
@@ -208,8 +208,8 @@ SECOND_INTENT_CONFIGS = [
     },
     {
         "intent1": "doc_search",
-        "intent2": "doc_qa",
-        "labels": ["doc_qa", "doc_search"],
+        "intent2": "doc_search",
+        "labels": ["doc_search", "doc_search"],
         "patterns": '- "휴가 규정 찾아서 연차 몇 일인지 알려줘" → 규정 찾기(doc_search) + 일수 확인(doc_qa)\n- "경비 처리 기준 찾아주고 상한선이 얼마인지도" → 기준 찾기(doc_search) + 금액 확인(doc_qa)',
     },
 ]
@@ -314,7 +314,7 @@ async def main():
             for item in results:
                 if isinstance(item, dict) and "text" in item and "labels" in item:
                     valid_labels = [l for l in item["labels"] if l in INTENT_LABELS]
-                    if valid_labels and "doc_qa" not in valid_labels:
+                    if valid_labels and "doc_search" not in valid_labels:
                         all_data.append({"text": item["text"].strip(), "labels": sorted(valid_labels)})
                         count += 1
             print(f"  [{cfg['expected_label']} — doc_qa 아님] {count}개 생성")

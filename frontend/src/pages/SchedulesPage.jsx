@@ -62,6 +62,7 @@ export default function SchedulesPage() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [settingsTab, setSettingsTab] = useState('all'); // 'all' | 'google' | 'slack'
   const [refreshKey, setRefreshKey] = useState(0);
+  const [dbSchedulesLoading, setDbSchedulesLoading] = useState(true);
 
   // Google Calendar 연결 시 이벤트 자동 로드 (백엔드 기본값: ±3개월)
   useEffect(() => {
@@ -72,6 +73,7 @@ export default function SchedulesPage() {
 
   // 본인 DB 일정 로드 (Google Calendar 미연결 시에도 일정 표시)
   useEffect(() => {
+    setDbSchedulesLoading(true);
     listSchedules().then((res) => {
       const schedules = [];
       (res.data || []).forEach((s) => {
@@ -109,7 +111,8 @@ export default function SchedulesPage() {
         }
       });
       setMyDbSchedules(schedules);
-    }).catch(() => setMyDbSchedules([]));
+    }).catch(() => setMyDbSchedules([]))
+      .finally(() => setDbSchedulesLoading(false));
   }, [refreshKey]);
 
   // 팀 일정 로드
@@ -640,9 +643,9 @@ export default function SchedulesPage() {
             </div>
           )}
 
-          {calendarLoading ? (
+          {calendarLoading || dbSchedulesLoading ? (
             <div className="flex justify-center items-center h-64">
-              <div className="text-neutral-sub">Google Calendar 이벤트 로딩 중...</div>
+              <div className="text-neutral-sub">일정 불러오는 중...</div>
             </div>
           ) : (
             <>

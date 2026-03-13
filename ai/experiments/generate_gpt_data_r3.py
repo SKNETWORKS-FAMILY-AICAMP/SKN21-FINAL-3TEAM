@@ -27,7 +27,7 @@ OUT_DIR = ROOT / "data" / "training" / "intent_multilabel"
 
 INTENT_LABELS = [
     "judgment", "doc_search", "doc_generate", "doc_summary",
-    "schedule_add", "schedule_view", "general", "doc_qa",
+    "schedule_add", "schedule_view", "general", "doc_search",
 ]
 
 
@@ -137,8 +137,8 @@ DOC_SUMMARY_COMPOUND_CONFIGS = [
         "examples": '- "복리후생 규정 찾아서 핵심만 요약해줘" → 규정 찾기(doc_search) + 요약(doc_summary)\n- "출장비 관련 문서 찾아서 간단히 정리해줘" → 문서 찾기(doc_search) + 정리(doc_summary)\n- "취업규칙에서 징계 관련 부분 요약 좀" → 규정 찾기(doc_search) + 요약(doc_summary)',
     },
     {
-        "intent1": "doc_qa",
-        "labels": ["doc_qa", "doc_summary"],
+        "intent1": "doc_search",
+        "labels": ["doc_search", "doc_summary"],
         "examples": '- "보고서에서 매출 수치 확인하고 전체 핵심도 요약해줘" → 수치 확인(doc_qa) + 요약(doc_summary)\n- "계약서 만료일 알려주고 주요 조항 요약해줘" → 날짜 확인(doc_qa) + 요약(doc_summary)',
     },
 ]

@@ -27,7 +27,7 @@ OUT_DIR = ROOT / "data" / "training" / "intent_multilabel"
 
 INTENT_LABELS = [
     "judgment", "doc_search", "doc_generate", "doc_summary",
-    "schedule_add", "schedule_view", "general", "doc_qa",
+    "schedule_add", "schedule_view", "general", "doc_search",
 ]
 
 INTENT_DESCRIPTIONS = {
@@ -38,7 +38,7 @@ INTENT_DESCRIPTIONS = {
     "schedule_add": "일정 등록, 추가, 잡기, 미팅 설정",
     "schedule_view": "일정 조회, 확인, 보기, 빈 시간 확인",
     "general": "일반 대화, 인사, 잡담, 시스템 관련 질문",
-    "doc_qa": "문서 내용에 대한 질문, 특정 정보 추출 (금액, 날짜, 수치, 담당자 등)",
+    "doc_search": "문서 내용에 대한 질문, 특정 정보 추출 (금액, 날짜, 수치, 담당자 등)",
 }
 
 # ── 2중 복합 조합 ─────────────────────────────────────────────────────────────
@@ -47,17 +47,17 @@ COMPOUND_COMBOS = [
     ("doc_search", "judgment"),
     ("doc_search", "doc_summary"),
     ("doc_search", "doc_generate"),
-    ("doc_search", "doc_qa"),
-    ("doc_qa", "judgment"),
-    ("doc_qa", "doc_generate"),
-    ("doc_qa", "doc_summary"),
+    ("doc_search", "doc_search"),
+    ("doc_search", "judgment"),
+    ("doc_search", "doc_generate"),
+    ("doc_search", "doc_summary"),
     ("doc_summary", "doc_generate"),
     ("doc_summary", "judgment"),
     ("judgment", "doc_generate"),
     ("schedule_view", "schedule_add"),
     ("schedule_view", "judgment"),
     ("schedule_view", "doc_generate"),
-    ("doc_qa", "schedule_view"),
+    ("doc_search", "schedule_view"),
     ("judgment", "schedule_add"),
     ("schedule_add", "doc_generate"),
     ("doc_search", "schedule_view"),
@@ -68,16 +68,16 @@ COMPOUND_COMBOS = [
 TRIPLE_COMBOS = [
     ("doc_search", "judgment", "doc_generate"),
     ("doc_search", "doc_summary", "judgment"),
-    ("doc_qa", "doc_summary", "doc_generate"),
-    ("doc_search", "doc_qa", "judgment"),
-    ("doc_search", "doc_qa", "doc_generate"),
+    ("doc_search", "doc_summary", "doc_generate"),
+    ("doc_search", "doc_search", "judgment"),
+    ("doc_search", "doc_search", "doc_generate"),
     ("schedule_view", "schedule_add", "doc_generate"),
-    ("doc_qa", "judgment", "doc_generate"),
+    ("doc_search", "judgment", "doc_generate"),
 ]
 
 # ── 함정 단일 (접속사 있지만 단일 intent) ─────────────────────────────────────
 
-TRAP_INTENTS = ["doc_search", "judgment", "doc_qa", "doc_generate", "doc_summary", "schedule_view"]
+TRAP_INTENTS = ["doc_search", "judgment", "doc_search", "doc_generate", "doc_summary", "schedule_view"]
 
 # ── 프롬프트 ──────────────────────────────────────────────────────────────────
 

@@ -32,7 +32,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 
 INTENT_LABELS = [
     "judgment", "doc_search", "doc_generate", "doc_summary",
-    "schedule_add", "schedule_view", "general", "doc_qa",
+    "schedule_add", "schedule_view", "general", "doc_search",
 ]
 NUM_LABELS = len(INTENT_LABELS)
 LABEL2ID = {label: i for i, label in enumerate(INTENT_LABELS)}
@@ -219,9 +219,9 @@ def strategy2_postprocess(probs, text):
 
     # [오답 48] doc_search 독립 추가 (doc_qa 교체뿐 아니라)
     if DOC_SEARCH_KEYWORDS.search(text) and "doc_search" not in pred_labels:
-        if "doc_qa" in pred_labels:
+        if "doc_search" in pred_labels:
             # doc_qa → doc_search 교체
-            pred_labels.discard("doc_qa")
+            pred_labels.discard("doc_search")
             pred_labels.add("doc_search")
         else:
             # 독립 추가 (prob >= 0.10)
@@ -230,8 +230,8 @@ def strategy2_postprocess(probs, text):
 
     # [오답 12] "어떤 거 있는지" 패턴 → doc_qa를 doc_search로 교체
     if DOC_SEARCH_LIST_PATTERN.search(text):
-        if "doc_qa" in pred_labels and "doc_search" not in pred_labels:
-            pred_labels.discard("doc_qa")
+        if "doc_search" in pred_labels and "doc_search" not in pred_labels:
+            pred_labels.discard("doc_search")
             pred_labels.add("doc_search")
 
     # schedule_view가 암시되는데 없으면 추가
@@ -258,16 +258,16 @@ def strategy2_postprocess(probs, text):
 
     # [오답 31] "핵심 수치 알려줘" = doc_qa (doc_summary 아님)
     if DOC_QA_SPECIFIC.search(text):
-        if "doc_summary" in pred_labels and "doc_qa" not in pred_labels:
+        if "doc_summary" in pred_labels and "doc_search" not in pred_labels:
             pred_labels.discard("doc_summary")
-            pred_labels.add("doc_qa")
+            pred_labels.add("doc_search")
 
     # ── Over-triggering 보정 ──
 
     # doc_search + doc_qa 동시 예측 → 확률 높은 쪽만
-    if "doc_search" in pred_labels and "doc_qa" in pred_labels:
-        if probs[LABEL2ID["doc_search"]] >= probs[LABEL2ID["doc_qa"]]:
-            pred_labels.discard("doc_qa")
+    if "doc_search" in pred_labels and "doc_search" in pred_labels:
+        if probs[LABEL2ID["doc_search"]] >= probs[LABEL2ID["doc_search"]]:
+            pred_labels.discard("doc_search")
         else:
             pred_labels.discard("doc_search")
 
@@ -340,7 +340,7 @@ def rule_based_detect(text):
 
     # doc_qa
     if re.search(r'뭐야|뭐예요|얼마|어떻게|무엇|내용.*알려|확인.*알려|뭐 결정|어떤 내용', text):
-        candidates.add("doc_qa")
+        candidates.add("doc_search")
 
     return candidates
 
@@ -360,9 +360,9 @@ def strategy3_hybrid(probs, text):
                 bert_labels.add(label)
 
     # Over-triggering 방지: doc_search + doc_qa 동시면 높은 쪽만
-    if "doc_search" in bert_labels and "doc_qa" in bert_labels:
-        if probs[LABEL2ID["doc_search"]] >= probs[LABEL2ID["doc_qa"]]:
-            bert_labels.discard("doc_qa")
+    if "doc_search" in bert_labels and "doc_search" in bert_labels:
+        if probs[LABEL2ID["doc_search"]] >= probs[LABEL2ID["doc_search"]]:
+            bert_labels.discard("doc_search")
         else:
             bert_labels.discard("doc_search")
 

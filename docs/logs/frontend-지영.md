@@ -2410,6 +2410,83 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 
 ---
 
+## 2026-03-13 (목)
+
+### 한 일
+
+#### 1) Intent 8→7개 축소 (doc_qa → doc_search 병합)
+
+**배경**: doc_qa와 doc_search가 13차 실험 내내 가장 혼동이 많았던 쌍이고, 둘 다 같은 document_agent로 라우팅되므로 분리할 실익 없음. 멘토 피드백에서 agent planner(작업 순서 예측) 확장도 고려하라는 조언 반영.
+
+**변경 파일 (전체 스택 27개 파일)**:
+- **AI**: `train_multilabel.py`, `eval_holdout.py`, `generate_multilabel_data.py` — INTENT_LABELS 8→7개
+- **AI Agent**: `intent_classifier.py` — doc_qa 제거, doc_search 설명에 "문서 내용 질의응답" 포함
+- **AI Agent**: `orchestrator.py` — doc_qa 라우팅 제거
+- **AI Agent**: `document_agent.py` — doc_qa 디스패치 블록 제거
+- **Backend**: `chat.py`, `chat.py(schemas)` — doc_qa 참조 제거
+- **Frontend**: `constants.js`, `ChatWindow.jsx`, `CompoundCard.jsx`, `AgentIndicator.jsx`, `AIChatPopup.jsx`, `SystemStats.jsx`, `ChatPage.jsx` — doc_qa 제거, doc_search 라벨 통합
+- **데이터**: `train.jsonl`(149건 dedup), `val.jsonl`(34건 dedup), `test.jsonl`(20건 dedup), `adversarial_*.json` — doc_qa→doc_search 변환 + 중복 제거
+
+#### 2) 7-label 5-Seed 앙상블 학습 (RunPod)
+
+**환경**: RunPod A100, klue/roberta-large, Focal Loss(γ=2.0) + FGM(ε=1.0) + Label Weights
+
+**개별 seed 결과 (Test set)**:
+
+| Seed | Subset Acc | Macro F1 | Over-trig | Under-trig |
+|------|-----------|----------|-----------|------------|
+| 42 | 96.2% | 98.3% | 0.6% | 1.4% |
+| 123 | 96.2% | 98.0% | 0.9% | 2.5% |
+| 456 | **96.7%** | **98.6%** | 0.3% | 2.8% |
+| 789 | 96.2% | 98.0% | 0.6% | 2.5% |
+| 1337 | 96.4% | 98.1% | 0.3% | 1.8% |
+
+- 모든 seed에서 Test Subset Accuracy **96.2~96.7%**, Macro F1 **98.0~98.6%** 안정적
+- 5개 모델 저장 완료: `ai/models/intent_multilabel_ensemble/seed_{42,123,456,789,1337}`
+
+**주의 사항**: Compound 쿼리에서 doc_search 과다 트리거(~80%) 발생 — doc_qa 병합으로 doc_search 범위가 넓어진 영향. 앙상블 + threshold 최적화로 개선 예정.
+
+#### 3) 트러블슈팅 (RunPod)
+- pip 패키지 누락 해결: `datasets`, `transformers`, `accelerate`, `scikit-learn`, `matplotlib`, `seaborn`
+- 디스크 부족 (40GB 중 22GB 점유): 8-label 시절 모델 디렉토리 + HuggingFace 캐시 삭제로 해결
+- 단일 `--seed` 모드의 모델 덮어쓰기 문제 발견 → `--ensemble-seeds` 모드로 전환하여 seed별 별도 저장
+
+#### 4) Intent 7→6개 축소 (doc_search + doc_summary → doc_retrieve 병합)
+
+**배경**: 7-label 앙상블 Held-out 평가에서 86.7% (8-label 대비 -6.6%p 하락). 8건 오답 중 5건이 doc_search↔doc_summary 경계 혼동. PM(지용) 제안으로 doc_search + doc_summary + doc_qa를 단일 `doc_retrieve`로 통합. "어느 agent로 보낼지"만 분류기가 결정하고, 검색/요약/QA 세부 판단은 document_agent 내부 sLLM이 담당.
+
+**6-label 구조**: `judgment`, `doc_retrieve`, `doc_generate`, `schedule_add`, `schedule_view`, `general`
+
+**변경 파일 (전체 스택)**:
+- **AI 실험**: `train_multilabel.py` — INTENT_LABELS 6개, label_weights 업데이트 (doc_retrieve:2.0)
+- **AI 실험**: `eval_holdout.py`, `threshold_search.py` — 6-label grid search 로직 업데이트
+- **AI Agent**: `intent_classifier.py` — INTENT_LABELS 6개, LLM prompt, 임베딩 예제, KNOWN_OVERRIDES, verb patterns 통합
+- **AI Agent**: `orchestrator.py` — 라우팅 `("doc_retrieve", "doc_generate")`, fallback type, Korean labels
+- **AI Agent**: `document_agent.py` — `doc_retrieve` intent 내부 분기 (summary vs search 자동 판단)
+- **AI Agent**: `state.py` — intent 타입 주석 업데이트
+- **Backend**: `chat.py` — `_get_agent_type()`, format_response skip logic
+- **Backend**: `schemas/chat.py` — SSE event 주석 업데이트
+- **Frontend**: `constants.js` — INTENT_TYPES/LABELS/ICONS 6개로 축소
+- **Frontend**: `AgentIndicator.jsx`, `CompoundCard.jsx`, `AIChatPopup.jsx`, `ChatWindow.jsx`, `StreamingMessage.jsx`, `SystemStats.jsx`, `ChatPage.jsx` — doc_retrieve 추가 + 하위 호환
+- **데이터**: 전체 training/val/test/holdout 데이터 doc_search→doc_retrieve, doc_summary→doc_retrieve 변환 + 7건 중복 제거
+
+#### 5) 프론트엔드 UI 개선
+
+- **일정관리 페이지 로딩 깜빡임 수정** (`SchedulesPage.jsx`) — DB 일정 로딩 상태(`dbSchedulesLoading`) 추가, 로딩 완료 전까지 빈 달력 노출 방지
+- **Approvals 탭 색상 통일** (`ApprovalPanel.jsx`) — raw Tailwind 색상을 서비스 디자인 토큰으로 전면 교체
+- **문서 페이지 독립 스크롤** (`DocumentList.jsx`, `DocumentDetail.jsx`) — 좌우 패널 각각 `max-h-[82vh]` + `overflow-y-auto` 적용
+- **문서 목록 compact/detailed 뷰 토글** (`DocumentList.jsx`) — compact 3컬럼(문서명+서브정보, 분류, 태그) / detailed 6컬럼 전환
+- **DataTable 컬럼 스타일 확장** (`DataTable.jsx`) — `className`, `headerClassName` props 지원 추가
+
+### 다음 할 일
+
+- RunPod에서 6-label 5-seed 앙상블 재학습
+- Held-out 60개 앙상블 평가 → 8-label 93.3% 대비 성능 비교
+- per-label threshold 최적화 (doc_retrieve × judgment)
+- 프론트엔드 백엔드 실제 연동 작업 재개
+
+---
+
 ## 현재 구현 현황 요약
 
 | 항목 | 상태 | 비고 |
