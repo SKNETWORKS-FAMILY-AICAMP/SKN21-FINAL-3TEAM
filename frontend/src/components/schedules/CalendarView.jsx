@@ -242,14 +242,11 @@ function YearView({ year, events, todayYear, todayMonth, todayDate, onMonthClick
 const PROJECT_COLORS = [
   '#A6C1BE', // 뮤트 틸
   '#C08282', // 뮤트 레드
-  '#C0A381', // 뮤트 오렌지
-  '#C4A86C', // 뮤트 앰버
   '#B08898', // 뮤트 로즈
   '#A08BAC', // 뮤트 라벤더
   '#A4A882', // 뮤트 올리브
   '#7EA8A4', // 스틸 틸
-  '#A0947C', // 웜 토프
-  '#9BAA8A', // 모스 그린
+  '#A0947C' // 웜 토프
 ];
 
 // 안정적인 문자열 해시 함수 (프로젝트 이름 → 고유 색상 추출용)
@@ -258,7 +255,7 @@ function stringToColor(str) {
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
-  
+
   // 지정된 프로젝트 팔레트 내에서 순환 선택
   const index = Math.abs(hash) % PROJECT_COLORS.length;
   return PROJECT_COLORS[index];
@@ -287,13 +284,13 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
   const getEventColor = (e) => {
     // 공휴일
     if (e.type === 'holiday') return '#C06060';
-    
+
     // 라벨 "[프로젝트명]" 기반 추출 - 타입 무관하게 프로젝트명이 추출되면 고유 색상 적용
     const pName = extractProjectName(e?.label);
     if (pName && pName !== '팀') {
       return stringToColor(pName); // 프로젝트별 고유 컬러
     }
-    
+
     if (e.type === 'project') return '#8B5CF6'; // 기본 프로젝트 연보라색 (폴백)
 
     // 그 외 커스텀/기본 속성 색상
@@ -429,8 +426,8 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
             <button
               onClick={() => setHiddenTypes(new Set())}
               className={`px-2.5 py-1 rounded-md text-xs font-medium border transition ${showAll
-                  ? 'border-primary-500 bg-primary-50 text-primary-700'
-                  : 'border-neutral-divider bg-surface-card text-neutral-main opacity-40'
+                ? 'border-primary-500 bg-primary-50 text-primary-700'
+                : 'border-neutral-divider bg-surface-card text-neutral-main opacity-40'
                 }`}
             >
               전체
@@ -442,8 +439,8 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
                   key={id}
                   onClick={() => toggleType(id)}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition ${active
-                      ? 'border-neutral-border bg-surface-card text-neutral-main'
-                      : 'border-neutral-divider bg-surface-card text-neutral-main opacity-40'
+                    ? 'border-neutral-border bg-surface-card text-neutral-main'
+                    : 'border-neutral-divider bg-surface-card text-neutral-main opacity-40'
                     }`}
                 >
                   <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: active ? color : '#9CA3AF' }} />
@@ -505,7 +502,7 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
                   <div className={`font-semibold mb-1 ${d.other ? 'text-neutral-muted' : (i % 7 === 0 || isHoliday) ? 'text-red-500' : i % 7 === 6 ? 'text-blue-500' : 'text-neutral-main'}`}>{d.day}</div>
                   {dayEvents.map((e, j) => {
                     let builtInStyle = DEFAULT_TYPE_STYLES[e.type];
-                    
+
                     // [팀]을 제외한 [프로젝트명]이 있는 경우 모든 타입에서 동적 색상우선 적용
                     const pName = extractProjectName(e?.label);
                     if (pName && pName !== '팀') {
