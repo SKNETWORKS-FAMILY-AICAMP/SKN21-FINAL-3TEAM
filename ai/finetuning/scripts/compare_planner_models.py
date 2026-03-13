@@ -291,10 +291,30 @@ def generate_with_vllm(base_url: str, model_id: str,
 
 # ── 메인 비교 실행 ─────────────────────────────────────────
 
+def _get_project_root(args) -> Path:
+    """프로젝트 루트 경로 탐지"""
+    if args.project_root:
+        return Path(args.project_root)
+    # git root로 탐지
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, check=True)
+        return Path(result.stdout.strip())
+    except Exception:
+        pass
+    # fallback: CWD
+    return Path.cwd()
+
+
 def run_comparison(args):
     """전체 비교 실행"""
+    project_root = _get_project_root(args)
+    print(f"Project root: {project_root}")
+
     # 테스트 케이스 로드
-    test_file = Path(__file__).parent.parent.parent.parent / "data" / "evaluation" / "planner_test_cases.json"
+    test_file = project_root / "data" / "evaluation" / "planner_test_cases.json"
     if not test_file.exists():
         print(f"ERROR: {test_file} not found")
         sys.exit(1)
@@ -428,7 +448,7 @@ def run_comparison(args):
             print()
 
     # JSON 저장
-    output_dir = Path(__file__).parent.parent.parent.parent / "outputs" / "planner_comparison"
+    output_dir = project_root / "outputs" / "planner_comparison"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     report = {
@@ -487,6 +507,9 @@ def main():
     parser.add_argument(
         "--vllm-url", default="http://localhost:8000/v1",
         help="vLLM 서버 URL (mode=vllm일 때)")
+    parser.add_argument(
+        "--project-root", default=None,
+        help="프로젝트 루트 경로 (미지정 시 자동 탐지)")
     args = parser.parse_args()
 
     run_comparison(args)

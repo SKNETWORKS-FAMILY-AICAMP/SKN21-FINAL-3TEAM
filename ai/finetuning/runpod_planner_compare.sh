@@ -54,30 +54,32 @@ echo ""
 
 # ── 4. 비교 실행 ─────────────────────────────────
 
+PROJECT_ROOT=$(pwd)
 echo "[4/4] Running comparison..."
+echo "Project root: ${PROJECT_ROOT}"
 echo ""
 
 case "$TARGET" in
     all)
         python3 ai/finetuning/scripts/compare_planner_models.py \
-            --models qwen kanana exaone
+            --models qwen kanana exaone --project-root "$PROJECT_ROOT"
         ;;
     qwen)
         python3 ai/finetuning/scripts/compare_planner_models.py \
-            --models qwen
+            --models qwen --project-root "$PROJECT_ROOT"
         ;;
     kanana)
         python3 ai/finetuning/scripts/compare_planner_models.py \
-            --models kanana
+            --models kanana --project-root "$PROJECT_ROOT"
         ;;
     exaone)
         python3 ai/finetuning/scripts/compare_planner_models.py \
-            --models exaone
+            --models exaone --project-root "$PROJECT_ROOT"
         ;;
     *)
         # 기본: Qwen + Kanana
         python3 ai/finetuning/scripts/compare_planner_models.py \
-            --models qwen kanana
+            --models qwen kanana --project-root "$PROJECT_ROOT"
         ;;
 esac
 
