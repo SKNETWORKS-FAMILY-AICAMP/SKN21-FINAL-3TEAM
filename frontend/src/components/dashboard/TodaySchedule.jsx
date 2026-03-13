@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Badge from '../common/Badge';
-import { Calendar, MapPin, Users, CalendarClock, ChevronUp, ChevronDown, ClipboardList, AlertTriangle, FileSignature } from 'lucide-react';
+import { Calendar, MapPin, Users, CalendarClock, ChevronUp, ChevronDown, ClipboardList, AlertTriangle } from 'lucide-react';
 import dayjs from 'dayjs';
 
 const getMeetingStatus = (m) => {
@@ -37,42 +37,9 @@ export default function TodaySchedule({ meetings = [], actions = [], loading = f
   }, []);
 
   const displayMeetings = isCollapsed ? meetings.slice(0, 1) : meetings;
-  const hasBriefingData = meetings.length > 0 || todayDueTasks.length > 0 || overdueTasks.length > 0 || pendingApprovalCount > 0;
 
   return (
     <div className="card flex flex-col p-5 shadow-soft transition-all duration-300">
-      {/* 브리핑 요약바 */}
-      {!loading && hasBriefingData && (
-        <div className="flex items-center gap-3 mb-4 p-3 rounded-2xl bg-primary-50/60 dark:bg-white/[0.04] border border-primary-100 dark:border-white/[0.08]">
-          <div className="flex flex-wrap items-center gap-2 text-[12px] font-bold">
-            {meetings.length > 0 && (
-              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300">
-                <Calendar size={12} />
-                회의 {meetings.length}건
-              </span>
-            )}
-            {todayDueTasks.length > 0 && (
-              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-warning-bg text-warning">
-                <ClipboardList size={12} />
-                마감 태스크 {todayDueTasks.length}건
-              </span>
-            )}
-            {overdueTasks.length > 0 && (
-              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-bg text-error">
-                <AlertTriangle size={12} />
-                초과 {overdueTasks.length}건
-              </span>
-            )}
-            {pendingApprovalCount > 0 && (
-              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
-                <FileSignature size={12} />
-                결재 대기 {pendingApprovalCount}건
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* 섹션 1: 오늘 일정 */}
       <div
         className="flex items-center justify-between mb-3 cursor-pointer"

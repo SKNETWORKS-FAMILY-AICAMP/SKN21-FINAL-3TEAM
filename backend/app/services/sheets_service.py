@@ -16,8 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.pipeline_task import PipelineTask
 from app.models.google_sheet_tracker import GoogleSheetTracker
-from app.models.schedule import Schedule
-from app.models.approval_request import ApprovalRequest
 from app.services.google_base_service import GoogleBaseService
 
 logger = logging.getLogger(__name__)
@@ -80,6 +78,9 @@ class GoogleSheetsService(GoogleBaseService):
         schedules = []
         approvals = []
         if generate_gantt or generate_dashboard or generate_risk or generate_report:
+            from app.models.schedule import Schedule
+            from app.models.approval_request import ApprovalRequest
+
             sched_result = await db.execute(
                 select(Schedule).where(Schedule.user_id == user_id)
             )
