@@ -105,6 +105,24 @@ class GoogleSheetsService(GoogleBaseService):
         spreadsheet_url = spreadsheet["spreadsheetUrl"]
         sheet_id = spreadsheet["sheets"][0]["properties"]["sheetId"]
 
+        # 탭 이름을 'project'로 변경
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body={
+                "requests": [
+                    {
+                        "updateSheetProperties": {
+                            "properties": {
+                                "sheetId": sheet_id,
+                                "title": "project"
+                            },
+                            "fields": "title"
+                        }
+                    }
+                ]
+            }
+        ).execute()
+
         # 데이터 준비
         rows = [HEADER_ROW]
         for idx, task in enumerate(tasks, 1):
@@ -574,7 +592,7 @@ class GoogleSheetsService(GoogleBaseService):
                 s_end = s_start
             type_label = {"meeting": "회의", "task": "태스크", "deadline": "마감"}.get(s.schedule_type, s.schedule_type or "")
             gantt_items.append((
-                f"📅 {s.title or ''}", "",
+                f"{s.title or ''}", "",
                 type_label, s_start, s_end, f"schedule_{s.schedule_type}",
             ))
 
@@ -768,13 +786,13 @@ class GoogleSheetsService(GoogleBaseService):
 
         # ── 행 데이터 구성 ──
         rows = [
-            ["📊 프로젝트 통합 대시보드", "", "", ""],
+            ["프로젝트 통합 대시보드", "", "", ""],
             [],
         ]
 
         if tasks:
             rows.extend([
-                ["── 🔧 파이프라인 태스크 ──", "", "", ""],
+                ["── 파이프라인 태스크 ──", "", "", ""],
                 ["전체 진행률", f"{progress_pct}%", f"({done_count}/{total} 완료)", ""],
                 [],
                 ["상태", "건수", "비율", "바"],
@@ -797,7 +815,7 @@ class GoogleSheetsService(GoogleBaseService):
         if overdue_tasks:
             rows.extend([
                 [],
-                ["── ⚠️ 마감 초과 태스크 ──", "", "", ""],
+                ["── 마감 초과 태스크 ──", "", "", ""],
                 ["태스크명", "담당자", "마감일", "초과일수"],
             ])
             for t in overdue_tasks:
@@ -808,7 +826,7 @@ class GoogleSheetsService(GoogleBaseService):
         if schedules:
             rows.extend([
                 [],
-                ["── 📅 일정 현황 ──", "", "", ""],
+                ["── 일정 현황 ──", "", "", ""],
                 ["유형", "건수", "", ""],
             ])
             for stype, cnt in sorted(schedule_type_counts.items(), key=lambda x: -x[1]):
@@ -823,7 +841,7 @@ class GoogleSheetsService(GoogleBaseService):
         if approvals:
             rows.extend([
                 [],
-                ["── 📋 결재 현황 ──", "", "", ""],
+                ["── 결재 현황 ──", "", "", ""],
                 ["상태", "건수", "", ""],
             ])
             for status, cnt in sorted(approval_status_counts.items(), key=lambda x: -x[1]):
@@ -957,18 +975,16 @@ class GoogleSheetsService(GoogleBaseService):
 
         # 행 데이터
         rows = [
-            ["⚠️ 프로젝트 리스크 분석", "", "", "", ""],
+            ["프로젝트 리스크 분석", "", "", "", ""],
             ["요약:", summary, "", "", ""],
             [],
             ["위험도", "카테고리", "설명", "관련 태스크", "권장 조치"],
         ]
 
-        level_emoji = {"높음": "🔴", "중간": "🟡", "낮음": "🟢"}
         for r in risks:
-            emoji = level_emoji.get(r.get("level", ""), "")
             affected = ", ".join(r.get("affected_tasks", []))
             rows.append([
-                f"{emoji} {r.get('level', '')}",
+                f"{r.get('level', '')}",
                 r.get("category", ""),
                 r.get("description", ""),
                 affected,
@@ -1087,11 +1103,11 @@ class GoogleSheetsService(GoogleBaseService):
         summary = data.get("summary", "")
 
         rows = [
-            ["📋 주간 보고서", "", ""],
+            ["주간 보고서", "", ""],
             ["기간:", period, ""],
             ["요약:", summary, ""],
             [],
-            ["── ✅ 완료 ──", "", ""],
+            ["── 완료 ──", "", ""],
             ["태스크", "담당자", ""],
         ]
         for item in completed:
@@ -1101,7 +1117,7 @@ class GoogleSheetsService(GoogleBaseService):
 
         rows.extend([
             [],
-            ["── 🔄 진행 중 ──", "", ""],
+            ["── 진행 중 ──", "", ""],
             ["태스크", "담당자", "진행 상황"],
         ])
         for item in in_progress:
@@ -1111,7 +1127,7 @@ class GoogleSheetsService(GoogleBaseService):
 
         rows.extend([
             [],
-            ["── 📅 다음 주 예정 ──", "", ""],
+            ["── 다음 주 예정 ──", "", ""],
             ["태스크", "담당자", "마감일"],
         ])
         for item in planned:
@@ -1122,7 +1138,7 @@ class GoogleSheetsService(GoogleBaseService):
         if meetings:
             rows.extend([
                 [],
-                ["── 🗓️ 회의 일정 ──", "", ""],
+                ["── 회의 일정 ──", "", ""],
                 ["회의명", "날짜", "비고"],
             ])
             for m in meetings:
@@ -1131,7 +1147,7 @@ class GoogleSheetsService(GoogleBaseService):
         if approval_items:
             rows.extend([
                 [],
-                ["── 📋 결재 현황 ──", "", ""],
+                ["── 결재 현황 ──", "", ""],
                 ["결재명", "유형", "상태"],
             ])
             for a in approval_items:
@@ -1140,7 +1156,7 @@ class GoogleSheetsService(GoogleBaseService):
         if blockers:
             rows.extend([
                 [],
-                ["── 🚧 블로커/이슈 ──", "", ""],
+                ["── 블로커/이슈 ──", "", ""],
             ])
             for b in blockers:
                 rows.append([b, "", ""])
@@ -1172,16 +1188,18 @@ class GoogleSheetsService(GoogleBaseService):
 
         # 섹션 헤더 색상
         section_colors = {
-            "✅": {"red": 0.85, "green": 0.93, "blue": 0.83},  # 녹색
-            "🔄": {"red": 0.80, "green": 0.88, "blue": 0.97},  # 파란색
-            "📅": {"red": 0.98, "green": 0.93, "blue": 0.80},  # 노란색
-            "🚧": {"red": 0.97, "green": 0.83, "blue": 0.83},  # 빨간색
+            "완료": {"red": 0.85, "green": 0.93, "blue": 0.83},  # 녹색
+            "진행 중": {"red": 0.80, "green": 0.88, "blue": 0.97},  # 파란색
+            "예정": {"red": 0.98, "green": 0.93, "blue": 0.80},  # 노란색
+            "회의": {"red": 0.90, "green": 0.90, "blue": 0.97},  # 연보라
+            "결재": {"red": 0.90, "green": 0.93, "blue": 0.93},  # 연청록
+            "블로커": {"red": 0.97, "green": 0.83, "blue": 0.83},  # 빨간색
         }
         for idx, row in enumerate(rows):
             if row and isinstance(row[0], str) and row[0].startswith("──"):
                 color = {"red": 0.93, "green": 0.93, "blue": 0.93}
-                for emoji, c in section_colors.items():
-                    if emoji in row[0]:
+                for keyword, c in section_colors.items():
+                    if keyword in row[0]:
                         color = c
                         break
                 requests.append({
