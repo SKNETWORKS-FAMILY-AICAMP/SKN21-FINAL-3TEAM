@@ -255,6 +255,7 @@ async def upload_and_parse(
     existing_doc = existing_result.scalar_one_or_none()
     if existing_doc:
         logger.info(f"중복 문서 감지 — 기존 문서 반환: id={existing_doc.id}, title={title}")
+        existing_doc._is_duplicate = True
         return existing_doc
 
     # 1. 파일 저장

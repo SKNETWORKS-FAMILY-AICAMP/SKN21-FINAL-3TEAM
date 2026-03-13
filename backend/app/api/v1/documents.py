@@ -97,6 +97,7 @@ async def upload_document(
         "category": doc.category,
         "tags": doc.tags,
         "summary": doc.summary,
+        "duplicate": getattr(doc, "_is_duplicate", False),
     }
 
 
