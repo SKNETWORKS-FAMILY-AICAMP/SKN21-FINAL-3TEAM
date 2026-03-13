@@ -217,10 +217,11 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
   useEffect(() => {
     listProjects().then((res) => {
       const list = res.data || [];
-      // 사용자가 멤버인 프로젝트만 표시
-      const myProjects = list.filter((p) =>
-        p.members && p.members.split(',').map((m) => m.trim()).includes(user?.name)
-      );
+      // 사용자가 멤버인 프로젝트만 표시 (API는 members를 배열로 반환)
+      const myProjects = list.filter((p) => {
+        const memberList = Array.isArray(p.members) ? p.members : (p.members ? p.members.split(',').map((m) => m.trim()) : []);
+        return memberList.includes(user?.name);
+      });
       setProjects(myProjects);
     }).catch(() => setProjects([]));
   }, [user?.name]);
