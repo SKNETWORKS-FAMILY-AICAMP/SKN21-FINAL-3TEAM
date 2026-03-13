@@ -32,15 +32,23 @@ async def export_project(
     db: AsyncSession = Depends(get_db),
 ):
     """프로젝트 태스크를 Google Sheets로 내보내기 (+ WBS 자동 생성)"""
-    result = await sheets_service.export_project_to_sheet(
-        db, current_user.id, request.project_name, request.title,
-        generate_wbs=request.generate_wbs,
-        generate_gantt=request.generate_gantt,
-        generate_dashboard=request.generate_dashboard,
-        generate_risk=request.generate_risk,
-        generate_report=request.generate_report,
-    )
-    return SheetCreateResponse(**result)
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        result = await sheets_service.export_project_to_sheet(
+            db, current_user.id, request.project_name, request.title,
+            generate_wbs=request.generate_wbs,
+            generate_gantt=request.generate_gantt,
+            generate_dashboard=request.generate_dashboard,
+            generate_risk=request.generate_risk,
+            generate_report=request.generate_report,
+        )
+        return SheetCreateResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Sheets 내보내기 실패: {type(e).__name__}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Sheets 내보내기 실패: {type(e).__name__}: {str(e)}")
 
 
 @router.post("/{spreadsheet_id}/sync", response_model=SheetSyncResponse)
