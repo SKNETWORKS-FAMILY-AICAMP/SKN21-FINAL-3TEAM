@@ -222,10 +222,10 @@ export default function SheetPreview({ spreadsheetId, onClose }) {
             <button
               key={tab}
               onClick={() => loadTab(tab)}
-              className={`text-xs px-3 py-1.5 rounded font-medium transition ${
+              className={`text-xs px-3 py-1.5 rounded font-semibold transition ${
                 (activeTab || 'project') === tab
-                  ? 'bg-primary-600 text-white'
-                  : 'text-neutral-muted hover:bg-surface-base'
+                  ? 'bg-primary-600 text-white shadow-sm'
+                  : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700'
               }`}
             >
               {tab}
