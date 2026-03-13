@@ -165,8 +165,10 @@ export default function ProjectFolderView({ externalActions, onReady }) {
             ].filter(Boolean);
             const tabsMsg = tabs.length > 0 ? ` (${tabs.join(', ')} 포함)` : '';
             toast.success(`"${projName}" Sheets 내보내기 완료${tabsMsg}`);
-        } catch {
-            toast.error('Sheets 내보내기 실패');
+        } catch (err) {
+            const detail = err?.response?.data?.detail || err?.message || 'Sheets 내보내기 실패';
+            toast.error(detail);
+            console.error('Sheets export error:', err?.response?.data || err);
         } finally {
             setExportingProject(null);
         }
