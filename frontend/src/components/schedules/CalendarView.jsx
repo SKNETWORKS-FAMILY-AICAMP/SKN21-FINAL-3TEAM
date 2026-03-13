@@ -238,24 +238,30 @@ function YearView({ year, events, todayYear, todayMonth, todayDate, onMonthClick
   );
 }
 
+// 팀 일정(파랑색, #7C98AB)과 개인 일정(연두색, #89A681)을 제외한 프로젝트용 색상 팔레트
+const PROJECT_COLORS = [
+  '#A6C1BE', // 뮤트 틸
+  '#C08282', // 뮤트 레드
+  '#C0A381', // 뮤트 오렌지
+  '#C4A86C', // 뮤트 앰버
+  '#B08898', // 뮤트 로즈
+  '#A08BAC', // 뮤트 라벤더
+  '#A4A882', // 뮤트 올리브
+  '#7EA8A4', // 스틸 틸
+  '#A0947C', // 웜 토프
+  '#9BAA8A', // 모스 그린
+];
+
 // 안정적인 문자열 해시 함수 (프로젝트 이름 → 고유 색상 추출용)
 function stringToColor(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
-  // Hue 0-360, Saturation 70%, Lightness 50% (충분히 밝고 구분되는 색상)
-  const h = Math.abs(hash) % 360;
-  const s = 0.7;
-  const l = 0.5;
   
-  const a = s * Math.min(l, 1 - l);
-  const f = n => {
-    const k = (n + h / 30) % 12;
-    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color).toString(16).padStart(2, '0');
-  };
-  return `#${f(0)}${f(8)}${f(4)}`;
+  // 지정된 프로젝트 팔레트 내에서 순환 선택
+  const index = Math.abs(hash) % PROJECT_COLORS.length;
+  return PROJECT_COLORS[index];
 }
 
 // 프로젝트명 추출 헬퍼 ("[테스트] 제목" -> "테스트", 안매칭되면 null)
