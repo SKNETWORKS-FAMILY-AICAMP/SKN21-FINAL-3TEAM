@@ -244,16 +244,23 @@ function stringToColor(str) {
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
-  let color = '#';
-  for (let i = 0; i < 3; i++) {
-    const value = (hash >> (i * 8)) & 0xFF;
-    color += ('00' + value.toString(16)).substr(-2);
-  }
-  return color;
+  // Hue 0-360, Saturation 70%, Lightness 50% (충분히 밝고 구분되는 색상)
+  const h = Math.abs(hash) % 360;
+  const s = 0.7;
+  const l = 0.5;
+  
+  const a = s * Math.min(l, 1 - l);
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
 }
 
 // 프로젝트명 추출 헬퍼 ("[테스트] 제목" -> "테스트", 안매칭되면 null)
 function extractProjectName(label) {
+  if (!label) return null;
   const match = label.match(/^\[(.*?)\]/);
   return match ? match[1] : null;
 }
@@ -274,14 +281,15 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
   const getEventColor = (e) => {
     // 공휴일
     if (e.type === 'holiday') return '#C06060';
-    // 프로젝트(동적 색상) — 라벨 "[프로젝트명]" 기반 추출
-    if (e.type === 'project' && e.label) {
-      const pName = extractProjectName(e.label);
-      if (pName && pName !== '팀') {
-        return stringToColor(pName); // 프로젝트별 고유 컬러
-      }
-      return '#8B5CF6'; // 기본 프로젝트 연보라색 (폴백)
+    
+    // 라벨 "[프로젝트명]" 기반 추출 - 타입 무관하게 프로젝트명이 추출되면 고유 색상 적용
+    const pName = extractProjectName(e?.label);
+    if (pName && pName !== '팀') {
+      return stringToColor(pName); // 프로젝트별 고유 컬러
     }
+    
+    if (e.type === 'project') return '#8B5CF6'; // 기본 프로젝트 연보라색 (폴백)
+
     // 그 외 커스텀/기본 속성 색상
     const foundType = allTypes.find((t) => t.id === e.type);
     return foundType?.color || '#9CA3AF'; // 기본 회색
@@ -491,8 +499,14 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
                   <div className={`font-semibold mb-1 ${d.other ? 'text-neutral-muted' : (i % 7 === 0 || isHoliday) ? 'text-red-500' : i % 7 === 6 ? 'text-blue-500' : 'text-neutral-main'}`}>{d.day}</div>
                   {dayEvents.map((e, j) => {
                     let builtInStyle = DEFAULT_TYPE_STYLES[e.type];
-                    // 프로젝트 타입은 동적 색상을 쓰기 위해 내장 스타일 제거
-                    if (e.type === 'project') builtInStyle = null;
+                    
+                    // [팀]을 제외한 [프로젝트명]이 있는 경우 모든 타입에서 동적 색상우선 적용
+                    const pName = extractProjectName(e?.label);
+                    if (pName && pName !== '팀') {
+                      builtInStyle = null;
+                    } else if (e.type === 'project') {
+                      builtInStyle = null;
+                    }
 
                     const color = builtInStyle ? null : getEventColor(e);
                     return (
