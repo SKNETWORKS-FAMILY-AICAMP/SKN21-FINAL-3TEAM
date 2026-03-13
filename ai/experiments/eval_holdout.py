@@ -28,7 +28,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 ROOT = Path(__file__).resolve().parent.parent.parent
 
 INTENT_LABELS = [
-    "judgment", "doc_search", "doc_generate", "doc_summary",
+    "judgment", "doc_retrieve", "doc_generate",
     "schedule_add", "schedule_view", "general",
 ]
 NUM_LABELS = len(INTENT_LABELS)

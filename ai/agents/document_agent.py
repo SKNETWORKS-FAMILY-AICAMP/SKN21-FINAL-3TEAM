@@ -104,10 +104,8 @@ async def document_agent(state: AgentState) -> AgentState:
     문서 Agent 노드 함수 (LangGraph 노드 인터페이스)
 
     intent에 따라 분기:
-      - doc_search: 문서 검색 결과 반환
+      - doc_retrieve: 문서 검색/조회/요약/QA (내부적으로 search vs summary 판단)
       - doc_generate: 문서 생성 (보고서/회의록/JD/제안서)
-      - doc_summary: 문서 요약
-      - doc_qa: 문서 내용 기반 질의응답
     """
     intent = state.get("intent", "").lower()
     user_input = state.get("user_input", "")
@@ -124,7 +122,31 @@ async def document_agent(state: AgentState) -> AgentState:
     print(f"[DocumentAgent] stream_mode={stream_mode}, context 길이={len(context)}")
 
     try:
-        if intent == "doc_search":
+        if intent == "doc_retrieve":
+            # doc_retrieve: 내부적으로 search vs summary 판단
+            document_content = state.get("document_content") or state.get("extracted_text")
+            document_id = state.get("document_id")
+            import re as _re
+            _is_summary = bool(
+                document_content
+                or document_id
+                or _re.search(r"(요약|정리|핵심|간추|줄여)", user_input)
+            )
+            if _is_summary:
+                print("[DocumentAgent] doc_retrieve → _handle_doc_summary 호출")
+                response_data = await _handle_doc_summary(
+                    user_input,
+                    document_content=document_content,
+                    document_id=document_id,
+                    user_id=user_id,
+                    user_team=user_team,
+                    stream_mode=stream_mode,
+                )
+            else:
+                print("[DocumentAgent] doc_retrieve → _handle_doc_search 호출")
+                response_data = await _handle_doc_search(user_input, context, user_id, user_team=user_team, stream_mode=stream_mode)
+
+        elif intent == "doc_search":
             print("[DocumentAgent] → _handle_doc_search 호출")
             response_data = await _handle_doc_search(user_input, context, user_id, user_team=user_team, stream_mode=stream_mode)
 

@@ -18,7 +18,7 @@ class AgentState(TypedDict):
     user_id: int                            # 사용자 ID
 
     # ── Intent 분류 (지용) ──
-    intent: str                             # judgment | doc_search | doc_generate | doc_summary | doc_qa | schedule_add | schedule_view | schedule_followup | general
+    intent: str                             # judgment | doc_retrieve | doc_generate | schedule_add | schedule_view | schedule_followup | general
     confidence: float                       # 분류 신뢰도 (0.0~1.0)
     intent_candidates: Optional[list]       # top-k intent 후보 [{"intent": str, "confidence": float}]
 

@@ -111,6 +111,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       );
     }
 
+    case 'doc_retrieve':
     case 'doc_search': {
       const sources = data.sources || data.references || [];
       return (

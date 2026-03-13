@@ -17,7 +17,7 @@
       "category": "no_connector_compound",
       "text": "연차 규정이랑 이번 달 쓸 수 있는지 알려줘",
       "labels": [
-        "doc_search",
+        "doc_retrieve",
         "judgment"
       ],
       "note": "이랑 — 접속사 아닌 조사로 연결"
@@ -27,7 +27,7 @@
       "category": "no_connector_compound",
       "text": "출장비 기준 위반 여부까지 확인해줘",
       "labels": [
-        "doc_search",
+        "doc_retrieve",
         "judgment"
       ],
       "note": "까지 — 범위 확장 조사, 두 intent 내포"
@@ -47,7 +47,7 @@
       "category": "no_connector_compound",
       "text": "지난 회의 내용 토대로 후속 보고서 써줘",
       "labels": [
-        "doc_search",
+        "doc_retrieve",
         "doc_generate"
       ],
       "note": "토대로 — 순차 의존, 접속사 없음"
@@ -57,8 +57,7 @@
       "category": "no_connector_compound",
       "text": "인사규정 중에 연차 관련 부분 요약 좀",
       "labels": [
-        "doc_search",
-        "doc_summary"
+        "doc_retrieve"
       ],
       "note": "중에 — 검색+요약이 한 문장에"
     },
@@ -77,8 +76,7 @@
       "category": "no_connector_compound",
       "text": "재택근무 규정 위반 사례 정리해줘",
       "labels": [
-        "doc_search",
-        "doc_summary"
+        "doc_retrieve"
       ],
       "note": "검색+정리가 하나로 압축"
     },
@@ -87,7 +85,7 @@
       "category": "no_connector_compound",
       "text": "팀 주간보고 내용으로 월간 보고서 만들어줘",
       "labels": [
-        "doc_search",
+        "doc_retrieve",
         "doc_generate"
       ],
       "note": "내용으로 — 참조+생성, 접속사 없음"
@@ -97,7 +95,7 @@
       "category": "no_connector_compound",
       "text": "경비 처리 기준 알려주고 이번 건 가능한지도",
       "labels": [
-        "doc_search",
+        "doc_retrieve",
         "judgment"
       ],
       "note": "~도 — 추가 요청이 부사로 붙음"
@@ -107,7 +105,7 @@
       "category": "no_connector_compound",
       "text": "오늘 회의록 핵심만 뽑아서 제안서에 넣어줘",
       "labels": [
-        "doc_summary",
+        "doc_retrieve",
         "doc_generate"
       ],
       "note": "뽑아서 넣어줘 — 동사 연쇄, 접속사 아님"
@@ -127,7 +125,7 @@
       "category": "no_connector_compound",
       "text": "복리후생 어떤 거 있는지부터 위반 여부까지 다 알려줘",
       "labels": [
-        "doc_search",
+        "doc_retrieve",
         "judgment"
       ],
       "note": "~부터 ~까지 — 범위 표현"
@@ -137,7 +135,7 @@
       "category": "no_connector_compound",
       "text": "지난 프로젝트 문서 참고해서 이번 제안서 초안 잡아줘",
       "labels": [
-        "doc_search",
+        "doc_retrieve",
         "doc_generate"
       ],
       "note": "참고해서 — 동사 연결이지만 접속사 패턴 밖"
@@ -157,7 +155,7 @@
       "category": "no_connector_compound",
       "text": "보안 규정 관련 내용 요약본이랑 위반 시 처벌 기준 알려줘",
       "labels": [
-        "doc_summary",
+        "doc_retrieve",
         "judgment"
       ],
       "note": "이랑 — 두 가지 요청 나열"
@@ -167,7 +165,7 @@
       "category": "false_positive_single",
       "text": "규정 꼼꼼히 확인해서 자세하게 알려줘",
       "labels": [
-        "doc_search"
+        "doc_retrieve"
       ],
       "note": "확인해서 알려줘 — 수식일 뿐 단일"
     },
@@ -203,7 +201,7 @@
       "category": "false_positive_single",
       "text": "문서 찾아서 보여줘",
       "labels": [
-        "doc_search"
+        "doc_retrieve"
       ],
       "note": "찾아서 보여줘 — 검색의 동의 표현"
     },
@@ -230,7 +228,7 @@
       "category": "false_positive_single",
       "text": "출장비 규정을 검토해서 정리해줘",
       "labels": [
-        "doc_search"
+        "doc_retrieve"
       ],
       "note": "검토해서 정리 — 검색의 수식 표현"
     },
@@ -248,7 +246,7 @@
       "category": "false_positive_single",
       "text": "지난 회의에서 논의된 사항 정리해줘",
       "labels": [
-        "doc_summary"
+        "doc_retrieve"
       ],
       "note": "논의된 사항 정리 — 요약 단일"
     },
@@ -257,7 +255,7 @@
       "category": "false_positive_single",
       "text": "프로젝트 보고서를 참고해서 핵심만 뽑아줘",
       "labels": [
-        "doc_summary"
+        "doc_retrieve"
       ],
       "note": "참고해서 뽑아줘 — 요약 단일"
     },
@@ -275,7 +273,7 @@
       "category": "implicit_compound",
       "text": "휴가 규정도 보고 싶고 남은 연차도 궁금해",
       "labels": [
-        "doc_search",
+        "doc_retrieve",
         "schedule_view"
       ],
       "note": "~도 ~도 — 병렬 나열, 접속사 없음"
@@ -305,7 +303,7 @@
       "category": "implicit_compound",
       "text": "매출 보고서에서 핵심 수치 알려주고 발표 자료도 준비해줘",
       "labels": [
-        "doc_search",
+        "doc_retrieve",
         "doc_generate"
       ],
       "note": "~도 — 추가 요청"
@@ -315,7 +313,7 @@
       "category": "implicit_compound",
       "text": "규정집에서 관련 조항 찾아주고 이 경우에 적용되는지 봐줘",
       "labels": [
-        "doc_search",
+        "doc_retrieve",
         "judgment"
       ],
       "note": "찾아주고 봐줘 — 동사 연쇄"
@@ -325,7 +323,7 @@
       "category": "implicit_compound",
       "text": "지난번 회의 결정사항이 뭐였는지, 그걸로 보고서 하나 뽑아줘",
       "labels": [
-        "doc_search",
+        "doc_retrieve",
         "doc_generate"
       ],
       "note": "쉼표+그걸로 — 대명사 연결"
@@ -345,8 +343,7 @@
       "category": "implicit_compound",
       "text": "신입사원 교육 자료 있으면 요약해줘",
       "labels": [
-        "doc_search",
-        "doc_summary"
+        "doc_retrieve"
       ],
       "note": "있으면 — 조건절 내 검색+요약"
     },
@@ -365,7 +362,7 @@
       "category": "implicit_compound",
       "text": "예산 문서에서 남은 금액 확인하고 초과 지출 가능한지 판단해줘",
       "labels": [
-        "doc_search",
+        "doc_retrieve",
         "judgment"
       ],
       "note": "확인하고 판단 — 순차 복합"
@@ -375,7 +372,7 @@
       "category": "short_compound",
       "text": "규정 찾아줘, 위반인지도",
       "labels": [
-        "doc_search",
+        "doc_retrieve",
         "judgment"
       ],
       "note": "극단 짧은 복합 + 쉼표"
@@ -395,7 +392,7 @@
       "category": "short_compound",
       "text": "회의록 요약이랑 보고서 작성",
       "labels": [
-        "doc_summary",
+        "doc_retrieve",
         "doc_generate"
       ],
       "note": "극단 짧은 + 이랑"
@@ -405,7 +402,7 @@
       "category": "short_compound",
       "text": "문서 검색, 판단도 부탁",
       "labels": [
-        "doc_search",
+        "doc_retrieve",
         "judgment"
       ],
       "note": "극단 짧은 + 쉼표"
@@ -426,7 +423,7 @@
       "text": "규정 위반 여부랑 관련 문서",
       "labels": [
         "judgment",
-        "doc_search"
+        "doc_retrieve"
       ],
       "note": "극단 짧은 + 여부랑"
     },
@@ -435,7 +432,7 @@
       "category": "short_compound",
       "text": "요약해주고 제안서도",
       "labels": [
-        "doc_summary",
+        "doc_retrieve",
         "doc_generate"
       ],
       "note": "극단 짧은 + ~도"
@@ -455,7 +452,7 @@
       "category": "triple_intent",
       "text": "출장 규정 찾아서 위반인지 판단하고 결과를 보고서로 정리해줘",
       "labels": [
-        "doc_search",
+        "doc_retrieve",
         "judgment",
         "doc_generate"
       ],
@@ -477,8 +474,7 @@
       "category": "triple_intent",
       "text": "인사 규정 찾아서 요약해주고 내 상황에 적용 가능한지 판단해줘",
       "labels": [
-        "doc_search",
-        "doc_summary",
+        "doc_retrieve",
         "judgment"
       ],
       "note": "3개 intent — 검색→요약→판단"
@@ -488,8 +484,7 @@
       "category": "triple_intent",
       "text": "지난 회의록 내용 확인하고 핵심 정리해서 후속 보고서 작성해줘",
       "labels": [
-        "doc_search",
-        "doc_summary",
+        "doc_retrieve",
         "doc_generate"
       ],
       "note": "3개 intent — QA→요약→생성"
@@ -519,7 +514,7 @@
       "category": "connector_trap_single",
       "text": "월간 보고서 그리고 주간 보고서 찾아줘",
       "labels": [
-        "doc_search"
+        "doc_retrieve"
       ],
       "note": "그리고 있지만 둘 다 doc_search"
     },
@@ -546,7 +541,7 @@
       "category": "connector_trap_single",
       "text": "이 문서 요약하고 핵심만 정리해줘",
       "labels": [
-        "doc_summary"
+        "doc_retrieve"
       ],
       "note": "하고 있지만 요약=정리 동의 반복"
     },
@@ -555,7 +550,7 @@
       "category": "connector_trap_single",
       "text": "회의 내용이랑 결정사항 알려줘",
       "labels": [
-        "doc_search"
+        "doc_retrieve"
       ],
       "note": "이랑 있지만 둘 다 doc_qa"
     },
@@ -564,7 +559,7 @@
       "category": "connector_trap_single",
       "text": "근태 규정 그리고 연차 규정 찾아줘",
       "labels": [
-        "doc_search"
+        "doc_retrieve"
       ],
       "note": "그리고 있지만 둘 다 doc_search"
     },

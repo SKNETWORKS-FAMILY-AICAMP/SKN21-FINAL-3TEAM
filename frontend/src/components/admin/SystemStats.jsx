@@ -10,6 +10,7 @@ const PERIODS = [
 
 const INTENT_COLORS = {
   judgment: '#6E87A0',
+  doc_retrieve: '#A89580',
   doc_search: '#A89580',
   doc_generate: '#A89580',
   doc_summary: '#A89580',
@@ -20,6 +21,7 @@ const INTENT_COLORS = {
 
 const INTENT_LABELS = {
   judgment: '판단 질의',
+  doc_retrieve: '문서 검색/조회',
   doc_search: '문서 검색/조회',
   doc_generate: '문서 생성',
   doc_summary: '문서 요약',

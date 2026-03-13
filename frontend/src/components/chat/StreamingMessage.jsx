@@ -2,7 +2,9 @@ import { Wand2, Scale, FileSearch, CalendarDays, MessageCircle } from 'lucide-re
 
 const INTENT_CONFIG = {
   judgment: { icon: Scale, color: 'bg-primary-500' },
+  doc_retrieve: { icon: FileSearch, color: 'bg-accent-500' },
   doc_search: { icon: FileSearch, color: 'bg-accent-500' },
+  doc_summary: { icon: FileSearch, color: 'bg-accent-500' },
   schedule: { icon: CalendarDays, color: 'bg-success' },
   general: { icon: MessageCircle, color: 'bg-neutral-500' },
 };

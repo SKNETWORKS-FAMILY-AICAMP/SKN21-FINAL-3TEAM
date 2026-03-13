@@ -1,18 +1,15 @@
 """
 Intent Classification 모델 (팀원 A 담당)
 
-카테고리 (8개):
+카테고리 (6개):
   - judgment: 규정 기반 판단
-  - doc_search: 문서 검색
+  - doc_retrieve: 문서 검색/조회/요약/QA (RAG 파이프라인 → agent 내부에서 세부 분류)
   - doc_generate: 문서 생성 (보고서/회의록/JD/제안서)
-  - doc_summary: 문서 요약
   - schedule_add: 일정 추가
   - schedule_view: 일정 조회
   - general: 일반 질문
-  - doc_qa: 문서 내용 기반 질의응답
 
-모델: monologg/koelectra-base-v3-discriminator (Fine-tuned, v2_stage6)
-학습 데이터: experiments_v2 Stage 6 (augmented + Label Smoothing 0.1)
+모델: klue/roberta-large (Fine-tuned, 6-label multi-seed ensemble)
 """
 
 import json
@@ -27,9 +24,8 @@ logger = logging.getLogger(__name__)
 
 INTENT_LABELS = [
     "judgment",
-    "doc_search",
+    "doc_retrieve",
     "doc_generate",
-    "doc_summary",
     "schedule_add",
     "schedule_view",
     "general",
@@ -194,11 +190,11 @@ class IntentClassifier:
         Returns:
             {
                 "intents": [
-                    {"intent": "doc_search", "confidence": 0.92},
+                    {"intent": "doc_retrieve", "confidence": 0.92},
                     {"intent": "judgment", "confidence": 0.87},
                 ],
                 "is_compound": True,
-                "primary_intent": "doc_search",   # 최고 confidence
+                "primary_intent": "doc_retrieve",   # 최고 confidence
                 "primary_confidence": 0.92,
             }
         """
@@ -311,9 +307,8 @@ class IntentClassifier:
             _categories = """
                 카테고리:
                 - judgment: 규정/규칙 기반 판단 요청 (예: "이거 규정 위반이야?", "이렇게 해도 돼?")
-                - doc_search: 문서 검색/조회 — 문서 찾기 및 문서 내용 질의응답 (예: "마케팅 문서 찾아줘", "지난 회의 결정사항이 뭐야?", "예산 얼마야?")
+                - doc_retrieve: 문서 검색/조회/요약/QA — 문서 찾기, 내용 질의응답, 문서 요약 (예: "마케팅 문서 찾아줘", "이 문서 요약해줘", "예산 얼마야?")
                 - doc_generate: 문서 작성 — 보고서/회의록/JD/제안서 생성 (예: "보고서 작성해줘", "회의록 만들어줘")
-                - doc_summary: 문서 요약 — 특정 문서의 핵심 정리 (예: "이 문서 요약해줘", "핵심만 정리해줘")
                 - schedule_add: 일정 추가/등록 (예: "내일 2시 회의 일정 추가해줘", "스케줄 등록해줘")
                 - schedule_view: 일정 조회/확인 (예: "오늘 일정 보여줘", "이번 주 스케줄 확인해줘")
                 - pipeline_create: 파이프라인/칸반 태스크 생성 (예: "태스크 만들어줘", "보드에 추가해줘")
@@ -408,13 +403,17 @@ class IntentClassifier:
                     "이건 가능한가요?",
                     "판단해줘",
                 ],
-                "doc_search": [
+                "doc_retrieve": [
                     "연차 휴가 규정 알려줘",
                     "출장비 지급 기준이 뭐야?",
                     "회의에서 어떤 내용이 논의되었나요?",
                     "코드리뷰 회의 내용 찾아줘",
                     "문서 검색해줘",
                     "규정 찾아줘",
+                    "이 문서 요약해줘",
+                    "핵심만 정리해줘",
+                    "문서 내용 요약해줘",
+                    "간단히 정리해줘",
                 ],
                 "doc_generate": [
                     "보고서 작성해줘",
@@ -423,12 +422,6 @@ class IntentClassifier:
                     "JD 작성해줘",
                     "회의록 작성해줘",
                     "회의록 만들어줘",
-                ],
-                "doc_summary": [
-                    "이 문서 요약해줘",
-                    "핵심만 정리해줘",
-                    "문서 내용 요약해줘",
-                    "간단히 정리해줘",
                 ],
                 "schedule_add": [
                     "일정 추가해줘",
@@ -546,12 +539,12 @@ KNOWN_OVERRIDES = {
     r"(퇴직금|급여|연봉|월급|수당|상여).*(계산|산정|산출|얼마)": "judgment",
     # "지각하면 어떻게 돼?" → 조건부 결과 질문은 judgment (general 아님)
     r"(지각|결근|조퇴|무단|위반|어기).*(어떻게|불이익|처벌|징계|벌|감봉)": "judgment",
-    # doc_summary 패턴: "이 문서 요약해줘", "핵심만 정리해줘"
-    r"(이 문서|이 파일|업로드한|첨부).*(요약|정리|핵심)": "doc_summary",
-    r"(요약|정리).*(해줘|해 줘|해주세요|부탁)": "doc_summary",
-    # doc_search 패턴 (문서 내용 질의 포함): "문서에 뭐라고 써있어?", "결정사항이 뭐야?"
-    r"(문서에|보고서에|회의록에).*(뭐라고|어떻게|뭐야|뭐가)": "doc_search",
-    r"(결정사항|합의|결론|핵심 이슈).*(뭐야|뭐였|알려|있어)": "doc_search",
+    # doc_retrieve 패턴: "이 문서 요약해줘", "핵심만 정리해줘"
+    r"(이 문서|이 파일|업로드한|첨부).*(요약|정리|핵심)": "doc_retrieve",
+    r"(요약|정리).*(해줘|해 줘|해주세요|부탁)": "doc_retrieve",
+    # doc_retrieve 패턴 (문서 내용 질의 포함): "문서에 뭐라고 써있어?", "결정사항이 뭐야?"
+    r"(문서에|보고서에|회의록에).*(뭐라고|어떻게|뭐야|뭐가)": "doc_retrieve",
+    r"(결정사항|합의|결론|핵심 이슈).*(뭐야|뭐였|알려|있어)": "doc_retrieve",
     # pipeline_create 패턴: "태스크 만들어줘", "파이프라인에 추가해줘", "프로젝트 추가해줘"
     r"(태스크|task|파이프라인|pipeline|칸반|보드|프로젝트).*(만들|생성|추가|등록)": "pipeline_create",
     r"(만들|생성|추가|등록).*(태스크|task|파이프라인|pipeline|칸반|프로젝트)": "pipeline_create",
@@ -583,9 +576,8 @@ def get_classifier() -> IntentClassifier:
 # 복합 감지 키워드 (문장 안에 서로 다른 intent 동사가 2개 이상)
 _INTENT_VERB_PATTERNS = {
     "judgment": r"(판단|위반|허용|가능한가|되나요|해도 되|해도 돼)",
-    "doc_search": r"(찾아|검색|어디|어떤 문서|검토|뭐라고|뭐야|뭐였|결정사항|내용이)",
+    "doc_retrieve": r"(찾아|검색|어디|어떤 문서|검토|뭐라고|뭐야|뭐였|결정사항|내용이|요약|정리|핵심만)",
     "doc_generate": r"(작성|생성|만들어|써 줘|써줘|작성해|만들어 줘)",
-    "doc_summary": r"(요약|정리|핵심만)",
     "schedule_add": r"(일정.*(?:추가|등록|잡아|넣어)|(?:추가|등록|잡아|넣어).*일정|회의.*(?:잡아|등록))",
     "schedule_view": r"(일정.*(?:보여|조회|확인|알려)|(?:보여|조회|확인).*일정|스케줄.*(?:보여|확인))",
     "pipeline_create": r"(태스크|task|파이프라인|pipeline|칸반|보드|프로젝트).*(?:만들|생성|추가|등록)",

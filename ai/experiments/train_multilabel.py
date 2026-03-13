@@ -63,7 +63,7 @@ MODEL_SAVE_DIR.mkdir(parents=True, exist_ok=True)
 # ── Intent 정의 ──────────────────────────────────────────────────────────────
 
 INTENT_LABELS = [
-    "judgment", "doc_search", "doc_generate", "doc_summary",
+    "judgment", "doc_retrieve", "doc_generate",
     "schedule_add", "schedule_view", "general",
 ]
 NUM_LABELS = len(INTENT_LABELS)
@@ -641,7 +641,7 @@ def main():
     parser.add_argument("--focal", action="store_true", help="Focal Loss 사용")
     parser.add_argument("--focal-gamma", type=float, default=2.0, help="Focal Loss gamma (default: 2.0)")
     parser.add_argument("--label-weights", action="store_true",
-                        help="오답 빈도 기반 label weight 적용 (doc_summary:2.0, judgment:1.5, ...)")
+                        help="오답 빈도 기반 label weight 적용 (doc_retrieve:2.0, judgment:1.5, ...)")
 
     # FGM
     parser.add_argument("--fgm", action="store_true", help="FGM Adversarial Training 사용")
@@ -657,10 +657,9 @@ def main():
     lw = None
     if args.label_weights:
         lw = {
-            "doc_summary": 2.0,
+            "doc_retrieve": 2.0,
             "judgment": 1.5,
             "doc_generate": 1.5,
-            "doc_search": 1.3,
         }
 
     hp = {

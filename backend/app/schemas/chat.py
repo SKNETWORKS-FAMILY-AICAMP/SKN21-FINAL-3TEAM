@@ -79,7 +79,7 @@ class ScheduleAddResultData(BaseModel):
 class SSEIntentEvent(BaseModel):
     """[intent] 이벤트 — Intent 분류 결과 알려줌"""
     event: str = "intent"
-    intent: str                             # judgment, doc_search, doc_generate, doc_summary, schedule_add, schedule_view, general
+    intent: str                             # judgment, doc_retrieve, doc_generate, schedule_add, schedule_view, general
     confidence: float
     agent_type: str                         # judgment_agent, document_agent, schedule_agent, general
 
@@ -95,9 +95,8 @@ class SSEResultEvent(BaseModel):
 
     intent별 data 구조:
       judgment         → JudgmentResultData
+      doc_retrieve     → DocSearchResultData (검색/요약/QA 통합)
       doc_generate     → DocGenerateResultData
-      doc_search       → DocSearchResultData
-      doc_summary      → DocSummaryResultData
       schedule_add     → ScheduleAddResultData
       schedule_view    → list[ScheduleResponse]
       general          → {"answer": "..."}

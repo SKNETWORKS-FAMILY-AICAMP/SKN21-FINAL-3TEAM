@@ -3,6 +3,7 @@ import MarkdownText from './MarkdownText';
 
 const SUB_CONFIG = {
   judgment:      { icon: Scale,        label: '규정 판단',  border: 'border-l-primary-500', badge: 'bg-primary-50 text-primary-700' },
+  doc_retrieve:  { icon: Search,       label: '문서 검색/조회', border: 'border-l-accent-500',   badge: 'bg-accent-50 text-accent-700' },
   doc_search:    { icon: Search,       label: '문서 검색/조회', border: 'border-l-accent-500',   badge: 'bg-accent-50 text-accent-700' },
   doc_generate:  { icon: FileText,     label: '문서 생성',  border: 'border-l-accent-500',   badge: 'bg-accent-50 text-accent-700' },
   doc_summary:   { icon: FileSearch,   label: '문서 요약',  border: 'border-l-accent-500',   badge: 'bg-accent-50 text-accent-700' },

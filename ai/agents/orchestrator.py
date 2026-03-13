@@ -187,14 +187,14 @@ async def safe_document_agent(state: AgentState) -> AgentState:
         return result
     except NotImplementedError:
         state["agent_response"] = {
-            "type": state.get("intent", "doc_search"),
+            "type": state.get("intent", "doc_retrieve"),
             "message": "문서 Agent는 현재 구현 중입니다. 곧 사용 가능합니다.",
         }
         return state
     except Exception as e:
         logger.error("Document agent error: %s", e)
         state["agent_response"] = {
-            "type": state.get("intent", "doc_search"),
+            "type": state.get("intent", "doc_retrieve"),
             "message": f"문서 처리 중 오류가 발생했습니다: {e}",
         }
         state["error"] = str(e)
@@ -399,7 +399,7 @@ def route_by_intent(state: AgentState) -> str:
         route = "general_response"
     elif intent == "judgment":
         route = "judgment_agent"
-    elif intent in ("doc_search", "doc_generate", "doc_summary"):
+    elif intent in ("doc_retrieve", "doc_generate"):
         route = "document_agent"
     elif intent.startswith("schedule_"):
         route = "schedule_agent"
@@ -420,9 +420,8 @@ def clarify_with_candidates(state: AgentState) -> AgentState:
     # 후보 목록 구성
     intent_labels_kr = {
         "judgment": "규정 판단",
-        "doc_search": "문서 검색/조회",
+        "doc_retrieve": "문서 검색/조회/요약",
         "doc_generate": "문서 작성",
-        "doc_summary": "문서 요약",
         "schedule_add": "일정 추가",
         "schedule_view": "일정 조회",
         "pipeline_create": "태스크 생성",
