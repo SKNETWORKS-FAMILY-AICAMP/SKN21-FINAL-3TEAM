@@ -881,11 +881,14 @@ async def suggest_approvals(
 
 @router.post("/suggest-project")
 async def suggest_for_project(
-    project_name: str = Form(...),
+    body: dict,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """특정 프로젝트의 태스크/일정을 분석하여 결재 추천 + 일정 추천"""
+    project_name = body.get("project_name", "")
+    if not project_name:
+        raise HTTPException(status_code=400, detail="project_name이 필요합니다")
     from datetime import datetime, timedelta
 
     # 1. 프로젝트 태스크 수집

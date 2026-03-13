@@ -598,7 +598,7 @@ class GoogleSheetsService(GoogleBaseService):
     # ── 확장: Gantt 차트 탭 ──
 
     async def _generate_gantt_tab(self, service, spreadsheet_id, tasks, schedules=None) -> bool:
-        """태스크의 마감일 기반 간트 차트 표현 (Pipeline 태스크 + 관련 캘린더 일정)"""
+        """태스크의 마감일 기반 간트 차트 표현 (Pipeline 태스크만 — 개인일정 제외)"""
         from datetime import datetime as dt, timedelta
 
         # 간트 항목 수집: (title, assignee, status_label, bar_start, bar_end, color_key)
@@ -617,19 +617,7 @@ class GoogleSheetsService(GoogleBaseService):
                 bar_start, bar_end, t.stage or "todo",
             ))
 
-        # 캘린더 일정 (schedules가 전달된 경우)
-        if schedules:
-            for s in schedules:
-                if not s.start_time:
-                    continue
-                s_start = s.start_time.date() if isinstance(s.start_time, dt) else s.start_time
-                s_end = s.end_time.date() if s.end_time and isinstance(s.end_time, dt) else (s.end_time if s.end_time else s_start)
-                stype = s.schedule_type or "meeting"
-                gantt_items.append((
-                    f"[일정] {s.title or ''}", "",
-                    stype.capitalize(),
-                    s_start, s_end, f"schedule_{stype}",
-                ))
+        # 개인 캘린더 일정은 포함하지 않음 (프로젝트 Gantt는 Pipeline 태스크만)
 
         if not gantt_items:
             return False
