@@ -294,7 +294,7 @@ def generate_with_vllm(base_url: str, model_id: str,
 def run_comparison(args):
     """전체 비교 실행"""
     # 테스트 케이스 로드
-    test_file = Path(__file__).parent.parent.parent / "data" / "evaluation" / "planner_test_cases.json"
+    test_file = Path(__file__).parent.parent.parent.parent / "data" / "evaluation" / "planner_test_cases.json"
     if not test_file.exists():
         print(f"ERROR: {test_file} not found")
         sys.exit(1)
@@ -428,7 +428,7 @@ def run_comparison(args):
             print()
 
     # JSON 저장
-    output_dir = Path(__file__).parent.parent.parent / "outputs" / "planner_comparison"
+    output_dir = Path(__file__).parent.parent.parent.parent / "outputs" / "planner_comparison"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     report = {

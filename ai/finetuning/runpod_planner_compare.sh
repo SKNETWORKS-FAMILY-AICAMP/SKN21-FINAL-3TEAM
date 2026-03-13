@@ -42,7 +42,7 @@ if [ ! -d "SKN21-FINAL-3TEAM" ]; then
 else
     echo "[2/4] Repository exists, pulling latest..."
     cd SKN21-FINAL-3TEAM
-    git pull origin develop || true
+    git pull --rebase origin develop || true
 fi
 
 # ── 3. GPU 확인 ──────────────────────────────────
