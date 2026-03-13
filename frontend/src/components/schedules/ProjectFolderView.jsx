@@ -330,6 +330,7 @@ export default function ProjectFolderView({ externalActions, onReady }) {
     // Inside a project → show KanbanBoard
     if (selectedProject !== null) {
         return (
+            <>
             <div className="space-y-4">
                 <button
                     onClick={() => window.history.back()}
@@ -376,6 +377,16 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                             >
                                 <Pencil size={14} />
                             </button>
+                            {hasScope('sheets') && (
+                                <button
+                                    onClick={() => setExportTarget(selectedProject)}
+                                    disabled={!!exportingProject}
+                                    className="opacity-0 group-hover/name:opacity-100 p-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 text-neutral-400 hover:text-green-600 transition-all disabled:opacity-50"
+                                    title="Sheets로 내보내기"
+                                >
+                                    <FileSpreadsheet size={14} className={exportingProject ? 'animate-pulse' : ''} />
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
@@ -392,6 +403,119 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                     })()}
                 />
             </div>
+
+            {/* Exporting 로딩 오버레이 */}
+            {exportingProject && createPortal(
+                <div className="fixed inset-0 z-[115] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-neutral-900/30 backdrop-blur-sm" />
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="relative bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl rounded-[2rem] shadow-2xl p-8 border border-white/40 dark:border-white/10 flex flex-col items-center"
+                    >
+                        <div className="w-12 h-12 border-4 border-green-200 border-t-green-500 rounded-full animate-spin mb-4" />
+                        <p className="text-sm font-bold text-neutral-main">Sheets로 내보내는 중...</p>
+                        <p className="text-xs text-neutral-muted mt-1">"{exportingProject}"</p>
+                    </motion.div>
+                </div>,
+                document.body
+            )}
+
+            {/* Export success modal */}
+            {exportResult && createPortal(
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
+                        onClick={() => setExportResult(null)}
+                    />
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        className="relative bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-[380px] p-8 mx-4 border border-white/40 dark:border-white/10"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-4">
+                                <CheckCircle2 size={32} className="text-green-500" />
+                            </div>
+                            <h3 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight mb-1">내보내기 완료!</h3>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-2">
+                                <span className="font-bold text-neutral-700 dark:text-neutral-200">"{exportResult.projName}"</span>
+                            </p>
+                            {exportResult.tabs.length > 0 && (
+                                <div className="flex flex-wrap justify-center gap-1.5 mb-4">
+                                    {exportResult.tabs.map(tab => (
+                                        <span key={tab} className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                                            {tab}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                            <p className="text-xs text-neutral-muted mb-5">Sheets 탭에서 미리보기할 수 있습니다</p>
+                            <div className="flex gap-3 w-full">
+                                <button
+                                    onClick={() => setExportResult(null)}
+                                    className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
+                                >
+                                    닫기
+                                </button>
+                                {exportResult.url && (
+                                    <a
+                                        href={exportResult.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={() => setExportResult(null)}
+                                        className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-green-600 text-white hover:bg-green-700 shadow-lg transition-colors text-center"
+                                    >
+                                        Sheets에서 열기
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>,
+                document.body
+            )}
+
+            {/* Export options modal */}
+            {exportTarget && createPortal(
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm" onClick={() => setExportTarget(null)} />
+                    <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="relative bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-[380px] p-8 mx-4 border border-white/40 dark:border-white/10" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-14 h-14 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-4">
+                                <FileSpreadsheet size={24} className="text-green-600" />
+                            </div>
+                            <h3 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight mb-1">Sheets 내보내기</h3>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+                                <span className="font-bold text-neutral-700 dark:text-neutral-200">"{exportTarget}"</span>
+                            </p>
+                            <div className="w-full space-y-2 mb-5 text-left">
+                                {[
+                                    { key: 'generateWbs', label: 'WBS (작업 분해 구조)', desc: 'AI가 태스크를 계층별로 자동 정리' },
+                                    { key: 'generateGantt', label: 'Gantt 차트', desc: '태스크+일정을 시간축 막대로 시각화' },
+                                    { key: 'generateDashboard', label: '통합 대시보드', desc: '진행률/우선순위/담당자 현황 종합' },
+                                    { key: 'generateRisk', label: 'AI 리스크 분석', desc: 'AI가 프로젝트 리스크를 자동 분석' },
+                                    { key: 'generateReport', label: 'AI 주간 보고서', desc: 'AI가 주간 진행 상황 보고서 생성' },
+                                ].map(({ key, label, desc }) => (
+                                    <label key={key} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-neutral-50 dark:hover:bg-white/5 cursor-pointer transition-colors">
+                                        <input type="checkbox" checked={exportOpts[key]} onChange={() => setExportOpts(prev => ({ ...prev, [key]: !prev[key] }))} className="mt-0.5 w-4 h-4 rounded accent-green-600" />
+                                        <div><div className="text-sm font-bold text-neutral-main">{label}</div><div className="text-[11px] text-neutral-muted">{desc}</div></div>
+                                    </label>
+                                ))}
+                            </div>
+                            <div className="flex gap-3 w-full">
+                                <button onClick={() => setExportTarget(null)} className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors">취소</button>
+                                <button onClick={handleExportWithOpts} className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-green-600 text-white hover:bg-green-700 shadow-lg transition-colors">내보내기</button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>,
+                document.body
+            )}
+            </>
         );
     }
 

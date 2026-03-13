@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitMerge, Clock, CheckCircle2, AlertTriangle, Plus, Trash2, X, Pencil, ExternalLink, CheckSquare, Square, Send, FolderOpen, ChevronDown, RefreshCw } from 'lucide-react';
+import { GitMerge, Clock, CheckCircle2, AlertTriangle, Plus, Trash2, X, Pencil, ExternalLink, CheckSquare, Square, Send, FolderOpen, ChevronDown, RefreshCw, Sparkles, FileCheck, CalendarPlus, Loader2 } from 'lucide-react';
 import { listPipelineTasks, createPipelineTask, updatePipelineTask, deletePipelineTask } from '../../api/tasks';
 import { createTask as createGoogleTask } from '../../api/google';
 import useGoogleServices from '../../hooks/useGoogleServices';
+import { suggestForProject } from '../../api/approvals';
 import client from '../../api/client';
 import { toast } from '../../store/toastStore';
 
@@ -58,6 +59,15 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
     const [activeProject, setActiveProject] = useState('all'); // 'all' or project name
     const [deleteTarget, setDeleteTarget] = useState(null); // task to delete
     const [deleting, setDeleting] = useState(false);
+
+    // AI 추천 패널
+    const [showAiPanel, setShowAiPanel] = useState(false);
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiTab, setAiTab] = useState('approvals'); // 'approvals' | 'schedules'
+    const [aiApprovals, setAiApprovals] = useState([]);
+    const [aiSchedules, setAiSchedules] = useState([]);
+    const [aiContext, setAiContext] = useState(null);
+    const [aiGlow, setAiGlow] = useState(!!filterProject); // 프로젝트 안에 들어왔을 때 반짝임
 
     const fetchTasks = useCallback(async () => {
         try {
@@ -288,6 +298,40 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
         return { text: dueDate, cls: 'text-neutral-muted' };
     };
 
+    /* ── AI 추천 ── */
+    const handleAiSuggest = async () => {
+        const projName = filterProject || activeProject;
+        if (!projName || projName === 'all' || projName === 'none') {
+            toast.error('프로젝트를 선택해주세요');
+            return;
+        }
+        setAiGlow(false); // 열면 반짝임 끄기
+        setShowAiPanel(true);
+        setAiLoading(true);
+        try {
+            const res = await suggestForProject(projName);
+            setAiApprovals(res.data.approvals || []);
+            setAiSchedules(res.data.schedules || []);
+            setAiContext(res.data.context || null);
+        } catch (err) {
+            toast.error(err.response?.data?.detail || 'AI 추천 실패');
+        } finally {
+            setAiLoading(false);
+        }
+    };
+
+    const approvalTypeIcons = {
+        leave: '🏖️', remote: '🏠', room: '🏢', design: '🎨', certificate: '📜',
+        budget: '💰', review: '👀', deploy: '🚀', infra: '🔧', security: '🔒',
+    };
+    const scheduleTypeColors = {
+        meeting: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+        task: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+        deadline: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+        review: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+        milestone: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+    };
+
     return (
         <div className="space-y-6">
             {/* Google Tasks 연동 바 */}
@@ -325,6 +369,16 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                         >
                             <ExternalLink size={13} />
                             Google Tasks 확인
+                        </button>
+                        <button
+                            onClick={handleAiSuggest}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 ${aiGlow
+                                ? 'border-violet-400 text-violet-600 bg-violet-50 dark:bg-violet-900/30 dark:border-violet-500 dark:text-violet-300 shadow-[0_0_12px_rgba(139,92,246,0.4)] animate-pulse'
+                                : 'border-violet-300 text-violet-600 hover:bg-violet-50 dark:border-violet-600 dark:text-violet-400 dark:hover:bg-violet-900/20'
+                            }`}
+                        >
+                            <Sparkles size={13} className={aiGlow ? 'animate-spin' : ''} />
+                            AI 추천
                         </button>
                     </>
                 )}
@@ -716,6 +770,161 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                         {/* Footer */}
                         <div className="px-5 py-3 border-t border-neutral-100 dark:border-neutral-800 text-xs text-neutral-muted text-center">
                             {googleTasks.filter(t => !t.completed).length}개 미완료 · {googleTasks.filter(t => t.completed).length}개 완료
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ── AI 추천 Side Panel ── */}
+            <AnimatePresence>
+                {showAiPanel && (
+                    <motion.div
+                        initial={{ x: '100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                        className="fixed top-4 right-4 bottom-4 w-[400px] z-[100] bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl shadow-[-8px_0_30px_-10px_rgba(0,0,0,0.15)] border border-white/40 dark:border-white/10 rounded-[2rem] flex flex-col overflow-hidden"
+                    >
+                        {/* Header */}
+                        <div className="px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                    <Sparkles size={16} className="text-violet-500" />
+                                    <span className="text-sm font-black text-neutral-main tracking-tight">AI 추천</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={handleAiSuggest}
+                                        disabled={aiLoading}
+                                        className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors"
+                                        title="새로고침"
+                                    >
+                                        <RefreshCw size={15} className={aiLoading ? 'animate-spin' : ''} />
+                                    </button>
+                                    <button onClick={() => setShowAiPanel(false)} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors">
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                            {aiContext && (
+                                <div className="flex items-center gap-2 text-[10px] text-neutral-muted mb-3">
+                                    <span className="font-bold text-violet-600 dark:text-violet-400">{aiContext.project_name}</span>
+                                    <span>·</span>
+                                    <span>태스크 {aiContext.total_tasks}개</span>
+                                    <span>·</span>
+                                    <span>완료 {aiContext.done_pct}%</span>
+                                </div>
+                            )}
+                            {/* Tabs */}
+                            <div className="flex bg-neutral-100 dark:bg-neutral-800 rounded-xl p-1">
+                                <button
+                                    onClick={() => setAiTab('approvals')}
+                                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition-all ${aiTab === 'approvals'
+                                        ? 'bg-white dark:bg-neutral-700 text-violet-600 dark:text-violet-400 shadow-sm'
+                                        : 'text-neutral-400 hover:text-neutral-600'
+                                    }`}
+                                >
+                                    <FileCheck size={13} />
+                                    결재 추천
+                                </button>
+                                <button
+                                    onClick={() => setAiTab('schedules')}
+                                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition-all ${aiTab === 'schedules'
+                                        ? 'bg-white dark:bg-neutral-700 text-violet-600 dark:text-violet-400 shadow-sm'
+                                        : 'text-neutral-400 hover:text-neutral-600'
+                                    }`}
+                                >
+                                    <CalendarPlus size={13} />
+                                    일정 추천
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                            {aiLoading ? (
+                                <div className="flex flex-col items-center justify-center h-40 text-neutral-muted">
+                                    <Loader2 size={28} className="animate-spin mb-3 text-violet-400" />
+                                    <p className="text-sm font-bold">AI가 분석 중...</p>
+                                    <p className="text-xs mt-1">프로젝트 태스크를 분석하고 있습니다</p>
+                                </div>
+                            ) : aiTab === 'approvals' ? (
+                                aiApprovals.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center h-32 text-neutral-muted">
+                                        <FileCheck size={28} className="mb-2 opacity-30" />
+                                        <p className="text-sm">추천 결재가 없습니다</p>
+                                    </div>
+                                ) : (
+                                    aiApprovals.map((item, idx) => (
+                                        <motion.div
+                                            key={idx}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: idx * 0.1 }}
+                                            className="bg-white/60 dark:bg-neutral-800/60 backdrop-blur-md rounded-2xl p-4 border border-white/60 dark:border-white/10 shadow-md hover:shadow-lg hover:border-violet-300 dark:hover:border-violet-600 transition-all"
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <span className="text-xl">{approvalTypeIcons[item.type] || '📋'}</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${priorityColors[item.priority] || priorityColors.medium}`}>
+                                                            {(item.priority || 'medium').toUpperCase()}
+                                                        </span>
+                                                        <span className="text-[9px] font-bold text-neutral-muted uppercase">{item.type}</span>
+                                                    </div>
+                                                    <h4 className="text-sm font-bold text-neutral-main leading-snug mb-1">{item.title}</h4>
+                                                    <p className="text-[11px] text-neutral-sub leading-relaxed mb-2">{item.detail}</p>
+                                                    <p className="text-[10px] text-violet-500 dark:text-violet-400 font-medium">{item.reason}</p>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    ))
+                                )
+                            ) : (
+                                aiSchedules.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center h-32 text-neutral-muted">
+                                        <CalendarPlus size={28} className="mb-2 opacity-30" />
+                                        <p className="text-sm">추천 일정이 없습니다</p>
+                                    </div>
+                                ) : (
+                                    aiSchedules.map((item, idx) => (
+                                        <motion.div
+                                            key={idx}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: idx * 0.1 }}
+                                            className="bg-white/60 dark:bg-neutral-800/60 backdrop-blur-md rounded-2xl p-4 border border-white/60 dark:border-white/10 shadow-md hover:shadow-lg hover:border-violet-300 dark:hover:border-violet-600 transition-all"
+                                        >
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${scheduleTypeColors[item.schedule_type] || 'bg-neutral-100 text-neutral-600'}`}>
+                                                    {item.schedule_type}
+                                                </span>
+                                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${priorityColors[item.priority] || priorityColors.medium}`}>
+                                                    {(item.priority || 'medium').toUpperCase()}
+                                                </span>
+                                                {item.duration_minutes && (
+                                                    <span className="text-[9px] text-neutral-muted font-medium ml-auto">{item.duration_minutes}분</span>
+                                                )}
+                                            </div>
+                                            <h4 className="text-sm font-bold text-neutral-main leading-snug mb-1">{item.title}</h4>
+                                            <p className="text-[11px] text-neutral-sub leading-relaxed mb-2">{item.description}</p>
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-[10px] text-violet-500 dark:text-violet-400 font-medium">{item.reason}</p>
+                                                {item.suggested_day && (
+                                                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400">
+                                                        {item.suggested_day === 'today' ? '오늘' : item.suggested_day === 'tomorrow' ? '내일' : item.suggested_day === 'this_week' ? '이번 주' : item.suggested_day}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    ))
+                                )
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-5 py-3 border-t border-neutral-100 dark:border-neutral-800 text-[10px] text-neutral-muted text-center">
+                            결재 {aiApprovals.length}개 · 일정 {aiSchedules.length}개 추천
                         </div>
                     </motion.div>
                 )}
