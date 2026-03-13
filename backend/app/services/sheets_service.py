@@ -9,6 +9,7 @@ from typing import Optional
 import json
 import logging
 import math
+import re
 
 from googleapiclient.discovery import build
 from sqlalchemy import select
@@ -19,6 +20,39 @@ from app.models.google_sheet_tracker import GoogleSheetTracker
 from app.services.google_base_service import GoogleBaseService
 
 logger = logging.getLogger(__name__)
+
+# 이모지 제거 정규식 (Unicode Emoji 범위)
+_EMOJI_RE = re.compile(
+    "[\U0001F300-\U0001F9FF"   # Misc Symbols, Emoticons, etc.
+    "\U00002702-\U000027B0"    # Dingbats
+    "\U0000FE00-\U0000FE0F"    # Variation Selectors
+    "\U0000200D"               # ZWJ
+    "\U000025A0-\U000025FF"    # Geometric Shapes (■, □ 등은 유지 — Gantt 바)
+    "]+",
+    flags=re.UNICODE,
+)
+
+# Gantt 바용 ■는 유지하고 나머지 이모지만 제거
+_EMOJI_STRIP_RE = re.compile(
+    "[\U0001F300-\U0001F9FF"
+    "\U00002702-\U000027B0"
+    "\U0000FE00-\U0000FE0F"
+    "\U0000200D"
+    "]+",
+    flags=re.UNICODE,
+)
+
+
+def _strip_emoji(text: str) -> str:
+    """문자열에서 이모지를 제거하고 앞뒤 공백 정리"""
+    if not isinstance(text, str):
+        return text
+    return _EMOJI_STRIP_RE.sub("", text).strip()
+
+
+def _clean_rows(rows: list[list]) -> list[list]:
+    """2D 행 데이터의 모든 셀에서 이모지 제거"""
+    return [[_strip_emoji(cell) if isinstance(cell, str) else cell for cell in row] for row in rows]
 
 HEADER_ROW = ["No", "태스크명", "담당자", "우선순위", "상태", "마감일", "D-day", "태그", "설명"]
 
@@ -138,7 +172,8 @@ class GoogleSheetsService(GoogleBaseService):
                 task.description or "",
             ])
 
-        # 데이터 쓰기
+        # 데이터 쓰기 (이모지 제거)
+        rows = _clean_rows(rows)
         service.spreadsheets().values().update(
             spreadsheetId=spreadsheet_id,
             range="A1",
@@ -460,6 +495,7 @@ class GoogleSheetsService(GoogleBaseService):
         wbs_sheet_id = add_sheet_resp["replies"][0]["addSheet"]["properties"]["sheetId"]
 
         # WBS 데이터 쓰기
+        wbs_rows = _clean_rows(wbs_rows)
         service.spreadsheets().values().update(
             spreadsheetId=spreadsheet_id,
             range="WBS!A1",
@@ -646,7 +682,8 @@ class GoogleSheetsService(GoogleBaseService):
         ).execute()
         gantt_sheet_id = resp["replies"][0]["addSheet"]["properties"]["sheetId"]
 
-        # 데이터 쓰기
+        # 데이터 쓰기 (이모지 제거, ■ Gantt 바는 유지)
+        rows = _clean_rows(rows)
         service.spreadsheets().values().update(
             spreadsheetId=spreadsheet_id,
             range="Gantt!A1",
@@ -854,6 +891,7 @@ class GoogleSheetsService(GoogleBaseService):
         ).execute()
         dash_sheet_id = resp["replies"][0]["addSheet"]["properties"]["sheetId"]
 
+        rows = _clean_rows(rows)
         service.spreadsheets().values().update(
             spreadsheetId=spreadsheet_id,
             range="Dashboard!A1",
@@ -1001,6 +1039,7 @@ class GoogleSheetsService(GoogleBaseService):
         ).execute()
         risk_sheet_id = resp["replies"][0]["addSheet"]["properties"]["sheetId"]
 
+        rows = _clean_rows(rows)
         service.spreadsheets().values().update(
             spreadsheetId=spreadsheet_id,
             range="'Risk Analysis'!A1",
@@ -1168,6 +1207,7 @@ class GoogleSheetsService(GoogleBaseService):
         ).execute()
         report_sheet_id = resp["replies"][0]["addSheet"]["properties"]["sheetId"]
 
+        rows = _clean_rows(rows)
         service.spreadsheets().values().update(
             spreadsheetId=spreadsheet_id,
             range="'Weekly Report'!A1",

@@ -222,8 +222,11 @@ export default function SheetsDashboard({ externalActions, onReady }) {
                     <div className="w-8 h-8 rounded-md bg-success-bg flex items-center justify-center text-success">
                       <BarChart3 size={16} />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-neutral-main truncate">
+                    <div
+                      className="flex-1 min-w-0 cursor-pointer"
+                      onClick={() => togglePreview(sheet.spreadsheet_id)}
+                    >
+                      <p className="text-sm font-medium text-neutral-main truncate hover:text-primary-600 transition-colors">
                         {sheet.sheet_name || '프로젝트 문서'}
                       </p>
                       {sheet.project_name && (
