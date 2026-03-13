@@ -42,18 +42,30 @@ async def list_schedules(
     include_team: bool = False,
     user_team: str | None = None,
     schedule_type: str | None = None,
+    include_project: bool = False,
+    user_name: str | None = None,
 ) -> list[Schedule]:
-    """일정 목록 조회 (include_team=True 시 같은 팀의 공유 일정 포함, schedule_type 필터 선택)"""
+    """일정 목록 조회 (include_team=True 시 같은 팀의 공유 일정 포함, include_project=True 시 소속 프로젝트 공유 일정 포함)"""
     from sqlalchemy import or_, and_
 
+    conditions = [Schedule.user_id == user_id]
+
     if include_team and user_team:
-        base_condition = or_(
-            Schedule.user_id == user_id,
+        conditions.append(
             and_(Schedule.team_name == user_team, Schedule.is_team_visible == True),
         )
-    else:
-        base_condition = Schedule.user_id == user_id
 
+    # 프로젝트 공유 일정: 사용자가 멤버인 프로젝트의 project_name 일정
+    if include_project and user_name:
+        from app.models.project import Project
+        proj_result = await db.execute(select(Project.name).where(Project.members.contains(user_name)))
+        user_projects = [row[0] for row in proj_result.all()]
+        if user_projects:
+            conditions.append(
+                and_(Schedule.project_name.in_(user_projects), Schedule.project_name.isnot(None)),
+            )
+
+    base_condition = or_(*conditions) if len(conditions) > 1 else conditions[0]
     query = select(Schedule).where(base_condition)
 
     if schedule_type:
@@ -108,6 +120,7 @@ async def create_schedule(
         user_id=user_id,
         team_name=user_team,
         is_team_visible=data.is_team_visible,
+        project_name=data.project_name,
     )
     db.add(schedule)
     await db.flush()

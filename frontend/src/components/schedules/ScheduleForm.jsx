@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown, Users, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import useGoogleServices from '../../hooks/useGoogleServices';
 import useScheduleTypeStore, { DEFAULT_TYPES } from '../../store/scheduleTypeStore';
 import useAuthStore from '../../store/authStore';
+import { listProjects } from '../../api/tasks';
 import DatePicker from '../common/DatePicker';
 
 // 00:00 ~ 23:50 (10분 간격) 타임 옵션 생성
@@ -207,9 +208,22 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
     includeMeet: false,
     attendeeEmails: '',
     isTeamVisible: initialData?.isTeamVisible || false,
+    projectName: initialData?.projectName || '',
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [projects, setProjects] = useState([]);
+
+  useEffect(() => {
+    listProjects().then((res) => {
+      const list = res.data || [];
+      // 사용자가 멤버인 프로젝트만 표시
+      const myProjects = list.filter((p) =>
+        p.members && p.members.split(',').map((m) => m.trim()).includes(user?.name)
+      );
+      setProjects(myProjects);
+    }).catch(() => setProjects([]));
+  }, [user?.name]);
 
   const canMeet = connected && hasScope('calendar');
 
@@ -235,6 +249,7 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
           : [],
         include_meet: form.includeMeet,
         is_team_visible: form.isTeamVisible,
+        project_name: form.projectName || null,
       };
       await onSubmit?.(data);
     } catch {
@@ -296,6 +311,38 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
               </div>
             </label>
             <span className="text-[0.6875rem] text-neutral-muted">{user.team}팀 멤버에게 표시됩니다</span>
+          </div>
+        )}
+
+        {/* 프로젝트에 공유 */}
+        {projects.length > 0 && (
+          <div className="px-3 py-2.5 rounded-md border border-neutral-divider bg-surface-hover space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!!form.projectName}
+                onChange={(e) => setForm({ ...form, projectName: e.target.checked ? projects[0]?.name || '' : '' })}
+                className="w-4 h-4 rounded border-neutral-border accent-primary-700"
+              />
+              <div className="flex items-center gap-1.5">
+                <FolderOpen size={16} className="text-violet-500" />
+                <span className="text-sm font-medium text-neutral-main">프로젝트에 공유</span>
+              </div>
+            </label>
+            {form.projectName && (
+              <select
+                value={form.projectName}
+                onChange={(e) => setForm({ ...form, projectName: e.target.value })}
+                className="w-full px-3 py-2 border border-neutral-border rounded-lg text-sm bg-white dark:bg-black/20 outline-none focus:border-primary-500 transition"
+              >
+                {projects.map((p) => (
+                  <option key={p.id} value={p.name}>{p.name}</option>
+                ))}
+              </select>
+            )}
+            {form.projectName && (
+              <p className="text-[0.6875rem] text-neutral-muted ml-1">[{form.projectName}] 프로젝트 멤버에게 표시됩니다</p>
+            )}
           </div>
         )}
 

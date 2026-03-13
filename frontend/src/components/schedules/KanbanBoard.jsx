@@ -6,6 +6,7 @@ import { listPipelineTasks, createPipelineTask, updatePipelineTask, deletePipeli
 import { createTask as createGoogleTask } from '../../api/google';
 import useGoogleServices from '../../hooks/useGoogleServices';
 import { suggestForProject } from '../../api/approvals';
+import { createSchedule } from '../../api/schedules';
 import client from '../../api/client';
 import { toast } from '../../store/toastStore';
 
@@ -68,6 +69,7 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
     const [aiSchedules, setAiSchedules] = useState([]);
     const [aiContext, setAiContext] = useState(null);
     const [aiGlow, setAiGlow] = useState(!!filterProject); // 프로젝트 안에 들어왔을 때 반짝임
+    const [addingScheduleIdx, setAddingScheduleIdx] = useState(null); // AI 추천 일정 추가 중인 인덱스
 
     const fetchTasks = useCallback(async () => {
         try {
@@ -317,6 +319,49 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
             toast.error(err.response?.data?.detail || 'AI 추천 실패');
         } finally {
             setAiLoading(false);
+        }
+    };
+
+    /* ── AI 추천 일정 → 프로젝트 공유 일정으로 등록 ── */
+    const handleAddAiSchedule = async (item, idx) => {
+        const projName = filterProject || activeProject;
+        if (!projName || projName === 'all') return;
+        setAddingScheduleIdx(idx);
+        try {
+            // suggested_day 기반 날짜 계산
+            const now = new Date();
+            let startDate = new Date(now);
+            if (item.suggested_day === 'tomorrow') {
+                startDate.setDate(startDate.getDate() + 1);
+            } else if (item.suggested_day === 'this_week') {
+                // 이번 주 금요일
+                const dayOfWeek = startDate.getDay();
+                const daysUntilFri = dayOfWeek <= 5 ? 5 - dayOfWeek : 0;
+                startDate.setDate(startDate.getDate() + (daysUntilFri || 1));
+            }
+            const dateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+            const durationMin = item.duration_minutes || 60;
+            const startTime = `${dateStr}T10:00:00`;
+            const endHour = 10 + Math.floor(durationMin / 60);
+            const endMin = durationMin % 60;
+            const endTime = `${dateStr}T${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}:00`;
+
+            await createSchedule({
+                title: item.title,
+                description: item.description || '',
+                start_time: startTime,
+                end_time: endTime,
+                schedule_type: item.schedule_type || 'meeting',
+                priority: item.priority || 'medium',
+                project_name: projName,
+            });
+            toast.success(`[${projName}] 프로젝트 일정 등록 완료!`);
+            // 등록된 항목 제거
+            setAiSchedules((prev) => prev.filter((_, i) => i !== idx));
+        } catch (err) {
+            toast.error(err.response?.data?.detail || '일정 등록 실패');
+        } finally {
+            setAddingScheduleIdx(null);
         }
     };
 
@@ -908,7 +953,7 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                                             </div>
                                             <h4 className="text-sm font-bold text-neutral-main leading-snug mb-1">{item.title}</h4>
                                             <p className="text-[11px] text-neutral-sub leading-relaxed mb-2">{item.description}</p>
-                                            <div className="flex items-center justify-between">
+                                            <div className="flex items-center justify-between mb-2">
                                                 <p className="text-[10px] text-violet-500 dark:text-violet-400 font-medium">{item.reason}</p>
                                                 {item.suggested_day && (
                                                     <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400">
@@ -916,6 +961,17 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                                                     </span>
                                                 )}
                                             </div>
+                                            <button
+                                                onClick={() => handleAddAiSchedule(item, idx)}
+                                                disabled={addingScheduleIdx === idx}
+                                                className="w-full mt-1 px-3 py-1.5 text-[11px] font-bold rounded-lg bg-violet-500 text-white hover:bg-violet-600 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm"
+                                            >
+                                                {addingScheduleIdx === idx ? (
+                                                    <><Loader2 size={12} className="animate-spin" /> 등록 중...</>
+                                                ) : (
+                                                    <><CalendarPlus size={12} /> [{filterProject || activeProject}] 일정 추가</>
+                                                )}
+                                            </button>
                                         </motion.div>
                                     ))
                                 )
