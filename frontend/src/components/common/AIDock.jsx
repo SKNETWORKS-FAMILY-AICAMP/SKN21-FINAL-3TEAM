@@ -103,7 +103,7 @@ export default function AIDock() {
                     <motion.div
                         onMouseMove={(e) => mouseX.set(e.pageX)}
                         onMouseLeave={() => mouseX.set(Infinity)}
-                        className="mx-auto flex h-16 items-end gap-4 rounded-[2.5rem] bg-white/10 backdrop-blur-md border border-white/15 px-4 pb-3 shadow-lg"
+                        className="mx-auto flex h-16 items-end gap-4 rounded-3xl bg-white/10 backdrop-blur-md border border-white/15 px-4 pb-3 shadow-lg"
                     >
                         {activeFeatures.map((feature) => (
                             <DockIcon key={feature.id} feature={feature} mouseX={mouseX} />

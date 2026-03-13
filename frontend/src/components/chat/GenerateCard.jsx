@@ -4,7 +4,7 @@ export default function GenerateCard({ title, templateType, fields = [], actionI
   const typeLabels = { meeting_minutes: '회의록', report: '보고서', jd: '채용 공고', proposal: '제안서' };
 
   return (
-    <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
+    <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
       <div className="px-4 py-3 border-b border-neutral-divider flex items-center justify-between">
         <div className="flex items-center gap-2 font-bold text-sm text-primary-700">
 {title || '문서 생성 완료'}

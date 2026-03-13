@@ -14,7 +14,7 @@ export default function DataTable({ columns, data, onRowClick }) {
         {data.map((row, i) => (
           <tr key={i} className="hover:bg-surface-hover cursor-pointer transition" onClick={() => onRowClick?.(row)}>
             {columns.map((col) => (
-              <td key={col.key} className={`px-4 py-3 text-[0.8125rem] text-neutral-main border-b border-neutral-divider ${col.className || ''}`}>
+              <td key={col.key} className={`px-4 py-3 text-[0.8125rem] text-neutral-main ${i < data.length - 1 ? 'border-b border-neutral-divider' : ''} ${col.className || ''}`}>
                 {col.render ? col.render(row[col.key], row) : row[col.key]}
               </td>
             ))}

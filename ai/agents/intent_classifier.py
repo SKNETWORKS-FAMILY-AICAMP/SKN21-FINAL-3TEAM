@@ -54,6 +54,15 @@ class IntentClassifier:
         self._loaded = False
         self._is_multilabel = False
         self._multilabel_threshold = 0.5
+        # 6-label 앙상블 grid search 최적화 결과 (held-out 93.3%)
+        self._per_label_thresholds = {
+            "judgment": 0.50,
+            "doc_retrieve": 0.60,   # 과잉 트리거 방지 (0.5→0.60)
+            "doc_generate": 0.50,
+            "schedule_add": 0.50,
+            "schedule_view": 0.50,
+            "general": 0.50,
+        }
 
     def load_model(self):
         """모델 로드 — weights 없으면 fallback 모드로 동작"""
@@ -227,13 +236,15 @@ class IntentClassifier:
         # sigmoid (멀티라벨)
         probs = torch.sigmoid(outputs.logits)[0]
 
-        # threshold 이상인 intent 수집
+        # per-label threshold 이상인 intent 수집
         intents = []
         for idx in range(len(INTENT_LABELS)):
             conf = probs[idx].item()
-            if conf >= self._multilabel_threshold:
+            label = self.id2label.get(idx, "general")
+            threshold = self._per_label_thresholds.get(label, self._multilabel_threshold)
+            if conf >= threshold:
                 intents.append({
-                    "intent": self.id2label.get(idx, "general"),
+                    "intent": label,
                     "confidence": round(conf, 4),
                 })
 

@@ -85,7 +85,7 @@ export default function DocumentDetail({ doc, documentDetail, searchQuery = '', 
   const hasAnalysis = isRealDocument;
 
   return (
-    <div className="bg-surface-card rounded-md border border-neutral-border p-5 max-h-[82vh] overflow-y-auto" ref={printRef}>
+    <div className="bg-surface-card rounded-2xl border border-neutral-border p-5 max-h-[82vh] overflow-y-auto" ref={printRef}>
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-base font-bold"><KeywordHighlight text={doc.name} keyword={searchQuery} /></h3>
         <Badge variant={doc.status === '적용중' ? 'status-active' : 'status-revising'}>{doc.status}</Badge>
