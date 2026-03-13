@@ -2524,21 +2524,55 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 
 **생성 파일**:
 - `ai/finetuning/scripts/compare_planner_models.py` — 베이스 모델 비교 추론 스크립트
-- `ai/finetuning/scripts/evaluate_planner_report.py` — 평가 지표 스크립트 (v3)
+- `ai/finetuning/scripts/evaluate_planner_report.py` — 평가 지표 스크립트 (v3 → v3.1)
 - `ai/finetuning/runpod_planner_compare.sh` — RunPod SSH 실행 자동화 셸 스크립트
 
-**평가 지표 설계 (v1→v2→v3 반복 개선)**:
+**평가 지표 설계 (v1→v2→v3→v3.1 반복 개선)**:
 
 - **v1**: Intent Precision/Recall + Dep Validity → 100% 나오는 문제 (테스트 17건 너무 적음, 지표 관대)
 - **v2**: 95건 확대 + multiset 기반 Precision/Recall + Dep Validity → 순서 미반영, Dep이 구조만 체크
-- **v3 (최종)**: LCS 기반 Order Accuracy 도입, Dep Correctness(expected 대비 비교), JSON Pass Rate 별도 분리
+- **v3**: LCS 기반 Order Accuracy 도입, Dep Correctness(expected 대비 비교), JSON Pass Rate 별도 분리
+  - 문제 발견: Kanana JSON 100% vs Qwen 68.4%로 평가 모수 불일치 (65건 vs 95건)
+  - 공통 JSON 성공 케이스 비교 도입 → Qwen 0.953 vs Kanana 0.831 (+12.2%p)
+  - 그러나 공통 케이스가 "Qwen이 풀 수 있었던 쉬운 케이스" 위주로 편향 (survivorship bias)
+- **v3.1 (최종)**: 공정 비교 지표 재설계
+  - **"유효 응답" 재정의**: JSON 성공 + plan 비어있지 않음 (빈 plan `[]`도 실패 처리)
+    - Kanana가 "고마워", "안녕" 등에 빈 plan 출력 → JSON은 valid이지만 사용자에게는 무응답 = 실패
+    - Qwen의 `<think>` 토큰 절삭으로 인한 JSON 실패와 동일하게 취급
+  - **공통 유효 케이스 비교**: 양쪽 다 유효 응답인 케이스에서만 planning 지표 비교
+  - **카테고리 편향 검증**: 공통 케이스의 카테고리별 생존율 보고 (편향 경고)
 
-**v3 가중치**: Intent Recall 30% / Order Accuracy 25% / Intent Precision 20% / Dep Correctness 15% / Efficiency 10%
+**v3.1 가중치**: Intent Recall 30% / Order Accuracy 25% / Intent Precision 20% / Dep Correctness 15% / Efficiency 10%
 
-**JSON Pass Rate 별도 보고 결정**:
-- Qwen3-8B는 `<think>` 토큰으로 긴 reasoning 출력 → 토큰 한도 초과 → JSON 파싱 실패 30/95건 (31.6%)
-- JSON 실패 시 모든 지표 0점 → planning 능력과 무관하게 전체 점수 하락
-- **해결**: JSON Pass Rate는 "모델 신뢰성" 지표로 별도 보고, planning 지표는 JSON 성공 케이스만으로 계산
+**v3.1 비교 결과 (공통 유효 60건)**:
+
+| 지표 | Qwen3-8B | Kanana-1.5-8B |
+|---|---|---|
+| Usable Rate | 68.4% (65/95) | 94.7% (90/95) |
+| Planning Score (공통 60건) | **0.962** | 0.895 |
+| Intent Recall | **0.953** | 0.886 |
+| Order Accuracy | **0.953** | 0.886 |
+| Dep Correctness | **0.978** | 0.851 |
+| Latency | 11,780ms | **2,261ms** (5.2배) |
+
+**카테고리 편향 분석**:
+
+| 카테고리 | 전체 | 공통 | 생존율 | 비고 |
+|---|---|---|---|---|
+| complex | 15 | 5 | 33.3% | ⚠ 심각한 편향 |
+| edge_case | 18 | 9 | 50.0% | |
+| sequential | 20 | 13 | 65.0% | |
+| single_step | 30 | 22 | 73.3% | |
+| parallel | 12 | 11 | 91.7% | |
+
+- complex 카테고리 67% 탈락 → 플래너 핵심 역량인 복합 작업 비교가 5건으로 불충분
+- 공통 케이스 비교도 Qwen에 유리한 쪽으로 편향 (어려운 문제가 빠지므로)
+
+**지표 개선 과정에서 얻은 교훈**:
+1. "100%"가 나오면 의심해야 함 — 지표가 관대하거나 의미가 다를 수 있음
+2. 모수가 다르면 공정한 비교 불가 — 반드시 동일 케이스 기준
+3. 공통 케이스 비교도 survivorship bias 존재 — 카테고리 생존율 확인 필수
+4. "JSON 성공"과 "유효 응답"은 다른 개념 — 빈 출력도 실패로 취급해야 공정
 
 **트러블슈팅**:
 - 경로 해석 오류: `Path(__file__).parent` 기반 → `git rev-parse --show-toplevel` + `--project-root` CLI 인자로 해결
@@ -2547,8 +2581,7 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 
 ### 다음 할 일
 
-- 수정된 evaluate_planner_report.py 커밋/push 후 RunPod에서 v3 평가 실행
-- 평가 결과 기반 최종 베이스 모델 선정
+- 현재 결과 기반 최종 베이스 모델 선정 (또는 테스트 케이스 추가 확대)
 - Planner LoRA 학습 데이터 합성 시작
 - 프론트엔드 백엔드 실제 연동 작업 재개
 
