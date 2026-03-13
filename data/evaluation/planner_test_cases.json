@@ -1,0 +1,220 @@
+{
+  "description": "Planner 베이스 모델 비교용 테스트 케이스",
+  "version": "v1",
+  "test_cases": [
+    {
+      "id": "SINGLE-001",
+      "category": "single_step",
+      "input": "연차 사용 규정 알려줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {"step_id": 1, "intent": "judgment", "depends_on": []}
+        ]
+      }
+    },
+    {
+      "id": "SINGLE-002",
+      "category": "single_step",
+      "input": "내일 오후 2시에 팀 회의 잡아줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {"step_id": 1, "intent": "schedule_add", "depends_on": []}
+        ]
+      }
+    },
+    {
+      "id": "SINGLE-003",
+      "category": "single_step",
+      "input": "이번 달 보고서 만들어줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {"step_id": 1, "intent": "doc_generate", "depends_on": []}
+        ]
+      }
+    },
+    {
+      "id": "SINGLE-004",
+      "category": "single_step",
+      "input": "지난주 회의록 찾아줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []}
+        ]
+      }
+    },
+    {
+      "id": "SINGLE-005",
+      "category": "single_step",
+      "input": "다음 주 일정 보여줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {"step_id": 1, "intent": "schedule_view", "depends_on": []}
+        ]
+      }
+    },
+    {
+      "id": "SEQ-001",
+      "category": "sequential",
+      "description": "검색 후 생성 (의존성)",
+      "input": "지난주 회의록 찾아서 그걸로 보고서 만들어줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "doc_generate", "depends_on": [1]}
+        ]
+      }
+    },
+    {
+      "id": "SEQ-002",
+      "category": "sequential",
+      "description": "규정 확인 후 일정 등록 (조건부)",
+      "input": "연차 규정 확인하고, 가능하면 다음주 화요일에 휴가 등록해줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {"step_id": 1, "intent": "judgment", "depends_on": []},
+          {"step_id": 2, "intent": "schedule_add", "depends_on": [1]}
+        ]
+      }
+    },
+    {
+      "id": "SEQ-003",
+      "category": "sequential",
+      "description": "일정 확인 후 문서 생성",
+      "input": "이번 주 미팅 일정 확인하고 회의록 양식 만들어줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {"step_id": 1, "intent": "schedule_view", "depends_on": []},
+          {"step_id": 2, "intent": "doc_generate", "depends_on": [1]}
+        ]
+      }
+    },
+    {
+      "id": "SEQ-004",
+      "category": "sequential",
+      "description": "문서 검색 후 규정 판단",
+      "input": "출장비 정산 문서 찾아보고 이번 출장비가 규정에 맞는지 확인해줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "judgment", "depends_on": [1]}
+        ]
+      }
+    },
+    {
+      "id": "PAR-001",
+      "category": "parallel",
+      "description": "독립적인 두 작업 (병렬 가능)",
+      "input": "다음 주 일정 보여주고, 연차 규정도 알려줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {"step_id": 1, "intent": "schedule_view", "depends_on": []},
+          {"step_id": 2, "intent": "judgment", "depends_on": []}
+        ]
+      }
+    },
+    {
+      "id": "PAR-002",
+      "category": "parallel",
+      "description": "독립적인 두 검색",
+      "input": "마케팅 보고서랑 인사 규정 둘 다 찾아줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": []}
+        ]
+      }
+    },
+    {
+      "id": "COMPLEX-001",
+      "category": "complex",
+      "description": "3단계: 검색 → 판단 → 일정",
+      "input": "출장 규정 문서 찾아서 해외출장 가능한지 확인하고, 가능하면 다음주 출장 일정 잡아줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "judgment", "depends_on": [1]},
+          {"step_id": 3, "intent": "schedule_add", "depends_on": [2]}
+        ]
+      }
+    },
+    {
+      "id": "COMPLEX-002",
+      "category": "complex",
+      "description": "3단계: 일정확인 → 문서검색 → 문서생성",
+      "input": "이번 주 회의 일정 확인해서, 관련 자료 찾고, 회의록 초안 만들어줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {"step_id": 1, "intent": "schedule_view", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": [1]},
+          {"step_id": 3, "intent": "doc_generate", "depends_on": [1, 2]}
+        ]
+      }
+    },
+    {
+      "id": "COMPLEX-003",
+      "category": "complex",
+      "description": "병렬 + 순차 혼합",
+      "input": "연차 규정 확인하고 다음 주 팀 일정도 확인해서, 빈 날에 휴가 등록해줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {"step_id": 1, "intent": "judgment", "depends_on": []},
+          {"step_id": 2, "intent": "schedule_view", "depends_on": []},
+          {"step_id": 3, "intent": "schedule_add", "depends_on": [1, 2]}
+        ]
+      }
+    },
+    {
+      "id": "EDGE-001",
+      "category": "edge_case",
+      "description": "일반 질문 (planning 불필요)",
+      "input": "오늘 날씨 어때?",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {"step_id": 1, "intent": "general", "depends_on": []}
+        ]
+      }
+    },
+    {
+      "id": "EDGE-002",
+      "category": "edge_case",
+      "description": "모호한 요청",
+      "input": "회의 관련해서 좀 도와줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {"step_id": 1, "intent": "general", "depends_on": []}
+        ]
+      }
+    },
+    {
+      "id": "EDGE-003",
+      "category": "edge_case",
+      "description": "4단계 (최대)",
+      "input": "마케팅 보고서 찾아서 요약하고, 그 내용으로 제안서 만들고, 발표 일정도 잡아줘",
+      "expected": {
+        "num_steps": 4,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": [1]},
+          {"step_id": 3, "intent": "doc_generate", "depends_on": [2]},
+          {"step_id": 4, "intent": "schedule_add", "depends_on": [3]}
+        ]
+      }
+    }
+  ]
+}
