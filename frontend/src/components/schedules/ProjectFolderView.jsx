@@ -163,10 +163,12 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                 result?.risk_generated && 'Risk',
                 result?.report_generated && 'Report',
             ].filter(Boolean);
+            const tabsMsg = tabs.length > 0 ? ` (${tabs.join(', ')} 포함)` : '';
+            toast.success(`"${projName}" Sheets 내보내기 완료!${tabsMsg}`);
             setExportResult({ projName, url: result?.spreadsheet_url, tabs });
         } catch (err) {
             const detail = err?.response?.data?.detail || err?.message || 'Sheets 내보내기 실패';
-            toast.error(detail);
+            toast.error(`내보내기 실패: ${detail}`);
             console.error('Sheets export error:', err?.response?.data || err);
         } finally {
             setExportingProject(null);
