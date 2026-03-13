@@ -325,6 +325,63 @@ SCHEDULE_SUGGEST_SYSTEM_PROMPT = """\
 - 반드시 JSON만 출력하세요.\
 """
 
+WBS_GENERATE_SYSTEM_PROMPT = """\
+프로젝트 태스크 목록을 분석하여 계층적 WBS(Work Breakdown Structure)를 생성하세요.
+
+## WBS 계층 구조
+- Level 1: 단계/페이즈 (기획, 설계, 개발, 테스트, 배포 등)
+- Level 2: 워크 패키지 (세부 영역)
+- Level 3: 개별 태스크 (원본 태스크 매핑)
+
+## 규칙
+- 모든 원본 태스크가 반드시 Level 3에 포함되어야 합니다.
+- Level 1/2는 태스크를 논리적으로 그룹핑한 상위 카테고리입니다.
+- 태스크의 상태, 담당자, 우선순위, 마감일을 Level 3에 그대로 반영하세요.
+- WBS Code는 계층 번호 형식 (1, 1.1, 1.1.1 등)을 사용하세요.
+
+## 출력 형식
+반드시 아래 JSON 형식으로만 응답하세요:
+{
+    "wbs": [
+        {
+            "code": "1",
+            "name": "단계명",
+            "level": 1,
+            "assignee": "",
+            "priority": "",
+            "status": "",
+            "due_date": "",
+            "children": [
+                {
+                    "code": "1.1",
+                    "name": "워크 패키지명",
+                    "level": 2,
+                    "assignee": "",
+                    "priority": "",
+                    "status": "",
+                    "due_date": "",
+                    "children": [
+                        {
+                            "code": "1.1.1",
+                            "name": "태스크명",
+                            "level": 3,
+                            "assignee": "담당자",
+                            "priority": "HIGH",
+                            "status": "In Progress",
+                            "due_date": "2026-03-20",
+                            "children": []
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
+
+- 한국어로 작성하세요.
+- JSON 외의 텍스트를 포함하지 마세요.\
+"""
+
 APPROVAL_SUGGEST_SYSTEM_PROMPT = """\
 당신은 팀 업무 흐름을 분석하여 필요한 승인/결재 요청을 추천하는 AI 어시스턴트입니다.
 

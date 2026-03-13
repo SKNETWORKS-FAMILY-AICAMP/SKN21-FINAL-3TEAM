@@ -36,6 +36,10 @@ const useGoogleStore = create((set, get) => ({
   sheetsLoading: false,
   sheetsError: null,
 
+  sheetPreview: null,
+  sheetPreviewLoading: false,
+  sheetPreviewError: null,
+
   calendarEvents: [],
   calendarLoading: false,
   calendarError: null,
@@ -172,10 +176,10 @@ const useGoogleStore = create((set, get) => ({
     }
   },
 
-  exportProjectToSheet: async (projectName, title = null) => {
+  exportProjectToSheet: async (projectName, title = null, generateWbs = true) => {
     set({ sheetsLoading: true, sheetsError: null })
     try {
-      const { data } = await googleApi.exportProjectToSheet(projectName, title)
+      const { data } = await googleApi.exportProjectToSheet(projectName, title, generateWbs)
       await get().fetchSheets()
       return data
     } catch (err) {
@@ -202,6 +206,32 @@ const useGoogleStore = create((set, get) => ({
     } catch (err) {
       set({ sheetsError: err.response?.data?.detail || 'Sheets 동기화 실패' })
     }
+  },
+
+  fetchSheetPreview: async (spreadsheetId, sheetName = 'Sheet1') => {
+    set({ sheetPreviewLoading: true, sheetPreviewError: null })
+    try {
+      const { data } = await googleApi.readSheetData(spreadsheetId, sheetName)
+      set({ sheetPreview: { spreadsheetId, ...data }, sheetPreviewLoading: false })
+      return data
+    } catch (err) {
+      set({ sheetPreviewLoading: false, sheetPreviewError: err.response?.data?.detail || '시트 데이터 조회 실패' })
+      throw err
+    }
+  },
+
+  updateSheetData: async (spreadsheetId, sheetName, updates) => {
+    try {
+      const { data } = await googleApi.updateSheetData(spreadsheetId, sheetName, updates)
+      return data
+    } catch (err) {
+      set({ sheetPreviewError: err.response?.data?.detail || '시트 업데이트 실패' })
+      throw err
+    }
+  },
+
+  clearSheetPreview: () => {
+    set({ sheetPreview: null, sheetPreviewLoading: false, sheetPreviewError: null })
   },
 
   // ── Google Calendar ──

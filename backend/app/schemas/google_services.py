@@ -116,6 +116,7 @@ class SheetExportProjectRequest(BaseModel):
     """프로젝트 Sheets 내보내기 요청"""
     project_name: str
     title: Optional[str] = None
+    generate_wbs: bool = True
 
 
 class SheetSyncRequest(BaseModel):
@@ -129,12 +130,36 @@ class SheetCreateResponse(BaseModel):
     spreadsheet_url: str
     title: str
     task_count: int = 0
+    wbs_generated: bool = False
 
 
 class SheetSyncResponse(BaseModel):
     """동기화 결과"""
     synced_count: int
     spreadsheet_id: str
+
+
+class SheetReadResponse(BaseModel):
+    """시트 데이터 읽기 결과"""
+    values: list[list[str]]
+    tabs: list[str]
+
+
+class CellUpdate(BaseModel):
+    """개별 셀 업데이트"""
+    cell: str      # "B3"
+    value: str
+
+
+class SheetUpdateRequest(BaseModel):
+    """시트 데이터 업데이트 요청"""
+    sheet_name: str = "Sheet1"
+    updates: list[CellUpdate]
+
+
+class SheetUpdateResponse(BaseModel):
+    """시트 업데이트 결과"""
+    updated_count: int
 
 
 class SheetListItem(BaseModel):
