@@ -316,7 +316,10 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
             setAiSchedules(res.data.schedules || []);
             setAiContext(res.data.context || null);
         } catch (err) {
-            toast.error(err.response?.data?.detail || 'AI 추천 실패');
+            console.error('AI 추천 에러:', err.response?.status, err.response?.data, err.message);
+            const detail = err.response?.data?.detail;
+            const msg = typeof detail === 'string' ? detail : (err.response?.status === 500 ? 'AI 서버 오류 — 서버 로그를 확인하세요' : `AI 추천 실패 (${err.message})`);
+            toast.error(msg);
         } finally {
             setAiLoading(false);
         }

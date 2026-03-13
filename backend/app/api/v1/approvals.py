@@ -891,68 +891,77 @@ async def suggest_for_project(
         raise HTTPException(status_code=400, detail="project_name이 필요합니다")
     from datetime import datetime, timedelta
 
-    # 1. 프로젝트 태스크 수집
-    task_query = (
-        select(PipelineTask)
-        .where(PipelineTask.project == project_name)
-        .order_by(PipelineTask.created_at.desc())
-    )
-    task_result = await db.execute(task_query)
-    pipeline_tasks = task_result.scalars().all()
-
-    # 2. 프로젝트 멤버 확인
-    proj_result = await db.execute(
-        select(Project).where(Project.name == project_name)
-    )
-    project = proj_result.scalar_one_or_none()
+    # 데이터 수집 (어떤 에러든 fallback으로 넘어갈 수 있도록)
+    pipeline_tasks = []
     project_members = []
-    if project and project.members:
-        project_members = [m.strip() for m in project.members.split(",") if m.strip()]
-
-    # 3. 관련 캘린더 일정 수집 (프로젝트 멤버의 일정)
-    now = datetime.now()
-    week_later = now + timedelta(days=7)
     schedules = []
-    try:
-        schedule_query = (
-            select(Schedule)
-            .where(
-                Schedule.user_id == current_user.id,
-                Schedule.start_time >= now - timedelta(days=1),
-                Schedule.start_time <= week_later,
-            )
-            .order_by(Schedule.start_time)
-        )
-        schedule_result = await db.execute(schedule_query)
-        schedules = schedule_result.scalars().all()
-    except Exception as e:
-        logger.error(f"프로젝트 추천: 일정 조회 실패: {e}")
-
-    # 4. 컨텍스트 구성
     stage_counts = {"todo": 0, "in_progress": 0, "review": 0, "done": 0}
     task_summary = []
-    for t in pipeline_tasks:
-        stage_counts[t.stage] = stage_counts.get(t.stage, 0) + 1
-        task_summary.append({
-            "title": t.title,
-            "stage": t.stage,
-            "priority": t.priority,
-            "assignee": t.assignee,
-            "due_date": t.due_date.strftime("%Y-%m-%d") if t.due_date else None,
-            "tags": t.tags,
-        })
-
     schedule_summary = []
-    for s in schedules:
-        schedule_summary.append({
-            "title": s.title,
-            "start": s.start_time.strftime("%Y-%m-%d %H:%M") if s.start_time else None,
-            "end": s.end_time.strftime("%Y-%m-%d %H:%M") if s.end_time else None,
-            "type": s.schedule_type,
-        })
+    total_tasks = 0
+    done_pct = 0
 
-    total_tasks = len(pipeline_tasks)
-    done_pct = round(stage_counts["done"] / total_tasks * 100) if total_tasks > 0 else 0
+    try:
+        # 1. 프로젝트 태스크 수집
+        task_query = (
+            select(PipelineTask)
+            .where(PipelineTask.project == project_name)
+            .order_by(PipelineTask.created_at.desc())
+        )
+        task_result = await db.execute(task_query)
+        pipeline_tasks = task_result.scalars().all()
+
+        # 2. 프로젝트 멤버 확인
+        proj_result = await db.execute(
+            select(Project).where(Project.name == project_name)
+        )
+        project = proj_result.scalar_one_or_none()
+        if project and project.members:
+            project_members = [m.strip() for m in project.members.split(",") if m.strip()]
+
+        # 3. 관련 캘린더 일정 수집
+        now = datetime.now()
+        week_later = now + timedelta(days=7)
+        try:
+            schedule_query = (
+                select(Schedule)
+                .where(
+                    Schedule.user_id == current_user.id,
+                    Schedule.start_time >= now - timedelta(days=1),
+                    Schedule.start_time <= week_later,
+                )
+                .order_by(Schedule.start_time)
+            )
+            schedule_result = await db.execute(schedule_query)
+            schedules = schedule_result.scalars().all()
+        except Exception as e:
+            logger.error(f"프로젝트 추천: 일정 조회 실패: {e}")
+
+        # 4. 컨텍스트 구성
+        for t in pipeline_tasks:
+            stage_counts[t.stage] = stage_counts.get(t.stage, 0) + 1
+            task_summary.append({
+                "title": t.title,
+                "stage": t.stage,
+                "priority": t.priority,
+                "assignee": t.assignee,
+                "due_date": t.due_date.strftime("%Y-%m-%d") if t.due_date else None,
+                "tags": t.tags,
+            })
+
+        for s in schedules:
+            schedule_summary.append({
+                "title": s.title,
+                "start": s.start_time.strftime("%Y-%m-%d %H:%M") if s.start_time else None,
+                "end": s.end_time.strftime("%Y-%m-%d %H:%M") if s.end_time else None,
+                "type": s.schedule_type,
+            })
+
+        total_tasks = len(pipeline_tasks)
+        done_pct = round(stage_counts["done"] / total_tasks * 100) if total_tasks > 0 else 0
+    except Exception as e:
+        logger.error(f"프로젝트 추천: 데이터 수집 실패: {e}", exc_info=True)
+        now = datetime.now()
 
     context = f"""## 프로젝트 정보
 - 프로젝트명: {project_name}
