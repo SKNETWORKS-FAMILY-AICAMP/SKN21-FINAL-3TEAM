@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { X, Save, RotateCcw, Loader2 } from 'lucide-react';
 import useGoogleStore from '../../store/googleStore';
 import { toast } from '../../store/toastStore';
@@ -40,7 +40,7 @@ export default function SheetPreview({ spreadsheetId, onClose }) {
   const [editingCell, setEditingCell] = useState(null); // { row, col }
   const [saving, setSaving] = useState(false);
 
-  // 초기 로드
+  // 탭 로드
   const loadTab = useCallback(async (tabName) => {
     setActiveTab(tabName);
     setEditedCells(new Map());
@@ -52,10 +52,10 @@ export default function SheetPreview({ spreadsheetId, onClose }) {
     }
   }, [spreadsheetId, fetchSheetPreview]);
 
-  // 첫 로드
-  useState(() => {
+  // 첫 로드 — 백엔드가 실제 탭 이름을 자동 감지하므로 기본값으로 요청
+  useEffect(() => {
     loadTab('Sheet1');
-  });
+  }, [spreadsheetId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const values = sheetPreview?.values || [];
   const tabs = sheetPreview?.tabs || [];

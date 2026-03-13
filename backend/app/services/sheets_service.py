@@ -264,10 +264,15 @@ class GoogleSheetsService(GoogleBaseService):
         ).execute()
         tabs = [s["properties"]["title"] for s in meta.get("sheets", [])]
 
+        # 요청된 탭이 없으면 첫 번째 탭 사용 (한국어 로케일: "시트1" vs "Sheet1")
+        actual_tab = sheet_name
+        if tabs and sheet_name not in tabs:
+            actual_tab = tabs[0]
+
         # 셀 데이터
         result = service.spreadsheets().values().get(
             spreadsheetId=spreadsheet_id,
-            range=sheet_name,
+            range=actual_tab,
         ).execute()
         values = result.get("values", [])
 

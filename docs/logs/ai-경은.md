@@ -1134,6 +1134,46 @@ RAG 개선(3단계)과 LoRA 파인튜닝(4단계)은 독립적 구조:
 - **전략:** schedule 파싱 sLLM 먼저 검증 → 성공 시 추천 기능도 테스트 → fallback이 있어 품질 부족해도 서비스 영향 없음
 - 우선순위 낮음, 나중에 검토
 
+### Sheets 기능 확장 — 미리보기 + AI WBS 생성 + 인라인 편집
+
+**Phase 1: 시트 미리보기:**
+- `sheets_service.py` — `read_sheet_data()` 메서드 추가 (Google Sheets API `values().get()` + 탭 목록)
+- `sheets.py` — `GET /{spreadsheet_id}/data` 엔드포인트 추가
+- `google_services.py` — `SheetReadResponse` 스키마 추가
+- `SheetPreview.jsx` 신규 — 탭 전환 UI + 테이블 렌더링 + 헤더 고정
+
+**Phase 2: AI WBS 자동 생성:**
+- `prompts.py` — `WBS_GENERATE_SYSTEM_PROMPT` 추가 (3레벨 계층 WBS JSON)
+- `sheets_service.py` — `_generate_wbs_tab()`, `_flatten_wbs()`, `_apply_wbs_formatting()` 추가
+  - LLM 호출 → WBS JSON → "WBS" 탭 생성 → 레벨별 색상 포맷팅
+  - LLM 실패 시 flat export만 정상 진행 (fallback)
+- `google_services.py` — `generate_wbs` 플래그 + `wbs_generated` 응답 필드 추가
+- `SheetsDashboard.jsx` — "WBS 포함" 체크박스 추가
+
+**Phase 3: 인라인 편집:**
+- `sheets_service.py` — `update_sheet_data()` 메서드 추가 (`values().batchUpdate()`)
+- `sheets.py` — `PUT /{spreadsheet_id}/data` 엔드포인트 추가
+- `google_services.py` — `CellUpdate`, `SheetUpdateRequest`, `SheetUpdateResponse` 스키마 추가
+- `SheetPreview.jsx` — 셀 클릭 편집 + 변경 셀 노란색 배경 + 저장/취소 버튼
+
+**프론트엔드 연동:**
+- `google.js` — `readSheetData()`, `updateSheetData()` API 함수 추가
+- `googleStore.js` — `sheetPreview` 상태 + `fetchSheetPreview()`, `updateSheetData()`, `clearSheetPreview()` 액션 추가
+- `SheetsDashboard.jsx` — 시트 목록에 "미리보기" 버튼 추가, 클릭 시 SheetPreview 펼침
+
+### 일정 관련 LLM 호출 전체 정리 + sLLM 전환 분석
+
+- `docs/일정_LLM_호출_정리_및_sLLM_전환_분석.md` 작성
+- 4개 영역 10개 LLM 호출 전수 조사:
+  - 챗봇 파싱 4개 (schedule/view/pipeline/approval)
+  - AI 추천 3개 (checklist/suggest_schedules/suggest_approvals)
+  - Sheets WBS 1개
+  - action_agent 중복 2개 (이미 schedule_agent에 병합됨)
+- sLLM 전환 Phase 1~3 우선순위 분류
+  - Phase 1 (바로 가능): 결재 파싱, 체크리스트, 일정/결재 추천
+  - Phase 2 (데이터 필요): 일정/조회/태스크 파싱
+  - Phase 3 (후순위): WBS 생성
+
 **다음 할 일:**
 
 1. **schedule sLLM 비교 테스트** — RunPod 켜서 `test_schedule_sllm.py` 실행
