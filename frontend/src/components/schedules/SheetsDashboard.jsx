@@ -132,13 +132,13 @@ export default function SheetsDashboard({ externalActions, onReady }) {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {[
-              { label: 'WBS', state: generateWbs, setter: setGenerateWbs },
-              { label: 'Gantt', state: generateGantt, setter: setGenerateGantt },
-              { label: 'Dashboard', state: generateDashboard, setter: setGenerateDashboard },
-              { label: 'AI 리스크', state: generateRisk, setter: setGenerateRisk },
-              { label: '주간보고', state: generateReport, setter: setGenerateReport },
-            ].map(({ label, state, setter }) => (
-              <label key={label} className="flex items-center gap-1.5 cursor-pointer">
+              { label: 'WBS', state: generateWbs, setter: setGenerateWbs, desc: '작업 분해 구조 (AI가 태스크를 계층별로 정리)' },
+              { label: 'Gantt', state: generateGantt, setter: setGenerateGantt, desc: '간트 차트 (태스크+일정을 시간축 막대로 시각화)' },
+              { label: 'Dashboard', state: generateDashboard, setter: setGenerateDashboard, desc: '진행 현황 (상태/담당자/결재 통계 집계)' },
+              { label: 'AI 리스크', state: generateRisk, setter: setGenerateRisk, desc: 'AI 리스크 분석 (일정충돌, 병목, 과부하 등 식별)' },
+              { label: '주간보고', state: generateReport, setter: setGenerateReport, desc: 'AI 주간 보고서 (완료/진행중/예정/블로커 정리)' },
+            ].map(({ label, state, setter, desc }) => (
+              <label key={label} className="flex items-center gap-1.5 cursor-pointer group relative">
                 <input
                   type="checkbox"
                   checked={state}
@@ -146,6 +146,9 @@ export default function SheetsDashboard({ externalActions, onReady }) {
                   className="w-3.5 h-3.5 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
                 />
                 <span className="text-xs text-neutral-muted font-medium">{label}</span>
+                <span className="absolute left-0 top-full mt-1 z-20 hidden group-hover:block w-48 px-2.5 py-1.5 text-[11px] text-white bg-neutral-800 dark:bg-neutral-700 rounded-md shadow-lg whitespace-normal leading-snug pointer-events-none">
+                  {desc}
+                </span>
               </label>
             ))}
           </div>
