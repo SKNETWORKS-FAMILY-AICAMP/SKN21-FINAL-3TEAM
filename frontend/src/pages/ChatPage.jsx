@@ -210,7 +210,8 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       );
     }
 
-    case 'doc_qa': {
+    case 'doc_qa':  // doc_qa는 doc_search로 통합됨 (하위 호환)
+    case 'doc_search_qa': {
       const sources = data.sources || [];
       const citations = data.citations || [];
       const qaConfidence = typeof data.confidence === 'number' ? data.confidence : null;

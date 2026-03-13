@@ -48,7 +48,7 @@ function FileChip({ file, onRemove }) {
 
 const AGENTS = [
   { key: 'judgment', icon: Scale, label: '규정 판단', intents: ['judgment'] },
-  { key: 'document', icon: FileText, label: '문서', intents: ['doc_search', 'doc_generate', 'doc_summary', 'doc_qa'] },
+  { key: 'document', icon: FileText, label: '문서', intents: ['doc_search', 'doc_generate', 'doc_summary'] },
   { key: 'schedule', icon: CalendarDays, label: '일정', intents: ['schedule_add', 'schedule_view'] },
   { key: 'general', icon: MessageCircle, label: '일반', intents: ['general'] },
 ];

@@ -13,7 +13,6 @@ const INTENT_COLORS = {
   doc_search: '#A89580',
   doc_generate: '#A89580',
   doc_summary: '#A89580',
-  doc_qa: '#A89580',
   schedule_add: '#5B9A6F',
   schedule_view: '#5B9A6F',
   general: '#9B8EC4',
@@ -21,10 +20,9 @@ const INTENT_COLORS = {
 
 const INTENT_LABELS = {
   judgment: '판단 질의',
-  doc_search: '문서 검색',
+  doc_search: '문서 검색/조회',
   doc_generate: '문서 생성',
   doc_summary: '문서 요약',
-  doc_qa: '문서 QA',
   schedule_add: '일정 추가',
   schedule_view: '일정 조회',
   general: '일반 질문',

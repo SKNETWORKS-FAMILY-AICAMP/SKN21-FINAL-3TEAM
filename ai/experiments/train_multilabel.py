@@ -64,7 +64,7 @@ MODEL_SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 INTENT_LABELS = [
     "judgment", "doc_search", "doc_generate", "doc_summary",
-    "schedule_add", "schedule_view", "general", "doc_qa",
+    "schedule_add", "schedule_view", "general",
 ]
 NUM_LABELS = len(INTENT_LABELS)
 LABEL2ID = {label: i for i, label in enumerate(INTENT_LABELS)}

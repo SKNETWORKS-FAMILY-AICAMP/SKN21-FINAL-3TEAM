@@ -6,9 +6,9 @@ v4 대비 변경사항 (학습 데이터 대폭 확대 — 성능 천장 77% 돌
 - 짧은 복합 200→400개 (템플릿 11→18개)
 - 3중 intent 30→40개/조합, 조합 10→14개 (템플릿 15→20개)
 - 함정 단일 20→30개/intent (템플릿 7→12개)
-- 골든 데이터 96→180+개 (doc_search↔doc_qa 구분 집중 강화)
-- 새 복합 쌍 추가: judgment↔doc_summary, general+doc_search, doc_qa↔schedule_view
-- 각 쌍 템플릿 2~5개씩 추가 (특히 doc_search↔doc_qa)
+- 골든 데이터 96→180+개 (doc_search↔doc_search 구분 집중 강화)
+- 새 복합 쌍 추가: judgment↔doc_summary, general+doc_search, doc_search↔schedule_view
+- 각 쌍 템플릿 2~5개씩 추가 (특히 doc_search↔doc_search)
 - 목표: train 3,300→5,500+개
 
 사용법:
@@ -34,7 +34,7 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 INTENT_LABELS = [
     "judgment", "doc_search", "doc_generate", "doc_summary",
-    "schedule_add", "schedule_view", "general", "doc_qa",
+    "schedule_add", "schedule_view", "general",
 ]
 
 # ── 쌍별 전용 템플릿 (접속사형 + 무접속사형 혼합) ──────────────────────────────
@@ -116,7 +116,7 @@ COMPOUND_PAIRS = [
         "{A_short} 간추려서 {B_short}",
     ]),
     # 문서 QA → 판단
-    ("doc_qa", "judgment", [
+    ("doc_search", "judgment", [
         "{A_short} 확인하고 {B_short}",
         "{A_short} 알아본 다음 {B_short}",
         "{A_short} 확인해서 {B_short}",
@@ -176,7 +176,7 @@ COMPOUND_PAIRS = [
         "{A_short} 이후에 {B_short}",
     ]),
     # 문서 QA → 문서 생성
-    ("doc_qa", "doc_generate", [
+    ("doc_search", "doc_generate", [
         "{A_short} 확인해서 {B_short}",
         "{A_short} 알아보고 {B_short}",
         "{A_short} 토대로 {B_short}",
@@ -192,13 +192,13 @@ COMPOUND_PAIRS = [
         "{A_short} 수치 확인하고 {B_short}",
     ]),
     # 문서 검색 → 문서 QA (v5: 핵심 — 가장 많이 혼동되는 쌍, 템플릿 대폭 확대)
-    ("doc_search", "doc_qa", [
+    ("doc_search", "doc_search", [
         "{A_short} 찾아서 {B_short}",
         "{A_short} 검색하고 {B_short}",
         "{A_short}, {B_short}도",
         "{A_short}이랑 {B_short}",
         "{A_short} 찾아서 내용 알려줘",
-        # v5 추가 — doc_search+doc_qa 구분 핵심 데이터
+        # v5 추가 — doc_search+doc_search 구분 핵심 데이터
         "{A_short} 검색해서 {B_short} 알려줘",
         "{A_short} 가져와서 {B_short}",
         "{A_short} 열어서 {B_short}",
@@ -209,7 +209,7 @@ COMPOUND_PAIRS = [
         "{A_short} 확인 후 {B_short}",
     ]),
     # 문서 QA → 문서 요약
-    ("doc_qa", "doc_summary", [
+    ("doc_search", "doc_summary", [
         "{A_short} 확인하고 {B_short}",
         "{A_short} 내용 {B_short}",
         "{A_short}, {B_short}도",
@@ -263,7 +263,7 @@ COMPOUND_PAIRS = [
         "{A_short} 후에 {B_short}",
     ]),
     # 문서 QA → 일정 조회 (문서 내용 확인 + 일정 확인)
-    ("doc_qa", "schedule_view", [
+    ("doc_search", "schedule_view", [
         "{A_short} 확인하고 {B_short}",
         "{A_short}, {B_short}도",
         "{A_short}이랑 {B_short}",
@@ -279,7 +279,7 @@ COMPOUND_PAIRS = [
         "{A_short} 잡아주고 {B_short}",
     ]),
     # 문서 요약 → 문서 QA (요약 + 특정 질문)
-    ("doc_summary", "doc_qa", [
+    ("doc_summary", "doc_search", [
         "{A_short} 요약하고 {B_short}",
         "{A_short} 정리해주고 {B_short}",
         "{A_short}, {B_short}도 알려줘",
@@ -294,18 +294,18 @@ TRIPLE_COMBOS = [
     ("doc_search", "judgment", "doc_generate"),
     ("schedule_view", "schedule_add", "doc_generate"),
     ("doc_search", "doc_summary", "judgment"),
-    ("doc_qa", "doc_summary", "doc_generate"),
+    ("doc_search", "doc_summary", "doc_generate"),
     ("schedule_view", "judgment", "schedule_add"),
-    ("doc_search", "doc_qa", "judgment"),
+    ("doc_search", "doc_search", "judgment"),
     ("doc_search", "doc_generate", "doc_summary"),
-    ("doc_qa", "judgment", "doc_generate"),
+    ("doc_search", "judgment", "doc_generate"),
     ("doc_search", "judgment", "doc_summary"),
-    ("doc_qa", "doc_generate", "schedule_view"),
+    ("doc_search", "doc_generate", "schedule_view"),
     # v5 추가 조합
-    ("doc_search", "doc_qa", "doc_generate"),
-    ("doc_search", "doc_qa", "doc_summary"),
+    ("doc_search", "doc_search", "doc_generate"),
+    ("doc_search", "doc_search", "doc_summary"),
     ("judgment", "doc_generate", "schedule_add"),
-    ("doc_qa", "judgment", "schedule_view"),
+    ("doc_search", "judgment", "schedule_view"),
 ]
 
 TRIPLE_TEMPLATES = [
@@ -351,7 +351,7 @@ CONNECTOR_TRAP_TEMPLATES = [
 ]
 
 # 함정 생성 대상 intent (같은 intent 문장 2개를 연결)
-TRAP_INTENTS = ["doc_search", "schedule_view", "judgment", "doc_generate", "doc_summary", "doc_qa", "general", "schedule_add"]
+TRAP_INTENTS = ["doc_search", "schedule_view", "judgment", "doc_generate", "doc_summary", "doc_search", "general", "schedule_add"]
 
 
 # ── 문장 단축 ────────────────────────────────────────────────────────────────
@@ -651,9 +651,9 @@ GOLDEN_COMPOUND = [
     {"text": "오후에 빈 시간 있으면 미팅 하나 잡아줘", "labels": ["schedule_view", "schedule_add"]},
     {"text": "내일 일정 비는지 보고 세미나 등록해줘", "labels": ["schedule_view", "schedule_add"]},
     {"text": "이번 주 빈 시간 확인하고 워크숍 넣어줘", "labels": ["schedule_view", "schedule_add"]},
-    {"text": "지난 회의 내용 토대로 보고서 작성해줘", "labels": ["doc_qa", "doc_generate"]},
-    {"text": "프로젝트 보고서 내용으로 제안서 만들어줘", "labels": ["doc_qa", "doc_generate"]},
-    {"text": "실적 자료 토대로 분기 보고서 써줘", "labels": ["doc_qa", "doc_generate"]},
+    {"text": "지난 회의 내용 토대로 보고서 작성해줘", "labels": ["doc_search", "doc_generate"]},
+    {"text": "프로젝트 보고서 내용으로 제안서 만들어줘", "labels": ["doc_search", "doc_generate"]},
+    {"text": "실적 자료 토대로 분기 보고서 써줘", "labels": ["doc_search", "doc_generate"]},
     {"text": "인사 규정 위반 사례 정리해줘", "labels": ["doc_search", "doc_summary"]},
     {"text": "보안 규정 중에서 핵심만 요약해줘", "labels": ["doc_search", "doc_summary"]},
     {"text": "출장 문서 참고해서 이번 기획서 초안 잡아줘", "labels": ["doc_search", "doc_generate"]},
@@ -661,9 +661,9 @@ GOLDEN_COMPOUND = [
     # ── 암묵적 복합 (implicit 보강) ──
     {"text": "복리후생도 보고 싶고 남은 연차도 궁금해", "labels": ["doc_search", "schedule_view"]},
     {"text": "이 계약서 검토하고 수정본 만들어줘", "labels": ["judgment", "doc_generate"]},
-    {"text": "매출 자료에서 핵심 수치 알려주고 발표 자료도 준비해줘", "labels": ["doc_qa", "doc_generate"]},
+    {"text": "매출 자료에서 핵심 수치 알려주고 발표 자료도 준비해줘", "labels": ["doc_search", "doc_generate"]},
     {"text": "관련 조항 찾아주고 적용되는지 봐줘", "labels": ["doc_search", "judgment"]},
-    {"text": "예산서에서 남은 금액 확인하고 초과 가능한지 판단해줘", "labels": ["doc_qa", "judgment"]},
+    {"text": "예산서에서 남은 금액 확인하고 초과 가능한지 판단해줘", "labels": ["doc_search", "judgment"]},
     # ── 짧은 복합 보강 ──
     {"text": "일정 보여주고 하나 추가", "labels": ["schedule_view", "schedule_add"]},
     {"text": "일정 확인, 빈 데 추가해줘", "labels": ["schedule_view", "schedule_add"]},
@@ -671,25 +671,25 @@ GOLDEN_COMPOUND = [
     {"text": "보고서 마감이랑 내일 일정", "labels": ["doc_generate", "schedule_view"]},
     {"text": "요약해주고 제안서도 써줘", "labels": ["doc_summary", "doc_generate"]},
     {"text": "규정 찾아줘, 위반인지도 봐줘", "labels": ["doc_search", "judgment"]},
-    # ── judgment vs doc_qa 구분 강화 ──
-    # "위반/가능/적용/처벌" = judgment (doc_qa 아님)
+    # ── judgment vs doc_search 구분 강화 ──
+    # "위반/가능/적용/처벌" = judgment (doc_search 아님)
     {"text": "위반 여부 판단해줘", "labels": ["judgment"]},
     {"text": "이 경우 규정에 적용 가능한지 봐줘", "labels": ["judgment"]},
     {"text": "처벌 기준이 어떻게 되는지 판단해줘", "labels": ["judgment"]},
     {"text": "이번 건 가능한지 규정대로 판단해줘", "labels": ["judgment"]},
     {"text": "규정 위반인지 아닌지 확인해줘", "labels": ["judgment"]},
-    # "내용/어떤 내용/뭐야" = doc_qa (judgment 아님)
-    {"text": "지난 회의에서 뭐 결정됐어", "labels": ["doc_qa"]},
-    {"text": "보고서에 어떤 내용 있어", "labels": ["doc_qa"]},
-    {"text": "계약 조건이 뭐야", "labels": ["doc_qa"]},
-    {"text": "프로젝트 현황 알려줘", "labels": ["doc_qa"]},
-    {"text": "매출 실적이 얼마야", "labels": ["doc_qa"]},
+    # "내용/어떤 내용/뭐야" = doc_search (judgment 아님)
+    {"text": "지난 회의에서 뭐 결정됐어", "labels": ["doc_search"]},
+    {"text": "보고서에 어떤 내용 있어", "labels": ["doc_search"]},
+    {"text": "계약 조건이 뭐야", "labels": ["doc_search"]},
+    {"text": "프로젝트 현황 알려줘", "labels": ["doc_search"]},
+    {"text": "매출 실적이 얼마야", "labels": ["doc_search"]},
     # ── 함정 단일 보강 (over-triggering 방지) ──
     {"text": "규정 꼼꼼히 확인해서 자세하게 알려줘", "labels": ["doc_search"]},
     {"text": "보고서 작성해서 보내줘", "labels": ["doc_generate"]},
     {"text": "문서 찾아서 보여줘", "labels": ["doc_search"]},
     {"text": "일정 확인하고 알려줘", "labels": ["schedule_view"]},
-    {"text": "회의 내용이랑 결정사항 알려줘", "labels": ["doc_qa"]},
+    {"text": "회의 내용이랑 결정사항 알려줘", "labels": ["doc_search"]},
 
     # ═══ v4 추가 — 오답 11건 분석 반영 (30개) ═══
 
@@ -711,11 +711,11 @@ GOLDEN_COMPOUND = [
     {"text": "분석 결과를 보고서로 만들어줘", "labels": ["doc_generate"]},
     {"text": "이 내용 요약해서 보고서 작성해줘", "labels": ["doc_summary", "doc_generate"]},
 
-    # ── [오답 31] doc_qa vs doc_summary 구분 ──
-    {"text": "보고서에서 핵심 수치 알려줘", "labels": ["doc_qa"]},
-    {"text": "매출 데이터 얼마인지 알려줘", "labels": ["doc_qa"]},
-    {"text": "예산 남은 금액 확인해줘", "labels": ["doc_qa"]},
-    {"text": "실적 보고서에서 핵심 수치 뽑아주고 발표 자료 만들어줘", "labels": ["doc_qa", "doc_generate"]},
+    # ── [오답 31] doc_search vs doc_summary 구분 ──
+    {"text": "보고서에서 핵심 수치 알려줘", "labels": ["doc_search"]},
+    {"text": "매출 데이터 얼마인지 알려줘", "labels": ["doc_search"]},
+    {"text": "예산 남은 금액 확인해줘", "labels": ["doc_search"]},
+    {"text": "실적 보고서에서 핵심 수치 뽑아주고 발표 자료 만들어줘", "labels": ["doc_search", "doc_generate"]},
 
     # ── [오답 51,59] connector trap 보강 ──
     {"text": "규정 검토 결과 알려줘", "labels": ["judgment"]},
@@ -733,7 +733,7 @@ GOLDEN_COMPOUND = [
     {"text": "복리후생 어떤 거 있는지 알려줘", "labels": ["doc_search"]},
     {"text": "지원 제도 뭐가 있는지 알려줘", "labels": ["doc_search"]},
 
-    # ═══ v5 추가 — doc_search↔doc_qa 구분 집중 강화 (80+개) ═══
+    # ═══ v5 추가 — doc_search↔doc_search 구분 집중 강화 (80+개) ═══
 
     # ── doc_search 단일 (규정/문서 "찾기/검색/조회" 자체가 목적) ──
     {"text": "출장 규정 찾아줘", "labels": ["doc_search"]},
@@ -752,44 +752,44 @@ GOLDEN_COMPOUND = [
     {"text": "성과 평가 기준 문서 보여줘", "labels": ["doc_search"]},
     {"text": "휴직 관련 문서 검색", "labels": ["doc_search"]},
 
-    # ── doc_qa 단일 (문서에서 "특정 정보 추출/질문 답변"이 목적) ──
-    {"text": "연차 며칠 남았어?", "labels": ["doc_qa"]},
-    {"text": "이번 분기 매출 얼마야?", "labels": ["doc_qa"]},
-    {"text": "프로젝트 마감일이 언제야?", "labels": ["doc_qa"]},
-    {"text": "지난 회의에서 결정된 사항이 뭐야?", "labels": ["doc_qa"]},
-    {"text": "예산 집행률 몇 퍼센트야?", "labels": ["doc_qa"]},
-    {"text": "담당자가 누구야?", "labels": ["doc_qa"]},
-    {"text": "계약 기간이 언제까지야?", "labels": ["doc_qa"]},
-    {"text": "지난달 경비 사용 금액 알려줘", "labels": ["doc_qa"]},
-    {"text": "팀 인원 현황 알려줘", "labels": ["doc_qa"]},
-    {"text": "올해 목표 매출이 얼마야?", "labels": ["doc_qa"]},
-    {"text": "최근 채용 현황 알려줘", "labels": ["doc_qa"]},
-    {"text": "수습 기간이 몇 개월이야?", "labels": ["doc_qa"]},
-    {"text": "보고서에 뭐라고 적혀있어?", "labels": ["doc_qa"]},
-    {"text": "의사결정 내용이 뭐였어?", "labels": ["doc_qa"]},
-    {"text": "작년 실적이 얼마였어?", "labels": ["doc_qa"]},
+    # ── doc_search 단일 (문서에서 "특정 정보 추출/질문 답변"이 목적) ──
+    {"text": "연차 며칠 남았어?", "labels": ["doc_search"]},
+    {"text": "이번 분기 매출 얼마야?", "labels": ["doc_search"]},
+    {"text": "프로젝트 마감일이 언제야?", "labels": ["doc_search"]},
+    {"text": "지난 회의에서 결정된 사항이 뭐야?", "labels": ["doc_search"]},
+    {"text": "예산 집행률 몇 퍼센트야?", "labels": ["doc_search"]},
+    {"text": "담당자가 누구야?", "labels": ["doc_search"]},
+    {"text": "계약 기간이 언제까지야?", "labels": ["doc_search"]},
+    {"text": "지난달 경비 사용 금액 알려줘", "labels": ["doc_search"]},
+    {"text": "팀 인원 현황 알려줘", "labels": ["doc_search"]},
+    {"text": "올해 목표 매출이 얼마야?", "labels": ["doc_search"]},
+    {"text": "최근 채용 현황 알려줘", "labels": ["doc_search"]},
+    {"text": "수습 기간이 몇 개월이야?", "labels": ["doc_search"]},
+    {"text": "보고서에 뭐라고 적혀있어?", "labels": ["doc_search"]},
+    {"text": "의사결정 내용이 뭐였어?", "labels": ["doc_search"]},
+    {"text": "작년 실적이 얼마였어?", "labels": ["doc_search"]},
 
-    # ── doc_search+doc_qa 복합 (문서 찾고 + 거기서 정보 추출) ──
-    {"text": "인사 규정 찾아서 수습 기간 알려줘", "labels": ["doc_search", "doc_qa"]},
-    {"text": "출장비 문서 검색하고 한도 얼마인지 알려줘", "labels": ["doc_search", "doc_qa"]},
-    {"text": "연봉 테이블 찾아서 내 등급 확인해줘", "labels": ["doc_search", "doc_qa"]},
-    {"text": "복지 규정 가져와서 지원 가능한 항목 알려줘", "labels": ["doc_search", "doc_qa"]},
-    {"text": "경비 처리 매뉴얼 찾아서 상한선 얼마인지 확인해줘", "labels": ["doc_search", "doc_qa"]},
-    {"text": "교육비 지원 문서 보여주고 신청 조건 알려줘", "labels": ["doc_search", "doc_qa"]},
-    {"text": "휴가 규정 찾아서 연차 며칠인지 봐줘", "labels": ["doc_search", "doc_qa"]},
-    {"text": "성과 평가 기준 검색하고 S등급 조건 알려줘", "labels": ["doc_search", "doc_qa"]},
-    {"text": "재택근무 규정 찾아서 주 몇 회 가능한지 알려줘", "labels": ["doc_search", "doc_qa"]},
-    {"text": "야근 수당 문서 가져와서 계산 방식 알려줘", "labels": ["doc_search", "doc_qa"]},
+    # ── doc_search+doc_search 복합 (문서 찾고 + 거기서 정보 추출) ──
+    {"text": "인사 규정 찾아서 수습 기간 알려줘", "labels": ["doc_search", "doc_search"]},
+    {"text": "출장비 문서 검색하고 한도 얼마인지 알려줘", "labels": ["doc_search", "doc_search"]},
+    {"text": "연봉 테이블 찾아서 내 등급 확인해줘", "labels": ["doc_search", "doc_search"]},
+    {"text": "복지 규정 가져와서 지원 가능한 항목 알려줘", "labels": ["doc_search", "doc_search"]},
+    {"text": "경비 처리 매뉴얼 찾아서 상한선 얼마인지 확인해줘", "labels": ["doc_search", "doc_search"]},
+    {"text": "교육비 지원 문서 보여주고 신청 조건 알려줘", "labels": ["doc_search", "doc_search"]},
+    {"text": "휴가 규정 찾아서 연차 며칠인지 봐줘", "labels": ["doc_search", "doc_search"]},
+    {"text": "성과 평가 기준 검색하고 S등급 조건 알려줘", "labels": ["doc_search", "doc_search"]},
+    {"text": "재택근무 규정 찾아서 주 몇 회 가능한지 알려줘", "labels": ["doc_search", "doc_search"]},
+    {"text": "야근 수당 문서 가져와서 계산 방식 알려줘", "labels": ["doc_search", "doc_search"]},
 
-    # ── doc_search vs doc_qa 헷갈리는 경계 케이스 ──
+    # ── doc_search vs doc_search 헷갈리는 경계 케이스 ──
     # "규정 내용 알려줘" = doc_search (규정 자체를 찾아달라는 것)
     {"text": "출장 규정 내용 알려줘", "labels": ["doc_search"]},
     {"text": "복리후생 규정 내용 보여줘", "labels": ["doc_search"]},
     {"text": "인사 제도 관련 규정 알려줘", "labels": ["doc_search"]},
-    # "~에서 ~알려줘" = doc_qa (이미 문서를 알고 거기서 추출)
-    {"text": "인사 규정에서 징계 기준 알려줘", "labels": ["doc_qa"]},
-    {"text": "복리후생 규정에서 지원 금액 알려줘", "labels": ["doc_qa"]},
-    {"text": "출장 규정에서 일비가 얼마야", "labels": ["doc_qa"]},
+    # "~에서 ~알려줘" = doc_search (이미 문서를 알고 거기서 추출)
+    {"text": "인사 규정에서 징계 기준 알려줘", "labels": ["doc_search"]},
+    {"text": "복리후생 규정에서 지원 금액 알려줘", "labels": ["doc_search"]},
+    {"text": "출장 규정에서 일비가 얼마야", "labels": ["doc_search"]},
 
     # ── v5 추가: 다양한 복합 패턴 보강 ──
 
@@ -808,12 +808,12 @@ GOLDEN_COMPOUND = [
     # doc_generate 복합
     {"text": "기획서 초안 잡아주고 관련 자료도 검색해줘", "labels": ["doc_generate", "doc_search"]},
     {"text": "보고서 작성하고 주요 수치도 정리해줘", "labels": ["doc_generate", "doc_summary"]},
-    {"text": "제안서 만들어주고 예산 데이터도 넣어줘", "labels": ["doc_generate", "doc_qa"]},
+    {"text": "제안서 만들어주고 예산 데이터도 넣어줘", "labels": ["doc_generate", "doc_search"]},
 
     # 함정 단일 — 길지만 단일 intent
     {"text": "출장비 규정이랑 교통비 규정 같이 검색해줘", "labels": ["doc_search"]},
     {"text": "연차랑 병가 관련 규정 찾아줘", "labels": ["doc_search"]},
-    {"text": "이번 분기 매출이랑 지난 분기 매출 비교해줘", "labels": ["doc_qa"]},
+    {"text": "이번 분기 매출이랑 지난 분기 매출 비교해줘", "labels": ["doc_search"]},
     {"text": "내일 회의랑 모레 미팅 확인해줘", "labels": ["schedule_view"]},
     {"text": "제안서랑 기획서 둘 다 작성해줘", "labels": ["doc_generate"]},
     {"text": "이번 건이랑 저번 건 위반 여부 판단해줘", "labels": ["judgment"]},
@@ -822,8 +822,8 @@ GOLDEN_COMPOUND = [
     # 암묵적 복합 — 접속사 없이 의미적으로 복합
     {"text": "규정 위반 소지가 있는 건 찾아서 정리해줘", "labels": ["doc_search", "judgment"]},
     {"text": "빈 시간 골라서 팀 미팅 넣어줘", "labels": ["schedule_view", "schedule_add"]},
-    {"text": "실적 데이터 뽑아서 발표 자료 만들어줘", "labels": ["doc_qa", "doc_generate"]},
-    {"text": "문서 내용 파악해서 위반 사항 체크해줘", "labels": ["doc_qa", "judgment"]},
+    {"text": "실적 데이터 뽑아서 발표 자료 만들어줘", "labels": ["doc_search", "doc_generate"]},
+    {"text": "문서 내용 파악해서 위반 사항 체크해줘", "labels": ["doc_search", "judgment"]},
     {"text": "관련 규정 검색해서 요점만 뽑아줘", "labels": ["doc_search", "doc_summary"]},
 ]
 

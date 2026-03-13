@@ -149,16 +149,6 @@ async def document_agent(state: AgentState) -> AgentState:
                 stream_mode=stream_mode,
             )
 
-        elif intent == "doc_qa":
-            print("[DocumentAgent] → _handle_doc_qa 호출")
-            response_data = await _handle_doc_qa(
-                user_input,
-                context=context,
-                user_id=user_id,
-                user_team=user_team,
-                stream_mode=stream_mode,
-            )
-
         elif intent == "risk_detect":
              print("[DocumentAgent] → _handle_risk_detect 호출")
              response_data = _handle_risk_detect(user_input)
@@ -981,7 +971,7 @@ async def _handle_doc_qa(query: str, context: list = None, user_id: int = None, 
     if not context:
         print("[DocumentAgent] context 비어있음 → 관련 문서 없음 응답")
         return {
-            "type": "doc_qa",
+            "type": "doc_search",
             "answer": "관련 문서를 찾지 못했습니다. 다른 질문을 시도해보세요.",
             "message": "관련 문서를 찾지 못했습니다. 다른 질문을 시도해보세요.",
             "sources": [],
@@ -1007,7 +997,7 @@ async def _handle_doc_qa(query: str, context: list = None, user_id: int = None, 
 
         print(f"[DocumentAgent] stream_mode=True → stream_pending 반환 ({time.time()-_t:.2f}s)")
         return {
-            "type": "doc_qa",
+            "type": "doc_search",
             "stream_pending": True,
             "sys_prompt": sys_prompt,
             "user_prompt": user_prompt,
@@ -1027,7 +1017,7 @@ async def _handle_doc_qa(query: str, context: list = None, user_id: int = None, 
         qa_result = {"answer": answer_json_str, "citations": [], "confidence": 0.5}
 
     return {
-        "type": "doc_qa",
+        "type": "doc_search",
         "answer": qa_result.get("answer", ""),
         "message": qa_result.get("answer", ""),
         "citations": qa_result.get("citations", []),

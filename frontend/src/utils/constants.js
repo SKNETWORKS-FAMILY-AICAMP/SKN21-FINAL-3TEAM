@@ -2,13 +2,12 @@
  * 상수 정의 (팀원 E 담당)
  */
 
-// Intent 타입 (8개)
+// Intent 타입 (7개)
 export const INTENT_TYPES = {
   JUDGMENT: 'judgment',
   DOC_SEARCH: 'doc_search',
   DOC_GENERATE: 'doc_generate',
   DOC_SUMMARY: 'doc_summary',
-  DOC_QA: 'doc_qa',
   SCHEDULE_ADD: 'schedule_add',
   SCHEDULE_VIEW: 'schedule_view',
   GENERAL: 'general',
@@ -17,10 +16,9 @@ export const INTENT_TYPES = {
 // Intent 한글 라벨
 export const INTENT_LABELS = {
   judgment: '규정 판단',
-  doc_search: '문서 검색',
+  doc_search: '문서 검색/조회',
   doc_generate: '문서 생성',
   doc_summary: '문서 요약',
-  doc_qa: '문서 QA',
   schedule_add: '일정 추가',
   schedule_view: '일정 조회',
   general: '일반 질문',
@@ -32,7 +30,6 @@ export const INTENT_ICONS = {
   doc_search: 'Search',
   doc_generate: 'FileText',
   doc_summary: 'FileSearch',
-  doc_qa: 'HelpCircle',
   schedule_add: 'CalendarPlus',
   schedule_view: 'CalendarDays',
   general: 'MessageCircle',
@@ -162,7 +159,7 @@ export const SUGGESTED_QUESTIONS = [
   { text: '회의록 만들어줘', intent: 'doc_generate', category: 'document' },
   { text: '보고서 만들어줘', intent: 'doc_generate', category: 'document' },
   { text: '이 문서 요약해줘', intent: 'doc_summary', category: 'document' },
-  { text: '지난 회의 결정사항이 뭐야?', intent: 'doc_qa', category: 'document' },
+  { text: '지난 회의 결정사항이 뭐야?', intent: 'doc_search', category: 'document' },
   { text: '신입 온보딩 가이드 있어?', intent: 'doc_search', category: 'document' },
   { text: '오늘 일정 알려줘', intent: 'schedule_view', category: 'schedule' },
   { text: '내일 오후 2시에 회의 잡아줘', intent: 'schedule_add', category: 'schedule' },
