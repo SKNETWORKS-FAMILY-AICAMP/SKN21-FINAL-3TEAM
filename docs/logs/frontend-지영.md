@@ -2470,6 +2470,14 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 - **Frontend**: `AgentIndicator.jsx`, `CompoundCard.jsx`, `AIChatPopup.jsx`, `ChatWindow.jsx`, `StreamingMessage.jsx`, `SystemStats.jsx`, `ChatPage.jsx` — doc_retrieve 추가 + 하위 호환
 - **데이터**: 전체 training/val/test/holdout 데이터 doc_search→doc_retrieve, doc_summary→doc_retrieve 변환 + 7건 중복 제거
 
+#### 5) 프론트엔드 UI 개선
+
+- **일정관리 페이지 로딩 깜빡임 수정** (`SchedulesPage.jsx`) — DB 일정 로딩 상태(`dbSchedulesLoading`) 추가, 로딩 완료 전까지 빈 달력 노출 방지
+- **Approvals 탭 색상 통일** (`ApprovalPanel.jsx`) — raw Tailwind 색상을 서비스 디자인 토큰으로 전면 교체
+- **문서 페이지 독립 스크롤** (`DocumentList.jsx`, `DocumentDetail.jsx`) — 좌우 패널 각각 `max-h-[82vh]` + `overflow-y-auto` 적용
+- **문서 목록 compact/detailed 뷰 토글** (`DocumentList.jsx`) — compact 3컬럼(문서명+서브정보, 분류, 태그) / detailed 6컬럼 전환
+- **DataTable 컬럼 스타일 확장** (`DataTable.jsx`) — `className`, `headerClassName` props 지원 추가
+
 ### 다음 할 일
 
 - RunPod에서 6-label 5-seed 앙상블 재학습
