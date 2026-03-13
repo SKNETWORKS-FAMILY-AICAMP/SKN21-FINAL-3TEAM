@@ -478,7 +478,7 @@ class GoogleSheetsService(GoogleBaseService):
         )
 
         # JSON 파싱
-        wbs_data = json.loads(response)
+        wbs_data = json.loads(response.content)
         wbs_items = wbs_data.get("wbs", [])
         if not wbs_items:
             return False
@@ -996,7 +996,7 @@ class GoogleSheetsService(GoogleBaseService):
             json_mode=True,
         )
 
-        data = json.loads(response)
+        data = json.loads(response.content)
         risks = data.get("risks", [])
         summary = data.get("summary", "")
 
@@ -1120,7 +1120,7 @@ class GoogleSheetsService(GoogleBaseService):
             json_mode=True,
         )
 
-        data = json.loads(response)
+        data = json.loads(response.content)
         period = data.get("period", "")
         completed = data.get("completed", [])
         in_progress = data.get("in_progress", [])
