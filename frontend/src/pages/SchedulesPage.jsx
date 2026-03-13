@@ -57,6 +57,7 @@ export default function SchedulesPage() {
   const [approvalActions, setApprovalActions] = useState(null);
   const [sheetActions, setSheetActions] = useState(null);
   const [teamSchedules, setTeamSchedules] = useState([]);
+  const [projectSchedules, setProjectSchedules] = useState([]);
   const [myDbSchedules, setMyDbSchedules] = useState([]);
   const { connected: slackConnected } = useSlackStore();
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -83,9 +84,10 @@ export default function SchedulesPage() {
         const timeStr = hasTime
           ? `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
           : null;
+        const label = s.project_name ? `[${s.project_name}] ${s.title}` : s.is_team_visible ? `[팀] ${s.title}` : s.title;
         const baseEvent = {
           type: s.schedule_type || 'meeting',
-          label: s.is_team_visible ? `[팀] ${s.title}` : s.title,
+          label,
           time: timeStr,
           rawStartTime: hasTime ? `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}` : null,
           rawEndTime: hasTime ? `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}` : null,
@@ -153,6 +155,40 @@ export default function SchedulesPage() {
     }
   }, [hasTeam, refreshKey]);
 
+  // 프로젝트 공유 일정 로드
+  useEffect(() => {
+    listSchedules({ include_project: true }).then((res) => {
+      const schedules = [];
+      (res.data || [])
+        .filter((s) => s.project_name && s.user_name && s.user_name !== user?.name) // 본인 제외, 프로젝트 멤버만
+        .forEach((s) => {
+          const start = new Date(s.start_time);
+          const end = s.end_time ? new Date(s.end_time) : start;
+          const timeStr = `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
+          const baseEvent = {
+            type: s.schedule_type || 'meeting',
+            label: `[${s.project_name}] ${s.title}`,
+            time: timeStr,
+            isProjectMember: true,
+            scheduleId: s.id,
+            userId: s.user_id,
+          };
+          const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+          const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+          const cur = new Date(startDay);
+          while (cur <= endDay) {
+            schedules.push({
+              ...baseEvent,
+              month: cur.getMonth() + 1,
+              day: cur.getDate(),
+            });
+            cur.setDate(cur.getDate() + 1);
+          }
+        });
+      setProjectSchedules(schedules);
+    }).catch(() => setProjectSchedules([]));
+  }, [refreshKey]);
+
 
   // Google Calendar 이벤트를 CalendarView 형식으로 변환 (연결된 경우만)
   const events = useMemo(() => {
@@ -198,8 +234,8 @@ export default function SchedulesPage() {
       meetLink: s.googleEventId ? googleMeetMap[s.googleEventId] : undefined,
     }));
 
-    return [...uniqueGoogleEvents, ...enrichedDbSchedules, ...teamSchedules];
-  }, [events, myDbSchedules, teamSchedules]);
+    return [...uniqueGoogleEvents, ...enrichedDbSchedules, ...teamSchedules, ...projectSchedules];
+  }, [events, myDbSchedules, teamSchedules, projectSchedules]);
 
   // 수정 권한: 본인 DB 일정 또는 관리자
   const canEdit = (event) => {
@@ -320,6 +356,7 @@ export default function SchedulesPage() {
         is_team_visible: data.is_team_visible || false,
         include_meet: data.include_meet || false,
         attendee_emails: data.attendee_emails || [],
+        project_name: data.project_name || null,
       });
       dbSaved = true;
       googleSynced = result?.data?.google_services?.calendar_synced || false;
