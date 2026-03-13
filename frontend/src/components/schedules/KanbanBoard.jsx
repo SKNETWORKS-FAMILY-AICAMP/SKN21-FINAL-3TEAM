@@ -6,6 +6,7 @@ import { listPipelineTasks, createPipelineTask, updatePipelineTask, deletePipeli
 import { createTask as createGoogleTask } from '../../api/google';
 import useGoogleServices from '../../hooks/useGoogleServices';
 import client from '../../api/client';
+import { toast } from '../../store/toastStore';
 
 const priorityColors = {
     high: 'bg-error-bg text-error dark:bg-red-900/40 dark:text-red-400',
@@ -37,7 +38,7 @@ const stageConfig = [
 const EMPTY_FORM = { title: '', description: '', assignee: '', dueDate: '', priority: 'medium', tags: '', project: '' };
 const INPUT_CLS = 'w-full px-3 py-2 border border-neutral-border rounded-lg bg-surface-card text-neutral-main focus:outline-none focus:ring-2 focus:ring-primary-500';
 
-export default function KanbanBoard({ onReady, externalActions, filterProject }) {
+export default function KanbanBoard({ onReady, externalActions, filterProject, projectMembers = [] }) {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [draggingId, setDraggingId] = useState(null);
@@ -72,10 +73,30 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
     useEffect(() => { fetchTasks(); }, [fetchTasks]);
 
     useEffect(() => {
-        client.get('/auth/team-members')
-            .then(res => setMembers(res.data || []))
-            .catch(() => setMembers([]));
-    }, []);
+        // projectMembers가 있으면 all-members에서 가져옴 (다른 팀 멤버도 포함)
+        if (projectMembers.length > 0) {
+            Promise.all([
+                client.get('/auth/team-members'),
+                client.get('/auth/all-members'),
+            ]).then(([teamRes, allRes]) => {
+                const teamMembers = teamRes.data || [];
+                const allMembers = allRes.data || [];
+                // 중복 제거하여 합침
+                const map = new Map();
+                teamMembers.forEach(m => map.set(m.name, m));
+                allMembers.forEach(m => { if (!map.has(m.name)) map.set(m.name, m); });
+                setMembers([...map.values()]);
+            }).catch(() => {
+                client.get('/auth/team-members')
+                    .then(res => setMembers(res.data || []))
+                    .catch(() => setMembers([]));
+            });
+        } else {
+            client.get('/auth/team-members')
+                .then(res => setMembers(res.data || []))
+                .catch(() => setMembers([]));
+        }
+    }, [projectMembers.length]);
 
     useEffect(() => {
         if (onReady && externalActions) {
@@ -178,6 +199,8 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
             closeModal();
             fetchTasks();
         } catch (err) {
+            const detail = err.response?.data?.detail || '태스크 저장에 실패했습니다';
+            toast.error(detail);
             console.error('Save failed', err);
         }
     };
@@ -543,7 +566,10 @@ export default function KanbanBoard({ onReady, externalActions, filterProject })
                             <div>
                                 <label className="block text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-1.5 ml-1">Assignee</label>
                                 <div className="flex flex-wrap gap-1.5">
-                                    {members.map((m) => {
+                                    {(projectMembers.length > 0
+                                        ? members.filter(m => projectMembers.includes(m.name))
+                                        : members
+                                    ).map((m) => {
                                         const selected = form.assignee === m.name;
                                         const avatarSrc = m.avatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(m.name)}`;
                                         return (
