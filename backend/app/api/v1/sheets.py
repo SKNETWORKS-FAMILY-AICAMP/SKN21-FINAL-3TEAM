@@ -35,6 +35,10 @@ async def export_project(
     result = await sheets_service.export_project_to_sheet(
         db, current_user.id, request.project_name, request.title,
         generate_wbs=request.generate_wbs,
+        generate_gantt=request.generate_gantt,
+        generate_dashboard=request.generate_dashboard,
+        generate_risk=request.generate_risk,
+        generate_report=request.generate_report,
     )
     return SheetCreateResponse(**result)
 
@@ -61,10 +65,18 @@ async def read_sheet_data(
     db: AsyncSession = Depends(get_db),
 ):
     """시트 데이터 읽기 (미리보기용)"""
-    result = await sheets_service.read_sheet_data(
-        db, current_user.id, spreadsheet_id, sheet_name
-    )
-    return SheetReadResponse(**result)
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        result = await sheets_service.read_sheet_data(
+            db, current_user.id, spreadsheet_id, sheet_name
+        )
+        return SheetReadResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"시트 데이터 읽기 실패: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=f"시트 데이터 조회 실패: {type(e).__name__}: {str(e)}")
 
 
 @router.put("/{spreadsheet_id}/data", response_model=SheetUpdateResponse)

@@ -117,6 +117,10 @@ class SheetExportProjectRequest(BaseModel):
     project_name: str
     title: Optional[str] = None
     generate_wbs: bool = True
+    generate_gantt: bool = False
+    generate_dashboard: bool = False
+    generate_risk: bool = False
+    generate_report: bool = False
 
 
 class SheetSyncRequest(BaseModel):
@@ -131,6 +135,10 @@ class SheetCreateResponse(BaseModel):
     title: str
     task_count: int = 0
     wbs_generated: bool = False
+    gantt_generated: bool = False
+    dashboard_generated: bool = False
+    risk_generated: bool = False
+    report_generated: bool = False
 
 
 class SheetSyncResponse(BaseModel):
@@ -141,7 +149,7 @@ class SheetSyncResponse(BaseModel):
 
 class SheetReadResponse(BaseModel):
     """시트 데이터 읽기 결과"""
-    values: list[list[str]]
+    values: list[list]  # 셀 값은 str/int/float 혼재 가능
     tabs: list[str]
 
 

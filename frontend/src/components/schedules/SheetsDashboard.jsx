@@ -13,6 +13,10 @@ export default function SheetsDashboard({ externalActions, onReady }) {
   const [syncingId, setSyncingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [generateWbs, setGenerateWbs] = useState(true);
+  const [generateGantt, setGenerateGantt] = useState(false);
+  const [generateDashboard, setGenerateDashboard] = useState(false);
+  const [generateRisk, setGenerateRisk] = useState(false);
+  const [generateReport, setGenerateReport] = useState(false);
   const [previewId, setPreviewId] = useState(null); // 미리보기 중인 spreadsheet_id
 
   useEffect(() => {
@@ -37,12 +41,25 @@ export default function SheetsDashboard({ externalActions, onReady }) {
   const handleExport = async (projectName) => {
     setExporting(projectName);
     try {
-      const result = await exportProjectToSheet(projectName, null, generateWbs);
+      const result = await exportProjectToSheet(projectName, null, {
+        generateWbs,
+        generateGantt,
+        generateDashboard,
+        generateRisk,
+        generateReport,
+      });
       if (result?.spreadsheet_url) {
         window.open(result.spreadsheet_url, '_blank');
       }
-      const wbsMsg = result?.wbs_generated ? ' (WBS 포함)' : '';
-      toast.success(`"${projectName}" 프로젝트가 Sheets로 내보내기 되었습니다.${wbsMsg}`);
+      const tabs = [
+        result?.wbs_generated && 'WBS',
+        result?.gantt_generated && 'Gantt',
+        result?.dashboard_generated && 'Dashboard',
+        result?.risk_generated && 'Risk',
+        result?.report_generated && 'Report',
+      ].filter(Boolean);
+      const tabsMsg = tabs.length > 0 ? ` (${tabs.join(', ')} 포함)` : '';
+      toast.success(`"${projectName}" 프로젝트가 Sheets로 내보내기 되었습니다.${tabsMsg}`);
     } catch {
       toast.error('Sheets 내보내기에 실패했습니다.');
     } finally {
@@ -109,17 +126,29 @@ export default function SheetsDashboard({ externalActions, onReady }) {
 
       {/* 프로젝트 내보내기 */}
       <div className="card">
-        <div className="card-header flex items-center justify-between">
-          <span className="card-title">프로젝트 → Sheets 내보내기</span>
-          <label className="flex items-center gap-1.5 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={generateWbs}
-              onChange={(e) => setGenerateWbs(e.target.checked)}
-              className="w-3.5 h-3.5 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
-            />
-            <span className="text-xs text-neutral-muted font-medium">WBS 포함</span>
-          </label>
+        <div className="card-header flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="card-title">프로젝트 → Sheets 내보내기</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {[
+              { label: 'WBS', state: generateWbs, setter: setGenerateWbs },
+              { label: 'Gantt', state: generateGantt, setter: setGenerateGantt },
+              { label: 'Dashboard', state: generateDashboard, setter: setGenerateDashboard },
+              { label: 'AI 리스크', state: generateRisk, setter: setGenerateRisk },
+              { label: '주간보고', state: generateReport, setter: setGenerateReport },
+            ].map(({ label, state, setter }) => (
+              <label key={label} className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={state}
+                  onChange={(e) => setter(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-xs text-neutral-muted font-medium">{label}</span>
+              </label>
+            ))}
+          </div>
         </div>
         <div className="card-body">
           {projects.length === 0 ? (

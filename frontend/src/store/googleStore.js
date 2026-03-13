@@ -176,10 +176,10 @@ const useGoogleStore = create((set, get) => ({
     }
   },
 
-  exportProjectToSheet: async (projectName, title = null, generateWbs = true) => {
+  exportProjectToSheet: async (projectName, title = null, options = {}) => {
     set({ sheetsLoading: true, sheetsError: null })
     try {
-      const { data } = await googleApi.exportProjectToSheet(projectName, title, generateWbs)
+      const { data } = await googleApi.exportProjectToSheet(projectName, title, options)
       await get().fetchSheets()
       return data
     } catch (err) {

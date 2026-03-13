@@ -1174,9 +1174,31 @@ RAG 개선(3단계)과 LoRA 파인튜닝(4단계)은 독립적 구조:
   - Phase 2 (데이터 필요): 일정/조회/태스크 파싱
   - Phase 3 (후순위): WBS 생성
 
+### Sheets 확장 탭 구현 (Gantt / Dashboard / AI Risk / Weekly Report)
+
+**Backend (`sheets_service.py`):**
+- `_generate_gantt_tab()` — 태스크 마감일 기준 셀 색칠 간트 차트 (상태별 색상: done=녹, in_progress=파랑, review=주황, todo=회색)
+- `_generate_dashboard_tab()` — 상태/담당자/우선순위 분포 집계 + 마감 초과 태스크 목록 (LLM 불필요)
+- `_generate_risk_tab()` — LLM 리스크 분석 (일정/과부하/병목/미할당/우선순위/정체 6가지 카테고리)
+- `_generate_weekly_report_tab()` — LLM 주간 보고서 (완료/진행중/예정/블로커)
+- `export_project_to_sheet()` — `generate_gantt`, `generate_dashboard`, `generate_risk`, `generate_report` 파라미터 추가
+
+**AI 프롬프트 (`prompts.py`):**
+- `PROJECT_RISK_ANALYSIS_SYSTEM_PROMPT` — 6가지 리스크 카테고리 분석 JSON 출력
+- `WEEKLY_REPORT_SYSTEM_PROMPT` — 주간 보고서 JSON 출력
+
+**스키마 (`google_services.py`):**
+- `SheetExportProjectRequest` / `SheetCreateResponse`에 4개 플래그 추가
+
+**프론트엔드:**
+- `google.js` — `exportProjectToSheet()` options 객체로 변경 (5개 탭 옵션)
+- `googleStore.js` — `exportProjectToSheet()` options 전달 방식 변경
+- `SheetsDashboard.jsx` — 내보내기 옵션 체크박스 5개 (WBS/Gantt/Dashboard/AI리스크/주간보고)
+
 **다음 할 일:**
 
 1. **schedule sLLM 비교 테스트** — RunPod 켜서 `test_schedule_sllm.py` 실행
 2. **intent 학습 팀원에게 전달** — `schedule_add`에 태스크/결재 예문 포함 확인
 3. **LoRA 연결 테스트** (이전 세션에서 이어짐)
 4. **Approvals 추천 sLLM 전환** — schedule 테스트 결과 보고 판단
+5. **Sheets 확장 deploy 후 테스트** — develop 머지 → EC2 반영 후 탭 생성 검증
