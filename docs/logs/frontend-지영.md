@@ -2621,10 +2621,42 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 - `ai/finetuning/runpod_planner_train.sh` — RunPod 실행 셸 스크립트
 - `outputs/v3_planner/final/` — LoRA 어댑터 저장
 
+#### 9) Planner LoRA Held-out 평가 및 지표 고도화
+
+**배경**: LoRA 파인튜닝 후 Eval split에서 높은 점수(0.991)가 나왔으나, 이는 동일 분포 데이터에 대한 결과이므로 실제 일반화 성능 파악을 위해 Base 비교 시 사용한 `planner_test_cases.json` (95건)으로 Held-out 평가 진행.
+
+**Held-out 평가 결과 (95건 기준)**:
+| 지표 | Base Kanana | LoRA Kanana | 비고 |
+|---|---|---|---|
+| Usable Rate | 94.7% | 100% | 빈 응답(`[]`) 문제 완벽 해결 |
+| **Weighted Score** | 0.895 (공통 60건) | **0.906** (전체 95건) | 전반적 성능 향상 |
+| **Perfect Match** | - | 73.7% (70/95) | 오답 건수 25건 |
+
+*※ Eval split(0.991) 대비 Held-out(0.906) 점수 하락으로 약간의 과적합 및 개선점 발견.*
+
+**평가 지표 고도화**:
+성능 평가의 실효성을 높이고 오답 원인을 명확히 파악하기 위해 기존의 Usable Rate(의미상 단순 포맷 체크)를 내부 숨김 처리하고, **3가지 신규 체감 지표**를 추가 도입함.
+1. **Step Collapse Rate (단계 축소율)**: 복합 질문(2+ steps)을 1단계로 축소해버리는 오답 비율 (현재 23.1% (15/65건) 발생 - 가장 큰 약점).
+2. **Exact Match by Step Count (단계 수별 정확도)**:
+   - 1-step: 100% (30/30)
+   - 2-step: 60% (12/20)
+   - 3-step: 33.3% (5/15)
+   - 4-step 이상: 난이도(step 수)가 높을수록 성능이 급격히 저하됨을 직관적으로 확인.
+3. **Intent Confusion Matrix (혼동 행렬)**: `doc_retrieve`를 `judgment`로 잘못 분류하는 등의 특정 intent 간 혼동 패턴 및 과잉 분리율 추적.
+
+**오답 25건 패턴 분석 결과**:
+- **패턴 1**: 단계 축소 (Multi-step → 1-step, 약 15건) - 가장 빈번하며 복합 질문 단순화 경향.
+- **패턴 2**: Intent 혼동 (예: `doc_retrieve` ↔ `judgment`, 약 5건).
+- **패턴 3**: 과잉 분리 (1단계면 충분한데 불필요하게 단계를 쪼개는 경우, 약 3건).
+
+**생성/수정 파일**:
+- `ai/finetuning/scripts/eval_planner_holdout.py` — held-out 평가, 오답 상세 출력, 신규 지표(Step Collapse, 단계 정확도, 혼동 행렬 등) 산출 로직 추가
+- `ai/finetuning/runpod_planner_holdout.sh` — RunPod 평가 실행 자동화 셸 스크립트
+
 ### 다음 할 일
 
-- **Held-out 테스트**: `planner_test_cases.json` 95건으로 LoRA 모델 평가 → base와 공정 비교
-- Held-out 결과에 따라 오답 분석 + 학습 데이터 보강 검토
+- Multi-step (sequential/complex) 유지 성능 강화를 위한 학습 데이터 보강 (단계 축소 방지 및 Intent 명확화)
+- 보강된 데이터로 LoRA 재학습 및 Held-out 평가 재진행
 - 프론트엔드 백엔드 실제 연동 작업 재개
 
 ---
