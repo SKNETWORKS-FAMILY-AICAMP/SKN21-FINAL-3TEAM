@@ -301,70 +301,84 @@ def print_report(all_results: dict[str, list[EvalResult]]):
 
     for model_name, results in all_results.items():
         total = len(results)
-        passed = sum(1 for r in results if r.passed_prereq)
-        failed = total - passed
-
-        avg = lambda attr: sum(getattr(r, attr) for r in results) / total
+        passed_results = [r for r in results if r.passed_prereq]
+        failed_results = [r for r in results if not r.passed_prereq]
+        passed = len(passed_results)
+        failed = len(failed_results)
 
         print(f"\n{'━' * 55}")
         print(f"  Model: {model_name}")
         print(f"{'━' * 55}")
 
-        print(f"\n  [전제 조건]")
-        print(f"    JSON 파싱 성공:       {passed}/{total} ({passed/total*100:.1f}%)")
-        print(f"    JSON 파싱 실패:       {failed}/{total}")
+        # ── JSON 신뢰성 (별도 보고) ──
+        print(f"\n  [JSON 신뢰성]")
+        print(f"    Pass Rate:            {passed}/{total} ({passed/total*100:.1f}%)")
+        if failed > 0:
+            print(f"    실패:                 {failed}건")
+            # 카테고리별 실패 분포
+            fail_cats = {}
+            for r in failed_results:
+                fail_cats[r.category] = fail_cats.get(r.category, 0) + 1
+            for cat, cnt in sorted(fail_cats.items(), key=lambda x: -x[1]):
+                print(f"      {cat}: {cnt}건")
 
-        print(f"\n  [핵심 지표]                   점수     가중치")
-        print(f"    Intent Recall:         {avg('intent_recall'):.3f}     (30%  빠뜨린 intent)")
-        print(f"    Order Accuracy:        {avg('order_accuracy'):.3f}     (25%  순서 정확도)")
-        print(f"    Intent Precision:      {avg('intent_precision'):.3f}     (20%  불필요 단계)")
-        print(f"    Dep Correctness:       {avg('dep_correctness'):.3f}     (15%  의존성 일치)")
-        print(f"    Efficiency:            {avg('efficiency'):.3f}     (10%  단계 수)")
+        # ── Planning 능력 (JSON 성공 케이스만) ──
+        if passed == 0:
+            print(f"\n  [Planning 능력] — JSON 성공 케이스 없음, 평가 불가")
+            continue
+
+        pavg = lambda attr: sum(getattr(r, attr) for r in passed_results) / passed
+
+        print(f"\n  [Planning 능력] — JSON 성공 {passed}건 기준")
+        print(f"    Intent Recall:         {pavg('intent_recall'):.3f}     (30%  빠뜨린 intent)")
+        print(f"    Order Accuracy:        {pavg('order_accuracy'):.3f}     (25%  순서 정확도)")
+        print(f"    Intent Precision:      {pavg('intent_precision'):.3f}     (20%  불필요 단계)")
+        print(f"    Dep Correctness:       {pavg('dep_correctness'):.3f}     (15%  의존성 일치)")
+        print(f"    Efficiency:            {pavg('efficiency'):.3f}     (10%  단계 수)")
         print(f"    ─────────────────────────────")
-        print(f"    Weighted Score:        {avg('score'):.3f}")
+        print(f"    Weighted Score:        {pavg('score'):.3f}")
 
         print(f"\n  [보조 지표]")
-        print(f"    Hallucination:         {sum(len(r.hallucinated_intents) for r in results)}건")
-        print(f"    Cycle:                 {sum(r.has_cycle for r in results)}건")
-        print(f"    Structural Invalid:    {sum(not r.dep_structural_valid for r in results)}건")
-        perfect = sum(1 for r in results if r.score >= 0.99)
-        print(f"    Perfect Score:         {perfect}/{total} ({perfect/total*100:.1f}%)")
-        print(f"    Avg Latency:           {avg('latency_ms'):.0f}ms")
+        print(f"    Hallucination:         {sum(len(r.hallucinated_intents) for r in passed_results)}건")
+        print(f"    Cycle:                 {sum(r.has_cycle for r in passed_results)}건")
+        print(f"    Structural Invalid:    {sum(not r.dep_structural_valid for r in passed_results)}건")
+        perfect = sum(1 for r in passed_results if r.score >= 0.99)
+        print(f"    Perfect Score:         {perfect}/{passed} ({perfect/passed*100:.1f}%)")
+        print(f"    Avg Latency:           {pavg('latency_ms'):.0f}ms")
 
-        # 카테고리별
-        print(f"\n  [카테고리별]")
-        cats = sorted(set(r.category for r in results))
+        # 카테고리별 (JSON 성공 케이스만)
+        print(f"\n  [카테고리별] — JSON 성공 케이스 기준")
+        cats = sorted(set(r.category for r in passed_results))
         print(f"    {'Category':<15} {'Score':>6} {'Recall':>7} {'Order':>7} "
               f"{'Prec':>6} {'DepC':>6} {'Eff':>5} {'N':>3}")
         print(f"    {'─' * 60}")
         for cat in cats:
-            rs = [r for r in results if r.category == cat]
+            rs = [r for r in passed_results if r.category == cat]
             n = len(rs)
-            cavg = lambda attr: sum(getattr(r, attr) for r in rs) / n
+            if n == 0:
+                continue
+            cavg = lambda attr, _rs=rs: sum(getattr(r, attr) for r in _rs) / len(_rs)
             print(f"    {cat:<15} {cavg('score'):>6.3f} {cavg('intent_recall'):>7.3f} "
                   f"{cavg('order_accuracy'):>7.3f} {cavg('intent_precision'):>6.3f} "
                   f"{cavg('dep_correctness'):>6.3f} {cavg('efficiency'):>5.3f} {n:>3}")
 
-        # 실패 케이스
-        failed_cases = [r for r in results if r.score < 0.7]
-        if failed_cases:
-            print(f"\n  [낮은 점수 (< 0.7)] — {len(failed_cases)}건")
-            for r in sorted(failed_cases, key=lambda x: x.score):
+        # 실패 케이스 (JSON 성공했지만 점수 낮은 것만)
+        low_score = [r for r in passed_results if r.score < 0.7]
+        if low_score:
+            print(f"\n  [Planning 낮은 점수 (< 0.7)] — {len(low_score)}건")
+            for r in sorted(low_score, key=lambda x: x.score):
                 d = r.details
                 print(f"    {r.test_id} ({r.category}): {r.score:.3f}")
                 print(f"      입력: {r.input_text[:60]}")
-                if not r.passed_prereq:
-                    print(f"      → JSON 파싱 실패")
-                else:
-                    print(f"      expected: {d.get('expected_intents')}")
-                    print(f"      actual:   {d.get('actual_intents')}")
-                    print(f"      recall={r.intent_recall:.2f} order={r.order_accuracy:.2f} "
-                          f"prec={r.intent_precision:.2f} dep={r.dep_correctness:.2f} "
-                          f"eff={r.efficiency:.2f}")
-                    if r.hallucinated_intents:
-                        print(f"      hallucinated: {r.hallucinated_intents}")
-                    if d.get("structural_errors"):
-                        print(f"      structural: {d['structural_errors']}")
+                print(f"      expected: {d.get('expected_intents')}")
+                print(f"      actual:   {d.get('actual_intents')}")
+                print(f"      recall={r.intent_recall:.2f} order={r.order_accuracy:.2f} "
+                      f"prec={r.intent_precision:.2f} dep={r.dep_correctness:.2f} "
+                      f"eff={r.efficiency:.2f}")
+                if r.hallucinated_intents:
+                    print(f"      hallucinated: {r.hallucinated_intents}")
+                if d.get("structural_errors"):
+                    print(f"      structural: {d['structural_errors']}")
 
     # 모델 간 비교
     if len(all_results) > 1:
@@ -372,27 +386,58 @@ def print_report(all_results: dict[str, list[EvalResult]]):
         print("  MODEL COMPARISON")
         print(f"{'━' * 65}")
 
+        # JSON 신뢰성 비교
         header = f"  {'Metric':<24}"
         for name in all_results:
             header += f"{name:>18}"
         print(header)
         print(f"  {'─' * (24 + 18 * len(all_results))}")
 
-        metrics = [
-            ("JSON Pass Rate",
-             lambda rs: sum(r.passed_prereq for r in rs) / len(rs) * 100, "%"),
+        # JSON 별도
+        line = f"  {'JSON Pass Rate':<24}"
+        for model, rs in all_results.items():
+            val = sum(r.passed_prereq for r in rs) / len(rs) * 100
+            line += f"{val:>17.1f}%"
+        print(line)
+
+        print(f"  {'─' * (24 + 18 * len(all_results))}")
+
+        # Planning 능력 (JSON 성공만)
+        line = f"  {'Eval Sample Size':<24}"
+        for model, rs in all_results.items():
+            passed = [r for r in rs if r.passed_prereq]
+            line += f"{len(passed):>18d}"
+        print(line)
+
+        planning_metrics = [
             ("Intent Recall (30%)",
-             lambda rs: sum(r.intent_recall for r in rs) / len(rs), "f"),
+             lambda rs: sum(r.intent_recall for r in rs) / len(rs)),
             ("Order Accuracy (25%)",
-             lambda rs: sum(r.order_accuracy for r in rs) / len(rs), "f"),
+             lambda rs: sum(r.order_accuracy for r in rs) / len(rs)),
             ("Intent Precision (20%)",
-             lambda rs: sum(r.intent_precision for r in rs) / len(rs), "f"),
+             lambda rs: sum(r.intent_precision for r in rs) / len(rs)),
             ("Dep Correctness (15%)",
-             lambda rs: sum(r.dep_correctness for r in rs) / len(rs), "f"),
+             lambda rs: sum(r.dep_correctness for r in rs) / len(rs)),
             ("Efficiency (10%)",
-             lambda rs: sum(r.efficiency for r in rs) / len(rs), "f"),
-            ("─── Weighted Score",
-             lambda rs: sum(r.score for r in rs) / len(rs), "f"),
+             lambda rs: sum(r.efficiency for r in rs) / len(rs)),
+            ("─── Planning Score",
+             lambda rs: sum(r.score for r in rs) / len(rs)),
+        ]
+
+        for name, fn in planning_metrics:
+            line = f"  {name:<24}"
+            for model, rs in all_results.items():
+                passed = [r for r in rs if r.passed_prereq]
+                if passed:
+                    val = fn(passed)
+                    line += f"{val:>18.3f}"
+                else:
+                    line += f"{'N/A':>18}"
+            print(line)
+
+        print(f"  {'─' * (24 + 18 * len(all_results))}")
+
+        aux_metrics = [
             ("Hallucinations",
              lambda rs: sum(len(r.hallucinated_intents) for r in rs), "d"),
             ("Struct Invalid",
@@ -401,15 +446,15 @@ def print_report(all_results: dict[str, list[EvalResult]]):
              lambda rs: sum(r.latency_ms for r in rs) / len(rs), "ms"),
         ]
 
-        for name, fn, fmt in metrics:
+        for name, fn, fmt in aux_metrics:
             line = f"  {name:<24}"
             for model, rs in all_results.items():
-                val = fn(rs)
-                if fmt == "%":
-                    line += f"{val:>17.1f}%"
-                elif fmt == "f":
-                    line += f"{val:>18.3f}"
-                elif fmt == "d":
+                passed = [r for r in rs if r.passed_prereq]
+                if not passed:
+                    line += f"{'N/A':>18}"
+                    continue
+                val = fn(passed)
+                if fmt == "d":
                     line += f"{val:>18d}"
                 elif fmt == "ms":
                     line += f"{val:>18.0f}"
@@ -515,18 +560,24 @@ def main():
             for model, results in all_results.items()
         },
         "summary": {
-            model: {
-                "json_pass_rate": round(sum(r.passed_prereq for r in rs) / len(rs), 4),
-                "intent_recall": round(sum(r.intent_recall for r in rs) / len(rs), 4),
-                "order_accuracy": round(sum(r.order_accuracy for r in rs) / len(rs), 4),
-                "intent_precision": round(sum(r.intent_precision for r in rs) / len(rs), 4),
-                "dep_correctness": round(sum(r.dep_correctness for r in rs) / len(rs), 4),
-                "efficiency": round(sum(r.efficiency for r in rs) / len(rs), 4),
-                "weighted_score": round(sum(r.score for r in rs) / len(rs), 4),
-                "hallucinations": sum(len(r.hallucinated_intents) for r in rs),
-                "struct_invalid": sum(not r.dep_structural_valid for r in rs),
-                "avg_latency_ms": round(sum(r.latency_ms for r in rs) / len(rs), 1),
-            }
+            model: (lambda total, passed: {
+                "total_cases": len(total),
+                "json_pass_rate": round(sum(r.passed_prereq for r in total) / len(total), 4),
+                "eval_sample_size": len(passed),
+                "planning_metrics": {
+                    "intent_recall": round(sum(r.intent_recall for r in passed) / len(passed), 4),
+                    "order_accuracy": round(sum(r.order_accuracy for r in passed) / len(passed), 4),
+                    "intent_precision": round(sum(r.intent_precision for r in passed) / len(passed), 4),
+                    "dep_correctness": round(sum(r.dep_correctness for r in passed) / len(passed), 4),
+                    "efficiency": round(sum(r.efficiency for r in passed) / len(passed), 4),
+                    "weighted_score": round(sum(r.score for r in passed) / len(passed), 4),
+                } if passed else None,
+                "auxiliary": {
+                    "hallucinations": sum(len(r.hallucinated_intents) for r in passed),
+                    "struct_invalid": sum(not r.dep_structural_valid for r in passed),
+                    "avg_latency_ms": round(sum(r.latency_ms for r in passed) / len(passed), 1),
+                } if passed else None,
+            })(rs, [r for r in rs if r.passed_prereq])
             for model, rs in all_results.items()
         },
     }

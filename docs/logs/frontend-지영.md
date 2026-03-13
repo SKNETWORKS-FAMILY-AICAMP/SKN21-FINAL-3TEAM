@@ -2480,6 +2480,7 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 - **문서 페이지 독립 스크롤** (`DocumentList.jsx`, `DocumentDetail.jsx`) — 좌우 패널 각각 `max-h-[82vh]` + `overflow-y-auto` 적용
 - **문서 목록 compact/detailed 뷰 토글** (`DocumentList.jsx`) — compact 3컬럼(문서명+서브정보, 분류, 태그) / detailed 6컬럼 전환
 - **DataTable 컬럼 스타일 확장** (`DataTable.jsx`) — `className`, `headerClassName` props 지원 추가
+- **전체 카드/패널 코너 반경 통일** — `.card` 클래스(`rounded-2xl`)와 불일치하던 `DocumentDetail.jsx`, `MeetingDetail.jsx`, `GoogleCalendarConnect.jsx`의 `rounded-md`를 `rounded-2xl`로 통일
 
 #### 6) 6-label 앙상블 평가 및 Threshold 최적화 결과 반영
 
@@ -2501,8 +2502,54 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 
 - **결론**: 최적화된 threshold 값들을 `ai/agents/intent_classifier.py` 프로덕션 코드에 반영 완료.
 
+#### 7) Task Planner sLLM 베이스 모델 비교 실험
+
+**배경**: 멘토 피드백 반영 — Intent 분류(KoELECTRA)는 "어떤 intent가 필요한지" 감지하지만, 복합 질문에서 "어떤 순서로, 어떤 의존성으로 실행할지"는 결정하지 못함. 이를 위해 **Task Planner** 모듈 도입. Plan-and-Execute 패턴: 사용자 입력 → Planner(실행 계획 JSON 생성) → Step Executor → 응답. 보안/장기 아키텍처 관점에서 LLM API 단계를 건너뛰고 **sLLM 직접 시작**으로 결정.
+
+**아키텍처 설계**:
+- KoELECTRA (12M, encoder-only): intent **분류**만 담당 (라벨 출력)
+- sLLM (8B, generative): intent **순서 계획 + 의존성 그래프** 생성 (JSON 출력)
+- 비유: KoELECTRA = 재료 목록 감지, Planner = 레시피 작성
+
+**테스트 데이터 설계**: `data/evaluation/planner_test_cases.json` (95건)
+- 5개 카테고리: single_step(30), sequential(20), parallel(12), complex(15), edge_case(18)
+- 다양한 표현 포함: 공식/비공식 어체, 오타(회이록 작섣해줘), 초성(ㅎㅇㄹ ㅊㅇ), 영어 혼용, 이모지
+- 6개 intent: judgment, doc_retrieve, doc_generate, schedule_add, schedule_view, general
+
+**비교 대상 모델**:
+- Qwen3-8B (다국어 범용)
+- Kanana-1.5-8B (한국어 특화, Kakao)
+
+**실험 환경**: RunPod A100, 4-bit QLoRA 양자화, zero-shot (파인튜닝 전 베이스 성능 측정)
+
+**생성 파일**:
+- `ai/finetuning/scripts/compare_planner_models.py` — 베이스 모델 비교 추론 스크립트
+- `ai/finetuning/scripts/evaluate_planner_report.py` — 평가 지표 스크립트 (v3)
+- `ai/finetuning/runpod_planner_compare.sh` — RunPod SSH 실행 자동화 셸 스크립트
+
+**평가 지표 설계 (v1→v2→v3 반복 개선)**:
+
+- **v1**: Intent Precision/Recall + Dep Validity → 100% 나오는 문제 (테스트 17건 너무 적음, 지표 관대)
+- **v2**: 95건 확대 + multiset 기반 Precision/Recall + Dep Validity → 순서 미반영, Dep이 구조만 체크
+- **v3 (최종)**: LCS 기반 Order Accuracy 도입, Dep Correctness(expected 대비 비교), JSON Pass Rate 별도 분리
+
+**v3 가중치**: Intent Recall 30% / Order Accuracy 25% / Intent Precision 20% / Dep Correctness 15% / Efficiency 10%
+
+**JSON Pass Rate 별도 보고 결정**:
+- Qwen3-8B는 `<think>` 토큰으로 긴 reasoning 출력 → 토큰 한도 초과 → JSON 파싱 실패 30/95건 (31.6%)
+- JSON 실패 시 모든 지표 0점 → planning 능력과 무관하게 전체 점수 하락
+- **해결**: JSON Pass Rate는 "모델 신뢰성" 지표로 별도 보고, planning 지표는 JSON 성공 케이스만으로 계산
+
+**트러블슈팅**:
+- 경로 해석 오류: `Path(__file__).parent` 기반 → `git rev-parse --show-toplevel` + `--project-root` CLI 인자로 해결
+- RunPod git divergent branches: `git fetch origin && git reset --hard origin/FEAT/frontend`
+- RunPod git identity 미설정: 셸 스크립트 `|| true`로 우회
+
 ### 다음 할 일
 
+- 수정된 evaluate_planner_report.py 커밋/push 후 RunPod에서 v3 평가 실행
+- 평가 결과 기반 최종 베이스 모델 선정
+- Planner LoRA 학습 데이터 합성 시작
 - 프론트엔드 백엔드 실제 연동 작업 재개
 
 ---
@@ -2531,4 +2578,5 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 - **훅**: 4개 (useAuth, useChat, useSSE, useGoogleServices)
 - **API**: 8개 (client, auth, chat, documents, meetings, schedules, google, admin)
 - **npm 패키지 추가**: framer-motion
+
 
