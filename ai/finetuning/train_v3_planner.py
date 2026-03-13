@@ -37,8 +37,9 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     BitsAndBytesConfig,
+    TrainingArguments,
 )
-from trl import SFTTrainer, SFTConfig
+from trl import SFTTrainer
 
 # ── 경로 ──
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -174,9 +175,7 @@ def train(config: dict):
     max_length = train_cfg.get("max_length", 1024)
     checkpoint_dir = str(output_base / "checkpoints")
 
-    training_args = SFTConfig(
-        dataset_text_field="text",
-        max_seq_length=max_length,
+    training_args = TrainingArguments(
         output_dir=checkpoint_dir,
         num_train_epochs=train_cfg["num_epochs"],
         per_device_train_batch_size=train_cfg["batch_size"],
@@ -201,6 +200,8 @@ def train(config: dict):
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
+        dataset_text_field="text",
+        max_seq_length=max_length,
         peft_config=lora_config,
     )
 
