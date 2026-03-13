@@ -65,7 +65,7 @@ export const exportProjectToSheet = (projectName, title = null, options = {}) =>
     generate_dashboard: options.generateDashboard ?? false,
     generate_risk: options.generateRisk ?? false,
     generate_report: options.generateReport ?? false,
-  })
+  }, { timeout: 180000 })
 
 export const syncSheet = (spreadsheetId, projectName) =>
   client.post(`/sheets/${spreadsheetId}/sync`, { project_name: projectName })
