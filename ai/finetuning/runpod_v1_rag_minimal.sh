@@ -20,11 +20,12 @@ echo " v1 Judgment RAG 경량 학습 (minimal)"
 echo " Mode: ${MODE}"
 echo "============================================"
 
-# ── 1. 패키지 설치 ──
+# ── 1. 패키지 설치 (RunPod 기존 torch 유지, torchvision 건드리지 않음) ──
 echo "[1/5] Installing dependencies..."
+pip install -q --no-deps -U transformers
 pip install -q -U \
-    transformers peft trl bitsandbytes \
-    accelerate datasets torch pyyaml \
+    peft trl bitsandbytes \
+    accelerate datasets pyyaml \
     sentencepiece protobuf
 
 # ── 2. 작업 디렉토리 생성 ──
