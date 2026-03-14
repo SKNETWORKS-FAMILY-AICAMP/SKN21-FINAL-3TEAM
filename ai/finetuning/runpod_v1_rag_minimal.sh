@@ -20,8 +20,10 @@ echo " v1 Judgment RAG 경량 학습 (minimal)"
 echo " Mode: ${MODE}"
 echo "============================================"
 
-# ── 1. 패키지 설치 (RunPod 기존 torch 유지, torchvision 건드리지 않음) ──
+# ── 1. 패키지 설치 (RunPod 기존 torch 유지) ──
 echo "[1/5] Installing dependencies..."
+# torchvision/torchaudio 제거 (torch 2.10과 버전 충돌 방지, 텍스트 학습에 불필요)
+pip uninstall torchvision torchaudio -y 2>/dev/null || true
 pip install -q --no-deps -U transformers
 pip install -q -U \
     peft trl bitsandbytes \
