@@ -20,15 +20,13 @@ echo " v1 Judgment RAG 경량 학습 (minimal)"
 echo " Mode: ${MODE}"
 echo "============================================"
 
-# ── 1. 패키지 설치 (RunPod 기존 torch 유지) ──
+# ── 1. 패키지 설치 (호환 버전 고정) ──
 echo "[1/5] Installing dependencies..."
-# torchvision/torchaudio 제거 (torch 2.10과 버전 충돌 방지, 텍스트 학습에 불필요)
 pip uninstall torchvision torchaudio -y 2>/dev/null || true
-pip install -q --no-deps -U transformers
-pip install -q -U \
-    peft trl bitsandbytes \
-    accelerate datasets pyyaml \
-    sentencepiece protobuf
+pip install -q \
+    transformers==4.46.3 bitsandbytes==0.45.0 \
+    peft==0.13.2 trl==0.12.2 accelerate==1.1.1 \
+    datasets pyyaml sentencepiece protobuf
 
 # ── 2. 작업 디렉토리 생성 ──
 echo "[2/5] Setting up workspace..."
@@ -62,6 +60,19 @@ echo "  ✓ eval_rag.jsonl ($(du -h ${WORK}/data/training/v1_judgment/eval_rag.j
 # __init__.py (import용)
 touch ${WORK}/ai/__init__.py
 touch ${WORK}/ai/finetuning/__init__.py
+
+# disk quota 방지 패치 (체크포인트 저장 안 함, 마지막 어댑터만 저장)
+python3 -c "
+p='${WORK}/ai/finetuning/train_v1_judgment.py'
+t=open(p).read()
+t=t.replace('save_strategy=\"epoch\"','save_strategy=\"no\"')
+t=t.replace('load_best_model_at_end=True','load_best_model_at_end=False')
+open(p,'w').write(t)
+print('  patched: save_strategy=no')
+"
+
+# HF 캐시 정리 (disk quota 확보)
+rm -rf /root/.cache/huggingface/hub/models--* 2>/dev/null || true
 
 # ── 4. 데이터 검증 ──
 echo ""
