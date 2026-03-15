@@ -209,7 +209,7 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
     const [syncingTaskIds, setSyncingTaskIds] = useState(new Set());
 
     // Google Tasks 연동
-    const { tasks: googleTasks, tasksLoading: googleTasksLoading, updateTask: updateGoogleTask, pullTasks, hasScope } = useGoogleServices();
+    const { tasks: googleTasks, tasksLoading: googleTasksLoading, updateTask: updateGoogleTask, pullTasks, hasScope, connected } = useGoogleServices();
     const [selectMode, setSelectMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [bulkSending, setBulkSending] = useState(false);
@@ -248,6 +248,8 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
     const [pickerIsTeamVisible, setPickerIsTeamVisible] = useState(false);
     const [pickerProjectName, setPickerProjectName] = useState('');
     const [pickerShareToProject, setPickerShareToProject] = useState(true); // 기본: 프로젝트 공유
+    const [pickerIncludeMeet, setPickerIncludeMeet] = useState(false);
+    const [pickerAttendeeEmails, setPickerAttendeeEmails] = useState('');
     const [projectsList, setProjectsList] = useState([]);
 
     // stores
@@ -601,6 +603,8 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
         setPickerShareToProject(true);
         setPickerProjectName(projName && projName !== 'all' && projName !== 'none' ? projName : (projectsList[0]?.name || ''));
         setPickerIsTeamVisible(false);
+        setPickerIncludeMeet(false);
+        setPickerAttendeeEmails('');
         setSchedulePickerData({ suggestion: item, idx });
     };
 
@@ -640,6 +644,8 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                 priority: s.priority || 'medium',
                 is_team_visible: pickerIsTeamVisible,
                 project_name: pickerShareToProject ? (pickerProjectName || null) : null,
+                include_meet: pickerIncludeMeet,
+                attendee_emails: pickerAttendeeEmails ? pickerAttendeeEmails.split(',').map(e => e.trim()).filter(Boolean) : [],
             });
 
             const projLabel = pickerShareToProject && pickerProjectName ? `[${pickerProjectName}] ` : '';
@@ -1340,10 +1346,10 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                     <motion.div
                         initial={{ scale: 0.95, opacity: 0, y: 20 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
-                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-md mx-4 overflow-hidden border border-white/40 dark:border-white/10 max-h-[85vh] flex flex-col"
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-md mx-4 border border-white/40 dark:border-white/10"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="flex items-center justify-between mb-6 flex-shrink-0">
+                        <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-2">
                                 <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center">
                                     <FileCheck size={20} className="text-violet-600" />
@@ -1354,7 +1360,7 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                                 <X size={18} />
                             </button>
                         </div>
-                        <form onSubmit={handleApprovalSubmit} className="space-y-4 flex-1 min-h-0 overflow-y-auto">
+                        <form onSubmit={handleApprovalSubmit} className="space-y-4">
                             <div>
                                 <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">유형</label>
                                 <select
@@ -1479,17 +1485,17 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                     <motion.div
                         initial={{ scale: 0.95, opacity: 0, y: 20 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
-                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-full max-w-md border border-white/40 dark:border-white/10 max-h-[90vh] flex flex-col"
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-full max-w-md border border-white/40 dark:border-white/10"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="flex items-center justify-between mb-5 flex-shrink-0">
+                        <div className="flex items-center justify-between mb-5">
                             <h3 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight">일정 추가</h3>
                             <button onClick={() => setSchedulePickerData(null)} className="w-8 h-8 rounded-lg hover:bg-surface-sub dark:hover:bg-white/5 text-neutral-muted transition-colors flex items-center justify-center">
                                 <X size={18} />
                             </button>
                         </div>
 
-                        <div className="space-y-3 flex-1 min-h-0 overflow-y-auto">
+                        <div className="space-y-3">
                             {/* 제목 */}
                             <div>
                                 <input
@@ -1587,9 +1593,25 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                                 />
                             </div>
 
-                            {/* 종일 */}
-                            <div className="flex items-center justify-end">
-                                <label className="flex items-center gap-2 cursor-pointer pr-3">
+                            {/* Google Meet + 종일 */}
+                            <div className="flex items-center justify-between">
+                                {connected && hasScope('calendar') && (
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={pickerIncludeMeet}
+                                            onChange={(e) => setPickerIncludeMeet(e.target.checked)}
+                                            className="w-4 h-4 rounded border-neutral-border accent-primary-700"
+                                        />
+                                        <div className="flex items-center gap-1.5">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary-500">
+                                                <path d="M15.6 11.6L22 7v10l-6.4-4.5v-1zM4 5h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7c0-1.1.9-2 2-2z" />
+                                            </svg>
+                                            <span className="text-sm font-medium text-neutral-main">Google Meet 링크 생성</span>
+                                        </div>
+                                    </label>
+                                )}
+                                <label className="flex items-center gap-2 cursor-pointer ml-auto pr-3">
                                     <input
                                         type="checkbox"
                                         checked={pickerAllDay}
@@ -1617,6 +1639,20 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                                             onChange={(t) => setPickerEndTime(t)}
                                         />
                                     </div>
+                                </div>
+                            )}
+
+                            {/* 참석자 이메일 (Meet 선택 시) */}
+                            {pickerIncludeMeet && (
+                                <div>
+                                    <label className="text-[0.8125rem] font-semibold block mb-1">참석자 이메일</label>
+                                    <input
+                                        value={pickerAttendeeEmails}
+                                        onChange={(e) => setPickerAttendeeEmails(e.target.value)}
+                                        placeholder="콤마로 구분 (예: a@co.kr, b@co.kr)"
+                                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-lg text-sm focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(110,135,160,0.1)] outline-none"
+                                    />
+                                    <p className="text-[0.6875rem] text-neutral-muted mt-1">Meet 링크가 포함된 초대 메일이 발송됩니다</p>
                                 </div>
                             )}
 
