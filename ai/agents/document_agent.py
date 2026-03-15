@@ -123,17 +123,19 @@ async def document_agent(state: AgentState) -> AgentState:
 
     try:
         if intent == "doc_retrieve":
-            # doc_retrieve: 내부적으로 search vs summary 판단
+            # doc_retrieve 통합 파이프라인: summary → QA → search 3-way 분기
             document_content = state.get("document_content") or state.get("extracted_text")
             document_id = state.get("document_id")
-            import re as _re
+
+            # 1) 요약 판별: 문서 내용/ID 있거나, 요약 키워드 + 동사어미
             _is_summary = bool(
                 document_content
                 or document_id
-                or _re.search(r"(요약|정리|핵심|간추|줄여)", user_input)
+                or re.search(r"(요약|정리|핵심|간추|줄여)(해|해줘|해주세요|부탁|하자|할래|$)", user_input)
             )
+
             if _is_summary:
-                print("[DocumentAgent] doc_retrieve → _handle_doc_summary 호출")
+                print("[DocumentAgent] doc_retrieve → summary 경로")
                 response_data = await _handle_doc_summary(
                     user_input,
                     document_content=document_content,
@@ -142,12 +144,18 @@ async def document_agent(state: AgentState) -> AgentState:
                     user_team=user_team,
                     stream_mode=stream_mode,
                 )
+            elif _is_qa_query(user_input):
+                # 2) QA 판별: 질문형 패턴
+                print("[DocumentAgent] doc_retrieve → QA 경로")
+                response_data = await _handle_doc_qa(user_input, context, user_id=user_id, user_team=user_team, stream_mode=stream_mode)
             else:
-                print("[DocumentAgent] doc_retrieve → _handle_doc_search 호출")
+                # 3) 검색 (그 외)
+                print("[DocumentAgent] doc_retrieve → search 경로")
                 response_data = await _handle_doc_search(user_input, context, user_id, user_team=user_team, stream_mode=stream_mode)
 
         elif intent == "doc_search":
-            print("[DocumentAgent] → _handle_doc_search 호출")
+            # 레거시 호환: BERT가 doc_search로 분류한 경우
+            print("[DocumentAgent] → _handle_doc_search 호출 (legacy)")
             response_data = await _handle_doc_search(user_input, context, user_id, user_team=user_team, stream_mode=stream_mode)
 
         elif intent == "doc_generate":
@@ -159,7 +167,8 @@ async def document_agent(state: AgentState) -> AgentState:
             response_data = await _handle_doc_generate(user_input, template_type, document_content, template_id=template_id)
 
         elif intent == "doc_summary":
-            print("[DocumentAgent] → _handle_doc_summary 호출")
+            # 레거시 호환: BERT가 doc_summary로 분류한 경우
+            print("[DocumentAgent] → _handle_doc_summary 호출 (legacy)")
             document_content = state.get("document_content") or state.get("extracted_text")
             document_id = state.get("document_id")
             response_data = await _handle_doc_summary(
@@ -369,8 +378,11 @@ def _detect_search_intent(query: str) -> str:
     """
     query_lower = query.lower()
 
-    # 요약 키워드 (최우선)
-    if re.search(r"요약|정리|간단히|핵심|짧게", query_lower):
+    # 요약 키워드 (최우선) — 동사어미 확인으로 오탐 방지
+    # "정리된 자료 찾아줘" → find, "정리해줘" → summarize
+    if re.search(r"(요약|정리|핵심|간추|줄여)(해|해줘|해주세요|부탁|하자|할래)", query_lower):
+        return "summarize"
+    if re.search(r"간단히|짧게", query_lower):
         return "summarize"
 
     # 찾기 키워드
@@ -379,6 +391,25 @@ def _detect_search_intent(query: str) -> str:
 
     # 기본값: 설명
     return "explain"
+
+
+def _is_qa_query(query: str) -> bool:
+    """사용자 질문이 QA(질의응답)인지 판별
+
+    질문형 패턴: 뭐야, 알려줘, 어떻게, ~인가요, ~인지 등
+    _detect_search_intent()의 "explain"에 해당하는 쿼리를 QA로 분류
+    """
+    # 명시적 질문형 패턴
+    if re.search(r"(뭐야|뭔가요|알려줘|알려주세요|설명해|어떻게|왜|무엇|무슨)", query):
+        return True
+    # 의문형 어미
+    if re.search(r"(인가요|인지|일까|나요|ㅂ니까|습니까|한가요|인가|건가요)\s*[\?？]?\s*$", query):
+        return True
+    # _detect_search_intent의 explain(기본값)도 QA 성격
+    intent = _detect_search_intent(query)
+    if intent == "explain":
+        return True
+    return False
 
 
 def _build_search_prompt(query: str, context: list) -> tuple:
@@ -447,7 +478,7 @@ async def _handle_doc_search(query: str, context: List[str], user_id: int = None
             _t_rag = time.time()
             print(f"[DocumentAgent] RAG 검색 수행: '{query[:50]}'")
             rag_pipeline = get_qdrant_pipeline()
-            search_results = rag_pipeline.retrieve(query, user_id=user_id, user_team=user_team, top_k=10, filter={"source": "documents"})
+            search_results = rag_pipeline.retrieve(query, user_id=user_id, user_team=user_team, top_k=7, filter={"source": "documents"})
 
             # 검색된 문서의 content를 context로 사용
             context = [f"[문서 제목: {doc.get('title', '')}]\n{doc['content']}" for doc in search_results]
@@ -467,7 +498,8 @@ async def _handle_doc_search(query: str, context: List[str], user_id: int = None
     if not context:
         print("[DocumentAgent] context 비어있음 → 관련 문서 없음 응답")
         return {
-            "type": "doc_search",
+            "type": "doc_retrieve",
+            "sub_type": "search",
             "answer": "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요.",
             "message": "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요.",
             "sources": [],
@@ -482,7 +514,8 @@ async def _handle_doc_search(query: str, context: List[str], user_id: int = None
     if stream_mode:
         print(f"[DocumentAgent] stream_mode=True → stream_pending 반환 ({time.time()-_t:.2f}s)")
         return {
-            "type": "doc_search",
+            "type": "doc_retrieve",
+            "sub_type": "search",
             "stream_pending": True,
             "sys_prompt": sys_prompt,
             "user_prompt": user_prompt,
@@ -498,7 +531,8 @@ async def _handle_doc_search(query: str, context: List[str], user_id: int = None
     print(f"[DocumentAgent] LLM 응답 길이: {len(answer)}자")
 
     return {
-        "type": "doc_search",
+        "type": "doc_retrieve",
+        "sub_type": "search",
         "answer": answer,
         "message": answer,
         "sources": sources,
@@ -898,7 +932,8 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
                     answer = f"태그: {tags_str}\n요약: {doc.summary}"
                     print(f"[DocumentAgent] DB 요약 사용 (document_id={document_id}, {time.time()-_t:.2f}s)")
                     return {
-                        "type": "doc_summary",
+                        "type": "doc_retrieve",
+                        "sub_type": "summary",
                         "answer": answer,
                         "message": answer,
                         "tags": tags,
@@ -920,7 +955,8 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
     if stream_mode:
         print(f"[DocumentAgent] stream_mode=True → stream_pending 반환 ({time.time()-_t:.2f}s)")
         return {
-            "type": "doc_summary",
+            "type": "doc_retrieve",
+            "sub_type": "summary",
             "stream_pending": True,
             "sys_prompt": sys_prompt,
             "user_prompt": user_prompt,
@@ -954,7 +990,8 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
             print(f"[DocumentAgent] DB 요약 업데이트 실패: {e}")
 
     return {
-        "type": "doc_summary",
+        "type": "doc_retrieve",
+        "sub_type": "summary",
         "answer": answer,
         "message": answer,
         "tags": parsed["tags"],
@@ -976,7 +1013,7 @@ async def _handle_doc_qa(query: str, context: list = None, user_id: int = None, 
             _t_rag = time.time()
             print(f"[DocumentAgent] RAG 검색 수행 (doc_qa): '{query[:50]}'")
             rag_pipeline = get_qdrant_pipeline()
-            search_results = rag_pipeline.retrieve(query, user_id=user_id, user_team=user_team, top_k=5, filter={"source": "documents"})
+            search_results = rag_pipeline.retrieve(query, user_id=user_id, user_team=user_team, top_k=7, filter={"source": "documents"})
             context = [f"[문서 제목: {doc.get('title', '')}]\n{doc['content']}" for doc in search_results]
             print(f"[DocumentAgent] RAG 검색 완료 ({time.time()-_t_rag:.2f}s): {len(context)}개 문서")
 
@@ -993,7 +1030,8 @@ async def _handle_doc_qa(query: str, context: list = None, user_id: int = None, 
     if not context:
         print("[DocumentAgent] context 비어있음 → 관련 문서 없음 응답")
         return {
-            "type": "doc_search",
+            "type": "doc_retrieve",
+            "sub_type": "qa",
             "answer": "관련 문서를 찾지 못했습니다. 다른 질문을 시도해보세요.",
             "message": "관련 문서를 찾지 못했습니다. 다른 질문을 시도해보세요.",
             "sources": [],
@@ -1019,7 +1057,8 @@ async def _handle_doc_qa(query: str, context: list = None, user_id: int = None, 
 
         print(f"[DocumentAgent] stream_mode=True → stream_pending 반환 ({time.time()-_t:.2f}s)")
         return {
-            "type": "doc_search",
+            "type": "doc_retrieve",
+            "sub_type": "qa",
             "stream_pending": True,
             "sys_prompt": sys_prompt,
             "user_prompt": user_prompt,
@@ -1039,7 +1078,8 @@ async def _handle_doc_qa(query: str, context: list = None, user_id: int = None, 
         qa_result = {"answer": answer_json_str, "citations": [], "confidence": 0.5}
 
     return {
-        "type": "doc_search",
+        "type": "doc_retrieve",
+        "sub_type": "qa",
         "answer": qa_result.get("answer", ""),
         "message": qa_result.get("answer", ""),
         "citations": qa_result.get("citations", []),

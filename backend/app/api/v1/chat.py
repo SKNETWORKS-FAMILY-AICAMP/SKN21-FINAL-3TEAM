@@ -428,7 +428,16 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             _doc_mode = _os2.getenv("DOC_AGENT_MODE", "api")
                             _doc_sllm_tasks = _os2.getenv("DOC_SLLM_TASKS", "generate").split(",")
                             _doc_resp_type = agent_response.get("type", "")
-                            _doc_task = "summary" if _doc_resp_type == "doc_summary" else "search" if _doc_resp_type == "doc_search" else "qa"
+                            _doc_sub_type = agent_response.get("sub_type", "")
+                            # doc_retrieve 통합 타입: sub_type으로 태스크 결정
+                            if _doc_sub_type:
+                                _doc_task = _doc_sub_type  # "summary" | "qa" | "search"
+                            elif _doc_resp_type == "doc_summary":
+                                _doc_task = "summary"
+                            elif _doc_resp_type == "doc_search":
+                                _doc_task = "search"
+                            else:
+                                _doc_task = "qa"
                             _use_sllm = _doc_mode == "sllm" and _doc_task in _doc_sllm_tasks
 
                             if _use_sllm:
@@ -495,7 +504,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                     agent_response["sources"] = filtered_sources
                             # doc_summary 스트리밍 완료 후 DB 업데이트
                             _doc_id_for_update = agent_response.get("document_id")
-                            if agent_response.get("type") == "doc_summary" and _doc_id_for_update and "태그:" in full_doc_response:
+                            if agent_response.get("sub_type") == "summary" and _doc_id_for_update and "태그:" in full_doc_response:
                                 try:
                                     from ai.agents.document_agent import parse_summary_output
                                     from app.models.document import Document as _DocModel
