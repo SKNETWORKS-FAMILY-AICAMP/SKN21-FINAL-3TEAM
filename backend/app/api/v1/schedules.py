@@ -18,14 +18,16 @@ router = APIRouter()
 @router.get("/")
 async def list_schedules(
     include_team: bool = Query(False),
+    include_project: bool = Query(False),
     schedule_type: str | None = Query(None),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """일정 목록 조회 (include_team=true 시 팀원 공유 일정 포함, schedule_type 필터 선택)"""
+    """일정 목록 조회 (include_team=true 시 팀원 공유 일정 포함, include_project=true 시 프로젝트 공유 일정 포함)"""
     schedules = await schedule_service.list_schedules(
         db, user_id=user.id, include_team=include_team, user_team=user.team,
         schedule_type=schedule_type,
+        include_project=include_project, user_name=user.name,
     )
 
     # Fetch team members if needed for shared schedules
@@ -37,7 +39,7 @@ async def list_schedules(
         current_team_members = [{"name": row.name, "avatar": row.avatar} for row in tm_result.all()]
 
     user_info = {}
-    if include_team:
+    if include_team or include_project:
         user_ids = {s.user_id for s in schedules}
         if user_ids:
             result = await db.execute(
@@ -69,8 +71,9 @@ async def list_schedules(
                 google_meet_link=s.google_meet_link,
                 is_team_visible=s.is_team_visible,
                 team_name=s.team_name,
+                project_name=s.project_name,
                 user_id=s.user_id,
-                user_name=user_info.get(s.user_id, {}).get("name") if include_team else None,
+                user_name=user_info.get(s.user_id, {}).get("name") if (include_team or include_project) else None,
                 attendees=attendees,
                 created_at=s.created_at,
             )
@@ -102,6 +105,7 @@ async def create_schedule(
             google_meet_link=s.google_meet_link,
             is_team_visible=s.is_team_visible,
             team_name=s.team_name,
+            project_name=s.project_name,
             user_id=s.user_id,
             user_name=user.name,
             created_at=s.created_at,

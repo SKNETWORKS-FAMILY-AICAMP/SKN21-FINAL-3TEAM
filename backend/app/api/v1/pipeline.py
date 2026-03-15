@@ -160,12 +160,14 @@ async def update_pipeline_task(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Pipeline Task 수정 (같은 팀만)"""
+    """Pipeline Task 수정 (같은 프로젝트면 stage 이동 허용, 그 외는 같은 팀만)"""
     result = await db.execute(select(PipelineTask).where(PipelineTask.id == task_id))
     task = result.scalar_one_or_none()
     if not task:
         raise HTTPException(status_code=404, detail="Task를 찾을 수 없습니다")
-    if task.team and task.team != current_user.team:
+    data_keys = set(req.model_dump(exclude_none=True).keys())
+    stage_only = data_keys == {"stage"}
+    if not stage_only and task.team and task.team != current_user.team:
         raise HTTPException(status_code=403, detail="같은 팀의 태스크만 수정할 수 있습니다")
 
     data = req.model_dump(exclude_none=True)

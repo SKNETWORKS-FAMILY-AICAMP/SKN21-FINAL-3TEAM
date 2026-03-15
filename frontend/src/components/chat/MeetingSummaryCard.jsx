@@ -2,7 +2,7 @@ import { User, Calendar } from 'lucide-react';
 
 export default function MeetingSummaryCard({ title, date, attendees = [], decisions = [], actionItems = [] }) {
   return (
-    <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
+    <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
       <div className="px-4 py-3 border-b border-neutral-divider flex items-center gap-2 font-bold text-sm text-primary-700">
         {title || '회의 요약'}
       </div>

@@ -19,7 +19,7 @@ export default function MeetingDetail({ meeting }) {
   if (!meeting) return <div className="card p-10 text-center text-neutral-muted text-sm">회의를 선택하세요</div>;
 
   return (
-    <div className="bg-surface-card rounded-md border border-neutral-border p-5 space-y-4" ref={printRef}>
+    <div className="bg-surface-card rounded-2xl border border-neutral-border p-5 space-y-4" ref={printRef}>
       <div className="flex justify-between items-center">
         <h3 className="text-base font-bold">{meeting.title}</h3>
         <Badge variant={meeting.analyzed ? 'status-completed' : 'status-in-progress'}>{meeting.analyzed ? '분석완료' : '분석중'}</Badge>

@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FolderOpen, ArrowLeft, Users, Clock, CheckCircle2, Plus, Pencil, Check, X, Trash2, FileSpreadsheet } from 'lucide-react';
+import { FolderOpen, ArrowLeft, Users, Clock, CheckCircle2, Plus, Pencil, Check, X, Trash2, FileSpreadsheet, Search } from 'lucide-react';
 import { listPipelineTasks, updatePipelineTask, deletePipelineTask, listProjects, createProject as createProjectApi, updateProject as updateProjectApi, deleteProject as deleteProjectApi } from '../../api/tasks';
 import client from '../../api/client';
+import { getAllMembers } from '../../api/auth';
 import useGoogleServices from '../../hooks/useGoogleServices';
 import { toast } from '../../store/toastStore';
 import KanbanBoard from './KanbanBoard';
@@ -24,6 +25,19 @@ export default function ProjectFolderView({ externalActions, onReady }) {
     const [deleteTarget, setDeleteTarget] = useState(null); // project name to delete
     const [deleting, setDeleting] = useState(false);
     const [exportingProject, setExportingProject] = useState(null);
+    const [allMembers, setAllMembers] = useState([]);
+    const [selectedMembers, setSelectedMembers] = useState([]);
+    const [memberSearch, setMemberSearch] = useState('');
+    const [editMembersTarget, setEditMembersTarget] = useState(null); // { name, dbId, members }
+    const [editMembers, setEditMembers] = useState([]);
+    const [editMemberSearch, setEditMemberSearch] = useState('');
+    const [savingMembers, setSavingMembers] = useState(false);
+    // Sheets 내보내기 모달
+    const [exportTarget, setExportTarget] = useState(null); // project name
+    const [exportOpts, setExportOpts] = useState({
+        generateWbs: true, generateGantt: false, generateDashboard: false, generateRisk: false, generateReport: false,
+    });
+    const [exportResult, setExportResult] = useState(null); // { projName, url, tabs }
     const isNavigatingRef = useRef(false);
     const { hasScope, exportProjectToSheet } = useGoogleServices();
 
@@ -104,13 +118,96 @@ export default function ProjectFolderView({ externalActions, onReady }) {
     const handleCreateProject = async () => {
         if (!newProjectName.trim()) return;
         try {
-            await createProjectApi({ name: newProjectName.trim() });
+            await createProjectApi({
+                name: newProjectName.trim(),
+                members: selectedMembers.length > 0 ? selectedMembers : undefined,
+            });
             await fetchAll();
             selectProject(newProjectName.trim());
             setCreatingProject(false);
             setNewProjectName('');
+            setSelectedMembers([]);
+            setMemberSearch('');
         } catch (err) {
             alert(err.response?.data?.detail || '프로젝트 생성 실패');
+        }
+    };
+
+    const toggleMember = (name) => {
+        setSelectedMembers(prev =>
+            prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
+        );
+    };
+
+    // 현재 로그인 사용자 포함한 전체 선택 가능 멤버
+    const availableMembers = (() => {
+        // allMembers는 자신을 제외하므로, 자신은 members(team-members)에서 가져옴
+        const me = members.find(m => !allMembers.some(a => a.id === m.id));
+        const all = me ? [me, ...allMembers] : [...allMembers];
+        if (!memberSearch.trim()) return all;
+        const q = memberSearch.trim().toLowerCase();
+        return all.filter(m => m.name?.toLowerCase().includes(q) || m.email?.toLowerCase().includes(q) || m.team?.toLowerCase().includes(q));
+    })();
+
+    const handleExportWithOpts = async () => {
+        const projName = exportTarget;
+        if (!projName) return;
+        setExportTarget(null);
+        setExportingProject(projName);
+        try {
+            const result = await exportProjectToSheet(projName, null, exportOpts);
+            const tabs = [
+                result?.wbs_generated && 'WBS',
+                result?.gantt_generated && 'Gantt',
+                result?.dashboard_generated && 'Dashboard',
+                result?.risk_generated && 'Risk',
+                result?.report_generated && 'Report',
+            ].filter(Boolean);
+            const tabsMsg = tabs.length > 0 ? ` (${tabs.join(', ')} 포함)` : '';
+            toast.success(`"${projName}" Sheets 내보내기 완료!${tabsMsg}`);
+            setExportResult({ projName, url: result?.spreadsheet_url, tabs });
+        } catch (err) {
+            const detail = err?.response?.data?.detail || err?.message || 'Sheets 내보내기 실패';
+            toast.error(`내보내기 실패: ${detail}`);
+            console.error('Sheets export error:', err?.response?.data || err);
+        } finally {
+            setExportingProject(null);
+        }
+    };
+
+    // 멤버 수정 모달용 전체 멤버 (검색 포함)
+    const editAvailableMembers = (() => {
+        const me = members.find(m => !allMembers.some(a => a.id === m.id));
+        const all = me ? [me, ...allMembers] : [...allMembers];
+        if (!editMemberSearch.trim()) return all;
+        const q = editMemberSearch.trim().toLowerCase();
+        return all.filter(m => m.name?.toLowerCase().includes(q) || m.email?.toLowerCase().includes(q) || m.team?.toLowerCase().includes(q));
+    })();
+
+    const openEditMembers = (proj) => {
+        setEditMembersTarget({ name: proj.name, dbId: proj.dbId, members: proj.members || [] });
+        setEditMembers(proj.members?.length > 0 ? [...proj.members] : [...proj.assignees]);
+        setEditMemberSearch('');
+    };
+
+    const toggleEditMember = (name) => {
+        setEditMembers(prev =>
+            prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
+        );
+    };
+
+    const handleSaveMembers = async () => {
+        if (!editMembersTarget?.dbId) return;
+        setSavingMembers(true);
+        try {
+            await updateProjectApi(editMembersTarget.dbId, { members: editMembers });
+            await fetchAll();
+            setEditMembersTarget(null);
+            toast.success('멤버가 업데이트되었습니다');
+        } catch (err) {
+            toast.error(err.response?.data?.detail || '멤버 수정 실패');
+        } finally {
+            setSavingMembers(false);
         }
     };
 
@@ -138,6 +235,9 @@ export default function ProjectFolderView({ externalActions, onReady }) {
         client.get('/auth/team-members')
             .then(res => setMembers(res.data || []))
             .catch(() => setMembers([]));
+        getAllMembers()
+            .then(res => setAllMembers(res.data || []))
+            .catch(() => setAllMembers([]));
     }, []);
 
     // Expose actions to parent (SchedulesPage)
@@ -168,12 +268,12 @@ export default function ProjectFolderView({ externalActions, onReady }) {
         const map = {};
         // DB 프로젝트 먼저 등록 (빈 프로젝트도 표시)
         dbProjects.forEach(p => {
-            if (!map[p.name]) map[p.name] = { name: p.name, dbId: p.id, tasks: [], assignees: new Set() };
+            if (!map[p.name]) map[p.name] = { name: p.name, dbId: p.id, tasks: [], assignees: new Set(), members: p.members || [] };
         });
         // 태스크별 그룹
         tasks.forEach(t => {
             const key = t.project || '미분류';
-            if (!map[key]) map[key] = { name: key, tasks: [], assignees: new Set() };
+            if (!map[key]) map[key] = { name: key, tasks: [], assignees: new Set(), members: [] };
             map[key].tasks.push(t);
             if (t.assignee) map[key].assignees.add(t.assignee);
         });
@@ -232,6 +332,7 @@ export default function ProjectFolderView({ externalActions, onReady }) {
     // Inside a project → show KanbanBoard
     if (selectedProject !== null) {
         return (
+            <>
             <div className="space-y-4">
                 <button
                     onClick={() => window.history.back()}
@@ -278,6 +379,16 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                             >
                                 <Pencil size={14} />
                             </button>
+                            {hasScope('sheets') && (
+                                <button
+                                    onClick={() => setExportTarget(selectedProject)}
+                                    disabled={!!exportingProject}
+                                    className="opacity-0 group-hover/name:opacity-100 p-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 text-neutral-400 hover:text-green-600 transition-all disabled:opacity-50"
+                                    title="Sheets로 내보내기"
+                                >
+                                    <FileSpreadsheet size={14} className={exportingProject ? 'animate-pulse' : ''} />
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
@@ -286,8 +397,127 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                     externalActions={externalActions}
                     onReady={setBoardActions}
                     filterProject={selectedProject}
+                    projectMembers={(() => {
+                        const proj = projects.find(p => p.name === selectedProject);
+                        if (!proj) return [];
+                        // DB members가 있으면 그것, 없으면 태스크 assignee 목록으로 fallback
+                        return proj.members.length > 0 ? proj.members : [...proj.assignees];
+                    })()}
                 />
             </div>
+
+            {/* Exporting 로딩 오버레이 */}
+            {exportingProject && createPortal(
+                <div className="fixed inset-0 z-[115] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-neutral-900/30 backdrop-blur-sm" />
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="relative bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl rounded-[2rem] shadow-2xl p-8 border border-white/40 dark:border-white/10 flex flex-col items-center"
+                    >
+                        <div className="w-12 h-12 border-4 border-green-200 border-t-green-500 rounded-full animate-spin mb-4" />
+                        <p className="text-sm font-bold text-neutral-main">Sheets로 내보내는 중...</p>
+                        <p className="text-xs text-neutral-muted mt-1">"{exportingProject}"</p>
+                    </motion.div>
+                </div>,
+                document.body
+            )}
+
+            {/* Export success modal */}
+            {exportResult && createPortal(
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
+                        onClick={() => setExportResult(null)}
+                    />
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        className="relative bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-[380px] p-8 mx-4 border border-white/40 dark:border-white/10"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-4">
+                                <CheckCircle2 size={32} className="text-green-500" />
+                            </div>
+                            <h3 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight mb-1">내보내기 완료!</h3>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-2">
+                                <span className="font-bold text-neutral-700 dark:text-neutral-200">"{exportResult.projName}"</span>
+                            </p>
+                            {exportResult.tabs.length > 0 && (
+                                <div className="flex flex-wrap justify-center gap-1.5 mb-4">
+                                    {exportResult.tabs.map(tab => (
+                                        <span key={tab} className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                                            {tab}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                            <p className="text-xs text-neutral-muted mb-5">Sheets 탭에서 미리보기할 수 있습니다</p>
+                            <div className="flex gap-3 w-full">
+                                <button
+                                    onClick={() => setExportResult(null)}
+                                    className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
+                                >
+                                    닫기
+                                </button>
+                                {exportResult.url && (
+                                    <a
+                                        href={exportResult.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={() => setExportResult(null)}
+                                        className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-green-600 text-white hover:bg-green-700 shadow-lg transition-colors text-center"
+                                    >
+                                        Sheets에서 열기
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>,
+                document.body
+            )}
+
+            {/* Export options modal */}
+            {exportTarget && createPortal(
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm" onClick={() => setExportTarget(null)} />
+                    <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="relative bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-[380px] p-8 mx-4 border border-white/40 dark:border-white/10" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-14 h-14 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-4">
+                                <FileSpreadsheet size={24} className="text-green-600" />
+                            </div>
+                            <h3 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight mb-1">Sheets 내보내기</h3>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+                                <span className="font-bold text-neutral-700 dark:text-neutral-200">"{exportTarget}"</span>
+                            </p>
+                            <div className="w-full space-y-2 mb-5 text-left">
+                                {[
+                                    { key: 'generateWbs', label: 'WBS (작업 분해 구조)', desc: 'AI가 태스크를 계층별로 자동 정리' },
+                                    { key: 'generateGantt', label: 'Gantt 차트', desc: '태스크+일정을 시간축 막대로 시각화' },
+                                    { key: 'generateDashboard', label: '통합 대시보드', desc: '진행률/우선순위/담당자 현황 종합' },
+                                    { key: 'generateRisk', label: 'AI 리스크 분석', desc: 'AI가 프로젝트 리스크를 자동 분석' },
+                                    { key: 'generateReport', label: 'AI 주간 보고서', desc: 'AI가 주간 진행 상황 보고서 생성' },
+                                ].map(({ key, label, desc }) => (
+                                    <label key={key} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-neutral-50 dark:hover:bg-white/5 cursor-pointer transition-colors">
+                                        <input type="checkbox" checked={exportOpts[key]} onChange={() => setExportOpts(prev => ({ ...prev, [key]: !prev[key] }))} className="mt-0.5 w-4 h-4 rounded accent-green-600" />
+                                        <div><div className="text-sm font-bold text-neutral-main">{label}</div><div className="text-[11px] text-neutral-muted">{desc}</div></div>
+                                    </label>
+                                ))}
+                            </div>
+                            <div className="flex gap-3 w-full">
+                                <button onClick={() => setExportTarget(null)} className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors">취소</button>
+                                <button onClick={handleExportWithOpts} className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-green-600 text-white hover:bg-green-700 shadow-lg transition-colors">내보내기</button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>,
+                document.body
+            )}
+            </>
         );
     }
 
@@ -343,7 +573,7 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                             const progress = getProgress(proj.tasks);
                             const latestDue = getLatestDue(proj.tasks);
                             const dday = getDday(latestDue);
-                            const assignees = [...proj.assignees];
+                            const assignees = proj.members.length > 0 ? proj.members : [...proj.assignees];
                             const pColor = progressColors[idx % progressColors.length];
 
                             return (
@@ -359,18 +589,15 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                                 >
                                     {/* Action buttons */}
                                     <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                        {hasScope('sheets') && proj.tasks.length > 0 && (
+                                        {proj.tasks.length > 0 && (
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    setExportingProject(proj.name);
-                                                    exportProjectToSheet(proj.name)
-                                                        .then(res => {
-                                                            if (res?.spreadsheet_url) window.open(res.spreadsheet_url, '_blank');
-                                                            toast.success(`"${proj.name}" Sheets 내보내기 완료`);
-                                                        })
-                                                        .catch(() => toast.error('Sheets 내보내기 실패'))
-                                                        .finally(() => setExportingProject(null));
+                                                    if (!hasScope('sheets')) {
+                                                        toast.error('Google Sheets를 먼저 연결하세요');
+                                                        return;
+                                                    }
+                                                    setExportTarget(proj.name);
                                                 }}
                                                 disabled={exportingProject === proj.name}
                                                 className="p-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 text-neutral-300 hover:text-green-600 transition-all"
@@ -379,6 +606,13 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                                                 <FileSpreadsheet size={14} className={exportingProject === proj.name ? 'animate-pulse' : ''} />
                                             </button>
                                         )}
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); openEditMembers(proj); }}
+                                            className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-neutral-300 hover:text-blue-500 transition-all"
+                                            title="멤버 수정"
+                                        >
+                                            <Users size={14} />
+                                        </button>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setDeleteTarget(proj.name); }}
                                             className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-neutral-300 hover:text-red-500 transition-all"
@@ -458,7 +692,7 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                         <motion.div
                             initial={{ opacity: 0, y: 16 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="bg-white/40 dark:bg-white/5 backdrop-blur-xl p-5 rounded-3xl border-2 border-dashed border-primary-300 dark:border-primary-700 shadow-sm flex flex-col justify-center"
+                            className="bg-white/40 dark:bg-white/5 backdrop-blur-xl p-5 rounded-3xl border-2 border-dashed border-primary-300 dark:border-primary-700 shadow-sm flex flex-col justify-center col-span-1 sm:col-span-2"
                         >
                             <span className="text-sm font-bold text-neutral-main mb-3">새 프로젝트</span>
                             <input
@@ -466,18 +700,79 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                                 value={newProjectName}
                                 onChange={e => setNewProjectName(e.target.value)}
                                 onKeyDown={e => {
-                                    if (e.key === 'Enter') handleCreateProject();
-                                    if (e.key === 'Escape') { setCreatingProject(false); setNewProjectName(''); }
+                                    if (e.key === 'Enter' && newProjectName.trim()) handleCreateProject();
+                                    if (e.key === 'Escape') { setCreatingProject(false); setNewProjectName(''); setSelectedMembers([]); }
                                 }}
                                 placeholder="프로젝트 이름 입력..."
                                 className="w-full px-3 py-2 text-sm border border-neutral-border rounded-xl bg-white/80 dark:bg-neutral-800 text-neutral-main outline-none focus:ring-2 focus:ring-primary-400 mb-3"
                             />
+
+                            {/* 멤버 선택 */}
+                            <div className="mb-3">
+                                <label className="block text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-1.5 ml-1">
+                                    멤버 선택 {selectedMembers.length > 0 && <span className="text-primary-500">({selectedMembers.length}명)</span>}
+                                </label>
+                                {/* 선택된 멤버 칩 */}
+                                {selectedMembers.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mb-2">
+                                        {selectedMembers.map(name => (
+                                            <span
+                                                key={name}
+                                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300"
+                                            >
+                                                {name}
+                                                <button type="button" onClick={() => toggleMember(name)} className="hover:text-red-500">
+                                                    <X size={10} />
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                                {/* 검색 */}
+                                <div className="relative mb-2">
+                                    <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                    <input
+                                        value={memberSearch}
+                                        onChange={e => setMemberSearch(e.target.value)}
+                                        placeholder="이름 또는 팀으로 검색..."
+                                        className="w-full pl-8 pr-3 py-1.5 text-xs border border-neutral-border rounded-lg bg-white/80 dark:bg-neutral-800 text-neutral-main outline-none focus:ring-1 focus:ring-primary-400"
+                                    />
+                                </div>
+                                {/* 멤버 목록 */}
+                                <div className="max-h-36 overflow-y-auto space-y-0.5 rounded-lg border border-neutral-border bg-white/50 dark:bg-neutral-800/50 p-1">
+                                    {availableMembers.map(m => {
+                                        const selected = selectedMembers.includes(m.name);
+                                        const avatarSrc = m.avatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(m.name)}`;
+                                        return (
+                                            <button
+                                                key={m.id}
+                                                type="button"
+                                                onClick={() => toggleMember(m.name)}
+                                                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all ${
+                                                    selected
+                                                        ? 'bg-primary-50 dark:bg-primary-900/20 border border-primary-300'
+                                                        : 'hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-transparent'
+                                                }`}
+                                            >
+                                                <img src={avatarSrc} alt={m.name} className="w-5 h-5 rounded-full bg-white/50" />
+                                                <span className={`font-bold ${selected ? 'text-primary-700 dark:text-primary-300' : 'text-neutral-main'}`}>{m.name}</span>
+                                                {m.team && <span className="text-[10px] text-neutral-muted ml-auto">{m.team}</span>}
+                                                {selected && <Check size={12} className="text-primary-500 ml-1" />}
+                                            </button>
+                                        );
+                                    })}
+                                    {availableMembers.length === 0 && (
+                                        <p className="text-[11px] text-neutral-muted text-center py-2">검색 결과 없음</p>
+                                    )}
+                                </div>
+                            </div>
+
                             <div className="flex items-center gap-2">
                                 <button onClick={handleCreateProject} disabled={!newProjectName.trim()}
                                     className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-primary-900 text-white hover:bg-neutral-main shadow-lg transition-colors disabled:opacity-50">
                                     생성
                                 </button>
-                                <button onClick={() => { setCreatingProject(false); setNewProjectName(''); }}
+                                <button onClick={() => { setCreatingProject(false); setNewProjectName(''); setSelectedMembers([]); setMemberSearch(''); }}
                                     className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors">
                                     취소
                                 </button>
@@ -513,7 +808,7 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-[380px] p-8 mx-4 border border-white/40 dark:border-white/10"
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-[380px] p-8 mx-4 border border-white/40 dark:border-white/10"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex flex-col items-center text-center">
@@ -542,6 +837,256 @@ export default function ProjectFolderView({ externalActions, onReady }) {
                                 >
                                     {deleting ? '삭제 중...' : '삭제'}
                                 </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>,
+                document.body
+            )}
+
+            {/* Edit members modal */}
+            {editMembersTarget && createPortal(
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
+                        onClick={() => !savingMembers && setEditMembersTarget(null)}
+                    />
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-[420px] mx-4 border border-white/40 dark:border-white/10 max-h-[85vh] flex flex-col"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-6 pt-6 pb-3 flex-shrink-0">
+                            <div>
+                                <h3 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight">멤버 수정</h3>
+                                <p className="text-xs text-neutral-muted mt-0.5">{editMembersTarget.name}</p>
+                            </div>
+                            <button
+                                onClick={() => setEditMembersTarget(null)}
+                                className="w-7 h-7 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-400 transition-colors flex items-center justify-center"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
+                            {/* Selected members chips */}
+                            {editMembers.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                    {editMembers.map(name => (
+                                        <span
+                                            key={name}
+                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300"
+                                        >
+                                            <img src={getAvatarSrc(name)} alt={name} className="w-4 h-4 rounded-full" />
+                                            {name}
+                                            <button type="button" onClick={() => toggleEditMember(name)} className="hover:text-red-500 transition-colors">
+                                                <X size={10} />
+                                            </button>
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Search */}
+                            <div className="relative mb-2">
+                                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                <input
+                                    value={editMemberSearch}
+                                    onChange={e => setEditMemberSearch(e.target.value)}
+                                    placeholder="이름 또는 팀으로 검색..."
+                                    className="w-full pl-8 pr-3 py-2 text-xs border border-neutral-border rounded-xl bg-white/80 dark:bg-neutral-800 text-neutral-main outline-none focus:ring-2 focus:ring-primary-400"
+                                    autoFocus
+                                />
+                            </div>
+
+                            {/* Member list */}
+                            <div className="max-h-56 overflow-y-auto space-y-0.5 rounded-xl border border-neutral-border bg-white/50 dark:bg-neutral-800/50 p-1.5">
+                                {editAvailableMembers.map(m => {
+                                    const selected = editMembers.includes(m.name);
+                                    const avatarSrc = m.avatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(m.name)}`;
+                                    return (
+                                        <button
+                                            key={m.id}
+                                            type="button"
+                                            onClick={() => toggleEditMember(m.name)}
+                                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-all ${
+                                                selected
+                                                    ? 'bg-primary-50 dark:bg-primary-900/20 border border-primary-300'
+                                                    : 'hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-transparent'
+                                            }`}
+                                        >
+                                            <img src={avatarSrc} alt={m.name} className="w-6 h-6 rounded-full bg-white/50" />
+                                            <span className={`font-bold ${selected ? 'text-primary-700 dark:text-primary-300' : 'text-neutral-main'}`}>{m.name}</span>
+                                            {m.team && <span className="text-[10px] text-neutral-muted ml-auto">{m.team}</span>}
+                                            {selected && <Check size={14} className="text-primary-500 ml-1" />}
+                                        </button>
+                                    );
+                                })}
+                                {editAvailableMembers.length === 0 && (
+                                    <p className="text-[11px] text-neutral-muted text-center py-3">검색 결과 없음</p>
+                                )}
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="flex gap-3 mt-4">
+                                <button
+                                    onClick={() => setEditMembersTarget(null)}
+                                    disabled={savingMembers}
+                                    className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
+                                >
+                                    취소
+                                </button>
+                                <button
+                                    onClick={handleSaveMembers}
+                                    disabled={savingMembers}
+                                    className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-primary-700 text-white hover:bg-primary-900 shadow-lg transition-colors disabled:opacity-50"
+                                >
+                                    {savingMembers ? '저장 중...' : `저장 (${editMembers.length}명)`}
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>,
+                document.body
+            )}
+
+            {/* Sheets export options modal */}
+            {exportTarget && createPortal(
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
+                        onClick={() => setExportTarget(null)}
+                    />
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-[400px] p-8 mx-4 border border-white/40 dark:border-white/10"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-14 h-14 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-4">
+                                <FileSpreadsheet size={24} className="text-green-600" />
+                            </div>
+                            <h3 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight mb-1">Sheets 내보내기</h3>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-5">
+                                <span className="font-bold text-neutral-700 dark:text-neutral-200">"{exportTarget}"</span>
+                            </p>
+
+                            {/* Checkbox options */}
+                            <div className="w-full space-y-2 mb-6">
+                                {[
+                                    { key: 'generateWbs', label: 'WBS', desc: '작업 분해 구조 (AI가 태스크를 계층별로 정리)' },
+                                    { key: 'generateGantt', label: 'Gantt', desc: '간트 차트 (태스크+일정을 시간축 막대로 시각화)' },
+                                    { key: 'generateDashboard', label: 'Dashboard', desc: '진행 현황 (상태/담당자/결재 통계 집계)' },
+                                    { key: 'generateRisk', label: 'AI 리스크', desc: 'AI 리스크 분석 (일정충돌, 병목, 과부하 등 식별)' },
+                                    { key: 'generateReport', label: '주간보고', desc: 'AI 주간 보고서 (완료/진행중/예정/블로커 정리)' },
+                                ].map(({ key, label, desc }) => (
+                                    <label
+                                        key={key}
+                                        className={`flex items-start gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all ${
+                                            exportOpts[key]
+                                                ? 'border-primary-300 bg-primary-50/50 dark:bg-primary-900/10'
+                                                : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600'
+                                        }`}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={exportOpts[key]}
+                                            onChange={(e) => setExportOpts(prev => ({ ...prev, [key]: e.target.checked }))}
+                                            className="w-4 h-4 mt-0.5 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                                        />
+                                        <div className="text-left">
+                                            <span className="text-sm font-bold text-neutral-main">{label}</span>
+                                            <p className="text-[11px] text-neutral-muted leading-snug mt-0.5">{desc}</p>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
+
+                            <div className="flex gap-3 w-full">
+                                <button
+                                    onClick={() => setExportTarget(null)}
+                                    className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
+                                >
+                                    취소
+                                </button>
+                                <button
+                                    onClick={handleExportWithOpts}
+                                    className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-green-600 text-white hover:bg-green-700 shadow-lg transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <FileSpreadsheet size={16} />
+                                    내보내기
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>,
+                document.body
+            )}
+
+            {/* Export success modal */}
+            {exportResult && createPortal(
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm"
+                        onClick={() => setExportResult(null)}
+                    />
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        className="relative bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-[380px] p-8 mx-4 border border-white/40 dark:border-white/10"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-4">
+                                <CheckCircle2 size={32} className="text-green-500" />
+                            </div>
+                            <h3 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight mb-1">내보내기 완료!</h3>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-2">
+                                <span className="font-bold text-neutral-700 dark:text-neutral-200">"{exportResult.projName}"</span>
+                            </p>
+                            {exportResult.tabs.length > 0 && (
+                                <div className="flex flex-wrap justify-center gap-1.5 mb-4">
+                                    {exportResult.tabs.map(tab => (
+                                        <span key={tab} className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                                            {tab}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                            <p className="text-xs text-neutral-muted mb-5">Sheets 탭에서 미리보기할 수 있습니다</p>
+                            <div className="flex gap-3 w-full">
+                                <button
+                                    onClick={() => setExportResult(null)}
+                                    className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
+                                >
+                                    닫기
+                                </button>
+                                {exportResult.url && (
+                                    <a
+                                        href={exportResult.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={() => setExportResult(null)}
+                                        className="flex-1 px-4 py-3 text-sm font-extrabold rounded-xl bg-green-600 text-white hover:bg-green-700 shadow-lg transition-colors text-center"
+                                    >
+                                        Sheets에서 열기
+                                    </a>
+                                )}
                             </div>
                         </div>
                     </motion.div>

@@ -4,7 +4,7 @@ import KeywordHighlight from '../common/KeywordHighlight';
 import { Pencil, Check, X } from 'lucide-react';
 import { updateDocumentAnalysis, updateDocumentScope } from '../../api/documents';
 
-const CATEGORIES = ['회의록', '계약서', '제안서', '보고서', '정책문서', '인사문서', '공지사항', '이메일', '기타'];
+const CATEGORIES = ['회의록', '계약서', '제안서', '보고서', '정책문서', '인사문서', '기타'];
 
 export default function DocumentDetail({ doc, documentDetail, searchQuery = '', onDelete, onAnalysisUpdate }) {
   const printRef = useRef(null);
@@ -78,14 +78,14 @@ export default function DocumentDetail({ doc, documentDetail, searchQuery = '', 
     }
   };
 
-  if (!doc) return <div className="card p-10 text-center text-neutral-muted text-sm">문서를 선택하세요</div>;
+  if (!doc) return <div className="card p-10 text-center text-neutral-muted text-sm max-h-[82vh]">문서를 선택하세요</div>;
 
   const isRealDocument = doc.id && documentDetail;
   const content = isRealDocument ? documentDetail.content : doc.analysis;
   const hasAnalysis = isRealDocument;
 
   return (
-    <div className="bg-surface-card rounded-md border border-neutral-border p-5" ref={printRef}>
+    <div className="bg-surface-card rounded-2xl border border-neutral-border p-5 max-h-[82vh] overflow-y-auto" ref={printRef}>
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-base font-bold"><KeywordHighlight text={doc.name} keyword={searchQuery} /></h3>
         <Badge variant={doc.status === '적용중' ? 'status-active' : 'status-revising'}>{doc.status}</Badge>

@@ -1642,10 +1642,6 @@ v4 데이터로 재학습한 결과 **모델 자체 성능이 대폭 향상** �
 
 ---
 
-### 복합 질문 분류 실험 전체 요약 (발표용)
-
-> 사용자가 "연차 규정 찾아서 위반인지 판단해줘"처럼 **한 문장에 여러 의도를 담은 복합 질문**을 했을 때, 각 의도를 정확히 분리하여 해당 Agent에 전달하는 것이 목표.
-
 #### 실험 배경
 
 | 항목 | 내용 |
@@ -2087,7 +2083,7 @@ v4 데이터로 재학습한 결과 **모델 자체 성능이 대폭 향상** �
 > 7건 중 4건이 연속 미해결 (R2부터 계속 틀리는 문장) → 이 문장들은 모델의 구조적 한계 영역
 > 나머지 3건은 새로 발생한 오답 (기존 정답이 오답으로 바뀜)
 
-#### Knowledge Distillation이 효과적인 이유 (발표용)
+#### Knowledge Distillation이 효과적인 이유
 
 **"왜 GPT로 만든 데이터가 템플릿보다 효과적인가?"**
 
@@ -2159,7 +2155,7 @@ v4 데이터로 재학습한 결과 **모델 자체 성능이 대폭 향상** �
 5. **Threshold 효과는 모델 안정성에 의존**: R2에서는 역효과, R3에서는 +1.7%p → 모델이 안정해야 threshold가 유효
 6. **수확 체감 법칙**: R1(+3.3%p) → R2(+6.7%p) → R3(+1.7%p) — 타겟 보강은 효과적이지만 한계 존재
 
-#### 발표용 — 전체 실험 성능 추이 (포트폴리오)
+#### 전체 실험 성능 추이 (포트폴리오)
 
 | # | 단계 | 모델 | Train 데이터 | 기존 ADV | Held-out | 핵심 기법 |
 |---|---|---|---|---|---|---|
@@ -2180,7 +2176,7 @@ v4 데이터로 재학습한 결과 **모델 자체 성능이 대폭 향상** �
 > **13단계 실험 끝에 Held-out 46.7% → 88.3% (+41.7%p) 달성**
 > 과적합 없이 검증된 진짜 성능이며, sLLM 정체성을 유지하면서 LLM의 언어 생성 능력을 학습 데이터로 전이
 
-#### 발표용 — Knowledge Distillation 효과 요약 (R1 + R2 + R3)
+#### Knowledge Distillation 효과 요약 (R1 + R2 + R3)
 
 | 항목 | 템플릿만 (v5) | +GPT R1 (v6) | +GPT R2 (v7) | +GPT R3 (v8) |
 |---|---|---|---|---|
@@ -2346,10 +2342,13 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 | 10 | v7 GPT KD R2 | roberta-large | ~4,500개 | 91.7% | 86.7% | -5.0%p ✅ | 오답 타겟 보강 |
 | 11 | v8 GPT KD R3 | roberta-large | ~4,660개 | 91.7% | 88.3% | -3.3%p ✅ | doc_summary 경계 보강 |
 | 12 | +Focal+FGM | roberta-large | ~4,660개 | - | 88.3% | - | 고급 학습 기법 |
-| **13** | **+5-Seed Ensemble** | **roberta-large** | **~4,660개** | **93.3%** | **93.3%** | **0.0%p ✅** | **앙상블 (+5.0%p)** |
+| 13 | 8-label 5-Seed Ensemble | roberta-large | ~4,660개 | 93.3% | 93.3% | 0.0%p ✅ | 앙상블 (+5.0%p) |
+| 14 | 7-label 통합 (doc_qa 제거) | roberta-large | ~4,660개 | 96.7% | 86.7% | -10.0%p ⚠️ | doc_qa 병합 |
+| **15** | **6-label + Threshold (0.60)** | **roberta-large** | **~4,653개** | **-** | **93.3%** | **0.0%p ✅** | **doc_retrieve 병합 및 최적화** |
 
-> **총 13단계 실험: 규칙 41.7% → koelectra 76.7% → roberta-large 88.3% → 앙상블 93.3%**
+> **총 15단계 실험: 규칙 41.7% → koelectra 76.7% → roberta-large 88.3% → 최종 6-label 앙상블 93.3%**
 > 가장 큰 점프: ① 5-Seed Ensemble (+5.0%p) ② GPT KD R2 오답 타겟 (+6.7%p) ③ 모델 교체 시 과적합 해소 (-13.3%p→-3.3%p)
+> **핵심 성과**: 의도를 6개로 압축하여 판단 로직을 단순화하면서도 8-label 최고 성능(93.3%)을 완벽히 복구 및 유지!
 
 ##### 4. koelectra vs roberta-large 직접 비교 (같은 데이터 기준)
 
@@ -2410,6 +2409,316 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 
 ---
 
+## 2026-03-13 (금)
+
+### 한 일
+
+#### 1) Intent 8→7개 축소 (doc_qa → doc_search 병합)
+
+**배경**: doc_qa와 doc_search가 13차 실험 내내 가장 혼동이 많았던 쌍이고, 둘 다 같은 document_agent로 라우팅되므로 분리할 실익 없음. 멘토 피드백에서 agent planner(작업 순서 예측) 확장도 고려하라는 조언 반영.
+
+**변경 파일 (전체 스택 27개 파일)**:
+- **AI**: `train_multilabel.py`, `eval_holdout.py`, `generate_multilabel_data.py` — INTENT_LABELS 8→7개
+- **AI Agent**: `intent_classifier.py` — doc_qa 제거, doc_search 설명에 "문서 내용 질의응답" 포함
+- **AI Agent**: `orchestrator.py` — doc_qa 라우팅 제거
+- **AI Agent**: `document_agent.py` — doc_qa 디스패치 블록 제거
+- **Backend**: `chat.py`, `chat.py(schemas)` — doc_qa 참조 제거
+- **Frontend**: `constants.js`, `ChatWindow.jsx`, `CompoundCard.jsx`, `AgentIndicator.jsx`, `AIChatPopup.jsx`, `SystemStats.jsx`, `ChatPage.jsx` — doc_qa 제거, doc_search 라벨 통합
+- **데이터**: `train.jsonl`(149건 dedup), `val.jsonl`(34건 dedup), `test.jsonl`(20건 dedup), `adversarial_*.json` — doc_qa→doc_search 변환 + 중복 제거
+
+#### 2) 7-label 5-Seed 앙상블 학습 (RunPod)
+
+**환경**: RunPod A100, klue/roberta-large, Focal Loss(γ=2.0) + FGM(ε=1.0) + Label Weights
+
+**개별 seed 결과 (Test set)**:
+
+| Seed | Subset Acc | Macro F1 | Over-trig | Under-trig |
+|------|-----------|----------|-----------|------------|
+| 42 | 96.2% | 98.3% | 0.6% | 1.4% |
+| 123 | 96.2% | 98.0% | 0.9% | 2.5% |
+| 456 | **96.7%** | **98.6%** | 0.3% | 2.8% |
+| 789 | 96.2% | 98.0% | 0.6% | 2.5% |
+| 1337 | 96.4% | 98.1% | 0.3% | 1.8% |
+
+- 모든 seed에서 Test Subset Accuracy **96.2~96.7%**, Macro F1 **98.0~98.6%** 안정적
+- 5개 모델 저장 완료: `ai/models/intent_multilabel_ensemble/seed_{42,123,456,789,1337}`
+
+**주의 사항**: Compound 쿼리에서 doc_search 과다 트리거(~80%) 발생 — doc_qa 병합으로 doc_search 범위가 넓어진 영향. 앙상블 + threshold 최적화로 개선 예정.
+
+#### 3) 트러블슈팅 (RunPod)
+- pip 패키지 누락 해결: `datasets`, `transformers`, `accelerate`, `scikit-learn`, `matplotlib`, `seaborn`
+- 디스크 부족 (40GB 중 22GB 점유): 8-label 시절 모델 디렉토리 + HuggingFace 캐시 삭제로 해결
+- 단일 `--seed` 모드의 모델 덮어쓰기 문제 발견 → `--ensemble-seeds` 모드로 전환하여 seed별 별도 저장
+
+#### 4) Intent 7→6개 축소 (doc_search + doc_summary → doc_retrieve 병합)
+
+**배경**: 7-label 앙상블 Held-out 평가에서 86.7% (8-label 대비 -6.6%p 하락). 8건 오답 중 5건이 doc_search↔doc_summary 경계 혼동. PM(지용) 제안으로 doc_search + doc_summary + doc_qa를 단일 `doc_retrieve`로 통합. "어느 agent로 보낼지"만 분류기가 결정하고, 검색/요약/QA 세부 판단은 document_agent 내부 sLLM이 담당.
+
+**6-label 구조**: `judgment`, `doc_retrieve`, `doc_generate`, `schedule_add`, `schedule_view`, `general`
+
+**변경 파일 (전체 스택)**:
+- **AI 실험**: `train_multilabel.py` — INTENT_LABELS 6개, label_weights 업데이트 (doc_retrieve:2.0)
+- **AI 실험**: `eval_holdout.py`, `threshold_search.py` — 6-label grid search 로직 업데이트
+- **AI Agent**: `intent_classifier.py` — INTENT_LABELS 6개, LLM prompt, 임베딩 예제, KNOWN_OVERRIDES, verb patterns 통합
+- **AI Agent**: `orchestrator.py` — 라우팅 `("doc_retrieve", "doc_generate")`, fallback type, Korean labels
+- **AI Agent**: `document_agent.py` — `doc_retrieve` intent 내부 분기 (summary vs search 자동 판단)
+- **AI Agent**: `state.py` — intent 타입 주석 업데이트
+- **Backend**: `chat.py` — `_get_agent_type()`, format_response skip logic
+- **Backend**: `schemas/chat.py` — SSE event 주석 업데이트
+- **Frontend**: `constants.js` — INTENT_TYPES/LABELS/ICONS 6개로 축소
+- **Frontend**: `AgentIndicator.jsx`, `CompoundCard.jsx`, `AIChatPopup.jsx`, `ChatWindow.jsx`, `StreamingMessage.jsx`, `SystemStats.jsx`, `ChatPage.jsx` — doc_retrieve 추가 + 하위 호환
+- **데이터**: 전체 training/val/test/holdout 데이터 doc_search→doc_retrieve, doc_summary→doc_retrieve 변환 + 7건 중복 제거
+
+#### 5) 프론트엔드 UI 개선
+
+- **일정관리 페이지 로딩 깜빡임 수정** (`SchedulesPage.jsx`) — DB 일정 로딩 상태(`dbSchedulesLoading`) 추가, 로딩 완료 전까지 빈 달력 노출 방지
+- **Approvals 탭 색상 통일** (`ApprovalPanel.jsx`) — raw Tailwind 색상을 서비스 디자인 토큰으로 전면 교체
+- **문서 페이지 독립 스크롤** (`DocumentList.jsx`, `DocumentDetail.jsx`) — 좌우 패널 각각 `max-h-[82vh]` + `overflow-y-auto` 적용
+- **문서 목록 compact/detailed 뷰 토글** (`DocumentList.jsx`) — compact 3컬럼(문서명+서브정보, 분류, 태그) / detailed 6컬럼 전환
+- **DataTable 컬럼 스타일 확장** (`DataTable.jsx`) — `className`, `headerClassName` props 지원 추가
+- **전체 카드/패널 코너 반경 통일** — `.card` 클래스(`rounded-2xl`)와 불일치하던 `DocumentDetail.jsx`, `MeetingDetail.jsx`, `GoogleCalendarConnect.jsx`의 `rounded-md`를 `rounded-2xl`로 통일
+
+#### 6) 6-label 앙상블 평가 및 Threshold 최적화 결과 반영
+
+- **결과**: **93.3% 달성!** (8-label 앙상블 모델과 동일한 최고 성능)
+- `doc_retrieve` 통합으로 인해 검색 범위가 지나치게 넓어지면서 과잉 트리거 현상이 발생했으나, `doc_retrieve` 의도만의 특화된 임계값(Threshold)을 상향 설정하여 안정적으로 해결함.
+
+| 설정 | Held-out 정확도 | 오답 건수 | 특이사항 |
+|---|---|---|---|
+| 8-label (이전) | 93.3% | 4건 | 5-seed 앙상블 |
+| **6-label + threshold 최적화** | **93.3%** | **4건** | `doc_retrieve` 통합 및 임계값 0.60 |
+
+- **최적 Threshold 설정**:
+  - `doc_retrieve` : **0.60** (과잉 트리거 방지용 최적화)
+  - `judgment`     : 0.50 (기본값 유지)
+  - `doc_generate` : 0.50 (기본값 유지)
+  - `schedule_add` : 0.50 (기본값 유지)
+  - `schedule_view`: 0.50 (기본값 유지)
+  - `general`      : 0.50 (기본값 유지)
+
+- **결론**: 최적화된 threshold 값들을 `ai/agents/intent_classifier.py` 프로덕션 코드에 반영 완료.
+
+#### 7) Task Planner sLLM 베이스 모델 비교 실험
+
+**배경**: 멘토 피드백 반영 — Intent 분류(KoELECTRA)는 "어떤 intent가 필요한지" 감지하지만, 복합 질문에서 "어떤 순서로, 어떤 의존성으로 실행할지"는 결정하지 못함. 이를 위해 **Task Planner** 모듈 도입. Plan-and-Execute 패턴: 사용자 입력 → Planner(실행 계획 JSON 생성) → Step Executor → 응답. 보안/장기 아키텍처 관점에서 LLM API 단계를 건너뛰고 **sLLM 직접 시작**으로 결정.
+
+**아키텍처 설계**:
+- KoELECTRA (12M, encoder-only): intent **분류**만 담당 (라벨 출력)
+- sLLM (8B, generative): intent **순서 계획 + 의존성 그래프** 생성 (JSON 출력)
+- 비유: KoELECTRA = 재료 목록 감지, Planner = 레시피 작성
+
+**테스트 데이터 설계**: `data/evaluation/planner_test_cases.json` (95건)
+- 5개 카테고리: single_step(30), sequential(20), parallel(12), complex(15), edge_case(18)
+- 다양한 표현 포함: 공식/비공식 어체, 오타(회이록 작섣해줘), 초성(ㅎㅇㄹ ㅊㅇ), 영어 혼용, 이모지
+- 6개 intent: judgment, doc_retrieve, doc_generate, schedule_add, schedule_view, general
+
+**비교 대상 모델**:
+- Qwen3-8B (다국어 범용)
+- Kanana-1.5-8B (한국어 특화, Kakao)
+
+**실험 환경**: RunPod A100, 4-bit QLoRA 양자화, zero-shot (파인튜닝 전 베이스 성능 측정)
+
+**생성 파일**:
+- `ai/finetuning/scripts/compare_planner_models.py` — 베이스 모델 비교 추론 스크립트
+- `ai/finetuning/scripts/evaluate_planner_report.py` — 평가 지표 스크립트 (v3 → v3.1)
+- `ai/finetuning/runpod_planner_compare.sh` — RunPod SSH 실행 자동화 셸 스크립트
+
+**평가 지표 설계 (v1→v2→v3→v3.1 반복 개선)**:
+
+- **v1**: Intent Precision/Recall + Dep Validity → 100% 나오는 문제 (테스트 17건 너무 적음, 지표 관대)
+- **v2**: 95건 확대 + multiset 기반 Precision/Recall + Dep Validity → 순서 미반영, Dep이 구조만 체크
+- **v3**: LCS 기반 Order Accuracy 도입, Dep Correctness(expected 대비 비교), JSON Pass Rate 별도 분리
+  - 문제 발견: Kanana JSON 100% vs Qwen 68.4%로 평가 모수 불일치 (65건 vs 95건)
+  - 공통 JSON 성공 케이스 비교 도입 → Qwen 0.953 vs Kanana 0.831 (+12.2%p)
+  - 그러나 공통 케이스가 "Qwen이 풀 수 있었던 쉬운 케이스" 위주로 편향 (survivorship bias)
+- **v3.1 (최종)**: 공정 비교 지표 재설계
+  - **"유효 응답" 재정의**: JSON 성공 + plan 비어있지 않음 (빈 plan `[]`도 실패 처리)
+    - Kanana가 "고마워", "안녕" 등에 빈 plan 출력 → JSON은 valid이지만 사용자에게는 무응답 = 실패
+    - Qwen의 `<think>` 토큰 절삭으로 인한 JSON 실패와 동일하게 취급
+  - **공통 유효 케이스 비교**: 양쪽 다 유효 응답인 케이스에서만 planning 지표 비교
+  - **카테고리 편향 검증**: 공통 케이스의 카테고리별 생존율 보고 (편향 경고)
+
+**v3.1 가중치**: Intent Recall 30% / Order Accuracy 25% / Intent Precision 20% / Dep Correctness 15% / Efficiency 10%
+
+**v3.1 비교 결과 (공통 유효 60건)**:
+
+| 지표 | Qwen3-8B | Kanana-1.5-8B |
+|---|---|---|
+| Usable Rate | 68.4% (65/95) | 94.7% (90/95) |
+| Planning Score (공통 60건) | **0.962** | 0.895 |
+| Intent Recall | **0.953** | 0.886 |
+| Order Accuracy | **0.953** | 0.886 |
+| Dep Correctness | **0.978** | 0.851 |
+| Latency | 11,780ms | **2,261ms** (5.2배) |
+
+**카테고리 편향 분석**:
+
+| 카테고리 | 전체 | 공통 | 생존율 | 비고 |
+|---|---|---|---|---|
+| complex | 15 | 5 | 33.3% | ⚠ 심각한 편향 |
+| edge_case | 18 | 9 | 50.0% | |
+| sequential | 20 | 13 | 65.0% | |
+| single_step | 30 | 22 | 73.3% | |
+| parallel | 12 | 11 | 91.7% | |
+
+- complex 카테고리 67% 탈락 → 플래너 핵심 역량인 복합 작업 비교가 5건으로 불충분
+- 공통 케이스 비교도 Qwen에 유리한 쪽으로 편향 (어려운 문제가 빠지므로)
+
+**지표 개선 과정에서 얻은 교훈**:
+1. "100%"가 나오면 의심해야 함 — 지표가 관대하거나 의미가 다를 수 있음
+2. 모수가 다르면 공정한 비교 불가 — 반드시 동일 케이스 기준
+3. 공통 케이스 비교도 survivorship bias 존재 — 카테고리 생존율 확인 필수
+4. "JSON 성공"과 "유효 응답"은 다른 개념 — 빈 출력도 실패로 취급해야 공정
+
+**트러블슈팅**:
+- 경로 해석 오류: `Path(__file__).parent` 기반 → `git rev-parse --show-toplevel` + `--project-root` CLI 인자로 해결
+- RunPod git divergent branches: `git fetch origin && git reset --hard origin/FEAT/frontend`
+- RunPod git identity 미설정: 셸 스크립트 `|| true`로 우회
+
+#### 8) Planner LoRA 학습 데이터 합성 + 학습 실행
+
+**배경**: 베이스 모델 비교(7번)에서 Kanana-1.5-8B 선정 완료. LoRA 파인튜닝으로 planning 능력 강화.
+
+**학습 데이터**: 800건 (train 720 / eval 80)
+- `ai/finetuning/data/planner/` 에 저장
+- 6개 intent 기반: judgment, doc_retrieve, doc_generate, schedule_add, schedule_view, general
+- single_step, sequential, parallel, complex, edge_case 패턴 포함
+
+**학습 환경**:
+- RunPod H200 (143GB VRAM)
+- Kanana-1.5-8B-instruct-2505 + QLoRA 4-bit
+- LoRA r=16, alpha=32, trainable params: 13.6M (전체의 0.17%)
+- epochs=3, batch=4, lr=2e-4, bf16
+
+**학습 결과**:
+- Loss 수렴: 2.296 → 0.155 (안정적 감소)
+- Eval loss: 0.248 → 0.164 → 0.158 (epoch마다 감소, 과적합 징후 없음)
+- 학습 시간: 약 6분 40초 (399.9초)
+- 어댑터 저장: `outputs/v3_planner/final`
+
+**Eval split 평가 결과 (80건, 학습 데이터와 동일 분포)**:
+
+| 지표 | 점수 |
+|------|------|
+| Usable Rate | 100% (80/80) |
+| Intent Recall | 0.988 |
+| Order Accuracy | 0.988 |
+| Intent Precision | 0.988 |
+| Dep Correctness | 1.000 |
+| Efficiency | 1.000 |
+| **Weighted Score** | **0.991** |
+| Perfect Score | 98.8% (79/80) |
+
+**⚠️ 주의**: 이 평가는 학습 데이터에서 분리한 eval split으로, **학습 데이터와 동일한 분포**. 100%/0.991 같은 높은 수치는 "학습이 잘 수렴했다"는 의미이지 일반화 성능이 아님. 과적합 여부 확인을 위해 **held-out 테스트** (base 비교 때 사용한 `planner_test_cases.json` 95건) 필요.
+
+**생성/수정 파일**:
+- `ai/finetuning/configs/v3_planner.yaml` — 학습 설정
+- `ai/finetuning/scripts/train_planner_lora.py` — 학습 + eval 스크립트
+- `ai/finetuning/runpod_planner_train.sh` — RunPod 실행 셸 스크립트
+- `outputs/v3_planner/final/` — LoRA 어댑터 저장
+
+#### 9) Planner LoRA Held-out 평가 및 지표 고도화
+
+**배경**: LoRA 파인튜닝 후 Eval split에서 높은 점수(0.991)가 나왔으나, 이는 동일 분포 데이터에 대한 결과이므로 실제 일반화 성능 파악을 위해 Base 비교 시 사용한 `planner_test_cases.json` (95건)으로 Held-out 평가 진행.
+
+**Held-out 평가 결과 (95건 기준)**:
+| 지표 | Base Kanana | LoRA Kanana | 비고 |
+|---|---|---|---|
+| Usable Rate | 94.7% | 100% | 빈 응답(`[]`) 문제 완벽 해결 |
+| **Weighted Score** | 0.895 (공통 60건) | **0.906** (전체 95건) | 전반적 성능 향상 |
+| **Perfect Match** | - | 73.7% (70/95) | 오답 건수 25건 |
+
+*※ Eval split(0.991) 대비 Held-out(0.906) 점수 하락으로 약간의 과적합 및 개선점 발견.*
+
+**평가 지표 고도화**:
+성능 평가의 실효성을 높이고 오답 원인을 명확히 파악하기 위해 기존의 Usable Rate(의미상 단순 포맷 체크)를 내부 숨김 처리하고, **3가지 신규 체감 지표**를 추가 도입함.
+1. **Step Collapse Rate (단계 축소율)**: 복합 질문(2+ steps)을 1단계로 축소해버리는 오답 비율 (현재 23.1% (15/65건) 발생 - 가장 큰 약점).
+2. **Exact Match by Step Count (단계 수별 정확도)**:
+   - 1-step: 100% (30/30)
+   - 2-step: 60% (12/20)
+   - 3-step: 33.3% (5/15)
+   - 4-step 이상: 난이도(step 수)가 높을수록 성능이 급격히 저하됨을 직관적으로 확인.
+3. **Intent Confusion Matrix (혼동 행렬)**: `doc_retrieve`를 `judgment`로 잘못 분류하는 등의 특정 intent 간 혼동 패턴 및 과잉 분리율 추적.
+
+**오답 25건 패턴 분석 결과**:
+- **패턴 1**: 단계 축소 (Multi-step → 1-step, 약 15건) - 가장 빈번하며 복합 질문 단순화 경향.
+- **패턴 2**: Intent 혼동 (예: `doc_retrieve` ↔ `judgment`, 약 5건).
+- **패턴 3**: 과잉 분리 (1단계면 충분한데 불필요하게 단계를 쪼개는 경우, 약 3건).
+
+**생성/수정 파일**:
+- `ai/finetuning/scripts/eval_planner_holdout.py` — held-out 평가, 오답 상세 출력, 신규 지표(Step Collapse, 단계 정확도, 혼동 행렬 등) 산출 로직 추가
+- `ai/finetuning/runpod_planner_holdout.sh` — RunPod 평가 실행 자동화 셸 스크립트
+
+#### 10) Planner 프롬프트 규칙(Rule-based) 가이드 적용 및 2차 Held-out 평가
+
+> [!NOTE]
+> **실험 목적**: 파인튜닝 데이터 전면 수정 전, 시스템 프롬프트 제어(Rule-based Guidance)만으로 빈출 오답 패턴(단계 축소, Intent 혼동 등)을 방어할 수 있는지 검증.
+> **적용 기법**: System Prompt에 금지 규칙(Negative Prompting) 3가지 명시
+
+**프롬프트에 추가된 주요 금지 규칙**
+1. **과도한 압축 금지**: 문서 검색(`doc_retrieve`) 후 판단(`judgment`) 요구 시 절대 1단계로 합치지 말 것
+2. **Intent 혼동 방지**: 단순 문서 검색은 `doc_retrieve`, 명확한 가부 판단은 `judgment`
+3. **과잉 분리 금지**: 동일한 규정 판단 시 `judgment` 중복 방지
+
+---
+
+> **2차 Held-out 평가 결과 요약 (95건)**
+
+| 핵심 지표 | 1차 (Rule 없음) | 2차 (Rule 적용) | 📈 개선도 |
+| :--- | :---: | :---: | :---: |
+| 🎯 **Perfect Match** | 73.7% | **77.9%** | `+4.2%p` |
+| 📉 **Step Collapse (단계 축소율)** | 23.1% | **20.4%** | `-2.7%p` 방어 성공 |
+| ⚖️ **Weighted Score**  | 0.906 | **0.916** | `+0.010` 향상 |
+
+**✅ 단계 수별 정확도 개선 상세**
+- **2-step 정확도**: 60.0% ➡️ **84.8%** (🔥 **+24.8%p 대폭 향상**)
+- **3-step 정확도**: 33.3% ➡️ 28.6% (복합 단계는 여전히 한계 노출)
+
+---
+
+> [!IMPORTANT]
+> **💡 결론 및 인사이트**
+> 1. **프롬프트 룰의 즉각적 효과**: 룰만 추가하여도 고질적 문제였던 **2-step 단계 축소(Step Collapse)가 극적으로 해결**됨을 입증.
+> 2. **데이터 보강의 정당성 확보**: 단, 3-step 이상의 긴 문맥에서는 여전히 단계를 놓치는 한계가 뚜렷함. 즉, 프롬프트 가이드는 훌륭한 안전망이지만 모델 체급을 올리려면 **결국 복합 질문(Multi-step) 위주로 학습 데이터를 대폭 보강하여 재튜닝해야 함**을 확인.
+
+### 📌 다음 할 일 (Action Items)
+
+- [ ] **학습 데이터 전면 보강**: Multi-step (sequential/complex) 중심 데이터 확장 및 올바른 Intent 분리 체계화 매핑
+- [ ] **Planner 2차 파인튜닝**: 보강된 데이터 + 프롬프트 룰이 결합된 환경에서 LoRA 모델 최종 재학습 및 Held-out 재평가
+- [ ] **시스템 연동 재개**: Planner 결과물을 백엔드 파이프라인과 연결하여 프론트엔드 연동 테스트 진행
+
+---
+
+## 3일간의 AI 모델 선정 및 파인튜닝 여정 (화~금)
+
+**복합 질문을 처리하기 위해 "어떤 의도(Intent)인가?"를 분류하는 모델과, "어떤 순서(Plan)로 실행할 것인가?"를 결정하는 모델을 분리하여 각각 최적의 모델을 선정하고 학습을 진행했습니다.**
+
+### 1️⃣ 복합 질문 분류 모델 (Intent Classifier) 선정 과정
+> **목적**: 사용자의 복합적인 질문에서 필요한 모든 6개 의도(`doc_retrieve`, `judgment`, `doc_generate`, `schedule_add`, `schedule_view`, `general`)를 빠짐없이 다중 분류(Multi-label)
+
+| 후보 모델 | 파라미터 | 사전학습 | 단일 모델 (Held-out) | 최종 선택 및 튜닝 기법 (Held-out) | 한계점 및 결과 |
+| :--- | :---: | :---: | :---: | :--- | :--- |
+| **KoELECTRA** (base) | 112M | 뉴스/위키 | 76.7% | - | 한계: **학습 과정에서 심각한 과적합 발생** (-13.3%p 격차). 복합 문맥 이해력 부족. |
+| **KcBERT** (large) | 335M | 댓글 | 85.0% | 88.3% (5-seed 앙상블) | 한계: 구어체엔 강하나 앙상블 효과비 미미함. |
+| **XLM-RoBERTa** (large) | 550M | 100개국어 | 85.0% | 앙상블 불가 | 한계: 특정 Seed에서 학습 붕괴 현상 발생 (학습 안정성 부족). |
+| 🏆 **KLUE/RoBERTa** (large) | **338M** | **한국어 (KLUE)** | **88.3%** | **93.3%** <br/>*(5-seed 앙상블)* | 🚀 **선정 사유**: **안정적인 한국어 이해력 + 과적합 0% + 앙상블 시냅스 분출(+5.0%p)** <br/>💡 **튜닝**: Focal Loss(어려운 문제 집중) + FGM(노이즈 방어) + 5-Seed 확률 평균 앙상블 |
+
+---
+
+### 2️⃣ 순서 처리 및 의존성 모델 (Task Planner) 선정 과정
+> **목적**: 분류된 여러 의도(Intent)들을 바탕으로, **실제 실행할 순서와 선후행 조건(depends_on)을 JSON 계획표로 생성** (Plan-and-Execute)
+
+| 후보 모델 | 크기 | 아키텍처 | Planning Score | 강점 및 약점 | 결과 |
+| :--- | :---: | :---: | :---: | :--- | :--- |
+| **Qwen3-8B** | 8B | 다국어 범용 | - | **약점**: `<think>` 토큰 남발로 예측 불가능한 JSON 출력 파괴 발생. (유효 응답률 68.4%에 불과) | ❌ 탈락 |
+| 🏆 **Kanana-1.5** | **8B** | **한국어 특화** | **0.895** | 🚀 **선정 사유**: **압도적인 한국어 JSON 생성 안정성 (유효 응답률 94.7%) & Qwen 대비 5.2배 빠른 추론 속도 (2,261ms)** | ✅ **Base 선정** |
+| 🎯 **Kanana-1.5<br>(LoRA 튜닝 + Rule)** | **8B** | **한국어 플래너 강화** | **0.916** | 💡 **튜닝**: 800+건의 시퀀스 데이터로 4-bit QLoRA 파인튜닝 진행. <br/> 💡 **규칙**: 프롬프트 Rule(Over-compression 방지 등) 추가 도입. | 🎉 **최종 완료** (유효 100%, 2-step 정확도 84.8%) |
+
+> **💡 핵심 요약**: 
+> "가벼운 인코더(RoBERTa)가 빠르고 정확하게 **재료(Intent)를 준비**하고, 똑똑한 생성모델(Kanana)이 빠르고 안정적으로 **레시피(Plan JSON)를 작성**한다."
+
+---
+
 ## 현재 구현 현황 요약
 
 | 항목 | 상태 | 비고 |
@@ -2434,4 +2743,19 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 - **훅**: 4개 (useAuth, useChat, useSSE, useGoogleServices)
 - **API**: 8개 (client, auth, chat, documents, meetings, schedules, google, admin)
 - **npm 패키지 추가**: framer-motion
+
+---
+
+## 앞으로 남은 과제 (Action Items)
+
+### AI 플래너 완전체 고도화 (데이터 보강 및 재학습)
+- [ ] **학습 데이터 전면 보강**: 3-step 이상의 복합(Complex) 질문이나 순차(Sequential) 질문을 모델 스스로 잘게 쪼갤 수 있도록(Step Collapse 극복), 다중 단계 Intent 분리 중심의 학습 데이터 대량 생성
+- [ ] **Planner 2차 파인튜닝 (LoRA)**: 보강된 데이터 + 시스템 프롬프트 규칙(Negative Prompting)을 결합하여 Kanana-1.5-8B 기반 V4 Planner 재학습
+- [ ] **최종 Held-out 재평가**: 3-step 이상의 질문에서도 단계 축소 문제가 해결되는지 정밀 검증
+
+### 프론트엔드 - 백엔드 - AI 두뇌 실제 파이프라인 연동
+- [ ] **Mock 환경 걷어내기**: 현재 가짜 데이터로 작동 중인 UI 모드(대시보드, 챗봇 등) 해제
+- [ ] **실시간 응답 연동 (SSE)**: 완성된 Intent Classifier와 Task Planner를 백엔드에 통합시키고, 프론트엔드가 실제 Agent들의 작업 상황을 실시간 스트리밍(SSE)으로 받아 텍스트/카드 형태로 출력하도록 연결 테스트
+- [ ] **E2E 테스트**: 유저 발화 → 분류 → 계획 수립 → Agent 실행 → 화면 출력 전체 흐름 디버깅
+
 

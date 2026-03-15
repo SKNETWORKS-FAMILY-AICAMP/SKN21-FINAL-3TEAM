@@ -20,38 +20,38 @@ import DatePicker from '../common/DatePicker';
 const TEAMS = ['개발', 'QA기획', 'UI/UX', '영업', '마케팅', 'CS'];
 
 const typeConfig = {
-    leave: { icon: Coffee, color: 'text-orange-500 bg-orange-50', label: '연차/반차 신청' },
-    remote: { icon: Home, color: 'text-teal-500 bg-teal-50', label: '재택근무 신청' },
-    room: { icon: DoorOpen, color: 'text-indigo-500 bg-indigo-50', label: '회의실 예약' },
-    design: { icon: Palette, color: 'text-pink-500 bg-pink-50', label: '디자인 에셋 요청' },
-    certificate: { icon: Award, color: 'text-yellow-600 bg-yellow-50', label: '증명서 발급 요청' },
-    budget: { icon: Receipt, color: 'text-purple-500 bg-purple-50', label: '결재 요청' },
-    review: { icon: GitPullRequest, color: 'text-blue-500 bg-blue-50', label: 'PR 리뷰 요청' },
-    deploy: { icon: Rocket, color: 'text-green-500 bg-green-50', label: '배포 승인 요청' },
-    infra: { icon: Server, color: 'text-slate-500 bg-slate-50', label: '인프라/권한 신청' },
-    security: { icon: ShieldCheck, color: 'text-red-500 bg-red-50', label: '보안 예외 처리' },
-    other: { icon: FileSignature, color: 'text-gray-500 bg-gray-50', label: '기타' },
+    leave: { icon: Coffee, color: 'text-accent-700 bg-accent-50', label: '연차/반차 신청' },
+    remote: { icon: Home, color: 'text-primary-700 bg-primary-50', label: '재택근무 신청' },
+    room: { icon: DoorOpen, color: 'text-primary-500 bg-primary-50', label: '회의실 예약' },
+    design: { icon: Palette, color: 'text-accent-500 bg-accent-50', label: '디자인 에셋 요청' },
+    certificate: { icon: Award, color: 'text-warning bg-warning-bg', label: '증명서 발급 요청' },
+    budget: { icon: Receipt, color: 'text-primary-900 bg-primary-50', label: '결재 요청' },
+    review: { icon: GitPullRequest, color: 'text-info bg-info-bg', label: 'PR 리뷰 요청' },
+    deploy: { icon: Rocket, color: 'text-success bg-success-bg', label: '배포 승인 요청' },
+    infra: { icon: Server, color: 'text-neutral-sub bg-surface-sub', label: '인프라/권한 신청' },
+    security: { icon: ShieldCheck, color: 'text-error bg-error-bg', label: '보안 예외 처리' },
+    other: { icon: FileSignature, color: 'text-neutral-muted bg-surface-sub', label: '기타' },
 };
-const defaultTypeConfig = { icon: FileSignature, color: 'text-gray-500 bg-gray-50', label: '요청' };
+const defaultTypeConfig = { icon: FileSignature, color: 'text-neutral-muted bg-surface-sub', label: '요청' };
 
 const statusBadge = {
-    pending: { label: '대기중', color: 'bg-sky-50 text-sky-600 border-sky-200', dot: 'bg-sky-400' },
-    approved: { label: '승인됨', color: 'bg-emerald-50 text-emerald-600 border-emerald-200', dot: 'bg-emerald-400' },
-    rejected: { label: '거절됨', color: 'bg-rose-50 text-rose-600 border-rose-200', dot: 'bg-rose-400' },
+    pending: { label: '대기중', color: 'bg-info-bg text-info border-primary-100', dot: 'bg-info' },
+    approved: { label: '승인됨', color: 'bg-success-bg text-success border-success-bg', dot: 'bg-success' },
+    rejected: { label: '거절됨', color: 'bg-error-bg text-error border-error-bg', dot: 'bg-error' },
 };
 
 const priorityBadge = {
-    high: 'bg-red-50 text-red-500',
-    medium: 'bg-amber-50 text-amber-500',
-    low: 'bg-green-50 text-green-500',
+    high: 'bg-error-bg text-error',
+    medium: 'bg-warning-bg text-warning',
+    low: 'bg-success-bg text-success',
 };
 
 const scheduleTypeConfig = {
-    meeting: { color: 'bg-indigo-50 text-indigo-500', label: '회의' },
-    task: { color: 'bg-sky-50 text-sky-500', label: '작업' },
-    deadline: { color: 'bg-rose-50 text-rose-500', label: '마감' },
-    review: { color: 'bg-amber-50 text-amber-500', label: '리뷰' },
-    milestone: { color: 'bg-emerald-50 text-emerald-500', label: '마일스톤' },
+    meeting: { color: 'bg-primary-50 text-primary-700', label: '회의' },
+    task: { color: 'bg-info-bg text-info', label: '작업' },
+    deadline: { color: 'bg-error-bg text-error', label: '마감' },
+    review: { color: 'bg-warning-bg text-warning', label: '리뷰' },
+    milestone: { color: 'bg-success-bg text-success', label: '마일스톤' },
 };
 
 /** suggested_day → 실제 날짜 변환 */
@@ -447,51 +447,51 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${cfg.color}`}>
                             <IconComp size={14} />
                         </div>
-                        <span className="text-[11px] font-semibold text-slate-400">{cfg.label}</span>
+                        <span className="text-[11px] font-semibold text-neutral-muted">{cfg.label}</span>
                     </div>
                     <button
                         onClick={() => handleDeleteClick(item)}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-red-50 text-slate-300 hover:text-red-400 transition-all"
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-error-bg text-neutral-muted hover:text-error transition-all"
                         title="삭제"
                     >
                         <Trash2 size={12} />
                     </button>
                 </div>
-                <h4 className="text-[13px] font-bold text-slate-700 dark:text-slate-200 leading-snug mb-1 line-clamp-2">{item.title}</h4>
+                <h4 className="text-[13px] font-bold text-neutral-main leading-snug mb-1 line-clamp-2">{item.title}</h4>
                 {item.detail && (
-                    <p className="text-[11px] text-slate-400 line-clamp-2 mb-3">{item.detail}</p>
+                    <p className="text-[11px] text-neutral-muted line-clamp-2 mb-3">{item.detail}</p>
                 )}
-                <div className="flex items-center gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-700">
+                <div className="flex items-center gap-2 pt-2.5 border-t border-neutral-divider dark:border-neutral-border">
                     {item.requester_avatar ? (
                         <img src={item.requester_avatar} alt="" className="w-7 h-7 rounded-full object-cover ring-2 ring-white dark:ring-neutral-800" />
                     ) : (
-                        <div className="w-7 h-7 rounded-full bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center text-[11px] font-bold text-sky-500">
+                        <div className="w-7 h-7 rounded-full bg-primary-100 dark:bg-primary-50 flex items-center justify-center text-[11px] font-bold text-primary-700">
                             {(item.requester_name || '?')[0]}
                         </div>
                     )}
-                    <span className="text-[11px] font-medium text-slate-500 truncate">{item.requester_name || '알 수 없음'}</span>
+                    <span className="text-[11px] font-medium text-neutral-sub truncate">{item.requester_name || '알 수 없음'}</span>
                     {item.created_at && (
-                        <span className="text-[10px] text-slate-300 ml-auto shrink-0">
+                        <span className="text-[10px] text-neutral-muted ml-auto shrink-0">
                             {timeAgo(item.created_at)}
                         </span>
                     )}
                 </div>
                 {item.file_name && (
-                    <div className="flex items-center gap-1 mt-2 text-[10px] text-slate-400">
-                        <Paperclip size={10} className="text-slate-300" />
+                    <div className="flex items-center gap-1 mt-2 text-[10px] text-neutral-muted">
+                        <Paperclip size={10} className="text-neutral-muted" />
                         <span className="truncate">{item.file_name}</span>
                     </div>
                 )}
                 <div className="flex gap-2 mt-3">
                     <button
                         onClick={() => handleApproval(item.id, true)}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-sky-50 hover:bg-sky-500 text-sky-500 hover:text-white text-[11px] font-semibold rounded-lg transition-all"
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-primary-50 hover:bg-primary-700 text-primary-700 hover:text-white text-[11px] font-semibold rounded-lg transition-all"
                     >
                         <Check size={12} /> Approve
                     </button>
                     <button
                         onClick={() => handleApproval(item.id, false)}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-rose-50 hover:bg-rose-500 text-rose-500 hover:text-white text-[11px] font-semibold rounded-lg transition-all"
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-error-bg hover:bg-error text-error hover:text-white text-[11px] font-semibold rounded-lg transition-all"
                     >
                         <X size={12} /> Reject
                     </button>
@@ -509,8 +509,8 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
         const cardBg = isPending
             ? 'bg-white/60 dark:bg-neutral-800/60'
             : isApproved
-                ? 'bg-emerald-50/40 dark:bg-emerald-900/10'
-                : 'bg-rose-50/40 dark:bg-rose-900/10';
+                ? 'bg-success-bg/40 dark:bg-success-bg/10'
+                : 'bg-error-bg/40 dark:bg-error-bg/10';
         return (
             <motion.div
                 key={item.id}
@@ -527,46 +527,46 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${cfg.color}`}>
                             <IconComp size={14} />
                         </div>
-                        <span className="text-[11px] font-semibold text-slate-400">{cfg.label}</span>
+                        <span className="text-[11px] font-semibold text-neutral-muted">{cfg.label}</span>
                     </div>
                     <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
                         isPending
-                            ? 'bg-slate-100 text-slate-400 dark:bg-slate-700/40'
+                            ? 'bg-surface-sub text-neutral-muted dark:bg-surface-hover/40'
                             : isApproved
-                                ? 'bg-emerald-50 text-emerald-500 dark:bg-emerald-900/30'
-                                : 'bg-rose-50 text-rose-500 dark:bg-rose-900/30'
+                                ? 'bg-success-bg text-success dark:bg-success-bg'
+                                : 'bg-error-bg text-error dark:bg-error-bg'
                     }`}>
                         {isPending ? <Clock size={10} /> : isApproved ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
                         {isPending ? '대기중' : isApproved ? 'Approved' : 'Rejected'}
                     </span>
                 </div>
-                <h4 className="text-[13px] font-bold text-slate-700 dark:text-slate-200 leading-snug mb-1 line-clamp-2">{item.title}</h4>
+                <h4 className="text-[13px] font-bold text-neutral-main leading-snug mb-1 line-clamp-2">{item.title}</h4>
                 {item.detail && (
-                    <p className="text-[11px] text-slate-400 line-clamp-1 mb-2">{item.detail}</p>
+                    <p className="text-[11px] text-neutral-muted line-clamp-1 mb-2">{item.detail}</p>
                 )}
                 {/* 첨부파일 표시 */}
                 {item.file_name && (
                     <div className="flex items-center gap-1 mb-2">
-                        <Paperclip size={10} className="text-slate-300" />
-                        <span className="text-[10px] text-slate-400 truncate">{item.file_name}</span>
+                        <Paperclip size={10} className="text-neutral-muted" />
+                        <span className="text-[10px] text-neutral-muted truncate">{item.file_name}</span>
                     </div>
                 )}
                 {/* 받는 사람 표시 */}
-                <div className="flex items-center gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-700">
-                    <Send size={10} className="text-slate-300 shrink-0" />
+                <div className="flex items-center gap-2 pt-2.5 border-t border-neutral-divider dark:border-neutral-border">
+                    <Send size={10} className="text-neutral-muted shrink-0" />
                     {item.target_user_avatar ? (
                         <img src={item.target_user_avatar} alt="" className="w-7 h-7 rounded-full object-cover ring-2 ring-white dark:ring-neutral-800" />
                     ) : (
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${isPending ? 'bg-slate-100 dark:bg-slate-700/30 text-slate-500' : isApproved ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-500'}`}>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${isPending ? 'bg-surface-sub dark:bg-surface-hover/30 text-neutral-sub' : isApproved ? 'bg-success-bg dark:bg-success-bg text-success' : 'bg-error-bg dark:bg-error-bg text-error'}`}>
                             {(item.target_user_name || item.target_team || '?')[0]}
                         </div>
                     )}
-                    <span className="text-[11px] font-medium text-slate-500 truncate">
+                    <span className="text-[11px] font-medium text-neutral-sub truncate">
                         {item.target_user_name || item.target_team || '알 수 없음'}
-                        {(item.target_user_team || item.target_team) && <span className="text-[9px] text-slate-300 ml-1">({item.target_user_team || item.target_team})</span>}
+                        {(item.target_user_team || item.target_team) && <span className="text-[9px] text-neutral-muted ml-1">({item.target_user_team || item.target_team})</span>}
                     </span>
                     {item.created_at && (
-                        <span className="text-[10px] text-slate-300 ml-auto shrink-0">
+                        <span className="text-[10px] text-neutral-muted ml-auto shrink-0">
                             {timeAgo(item.created_at)}
                         </span>
                     )}
@@ -594,7 +594,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
     return (
         <div className="space-y-4">
             {loading ? (
-                <div className="flex items-center justify-center h-64 text-slate-400">
+                <div className="flex items-center justify-center h-64 text-neutral-muted">
                     <RefreshCw className="animate-spin mr-2" size={18} /> 로딩 중...
                 </div>
             ) : (
@@ -602,20 +602,20 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                     {/* ── Pending column ── */}
                     <div className="flex flex-col min-h-[420px]">
                         <div className="flex items-center justify-center gap-2 mb-3">
-                            <div className="w-2 h-2 rounded-full bg-sky-400" />
-                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300 tracking-tight">Pending</span>
-                            <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+                            <div className="w-2 h-2 rounded-full bg-info" />
+                            <span className="text-sm font-bold text-neutral-main tracking-tight">Pending</span>
+                            <span className="text-[11px] font-semibold text-neutral-muted bg-surface-sub dark:bg-surface-hover px-2 py-0.5 rounded-full">
                                 {pendingItems.length}
                             </span>
                         </div>
-                        <div className="flex-1 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-200/50 dark:border-slate-700/50">
+                        <div className="flex-1 bg-surface-hover/80 dark:bg-surface-card/40 rounded-2xl p-4 border border-neutral-border/50 dark:border-neutral-border/50">
                             <div className="space-y-3">
                                 <AnimatePresence mode="popLayout">
                                     {pendingItems.map(renderPendingCard)}
                                 </AnimatePresence>
                                 {pendingItems.length === 0 && (
-                                    <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-600">
-                                        <span className="text-[11px] text-slate-300 dark:text-slate-500">비어 있음</span>
+                                    <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-neutral-border dark:border-neutral-border">
+                                        <span className="text-[11px] text-neutral-muted dark:text-neutral-muted">비어 있음</span>
                                     </div>
                                 )}
                             </div>
@@ -625,20 +625,20 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                     {/* ── Sent column (Approved + Rejected 통합) ── */}
                     <div className="flex flex-col min-h-[420px]">
                         <div className="flex items-center justify-center gap-2 mb-3">
-                            <div className="w-2 h-2 rounded-full bg-amber-400" />
-                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300 tracking-tight">Sent</span>
-                            <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+                            <div className="w-2 h-2 rounded-full bg-warning" />
+                            <span className="text-sm font-bold text-neutral-main tracking-tight">Sent</span>
+                            <span className="text-[11px] font-semibold text-neutral-muted bg-surface-sub dark:bg-surface-hover px-2 py-0.5 rounded-full">
                                 {sentItems.length}
                             </span>
                         </div>
-                        <div className="flex-1 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-200/50 dark:border-slate-700/50">
+                        <div className="flex-1 bg-surface-hover/80 dark:bg-surface-card/40 rounded-2xl p-4 border border-neutral-border/50 dark:border-neutral-border/50">
                             <div className="space-y-3">
                                 <AnimatePresence mode="popLayout">
                                     {sentItems.map(renderSentCard)}
                                 </AnimatePresence>
                                 {sentItems.length === 0 && (
-                                    <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-600">
-                                        <span className="text-[11px] text-slate-300 dark:text-slate-500">비어 있음</span>
+                                    <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-neutral-border dark:border-neutral-border">
+                                        <span className="text-[11px] text-neutral-muted dark:text-neutral-muted">비어 있음</span>
                                     </div>
                                 )}
                             </div>
@@ -648,12 +648,12 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                     {/* ── Column 3: New Tasks (AI 추천 - 결재 + 일정) ── */}
                     <div className="flex flex-col min-h-[420px]">
                         <div className="flex items-center justify-center gap-2 mb-3">
-                            <div className="w-2 h-2 rounded-full bg-violet-400" />
-                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300 tracking-tight">New Tasks</span>
+                            <div className="w-2 h-2 rounded-full bg-primary-500" />
+                            <span className="text-sm font-bold text-neutral-main tracking-tight">New Tasks</span>
                             <button
                                 onClick={() => newTasksTab === 'approvals' ? handleSuggest() : loadScheduleSuggestions()}
                                 disabled={suggestLoading || schedSuggestLoading}
-                                className="p-1 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-600/40 text-slate-400 hover:text-slate-600 transition-colors"
+                                className="p-1 rounded-lg hover:bg-neutral-divider/60 dark:hover:bg-surface-hover/40 text-neutral-muted hover:text-neutral-sub transition-colors"
                                 title="새로고침"
                             >
                                 <RefreshCw size={12} className={(suggestLoading || schedSuggestLoading) ? 'animate-spin' : ''} />
@@ -664,48 +664,48 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                         <div className="flex gap-1 mb-2">
                             <button
                                 onClick={() => switchNewTasksTab('approvals')}
-                                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all ${newTasksTab === 'approvals' ? 'bg-violet-100 text-violet-600' : 'text-slate-400 hover:bg-slate-100'}`}
+                                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all ${newTasksTab === 'approvals' ? 'bg-primary-100 text-primary-700' : 'text-neutral-muted hover:bg-surface-sub'}`}
                             >
                                 결재 추천
                             </button>
                             <button
                                 onClick={() => switchNewTasksTab('schedules')}
-                                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${newTasksTab === 'schedules' ? 'bg-violet-100 text-violet-600' : 'text-slate-400 hover:bg-slate-100'}`}
+                                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${newTasksTab === 'schedules' ? 'bg-primary-100 text-primary-700' : 'text-neutral-muted hover:bg-surface-sub'}`}
                             >
                                 <CalendarClock size={11} /> 일정 추천
                             </button>
                         </div>
 
-                        <div className="flex-1 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-200/50 dark:border-slate-700/50 overflow-y-auto max-h-[560px]">
+                        <div className="flex-1 bg-surface-hover/80 dark:bg-surface-card/40 rounded-2xl p-4 border border-neutral-border/50 dark:border-neutral-border/50 overflow-y-auto max-h-[560px]">
                             {/* ── 결재 추천 탭 ── */}
                             {newTasksTab === 'approvals' && (
                                 <>
                                     {suggestContext && !suggestLoading && (
                                         <div className="flex flex-wrap gap-1.5 mb-3">
-                                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-500">태스크 {suggestContext.total_tasks}</span>
-                                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-500">완료 {suggestContext.done_pct}%</span>
-                                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-violet-50 text-violet-500">일정 {suggestContext.upcoming_events}</span>
+                                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-info-bg text-info">태스크 {suggestContext.total_tasks}</span>
+                                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-success-bg text-success">완료 {suggestContext.done_pct}%</span>
+                                            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-primary-50 text-primary-700">일정 {suggestContext.upcoming_events}</span>
                                         </div>
                                     )}
                                     {suggestLoading ? (
                                         <div className="flex flex-col items-center justify-center py-12">
                                             <div className="relative w-10 h-10 mb-3">
-                                                <div className="absolute inset-0 rounded-full border-2 border-violet-100" />
-                                                <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-violet-400 animate-spin" />
-                                                <Sparkles size={14} className="absolute inset-0 m-auto text-violet-400" />
+                                                <div className="absolute inset-0 rounded-full border-2 border-primary-100" />
+                                                <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary-500 animate-spin" />
+                                                <Sparkles size={14} className="absolute inset-0 m-auto text-primary-500" />
                                             </div>
-                                            <p className="text-xs text-slate-400">분석 중...</p>
+                                            <p className="text-xs text-neutral-muted">분석 중...</p>
                                         </div>
                                     ) : suggestError ? (
-                                        <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-rose-200 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-900/10">
-                                            <XCircle size={14} className="text-rose-300 mb-1" />
-                                            <span className="text-[10px] text-rose-400 text-center px-2 leading-relaxed">{suggestError}</span>
-                                            <button onClick={handleSuggest} className="mt-1.5 text-[10px] text-sky-500 hover:underline">다시 시도</button>
+                                        <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-error-bg dark:border-error-bg bg-error-bg/50 dark:bg-error-bg/10">
+                                            <XCircle size={14} className="text-error mb-1" />
+                                            <span className="text-[10px] text-error text-center px-2 leading-relaxed">{suggestError}</span>
+                                            <button onClick={handleSuggest} className="mt-1.5 text-[10px] text-primary-700 hover:underline">다시 시도</button>
                                         </div>
                                     ) : filteredSuggestions.length === 0 ? (
-                                        <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-600">
-                                            <Zap size={14} className="text-slate-300 mb-1" />
-                                            <span className="text-[11px] text-slate-300">추천 없음</span>
+                                        <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-neutral-border dark:border-neutral-border">
+                                            <Zap size={14} className="text-neutral-muted mb-1" />
+                                            <span className="text-[11px] text-neutral-muted">추천 없음</span>
                                         </div>
                                     ) : (
                                         <div className="grid grid-cols-2 gap-2.5">
@@ -740,7 +740,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                                             <div className="flex flex-col items-center text-center gap-1.5">
                                                                 <div className="flex items-center justify-between w-full">
                                                                     {project && (
-                                                                        <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-500 dark:bg-indigo-900/30 flex items-center gap-0.5">
+                                                                        <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-md bg-primary-50 text-primary-700 dark:bg-primary-50 flex items-center gap-0.5">
                                                                             <FolderOpen size={8} /> {project}
                                                                         </span>
                                                                     )}
@@ -751,13 +751,13 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                                                         </span>
                                                                     )}
                                                                 </div>
-                                                                <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-200 group-hover:text-violet-500 transition-colors line-clamp-2 leading-snug">
+                                                                <h4 className="text-[11px] font-bold text-neutral-main group-hover:text-primary-700 transition-colors line-clamp-2 leading-snug">
                                                                     {s.title}
                                                                 </h4>
                                                                 {s.reason && (
-                                                                    <p className="text-[9px] text-slate-400 line-clamp-2 leading-relaxed">{s.reason}</p>
+                                                                    <p className="text-[9px] text-neutral-muted line-clamp-2 leading-relaxed">{s.reason}</p>
                                                                 )}
-                                                                <Plus size={12} className="text-slate-300 group-hover:text-violet-400 transition-colors mt-0.5" />
+                                                                <Plus size={12} className="text-neutral-muted group-hover:text-primary-500 transition-colors mt-0.5" />
                                                             </div>
                                                         </motion.div>
                                                     );
@@ -774,22 +774,22 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                     {schedSuggestLoading ? (
                                         <div className="flex flex-col items-center justify-center py-12">
                                             <div className="relative w-10 h-10 mb-3">
-                                                <div className="absolute inset-0 rounded-full border-2 border-violet-100" />
-                                                <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-violet-400 animate-spin" />
-                                                <CalendarClock size={14} className="absolute inset-0 m-auto text-violet-400" />
+                                                <div className="absolute inset-0 rounded-full border-2 border-primary-100" />
+                                                <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary-500 animate-spin" />
+                                                <CalendarClock size={14} className="absolute inset-0 m-auto text-primary-500" />
                                             </div>
-                                            <p className="text-xs text-slate-400">일정 분석 중...</p>
+                                            <p className="text-xs text-neutral-muted">일정 분석 중...</p>
                                         </div>
                                     ) : schedSuggestError ? (
-                                        <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-rose-200 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-900/10">
-                                            <XCircle size={14} className="text-rose-300 mb-1" />
-                                            <span className="text-[10px] text-rose-400 text-center px-2 leading-relaxed">{schedSuggestError}</span>
-                                            <button onClick={loadScheduleSuggestions} className="mt-1.5 text-[10px] text-sky-500 hover:underline">다시 시도</button>
+                                        <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-error-bg dark:border-error-bg bg-error-bg/50 dark:bg-error-bg/10">
+                                            <XCircle size={14} className="text-error mb-1" />
+                                            <span className="text-[10px] text-error text-center px-2 leading-relaxed">{schedSuggestError}</span>
+                                            <button onClick={loadScheduleSuggestions} className="mt-1.5 text-[10px] text-primary-700 hover:underline">다시 시도</button>
                                         </div>
                                     ) : scheduleSuggestions.length === 0 ? (
-                                        <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-600">
-                                            <CalendarClock size={14} className="text-slate-300 mb-1" />
-                                            <span className="text-[11px] text-slate-300">추천 일정 없음</span>
+                                        <div className="h-28 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-neutral-border dark:border-neutral-border">
+                                            <CalendarClock size={14} className="text-neutral-muted mb-1" />
+                                            <span className="text-[11px] text-neutral-muted">추천 일정 없음</span>
                                         </div>
                                     ) : (
                                         <div className="space-y-2.5">
@@ -819,24 +819,24 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                                                     )}
                                                                 </div>
                                                                 {s.duration_minutes && (
-                                                                    <span className="text-[9px] text-slate-300 shrink-0">{s.duration_minutes}분</span>
+                                                                    <span className="text-[9px] text-neutral-muted shrink-0">{s.duration_minutes}분</span>
                                                                 )}
                                                             </div>
-                                                            <h4 className="text-[12px] font-bold text-slate-700 dark:text-slate-200 leading-snug mb-1 line-clamp-2">
+                                                            <h4 className="text-[12px] font-bold text-neutral-main leading-snug mb-1 line-clamp-2">
                                                                 {s.title}
                                                             </h4>
                                                             {s.reason && (
-                                                                <p className="text-[9px] text-slate-400 line-clamp-2 leading-relaxed mb-2">{s.reason}</p>
+                                                                <p className="text-[9px] text-neutral-muted line-clamp-2 leading-relaxed mb-2">{s.reason}</p>
                                                             )}
                                                             {s.suggested_day && (
-                                                                <span className="text-[9px] text-slate-300 block mb-2">
+                                                                <span className="text-[9px] text-neutral-muted block mb-2">
                                                                     {s.suggested_day === 'today' ? '오늘' : s.suggested_day === 'tomorrow' ? '내일' : s.suggested_day === 'this_week' ? '이번 주' : s.suggested_day}
                                                                 </span>
                                                             )}
                                                             <button
                                                                 onClick={() => openSchedulePicker(s, idx)}
                                                                 disabled={isAdding}
-                                                                className="w-full flex items-center justify-center gap-1.5 py-2 bg-violet-50 hover:bg-violet-500 text-violet-500 hover:text-white text-[11px] font-bold rounded-lg transition-all disabled:opacity-50"
+                                                                className="w-full flex items-center justify-center gap-1.5 py-2 bg-primary-50 hover:bg-primary-700 text-primary-700 hover:text-white text-[11px] font-bold rounded-lg transition-all disabled:opacity-50"
                                                             >
                                                                 {isAdding ? (
                                                                     <RefreshCw size={12} className="animate-spin" />
@@ -870,15 +870,15 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                     <motion.div
                         initial={{ scale: 0.95, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl p-6 w-full max-w-sm border border-white/40 dark:border-white/10"
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-white/40 dark:border-white/10"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex flex-col items-center text-center">
-                            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-3">
-                                <Trash2 size={20} className="text-red-400" />
+                            <div className="w-12 h-12 rounded-full bg-error-bg flex items-center justify-center mb-3">
+                                <Trash2 size={20} className="text-error" />
                             </div>
-                            <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">요청을 삭제하시겠습니까?</h3>
-                            <p className="text-sm text-slate-400 mb-5 line-clamp-2">"{deleteConfirm.title}"</p>
+                            <h3 className="text-base font-bold text-neutral-main dark:text-white mb-1">요청을 삭제하시겠습니까?</h3>
+                            <p className="text-sm text-neutral-muted mb-5 line-clamp-2">"{deleteConfirm.title}"</p>
                             <div className="flex gap-3 w-full">
                                 <button
                                     onClick={() => setDeleteConfirm(null)}
@@ -888,7 +888,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                 </button>
                                 <button
                                     onClick={handleDeleteConfirm}
-                                    className="flex-1 py-2.5 bg-red-500 text-white text-xs font-black rounded-xl shadow-xl shadow-red-500/20 hover:bg-red-600 hover:scale-105 transition-all"
+                                    className="flex-1 py-2.5 bg-error text-white text-xs font-black rounded-xl shadow-xl shadow-error/20 hover:bg-error/90 hover:scale-105 transition-all"
                                 >
                                     삭제
                                 </button>
@@ -914,22 +914,22 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                     <motion.div
                         initial={{ scale: 0.95, opacity: 0, y: 20 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
-                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl p-8 w-full max-w-md mx-4 overflow-hidden border border-white/40 dark:border-white/10"
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-md mx-4 overflow-hidden border border-white/40 dark:border-white/10"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-lg font-bold text-slate-800 dark:text-white">새 요청 올리기</h3>
-                            <button onClick={() => { setShowModal(false); setAppliedSuggestionIdx(null); }} className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 transition-colors flex items-center justify-center">
+                            <h3 className="text-lg font-bold text-neutral-main dark:text-white">새 요청 올리기</h3>
+                            <button onClick={() => { setShowModal(false); setAppliedSuggestionIdx(null); }} className="w-8 h-8 rounded-lg hover:bg-surface-sub dark:hover:bg-white/5 text-neutral-muted transition-colors flex items-center justify-center">
                                 <X size={18} />
                             </button>
                         </div>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">유형</label>
+                                <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">유형</label>
                                 <select
                                     value={formData.type}
                                     onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
-                                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition-all"
+                                    className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                                 >
                                     {Object.entries(typeConfig).map(([key, cfg]) => (
                                         <option key={key} value={key}>{cfg.label}</option>
@@ -938,31 +938,31 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                             </div>
                             {formData.type === 'other' && (
                                 <div>
-                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">유형 직접 입력</label>
+                                    <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">유형 직접 입력</label>
                                     <input
                                         type="text"
                                         value={formData.customType}
                                         onChange={(e) => setFormData(prev => ({ ...prev, customType: e.target.value }))}
                                         placeholder="예: 출장 신청, 장비 요청 등"
-                                        className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition-all"
+                                        className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                                     />
                                 </div>
                             )}
                             {/* 대상 팀 / 팀원 선택 */}
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">보낼 팀</label>
+                                    <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">보낼 팀</label>
                                     <select
                                         value={formData.target_team}
                                         onChange={(e) => setFormData(prev => ({ ...prev, target_team: e.target.value, target_user_id: '' }))}
-                                        className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition-all"
+                                        className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                                     >
                                         <option value="">전체</option>
                                         {TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">보낼 팀원</label>
+                                    <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">보낼 팀원</label>
                                     <MemberDropdown
                                         members={allMembers.filter(m => !formData.target_team || m.team === formData.target_team)}
                                         value={formData.target_user_id}
@@ -971,39 +971,39 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">제목</label>
+                                <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">제목</label>
                                 <input
                                     type="text"
                                     value={formData.title}
                                     onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                                     placeholder="요청 제목을 입력하세요"
-                                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition-all placeholder:text-slate-300"
+                                    className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all placeholder:text-neutral-muted"
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">상세 내용</label>
+                                <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">상세 내용</label>
                                 <textarea
                                     value={formData.detail}
                                     onChange={(e) => setFormData(prev => ({ ...prev, detail: e.target.value }))}
                                     placeholder="상세 내용을 입력하세요 (선택)"
                                     rows={4}
-                                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent resize-none transition-all placeholder:text-slate-300"
+                                    className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none transition-all placeholder:text-neutral-muted"
                                 />
                             </div>
                             <div>
-                                <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">첨부파일 (선택)</label>
+                                <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">첨부파일 (선택)</label>
                                 <input
                                     type="file"
                                     accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg,.gif,.webp"
                                     onChange={(e) => setFormFile(e.target.files[0] || null)}
-                                    className="w-full text-sm text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-500 hover:file:bg-slate-200 dark:file:bg-slate-700 dark:file:text-slate-300"
+                                    className="w-full text-sm text-neutral-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-surface-sub file:text-neutral-sub hover:file:bg-neutral-divider dark:file:bg-surface-hover dark:file:text-neutral-sub"
                                 />
                                 {formFile && (
-                                    <div className="flex items-center gap-1 mt-1 text-xs text-slate-400">
+                                    <div className="flex items-center gap-1 mt-1 text-xs text-neutral-muted">
                                         <Paperclip size={12} />
                                         <span className="truncate">{formFile.name}</span>
-                                        <button type="button" onClick={() => setFormFile(null)} className="ml-1 p-0.5 rounded hover:bg-red-100 text-red-400 hover:text-red-600 transition-colors">
+                                        <button type="button" onClick={() => setFormFile(null)} className="ml-1 p-0.5 rounded hover:bg-error-bg text-error hover:text-error transition-colors">
                                             <X size={14} />
                                         </button>
                                     </div>
@@ -1044,7 +1044,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                     <motion.div
                         initial={{ scale: 0.95, opacity: 0, y: 20 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
-                        className={`relative backdrop-blur-xl rounded-[2.5rem] shadow-2xl w-full max-w-lg mx-4 overflow-hidden ${selectedSent.status === 'approved' ? 'bg-emerald-50/70 dark:bg-emerald-950/60' : selectedSent.status === 'pending' ? 'bg-white/80 dark:bg-neutral-900/80' : 'bg-rose-50/70 dark:bg-rose-950/60'}`}
+                        className={`relative backdrop-blur-xl rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden ${selectedSent.status === 'approved' ? 'bg-success-bg/70 dark:bg-success-bg/20' : selectedSent.status === 'pending' ? 'bg-white/80 dark:bg-neutral-900/80' : 'bg-error-bg/70 dark:bg-error-bg/20'}`}
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* 헤더 */}
@@ -1055,29 +1055,29 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                         {(() => { const IC = (typeConfig[selectedSent.type] || defaultTypeConfig).icon; return <IC size={20} />; })()}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <span className="text-[11px] font-semibold text-slate-400">{(typeConfig[selectedSent.type] || defaultTypeConfig).label}</span>
+                                        <span className="text-[11px] font-semibold text-neutral-muted">{(typeConfig[selectedSent.type] || defaultTypeConfig).label}</span>
                                         {editMode ? (
                                             <input
                                                 value={editTitle}
                                                 onChange={(e) => setEditTitle(e.target.value)}
-                                                className="w-full text-lg font-bold text-slate-800 dark:text-white bg-white/60 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-sky-400"
+                                                className="w-full text-lg font-bold text-neutral-main dark:text-white bg-white/60 dark:bg-black/20 border border-neutral-border dark:border-neutral-border rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-primary-500"
                                             />
                                         ) : (
-                                            <h3 className="text-lg font-bold text-slate-800 dark:text-white leading-tight">{selectedSent.title}</h3>
+                                            <h3 className="text-lg font-bold text-neutral-main dark:text-white leading-tight">{selectedSent.title}</h3>
                                         )}
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                     <span className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full ${selectedSent.status === 'approved'
-                                        ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
+                                        ? 'bg-success-bg text-success dark:bg-success-bg dark:text-success'
                                         : selectedSent.status === 'pending'
-                                            ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400'
-                                            : 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400'
+                                            ? 'bg-warning-bg text-warning dark:bg-warning-bg dark:text-warning'
+                                            : 'bg-error-bg text-error dark:bg-error-bg dark:text-error'
                                     }`}>
                                         {selectedSent.status === 'approved' ? <CheckCircle2 size={14} /> : selectedSent.status === 'pending' ? <Clock size={14} /> : <XCircle size={14} />}
                                         {selectedSent.status === 'approved' ? 'Approved' : selectedSent.status === 'pending' ? '대기중' : 'Rejected'}
                                     </span>
-                                    <button onClick={closeSentDetail} className="w-8 h-8 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 transition-colors flex items-center justify-center">
+                                    <button onClick={closeSentDetail} className="w-8 h-8 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-neutral-muted transition-colors flex items-center justify-center">
                                         <X size={18} />
                                     </button>
                                 </div>
@@ -1087,70 +1087,70 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                         <div className="px-6 pb-6 space-y-4 max-h-[60vh] overflow-y-auto">
                             {/* 상세 내용 */}
                             <div className="mt-4">
-                                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">상세 내용</h4>
+                                <h4 className="text-[11px] font-bold text-neutral-muted uppercase tracking-wider mb-2">상세 내용</h4>
                                 {editMode ? (
                                     <textarea
                                         value={editDetail}
                                         onChange={(e) => setEditDetail(e.target.value)}
                                         rows={4}
-                                        className="w-full text-sm text-slate-600 dark:text-slate-300 bg-white/60 dark:bg-black/20 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-sky-400 resize-none"
+                                        className="w-full text-sm text-neutral-main dark:text-neutral-sub bg-white/60 dark:bg-black/20 border border-neutral-border dark:border-neutral-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                                         placeholder="상세 내용을 입력하세요"
                                     />
                                 ) : (
-                                    <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl">
+                                    <p className="text-sm text-neutral-main dark:text-neutral-sub whitespace-pre-wrap bg-surface-hover dark:bg-surface-card/50 p-3 rounded-xl">
                                         {selectedSent.detail || '(내용 없음)'}
                                     </p>
                                 )}
                             </div>
 
                             {/* 받는 사람 */}
-                            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">받는 사람</span>
+                            <div className="bg-surface-hover dark:bg-surface-card/50 p-4 rounded-xl">
+                                <span className="text-[10px] font-bold text-neutral-muted uppercase tracking-wider">받는 사람</span>
                                 <div className="flex items-center gap-3 mt-2">
                                     {selectedSent.target_user_avatar ? (
                                         <img src={selectedSent.target_user_avatar} alt="" className="w-9 h-9 rounded-full object-cover ring-2 ring-white dark:ring-neutral-800" />
                                     ) : (
-                                        <div className="w-9 h-9 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-sm font-bold text-violet-500">
+                                        <div className="w-9 h-9 rounded-full bg-primary-100 dark:bg-primary-50 flex items-center justify-center text-sm font-bold text-primary-700">
                                             {(selectedSent.target_user_name || selectedSent.target_team || '?')[0]}
                                         </div>
                                     )}
-                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    <span className="text-sm font-semibold text-neutral-main dark:text-neutral-sub">
                                         {selectedSent.target_user_name || selectedSent.target_team || '알 수 없음'}
-                                        {(selectedSent.target_user_team || selectedSent.target_team) && <span className="text-xs text-slate-400 font-normal ml-1">({selectedSent.target_user_team || selectedSent.target_team})</span>}
+                                        {(selectedSent.target_user_team || selectedSent.target_team) && <span className="text-xs text-neutral-muted font-normal ml-1">({selectedSent.target_user_team || selectedSent.target_team})</span>}
                                     </span>
                                 </div>
                             </div>
 
                             {/* 시간 정보 */}
-                            <div className="flex items-center gap-4 text-[11px] text-slate-400">
+                            <div className="flex items-center gap-4 text-[11px] text-neutral-muted">
                                 <div className="flex items-center gap-1.5">
                                     <Clock size={12} />
                                     <span>요청일: {selectedSent.created_at ? new Date(selectedSent.created_at).toLocaleString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</span>
                                 </div>
-                                <span className="text-slate-300">•</span>
+                                <span className="text-neutral-muted">•</span>
                                 <span>{timeAgo(selectedSent.created_at)}</span>
                             </div>
 
                             {/* 첨부파일 */}
                             {selectedSent.file_name && (
                                 <div>
-                                    <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">첨부파일</h4>
-                                    <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                                    <h4 className="text-[11px] font-bold text-neutral-muted uppercase tracking-wider mb-2">첨부파일</h4>
+                                    <div className="border border-neutral-border dark:border-neutral-border rounded-xl overflow-hidden">
                                         {/* 미리보기 (이미지/PDF) */}
                                         {previewUrl && /\.(png|jpg|jpeg|gif|webp)$/i.test(selectedSent.file_name) && (
-                                            <div className="bg-slate-50 dark:bg-slate-800 p-2">
+                                            <div className="bg-surface-hover dark:bg-surface-card p-2">
                                                 <img src={previewUrl} alt={selectedSent.file_name} className="max-h-64 mx-auto rounded-lg object-contain" />
                                             </div>
                                         )}
                                         {previewUrl && /\.pdf$/i.test(selectedSent.file_name) && (
-                                            <div className="bg-slate-50 dark:bg-slate-800">
+                                            <div className="bg-surface-hover dark:bg-surface-card">
                                                 <iframe src={previewUrl} className="w-full h-64" title="PDF Preview" />
                                             </div>
                                         )}
                                         <div className="flex items-center justify-between p-3 bg-white dark:bg-neutral-800">
                                             <div className="flex items-center gap-2 min-w-0">
-                                                <Paperclip size={14} className="text-slate-400 shrink-0" />
-                                                <span className="text-sm text-slate-600 dark:text-slate-300 truncate">{selectedSent.file_name}</span>
+                                                <Paperclip size={14} className="text-neutral-muted shrink-0" />
+                                                <span className="text-sm text-neutral-main dark:text-neutral-sub truncate">{selectedSent.file_name}</span>
                                             </div>
                                             <div className="flex gap-1.5 shrink-0">
                                                 {previewUrl && (
@@ -1158,7 +1158,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                                         href={previewUrl}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-500 transition-colors"
+                                                        className="p-1.5 rounded-lg bg-surface-sub hover:bg-neutral-divider dark:bg-surface-hover dark:hover:bg-neutral-border text-neutral-sub transition-colors"
                                                         title="미리보기"
                                                     >
                                                         <Eye size={14} />
@@ -1166,7 +1166,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                                 )}
                                                 <button
                                                     onClick={() => downloadApprovalFile(selectedSent.id, selectedSent.file_name)}
-                                                    className="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/20 dark:hover:bg-sky-900/40 text-sky-500 transition-colors"
+                                                    className="p-1.5 rounded-lg bg-primary-50 hover:bg-primary-100 dark:bg-primary-50/20 dark:hover:bg-primary-50/40 text-primary-700 transition-colors"
                                                     title="다운로드"
                                                 >
                                                     <Download size={14} />
@@ -1178,19 +1178,19 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                             )}
 
                             {/* 액션 버튼 */}
-                            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex gap-2">
+                            <div className="pt-2 border-t border-neutral-divider dark:border-neutral-border flex gap-2">
                                 {editMode ? (
                                     <>
                                         <button
                                             onClick={() => setEditMode(false)}
-                                            className="flex-1 py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all"
+                                            className="flex-1 py-2.5 text-xs font-semibold text-neutral-muted hover:text-neutral-sub hover:bg-surface-hover dark:hover:bg-surface-card rounded-xl transition-all"
                                         >
                                             취소
                                         </button>
                                         <button
                                             onClick={saveEdit}
                                             disabled={editSaving || !editTitle.trim()}
-                                            className="flex-1 py-2.5 text-xs font-semibold text-white bg-sky-500 hover:bg-sky-600 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                            className="flex-1 py-2.5 text-xs font-semibold text-white bg-primary-700 hover:bg-primary-900 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
                                         >
                                             <Check size={13} /> {editSaving ? '저장 중...' : '저장'}
                                         </button>
@@ -1199,13 +1199,13 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                     <>
                                         <button
                                             onClick={startEdit}
-                                            className="flex-1 py-2.5 text-xs font-semibold text-sky-500 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                                            className="flex-1 py-2.5 text-xs font-semibold text-primary-700 hover:text-primary-900 hover:bg-primary-50 dark:hover:bg-primary-50/20 rounded-xl transition-all flex items-center justify-center gap-1.5"
                                         >
                                             <Pencil size={13} /> 수정
                                         </button>
                                         <button
                                             onClick={() => { closeSentDetail(); handleDeleteClick(selectedSent); }}
-                                            className="flex-1 py-2.5 text-xs font-semibold text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all flex items-center justify-center gap-1.5"
+                                            className="flex-1 py-2.5 text-xs font-semibold text-error hover:text-error hover:bg-error-bg dark:hover:bg-error-bg/20 rounded-xl transition-all flex items-center justify-center gap-1.5"
                                         >
                                             <Trash2 size={13} /> 삭제
                                         </button>
@@ -1230,17 +1230,17 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                     <motion.div
                         initial={{ scale: 0.95, opacity: 0, y: 20 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
-                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl p-6 w-full max-w-sm border border-white/40 dark:border-white/10"
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-white/40 dark:border-white/10"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between mb-5">
                             <div className="flex items-center gap-2">
-                                <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center">
-                                    <CalendarPlus size={20} className="text-violet-500" />
+                                <div className="w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-50 flex items-center justify-center">
+                                    <CalendarPlus size={20} className="text-primary-700" />
                                 </div>
-                                <h3 className="text-base font-bold text-slate-800 dark:text-white">캘린더에 추가</h3>
+                                <h3 className="text-base font-bold text-neutral-main dark:text-white">캘린더에 추가</h3>
                             </div>
-                            <button onClick={() => setSchedulePickerData(null)} className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 transition-colors flex items-center justify-center">
+                            <button onClick={() => setSchedulePickerData(null)} className="w-8 h-8 rounded-lg hover:bg-surface-sub dark:hover:bg-white/5 text-neutral-muted transition-colors flex items-center justify-center">
                                 <X size={18} />
                             </button>
                         </div>
@@ -1248,20 +1248,20 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                         {/* 일정 제목 (수정 가능) */}
                         <div className="space-y-3">
                             <div>
-                                <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">일정 이름</label>
+                                <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">일정 이름</label>
                                 <input
                                     type="text"
                                     value={pickerTitle}
                                     onChange={(e) => setPickerTitle(e.target.value)}
                                     placeholder="일정 이름을 입력하세요"
-                                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all placeholder:text-slate-300"
+                                    className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm font-semibold outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all placeholder:text-neutral-muted"
                                 />
                                 {schedulePickerData.suggestion.reason && (
-                                    <p className="text-[10px] text-slate-400 mt-1.5 ml-0.5 line-clamp-2">{schedulePickerData.suggestion.reason}</p>
+                                    <p className="text-[10px] text-neutral-muted mt-1.5 ml-0.5 line-clamp-2">{schedulePickerData.suggestion.reason}</p>
                                 )}
                             </div>
                             <div>
-                                <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">날짜</label>
+                                <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">날짜</label>
                                 <DatePicker
                                     value={pickerDate}
                                     onChange={(date) => setPickerDate(date)}
@@ -1273,28 +1273,28 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                     type="checkbox"
                                     checked={pickerAllDay}
                                     onChange={(e) => setPickerAllDay(e.target.checked)}
-                                    className="w-4 h-4 rounded border-slate-300 accent-violet-500"
+                                    className="w-4 h-4 rounded border-neutral-border accent-primary-700"
                                 />
-                                <span className="text-sm text-slate-600 dark:text-slate-300">종일</span>
+                                <span className="text-sm text-neutral-main dark:text-neutral-sub">종일</span>
                             </label>
                             {!pickerAllDay && (
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">시작 시간</label>
+                                        <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">시작 시간</label>
                                         <input
                                             type="time"
                                             value={pickerStartTime}
                                             onChange={(e) => setPickerStartTime(e.target.value)}
-                                            className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all"
+                                            className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 ml-0.5">종료 시간</label>
+                                        <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">종료 시간</label>
                                         <input
                                             type="time"
                                             value={pickerEndTime}
                                             onChange={(e) => setPickerEndTime(e.target.value)}
-                                            className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition-all"
+                                            className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                                         />
                                     </div>
                                 </div>
@@ -1311,7 +1311,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                             <button
                                 onClick={confirmAddSchedule}
                                 disabled={addingScheduleId != null || !pickerDate}
-                                className="flex-1 py-2.5 bg-violet-500 text-white text-xs font-black rounded-xl shadow-xl shadow-violet-500/20 hover:bg-violet-600 hover:scale-105 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                className="flex-1 py-2.5 bg-primary-700 text-white text-xs font-black rounded-xl shadow-xl shadow-primary-700/20 hover:bg-primary-900 hover:scale-105 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
                             >
                                 {addingScheduleId != null ? (
                                     <><RefreshCw size={12} className="animate-spin" /> 추가 중...</>
@@ -1340,18 +1340,18 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="relative bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-[340px] p-8 mx-4 border border-white/40 dark:border-white/10"
+                        className="relative bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-[340px] p-8 mx-4 border border-white/40 dark:border-white/10"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex flex-col items-center text-center">
                             <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
                                 scheduleResult.success
-                                    ? 'bg-emerald-50 dark:bg-emerald-900/20'
-                                    : 'bg-red-50 dark:bg-red-900/20'
+                                    ? 'bg-success-bg dark:bg-success-bg'
+                                    : 'bg-error-bg dark:bg-error-bg'
                             }`}>
                                 {scheduleResult.success
-                                    ? <CheckCircle2 size={32} className="text-emerald-500" />
-                                    : <XCircle size={32} className="text-red-500" />
+                                    ? <CheckCircle2 size={32} className="text-success" />
+                                    : <XCircle size={32} className="text-error" />
                                 }
                             </div>
                             <h3 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight mb-2">
@@ -1364,8 +1364,8 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                 onClick={() => setScheduleResult(null)}
                                 className={`w-full py-3 text-sm font-extrabold rounded-xl shadow-lg transition-all ${
                                     scheduleResult.success
-                                        ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                                        : 'bg-red-500 text-white hover:bg-red-600'
+                                        ? 'bg-success text-white hover:bg-success/90'
+                                        : 'bg-error text-white hover:bg-error/90'
                                 }`}
                             >
                                 확인

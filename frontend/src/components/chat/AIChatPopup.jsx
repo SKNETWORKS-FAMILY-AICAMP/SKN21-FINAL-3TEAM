@@ -9,10 +9,10 @@ import MarkdownText from './MarkdownText';
 
 const AGENT_CONFIG = {
   judgment: { icon: Scale, label: '규정 판단', color: 'text-primary-700 bg-primary-50 dark:text-primary-300 dark:bg-primary-900/30' },
-  doc_search: { icon: Search, label: '문서 검색', color: 'text-accent-700 bg-accent-50 dark:text-accent-300 dark:bg-accent-900/30' },
+  doc_retrieve: { icon: Search, label: '문서 검색/조회', color: 'text-accent-700 bg-accent-50 dark:text-accent-300 dark:bg-accent-900/30' },
+  doc_search: { icon: Search, label: '문서 검색/조회', color: 'text-accent-700 bg-accent-50 dark:text-accent-300 dark:bg-accent-900/30' },
   doc_generate: { icon: FileText, label: '문서 생성', color: 'text-accent-700 bg-accent-50 dark:text-accent-300 dark:bg-accent-900/30' },
   doc_summary: { icon: FileSearch, label: '문서 요약', color: 'text-accent-700 bg-accent-50 dark:text-accent-300 dark:bg-accent-900/30' },
-  doc_qa: { icon: HelpCircle, label: '문서 QA', color: 'text-accent-700 bg-accent-50 dark:text-accent-300 dark:bg-accent-900/30' },
   schedule_add: { icon: CalendarPlus, label: '일정 추가', color: 'text-green-700 bg-green-50 dark:text-green-300 dark:bg-green-900/30' },
   schedule_view: { icon: CalendarDays, label: '일정 조회', color: 'text-green-700 bg-green-50 dark:text-green-300 dark:bg-green-900/30' },
   general: { icon: MessageCircle, label: '일반', color: 'text-neutral-500 bg-neutral-100 dark:text-neutral-400 dark:bg-neutral-800' },
@@ -94,8 +94,8 @@ function AgentResultCard({ msg }) {
     );
   }
 
-  // ── Document Search Agent ──
-  if (resultIntent === 'doc_search') {
+  // ── Document Search/Retrieve Agent ──
+  if (resultIntent === 'doc_search' || resultIntent === 'doc_retrieve') {
     const sources = data.sources || data.references || [];
     if (sources.length === 0) return null;
     return (
@@ -215,7 +215,7 @@ export default function AIChatPopup({ isOpen: externalOpen, onClose }) {
             initial={{ opacity: 0, x: 20, scale: 0.95 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}
-            className="bg-white/40 dark:bg-neutral-900/40 backdrop-blur-xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.12)] rounded-[2rem] border border-white/30 dark:border-white/10 w-[400px] max-h-[calc(100vh-10rem)] mb-4 overflow-hidden pointer-events-auto origin-right flex flex-col"
+            className="bg-white/40 dark:bg-neutral-900/40 backdrop-blur-xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.12)] rounded-2xl border border-white/30 dark:border-white/10 w-[400px] max-h-[calc(100vh-10rem)] mb-4 overflow-hidden pointer-events-auto origin-right flex flex-col"
           >
             {/* Header */}
             <div className="px-6 py-5 flex items-center justify-between border-b border-neutral-200/30 dark:border-white/10 flex-shrink-0 bg-white/50 dark:bg-black/20">

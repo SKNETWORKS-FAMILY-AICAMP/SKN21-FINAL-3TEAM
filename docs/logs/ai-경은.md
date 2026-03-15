@@ -1060,3 +1060,145 @@ RAG 개선(3단계)과 LoRA 파인튜닝(4단계)은 독립적 구조:
 - RAG 라이브 검색 시 16.7% 폭락 원인 디버깅 (Qdrant 문서 적재 상태, 검색 결과 확인)
 - 문서 분석 sLLM 프롬프트 개선 (요약 → 태그 파이프라인)
 - 5단계 성능 평가 (#13) — 전체 파이프라인 E2E 정량 평가
+
+---
+
+## 2026-03-13 (목)
+
+### Intent 체계 정리 (10 → 6 라벨)
+
+**기존 10개 intent:**
+- doc_search, doc_qa, doc_summary, doc_generate, judgment, schedule_add, schedule_view, pipeline_create, approval_create, general
+
+**새 6개 intent (현재 학습 중):**
+- `doc_retrieve` — doc_search + doc_qa + doc_summary 통합 (겹치는 부분 많아 하나로 합침)
+- `doc_generate` — 문서 생성 (유지)
+- `judgment` — 사규 기반 판단 (유지, 서브 intent 불필요)
+- `schedule_add` — 일정/태스크/결재 생성 통합
+- `schedule_view` — 일정 조회 (유지)
+- `general` — 일반 대화 (유지)
+
+**핵심 결정:** pipeline_create, approval_create를 별도 intent로 두지 않고 `schedule_add` 안에서 키워드 기반 2차 분류로 처리
+
+### action_agent → schedule_agent 병합
+
+**변경 사항:**
+1. `ai/agents/schedule_agent.py` — action_agent의 pipeline/approval 핸들러 전체 통합
+   - `_classify_add_type()` 키워드 분류 함수 추가
+   - `_PIPELINE_KEYWORDS`: 태스크, task, 파이프라인, pipeline, 칸반, 보드, 프로젝트 추가/생성
+   - `_APPROVAL_KEYWORDS`: 결재, 승인, 연차, 휴가, 반차, 조퇴, 병가, 품의, 출장 신청/출장신청
+   - `schedule_add` intent 진입 시: 키워드 → pipeline/approval/schedule 분기
+   - `_handle_pipeline_create`, `_parse_pipeline_input`, `_fallback_parse_pipeline` 함수 이관
+   - `_handle_approval_create`, `_parse_approval_input`, `_fallback_parse_approval`, `_infer_approval_type` 함수 이관
+
+2. `ai/agents/orchestrator.py` — action_agent 노드 제거
+   - 라우팅: `schedule_add` + `pipeline_create` + `approval_create` → 모두 `schedule_agent`로
+   - graph에서 `action_agent` 노드, 엣지 완전 제거
+   - 현재 그래프 노드: decompose_query, compound_pending, classify_intent, clarify_with_candidates, judgment_agent, document_agent, schedule_agent, general_response, format_response
+
+3. `ai/agents/action_agent.py` — 파일 아직 존재하지만 그래프에서 호출 안 됨 (추후 삭제 가능)
+
+**intent 학습 팀원(경은)에게 전달할 사항:**
+- `schedule_add` 라벨에 태스크/결재 관련 예문도 포함시킬 것
+- 예: "태스크 만들어줘", "연차 신청해줘", "출장 결재 올려줘" 등 → `schedule_add`로 분류되어야 함
+
+### Qdrant 중복 데이터 정리
+
+- 개별 규정 파일 이름으로 들어간 201개 포인트 삭제 (Qdrant REST API 직접 호출)
+- 원인: `ingest_documents.py`로 이미 `ingest_regulations.py`에서 파싱된 규정 파일을 중복 인제스트
+- 정리 후: 285개 포인트 (regulations 206개 + documents 79개)
+- 코드 변경 없음 — Qdrant Cloud DB에 직접 적용 완료
+
+### sLLM 전환 가능성 분석
+
+**현재 sLLM 학습 현황:**
+- 판단(judgment) sLLM — 학습 중 (경은)
+- 문서(document) sLLM — 학습 중 (승언), `DOC_AGENT_MODE=sllm`으로 별도 전환 가능
+- 일정(schedule) — 아직 테스트 필요
+- 일반(general) — GPT 유지 권장 (범용 대화)
+
+**schedule agent sLLM 전환 테스트 준비:**
+- 테스트 스크립트 생성: `scripts/test_schedule_sllm.py`
+  - 10개 테스트 케이스 (일정 3, 태스크 3, 결재 4)
+  - `--provider vllm --vllm-url` 플래그로 sLLM 테스트 가능
+  - GPT-4o-mini 기준 통과율: schedule 파싱 부분은 안정적
+- schedule의 파싱 작업은 "자연어 → 구조화 JSON" 단순 추출이라 base instruct 모델로도 가능성 있음
+- RunPod 켜서 Kanana-8B 또는 Qwen3-8B로 비교 테스트 필요
+
+**Approvals 페이지 "New Tasks" AI 추천 기능 (3개 엔드포인트):**
+- `POST /approvals/checklist` — 할 일 체크리스트 생성 (temperature 0.3)
+- `POST /approvals/suggest-schedules` — 일정 추천 (temperature 0.4)
+- `POST /approvals/suggest` — 결재 추천 (temperature 0.4)
+- 모두 `get_llm()` + `json_mode=True` 사용, rule-based fallback 있음
+- sLLM 전환 가능하지만 schedule 파싱보다 난이도 높음 (단순 추출이 아닌 추론/분석 필요)
+- **전략:** schedule 파싱 sLLM 먼저 검증 → 성공 시 추천 기능도 테스트 → fallback이 있어 품질 부족해도 서비스 영향 없음
+- 우선순위 낮음, 나중에 검토
+
+### Sheets 기능 확장 — 미리보기 + AI WBS 생성 + 인라인 편집
+
+**Phase 1: 시트 미리보기:**
+- `sheets_service.py` — `read_sheet_data()` 메서드 추가 (Google Sheets API `values().get()` + 탭 목록)
+- `sheets.py` — `GET /{spreadsheet_id}/data` 엔드포인트 추가
+- `google_services.py` — `SheetReadResponse` 스키마 추가
+- `SheetPreview.jsx` 신규 — 탭 전환 UI + 테이블 렌더링 + 헤더 고정
+
+**Phase 2: AI WBS 자동 생성:**
+- `prompts.py` — `WBS_GENERATE_SYSTEM_PROMPT` 추가 (3레벨 계층 WBS JSON)
+- `sheets_service.py` — `_generate_wbs_tab()`, `_flatten_wbs()`, `_apply_wbs_formatting()` 추가
+  - LLM 호출 → WBS JSON → "WBS" 탭 생성 → 레벨별 색상 포맷팅
+  - LLM 실패 시 flat export만 정상 진행 (fallback)
+- `google_services.py` — `generate_wbs` 플래그 + `wbs_generated` 응답 필드 추가
+- `SheetsDashboard.jsx` — "WBS 포함" 체크박스 추가
+
+**Phase 3: 인라인 편집:**
+- `sheets_service.py` — `update_sheet_data()` 메서드 추가 (`values().batchUpdate()`)
+- `sheets.py` — `PUT /{spreadsheet_id}/data` 엔드포인트 추가
+- `google_services.py` — `CellUpdate`, `SheetUpdateRequest`, `SheetUpdateResponse` 스키마 추가
+- `SheetPreview.jsx` — 셀 클릭 편집 + 변경 셀 노란색 배경 + 저장/취소 버튼
+
+**프론트엔드 연동:**
+- `google.js` — `readSheetData()`, `updateSheetData()` API 함수 추가
+- `googleStore.js` — `sheetPreview` 상태 + `fetchSheetPreview()`, `updateSheetData()`, `clearSheetPreview()` 액션 추가
+- `SheetsDashboard.jsx` — 시트 목록에 "미리보기" 버튼 추가, 클릭 시 SheetPreview 펼침
+
+### 일정 관련 LLM 호출 전체 정리 + sLLM 전환 분석
+
+- `docs/일정_LLM_호출_정리_및_sLLM_전환_분석.md` 작성
+- 4개 영역 10개 LLM 호출 전수 조사:
+  - 챗봇 파싱 4개 (schedule/view/pipeline/approval)
+  - AI 추천 3개 (checklist/suggest_schedules/suggest_approvals)
+  - Sheets WBS 1개
+  - action_agent 중복 2개 (이미 schedule_agent에 병합됨)
+- sLLM 전환 Phase 1~3 우선순위 분류
+  - Phase 1 (바로 가능): 결재 파싱, 체크리스트, 일정/결재 추천
+  - Phase 2 (데이터 필요): 일정/조회/태스크 파싱
+  - Phase 3 (후순위): WBS 생성
+
+### Sheets 확장 탭 구현 (Gantt / Dashboard / AI Risk / Weekly Report)
+
+**Backend (`sheets_service.py`):**
+- `_generate_gantt_tab()` — 태스크 마감일 기준 셀 색칠 간트 차트 (상태별 색상: done=녹, in_progress=파랑, review=주황, todo=회색)
+- `_generate_dashboard_tab()` — 상태/담당자/우선순위 분포 집계 + 마감 초과 태스크 목록 (LLM 불필요)
+- `_generate_risk_tab()` — LLM 리스크 분석 (일정/과부하/병목/미할당/우선순위/정체 6가지 카테고리)
+- `_generate_weekly_report_tab()` — LLM 주간 보고서 (완료/진행중/예정/블로커)
+- `export_project_to_sheet()` — `generate_gantt`, `generate_dashboard`, `generate_risk`, `generate_report` 파라미터 추가
+
+**AI 프롬프트 (`prompts.py`):**
+- `PROJECT_RISK_ANALYSIS_SYSTEM_PROMPT` — 6가지 리스크 카테고리 분석 JSON 출력
+- `WEEKLY_REPORT_SYSTEM_PROMPT` — 주간 보고서 JSON 출력
+
+**스키마 (`google_services.py`):**
+- `SheetExportProjectRequest` / `SheetCreateResponse`에 4개 플래그 추가
+
+**프론트엔드:**
+- `google.js` — `exportProjectToSheet()` options 객체로 변경 (5개 탭 옵션)
+- `googleStore.js` — `exportProjectToSheet()` options 전달 방식 변경
+- `SheetsDashboard.jsx` — 내보내기 옵션 체크박스 5개 (WBS/Gantt/Dashboard/AI리스크/주간보고)
+
+**다음 할 일:**
+
+1. **schedule sLLM 비교 테스트** — RunPod 켜서 `test_schedule_sllm.py` 실행
+2. **intent 학습 팀원에게 전달** — `schedule_add`에 태스크/결재 예문 포함 확인
+3. **LoRA 연결 테스트** (이전 세션에서 이어짐)
+4. **Approvals 추천 sLLM 전환** — schedule 테스트 결과 보고 판단
+5. **Sheets 확장 deploy 후 테스트** — develop 머지 → EC2 반영 후 탭 생성 검증

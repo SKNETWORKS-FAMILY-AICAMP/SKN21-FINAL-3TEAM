@@ -57,11 +57,13 @@ export default function SchedulesPage() {
   const [approvalActions, setApprovalActions] = useState(null);
   const [sheetActions, setSheetActions] = useState(null);
   const [teamSchedules, setTeamSchedules] = useState([]);
+  const [projectSchedules, setProjectSchedules] = useState([]);
   const [myDbSchedules, setMyDbSchedules] = useState([]);
   const { connected: slackConnected } = useSlackStore();
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [settingsTab, setSettingsTab] = useState('all'); // 'all' | 'google' | 'slack'
   const [refreshKey, setRefreshKey] = useState(0);
+  const [dbSchedulesLoading, setDbSchedulesLoading] = useState(true);
 
   // Google Calendar 연결 시 이벤트 자동 로드 (백엔드 기본값: ±3개월)
   useEffect(() => {
@@ -72,6 +74,7 @@ export default function SchedulesPage() {
 
   // 본인 DB 일정 로드 (Google Calendar 미연결 시에도 일정 표시)
   useEffect(() => {
+    setDbSchedulesLoading(true);
     listSchedules().then((res) => {
       const schedules = [];
       (res.data || []).forEach((s) => {
@@ -81,9 +84,10 @@ export default function SchedulesPage() {
         const timeStr = hasTime
           ? `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
           : null;
+        const label = s.project_name ? `[${s.project_name}] ${s.title}` : s.is_team_visible ? `[팀] ${s.title}` : s.title;
         const baseEvent = {
           type: s.schedule_type || 'meeting',
-          label: s.is_team_visible ? `[팀] ${s.title}` : s.title,
+          label,
           time: timeStr,
           rawStartTime: hasTime ? `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}` : null,
           rawEndTime: hasTime ? `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}` : null,
@@ -109,7 +113,8 @@ export default function SchedulesPage() {
         }
       });
       setMyDbSchedules(schedules);
-    }).catch(() => setMyDbSchedules([]));
+    }).catch(() => setMyDbSchedules([]))
+      .finally(() => setDbSchedulesLoading(false));
   }, [refreshKey]);
 
   // 팀 일정 로드
@@ -149,6 +154,40 @@ export default function SchedulesPage() {
       setTeamSchedules([]);
     }
   }, [hasTeam, refreshKey]);
+
+  // 프로젝트 공유 일정 로드
+  useEffect(() => {
+    listSchedules({ include_project: true }).then((res) => {
+      const schedules = [];
+      (res.data || [])
+        .filter((s) => s.project_name && s.user_name && s.user_name !== user?.name) // 본인 제외, 프로젝트 멤버만
+        .forEach((s) => {
+          const start = new Date(s.start_time);
+          const end = s.end_time ? new Date(s.end_time) : start;
+          const timeStr = `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
+          const baseEvent = {
+            type: s.schedule_type || 'meeting',
+            label: `[${s.project_name}] ${s.title}`,
+            time: timeStr,
+            isProjectMember: true,
+            scheduleId: s.id,
+            userId: s.user_id,
+          };
+          const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+          const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+          const cur = new Date(startDay);
+          while (cur <= endDay) {
+            schedules.push({
+              ...baseEvent,
+              month: cur.getMonth() + 1,
+              day: cur.getDate(),
+            });
+            cur.setDate(cur.getDate() + 1);
+          }
+        });
+      setProjectSchedules(schedules);
+    }).catch(() => setProjectSchedules([]));
+  }, [refreshKey]);
 
 
   // Google Calendar 이벤트를 CalendarView 형식으로 변환 (연결된 경우만)
@@ -195,8 +234,8 @@ export default function SchedulesPage() {
       meetLink: s.googleEventId ? googleMeetMap[s.googleEventId] : undefined,
     }));
 
-    return [...uniqueGoogleEvents, ...enrichedDbSchedules, ...teamSchedules];
-  }, [events, myDbSchedules, teamSchedules]);
+    return [...uniqueGoogleEvents, ...enrichedDbSchedules, ...teamSchedules, ...projectSchedules];
+  }, [events, myDbSchedules, teamSchedules, projectSchedules]);
 
   // 수정 권한: 본인 DB 일정 또는 관리자
   const canEdit = (event) => {
@@ -317,6 +356,7 @@ export default function SchedulesPage() {
         is_team_visible: data.is_team_visible || false,
         include_meet: data.include_meet || false,
         attendee_emails: data.attendee_emails || [],
+        project_name: data.project_name || null,
       });
       dbSaved = true;
       googleSynced = result?.data?.google_services?.calendar_synced || false;
@@ -435,7 +475,7 @@ export default function SchedulesPage() {
               y: 0,
               transition: { type: 'spring', damping: 25, stiffness: 300 }
             }}
-            className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[1.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] w-full max-w-sm overflow-hidden border border-white/40 dark:border-white/10"
+            className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] w-full max-w-sm overflow-hidden border border-white/40 dark:border-white/10"
           >
             {/* Modal Inner Shadow/Glow */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-primary-400/30 to-transparent rounded-full" />
@@ -461,7 +501,7 @@ export default function SchedulesPage() {
               <div className="space-y-4">
                 {(settingsTab === 'all' || settingsTab === 'google') && (
                   <div className="relative group">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-[1.5rem] blur opacity-0 group-hover:opacity-100 transition duration-500" />
+                    <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-xl blur opacity-0 group-hover:opacity-100 transition duration-500" />
                     <div className="relative">
                       <GoogleServicesConnect />
                     </div>
@@ -470,7 +510,7 @@ export default function SchedulesPage() {
 
                 {(settingsTab === 'all' || settingsTab === 'slack') && (
                   <div className="relative group">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-[#4A154B]/5 to-[#611f69]/5 rounded-[1.5rem] blur opacity-0 group-hover:opacity-100 transition duration-500" />
+                    <div className="absolute -inset-1 bg-gradient-to-r from-[#4A154B]/5 to-[#611f69]/5 rounded-xl blur opacity-0 group-hover:opacity-100 transition duration-500" />
                     <div className="relative">
                       <SlackConnect />
                     </div>
@@ -556,11 +596,11 @@ export default function SchedulesPage() {
               {connected && hasScope('calendar') && (
                 <button
                   onClick={() => fetchCalendarEvents()}
-                  disabled={calendarLoading}
-                  className="btn-outline"
+                  disabled={calendarLoading || dbSchedulesLoading}
+                  className="btn-outline flex items-center gap-1.5"
                   title="Google Calendar 동기화"
                 >
-                  {calendarLoading ? '동기화 중...' : '새로고침'}
+                  <RefreshCw size={14} className={calendarLoading || dbSchedulesLoading ? 'animate-spin' : ''} />
                 </button>
               )}
               <button
@@ -640,9 +680,9 @@ export default function SchedulesPage() {
             </div>
           )}
 
-          {calendarLoading ? (
+          {calendarLoading || dbSchedulesLoading ? (
             <div className="flex justify-center items-center h-64">
-              <div className="text-neutral-sub">Google Calendar 이벤트 로딩 중...</div>
+              <div className="text-neutral-sub">일정 불러오는 중...</div>
             </div>
           ) : (
             <>

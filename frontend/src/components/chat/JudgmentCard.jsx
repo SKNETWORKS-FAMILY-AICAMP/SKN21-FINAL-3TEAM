@@ -75,7 +75,7 @@ export default function JudgmentCard({ summary, regulations = [], alternatives =
 
   return (
     <>
-      <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
+      <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
         <div className="p-4">
           {regulations.length > 0 && (
             <div className="mb-3.5">

@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown, Users, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import useGoogleServices from '../../hooks/useGoogleServices';
 import useScheduleTypeStore, { DEFAULT_TYPES } from '../../store/scheduleTypeStore';
 import useAuthStore from '../../store/authStore';
+import { listProjects } from '../../api/tasks';
 import DatePicker from '../common/DatePicker';
 
 // 00:00 ~ 23:50 (10분 간격) 타임 옵션 생성
@@ -207,9 +208,26 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
     includeMeet: false,
     attendeeEmails: '',
     isTeamVisible: initialData?.isTeamVisible || false,
+    projectName: initialData?.projectName || '',
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [shareToProject, setShareToProject] = useState(!!initialData?.projectName);
+
+  useEffect(() => {
+    listProjects().then((res) => {
+      const list = res.data || [];
+      // 이름 기준 중복 제거
+      const seen = new Set();
+      const unique = list.filter((p) => {
+        if (seen.has(p.name)) return false;
+        seen.add(p.name);
+        return true;
+      });
+      setProjects(unique);
+    }).catch(() => setProjects([]));
+  }, []);
 
   const canMeet = connected && hasScope('calendar');
 
@@ -235,6 +253,7 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
           : [],
         include_meet: form.includeMeet,
         is_team_visible: form.isTeamVisible,
+        project_name: form.projectName || null,
       };
       await onSubmit?.(data);
     } catch {
@@ -245,7 +264,7 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
   };
 
   return (
-    <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl p-6 rounded-[2rem] border border-white/40 dark:border-white/10 shadow-2xl">
+    <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl p-6 rounded-2xl border border-white/40 dark:border-white/10 shadow-2xl">
       <h3 className="text-lg font-black mb-5 text-neutral-900 dark:text-white tracking-tight">{isEditMode ? '일정 수정' : '일정 추가'}</h3>
       <div className="space-y-3">
         {/* 제목 */}
@@ -280,22 +299,53 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
           </div>
         </div>
 
-        {/* 팀에 공유 */}
-        {hasTeam && (
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-md border border-neutral-divider bg-surface-hover">
-            <label className="flex items-center gap-2 cursor-pointer flex-1">
-              <input
-                type="checkbox"
-                checked={form.isTeamVisible}
-                onChange={(e) => setForm({ ...form, isTeamVisible: e.target.checked })}
-                className="w-4 h-4 rounded border-neutral-border accent-primary-700"
-              />
-              <div className="flex items-center gap-1.5">
-                <Users size={16} className="text-primary-500" />
-                <span className="text-sm font-medium text-neutral-main">팀에 공유</span>
-              </div>
-            </label>
-            <span className="text-[0.6875rem] text-neutral-muted">{user.team}팀 멤버에게 표시됩니다</span>
+        {/* 공유 설정 */}
+        {(hasTeam || projects.length > 0) && (
+          <div className="space-y-2">
+            <div className="flex justify-center gap-2">
+              {hasTeam && (
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, isTeamVisible: !form.isTeamVisible })}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] font-black transition-all ${form.isTeamVisible
+                    ? 'border-emerald-500 bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                    : 'border-neutral-divider dark:border-white/10 bg-white/50 dark:bg-black/20 text-neutral-500'
+                  }`}
+                >
+                  <Users size={13} />
+                  {user.team}팀 공유
+                </button>
+              )}
+              {projects.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !shareToProject;
+                    setShareToProject(next);
+                    if (!next) setForm({ ...form, projectName: '' });
+                    else setForm({ ...form, projectName: projects[0]?.name || '' });
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] font-black transition-all ${shareToProject
+                    ? 'border-violet-500 bg-violet-500 text-white shadow-lg shadow-violet-500/20'
+                    : 'border-neutral-divider dark:border-white/10 bg-white/50 dark:bg-black/20 text-neutral-500'
+                  }`}
+                >
+                  <FolderOpen size={13} />
+                  프로젝트 공유
+                </button>
+              )}
+            </div>
+            {shareToProject && projects.length > 0 && (
+              <select
+                value={form.projectName}
+                onChange={(e) => setForm({ ...form, projectName: e.target.value })}
+                className="w-full px-3 py-2 border border-neutral-border rounded-lg text-sm bg-white dark:bg-black/20 outline-none focus:border-primary-500 transition"
+              >
+                {projects.map((p) => (
+                  <option key={p.id} value={p.name}>{p.name}</option>
+                ))}
+              </select>
+            )}
           </div>
         )}
 

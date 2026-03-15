@@ -111,10 +111,11 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       );
     }
 
+    case 'doc_retrieve':
     case 'doc_search': {
       const sources = data.sources || data.references || [];
       return (
-        <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
+        <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
           <div className="px-4 py-3 border-b border-neutral-divider flex items-center gap-2 font-bold text-sm text-primary-700">
             문서 검색 결과
           </div>
@@ -210,13 +211,14 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       );
     }
 
-    case 'doc_qa': {
+    case 'doc_qa':  // doc_qa는 doc_search로 통합됨 (하위 호환)
+    case 'doc_search_qa': {
       const sources = data.sources || [];
       const citations = data.citations || [];
       const qaConfidence = typeof data.confidence === 'number' ? data.confidence : null;
       const confColor = qaConfidence >= 0.7 ? { bar: 'bg-green-500', text: 'text-green-600' } : qaConfidence >= 0.4 ? { bar: 'bg-yellow-500', text: 'text-yellow-600' } : { bar: 'bg-red-500', text: 'text-red-600' };
       return (
-        <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
+        <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
           <div className="px-4 py-3 border-b border-neutral-divider flex items-center justify-between">
             <div className="flex items-center gap-2 font-bold text-sm text-primary-700">문서 Q&A</div>
             {qaConfidence !== null && (
@@ -266,7 +268,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       const tags = data.tags || [];
       const summaryText = data.summary || content || data.answer || data.message;
       return (
-        <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
+        <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
           <div className="px-4 py-3 border-b border-neutral-divider flex items-center gap-2 font-bold text-sm text-primary-700">
             <FileText size={16} />
             문서 요약

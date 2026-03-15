@@ -251,7 +251,7 @@ export default function TaskPipelineWidget() {
                             </div>
 
                             {/* Task Cards Container */}
-                            <div className={`flex-1 space-y-3 p-2 rounded-[1.5rem] bg-surface-main/40 border-2 transition-colors min-h-[150px] ${draggingId ? 'border-dashed border-primary-300 bg-primary-50/10' : 'border-transparent'}`}>
+                            <div className={`flex-1 space-y-3 p-2 rounded-xl bg-surface-main/40 border-2 transition-colors min-h-[150px] ${draggingId ? 'border-dashed border-primary-300 bg-primary-50/10' : 'border-transparent'}`}>
                                 <AnimatePresence mode="popLayout">
                                     {filteredTasks.filter(t => t.stage === stage.id).map((task) => (
                                         <motion.div
@@ -265,7 +265,7 @@ export default function TaskPipelineWidget() {
                                             draggable="true"
                                             onDragStart={(e) => handleDragStart(e, task.id)}
                                             onDragEnd={() => setDraggingId(null)}
-                                            className={`bg-white/40 dark:bg-white/[0.05] backdrop-blur-md p-4 rounded-[1.5rem] border border-white/20 dark:border-white/10 hover:border-primary-300/50 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-all group ${draggingId === task.id ? 'opacity-50 scale-95' : ''}`}
+                                            className={`bg-white/40 dark:bg-white/[0.05] backdrop-blur-md p-4 rounded-xl border border-white/20 dark:border-white/10 hover:border-primary-300/50 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-all group ${draggingId === task.id ? 'opacity-50 scale-95' : ''}`}
                                         >
                                             <div className="flex justify-between items-start mb-2.5">
                                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${priorityColors[task.priority] || priorityColors.medium}`}>
@@ -309,7 +309,7 @@ export default function TaskPipelineWidget() {
                                 </AnimatePresence>
 
                                 {filteredTasks.filter(t => t.stage === stage.id).length === 0 && (
-                                    <div className="h-20 flex items-center justify-center border-2 border-dashed border-neutral-divider rounded-[1.5rem]">
+                                    <div className="h-20 flex items-center justify-center border-2 border-dashed border-neutral-divider rounded-xl">
                                         <span className="text-[11px] font-bold text-neutral-muted uppercase tracking-widest">Empty</span>
                                     </div>
                                 )}
@@ -429,7 +429,7 @@ export default function TaskPipelineWidget() {
                         initial={{ scale: 0.95, opacity: 0, y: 20 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl p-8 w-full max-w-[420px] mx-4 border border-white/40 dark:border-white/10"
+                        className="relative bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-[420px] mx-4 border border-white/40 dark:border-white/10"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between mb-8">

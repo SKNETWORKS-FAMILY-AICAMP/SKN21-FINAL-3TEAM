@@ -2,7 +2,9 @@ import { Wand2, Scale, FileSearch, CalendarDays, MessageCircle } from 'lucide-re
 
 const INTENT_CONFIG = {
   judgment: { icon: Scale, color: 'bg-primary-500' },
+  doc_retrieve: { icon: FileSearch, color: 'bg-accent-500' },
   doc_search: { icon: FileSearch, color: 'bg-accent-500' },
+  doc_summary: { icon: FileSearch, color: 'bg-accent-500' },
   schedule: { icon: CalendarDays, color: 'bg-success' },
   general: { icon: MessageCircle, color: 'bg-neutral-500' },
 };
@@ -39,7 +41,7 @@ export default function StreamingMessage({ text, status, intent = 'general', isI
 
   return (
     <div className="flex gap-2.5">
-      <div className={`w-8 h-8 rounded-[10px] ${config.color} flex-shrink-0 flex items-center justify-center text-white shadow-sm`}>
+      <div className={`w-8 h-8 rounded-md ${config.color} flex-shrink-0 flex items-center justify-center text-white shadow-sm`}>
         <Icon size={18} />
       </div>
       <div className="max-w-[85%]">

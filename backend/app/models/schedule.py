@@ -25,3 +25,4 @@ class Schedule(Base, TimestampMixin):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     team_name: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # 유저 소속 팀
     is_team_visible: Mapped[bool] = mapped_column(Boolean, default=False)  # 팀원에게 공유 여부
+    project_name: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)  # 프로젝트 공유 일정
