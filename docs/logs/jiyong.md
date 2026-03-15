@@ -1317,3 +1317,43 @@ v2_generate AI Hub 데이터 탈락:
 1. **doc_retrieve 구현** — 설계 문서 기반으로 4개 파일 수정
 2. **BERT 재학습** — 6개 intent 데이터셋 생성 + 학습 (doc_search/qa/summary → doc_retrieve 통합)
 3. **LoRA 연결 테스트** (이전 세션에서 계속 막힘)
+
+---
+
+## 2026-03-15 (토)
+
+**doc_retrieve 통합 파이프라인 구현 완료:**
+
+설계 리뷰 결과를 반영하여 4개 파일 수정.
+
+1. **`ai/llm/prompts.py`** — `DOC_SEARCH_SLLM_PROMPT` 신규 추가
+   - 검색 전용 sLLM 프롬프트 (자연어 출력, JSON 불필요)
+   - 기존 API 프롬프트(`_build_search_prompt`)를 참고하여 sLLM용으로 간소화
+
+2. **`ai/agents/document_agent.py`** — 핵심 변경
+   - **3-way 라우팅**: doc_retrieve 진입 → summary → QA → search 분기
+   - `_is_qa_query()` 신규 함수: 질문형 패턴 감지 (`뭐야/알려줘/어떻게` + 의문형 어미 + explain 의도)
+   - `_detect_search_intent()` 개선: 요약 키워드 뒤 동사어미 확인 ("정리된 자료 찾아줘" 오탐 방지)
+   - `_is_summary` 판별도 동사어미 체크 추가
+   - 응답 타입 통일: `doc_search`/`doc_summary` → `doc_retrieve` + `sub_type` (summary|qa|search)
+   - RAG top_k 통일: 검색 10→7, QA 5→7
+   - 레거시 `doc_search`/`doc_summary` intent 브랜치 유지 (하위 호환)
+
+3. **`backend/app/api/v1/chat.py`** — 스트리밍 태스크 매핑
+   - `sub_type` 필드 우선 사용 → 레거시 타입 폴백
+   - doc_summary DB 업데이트 조건: `sub_type == "summary"` 체크
+
+4. **`frontend/src/pages/ChatPage.jsx`** — 통합 렌더러
+   - `doc_retrieve` 케이스에서 `sub_type`에 따라 3가지 카드 렌더링 (요약 태그+요약문 / QA confidence+citations / 검색 sources)
+   - `doc_qa`/`doc_search_qa`/`doc_summary` 레거시 케이스 → `doc_retrieve`로 위임
+
+**확정 결정사항 반영:**
+- BERT Intent 6개 (pipeline_create/approval_create는 규칙 기반만)
+- 통합 프롬프트 미사용 → 태스크별 sLLM 프롬프트 유지 (기존 LoRA + 데이터 활용)
+- 검색만 `DOC_SEARCH_SLLM_PROMPT` 신규 (base model, LoRA 없음)
+
+**다음 할 일:**
+
+1. **BERT 재학습** — 6개 intent 데이터셋 생성 + 학습
+2. **LoRA 연결 테스트** (RunPod 환경변수 추가)
+3. **통합 테스트** — doc_retrieve 파이프라인 E2E 확인 (요약/QA/검색 각각)
