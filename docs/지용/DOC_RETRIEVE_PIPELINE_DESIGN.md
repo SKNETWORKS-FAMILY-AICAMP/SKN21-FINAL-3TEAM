@@ -1,7 +1,8 @@
 # doc_retrieve 통합 파이프라인 설계
 
 > 작성일: 2026-03-13 | 작성자: 신지용 (PM)
-> 상태: 설계 확정 / 구현 대기
+> 상태: ~~설계 확정 / 구현 대기~~ → **구현 완료 (2026-03-15)**
+> 최종 수정: 2026-03-15 — 설계 리뷰 반영, 실제 구현 결과 §14~§17 추가
 
 ---
 
@@ -333,3 +334,144 @@ classify("그거 처리해줘")
 → {"intent": "general", "confidence": 0.45,
    "candidates": ["doc_retrieve", "schedule_view", "general"]}
 ```
+
+---
+
+## 14. 설계 리뷰 결과 — 변경 사항 (2026-03-15)
+
+설계 리뷰를 거쳐 아래 3가지가 원안(§3~§5)에서 변경됨.
+
+| 항목 | 원안 (§3~§5) | 변경 후 |
+|------|-------------|---------|
+| 프롬프트 전략 | 통합 프롬프트 1개 (`DOC_RETRIEVE_SYSTEM_PROMPT`) | **태스크별 sLLM 프롬프트 유지** — 기존 LoRA + 학습 데이터 활용 |
+| 파이프라인 분기 | 요약 vs 그 외 (2-way) | **summary → QA → search (3-way)** |
+| 응답 형식 | `type: "doc_retrieve"` + 단일 구조 | `type: "doc_retrieve"` + **`sub_type`** (summary\|qa\|search) |
+
+### 변경 이유
+- **통합 프롬프트 폐기**: v2_qa / v2_summary LoRA가 각각 900+100건으로 학습됨. 통합 프롬프트로 바꾸면 기존 LoRA + 데이터를 버리게 됨
+- **3-way 분기 추가**: QA(질문형)와 검색(찾기형)은 출력 형식이 다름 — QA는 citations+confidence, 검색은 문서 목록
+- **sub_type 추가**: 프론트엔드가 요약(태그 배지)/QA(신뢰도 바)/검색(출처 목록) 각각 다른 카드로 렌더링
+
+---
+
+## 15. 실제 구현 파이프라인 (TO-BE)
+
+```
+doc_retrieve 진입
+    │
+    ├─ 1) _is_summary?
+    │   조건: document_content 있음 / document_id 있음 / 요약키워드+동사어미
+    │   │
+    │   ├─ content 없음 → doc_pick (문서선택 UI)
+    │   ├─ document_id + DB요약 있음 → DB 반환 (sLLM 스킵)
+    │   └─ DB 없음 → DOC_SUMMARY_SLLM_PROMPT + v2_summary LoRA
+    │       출력: {type: "doc_retrieve", sub_type: "summary", tags, summary}
+    │
+    ├─ 2) _is_qa_query?
+    │   조건: 질문형 패턴 (뭐야/알려줘/어떻게) + 의문형 어미 + explain 의도
+    │   │
+    │   └─ RAG(top_k=7) → DOC_QA_SYSTEM_PROMPT (API) / DOC_QA_SLLM_PROMPT + v2_qa LoRA (sLLM)
+    │       출력: {type: "doc_retrieve", sub_type: "qa", answer, citations, confidence, sources}
+    │
+    └─ 3) 검색 (그 외)
+        │
+        └─ RAG(top_k=7) → _build_search_prompt (API) / DOC_SEARCH_SLLM_PROMPT (sLLM, base model)
+            출력: {type: "doc_retrieve", sub_type: "search", answer, sources}
+```
+
+### 요약 키워드 오탐 방지
+
+| 입력 | 이전 | 개선 후 |
+|------|------|---------|
+| "요약해줘" | ✅ summary | ✅ summary |
+| "정리해줘" | ✅ summary | ✅ summary |
+| "정리된 자료 찾아줘" | ❌ summary (오탐) | ✅ search |
+| "핵심만 알려줘" | ✅ summary | ✅ summary |
+
+개선 방법: 요약 키워드 뒤에 **동사어미**(해/해줘/해주세요/부탁/하자/할래) 확인
+
+### QA 감지 로직 (`_is_qa_query`)
+
+```python
+# 1. 명시적 질문형: 뭐야, 알려줘, 설명해, 어떻게, 왜, 무엇, 무슨
+# 2. 의문형 어미: ~인가요, ~나요, ~ㅂ니까, ~한가요
+# 3. _detect_search_intent()가 "explain" 반환 → QA로 분류
+```
+
+---
+
+## 16. 실제 응답 형식
+
+```python
+# 검색 응답
+{
+    "type": "doc_retrieve",
+    "sub_type": "search",
+    "answer": "LLM 자연어 답변",
+    "message": "answer와 동일 (하위 호환)",
+    "sources": [{"title", "source", "score", "content", "document_id"}],
+}
+
+# QA 응답
+{
+    "type": "doc_retrieve",
+    "sub_type": "qa",
+    "answer": "질문에 대한 답변",
+    "message": "answer와 동일",
+    "citations": [{"source", "content", "relevance"}],
+    "confidence": 0.85,
+    "sources": [{"title", "source", "score", "content", "document_id"}],
+}
+
+# 요약 응답 (DB 반환 또는 sLLM 생성)
+{
+    "type": "doc_retrieve",
+    "sub_type": "summary",
+    "answer": "태그: #태그1 ... 요약: ...",
+    "message": "answer와 동일",
+    "tags": ["태그1", "태그2"],
+    "summary": "요약문",
+}
+
+# 요약 요청 (문서 미선택) → doc_pick
+{
+    "type": "doc_pick",
+    "message": "요약할 문서를 선택해주세요:",
+    "documents": [{"document_id", "title"}],
+}
+```
+
+---
+
+## 17. 실제 수정 파일 (4개)
+
+| 파일 | 변경 내용 | 커밋 |
+|------|----------|------|
+| `ai/llm/prompts.py` | `DOC_SEARCH_SLLM_PROMPT` 추가 (검색 전용 sLLM 프롬프트) | `66eae46` |
+| `ai/agents/document_agent.py` | 3-way 라우팅, `_is_qa_query()` 추가, 응답 `sub_type` 통일, top_k=7 | `66eae46` |
+| `backend/app/api/v1/chat.py` | `sub_type` 기반 태스크 매핑, summary DB 업데이트 조건 수정 | `66eae46` |
+| `frontend/src/pages/ChatPage.jsx` | `doc_retrieve` 통합 렌더러 (sub_type별 카드 분기), 레거시 위임 | `66eae46` |
+
+### 프론트엔드 렌더링 매핑
+
+| sub_type | 카드 헤더 | 핵심 UI |
+|----------|----------|---------|
+| `search` | "문서 검색 결과" | 마크다운 답변 + 출처 목록 |
+| `qa` | "문서 Q&A" | 신뢰도 바 + 마크다운 답변 + 인용 + 출처 |
+| `summary` | "문서 요약" | 태그 배지 + 요약문 |
+
+### 레거시 호환
+
+| 이전 응답 타입 | 프론트엔드 처리 |
+|---------------|----------------|
+| `doc_search` | `doc_retrieve` 케이스로 처리 (기존과 동일) |
+| `doc_summary` | `doc_retrieve`로 위임 → `tags` 존재 시 summary 카드 |
+| `doc_qa` / `doc_search_qa` | `doc_retrieve`로 위임 → `citations` 존재 시 QA 카드 |
+
+### LoRA 활용 (sLLM 모드)
+
+| 경로 | 프롬프트 | LoRA | 학습 데이터 |
+|------|---------|------|------------|
+| 요약 | `DOC_SUMMARY_SLLM_PROMPT` | v2_summary | 900+100건 |
+| QA | `DOC_QA_SLLM_PROMPT` | v2_qa | 900+100건 |
+| 검색 | `DOC_SEARCH_SLLM_PROMPT` (신규) | 없음 (base model) | - |
