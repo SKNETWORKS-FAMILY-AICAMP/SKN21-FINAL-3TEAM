@@ -1202,3 +1202,141 @@ RAG 개선(3단계)과 LoRA 파인튜닝(4단계)은 독립적 구조:
 3. **LoRA 연결 테스트** (이전 세션에서 이어짐)
 4. **Approvals 추천 sLLM 전환** — schedule 테스트 결과 보고 판단
 5. **Sheets 확장 deploy 후 테스트** — develop 머지 → EC2 반영 후 탭 생성 검증
+
+---
+
+## 2026-03-15 (토) — v1-RAG 학습 데이터 생성 + 학습 실행
+
+### 1. RAG 학습 데이터 재생성 (Qdrant 규정 문서만 필터)
+
+**문제:** 기존 `rebuild_train_with_rag.py`가 Qdrant 전체 검색 → 삼성 보고서(18만자), 매뉴얼 등 노이즈 포함
+- train_rag.jsonl **1.3GB** (원본 16MB의 80배) — 학습 불가능한 크기
+
+**해결:** `filter={"source": "regulations"}`를 RAG 검색에 추가
+- 규정 문서(206개 청크, 평균 167자)만 검색, 일반 문서(80개, 최대 21만자) 제외
+- 결과: **1.3GB → 26MB** (200배 축소), 원본 대비 1.6배로 정상 크기
+
+| 파일 | 건수 | 크기 | RAG 빈 결과 |
+|------|------|------|------------|
+| eval_rag.jsonl | 328건 | 2.9MB | 0건 |
+| train_rag.jsonl | 2949건 | 26MB | 0건 |
+
+### 2. RunPod 경량 실행 스크립트 작성
+
+- `runpod_v1_rag_minimal.sh` — git clone 없이 curl로 필요 파일 4개만 다운로드 (~30MB)
+- torch 충돌 해결: torchvision/torchaudio 제거 (텍스트 학습에 불필요)
+- 한 줄 실행: `curl -sL .../runpod_v1_rag_minimal.sh | bash`
+
+### 3. v1-RAG 학습 + 평가 결과 (RunPod A100 80GB)
+
+**설정:** 1 epoch only (disk quota 제한으로 체크포인트 저장 불가 → save_strategy="no")
+
+| | v1 하드코딩 (3ep) | v2 (3ep) | **v1-RAG (1ep)** |
+|---|---|---|---|
+| **전체 정확도** | **86.6%** | 83.4% | **42.7%** |
+| JSON 유효율 | 98.2% | 97.0% | 84.1% |
+| yes | 85.0% | 87.0% | 58.0% |
+| no | 82.0% | 78.8% | 52.5% |
+| conditional | 84.0% | 74.3% | 26.0% |
+| no_regulation | 97.0% | 97.0% | 35.8% |
+
+**하락 원인 분석:**
+1. **1 epoch만 학습** — 기존 3 epoch 대비 수렴 부족
+2. **RAG 컨텍스트 형식 변화** — 하드코딩(정답 규정만)과 RAG(관련+무관 규정 섞임)의 차이
+3. **no_regulation 35.8%** — RAG가 항상 10개 규정 반환 → "규정 없음" 학습 어려움
+
+### 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `scripts/judgment/rebuild_train_with_rag.py` | 수정 — filter={"source": "regulations"} 추가 |
+| `data/training/v1_judgment/train_rag.jsonl` | 신규 — 2949건 (26MB) |
+| `data/training/v1_judgment/eval_rag.jsonl` | 신규 — 328건 (2.9MB) |
+| `ai/finetuning/configs/v1_judgment_rag.yaml` | 신규 — RAG 데이터 경로 config |
+| `ai/finetuning/runpod_v1_rag_minimal.sh` | 신규 — 경량 RunPod 실행 스크립트 |
+| `outputs/v1_judgment_rag/eval_results.json` | 신규 — 평가 결과 |
+
+### 4. no_regulation 라벨 모순 발견 + 수정
+
+**문제:** `no_regulation` 67건(eval) / 665건(train) **전부** RAG가 규정 10개를 반환
+- 모델 입장: "규정이 잔뜩 보이는데 왜 no_regulation이지?" → 혼란
+
+**수정:** `rebuild_train_with_rag.py`에서 gold_result=no_regulation이면 RAG 검색 스킵 → 빈 컨텍스트
+
+### 5. v1-RAG 재학습 결과 비교 (RunPod A100 80GB, 1epoch)
+
+| 버전 | 정확도 | JSON유효율 | yes | no | conditional | no_regulation |
+|------|--------|-----------|-----|-----|-------------|---------------|
+| v1 하드코딩 3ep | **86.6%** | 98.2% | 85.0% | 82.0% | 84.0% | 97.0% |
+| v1-RAG #1 (모순) | 42.7% | 84.1% | 58.0% | 52.5% | 26.0% | 35.8% |
+| **v1-RAG #2 (수정)** | **76.8%** | 95.4% | 77.0% | 75.4% | 62.0% | **100.0%** |
+
+**no_regulation 수정 효과:** 35.8% → **100.0%**, 전체 42.7% → **76.8%** (+34.1%p)
+
+### 6. RunPod disk quota 이슈
+
+- 3epoch 학습 시 epoch 마다 체크포인트 저장 → disk quota exceeded
+- 해결: `save_strategy="no"`, `num_train_epochs=1`로 패치하여 1epoch만 학습
+- HF 캐시 정리(`rm -rf /root/.cache/huggingface/hub/models--*`) 필요
+
+### 7. outputs 폴더 정리
+
+- `v1_judgment/eval_results.json`에 4개 결과 통합 (v1, v2, RAG#1, RAG#2)
+- `v2_judgment/` 폴더 삭제 (폐기 결과)
+- `v1_judgment_rag/` 폴더 삭제 (v1_judgment에 통합)
+
+**다음 할 일:**
+- v1-RAG **3 epoch 재학습** — 새 RunPod 인스턴스 (Volume 50GB+) 또는 체크포인트 저장 없이 3ep
+- 3epoch 결과 85%+ 나오면 → vLLM 서빙에 RAG 어댑터 연결
+- conditional 62.0%가 가장 낮음 — 3ep으로도 안 오르면 데이터 보강 검토
+
+---
+
+## 2026-03-15 (일)
+
+### v1-RAG 3epoch 재학습 시도 및 중단
+
+**상황:**
+- 로컬 컴퓨터로 RunPod 학습 중 컴퓨터가 반복적으로 꺼짐 → RunPod 종료
+- 내일(3/16) 다른 컴퓨터로 이어서 진행 예정
+
+**실행 스크립트 (원클릭):**
+```bash
+curl -sL https://raw.githubusercontent.com/SKNETWORKS-FAMILY-AICAMP/SKN21-FINAL-3TEAM/feat/ai-yoon/ai/finetuning/runpod_v1_rag_minimal.sh | bash
+```
+
+**스크립트에 포함된 것:**
+- 패키지 버전 고정 (에러 방지)
+- torchvision 자동 제거
+- `save_strategy="no"` 자동 패치 (disk quota 방지)
+- HF 캐시 자동 정리
+- 3 epoch 학습 (config 기본값)
+
+**예상 소요 시간:** 약 2시간 (43분 × 3ep + 평가)
+
+### 현재 성능 분석 (1epoch RAG 수정본 기준)
+
+| 버전 | 정확도 | JSON유효율 | yes | no | conditional | no_regulation |
+|------|--------|-----------|-----|-----|-------------|---------------|
+| v1 하드코딩 3ep | **86.6%** | 98.2% | 85.0% | 82.0% | 84.0% | 97.0% |
+| v1-RAG #2 (수정, 1ep) | 76.8% | 95.4% | 77.0% | 75.4% | 62.0% | 100.0% |
+
+### 하락 원인 분석 (v1-RAG 76.8% vs v1 하드코딩 86.6%)
+
+1. **1 epoch만 돌림** — 기존은 3 epoch. 수렴 부족이 주요 원인
+2. **RAG 컨텍스트가 기존과 다름** — 하드코딩은 정답 규정만 딱 넣었지만, RAG는 관련 없는 규정도 섞여서 들어옴 (노이즈)
+3. **no_regulation 35.8% → 100.0%** — RAG가 항상 10개 규정을 반환하니 "규정 없음"을 학습하기 어려웠음 (수정 후 해결)
+
+### 다음 할 일 (3/16 다른 컴퓨터에서)
+
+1. **3 epoch로 다시 돌리기**
+   - 위의 원클릭 스크립트 실행
+   - RunPod Volume 용량 확인 (50GB+ 권장)
+   - 스크립트가 캐시 관리 자동화 포함
+2. **RAG 데이터 품질 점검**
+   - no_regulation 샘플의 RAG 결과가 어떤지 확인
+   - 관련 없는 규정이 들어오면 라벨과 충돌 → 정확도 하락 원인
+3. **top_k 10 → 5로 줄이기 검토**
+   - RAG 노이즈 줄이기 위해 top_k를 5로 줄이는 실험 검토
+   - 관련성 낮은 규정이 컨텍스트에 포함되는 문제 완화 기대
+4. **목표:** 3epoch 결과 85%+ → vLLM 서빙에 RAG 어댑터 연결
