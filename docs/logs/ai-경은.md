@@ -1340,3 +1340,62 @@ curl -sL https://raw.githubusercontent.com/SKNETWORKS-FAMILY-AICAMP/SKN21-FINAL-
    - RAG 노이즈 줄이기 위해 top_k를 5로 줄이는 실험 검토
    - 관련성 낮은 규정이 컨텍스트에 포함되는 문제 완화 기대
 4. **목표:** 3epoch 결과 85%+ → vLLM 서빙에 RAG 어댑터 연결
+
+---
+
+## 2026-03-16 (일) — v1-RAG 3ep 평가 + RAG 품질 개선 + v1 하드코딩 재학습
+
+### 1. v1-RAG 3epoch 평가 결과 (RunPod A100)
+
+| 버전 | 정확도 | JSON유효율 | yes | no | conditional | no_regulation |
+|------|--------|-----------|-----|-----|-------------|---------------|
+| v1 하드코딩 3ep | **86.6%** | 98.2% | 85.0% | 82.0% | 84.0% | 97.0% |
+| v1-RAG 1ep | 76.8% | 95.4% | 77.0% | 75.4% | 62.0% | 100.0% |
+| **v1-RAG 3ep** | **77.1%** | 94.2% | 81.0% | 82.0% | **55.0%** | 100.0% |
+
+**분석:**
+- 3epoch에서도 77.1%로 하드코딩(86.6%) 대비 크게 미달
+- conditional이 62% → 55%로 오히려 하락 (과적합)
+- 원인: RAG 컨텍스트에 관련 없는 규정 노이즈가 섞여 모델이 혼란
+- **결론: v1 하드코딩 어댑터(86.6%)를 최종 모델로 유지**
+
+### 2. RAG 검색 품질 개선 (코드 수정)
+
+**judgment_agent.py 수정 (일반 + 스트리밍 양쪽):**
+
+| 설정 | 기존 | 변경 | 효과 |
+|------|------|------|------|
+| top_k | 10 | **5** | 노이즈 규정 절반 감소 |
+| score_threshold | -2.0 / 0.1 | **0.0** | 관련성 낮은 규정 제거 강화 |
+
+### 3. 프롬프트 노이즈 무시 지시 추가
+
+**prompts.py 수정 (JUDGMENT_SYSTEM_PROMPT + STREAMING 양쪽):**
+- "관련 규정 문서 중 사용자 질문과 직접 관련 없는 규정은 무시하세요"
+- "관련 없는 규정이 포함되어 있다고 해서 조건을 억지로 만들거나 결과를 바꾸지 마세요"
+- 기대: conditional/no 오분류 감소
+
+### 4. v1-RAG 어댑터 HuggingFace 백업
+
+- `yoongyeongeun/v1-judgment-rag` 으로 업로드 완료 (71.8MB)
+- https://huggingface.co/yoongyeongeun/v1-judgment-rag
+
+### 5. v1 하드코딩 어댑터 재학습 (RunPod 진행 중)
+
+- 이전 RunPod에서 v1 하드코딩 어댑터가 삭제되어 재학습 필요
+- `v1_judgment.yaml` config로 train.jsonl(2,949건) 3epoch 학습 중
+- 완료 후 `yoongyeongeun/v1-judgment-hardcoded`로 HF 업로드 예정
+
+### 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `ai/agents/judgment_agent.py` | 수정 — top_k 10→5, score_threshold→0.0 (일반+스트리밍) |
+| `ai/llm/prompts.py` | 수정 — 노이즈 규정 무시 지시 2줄 추가 (양쪽 프롬프트) |
+| `outputs/v1_judgment/eval_results.json` | 수정 — v1-RAG 3ep 결과 추가 |
+
+**다음 할 일:**
+- v1 하드코딩 재학습 완료 → HuggingFace 업로드
+- vLLM 서빙에 하드코딩 어댑터 연결
+- RAG 개선 효과 실서비스 테스트
+- RAG 결과 상위 2~3개만 프롬프트에 넣기 (추가 개선)

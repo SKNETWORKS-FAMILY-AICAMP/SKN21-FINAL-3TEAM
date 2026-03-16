@@ -25,6 +25,9 @@ Phase 2: 멀티라벨 Intent 분류 모델 학습
 
   # 5-Seed 앙상블 (Focal + FGM)
   python -m ai.experiments.train_multilabel --model klue/roberta-large --focal --fgm --ensemble-seeds 42,123,456,789,1337
+
+  # 5-Seed 앙상블 + HuggingFace Hub 자동 백업
+  python -m ai.experiments.train_multilabel --model klue/roberta-large --focal --fgm --ensemble-seeds 42,123,456,789,1337 --hf-repo <user>/<repo>
 """
 
 import argparse
@@ -50,6 +53,51 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
+
+
+# ── HuggingFace Hub 백업 ─────────────────────────────────────────────────────
+
+def backup_to_hub(local_dir: Path, repo_id: str, commit_message: str = None):
+    """학습된 모델을 HuggingFace Hub에 업로드 (자동 백업)"""
+    try:
+        from huggingface_hub import HfApi, login
+        import os
+
+        token = os.environ.get("HF_TOKEN")
+        if not token:
+            print("  ⚠️  HF_TOKEN 환경변수 없음 — Hub 백업 건너뜀")
+            print("     export HF_TOKEN=hf_xxxxx 설정 후 재시도하세요")
+            return False
+
+        login(token=token, add_to_git_credential=False)
+        api = HfApi()
+
+        # 레포 없으면 자동 생성
+        try:
+            api.repo_info(repo_id=repo_id, repo_type="model")
+        except Exception:
+            api.create_repo(repo_id=repo_id, repo_type="model", private=True)
+            print(f"  ✓ HuggingFace 레포 생성: {repo_id} (private)")
+
+        if commit_message is None:
+            commit_message = f"Upload intent ensemble model from {local_dir.name}"
+
+        api.upload_folder(
+            folder_path=str(local_dir),
+            repo_id=repo_id,
+            repo_type="model",
+            commit_message=commit_message,
+        )
+
+        print(f"  ✅ Hub 백업 완료: https://huggingface.co/{repo_id}")
+        return True
+
+    except ImportError:
+        print("  ⚠️  huggingface_hub 미설치 — pip install huggingface_hub")
+        return False
+    except Exception as e:
+        print(f"  ❌ Hub 백업 실패: {e}")
+        return False
 
 # ── 경로 ──────────────────────────────────────────────────────────────────────
 

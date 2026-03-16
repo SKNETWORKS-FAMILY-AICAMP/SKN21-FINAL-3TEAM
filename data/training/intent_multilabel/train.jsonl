@@ -3917,3 +3917,38 @@
 {"text": "회사 비전 문서 좀 참고해서 이번 사업계획서 써 해줘", "labels": ["doc_generate", "doc_retrieve"]}
 {"text": "다음 주 출장 언제지? 그리고 중간 관리자 없이 바로 임원과 회의해도 됨?", "labels": ["judgment", "schedule_view"]}
 {"text": "내일 오전 9시부터 12시 사이에 일정이 비어있는지 확인 확인하고 사내 교육은 업무 시간에 받아도 해줘", "labels": ["judgment", "schedule_view"]}
+{"text": "연차 규정 확인하고 이번 주 일정 보고 빈 날에 휴가 넣어줘", "labels": ["judgment", "schedule_view", "schedule_add"]}
+{"text": "매출 자료 찾아서 분석하고 발표 자료 만들어줘", "labels": ["doc_retrieve", "doc_retrieve", "doc_generate"]}
+{"text": "보안 규정 확인하고 관련 문서 찾아서 보고서 작성해줘", "labels": ["judgment", "doc_retrieve", "doc_generate"]}
+{"text": "교육비 규정 봐주고 가능하면 교육 등록하고 보고서도 만들어줘", "labels": ["judgment", "schedule_add", "doc_generate"]}
+{"text": "이번 달 일정 확인하고 프로젝트 문서 찾아서 회의록 작성해줘", "labels": ["schedule_view", "doc_retrieve", "doc_generate"]}
+{"text": "출장 규정 확인하고 항공편 자료 검색해서 출장 계획서 만들어줘", "labels": ["judgment", "doc_retrieve", "doc_generate"]}
+{"text": "회의록 찾아서 핵심 정리하고 다음 미팅 잡아줘", "labels": ["doc_retrieve", "doc_retrieve", "schedule_add"]}
+{"text": "팀원 일정 보고 겹치는 거 없는지 확인하고 워크숍 등록해줘", "labels": ["schedule_view", "judgment", "schedule_add"]}
+{"text": "실적 자료 검색하고 분석해서 보고서 만들어줘", "labels": ["doc_retrieve", "doc_retrieve", "doc_generate"]}
+{"text": "복지 규정 확인하고 신청 가능한지 보고 일정 잡아줘", "labels": ["judgment", "judgment", "schedule_add"]}
+{"text": "프로젝트 현황 찾아서 요약하고 발표 자료도 만들어줘", "labels": ["doc_retrieve", "doc_retrieve", "doc_generate"]}
+{"text": "야근 규정 확인하고 이번 주 일정 보고 야근 등록해줘", "labels": ["judgment", "schedule_view", "schedule_add"]}
+{"text": "거래처 문서 찾아서 계약 조건 확인하고 보고서 써줘", "labels": ["doc_retrieve", "judgment", "doc_generate"]}
+{"text": "팀 일정 확인하고 빈 시간에 면담 잡고 안건도 정리해줘", "labels": ["schedule_view", "schedule_add", "doc_generate"]}
+{"text": "경쟁사 자료 분석하고 전략 보고서 만들고 발표 일정도 잡아줘", "labels": ["doc_retrieve", "doc_generate", "schedule_add"]}
+{"text": "인사 규정 봐주고 채용 가능한지 확인하고 JD 만들어줘", "labels": ["judgment", "judgment", "doc_generate"]}
+{"text": "예산 자료 찾아서 초과 여부 판단하고 보고서 작성해줘", "labels": ["doc_retrieve", "judgment", "doc_generate"]}
+{"text": "출장비 규정 확인하고 문서 찾아서 일정 등록해줘", "labels": ["judgment", "doc_retrieve", "schedule_add"]}
+{"text": "이번 달 스케줄 보고 교육비 규정 확인하고 교육 등록해줘", "labels": ["schedule_view", "judgment", "schedule_add"]}
+{"text": "고객 요구사항 찾아서 분석하고 제안서 만들어줘", "labels": ["doc_retrieve", "doc_retrieve", "doc_generate"]}
+{"text": "인사 규정 분석하고 정리해줘", "labels": ["judgment"]}
+{"text": "야근 수당 계산해서 알려줘", "labels": ["judgment"]}
+{"text": "보안 규정 확인해서 정리해줘", "labels": ["judgment"]}
+{"text": "연차이랑 병가 규정 알려줘", "labels": ["judgment"]}
+{"text": "내년도 예산 편성 기준 확인해줘", "labels": ["judgment"]}
+{"text": "출장비 규정 분석해줘", "labels": ["judgment"]}
+{"text": "복리후생 규정 정리해줘", "labels": ["judgment"]}
+{"text": "교육비 지원 기준 알려줘", "labels": ["judgment"]}
+{"text": "경조사 휴가 규정 확인하고 알려줘", "labels": ["judgment"]}
+{"text": "퇴직금 산정 기준 정리해줘", "labels": ["judgment"]}
+{"text": "시간외근무 수당 규정 알려줘", "labels": ["judgment"]}
+{"text": "재택근무 규정 분석하고 정리해줘", "labels": ["judgment"]}
+{"text": "성과급 지급 기준 확인해줘", "labels": ["judgment"]}
+{"text": "법인카드 사용 규정 정리해줘", "labels": ["judgment"]}
+{"text": "복지포인트 사용 기준 알려줘", "labels": ["judgment"]}

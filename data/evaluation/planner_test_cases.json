@@ -2,105 +2,2018 @@
   "description": "Planner 베이스 모델 비교용 테스트 케이스 v2 (100개)",
   "version": "v2",
   "test_cases": [
-
-    {"id": "S-001", "category": "single_step", "input": "연차 사용 규정 알려줘", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}]}},
-    {"id": "S-002", "category": "single_step", "input": "내일 오후 2시에 팀 회의 잡아줘", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "schedule_add", "depends_on": []}]}},
-    {"id": "S-003", "category": "single_step", "input": "이번 달 보고서 만들어줘", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "doc_generate", "depends_on": []}]}},
-    {"id": "S-004", "category": "single_step", "input": "지난주 회의록 찾아줘", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}]}},
-    {"id": "S-005", "category": "single_step", "input": "다음 주 일정 보여줘", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "schedule_view", "depends_on": []}]}},
-    {"id": "S-006", "category": "single_step", "input": "야근 수당 몇 시부터 적용돼?", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}]}},
-    {"id": "S-007", "category": "single_step", "input": "출장비 정산 기준이 어떻게 돼?", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}]}},
-    {"id": "S-008", "category": "single_step", "input": "육아휴직 중에 알바해도 되나요?", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}]}},
-    {"id": "S-009", "category": "single_step", "input": "회의록 양식 하나 작성해줘", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "doc_generate", "depends_on": []}]}},
-    {"id": "S-010", "category": "single_step", "input": "프로젝트 제안서 초안 뽑아줘", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "doc_generate", "depends_on": []}]}},
-    {"id": "S-011", "category": "single_step", "input": "JD 작성해줘 백엔드 개발자", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "doc_generate", "depends_on": []}]}},
-    {"id": "S-012", "category": "single_step", "input": "인사팀 공유 문서 검색해봐", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}]}},
-    {"id": "S-013", "category": "single_step", "input": "3월 매출 관련 자료 있어?", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}]}},
-    {"id": "S-014", "category": "single_step", "input": "온보딩 가이드 어디서 볼 수 있어?", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}]}},
-    {"id": "S-015", "category": "single_step", "input": "수요일 3시에 면접 일정 넣어줘", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "schedule_add", "depends_on": []}]}},
-    {"id": "S-016", "category": "single_step", "input": "금요일 저녁 회식 등록해", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "schedule_add", "depends_on": []}]}},
-    {"id": "S-017", "category": "single_step", "input": "이번 주 내 스케줄 뭐 있어?", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "schedule_view", "depends_on": []}]}},
-    {"id": "S-018", "category": "single_step", "input": "4월 일정 캘린더로 보여줘", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "schedule_view", "depends_on": []}]}},
-    {"id": "S-019", "category": "single_step", "input": "오늘 점심 뭐 먹을까", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "general", "depends_on": []}]}},
-    {"id": "S-020", "category": "single_step", "input": "고마워", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "general", "depends_on": []}]}},
-    {"id": "S-021", "category": "single_step", "input": "안녕", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "general", "depends_on": []}]}},
-    {"id": "S-022", "category": "single_step", "input": "재택근무 규정이 어떻게 되지?", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}]}},
-    {"id": "S-023", "category": "single_step", "input": "퇴직금 계산 기준 좀", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}]}},
-    {"id": "S-024", "category": "single_step", "input": "분기 실적 보고서 작성해", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "doc_generate", "depends_on": []}]}},
-    {"id": "S-025", "category": "single_step", "input": "경쟁사 분석 자료 검색", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}]}},
-    {"id": "S-026", "category": "single_step", "input": "내일 미팅 몇 시야?", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "schedule_view", "depends_on": []}]}},
-    {"id": "S-027", "category": "single_step", "input": "점심시간에 외출해도 돼?", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}]}},
-    {"id": "S-028", "category": "single_step", "input": "신입사원 교육 자료 찾아봐", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}]}},
-    {"id": "S-029", "category": "single_step", "input": "다음달 첫째주에 워크숍 잡아줘", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "schedule_add", "depends_on": []}]}},
-    {"id": "S-030", "category": "single_step", "input": "요즘 AI 트렌드가 뭐야?", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "general", "depends_on": []}]}},
-
-    {"id": "SEQ-001", "category": "sequential", "input": "지난주 회의록 찾아서 그걸로 보고서 만들어줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "doc_generate", "depends_on": [1]}]}},
-    {"id": "SEQ-002", "category": "sequential", "input": "연차 규정 확인하고, 가능하면 다음주 화요일에 휴가 등록해줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}, {"step_id": 2, "intent": "schedule_add", "depends_on": [1]}]}},
-    {"id": "SEQ-003", "category": "sequential", "input": "이번 주 미팅 일정 확인하고 회의록 양식 만들어줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "schedule_view", "depends_on": []}, {"step_id": 2, "intent": "doc_generate", "depends_on": [1]}]}},
-    {"id": "SEQ-004", "category": "sequential", "input": "출장비 정산 문서 찾아보고 이번 출장비가 규정에 맞는지 확인해줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "judgment", "depends_on": [1]}]}},
-    {"id": "SEQ-005", "category": "sequential", "input": "프로젝트 기획서 찾아서 요약해줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "doc_retrieve", "depends_on": [1]}]}},
-    {"id": "SEQ-006", "category": "sequential", "input": "재택근무 가능한지 확인하고 내일 재택 신청해줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}, {"step_id": 2, "intent": "schedule_add", "depends_on": [1]}]}},
-    {"id": "SEQ-007", "category": "sequential", "input": "팀 일정 확인하고 빈 시간에 회의 잡아줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "schedule_view", "depends_on": []}, {"step_id": 2, "intent": "schedule_add", "depends_on": [1]}]}},
-    {"id": "SEQ-008", "category": "sequential", "input": "지난 분기 매출 자료 찾아서 보고서로 정리해줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "doc_generate", "depends_on": [1]}]}},
-    {"id": "SEQ-009", "category": "sequential", "input": "야근 수당 규정 보고 이번 달 야근비 청구 가능한지 판단해줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "judgment", "depends_on": [1]}]}},
-    {"id": "SEQ-010", "category": "sequential", "input": "경쟁사 분석 자료 검색해서 제안서 작성해줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "doc_generate", "depends_on": [1]}]}},
-    {"id": "SEQ-011", "category": "sequential", "input": "오늘 회의 내용 바탕으로 회의록 써줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "schedule_view", "depends_on": []}, {"step_id": 2, "intent": "doc_generate", "depends_on": [1]}]}},
-    {"id": "SEQ-012", "category": "sequential", "input": "복지 규정 찾아보고 동호회 지원금 신청 가능한지 알려줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "judgment", "depends_on": [1]}]}},
-    {"id": "SEQ-013", "category": "sequential", "input": "채용 공고 자료 찾아서 JD 만들어줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "doc_generate", "depends_on": [1]}]}},
-    {"id": "SEQ-014", "category": "sequential", "input": "내 일정 확인해서 비어있는 날에 출장 등록해줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "schedule_view", "depends_on": []}, {"step_id": 2, "intent": "schedule_add", "depends_on": [1]}]}},
-    {"id": "SEQ-015", "category": "sequential", "input": "교육비 지원 규정 확인하고 외부 교육 등록해줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}, {"step_id": 2, "intent": "schedule_add", "depends_on": [1]}]}},
-    {"id": "SEQ-016", "category": "sequential", "input": "인사평가 양식 찾아서 내 평가서 작성해줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "doc_generate", "depends_on": [1]}]}},
-    {"id": "SEQ-017", "category": "sequential", "input": "회의 일정 보고 참석자 목록 문서로 만들어줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "schedule_view", "depends_on": []}, {"step_id": 2, "intent": "doc_generate", "depends_on": [1]}]}},
-    {"id": "SEQ-018", "category": "sequential", "input": "법인카드 사용 규정 확인한 다음 접대비 청구 가능한지 봐줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "judgment", "depends_on": [1]}]}},
-    {"id": "SEQ-019", "category": "sequential", "input": "보안 정책 문서 찾아서 USB 사용 가능한지 판단해줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "judgment", "depends_on": [1]}]}},
-    {"id": "SEQ-020", "category": "sequential", "input": "지난 회의 안건 찾아보고 후속 미팅 잡아줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "schedule_add", "depends_on": [1]}]}},
-
-    {"id": "PAR-001", "category": "parallel", "input": "다음 주 일정 보여주고, 연차 규정도 알려줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "schedule_view", "depends_on": []}, {"step_id": 2, "intent": "judgment", "depends_on": []}]}},
-    {"id": "PAR-002", "category": "parallel", "input": "마케팅 보고서랑 인사 규정 둘 다 찾아줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "doc_retrieve", "depends_on": []}]}},
-    {"id": "PAR-003", "category": "parallel", "input": "회의록 작성해주고 내일 일정도 알려줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_generate", "depends_on": []}, {"step_id": 2, "intent": "schedule_view", "depends_on": []}]}},
-    {"id": "PAR-004", "category": "parallel", "input": "출장 규정이랑 재택근무 규정 둘 다 확인해줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}, {"step_id": 2, "intent": "judgment", "depends_on": []}]}},
-    {"id": "PAR-005", "category": "parallel", "input": "제안서 초안 만들어주고, 이번 주 스케줄도 보여줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_generate", "depends_on": []}, {"step_id": 2, "intent": "schedule_view", "depends_on": []}]}},
-    {"id": "PAR-006", "category": "parallel", "input": "보고서 양식 만들어주고 JD도 하나 작성해줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_generate", "depends_on": []}, {"step_id": 2, "intent": "doc_generate", "depends_on": []}]}},
-    {"id": "PAR-007", "category": "parallel", "input": "월요일에 팀 미팅 잡고 수요일에 고객 미팅도 잡아줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "schedule_add", "depends_on": []}, {"step_id": 2, "intent": "schedule_add", "depends_on": []}]}},
-    {"id": "PAR-008", "category": "parallel", "input": "교육비 규정 확인해주고 신입 온보딩 문서도 찾아줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}, {"step_id": 2, "intent": "doc_retrieve", "depends_on": []}]}},
-    {"id": "PAR-009", "category": "parallel", "input": "인사 규정 찾아주고 3월 일정도 보여줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "schedule_view", "depends_on": []}]}},
-    {"id": "PAR-010", "category": "parallel", "input": "복리후생 규정 알려주고 연봉 협상 가이드도 찾아줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}, {"step_id": 2, "intent": "doc_retrieve", "depends_on": []}]}},
-    {"id": "PAR-011", "category": "parallel", "input": "오후에 면접 일정 넣고 저녁에 팀 회식도 등록해", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "schedule_add", "depends_on": []}, {"step_id": 2, "intent": "schedule_add", "depends_on": []}]}},
-    {"id": "PAR-012", "category": "parallel", "input": "마케팅 자료 찾아주고 영업 자료도 검색해줘", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "doc_retrieve", "depends_on": []}]}},
-
-    {"id": "C-001", "category": "complex", "input": "출장 규정 문서 찾아서 해외출장 가능한지 확인하고, 가능하면 다음주 출장 일정 잡아줘", "expected": {"num_steps": 3, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "judgment", "depends_on": [1]}, {"step_id": 3, "intent": "schedule_add", "depends_on": [2]}]}},
-    {"id": "C-002", "category": "complex", "input": "이번 주 회의 일정 확인해서, 관련 자료 찾고, 회의록 초안 만들어줘", "expected": {"num_steps": 3, "plan": [{"step_id": 1, "intent": "schedule_view", "depends_on": []}, {"step_id": 2, "intent": "doc_retrieve", "depends_on": [1]}, {"step_id": 3, "intent": "doc_generate", "depends_on": [1, 2]}]}},
-    {"id": "C-003", "category": "complex", "input": "연차 규정 확인하고 다음 주 팀 일정도 확인해서, 빈 날에 휴가 등록해줘", "expected": {"num_steps": 3, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}, {"step_id": 2, "intent": "schedule_view", "depends_on": []}, {"step_id": 3, "intent": "schedule_add", "depends_on": [1, 2]}]}},
-    {"id": "C-004", "category": "complex", "input": "고객사 요구사항 문서 찾아서 분석하고 제안서 만들어줘", "expected": {"num_steps": 3, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "doc_retrieve", "depends_on": [1]}, {"step_id": 3, "intent": "doc_generate", "depends_on": [2]}]}},
-    {"id": "C-005", "category": "complex", "input": "지난 미팅 회의록 검색해서 후속 과제 정리하고 다음 미팅 일정 잡아줘", "expected": {"num_steps": 3, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "doc_generate", "depends_on": [1]}, {"step_id": 3, "intent": "schedule_add", "depends_on": [1]}]}},
-    {"id": "C-006", "category": "complex", "input": "법인카드 규정 찾아서 해외 결제 가능한지 확인하고 출장 보고서 양식 만들어줘", "expected": {"num_steps": 3, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "judgment", "depends_on": [1]}, {"step_id": 3, "intent": "doc_generate", "depends_on": [1, 2]}]}},
-    {"id": "C-007", "category": "complex", "input": "이번 달 일정 확인하고 비어있는 날 찾아서 팀 워크숍 등록해줘", "expected": {"num_steps": 3, "plan": [{"step_id": 1, "intent": "schedule_view", "depends_on": []}, {"step_id": 2, "intent": "schedule_view", "depends_on": [1]}, {"step_id": 3, "intent": "schedule_add", "depends_on": [2]}]}},
-    {"id": "C-008", "category": "complex", "input": "교육비 지원 규정 찾아서 외부 교육 신청 가능한지 보고 가능하면 교육 일정 넣어줘", "expected": {"num_steps": 3, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "judgment", "depends_on": [1]}, {"step_id": 3, "intent": "schedule_add", "depends_on": [2]}]}},
-    {"id": "C-009", "category": "complex", "input": "채용 공고 자료 검색하고 경쟁사 JD도 찾아서 우리 JD 만들어줘", "expected": {"num_steps": 3, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 3, "intent": "doc_generate", "depends_on": [1, 2]}]}},
-    {"id": "C-010", "category": "complex", "input": "보안 정책 확인해서 외부 클라우드 사용 가능한지 판단하고 관련 보고서 작성해줘", "expected": {"num_steps": 3, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "judgment", "depends_on": [1]}, {"step_id": 3, "intent": "doc_generate", "depends_on": [1, 2]}]}},
-    {"id": "C-011", "category": "complex", "input": "인사 규정이랑 복지 규정 둘 다 찾아서 비교 보고서 만들어줘", "expected": {"num_steps": 3, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 3, "intent": "doc_generate", "depends_on": [1, 2]}]}},
-    {"id": "C-012", "category": "complex", "input": "연차 확인하고 팀장 일정도 보고 둘 다 비는 날에 면담 잡아줘", "expected": {"num_steps": 3, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}, {"step_id": 2, "intent": "schedule_view", "depends_on": []}, {"step_id": 3, "intent": "schedule_add", "depends_on": [1, 2]}]}},
-    {"id": "C-013", "category": "complex", "input": "프로젝트 문서 찾아서 진행 상황 정리하고 보고서 만들어줘", "expected": {"num_steps": 3, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "doc_retrieve", "depends_on": [1]}, {"step_id": 3, "intent": "doc_generate", "depends_on": [2]}]}},
-    {"id": "C-014", "category": "complex", "input": "마케팅 보고서 찾아서 요약하고, 그 내용으로 제안서 만들고, 발표 일정도 잡아줘", "expected": {"num_steps": 4, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 2, "intent": "doc_retrieve", "depends_on": [1]}, {"step_id": 3, "intent": "doc_generate", "depends_on": [2]}, {"step_id": 4, "intent": "schedule_add", "depends_on": [3]}]}},
-    {"id": "C-015", "category": "complex", "input": "출장 규정 확인하고 항공편 예산 자료 찾아서 출장 계획서 만들고 출장 일정 등록해줘", "expected": {"num_steps": 4, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}, {"step_id": 2, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 3, "intent": "doc_generate", "depends_on": [1, 2]}, {"step_id": 4, "intent": "schedule_add", "depends_on": [3]}]}},
-
-    {"id": "E-001", "category": "edge_case", "description": "일반 인사", "input": "오늘 날씨 어때?", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "general", "depends_on": []}]}},
-    {"id": "E-002", "category": "edge_case", "description": "모호한 요청", "input": "회의 관련해서 좀 도와줘", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "general", "depends_on": []}]}},
-    {"id": "E-003", "category": "edge_case", "description": "구어체/축약", "input": "걍 보고서 하나 뽑아", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "doc_generate", "depends_on": []}]}},
-    {"id": "E-004", "category": "edge_case", "description": "오타 포함", "input": "회이록 작섣해줘", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "doc_generate", "depends_on": []}]}},
-    {"id": "E-005", "category": "edge_case", "description": "초성만", "input": "ㅎㅇㄹ ㅊㅇ", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}]}},
-    {"id": "E-006", "category": "edge_case", "description": "매우 긴 문장", "input": "우리 회사에서 최근에 도입한 새로운 재택근무 정책에 따르면 주 몇 회까지 재택근무가 가능한지, 그리고 재택근무 시 근태 관리는 어떻게 이루어지는지 궁금합니다", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}]}},
-    {"id": "E-007", "category": "edge_case", "description": "반말 + 비격식", "input": "야 그 규정 있잖아 출장비 그거 좀 찾아봐", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "doc_retrieve", "depends_on": []}]}},
-    {"id": "E-008", "category": "edge_case", "description": "영어 혼용", "input": "meeting minutes 좀 만들어줘", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "doc_generate", "depends_on": []}]}},
-    {"id": "E-009", "category": "edge_case", "description": "빈 요청", "input": "뭐 할 수 있어?", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "general", "depends_on": []}]}},
-    {"id": "E-010", "category": "edge_case", "description": "존댓말 격식체", "input": "안녕하세요, 출장 관련 사내 규정을 확인하고 싶습니다. 해외 출장 시 숙박비 상한액이 어떻게 되는지요?", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}]}},
-    {"id": "E-011", "category": "edge_case", "description": "의도 불분명한 복합", "input": "그거 아까 그거", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "general", "depends_on": []}]}},
-    {"id": "E-012", "category": "edge_case", "description": "숫자만", "input": "3", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "general", "depends_on": []}]}},
-    {"id": "E-013", "category": "edge_case", "description": "이모티콘 포함", "input": "보고서 만들어줘 ㅎㅎ 급해요 ㅠㅠ", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "doc_generate", "depends_on": []}]}},
-    {"id": "E-014", "category": "edge_case", "description": "복합처럼 보이지만 단일", "input": "연차 규정이랑 병가 규정 차이가 뭐야?", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}]}},
-    {"id": "E-015", "category": "edge_case", "description": "부정형 요청", "input": "내일 회의 취소해줘", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "schedule_add", "depends_on": []}]}},
-    {"id": "E-016", "category": "edge_case", "description": "감사 인사", "input": "도움이 많이 됐어 고마워!", "expected": {"num_steps": 1, "plan": [{"step_id": 1, "intent": "general", "depends_on": []}]}},
-    {"id": "E-017", "category": "edge_case", "description": "한 문장에 3개 의도 축약", "input": "규정 확인 문서 찾기 일정 등록", "expected": {"num_steps": 3, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}, {"step_id": 2, "intent": "doc_retrieve", "depends_on": []}, {"step_id": 3, "intent": "schedule_add", "depends_on": []}]}},
-    {"id": "E-018", "category": "edge_case", "description": "질문형 복합", "input": "출장비 얼마까지 되는지 확인하고 출장 계획서도 만들 수 있어?", "expected": {"num_steps": 2, "plan": [{"step_id": 1, "intent": "judgment", "depends_on": []}, {"step_id": 2, "intent": "doc_generate", "depends_on": [1]}]}}
+    {
+      "id": "S-001",
+      "category": "single_step",
+      "input": "연차 사용 규정 알려줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-002",
+      "category": "single_step",
+      "input": "내일 오후 2시에 팀 회의 잡아줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_add",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-003",
+      "category": "single_step",
+      "input": "이번 달 보고서 만들어줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_generate",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-004",
+      "category": "single_step",
+      "input": "지난주 회의록 찾아줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-005",
+      "category": "single_step",
+      "input": "다음 주 일정 보여줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_view",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-006",
+      "category": "single_step",
+      "input": "야근 수당 몇 시부터 적용돼?",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-007",
+      "category": "single_step",
+      "input": "출장비 정산 기준이 어떻게 돼?",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-008",
+      "category": "single_step",
+      "input": "육아휴직 중에 알바해도 되나요?",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-009",
+      "category": "single_step",
+      "input": "회의록 양식 하나 작성해줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_generate",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-010",
+      "category": "single_step",
+      "input": "프로젝트 제안서 초안 뽑아줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_generate",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-011",
+      "category": "single_step",
+      "input": "JD 작성해줘 백엔드 개발자",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_generate",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-012",
+      "category": "single_step",
+      "input": "인사팀 공유 문서 검색해봐",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-013",
+      "category": "single_step",
+      "input": "3월 매출 관련 자료 있어?",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-014",
+      "category": "single_step",
+      "input": "온보딩 가이드 어디서 볼 수 있어?",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-015",
+      "category": "single_step",
+      "input": "수요일 3시에 면접 일정 넣어줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_add",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-016",
+      "category": "single_step",
+      "input": "금요일 저녁 회식 등록해",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_add",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-017",
+      "category": "single_step",
+      "input": "이번 주 내 스케줄 뭐 있어?",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_view",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-018",
+      "category": "single_step",
+      "input": "4월 일정 캘린더로 보여줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_view",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-019",
+      "category": "single_step",
+      "input": "오늘 점심 뭐 먹을까",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "general",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-020",
+      "category": "single_step",
+      "input": "고마워",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "general",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-021",
+      "category": "single_step",
+      "input": "안녕",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "general",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-022",
+      "category": "single_step",
+      "input": "재택근무 규정이 어떻게 되지?",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-023",
+      "category": "single_step",
+      "input": "퇴직금 계산 기준 좀",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-024",
+      "category": "single_step",
+      "input": "분기 실적 보고서 작성해",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_generate",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-025",
+      "category": "single_step",
+      "input": "경쟁사 분석 자료 검색",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-026",
+      "category": "single_step",
+      "input": "내일 미팅 몇 시야?",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_view",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-027",
+      "category": "single_step",
+      "input": "점심시간에 외출해도 돼?",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-028",
+      "category": "single_step",
+      "input": "신입사원 교육 자료 찾아봐",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-029",
+      "category": "single_step",
+      "input": "다음달 첫째주에 워크숍 잡아줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_add",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "S-030",
+      "category": "single_step",
+      "input": "요즘 AI 트렌드가 뭐야?",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "general",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-001",
+      "category": "sequential",
+      "input": "지난주 회의록 찾아서 그걸로 보고서 만들어줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_generate",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-002",
+      "category": "sequential",
+      "input": "연차 규정 확인하고, 가능하면 다음주 화요일에 휴가 등록해줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "schedule_add",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-003",
+      "category": "sequential",
+      "input": "이번 주 미팅 일정 확인하고 회의록 양식 만들어줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_view",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_generate",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-004",
+      "category": "sequential",
+      "input": "출장비 정산 문서 찾아보고 이번 출장비가 규정에 맞는지 확인해줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "judgment",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-005",
+      "category": "sequential",
+      "input": "프로젝트 기획서 찾아서 요약해줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_retrieve",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-006",
+      "category": "sequential",
+      "input": "재택근무 가능한지 확인하고 내일 재택 신청해줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "schedule_add",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-007",
+      "category": "sequential",
+      "input": "팀 일정 확인하고 빈 시간에 회의 잡아줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_view",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "schedule_add",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-008",
+      "category": "sequential",
+      "input": "지난 분기 매출 자료 찾아서 보고서로 정리해줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_generate",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-009",
+      "category": "sequential",
+      "input": "야근 수당 규정 보고 이번 달 야근비 청구 가능한지 판단해줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "judgment",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-010",
+      "category": "sequential",
+      "input": "경쟁사 분석 자료 검색해서 제안서 작성해줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_generate",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-011",
+      "category": "sequential",
+      "input": "오늘 회의 내용 바탕으로 회의록 써줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_view",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_generate",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-012",
+      "category": "sequential",
+      "input": "복지 규정 찾아보고 동호회 지원금 신청 가능한지 알려줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "judgment",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-013",
+      "category": "sequential",
+      "input": "채용 공고 자료 찾아서 JD 만들어줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_generate",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-014",
+      "category": "sequential",
+      "input": "내 일정 확인해서 비어있는 날에 출장 등록해줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_view",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "schedule_add",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-015",
+      "category": "sequential",
+      "input": "교육비 지원 규정 확인하고 외부 교육 등록해줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "schedule_add",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-016",
+      "category": "sequential",
+      "input": "인사평가 양식 찾아서 내 평가서 작성해줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_generate",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-017",
+      "category": "sequential",
+      "input": "회의 일정 보고 참석자 목록 문서로 만들어줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_view",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_generate",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-018",
+      "category": "sequential",
+      "input": "법인카드 사용 규정 확인한 다음 접대비 청구 가능한지 봐줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "judgment",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-019",
+      "category": "sequential",
+      "input": "보안 정책 문서 찾아서 USB 사용 가능한지 판단해줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "judgment",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "SEQ-020",
+      "category": "sequential",
+      "input": "지난 회의 안건 찾아보고 후속 미팅 잡아줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "schedule_add",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "PAR-001",
+      "category": "parallel",
+      "input": "다음 주 일정 보여주고, 연차 규정도 알려줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_view",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "judgment",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "PAR-002",
+      "category": "parallel",
+      "input": "마케팅 보고서랑 인사 규정 둘 다 찾아줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "PAR-003",
+      "category": "parallel",
+      "input": "회의록 작성해주고 내일 일정도 알려줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_generate",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "schedule_view",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "PAR-004",
+      "category": "parallel",
+      "input": "출장 규정이랑 재택근무 규정 둘 다 확인해줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "judgment",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "PAR-005",
+      "category": "parallel",
+      "input": "제안서 초안 만들어주고, 이번 주 스케줄도 보여줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_generate",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "schedule_view",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "PAR-006",
+      "category": "parallel",
+      "input": "보고서 양식 만들어주고 JD도 하나 작성해줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_generate",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_generate",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "PAR-007",
+      "category": "parallel",
+      "input": "월요일에 팀 미팅 잡고 수요일에 고객 미팅도 잡아줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_add",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "schedule_add",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "PAR-008",
+      "category": "parallel",
+      "input": "교육비 규정 확인해주고 신입 온보딩 문서도 찾아줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "PAR-009",
+      "category": "parallel",
+      "input": "인사 규정 찾아주고 3월 일정도 보여줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "schedule_view",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "PAR-010",
+      "category": "parallel",
+      "input": "복리후생 규정 알려주고 연봉 협상 가이드도 찾아줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "PAR-011",
+      "category": "parallel",
+      "input": "오후에 면접 일정 넣고 저녁에 팀 회식도 등록해",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_add",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "schedule_add",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "PAR-012",
+      "category": "parallel",
+      "input": "마케팅 자료 찾아주고 영업 자료도 검색해줘",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-001",
+      "category": "complex",
+      "input": "출장 규정 문서 찾아서 해외출장 가능한지 확인하고, 가능하면 다음주 출장 일정 잡아줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "judgment",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "schedule_add",
+            "depends_on": [
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-002",
+      "category": "complex",
+      "input": "이번 주 회의 일정 확인해서, 관련 자료 찾고, 회의록 초안 만들어줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_view",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_retrieve",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "doc_generate",
+            "depends_on": [
+              1,
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-003",
+      "category": "complex",
+      "input": "연차 규정 확인하고 다음 주 팀 일정도 확인해서, 빈 날에 휴가 등록해줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "schedule_view",
+            "depends_on": []
+          },
+          {
+            "step_id": 3,
+            "intent": "schedule_add",
+            "depends_on": [
+              1,
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-004",
+      "category": "complex",
+      "input": "고객사 요구사항 문서 찾아서 분석하고 제안서 만들어줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_retrieve",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "doc_generate",
+            "depends_on": [
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-005",
+      "category": "complex",
+      "input": "지난 미팅 회의록 검색해서 후속 과제 정리하고 다음 미팅 일정 잡아줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_generate",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "schedule_add",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-006",
+      "category": "complex",
+      "input": "법인카드 규정 찾아서 해외 결제 가능한지 확인하고 출장 보고서 양식 만들어줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "judgment",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "doc_generate",
+            "depends_on": [
+              1,
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-007",
+      "category": "complex",
+      "input": "이번 달 일정 확인하고 비어있는 날 찾아서 팀 워크숍 등록해줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_view",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "schedule_view",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "schedule_add",
+            "depends_on": [
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-008",
+      "category": "complex",
+      "input": "교육비 지원 규정 찾아서 외부 교육 신청 가능한지 보고 가능하면 교육 일정 넣어줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "judgment",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "schedule_add",
+            "depends_on": [
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-009",
+      "category": "complex",
+      "input": "채용 공고 자료 검색하고 경쟁사 JD도 찾아서 우리 JD 만들어줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 3,
+            "intent": "doc_generate",
+            "depends_on": [
+              1,
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-010",
+      "category": "complex",
+      "input": "보안 정책 확인해서 외부 클라우드 사용 가능한지 판단하고 관련 보고서 작성해줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "judgment",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "doc_generate",
+            "depends_on": [
+              1,
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-011",
+      "category": "complex",
+      "input": "인사 규정이랑 복지 규정 둘 다 찾아서 비교 보고서 만들어줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 3,
+            "intent": "doc_generate",
+            "depends_on": [
+              1,
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-012",
+      "category": "complex",
+      "input": "연차 확인하고 팀장 일정도 보고 둘 다 비는 날에 면담 잡아줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "schedule_view",
+            "depends_on": []
+          },
+          {
+            "step_id": 3,
+            "intent": "schedule_add",
+            "depends_on": [
+              1,
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-013",
+      "category": "complex",
+      "input": "프로젝트 문서 찾아서 진행 상황 정리하고 보고서 만들어줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_retrieve",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "doc_generate",
+            "depends_on": [
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-014",
+      "category": "complex",
+      "input": "마케팅 보고서 찾아서 요약하고, 그 내용으로 제안서 만들고, 발표 일정도 잡아줘",
+      "expected": {
+        "num_steps": 4,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_retrieve",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "doc_generate",
+            "depends_on": [
+              2
+            ]
+          },
+          {
+            "step_id": 4,
+            "intent": "schedule_add",
+            "depends_on": [
+              3
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-015",
+      "category": "complex",
+      "input": "출장 규정 확인하고 항공편 예산 자료 찾아서 출장 계획서 만들고 출장 일정 등록해줘",
+      "expected": {
+        "num_steps": 4,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 3,
+            "intent": "doc_generate",
+            "depends_on": [
+              1,
+              2
+            ]
+          },
+          {
+            "step_id": 4,
+            "intent": "schedule_add",
+            "depends_on": [
+              3
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-001",
+      "category": "edge_case",
+      "description": "일반 인사",
+      "input": "오늘 날씨 어때?",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "general",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-002",
+      "category": "edge_case",
+      "description": "모호한 요청",
+      "input": "회의 관련해서 좀 도와줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "general",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-003",
+      "category": "edge_case",
+      "description": "구어체/축약",
+      "input": "걍 보고서 하나 뽑아",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_generate",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-004",
+      "category": "edge_case",
+      "description": "오타 포함",
+      "input": "회이록 작섣해줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_generate",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-005",
+      "category": "edge_case",
+      "description": "초성만",
+      "input": "ㅎㅇㄹ ㅊㅇ",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-006",
+      "category": "edge_case",
+      "description": "매우 긴 문장",
+      "input": "우리 회사에서 최근에 도입한 새로운 재택근무 정책에 따르면 주 몇 회까지 재택근무가 가능한지, 그리고 재택근무 시 근태 관리는 어떻게 이루어지는지 궁금합니다",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-007",
+      "category": "edge_case",
+      "description": "반말 + 비격식",
+      "input": "야 그 규정 있잖아 출장비 그거 좀 찾아봐",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-008",
+      "category": "edge_case",
+      "description": "영어 혼용",
+      "input": "meeting minutes 좀 만들어줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_generate",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-009",
+      "category": "edge_case",
+      "description": "빈 요청",
+      "input": "뭐 할 수 있어?",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "general",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-010",
+      "category": "edge_case",
+      "description": "존댓말 격식체",
+      "input": "안녕하세요, 출장 관련 사내 규정을 확인하고 싶습니다. 해외 출장 시 숙박비 상한액이 어떻게 되는지요?",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-011",
+      "category": "edge_case",
+      "description": "의도 불분명한 복합",
+      "input": "그거 아까 그거",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "general",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-012",
+      "category": "edge_case",
+      "description": "숫자만",
+      "input": "3",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "general",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-013",
+      "category": "edge_case",
+      "description": "이모티콘 포함",
+      "input": "보고서 만들어줘 ㅎㅎ 급해요 ㅠㅠ",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_generate",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-014",
+      "category": "edge_case",
+      "description": "복합처럼 보이지만 단일",
+      "input": "연차 규정이랑 병가 규정 차이가 뭐야?",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-015",
+      "category": "edge_case",
+      "description": "부정형 요청",
+      "input": "내일 회의 취소해줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_add",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-016",
+      "category": "edge_case",
+      "description": "감사 인사",
+      "input": "도움이 많이 됐어 고마워!",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "general",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-017",
+      "category": "edge_case",
+      "description": "한 문장에 3개 의도 축약",
+      "input": "규정 확인 문서 찾기 일정 등록",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 3,
+            "intent": "schedule_add",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-018",
+      "category": "edge_case",
+      "description": "질문형 복합",
+      "input": "출장비 얼마까지 되는지 확인하고 출장 계획서도 만들 수 있어?",
+      "expected": {
+        "num_steps": 2,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "judgment",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_generate",
+            "depends_on": [
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-016",
+      "category": "complex",
+      "input": "인사 규정 찾아서 채용 가능한지 확인하고 JD 작성해줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "judgment",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "doc_generate",
+            "depends_on": [
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-017",
+      "category": "complex",
+      "input": "예산 문서 검색해서 분석하고 비교 보고서 만들어줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_retrieve",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "doc_generate",
+            "depends_on": [
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-018",
+      "category": "complex",
+      "input": "이번 주 미팅 일정 확인하고 빈 날 찾아서 고객 미팅 잡아줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_view",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "schedule_view",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "schedule_add",
+            "depends_on": [
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-019",
+      "category": "complex",
+      "input": "거래처 계약서 찾아서 검토하고 수정본 만들어줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "judgment",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "doc_generate",
+            "depends_on": [
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-019",
+      "category": "edge_case",
+      "input": "내일 회의 시간 변경해줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_add",
+            "depends_on": []
+          }
+        ]
+      }
+    }
   ]
 }
