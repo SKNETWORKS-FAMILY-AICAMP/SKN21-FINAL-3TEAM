@@ -39,7 +39,7 @@
     }
   },
   "v1_rag_1ep_attempt2": {
-    "note": "RAG 컨텍스트 1epoch, no_regulation RAG 비움 수정 — 현재 최선 RAG 결과",
+    "note": "RAG 컨텍스트 1epoch, no_regulation RAG 비움 수정",
     "total": 328,
     "json_valid": 313,
     "json_valid_rate": 0.9543,
@@ -49,6 +49,19 @@
       "no_regulation": { "correct": 67, "total": 67 },
       "yes": { "correct": 77, "total": 100 },
       "conditional": { "correct": 62, "total": 100 }
+    }
+  },
+  "v1_rag_3ep": {
+    "note": "RAG 컨텍스트 3epoch, no_regulation RAG 비움 — 1ep 대비 conditional 하락, 전체 77.1%",
+    "total": 328,
+    "json_valid": 309,
+    "json_valid_rate": 0.9421,
+    "result_accuracy": 0.7713,
+    "category_stats": {
+      "conditional": { "correct": 55, "total": 100 },
+      "no": { "correct": 50, "total": 61 },
+      "no_regulation": { "correct": 67, "total": 67 },
+      "yes": { "correct": 81, "total": 100 }
     }
   }
 }
