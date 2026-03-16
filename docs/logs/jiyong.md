@@ -1357,3 +1357,53 @@ v2_generate AI Hub 데이터 탈락:
 1. **BERT 재학습** — 6개 intent 데이터셋 생성 + 학습
 2. **LoRA 연결 테스트** (RunPod 환경변수 추가)
 3. **통합 테스트** — doc_retrieve 파이프라인 E2E 확인 (요약/QA/검색 각각)
+
+---
+
+## 2026-03-16 (일)
+
+### QA 테스트: 문서생성 LoRA 성능 테스트
+
+#### 환경 설정
+- **RDS 직접 접근 설정**: RDS 서브넷(`RDS-Pvt-rt`) 라우팅 테이블에 IGW(`0.0.0.0/0 → igw`) 추가 → 로컬 PC에서 RDS 직접 연결 가능해짐
+- **보안 그룹**: `rds-ec2-1 (sg-0b3bcda9180d524d6)`에 학원 PC IP `222.112.208.70/32` 추가
+- **로컬 개발 스크립트**: `local-dev-direct.sh` 신규 작성 (SSH 터널 불필요, 종료 시 EC2 모드 자동 복원)
+- **rank_bm25**: `.venv`(Python 3.10)에 미설치 → `.venv/Scripts/pip3.exe`로 설치 완료, RAG 파이프라인 정상 로드
+
+#### QA 테스트 플랜
+
+**Phase 0: 환경 준비**
+- RunPod 엔드포인트 확인 (cold start 후 정상 응답)
+- .env LoRA 모드 설정 확인 (DOC_AGENT_MODE=sllm, VLLM_USE_LORA=true)
+- DB 시스템 템플릿 3종 확인 (meeting_minutes, report, proposal)
+
+**Phase 1: 기본 템플릿 테스트 (LoRA v2_generate)**
+- 회의록 / 보고서 / 제안서 각각 생성
+- JSON 파싱, 필드 추출, 배열 정규화, DOCX 렌더링 검증
+
+**Phase 2: 커스텀 템플릿 테스트**
+- 커스텀 DOCX → 필드 추출 → LLM 호출 → 필드 매칭률 검증
+
+#### QA 자동화 테스트 결과 (53 PASS / 3 FAIL / 6 WARN)
+
+| 템플릿 | 모델 | 응답시간 | JSON | 필드추출 | 배열정규화 | DOCX | 결과 |
+|--------|------|---------|------|---------|-----------|------|------|
+| 회의록 | LoRA v2_generate | 44.99s | ✅ 13키 | ✅ title,summary | ❌ decisions=[], action_items=[] | ✅ 5테이블 | **FAIL 3** |
+| 보고서 | LoRA v2_generate | 8.97s | ✅ 13키 | ✅ department,report_to,tasks(3) | ✅ issues,next_plan | ✅ 8테이블 | **ALL PASS** |
+| 제안서 | LoRA v2_generate | 11.04s | ✅ 14키 | ✅ submit_to,company,manager | ✅ schedule(4),budget(3) | ✅ 10테이블 | **ALL PASS** |
+| 커스텀 | LoRA v2_generate | 2.42s | ✅ | ✅ 7/7 매칭 (100%) | - | - | **ALL PASS** |
+
+#### FAIL 분석: 회의록 decisions / action_items 빈 배열
+- LoRA가 회의록의 `decisions`, `action_items` 필드를 빈 배열로 반환
+- `summary`도 입력 텍스트와 유사 (요약 품질 낮음)
+- DOCX 빈 셀 비율 31.4% (빈 필드 영향)
+
+#### 생성된 파일
+- `tests/qa_doc_generate_lora.py` — QA 자동화 테스트 스크립트
+- `tests/qa_results/qa_doc_generate_20260316_110753.json` — 테스트 결과 JSON
+- `local-dev-direct.sh` — RDS 직접 연결 로컬 개발 스크립트
+
+**다음 할 일:**
+1. 회의록 decisions/action_items 문제 수정 (프롬프트 보강 또는 학습 데이터 추가)
+2. 프론트엔드 수동 QA (회의록/보고서/제안서 DOCX 다운로드 → 실물 검수)
+3. 보고서/제안서 DOCX 빈 셀 비율 개선
