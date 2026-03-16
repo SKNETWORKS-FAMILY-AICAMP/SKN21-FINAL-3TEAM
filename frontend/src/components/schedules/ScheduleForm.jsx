@@ -4,8 +4,10 @@ import useGoogleServices from '../../hooks/useGoogleServices';
 import useScheduleTypeStore, { DEFAULT_TYPES } from '../../store/scheduleTypeStore';
 import useAuthStore from '../../store/authStore';
 import { listProjects } from '../../api/tasks';
+import { getAllMembers } from '../../api/auth';
 import DatePicker from '../common/DatePicker';
 import TimeSelect, { addOneHour } from '../common/TimeSelect';
+import MemberMultiSelect from '../common/MemberMultiSelect';
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const MONTHS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
@@ -112,7 +114,6 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
     type: initialData?.type || 'meeting',
     allDay: initialData?.allDay || false,
     includeMeet: false,
-    attendeeEmails: '',
     isTeamVisible: initialData?.isTeamVisible || false,
     projectName: initialData?.projectName || '',
   });
@@ -120,6 +121,23 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
   const [submitting, setSubmitting] = useState(false);
   const [projects, setProjects] = useState([]);
   const [shareToProject, setShareToProject] = useState(!!initialData?.projectName);
+  const [selectedAttendeeIds, setSelectedAttendeeIds] = useState([]);
+  const [members, setMembers] = useState([]);
+
+  useEffect(() => {
+    getAllMembers()
+      .then((res) => {
+        const list = res.data || [];
+        setMembers(list.map((u) => ({
+          id: u.id,
+          name: u.name,
+          team: u.team,
+          email: u.email,
+          avatar: u.avatar || null,
+        })));
+      })
+      .catch(() => setMembers([]));
+  }, []);
 
   useEffect(() => {
     listProjects().then((res) => {
@@ -150,13 +168,14 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
     setErrors({});
     setSubmitting(true);
     try {
+      const attendeeEmails = selectedAttendeeIds
+        .map((id) => members.find((m) => String(m.id) === id)?.email)
+        .filter(Boolean);
       const data = {
         ...form,
         start_time: form.allDay ? null : form.startTime,
         end_time: form.allDay ? null : form.endTime,
-        attendee_emails: form.attendeeEmails
-          ? form.attendeeEmails.split(',').map((e) => e.trim()).filter(Boolean)
-          : [],
+        attendee_emails: attendeeEmails,
         include_meet: form.includeMeet,
         is_team_visible: form.isTeamVisible,
         project_name: form.projectName || null,
@@ -321,17 +340,21 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
           </>
         )}
 
-        {/* 참석자 이메일 */}
+        {/* 참석자 선택 */}
         {form.includeMeet && (
           <div>
-            <label className="text-[0.8125rem] font-semibold block mb-1">참석자 이메일</label>
-            <input
-              value={form.attendeeEmails}
-              onChange={(e) => setForm({ ...form, attendeeEmails: e.target.value })}
-              placeholder="콤마로 구분 (예: a@co.kr, b@co.kr)"
-              className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm focus:border-primary-500 focus:shadow-[0_0_0_3px_rgba(110,135,160,0.1)] outline-none"
+            <label className="text-[0.8125rem] font-semibold block mb-1">참석자</label>
+            <MemberMultiSelect
+              members={members}
+              selectedIds={selectedAttendeeIds}
+              onChange={setSelectedAttendeeIds}
+              placeholder="참석자를 선택하세요"
             />
-            <p className="text-[0.6875rem] text-neutral-muted mt-1">Meet 링크가 포함된 초대 메일이 발송됩니다</p>
+            {selectedAttendeeIds.length > 0 && (
+              <p className="text-[0.6875rem] text-neutral-muted mt-1">
+                {selectedAttendeeIds.length}명 선택됨 — Meet 링크가 포함된 초대 메일이 발송됩니다
+              </p>
+            )}
           </div>
         )}
 

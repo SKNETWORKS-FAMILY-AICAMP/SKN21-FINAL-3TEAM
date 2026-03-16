@@ -15,7 +15,7 @@ export default function RightSidebar({ chatOpen, setChatOpen, messageOpen, setMe
                 }}
                 className={`sidebar-trigger w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg ${messageOpen
                     ? 'bg-primary-500 text-white'
-                    : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700'
+                    : 'bg-white/30 dark:bg-neutral-800/30 backdrop-blur-sm text-neutral-400 dark:text-neutral-400 hover:bg-primary-500 hover:text-white hover:shadow-xl'
                     }`}
                 title="쪽지"
             >
@@ -30,7 +30,7 @@ export default function RightSidebar({ chatOpen, setChatOpen, messageOpen, setMe
                 }}
                 className={`sidebar-trigger w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg ${chatOpen
                     ? 'bg-primary-500 text-white'
-                    : 'bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700'
+                    : 'bg-white/30 dark:bg-neutral-800/30 backdrop-blur-sm text-neutral-400 dark:text-neutral-400 hover:bg-primary-500 hover:text-white hover:shadow-xl'
                     }`}
                 title="AI 어시스턴트"
             >
