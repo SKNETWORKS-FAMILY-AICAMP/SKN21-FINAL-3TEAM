@@ -644,22 +644,134 @@ async def _handle_doc_generate(user_input: str, template_type: str, document_con
     return await generate_document(category=template_type or "report", user_input=user_input)
 
 
-async def generate_document(category: str, user_input: str, template_id: int | None = None) -> Dict[str, Any]:
+async def _extract_decisions_actions(content: str, summary: str = "") -> Dict[str, Any]:
+    """
+    후처리 fallback — 1차 생성에서 decisions/action_items가 비어있을 때
+    이미 생성된 content/summary를 넣고 sLLM에 추출만 요청한다.
+    """
+    source_text = content
+    if summary:
+        source_text = f"{summary}\n\n{content}"
+
+    sys_prompt = (
+        "당신은 회의록 분석 전문가입니다. "
+        "주어진 회의 내용에서 결정사항(decisions)과 실행항목(action_items)을 추출하세요.\n\n"
+        "반드시 아래 JSON 형식으로만 응답하세요:\n"
+        '{"decisions": ["결정사항1", "결정사항2"], '
+        '"action_items": [{"content": "할일", "assignee": "담당자", "due_date": "기한"}]}\n\n'
+        "규칙:\n"
+        "- decisions는 회의에서 확정된 사항을 문자열 배열로 작성하세요.\n"
+        "- action_items는 후속 조치가 필요한 항목을 객체 배열로 작성하세요.\n"
+        "- 각각 최소 2개 이상 추출하세요.\n"
+        "- 내용에 없는 것을 만들어내지 마세요.\n"
+        "- JSON 외의 텍스트를 포함하지 마세요."
+    )
+    user_prompt = f"다음 회의 내용에서 decisions와 action_items를 추출하세요.\n\n[회의 내용]\n{source_text}"
+
+    try:
+        result_str = await _call_llm(sys_prompt, user_prompt, json_mode=True, task="generate")
+        result = json.loads(result_str)
+        return result
+    except Exception as e:
+        print(f"[DocumentAgent] fallback 추출 실패: {e}")
+        return {}
+
+
+def _build_narrative_input(category: str, fields_data: Dict[str, Any], content: str = "") -> str:
+    """폼 필드(짧은 값) → 서술형 텍스트로 변환하여 학습 데이터 형식(700~1500자)에 가깝게 만든다."""
+    parts = []
+
+    if category == "meeting_minutes":
+        title = fields_data.get("title", "")
+        date = fields_data.get("date", "")
+        attendees = fields_data.get("attendees", [])
+        if isinstance(attendees, list):
+            attendees_str = ", ".join(attendees)
+        else:
+            attendees_str = str(attendees)
+        if date and title:
+            parts.append(f"{date}에 진행된 '{title}' 회의")
+        elif title:
+            parts.append(f"'{title}' 회의")
+        if attendees_str:
+            parts.append(f"참석자: {attendees_str}")
+    elif category == "report":
+        title = fields_data.get("title", "")
+        author = fields_data.get("author", "")
+        department = fields_data.get("department", "")
+        date = fields_data.get("date", "")
+        if title:
+            parts.append(f"보고서 제목: {title}")
+        if author:
+            parts.append(f"작성자: {author}")
+        if department:
+            parts.append(f"부서: {department}")
+        if date:
+            parts.append(f"날짜: {date}")
+    elif category == "proposal":
+        title = fields_data.get("title", "")
+        company = fields_data.get("company", "")
+        manager = fields_data.get("manager", "")
+        date = fields_data.get("date", "")
+        if title:
+            parts.append(f"제안명: {title}")
+        if company:
+            parts.append(f"제안사: {company}")
+        if manager:
+            parts.append(f"담당자: {manager}")
+        if date:
+            parts.append(f"날짜: {date}")
+    else:
+        # 기타 카테고리: 모든 필드를 나열
+        for k, v in fields_data.items():
+            if v and k != "content":
+                parts.append(f"{k}: {v}")
+
+    # content (본문 텍스트) 추가
+    if content:
+        parts.append(f"\n{content}")
+
+    return "\n".join(parts)
+
+
+async def generate_document(
+    category: str,
+    fields_data: Dict[str, Any] | None = None,
+    content: str = "",
+    template_id: int | None = None,
+    user_input: str | None = None,
+) -> Dict[str, Any]:
     """
     문서 생성 공통 진입점 — 문서생성 페이지와 챗봇 모두 이 함수를 호출.
 
     Args:
         category: 'meeting_minutes' | 'report' | 'proposal'
-        user_input: 사용자 입력 텍스트 (폼 데이터를 텍스트로 변환한 것 or 자연어)
+        fields_data: 폼 필드 딕셔너리 (문서생성 페이지에서 전달)
+        content: 본문 텍스트
         template_id: 커스텀 템플릿 ID (None이면 시스템 기본)
+        user_input: 자연어 텍스트 (챗봇 fallback용, fields_data가 없을 때 사용)
     """
+    # fields_data가 있으면 서술형으로 변환, 없으면 user_input 그대로 사용 (챗봇)
+    if fields_data:
+        narrative = _build_narrative_input(category, fields_data, content)
+    else:
+        narrative = user_input or content or ""
+
     if template_id:
-        result = await _generate_with_custom_template(user_input, template_id, category)
+        result = await _generate_with_custom_template(narrative, template_id, category)
     elif (system_tpl_id := await _get_system_template_id(category)):
-        # template_id 없으면 시스템 템플릿 ID 자동 조회 → DB 경로 (form 플래그 기반 전체 필드 명세)
-        result = await _generate_with_custom_template(user_input, system_tpl_id, category)
+        result = await _generate_with_custom_template(narrative, system_tpl_id, category)
     else:
         raise ValueError(f"시스템 템플릿이 DB에 없습니다. 카테고리: {category}. DB 시딩을 확인하세요.")
+
+    # fields_data의 사용자 입력 값으로 덮어쓰기 (할루시네이션 방지)
+    if fields_data:
+        data = result.get("data", {})
+        override_keys = {"title", "date", "attendees", "author", "department", "company", "manager", "team"}
+        for key in override_keys:
+            if key in fields_data and fields_data[key]:
+                data[key] = fields_data[key]
+        result["data"] = data
 
     # 사용된 모델명 추가 (프론트에서 LoRA/Base 표시용)
     result["model_name"] = _last_model_name
@@ -783,6 +895,30 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
                 })
         data["action_items"] = normalized_ai
         print(f"[DocumentAgent] 커스텀 회의록 action_items 정규화: {len(normalized_ai)}개")
+
+        # ── 후처리 fallback: decisions/action_items가 비어있으면 2차 추출 ──
+        has_decisions = bool(data.get("decisions"))
+        has_actions = bool(normalized_ai)
+        if (not has_decisions or not has_actions) and data.get("content"):
+            print(f"[DocumentAgent] 후처리 fallback 시작 | decisions={has_decisions}, action_items={has_actions}")
+            extract_result = await _extract_decisions_actions(data["content"], data.get("summary", ""))
+            if not has_decisions and extract_result.get("decisions"):
+                data["decisions"] = extract_result["decisions"]
+                print(f"[DocumentAgent] fallback decisions 추출: {len(data['decisions'])}개")
+            if not has_actions and extract_result.get("action_items"):
+                raw_fb = extract_result["action_items"]
+                fb_normalized = []
+                for item in (raw_fb if isinstance(raw_fb, list) else []):
+                    if isinstance(item, str):
+                        fb_normalized.append({"task": item, "assignee": "", "due_date": ""})
+                    elif isinstance(item, dict):
+                        fb_normalized.append({
+                            "task":     _first_val_custom(item, _TASK_KEYS),
+                            "assignee": _first_val_custom(item, _ASSIGNEE_KEYS),
+                            "due_date": _first_val_custom(item, _DUE_KEYS),
+                        })
+                data["action_items"] = fb_normalized
+                print(f"[DocumentAgent] fallback action_items 추출: {len(fb_normalized)}개")
 
     # 보고서: tasks 정규화
     elif template_type == "report":
@@ -1179,7 +1315,7 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
     """
     global _last_model_name
     if temperature is None:
-        temperature = 0.3 if task == "generate" else 0.1
+        temperature = 0.15 if task == "generate" else 0.1
     _t_llm = time.time()
     mode = os.getenv("DOC_AGENT_MODE", "api")
     sllm_tasks = os.getenv("DOC_SLLM_TASKS", "generate").split(",")
