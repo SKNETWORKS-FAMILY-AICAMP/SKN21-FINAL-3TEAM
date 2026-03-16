@@ -1404,6 +1404,74 @@ v2_generate AI Hub 데이터 탈락:
 - `local-dev-direct.sh` — RDS 직접 연결 로컬 개발 스크립트
 
 **다음 할 일:**
-1. 회의록 decisions/action_items 문제 수정 (프롬프트 보강 또는 학습 데이터 추가)
+1. ~~회의록 decisions/action_items 문제 수정~~ → 2026-03-17 세션에서 해결
 2. 프론트엔드 수동 QA (회의록/보고서/제안서 DOCX 다운로드 → 실물 검수)
 3. 보고서/제안서 DOCX 빈 셀 비율 개선
+
+---
+
+## 2026-03-17 (월)
+
+### 문서 생성 시스템 개선 — 설계 + 학습 데이터 재생성 + 코드 구현
+
+#### 설계 확정 (GENERATE_DATA_REDESIGN.md)
+
+**핵심 결정:**
+- 시스템 템플릿(회의록/보고서/제안서): LoRA가 전체 필드 생성 (기존 방식 유지, 데이터 정제 후 재학습)
+- 커스텀 템플릿(사용자 업로드): 1단계 LoRA(학습된 키) + 2단계 프롬프트 추출(미학습 키, description 기반)
+- `TRAINED_KEYS` 상수로 학습 키 / 미학습 키 구분
+- 2단계 추출은 `task="extract"` → LoRA 안 태우고 base/API 사용
+
+#### 학습 데이터 재설계 (진행 중)
+
+**Synthetic 재생성 (synthesize_generate.py 수정):**
+- `FIELD_POOLS`에 `always_content` (100%) + `priority_content` (80%) 계층 추가
+  - always: content, summary, overview, main_content, expected_effect
+  - priority: decisions, action_items, tasks, next_plan, schedule, budget
+- 입력 길이 다양화: 짧은 30%(50~200자) / 중간 40%(200~800자) / 긴 20%(800~1500자) / 매우긴 10%(1500~3000자)
+- `OMITTABLE_FIELDS`에서 priority 필드 제거 (sparse 30%에서 보호)
+- 긴 시나리오 max_tokens 4096 확보
+- **800건 생성 중** (gpt-4o, ~$20~40)
+
+**AI Hub 정제 (clean_aihub.py 신규):**
+- 557/557건 정제 완료 ✅
+- 프롬프트: 맥락 기반 작성 + 근거 없으면 빈 값 (budget/schedule은 수치 근거 있을 때만)
+- 입력 축약: 175건 (25%) 짧은 입력으로 변환
+- 검증: 억지 데이터 59건 탐지 → 대부분 오탐, 실제 문제 ~13건(1.8%) 허용 범위
+
+**merge_and_split.py 준비:** Synthetic + AI Hub → train/eval 분할 스크립트
+
+#### 코드 구현
+
+**document_agent.py:**
+- `TRAINED_KEYS` — LoRA가 학습한 필드 키 목록
+- `_extract_structured_fields()` — 커스텀 템플릿 2단계 프롬프트 추출
+- `_generate_with_custom_template()` — 커스텀 시 학습키/미학습키 분리 → 2단계 분기
+- `_call_llm()` — `task="extract"` 라우팅 (LoRA 없이 base/API)
+
+**prompts.py:**
+- `DOC_EXTRACT_PROMPT` 추가
+
+**judgment_agent.py — sLLM 서빙 전환:**
+- `_call_judgment_llm()` 헬퍼 추가 — `JUDGMENT_AGENT_MODE=sllm` 환경변수로 전환
+- 비스트리밍 + 스트리밍 모두 sLLM 지원
+- sLLM 실패 시 API fallback
+- RunPod에 v1_judgment LoRA 로드 완료 + 테스트 통과 ✅
+
+**RunPod 서빙:**
+- `LORA_MODULES`에 v1_judgment 추가 (v2_generate와 동시 로드)
+- `MAX_LORAS=2` 설정
+- 테스트: 규정 판단 JSON 정상 응답 확인
+
+**환경변수 (.env):**
+- 로컬 + 백엔드 서버(3.37.118.197) 모두 `JUDGMENT_AGENT_MODE=sllm` 추가
+
+#### Intent 분류 현황 확인
+- 6개 intent 이미 적용됨 (지영님 작업): judgment, doc_retrieve, doc_generate, schedule_add, schedule_view, general
+- KNOWN_OVERRIDES 16개 + Rule Guide 2개로 judgment/doc_retrieve 혼동 보정 중
+- knowledge_query 매핑은 발표용 수치 계산에만 사용, 서비스 코드는 현행 유지
+
+**다음 할 일:**
+1. Synthetic 800건 생성 완료 대기 → merge_and_split.py 실행 → RunPod LoRA v3 학습
+2. Step 2: 커스텀 템플릿 role 스키마 + 필드 편집 UI (지영님 프론트 협업)
+3. 프론트엔드 수동 QA
