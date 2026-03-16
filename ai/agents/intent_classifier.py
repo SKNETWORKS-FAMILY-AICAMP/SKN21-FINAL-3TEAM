@@ -302,7 +302,7 @@ class IntentClassifier:
 
         # per-label threshold 이상인 intent 수집
         intents = []
-        for idx in range(len(INTENT_LABELS)):
+        for idx in range(len(self.id2label)):
             conf = probs[idx].item()
             label = self.id2label.get(idx, "general")
             threshold = self._per_label_thresholds.get(label, self._multilabel_threshold)
