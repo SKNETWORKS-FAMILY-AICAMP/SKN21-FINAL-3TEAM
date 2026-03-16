@@ -21,6 +21,7 @@
 import hashlib
 import json
 import logging
+import os
 import re
 import time
 from collections import defaultdict
@@ -71,7 +72,7 @@ def _group_regulations(context: list[dict]) -> dict[str, list[dict]]:
     return dict(groups)
 
 
-def _build_context_prompt(context: list[dict]) -> str:
+def _build_context_prompt(context: list[dict], max_docs: int = 3) -> str:
     """RAG 검색 결과를 학습 데이터(eval.jsonl)와 동일한 형식으로 변환.
 
     학습 데이터 형식:
@@ -80,12 +81,16 @@ def _build_context_prompt(context: list[dict]) -> str:
 
         ### 개인정보처리규정 — 제5조 (개인정보 수집 원칙)
         {규정 내용}
+
+    Args:
+        context: RAG 검색 결과 (reranker 점수 순으로 정렬됨)
+        max_docs: 프롬프트에 포함할 최대 문서 수 (상위 N개만 사용, 노이즈 감소)
     """
     if not context:
         return "(관련 규정을 찾지 못했습니다)"
 
     parts = []
-    for doc in context:
+    for doc in context[:max_docs]:
         title = doc.get("title", "")
         article = doc.get("article", "")
         content = doc.get("content", "")
@@ -494,6 +499,20 @@ def _calibrate_confidence(
         - hallucination_penalty
         - article_penalty
     )
+
+    # 개별 요소 임계값 보호 — 어느 하나라도 심각하면 confidence 상한 제한
+    # (가중합만으로는 한 요소가 0이어도 다른 요소로 높은 점수가 나올 수 있는 문제 방지)
+    cap_note = None
+    if rag_factor < 0.2:
+        calibrated = min(calibrated, 0.4)
+        cap_note = "RAG 검색 품질 낮음 — 최대 0.4 제한"
+    if keyword_match < 0.2:
+        calibrated = min(calibrated, 0.3)
+        cap_note = "환각 의심 심각 — 최대 0.3 제한"
+    if article_validations and all(not v["exists"] for v in article_validations):
+        calibrated = min(calibrated, 0.25)
+        cap_note = "인용 조항 전부 미존재 — 최대 0.25 제한"
+
     final = round(max(0.0, min(1.0, calibrated)), 3)
 
     breakdown = {
@@ -508,6 +527,8 @@ def _calibrate_confidence(
         "article_penalty": round(article_penalty, 3),
         "final": final,
     }
+    if cap_note:
+        breakdown["cap_note"] = cap_note
 
     return final, breakdown
 
@@ -572,14 +593,31 @@ async def judgment_agent(state: AgentState) -> AgentState:
         groups = _group_regulations(context)
         print(f"[JudgmentAgent] 규정 그룹: {list(groups.keys())}")
 
-        # 4. LLM 호출
+        # 4. LLM 호출 (sLLM/API 모드 분기)
         _t_llm = time.time()
-        print("[JudgmentAgent] LLM 호출 중...")
-        llm = get_llm()
         context_text = _build_context_prompt(context)
         user_prompt = _build_user_prompt(
             user_input, context_text, chat_history, judgment_history
         )
+
+        mode = os.getenv("JUDGMENT_AGENT_MODE", "api")
+        if mode == "sllm":
+            print("[JudgmentAgent] sLLM (vLLM + LoRA) 호출 중...")
+            try:
+                from ai.serving.vllm_client import VLLMProvider
+                use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
+                if use_lora:
+                    llm = VLLMProvider().with_lora("v1_judgment")
+                    print("[JudgmentAgent] sLLM: v1_judgment LoRA 어댑터")
+                else:
+                    llm = VLLMProvider()
+                    print("[JudgmentAgent] sLLM: base model (LoRA 없음)")
+            except Exception as e:
+                print(f"[JudgmentAgent] sLLM 실패, API fallback: {e}")
+                llm = get_llm()
+        else:
+            print("[JudgmentAgent] LLM API 호출 중...")
+            llm = get_llm()
 
         response = await llm.generate(
             prompt=user_prompt,
@@ -698,12 +736,27 @@ async def judgment_agent_stream(state: AgentState) -> AsyncGenerator[str, None]:
         # 판단 이력 추출
         judgment_history = _extract_judgment_history(chat_history)
 
-        # 프롬프트 구성
-        llm = get_llm()
+        # 프롬프트 구성 + sLLM/API 모드 분기
         context_text = _build_context_prompt(context)
         user_prompt = _build_user_prompt(
             user_input, context_text, chat_history, judgment_history
         )
+
+        mode = os.getenv("JUDGMENT_AGENT_MODE", "api")
+        if mode == "sllm":
+            print("[JudgmentAgent:stream] sLLM (vLLM + LoRA) 호출 중...")
+            try:
+                from ai.serving.vllm_client import VLLMProvider
+                use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
+                if use_lora:
+                    llm = VLLMProvider().with_lora("v1_judgment")
+                else:
+                    llm = VLLMProvider()
+            except Exception as e:
+                print(f"[JudgmentAgent:stream] sLLM 실패, API fallback: {e}")
+                llm = get_llm()
+        else:
+            llm = get_llm()
 
         # 스트리밍 호출
         full_response = ""

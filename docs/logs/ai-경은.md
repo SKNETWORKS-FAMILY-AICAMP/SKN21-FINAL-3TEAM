@@ -1395,7 +1395,85 @@ curl -sL https://raw.githubusercontent.com/SKNETWORKS-FAMILY-AICAMP/SKN21-FINAL-
 | `outputs/v1_judgment/eval_results.json` | 수정 — v1-RAG 3ep 결과 추가 |
 
 **다음 할 일:**
-- v1 하드코딩 재학습 완료 → HuggingFace 업로드
-- vLLM 서빙에 하드코딩 어댑터 연결
-- RAG 개선 효과 실서비스 테스트
-- RAG 결과 상위 2~3개만 프롬프트에 넣기 (추가 개선)
+- ~~v1 하드코딩 재학습 완료 → HuggingFace 업로드~~ ✅ 완료 (3/16)
+- ~~vLLM 서빙에 하드코딩 어댑터 연결~~ ✅ 완료 (3/16)
+- ~~RAG 결과 상위 2~3개만 프롬프트에 넣기~~ ✅ 완료 (3/16)
+- RAG 개선 효과 실서비스 테스트 (지용님 vLLM 서버 재시작 대기 중)
+
+---
+
+## 2026-03-16 (일) — v1 하드코딩 재학습 완료 + vLLM 서빙 연결 + 보조장치 개선
+
+### 1. v1 하드코딩 재학습 결과 (RunPod A100)
+
+| 버전 | 정확도 | JSON유효율 | yes | no | conditional | no_regulation |
+|------|--------|-----------|-----|-----|-------------|---------------|
+| v1 하드코딩 3ep (이전) | **86.6%** | 98.2% | 85.0% | 82.0% | 84.0% | 97.0% |
+| **v1 하드코딩 3ep (재학습)** | **83.5%** | 98.2% | 85.0% | 80.3% | 75.0% | 97.0% |
+
+**분석:**
+- 이전 86.6%에서 83.5%로 하락 (3.1%p)
+- 에폭 수는 동일 (3ep) — 랜덤 시드/데이터 셔플링에 의한 학습 variance
+- conditional 84%→75%가 가장 큰 하락 원인
+- 이전 어댑터가 삭제되어 재현 불가 → 현재 83.5% 어댑터를 최종으로 사용
+
+### 2. HuggingFace 업로드 완료
+
+- `yoongyeongeun/v1-judgment-hardcoded` — 83.5% 어댑터 (54MB)
+
+### 3. vLLM 서빙 연결 (코드 수정)
+
+**judgment_agent.py 수정:**
+- `JUDGMENT_AGENT_MODE=sllm` 환경변수로 sLLM/API 모드 전환
+- 일반 호출 + 스트리밍 호출 양쪽 적용
+- `VLLM_USE_LORA=true`이면 `v1_judgment` LoRA 어댑터 사용
+- sLLM 실패 시 자동 API fallback
+
+**start_vllm.sh 수정:**
+- `yoongyeongeun/v1-judgment-hardcoded`에서 자동 다운로드
+- v1_judgment + v2_generate + v2_summary 어댑터 동시 등록
+- `.env` 설정 가이드에 `JUDGMENT_AGENT_MODE=sllm` 추가
+
+### 4. RunPod 네트워크 볼륨에 어댑터 배포
+
+- 지용님 네트워크 볼륨 `fresh_beige_cricket` (EU-RO-1, 40GB)에 어댑터 업로드
+- 경로: `/workspace/adapters/v1_judgment/`
+- 지용님이 vLLM 서버에 `--lora-modules v1_judgment=/workspace/adapters/v1_judgment` 추가 예정
+
+### 5. RAG 프롬프트 노이즈 감소
+
+- `_build_context_prompt()` 수정: RAG 결과 상위 **3개만** 프롬프트에 포함 (기존 5개)
+- 검색은 여전히 top_k=5로 수행 (보조장치 검증용)
+- 프롬프트에 넣는 규정 수만 제한 → 노이즈 감소, conditional 오분류 개선 기대
+
+### 6. confidence 보정 안전장치 추가 (중간발표 피드백 반영)
+
+**문제:** 가중합 구조에서 한 요소가 0이어도 다른 요소로 높은 confidence가 나올 수 있음
+**해결:** 개별 요소 임계값 기반 상한 제한(cap) 추가
+
+| 조건 | confidence 상한 | 의미 |
+|------|---------------|------|
+| RAG 점수 < 0.2 | 최대 0.4 | 검색 결과 품질 낮음 |
+| 키워드 매칭 < 0.2 | 최대 0.3 | 환각 의심 심각 |
+| 인용 조항 전부 미존재 | 최대 0.25 | LLM 인용 조항 전부 가짜 |
+
+### 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `ai/agents/judgment_agent.py` | 수정 — sLLM 모드 분기, RAG 상위 3개 제한, confidence cap 추가 |
+| `ai/serving/start_vllm.sh` | 수정 — v1_judgment 어댑터 자동 다운로드 + 등록 |
+
+### 현재 성능 요약
+
+| 항목 | 수치 |
+|------|------|
+| 판단 정확도 (v1 하드코딩) | 83.5% |
+| JSON 유효율 | 98.2% |
+| RAG Hit Rate | 95.24% |
+| RAG MRR | 0.636 |
+
+**다음 할 일:**
+- 지용님 vLLM 서버 재시작 대기 → 실서비스 테스트
+- sLLM 서빙 상태에서 E2E 판단 정확도 확인
+- conditional 75% 개선 — 데이터 보강 또는 프롬프트 튜닝 검토
