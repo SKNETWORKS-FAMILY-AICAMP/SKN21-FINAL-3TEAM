@@ -31,7 +31,7 @@ import time
 from pathlib import Path
 
 # 프로젝트 루트
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
 from dotenv import load_dotenv
@@ -139,19 +139,37 @@ def process_file(
         # 질문 추출
         question = extract_question(original_user)
 
-        # RAG 검색
-        t0 = time.time()
+        # gold label 추출 (no_regulation이면 RAG 결과 비움)
+        gold_result = None
         try:
-            rag_results = rag_pipeline.retrieve(
-                query=question,
-                user_id=None,
-                top_k=top_k,
-                filter={"source": "regulations"},
-            )
-        except Exception as e:
-            print(f"  [{i}] RAG 에러: {e}")
+            gold_parsed = json.loads(assistant_response) if assistant_response.strip().startswith("{") else None
+            if not gold_parsed:
+                _m = re.search(r"\{.*\}", assistant_response, re.DOTALL)
+                if _m:
+                    gold_parsed = json.loads(_m.group())
+            if gold_parsed:
+                gold_result = gold_parsed.get("result", "")
+        except Exception:
+            pass
+
+        # no_regulation → RAG 결과 비움 (규정 10개 + "규정없음" 라벨은 모순)
+        if gold_result == "no_regulation":
             rag_results = []
-        rag_time = time.time() - t0
+            rag_time = 0
+        else:
+            # RAG 검색
+            t0 = time.time()
+            try:
+                rag_results = rag_pipeline.retrieve(
+                    query=question,
+                    user_id=None,
+                    top_k=top_k,
+                    filter={"source": "regulations"},
+                )
+            except Exception as e:
+                print(f"  [{i}] RAG 에러: {e}")
+                rag_results = []
+            rag_time = time.time() - t0
         total_rag_time += rag_time
 
         if not rag_results:

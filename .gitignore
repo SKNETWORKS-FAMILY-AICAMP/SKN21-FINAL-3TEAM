@@ -62,8 +62,8 @@ backend/uploads/
 # AI Hub 원본 데이터 (대용량)
 data/raw/
 
-# RAG 증강 학습 데이터 (대용량)
-data/training/v1_judgment/*_rag.jsonl
+# RAG 증강 학습 데이터 (filter=regulations 적용, ~29MB — push 필요)
+# data/training/v1_judgment/*_rag.jsonl
 
 # AI 생성 문서 (임시 파일)
 backend/generated_docs/*.docx

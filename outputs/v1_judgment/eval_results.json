@@ -1,24 +1,54 @@
 {
-  "total": 328,
-  "json_valid": 322,
-  "json_valid_rate": 0.9817,
-  "result_accuracy": 0.8659,
-  "category_stats": {
-    "no": {
-      "correct": 50,
-      "total": 61
-    },
-    "no_regulation": {
-      "correct": 65,
-      "total": 67
-    },
-    "yes": {
-      "correct": 85,
-      "total": 100
-    },
-    "conditional": {
-      "correct": 84,
-      "total": 100
+  "v1_hardcoded_3ep": {
+    "note": "하드코딩 컨텍스트, 3epoch — 최종 채택 모델 (86.6%)",
+    "total": 328,
+    "json_valid": 322,
+    "json_valid_rate": 0.9817,
+    "result_accuracy": 0.8659,
+    "category_stats": {
+      "no": { "correct": 50, "total": 61 },
+      "no_regulation": { "correct": 65, "total": 67 },
+      "yes": { "correct": 85, "total": 100 },
+      "conditional": { "correct": 84, "total": 100 }
+    }
+  },
+  "v2_hardcoded_3ep": {
+    "note": "v2 보강 98건 추가, 3epoch — v1 대비 하락, 폐기",
+    "total": 338,
+    "json_valid": 328,
+    "json_valid_rate": 0.9704,
+    "result_accuracy": 0.8343,
+    "category_stats": {
+      "yes": { "correct": 87, "total": 100 },
+      "no": { "correct": 52, "total": 66 },
+      "conditional": { "correct": 78, "total": 105 },
+      "no_regulation": { "correct": 65, "total": 67 }
+    }
+  },
+  "v1_rag_1ep_attempt1": {
+    "note": "RAG 컨텍스트 1epoch, no_regulation에 규정 10개 포함 (라벨 모순) — 실패",
+    "total": 328,
+    "json_valid": 276,
+    "json_valid_rate": 0.8415,
+    "result_accuracy": 0.4268,
+    "category_stats": {
+      "no": { "correct": 32, "total": 61 },
+      "no_regulation": { "correct": 24, "total": 67 },
+      "yes": { "correct": 58, "total": 100 },
+      "conditional": { "correct": 26, "total": 100 }
+    }
+  },
+  "v1_rag_1ep_attempt2": {
+    "note": "RAG 컨텍스트 1epoch, no_regulation RAG 비움 수정 — 현재 최선 RAG 결과",
+    "total": 328,
+    "json_valid": 313,
+    "json_valid_rate": 0.9543,
+    "result_accuracy": 0.7683,
+    "category_stats": {
+      "no": { "correct": 46, "total": 61 },
+      "no_regulation": { "correct": 67, "total": 67 },
+      "yes": { "correct": 77, "total": 100 },
+      "conditional": { "correct": 62, "total": 100 }
     }
   }
 }
