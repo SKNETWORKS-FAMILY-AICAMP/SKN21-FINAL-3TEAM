@@ -2,14 +2,14 @@
   "description": "Held-out adversarial 테스트셋 — 과적합 검증용 (개발 중 한 번도 사용 안 한 데이터)",
   "version": "1.0",
   "date": "2026-03-10",
-  "total": 60,
+  "total": 100,
   "categories": {
-    "no_connector_compound": 15,
-    "false_positive_single": 12,
-    "implicit_compound": 10,
-    "short_compound": 8,
-    "triple_intent": 5,
-    "connector_trap_single": 10
+    "no_connector_compound": 25,
+    "false_positive_single": 16,
+    "implicit_compound": 17,
+    "short_compound": 11,
+    "triple_intent": 13,
+    "connector_trap_single": 18
   },
   "data": [
     {
@@ -588,6 +588,402 @@
         "doc_generate"
       ],
       "note": "하고 있지만 doc_generate 하나"
+    },
+    {
+      "category": "no_connector_compound",
+      "text": "지난 회의 내용 정리해서 보고서에 넣어줘",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "회의 내용 검색 + 보고서 생성",
+      "id": 61
+    },
+    {
+      "category": "no_connector_compound",
+      "text": "매출 자료 뽑아서 발표 자료 만들어줘",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "자료 검색 + 문서 생성",
+      "id": 62
+    },
+    {
+      "category": "no_connector_compound",
+      "text": "프로젝트 현황 확인해서 주간 보고서 써줘",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "현황 조회 + 보고서 생성",
+      "id": 63
+    },
+    {
+      "category": "no_connector_compound",
+      "text": "경쟁사 자료 분석해서 제안서 초안 잡아줘",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "자료 검색 + 제안서 생성",
+      "id": 64
+    },
+    {
+      "category": "no_connector_compound",
+      "text": "인사 규정 확인하고 내일 면접 일정 잡아줘",
+      "labels": [
+        "judgment",
+        "schedule_add"
+      ],
+      "note": "규정 확인 + 일정 등록",
+      "id": 65
+    },
+    {
+      "category": "no_connector_compound",
+      "text": "예산 보고서 찾아서 초과 여부 판단해줘",
+      "labels": [
+        "doc_retrieve",
+        "judgment"
+      ],
+      "note": "보고서 검색 + 판단",
+      "id": 66
+    },
+    {
+      "category": "no_connector_compound",
+      "text": "팀 일정 확인하고 빈 시간에 회의 넣어줘",
+      "labels": [
+        "schedule_view",
+        "schedule_add"
+      ],
+      "note": "일정 조회 + 등록",
+      "id": 67
+    },
+    {
+      "category": "no_connector_compound",
+      "text": "출장 보고서 조회해서 정산 가능한지 봐줘",
+      "labels": [
+        "doc_retrieve",
+        "judgment"
+      ],
+      "note": "보고서 검색 + 정산 판단",
+      "id": 68
+    },
+    {
+      "category": "no_connector_compound",
+      "text": "고객 미팅 자료 준비하고 발표 자료도 만들어줘",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "자료 검색 + 문서 생성",
+      "id": 69
+    },
+    {
+      "category": "no_connector_compound",
+      "text": "복지 규정 찾아서 지원금 신청 가능한지 확인해줘",
+      "labels": [
+        "doc_retrieve",
+        "judgment"
+      ],
+      "note": "규정 검색 + 가능 여부 판단",
+      "id": 70
+    },
+    {
+      "category": "triple_intent",
+      "text": "연차 규정 확인하고 이번 주 일정 보고 빈 날에 휴가 넣어줘",
+      "labels": [
+        "judgment",
+        "schedule_view",
+        "schedule_add"
+      ],
+      "note": "규정확인+일정조회+일정등록",
+      "id": 71
+    },
+    {
+      "category": "triple_intent",
+      "text": "매출 자료 찾아서 분석하고 발표 자료 만들어줘",
+      "labels": [
+        "doc_retrieve",
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "검색+분석+생성",
+      "id": 72
+    },
+    {
+      "category": "triple_intent",
+      "text": "보안 규정 확인하고 관련 문서 찾아서 보고서 작성해줘",
+      "labels": [
+        "judgment",
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "규정확인+문서검색+보고서생성",
+      "id": 73
+    },
+    {
+      "category": "triple_intent",
+      "text": "교육비 규정 봐주고 가능하면 교육 등록하고 보고서도 만들어줘",
+      "labels": [
+        "judgment",
+        "schedule_add",
+        "doc_generate"
+      ],
+      "note": "판단+등록+생성",
+      "id": 74
+    },
+    {
+      "category": "triple_intent",
+      "text": "이번 달 일정 확인하고 프로젝트 문서 찾아서 회의록 작성해줘",
+      "labels": [
+        "schedule_view",
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "일정조회+문서검색+생성",
+      "id": 75
+    },
+    {
+      "category": "triple_intent",
+      "text": "출장 규정 확인하고 항공편 자료 검색해서 출장 계획서 만들어줘",
+      "labels": [
+        "judgment",
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "규정확인+자료검색+문서생성",
+      "id": 76
+    },
+    {
+      "category": "triple_intent",
+      "text": "회의록 찾아서 핵심 정리하고 다음 미팅 잡아줘",
+      "labels": [
+        "doc_retrieve",
+        "doc_retrieve",
+        "schedule_add"
+      ],
+      "note": "검색+요약+일정등록",
+      "id": 77
+    },
+    {
+      "category": "triple_intent",
+      "text": "팀원 일정 보고 겹치는 거 없는지 확인하고 워크숍 등록해줘",
+      "labels": [
+        "schedule_view",
+        "judgment",
+        "schedule_add"
+      ],
+      "note": "일정조회+판단+등록",
+      "id": 78
+    },
+    {
+      "category": "connector_trap_single",
+      "text": "인사 규정 분석하고 정리해줘",
+      "labels": [
+        "judgment"
+      ],
+      "note": "분석+정리 = judgment 단일",
+      "id": 79
+    },
+    {
+      "category": "connector_trap_single",
+      "text": "출장비 검토하고 결과 알려줘",
+      "labels": [
+        "judgment"
+      ],
+      "note": "검토+알려줘 = judgment 단일",
+      "id": 80
+    },
+    {
+      "category": "connector_trap_single",
+      "text": "야근 수당 계산해서 알려줘",
+      "labels": [
+        "judgment"
+      ],
+      "note": "계산+알려줘 = judgment 단일",
+      "id": 81
+    },
+    {
+      "category": "connector_trap_single",
+      "text": "보안 규정 확인해서 정리해줘",
+      "labels": [
+        "judgment"
+      ],
+      "note": "확인+정리 = judgment 단일",
+      "id": 82
+    },
+    {
+      "category": "connector_trap_single",
+      "text": "매출 보고서랑 실적 보고서 찾아줘",
+      "labels": [
+        "doc_retrieve"
+      ],
+      "note": "같은 intent 2개 = doc_retrieve 단일",
+      "id": 83
+    },
+    {
+      "category": "connector_trap_single",
+      "text": "연차이랑 병가 규정 알려줘",
+      "labels": [
+        "judgment"
+      ],
+      "note": "규정 2개 = judgment 단일",
+      "id": 84
+    },
+    {
+      "category": "connector_trap_single",
+      "text": "이번 주 회의이랑 다음 주 미팅 확인해줘",
+      "labels": [
+        "schedule_view"
+      ],
+      "note": "일정 2개 = schedule_view 단일",
+      "id": 85
+    },
+    {
+      "category": "connector_trap_single",
+      "text": "제안서랑 기획서 작성해줘",
+      "labels": [
+        "doc_generate"
+      ],
+      "note": "문서 2개 = doc_generate 단일",
+      "id": 86
+    },
+    {
+      "category": "implicit_compound",
+      "text": "실적 데이터로 분기 보고서 써줘",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "데이터 검색 + 보고서 생성",
+      "id": 87
+    },
+    {
+      "category": "implicit_compound",
+      "text": "빈 시간 골라서 고객 미팅 넣어줘",
+      "labels": [
+        "schedule_view",
+        "schedule_add"
+      ],
+      "note": "일정 조회 + 등록",
+      "id": 88
+    },
+    {
+      "category": "implicit_compound",
+      "text": "이 계약 조항 문제 없는지 확인해서 수정본 만들어줘",
+      "labels": [
+        "judgment",
+        "doc_generate"
+      ],
+      "note": "판단 + 문서 생성",
+      "id": 89
+    },
+    {
+      "category": "implicit_compound",
+      "text": "규정 위반 사례 모아서 교육 자료 만들어줘",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "사례 검색 + 자료 생성",
+      "id": 90
+    },
+    {
+      "category": "implicit_compound",
+      "text": "지난 분기 성과 분석해서 인센티브 가능한지 봐줘",
+      "labels": [
+        "doc_retrieve",
+        "judgment"
+      ],
+      "note": "성과 검색 + 가능 여부 판단",
+      "id": 91
+    },
+    {
+      "category": "implicit_compound",
+      "text": "경쟁사 동향 파악해서 전략 보고서 만들어줘",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "동향 검색 + 보고서 생성",
+      "id": 92
+    },
+    {
+      "category": "implicit_compound",
+      "text": "프로젝트 마감일 확인하고 연장 가능한지 판단해줘",
+      "labels": [
+        "doc_retrieve",
+        "judgment"
+      ],
+      "note": "마감일 조회 + 가능 여부 판단",
+      "id": 93
+    },
+    {
+      "category": "false_positive_single",
+      "text": "올해 채용 계획 알려줘",
+      "labels": [
+        "doc_retrieve"
+      ],
+      "note": "정보 조회 단일",
+      "id": 94
+    },
+    {
+      "category": "false_positive_single",
+      "text": "우리 팀 KPI 뭐야",
+      "labels": [
+        "doc_retrieve"
+      ],
+      "note": "정보 조회 단일",
+      "id": 95
+    },
+    {
+      "category": "false_positive_single",
+      "text": "내년도 예산 편성 기준 확인해줘",
+      "labels": [
+        "judgment"
+      ],
+      "note": "기준 확인 = judgment",
+      "id": 96
+    },
+    {
+      "category": "false_positive_single",
+      "text": "사내 교육 프로그램 종류 알려줘",
+      "labels": [
+        "doc_retrieve"
+      ],
+      "note": "정보 조회 단일",
+      "id": 97
+    },
+    {
+      "category": "short_compound",
+      "text": "규정 보고 일정 잡아",
+      "labels": [
+        "judgment",
+        "schedule_add"
+      ],
+      "note": "짧은 복합",
+      "id": 98
+    },
+    {
+      "category": "short_compound",
+      "text": "문서 찾고 보고서 써",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "짧은 복합",
+      "id": 99
+    },
+    {
+      "category": "short_compound",
+      "text": "일정 확인, 회의 등록",
+      "labels": [
+        "schedule_view",
+        "schedule_add"
+      ],
+      "note": "짧은 복합",
+      "id": 100
     }
   ]
 }

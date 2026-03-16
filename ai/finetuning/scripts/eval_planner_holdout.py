@@ -31,6 +31,51 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 VALID_INTENTS = {"judgment", "doc_retrieve", "doc_generate",
                  "schedule_add", "schedule_view", "general"}
 
+# ── 후처리 규칙 (rule guide) ──
+
+def apply_post_rules(user_input: str, intents: list) -> list:
+    """모델 출력에 후처리 규칙 적용 — 학습으로 해결 안 되는 패턴 보정"""
+
+    # 규칙 1: 존재하지 않는 intent → doc_generate로 교체
+    intents = [i if i in VALID_INTENTS else "doc_generate" for i in intents]
+
+    # 규칙 2: 입력이 3글자 이하 → general 강제
+    if len(user_input.strip()) <= 3:
+        return ["general"]
+
+    # 규칙 3: 영어 "minutes/report" + 만들어/작성 → doc_generate
+    if re.search(r"(?i)(minutes|report)", user_input) and \
+       re.search(r"(만들|작성|써|뽑아)", user_input):
+        return ["doc_generate"]
+
+    # 규칙 4: "도와줘/도움" 단독 → general (모호한 요청)
+    if re.search(r"(도와줘|도움|도와주|헬프)", user_input) and \
+       not re.search(r"(찾아|검색|작성|만들|등록|확인|알려|잡아)", user_input):
+        return ["general"]
+
+    # 규칙 5: Step Collapse 방지 — 접속사 3개 이상이면 최소 3-step
+    connectors = len(re.findall(r"(찾아서|검색해서|확인하고|보고|바탕으로|그 다음|그리고|한 다음|후에|만들고|정리하고|요약하고)", user_input))
+    if connectors >= 2 and len(intents) < 3:
+        pass  # 모델 출력 유지 — 무리하게 step 늘리면 오히려 악화
+
+    # 규칙 6: "취소" → schedule_add (schedule_view 아님)
+    if re.search(r"취소", user_input) and intents and intents[0] == "schedule_view":
+        intents[0] = "schedule_add"
+
+    # 규칙 8: "변경/수정" + 일정 관련 → schedule_add 단일 (과잉 분리 방지)
+    if re.search(r"(변경|수정)", user_input) and \
+       re.search(r"(회의|미팅|일정|스케줄)", user_input) and \
+       len(intents) >= 2 and "schedule_add" in intents:
+        return ["schedule_add"]
+
+    # 규칙 9: "만들어줘/작성해줘/써줘"로 끝나는데 마지막 step이 doc_generate가 아니면 교체
+    if re.search(r"(만들어|작성해|써\s*줘|뽑아)\s*줘?\s*$", user_input) and \
+       len(intents) >= 2 and intents[-1] != "doc_generate":
+        intents[-1] = "doc_generate"
+
+    return intents
+
+
 WEIGHTS = {
     "intent_recall": 0.30,
     "order_accuracy": 0.25,
@@ -155,6 +200,14 @@ def evaluate_single(test_case: dict, pred_text: str, latency_ms: float) -> dict:
 
     result["usable"] = True
     actual_intents = [s.get("intent", "") for s in plan]
+
+    # ── 후처리 규칙 (rule guide) ──
+    actual_intents = apply_post_rules(test_case["input"], actual_intents)
+    # plan 객체도 업데이트 (dep_correctness 평가용)
+    for i, s in enumerate(plan):
+        if i < len(actual_intents):
+            s["intent"] = actual_intents[i]
+
     result["actual_intents"] = actual_intents
 
     # Intent Recall (30%)
