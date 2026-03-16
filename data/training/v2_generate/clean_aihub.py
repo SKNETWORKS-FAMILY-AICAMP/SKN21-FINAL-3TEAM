@@ -154,12 +154,14 @@ def call_gpt_extract(source_text: str, missing_fields: dict, doc_type: str,
     field_spec = "\n".join(f"- {k}: {v}" for k, v in missing_fields.items())
 
     system_prompt = (
-        f"당신은 {doc_name} 분석 전문가입니다. "
-        "주어진 문서 내용에서 아래 필드에 해당하는 정보를 추출하여 JSON으로 반환하세요.\n\n"
+        f"당신은 {doc_name} 작성 전문가입니다. "
+        "주어진 문서 내용을 바탕으로 아래 필드를 작성하여 JSON으로 반환하세요.\n\n"
         "규칙:\n"
-        "- 문서 내용에 명시적으로 언급된 내용만 추출하세요.\n"
-        "- 추측하거나 새로운 내용을 만들지 마세요.\n"
-        "- 정보가 없으면 빈 문자열 또는 빈 배열로 두세요.\n"
+        "- 문서 내용에 근거가 있는 필드만 작성하세요.\n"
+        "- 문서 내용에서 자연스럽게 도출되는 내용을 구체적으로 작성하세요.\n"
+        "- 배열 필드는 근거가 있으면 2개 이상 항목을 작성하세요.\n"
+        "- 문서 내용에 해당 정보의 근거가 없으면 빈 문자열 또는 빈 배열로 두세요.\n"
+        "- 특히 budget(예산), schedule(일정)은 문서에 수치/기간이 언급된 경우에만 작성하세요.\n"
         "- 반드시 JSON만 출력하세요."
     )
 
@@ -334,7 +336,13 @@ def main():
 
         if (idx + 1) % 20 == 0:
             time.sleep(1)
-            print(f"    --- {idx+1}건 처리 완료 ---")
+            # 20건마다 중간 저장
+            _mid = Path(args.output)
+            _mid.parent.mkdir(parents=True, exist_ok=True)
+            with open(_mid, "w", encoding="utf-8") as _f:
+                for _s in samples:
+                    _f.write(json.dumps(_s, ensure_ascii=False) + "\n")
+            print(f"    --- {idx+1}건 처리 + 중간 저장 완료 ---")
 
     # 입력 길이 다양화: 25% 샘플의 passage를 짧게 축약
     import random as _random
@@ -386,7 +394,7 @@ def main():
 
     print(f"  축약 완료: {shortened}건")
 
-    # 저장
+    # 최종 저장
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
