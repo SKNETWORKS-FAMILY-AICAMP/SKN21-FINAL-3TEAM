@@ -23,15 +23,23 @@ export default function MemberMultiSelect({ members = [], selectedIds = [], onCh
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // 포탈 위치 계산
+  // 포탈 위치 계산 — 아래 공간 부족 시 위로 열림
   useEffect(() => {
     if (open && ref.current) {
       const rect = ref.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom - 8;
+      const spaceAbove = rect.top - 8;
+      const dropHeight = Math.min(280, Math.max(spaceBelow, spaceAbove));
+      const openUp = spaceBelow < 200 && spaceAbove > spaceBelow;
+
       setDropStyle({
         position: 'fixed',
-        top: rect.bottom + 4,
+        ...(openUp
+          ? { bottom: window.innerHeight - rect.top + 4 }
+          : { top: rect.bottom + 4 }),
         left: rect.left,
         width: rect.width,
+        maxHeight: dropHeight,
         zIndex: 9999,
       });
     }
@@ -104,7 +112,7 @@ export default function MemberMultiSelect({ members = [], selectedIds = [], onCh
         <div
           ref={dropRef}
           style={dropStyle}
-          className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-lg overflow-hidden"
+          className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-lg overflow-hidden flex flex-col"
         >
           {/* 팀 필터 탭 */}
           {teams.length > 2 && (
@@ -127,7 +135,7 @@ export default function MemberMultiSelect({ members = [], selectedIds = [], onCh
           )}
 
           {/* 멤버 리스트 */}
-          <div className="max-h-48 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto">
             {filtered.length === 0 && (
               <div className="px-3 py-2 text-xs text-neutral-400 text-center">멤버 없음</div>
             )}
