@@ -32,9 +32,7 @@ def _to_str(v) -> str:
 class GenerateDocumentRequest(BaseModel):
     template_type: str
     template_id: int | None = None
-    title: str = ""
-    date: str = ""
-    attendees: list[str] = []
+    fields_data: dict = {}
     content: str = ""
 
 router = APIRouter()
@@ -114,24 +112,14 @@ async def generate_document(
     try:
         from ai.agents.document_agent import generate_document as ai_generate
 
-        parts = []
-        if request.title:
-            parts.append(f"제목: {request.title}")
-        if request.date:
-            parts.append(f"날짜: {request.date}")
-        if request.attendees:
-            parts.append(f"참석자: {', '.join(request.attendees)}")
-        if request.content:
-            parts.append(request.content)
-        user_input = "\n".join(parts)
-
         result = await ai_generate(
             category=request.template_type,
-            user_input=user_input,
+            fields_data=request.fields_data or None,
+            content=request.content,
             template_id=request.template_id,
         )
 
-        # 통일된 응답 구조
+        # 통일된 응답 구조 — 모든 타입 data 안에만
         data = result.get("data", {})
         response = {
             "document_id": result["document_id"],
@@ -143,15 +131,6 @@ async def generate_document(
             "data": data,
             "model_name": result.get("model_name", ""),
         }
-
-        # 회의록: action_items 포함
-        if request.template_type == "meeting_minutes":
-            response["title"] = data.get("title", request.title)
-            response["date"] = data.get("date", request.date)
-            response["attendees"] = data.get("attendees", request.attendees)
-            response["summary"] = result.get("summary", data.get("summary", ""))
-            response["decisions"] = result.get("decisions", data.get("decisions", []))
-            response["action_items"] = result.get("action_items", data.get("action_items", []))
 
         return response
 

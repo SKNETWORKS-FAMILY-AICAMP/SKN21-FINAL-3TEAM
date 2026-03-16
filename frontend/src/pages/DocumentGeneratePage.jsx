@@ -341,45 +341,39 @@ export default function DocumentGeneratePage() {
     if (!selectedTemplate) return;
     setLoading(true);
     try {
-      // formData를 텍스트로 조립 (title/date는 top-level, 나머지 전부 content에 포함)
-      const lines = [];
-      for (const field of templateFields) {
-        if (isMeeting && (field.key === 'attendees' || field.key === 'team')) continue;
-        if (field.key === 'title' || field.key === 'date') continue;
-        const val = formData[field.key] || '';
-        if (val) lines.push(`${field.label}: ${val}`);
+      // 폼 데이터를 fields_data JSON으로 전달 (서버에서 서술형 변환)
+      const fieldsData = { ...formData };
+      if (isMeeting) {
+        fieldsData.attendees = selectedAttendees;
+        fieldsData.team = selectedTeam;
       }
-      const contentText = lines.join('\n');
 
       const payload = {
         template_type: selectedTemplate,
         template_id: selectedTemplateId || null,
-        title: formData.title || '',
-        date: formData.date || '',
-        attendees: isMeeting
-          ? selectedAttendees
-          : (formData.attendees ? formData.attendees.split(',').map(s => s.trim()).filter(Boolean) : []),
-        content: contentText,
+        fields_data: fieldsData,
+        content: formData.content || '',
       };
 
       const response = await generateDocument(payload);
       const apiData = response.data;
 
+      const data = apiData.data || {};
+
       if (isMeeting) {
         setMeetingResult({
-          title: apiData.title || formData.title,
-          date: apiData.date || formData.date,
-          attendees: apiData.attendees?.length > 0
-            ? apiData.attendees
-            : payload.attendees,
-          summary: apiData.summary || apiData.data?.summary || '',
-          decisions: apiData.decisions || apiData.data?.decisions || [],
-          actionItems: apiData.action_items || apiData.data?.action_items || [],
+          title: data.title || formData.title,
+          date: data.date || formData.date,
+          attendees: data.attendees?.length > 0
+            ? data.attendees
+            : fieldsData.attendees || [],
+          summary: data.summary || '',
+          decisions: data.decisions || [],
+          actionItems: data.action_items || [],
           document_id: apiData.document_id,
           model_name: apiData.model_name || '',
         });
       } else {
-        const data = apiData.data || apiData;
         const displayFields = Object.entries(data)
           .filter(([k]) => !['title', 'date', 'document_id'].includes(k))
           .filter(([, v]) => v && (typeof v === 'string' ? v.trim() : true))

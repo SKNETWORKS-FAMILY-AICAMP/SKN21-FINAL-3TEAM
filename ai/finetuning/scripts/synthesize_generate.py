@@ -72,13 +72,17 @@ FIELD_POOLS = {
             ("department", "주관 부서명 (없으면 빈 문자열)"),
             ("duration", "회의 소요 시간 (예: '1시간 30분')"),
         ],
-        "content": [
-            ("summary", "회의에서 논의된 주요 내용을 3~5문장으로 요약"),
+        "always_content": [
             ("content", "회의 내용을 상세하게 기술"),
-            ("agenda", "회의 안건 목록 (배열)"),
-            ("meeting_purpose", "회의 목적 (1~2문장)"),
+            ("summary", "회의에서 논의된 주요 내용을 3~5문장으로 요약"),
+        ],
+        "priority_content": [
             ("decisions", "결정된 사항 목록 (배열, 없으면 빈 배열)"),
             ("action_items", '후속 조치 목록 배열. 각 항목은 {"content": "내용", "assignee": "담당자", "due_date": "기한"} 형태'),
+        ],
+        "content": [
+            ("agenda", "회의 안건 목록 (배열)"),
+            ("meeting_purpose", "회의 목적 (1~2문장)"),
             ("risks", '리스크 목록 배열. 각 항목은 {"description": "설명", "level": "상/중/하", "mitigation": "대응방안"} 형태'),
             ("next_meeting", "다음 회의 일정 (없으면 빈 문자열)"),
             ("notes", "비고 사항 (없으면 빈 문자열)"),
@@ -100,16 +104,20 @@ FIELD_POOLS = {
             ("period", "보고 기간 (예: '2026년 2월 1주차')"),
             ("audience", "보고 대상/독자 (없으면 빈 문자열)"),
         ],
-        "content": [
+        "always_content": [
             ("overview", "업무 내용을 요약한 보고 개요 (3~5문장)"),
             ("main_content", "업무 세부 내용을 항목별로 구체적으로 작성"),
+        ],
+        "priority_content": [
             ("tasks", '진행 업무 목록 배열. 각 항목은 {"item": "업무명", "assignee": "담당자", "progress": "진행률", "start_date": "시작일", "end_date": "종료일"} 형태'),
+            ("next_plan", "향후 계획 (구체적으로 작성)"),
+        ],
+        "content": [
             ("achievements", "주요 성과 목록 (배열)"),
             ("issues", "이슈 및 건의사항 (없으면 빈 문자열)"),
             ("kpi_results", "KPI 달성 현황 (없으면 빈 문자열)"),
             ("conclusion", "결론 및 종합 의견"),
             ("recommendations", "권장 사항 목록 (배열)"),
-            ("next_plan", "향후 계획 (구체적으로 작성)"),
         ],
     },
     "proposal": {
@@ -128,15 +136,19 @@ FIELD_POOLS = {
             ("proposer", "제안자/제안사명 (없으면 빈 문자열)"),
             ("period", "제안 기간 (예: '2026년 3월 ~ 6월')"),
         ],
+        "always_content": [
+            ("content", "제안 내용을 항목별로 구체적으로 작성"),
+            ("expected_effect", "기대 효과 (3~5문장)"),
+        ],
+        "priority_content": [
+            ("schedule", '추진 일정 배열. 각 항목은 {"phase": "단계", "task": "업무", "period": "기간"} 형태'),
+            ("budget", '예산 배열. 각 항목은 {"item": "항목", "amount": "금액"} 형태'),
+        ],
         "content": [
             ("background", "제안 배경 (2~3문장)"),
             ("current_situation", "현황 분석 (3~5문장)"),
-            ("content", "제안 내용을 항목별로 구체적으로 작성"),
             ("scope", "사업 범위 (2~3문장)"),
-            ("schedule", '추진 일정 배열. 각 항목은 {"phase": "단계", "task": "업무", "period": "기간"} 형태'),
-            ("budget", '예산 배열. 각 항목은 {"item": "항목", "amount": "금액"} 형태'),
             ("budget_total", "합계 금액 (없으면 빈 문자열)"),
-            ("expected_effect", "기대 효과 (3~5문장)"),
             ("resources", "필요 자원 (인력, 장비 등)"),
             ("risks", '리스크 및 대응 방안 배열. 각 항목은 {"risk": "리스크", "mitigation": "대응방안"} 형태'),
             ("deliverables", "산출물 목록 (배열)"),
@@ -148,24 +160,39 @@ FIELD_POOLS = {
 def select_random_fields(template: str, rng: random.Random) -> list[tuple[str, str]]:
     """필드 풀에서 랜덤 조합 선택.
 
-    규칙: 필수 전부 + 내용 2~4개 + 메타 1~3개 = 총 6~10개
+    규칙: 필수 전부 + priority 각 80% + 내용 나머지 + 메타 1~3개 = 총 6~10개
+    priority_content: 시스템 템플릿 핵심 필드 (content/summary/decisions 등)
     """
     pool = FIELD_POOLS[template]
     core = list(pool["core"])
     meta = list(pool["meta"])
+    always = list(pool.get("always_content", []))   # 100% 포함
+    priority = list(pool.get("priority_content", []))  # 각 80% 포함
     content = list(pool["content"])
 
-    # 내용 풀에서 2~4개 선택
-    n_content = rng.randint(2, min(4, len(content)))
-    selected_content = rng.sample(content, n_content)
+    # always_content: 항상 포함 (100%)
+    selected_always = list(always)
+
+    # priority_content: 각각 80% 확률로 포함
+    selected_priority = [f for f in priority if rng.random() < 0.8]
+
+    # 목표 필드 수: 6~10개
+    target = rng.randint(6, 10)
+    fixed = len(core) + len(selected_always) + len(selected_priority)
+    remaining = max(0, target - fixed)
 
     # 메타 풀에서 1~3개 선택
-    n_meta = rng.randint(1, min(3, len(meta)))
+    n_meta = min(rng.randint(1, 3), remaining, len(meta))
     selected_meta = rng.sample(meta, n_meta)
+    remaining -= n_meta
 
-    # 필수 + 메타 + 내용 합치기 (순서: 필수 → 메타 → 내용)
-    selected = core + selected_meta + selected_content
-    return selected
+    # 나머지 내용 풀에서 채우기
+    n_content = min(remaining, len(content))
+    selected_content = rng.sample(content, n_content) if n_content > 0 else []
+
+    # 필수 + always + 메타 + priority + 내용 합치기 (최대 10개)
+    selected = core + selected_meta + selected_always + selected_priority + selected_content
+    return selected[:10]
 
 
 def build_dynamic_user_prompt(template: str, passage: str, fields: list[tuple[str, str]]) -> str:
@@ -271,20 +298,21 @@ SCENARIO_SYSTEM_PROMPTS = {
 }
 
 
-# -- 빈 필드 학습용: 누락 가능 필드 (core 필드 제외) --
-# 메타 풀 전부 + 내용 풀 중 핵심이 아닌 것들
+# -- 빈 필드 학습용: 누락 가능 필드 --
+# core/always_content/priority_content 제외 — 메타 풀 + 일반 내용 풀만
+# (priority 필드는 select_random_fields의 80% 확률로 제어하므로 여기서 비우지 않음)
 OMITTABLE_FIELDS = {
     "meeting_minutes": [
         "time", "location", "meeting_type", "author", "moderator", "department", "duration",
-        "decisions", "action_items", "risks", "next_meeting", "notes",
+        "agenda", "meeting_purpose", "risks", "next_meeting", "notes",
     ],
     "report": [
         "department", "position", "report_to", "report_type", "period", "audience",
-        "achievements", "issues", "kpi_results", "recommendations",
+        "achievements", "issues", "kpi_results", "conclusion", "recommendations",
     ],
     "proposal": [
         "submit_to", "company", "manager", "contact", "proposer", "period",
-        "current_situation", "scope", "budget_total", "resources", "risks", "deliverables",
+        "background", "current_situation", "scope", "budget_total", "resources", "risks", "deliverables",
     ],
 }
 
@@ -330,7 +358,26 @@ def call_openai(
     return None
 
 
-def generate_scenario(template: str, industry: str, topic: str, model: str = "gpt-4o") -> str | None:
+LENGTH_PROFILES = [
+    ("50~200", 0.3),      # 짧은 입력: 폼에서 제목+한줄 메모 수준
+    ("200~800", 0.4),     # 중간 입력: 챗봇 일반 입력
+    ("800~1500", 0.2),    # 상세 기술
+    ("1500~3000", 0.1),   # 긴 입력: 회의 전체 내용 붙여넣기
+]
+
+
+def _pick_length_range(rng) -> str:
+    """가중 랜덤으로 입력 길이 범위 선택"""
+    r = rng.random()
+    cumulative = 0
+    for length_range, weight in LENGTH_PROFILES:
+        cumulative += weight
+        if r <= cumulative:
+            return length_range
+    return "500~1500"
+
+
+def generate_scenario(template: str, industry: str, topic: str, model: str = "gpt-4o", length_range: str = "500~1500") -> str | None:
     """Step A: GPT-4o로 비즈니스 시나리오 생성"""
     doc_type_map = {
         "meeting_minutes": "회의",
@@ -339,19 +386,30 @@ def generate_scenario(template: str, industry: str, topic: str, model: str = "gp
     }
     doc_type = doc_type_map[template]
 
+    # 짧은 입력은 메모/키워드 형태, 긴 입력은 상세 서술
+    if length_range.startswith("50"):
+        style_hint = "간단한 메모나 키워드 나열 형태로 작성하세요. 예: '팀미팅 진행, 예산 논의, 신규 프로젝트 결정'"
+    elif length_range.startswith("200"):
+        style_hint = "핵심 내용을 간결하게 서술형으로 작성하세요."
+    else:
+        style_hint = "구체적인 수치, 한국식 이름, 날짜를 포함하여 상세하게 작성하세요."
+
     user_prompt = (
         f"다음 조건으로 {industry} 업종의 {doc_type} 관련 원문 내용을 생성해주세요.\n\n"
         f"주제: {topic}\n"
-        f"길이: 500~1500자\n"
-        f"구체적인 수치, 한국식 이름, 날짜를 포함해주세요."
+        f"길이: {length_range}자\n"
+        f"{style_hint}"
     )
+
+    # 긴 시나리오(1500~3000자)는 한국어 토큰 특성상 max_tokens 확보 필요
+    tokens = 4096 if length_range.startswith("1500") else 2048
 
     return call_openai(
         SCENARIO_SYSTEM_PROMPTS[template],
         user_prompt,
         model=model,
         temperature=0.9,
-        max_tokens=2048,
+        max_tokens=tokens,
         json_mode=False,
     )
 
@@ -360,12 +418,15 @@ def generate_response(template: str, passage: str, fields: list[tuple[str, str]]
     """Step B: 선택된 필드 명세로 JSON 응답 생성"""
     user_prompt = build_dynamic_user_prompt(template, passage, fields)
 
+    # 긴 입력 + 많은 필드 → JSON 응답도 길 수 있음
+    tokens = 4096 if len(passage) > 1200 else 2048
+
     return call_openai(
         DYNAMIC_SYSTEM_PROMPT,
         user_prompt,
         model=model,
         temperature=0.7,
-        max_tokens=2048,
+        max_tokens=tokens,
         json_mode=True,
     )
 
@@ -450,11 +511,14 @@ def synthesize_template(
             selected_fields = select_random_fields(template, rng)
             field_names = [name for name, _ in selected_fields]
 
-            print(f"    [{i+1}/{count}] {industry} / {topic} ({len(selected_fields)}필드)", end=" ", flush=True)
+            # 입력 길이 다양화 (짧은 20% / 중간 50% / 긴 30%)
+            length_range = _pick_length_range(rng)
+            print(f"    [{i+1}/{count}] {industry} / {topic} ({len(selected_fields)}필드, {length_range}자)", end=" ", flush=True)
 
             # Step A: 시나리오 생성
-            passage = generate_scenario(template, industry, topic, model=model)
-            if not passage or len(passage) < 100:
+            passage = generate_scenario(template, industry, topic, model=model, length_range=length_range)
+            min_len = 30 if length_range.startswith("50") else 100
+            if not passage or len(passage) < min_len:
                 print("- 시나리오 실패")
                 failed += 1
                 continue
