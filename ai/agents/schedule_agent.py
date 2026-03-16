@@ -661,7 +661,7 @@ async def _parse_schedule_input(user_input: str) -> dict:
         elif any(kw in user_input for kw in _deadline_kw):
             parsed["schedule_type"] = "deadline"
         else:
-            parsed["schedule_type"] = "google"
+            parsed["schedule_type"] = "meeting"
 
     # LLM이 null로 반환한 경우 → 시간 불명확, 그대로 둠 (되물어보기 트리거)
     start_time = parsed.get("start_time")
