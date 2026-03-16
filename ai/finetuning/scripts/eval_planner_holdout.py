@@ -62,6 +62,17 @@ def apply_post_rules(user_input: str, intents: list) -> list:
     if re.search(r"취소", user_input) and intents and intents[0] == "schedule_view":
         intents[0] = "schedule_add"
 
+    # 규칙 8: "변경/수정" + 일정 관련 → schedule_add 단일 (과잉 분리 방지)
+    if re.search(r"(변경|수정)", user_input) and \
+       re.search(r"(회의|미팅|일정|스케줄)", user_input) and \
+       len(intents) >= 2 and "schedule_add" in intents:
+        return ["schedule_add"]
+
+    # 규칙 9: "만들어줘/작성해줘/써줘"로 끝나는데 마지막 step이 doc_generate가 아니면 교체
+    if re.search(r"(만들어|작성해|써\s*줘|뽑아)\s*줘?\s*$", user_input) and \
+       len(intents) >= 2 and intents[-1] != "doc_generate":
+        intents[-1] = "doc_generate"
+
     return intents
 
 
