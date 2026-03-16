@@ -679,7 +679,7 @@ export default function DashboardPage() {
       >
         <button
           onClick={scrollToTop}
-          className="w-12 h-12 bg-surface-card border border-neutral-border text-neutral-main hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-full shadow-lg flex items-center justify-center transition-colors focus:outline-none"
+          className="w-12 h-12 bg-white/30 dark:bg-neutral-800/30 backdrop-blur-sm border border-neutral-border/50 text-neutral-400 hover:bg-primary-500 hover:text-white hover:border-primary-500 hover:shadow-xl rounded-full shadow-lg flex items-center justify-center transition-colors focus:outline-none"
           title="맨 위로 가기"
         >
           <ArrowUp size={20} className="text-primary-600 dark:text-primary-400 font-bold stroke-[3px]" />

@@ -23,22 +23,21 @@ export default function MemberMultiSelect({ members = [], selectedIds = [], onCh
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // 포탈 위치 계산 — 아래 공간 부족 시 위로 열림
+  // 포탈 위치 계산 — 트리거 오른쪽에 배치
   useEffect(() => {
     if (open && ref.current) {
       const rect = ref.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom - 8;
-      const spaceAbove = rect.top - 8;
-      const dropHeight = Math.min(280, Math.max(spaceBelow, spaceAbove));
-      const openUp = spaceBelow < 200 && spaceAbove > spaceBelow;
+      const dropWidth = 260;
+      const dropHeight = Math.min(360, window.innerHeight - 40);
+      // 수직 중앙 정렬 (트리거 기준), 뷰포트 범위 내 클램핑
+      const idealTop = rect.top + rect.height / 2 - dropHeight / 2;
+      const clampedTop = Math.max(8, Math.min(idealTop, window.innerHeight - dropHeight - 8));
 
       setDropStyle({
         position: 'fixed',
-        ...(openUp
-          ? { bottom: window.innerHeight - rect.top + 4 }
-          : { top: rect.bottom + 4 }),
-        left: rect.left,
-        width: rect.width,
+        top: clampedTop,
+        left: rect.right + 8,
+        width: dropWidth,
         maxHeight: dropHeight,
         zIndex: 9999,
       });
@@ -112,11 +111,11 @@ export default function MemberMultiSelect({ members = [], selectedIds = [], onCh
         <div
           ref={dropRef}
           style={dropStyle}
-          className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-lg overflow-hidden flex flex-col"
+          className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-lg flex flex-col"
         >
-          {/* 팀 필터 탭 */}
+          {/* 팀 필터 탭 — 스크롤 밖 고정 */}
           {teams.length > 2 && (
-            <div className="flex gap-1 px-2 py-2 border-b border-neutral-100 dark:border-neutral-700 overflow-x-auto">
+            <div className="flex gap-1 px-2 py-2 border-b border-neutral-100 dark:border-neutral-700 overflow-x-auto flex-shrink-0">
               {teams.map((t) => (
                 <button
                   key={t}
