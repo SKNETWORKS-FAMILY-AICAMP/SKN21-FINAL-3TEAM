@@ -2749,13 +2749,77 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 ## 앞으로 남은 과제 (Action Items)
 
 ### AI 플래너 완전체 고도화 (데이터 보강 및 재학습)
-- [ ] **학습 데이터 전면 보강**: 3-step 이상의 복합(Complex) 질문이나 순차(Sequential) 질문을 모델 스스로 잘게 쪼갤 수 있도록(Step Collapse 극복), 다중 단계 Intent 분리 중심의 학습 데이터 대량 생성
-- [ ] **Planner 2차 파인튜닝 (LoRA)**: 보강된 데이터 + 시스템 프롬프트 규칙(Negative Prompting)을 결합하여 Kanana-1.5-8B 기반 V4 Planner 재학습
-- [ ] **최종 Held-out 재평가**: 3-step 이상의 질문에서도 단계 축소 문제가 해결되는지 정밀 검증
+- [x] **학습 데이터 전면 보강**: v4 데이터 1500건 생성 완료 (2026-03-16)
+- [ ] **Planner 2차 파인튜닝 (LoRA)**: RunPod에서 v4 학습 실행 예정
+- [ ] **최종 Held-out 재평가**: 학습 완료 후 3-step 정확도 / Step Collapse Rate 재측정
 
 ### 프론트엔드 - 백엔드 - AI 두뇌 실제 파이프라인 연동
 - [ ] **Mock 환경 걷어내기**: 현재 가짜 데이터로 작동 중인 UI 모드(대시보드, 챗봇 등) 해제
 - [ ] **실시간 응답 연동 (SSE)**: 완성된 Intent Classifier와 Task Planner를 백엔드에 통합시키고, 프론트엔드가 실제 Agent들의 작업 상황을 실시간 스트리밍(SSE)으로 받아 텍스트/카드 형태로 출력하도록 연결 테스트
 - [ ] **E2E 테스트**: 유저 발화 → 분류 → 계획 수립 → Agent 실행 → 화면 출력 전체 흐름 디버깅
+
+---
+
+## 2026-03-16 (월)
+
+### 한 일
+
+#### 1) Task Planner v4 학습 데이터 보강 및 파인튜닝 준비
+
+**배경**: Planner v1 (Kanana-1.5-8B + LoRA + Rule-based Prompting) Held-out 평가 결과
+- 2-step 정확도: 84.8% ✅
+- **3-step 정확도: 28.6% ← 핵심 약점 (Step Collapse)**
+- 데이터 800건 중 complex(3-4step)가 200건(25%)에 불과하고, 무접속사 패턴 전무
+
+**변경 파일:**
+- `ai/finetuning/scripts/synthesize_planner.py` — v4 대폭 확장
+- `ai/finetuning/configs/v4_planner.yaml` — 신규 생성
+- `ai/finetuning/runpod_planner_train.sh` — v4 데이터 자동 생성 포함
+- `ai/finetuning/runpod_planner_holdout.sh` — 기본값 v4 어댑터로 변경
+
+**v4 핵심 변경사항:**
+
+1. **complex 패턴 5→12개 확장**
+   - 판단+검색+생성, 일정조회+판단+일정등록, 검색+생성+일정등록
+   - 병렬판단+생성, 4-step(검색+판단+일정+생성), 병렬검색+판단+생성 등 7개 신규
+
+2. **무접속사(no-connector) 복합 쿼리 생성 신규 추가** (전체 15%)
+   - `"{A} 확인해서 {B}"`, `"{A} 찾아서 {B}"`, `"{A} 바탕으로 {B}"` 등 10개 템플릿
+   - 기존: 모두 "그리고/한 다음에" 접속사 의존 → 실제 사용자 발화 패턴 반영
+
+3. **Anti-Collapse 하드코딩 예제 21개 추가** (전체 6%)
+   - "연차 규정 찾아서 내 경우 가능한지 판단해줘" → doc_retrieve + judgment (2-step)
+   - "보안 정책 문서 보고 위반 여부 판단해줘" → doc_retrieve + judgment
+   - "출장비 규정 찾아서 가능 여부 판단하고 정리 문서 만들어줘" → 3-step 등
+   - doc_retrieve→judgment 압축 방지 패턴을 직접 학습 데이터로 명시
+
+4. **`fill_slots()` 버그 수정**: `{doc2}` 단독 사용 시 미치환 버그 수정
+
+**v4 데이터 생성 결과 (로컬 검증 완료 ✅):**
+
+| 카테고리 | 건수 | 비율 |
+|---------|------|------|
+| single_step | 255 | 17% |
+| sequential (접속사) | 270 | 18% |
+| parallel | 180 | 12% |
+| complex (3-4step) | 420 | **28%** ↑ |
+| no_connector (무접속사) | 225 | **15%** ← 신규 |
+| anti_collapse | 90 | **6%** ← 신규 |
+| edge_case | 60 | 4% |
+| **합계** | **1500** | 100% |
+
+**step 수 분포:**
+- 1-step: 315건 (21%)
+- 2-step: 667건 (44%)
+- **3-step: 403건 (27%) ← v3 대비 대폭 증가**
+- 4-step: 115건 (8%)
+
+
+### 다음 할 일
+
+- [ ] **RunPod v4 LoRA 학습 실행** (`runpod_planner_train.sh`)
+- [ ] **Held-out 재평가** — 목표: 3-step 50%+, Step Collapse ≤10%, Weighted Score 0.93+
+- [ ] **v1 vs v4 비교표 정리** → 최종 Planner 모델 확정
+- [ ] **production 코드 어댑터 경로 반영** (`outputs/v4_planner/final`)
 
 

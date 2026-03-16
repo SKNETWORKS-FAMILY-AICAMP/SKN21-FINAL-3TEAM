@@ -247,7 +247,7 @@ PARALLEL_PATTERNS = [
 ]
 
 COMPLEX_PATTERNS = [
-    # 3-4단계 복합
+    # ── 기존 5개 ──
     ("검색 + 판단 + 일정", [
         ("doc_retrieve", "{doc} 찾아줘", []),
         ("judgment", "{question}", [1]),
@@ -273,6 +273,44 @@ COMPLEX_PATTERNS = [
         ("doc_retrieve", "{doc1} 찾아줘", []),
         ("doc_retrieve", "{doc2} 찾아줘", []),
         ("doc_generate", "비교 {output} 만들어줘", [1, 2]),
+    ]),
+    # ── 신규 추가 (Step Collapse 방지 중점) ──
+    ("판단 + 검색 + 생성", [
+        ("judgment", "{regulation} 확인해줘", []),
+        ("doc_retrieve", "관련 {doc} 찾아줘", [1]),
+        ("doc_generate", "{output} 작성해줘", [1, 2]),
+    ]),
+    ("일정조회 + 판단 + 일정등록", [
+        ("schedule_view", "{view_query}", []),
+        ("judgment", "{regulation} 가능한지 확인해줘", [1]),
+        ("schedule_add", "{schedule}", [2]),
+    ]),
+    ("검색 + 생성 + 일정등록", [
+        ("doc_retrieve", "{doc} 찾아줘", []),
+        ("doc_generate", "내용으로 {output} 만들어줘", [1]),
+        ("schedule_add", "{schedule}", []),
+    ]),
+    ("병렬판단 + 생성", [
+        ("judgment", "{regulation1} 확인해줘", []),
+        ("judgment", "{regulation2} 확인해줘", []),
+        ("doc_generate", "두 결과 비교 {output} 만들어줘", [1, 2]),
+    ]),
+    ("검색 + 판단 + 일정 + 생성", [
+        ("doc_retrieve", "{doc} 찾아줘", []),
+        ("judgment", "{question}", [1]),
+        ("schedule_add", "{schedule}", [2]),
+        ("doc_generate", "결과 {output} 작성해줘", [2]),
+    ]),
+    ("병렬검색 + 판단 + 생성", [
+        ("doc_retrieve", "{doc1} 검색해줘", []),
+        ("doc_retrieve", "{doc2} 찾아줘", []),
+        ("judgment", "두 내용 기반으로 {question}", [1, 2]),
+        ("doc_generate", "비교 {output} 만들어줘", [3]),
+    ]),
+    ("일정조회 + 생성 + 등록", [
+        ("schedule_view", "{view_query}", []),
+        ("doc_generate", "빈 시간에 {output} 작성해줘", [1]),
+        ("schedule_add", "{schedule}", [1]),
     ]),
 ]
 
@@ -309,6 +347,109 @@ SEQ_TEMPLATES = [
 CONNECTORS = ["그리고", "한 다음에", "후에", "다음으로", "그 다음",
               "하고 나서"]
 
+# 무접속사 복합 질문 패턴 (Step Collapse 방지 핵심)
+# "{A}해서 {B}" 형태 — 접속사 없이 자연스럽게 이어지는 패턴
+NO_CONNECTOR_TEMPLATES_2STEP = [
+    "{part0} 확인해서 {part1}",
+    "{part0} 찾아서 {part1}",
+    "{part0} 보고 {part1}",
+    "{part0} 검토해서 {part1}",
+    "{part0} 조회해서 {part1}",
+    "{part0} 바탕으로 {part1}",
+    "{part0} 토대로 {part1}",
+    "{part0} 참고해서 {part1}",
+    "{part0}, {part1}",
+    "{part0} 봐서 {part1}",
+]
+
+NO_CONNECTOR_TEMPLATES_3STEP = [
+    "{part0} 확인하고 {part1} 후 {part2}",
+    "{part0} 찾아서 {part1} 다음 {part2}",
+    "{part0} 검토 후 {part1} {part2}",
+    "{part0}, {part1}, 그리고 {part2}",
+    "{part0} 바탕으로 {part1} {part2}",
+]
+
+# ── Anti-Collapse 하드코딩 예제 (Step Collapse 방지 핵심 데이터) ──
+# "단일처럼 보이지만 반드시 multi-step이어야 하는" 패턴 직접 정의
+ANTI_COLLAPSE_EXAMPLES = [
+    # 검색 → 판단 (압축 금지)
+    ("연차 규정 찾아서 내 경우 가능한지 판단해줘",
+     [{"step_id": 1, "intent": "doc_retrieve", "query": "연차 규정 찾아줘", "depends_on": []},
+      {"step_id": 2, "intent": "judgment", "query": "내 경우 연차 사용 가능한지 판단해줘", "depends_on": [1]}]),
+    ("출장비 규정 확인해서 이번 건 청구 가능한지 봐줘",
+     [{"step_id": 1, "intent": "doc_retrieve", "query": "출장비 규정 문서 찾아줘", "depends_on": []},
+      {"step_id": 2, "intent": "judgment", "query": "이번 출장비 청구 가능한지 판단해줘", "depends_on": [1]}]),
+    ("보안 정책 문서 보고 위반 여부 판단해줘",
+     [{"step_id": 1, "intent": "doc_retrieve", "query": "보안 정책 문서 찾아줘", "depends_on": []},
+      {"step_id": 2, "intent": "judgment", "query": "위반 여부 판단해줘", "depends_on": [1]}]),
+    ("복리후생 규정 조회해서 적용 대상인지 확인해줘",
+     [{"step_id": 1, "intent": "doc_retrieve", "query": "복리후생 규정 찾아줘", "depends_on": []},
+      {"step_id": 2, "intent": "judgment", "query": "내가 적용 대상인지 확인해줘", "depends_on": [1]}]),
+    ("인사 규정 찾아서 이 경우 해당되는지 봐줘",
+     [{"step_id": 1, "intent": "doc_retrieve", "query": "인사 규정 문서 조회해줘", "depends_on": []},
+      {"step_id": 2, "intent": "judgment", "query": "이 경우 인사 규정 해당 여부 판단해줘", "depends_on": [1]}]),
+    ("법인카드 사용 규정 확인해서 이번 사용 가능한지 판단해줘",
+     [{"step_id": 1, "intent": "doc_retrieve", "query": "법인카드 사용 규정 문서 찾아줘", "depends_on": []},
+      {"step_id": 2, "intent": "judgment", "query": "이번 법인카드 사용 가능 여부 판단해줘", "depends_on": [1]}]),
+    # 판단 → 생성 (압축 금지)
+    ("연차 규정 확인해서 결과 정리 문서 만들어줘",
+     [{"step_id": 1, "intent": "judgment", "query": "연차 규정 확인해줘", "depends_on": []},
+      {"step_id": 2, "intent": "doc_generate", "query": "규정 확인 결과 정리 문서 만들어줘", "depends_on": [1]}]),
+    ("출장 가능 여부 판단하고 그 결과로 보고서 작성해줘",
+     [{"step_id": 1, "intent": "judgment", "query": "출장 규정 가능 여부 판단해줘", "depends_on": []},
+      {"step_id": 2, "intent": "doc_generate", "query": "판단 결과 보고서 작성해줘", "depends_on": [1]}]),
+    # 검색 → 생성 (압축 금지)
+    ("회의록 찾아서 그 내용으로 보고서 만들어줘",
+     [{"step_id": 1, "intent": "doc_retrieve", "query": "최근 회의록 찾아줘", "depends_on": []},
+      {"step_id": 2, "intent": "doc_generate", "query": "회의록 내용으로 보고서 만들어줘", "depends_on": [1]}]),
+    ("프로젝트 기획서 조회해서 요약 보고서 작성해줘",
+     [{"step_id": 1, "intent": "doc_retrieve", "query": "프로젝트 기획서 찾아줘", "depends_on": []},
+      {"step_id": 2, "intent": "doc_generate", "query": "기획서 내용으로 요약 보고서 작성해줘", "depends_on": [1]}]),
+    ("마케팅 전략 문서 찾아서 제안서 초안 만들어줘",
+     [{"step_id": 1, "intent": "doc_retrieve", "query": "마케팅 전략 문서 검색해줘", "depends_on": []},
+      {"step_id": 2, "intent": "doc_generate", "query": "마케팅 전략 기반 제안서 초안 만들어줘", "depends_on": [1]}]),
+    # 판단 → 일정 (압축 금지)
+    ("재택근무 가능 여부 확인하고 일정 잡아줘",
+     [{"step_id": 1, "intent": "judgment", "query": "재택근무 신청 가능 여부 확인해줘", "depends_on": []},
+      {"step_id": 2, "intent": "schedule_add", "query": "재택근무 일정 등록해줘", "depends_on": [1]}]),
+    ("연차 규정 맞는지 보고 연차 일정 잡아줘",
+     [{"step_id": 1, "intent": "judgment", "query": "연차 신청 규정 확인해줘", "depends_on": []},
+      {"step_id": 2, "intent": "schedule_add", "query": "연차 일정 등록해줘", "depends_on": [1]}]),
+    # 일정조회 → 판단 (압축 금지)
+    ("다음 주 일정 보고 출장 규정 확인해줘",
+     [{"step_id": 1, "intent": "schedule_view", "query": "다음 주 일정 조회해줘", "depends_on": []},
+      {"step_id": 2, "intent": "judgment", "query": "출장 규정 가능 여부 확인해줘", "depends_on": []}]),
+    ("이번 주 스케줄 확인하고 연차 사용 가능한지 판단해줘",
+     [{"step_id": 1, "intent": "schedule_view", "query": "이번 주 일정 조회해줘", "depends_on": []},
+      {"step_id": 2, "intent": "judgment", "query": "연차 사용 가능 여부 판단해줘", "depends_on": [1]}]),
+    # 3-step anti-collapse
+    ("출장비 규정 찾아서 가능 여부 판단하고 정리 문서 만들어줘",
+     [{"step_id": 1, "intent": "doc_retrieve", "query": "출장비 규정 찾아줘", "depends_on": []},
+      {"step_id": 2, "intent": "judgment", "query": "출장비 청구 가능 여부 판단해줘", "depends_on": [1]},
+      {"step_id": 3, "intent": "doc_generate", "query": "출장비 판단 결과 정리 문서 만들어줘", "depends_on": [2]}]),
+    ("보안 정책 조회해서 위반 여부 확인하고 회의 일정 잡아줘",
+     [{"step_id": 1, "intent": "doc_retrieve", "query": "보안 정책 문서 찾아줘", "depends_on": []},
+      {"step_id": 2, "intent": "judgment", "query": "보안 정책 위반 여부 확인해줘", "depends_on": [1]},
+      {"step_id": 3, "intent": "schedule_add", "query": "보안 점검 회의 일정 잡아줘", "depends_on": [2]}]),
+    ("마케팅 전략 문서 찾아서 내용 정리하고 팀 미팅 일정 잡아줘",
+     [{"step_id": 1, "intent": "doc_retrieve", "query": "마케팅 전략 문서 검색해줘", "depends_on": []},
+      {"step_id": 2, "intent": "doc_generate", "query": "마케팅 전략 요약 문서 만들어줘", "depends_on": [1]},
+      {"step_id": 3, "intent": "schedule_add", "query": "팀 마케팅 미팅 일정 등록해줘", "depends_on": []}]),
+    ("인사 규정 확인 후 해당되면 연차 신청 일정 잡고 보고서도 만들어줘",
+     [{"step_id": 1, "intent": "judgment", "query": "인사 규정 연차 신청 가능 여부 확인해줘", "depends_on": []},
+      {"step_id": 2, "intent": "schedule_add", "query": "연차 신청 일정 등록해줘", "depends_on": [1]},
+      {"step_id": 3, "intent": "doc_generate", "query": "연차 신청 결과 보고서 작성해줘", "depends_on": [1]}]),
+    ("회의록이랑 기획서 찾아서 종합 보고서 만들어줘",
+     [{"step_id": 1, "intent": "doc_retrieve", "query": "최근 회의록 찾아줘", "depends_on": []},
+      {"step_id": 2, "intent": "doc_retrieve", "query": "프로젝트 기획서 찾아줘", "depends_on": []},
+      {"step_id": 3, "intent": "doc_generate", "query": "회의록이랑 기획서 내용으로 종합 보고서 만들어줘", "depends_on": [1, 2]}]),
+    ("다음 주 일정 확인해서 빈 시간에 미팅 잡고 회의 준비 문서 만들어줘",
+     [{"step_id": 1, "intent": "schedule_view", "query": "다음 주 일정 조회해줘", "depends_on": []},
+      {"step_id": 2, "intent": "schedule_add", "query": "빈 시간에 미팅 일정 등록해줘", "depends_on": [1]},
+      {"step_id": 3, "intent": "doc_generate", "query": "회의 준비 문서 작성해줘", "depends_on": []}]),
+]
+
 
 # ── 생성 함수 ──────────────────────────────────────────────
 
@@ -341,6 +482,9 @@ def fill_slots(template: str) -> str:
     if "{doc1}" in result:
         d1, d2 = random.sample(DOCS, 2)
         result = result.replace("{doc1}", d1).replace("{doc2}", d2)
+    elif "{doc2}" in result:
+        # doc2만 단독으로 사용된 경우 (병렬 패턴의 두 번째 step 등)
+        result = result.replace("{doc2}", random.choice(DOCS))
     if "{output}" in result:
         result = result.replace("{output}", random.choice(OUTPUTS))
     if "{regulation}" in result:
@@ -454,6 +598,75 @@ def generate_complex(n: int) -> list[dict]:
     return samples
 
 
+def generate_no_connector_complex(n: int) -> list[dict]:
+    """무접속사 복합 질문 생성 (Step Collapse 핵심 방지)"""
+    samples = []
+    seq_patterns_nc = SEQUENTIAL_PATTERNS + [
+        ("검색 후 판단 (무접속사)", [
+            ("doc_retrieve", "{doc} 찾아줘", []),
+            ("judgment", "{question}", [1]),
+        ]),
+        ("판단 후 생성 (무접속사)", [
+            ("judgment", "{regulation} 확인해줘", []),
+            ("doc_generate", "결과로 {output} 만들어줘", [1]),
+        ]),
+        ("검색 후 생성 (무접속사)", [
+            ("doc_retrieve", "{doc} 검색해줘", []),
+            ("doc_generate", "내용으로 {output} 작성해줘", [1]),
+        ]),
+        ("판단 후 일정 (무접속사)", [
+            ("judgment", "{regulation} 가능한지 확인해줘", []),
+            ("schedule_add", "{schedule}", [1]),
+        ]),
+    ]
+
+    for _ in range(n * 2 // 3):
+        pattern = random.choice(seq_patterns_nc)
+        _, steps = pattern
+        plan = []
+        parts = []
+        for i, (intent, query_tmpl, deps) in enumerate(steps):
+            query = fill_slots(query_tmpl)
+            plan.append(make_step(i + 1, intent, query, deps))
+            parts.append(query)
+
+        tmpl = random.choice(NO_CONNECTOR_TEMPLATES_2STEP)
+        user_input = tmpl.format(part0=parts[0], part1=parts[1])
+        samples.append(make_sample(user_input, plan))
+
+    for _ in range(n - len(samples)):
+        pattern = random.choice(COMPLEX_PATTERNS[:5])
+        _, steps = pattern
+        plan = []
+        parts = []
+        for i, (intent, query_tmpl, deps) in enumerate(steps):
+            query = fill_slots(query_tmpl)
+            plan.append(make_step(i + 1, intent, query, deps))
+            parts.append(query)
+
+        if len(parts) >= 3:
+            tmpl = random.choice(NO_CONNECTOR_TEMPLATES_3STEP)
+            user_input = tmpl.format(
+                part0=parts[0], part1=parts[1], part2=parts[2])
+        else:
+            tmpl = random.choice(NO_CONNECTOR_TEMPLATES_2STEP)
+            user_input = tmpl.format(part0=parts[0], part1=parts[1])
+        samples.append(make_sample(user_input, plan))
+
+    return samples[:n]
+
+
+def generate_anti_collapse(n: int) -> list[dict]:
+    """Anti-collapse 하드코딩 예제 (과도한 단계 압축 방지)"""
+    samples = []
+    base = [make_sample(ex[0], ex[1]) for ex in ANTI_COLLAPSE_EXAMPLES]
+    # n개 채울 때까지 반복 샘플링
+    while len(samples) < n:
+        samples.extend(base)
+    random.shuffle(samples)
+    return samples[:n]
+
+
 def generate_edge_cases(n: int) -> list[dict]:
     """엣지 케이스 생성 (오타, 초성, 모호한 입력)"""
     samples = []
@@ -515,10 +728,13 @@ def main():
         description="Planner LoRA 학습 데이터 합성")
     parser.add_argument("--project-root", default=None)
     parser.add_argument("--total", type=int, default=800,
-                        help="총 학습 데이터 수")
+                        help="총 학습 데이터 수 (v4는 --total 1500 권장)")
     parser.add_argument("--eval-ratio", type=float, default=0.1,
                         help="평가 데이터 비율")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--version", type=str, default="v3",
+                        choices=["v3", "v4"],
+                        help="출력 버전 (v3=기존 800건, v4=1500건 multi-step 강화)")
     args = parser.parse_args()
 
     random.seed(args.seed)
@@ -535,20 +751,41 @@ def main():
         except Exception:
             root = Path.cwd()
 
-    out_dir = root / "data" / "training" / "v3_planner"
+    # v4는 출력 경로와 기본 total 변경
+    if args.version == "v4":
+        out_dir = root / "data" / "training" / "v4_planner"
+        if args.total == 800:  # 기본값이면 v4 기본값으로 오버라이드
+            args.total = 1500
+    else:
+        out_dir = root / "data" / "training" / "v3_planner"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     total = args.total
-    # 카테고리 분포 (Kanana 약점 보강)
-    dist = {
-        "single_step": int(total * 0.25),
-        "sequential": int(total * 0.25),
-        "parallel": int(total * 0.19),
-        "complex": int(total * 0.25),
-        "edge_case": total - int(total * 0.25) * 3 - int(total * 0.19),
-    }
 
-    print(f"Generating {total} planner training samples...")
+    # v4: complex/no_connector/anti_collapse 비율 대폭 증가 (3-step+ 강화)
+    if args.version == "v4":
+        dist = {
+            "single_step":      int(total * 0.17),  # 17%
+            "sequential":       int(total * 0.18),  # 18%
+            "parallel":         int(total * 0.12),  # 12%
+            "complex":          int(total * 0.28),  # 28% ← 핵심 증가
+            "no_connector":     int(total * 0.15),  # 15% ← 신규 (무접속사)
+            "anti_collapse":    int(total * 0.06),  # 6%  ← 신규 (하드코딩)
+            "edge_case":        0,
+        }
+        dist["edge_case"] = total - sum(dist.values())
+    else:
+        dist = {
+            "single_step": int(total * 0.25),
+            "sequential": int(total * 0.25),
+            "parallel": int(total * 0.19),
+            "complex": int(total * 0.25),
+            "no_connector": 0,
+            "anti_collapse": 0,
+            "edge_case": total - int(total * 0.25) * 3 - int(total * 0.19),
+        }
+
+    print(f"Generating {total} planner training samples (version={args.version})...")
     print(f"Distribution: {dist}")
 
     all_samples = []
@@ -556,6 +793,10 @@ def main():
     all_samples.extend(generate_sequential(dist["sequential"]))
     all_samples.extend(generate_parallel(dist["parallel"]))
     all_samples.extend(generate_complex(dist["complex"]))
+    if dist["no_connector"] > 0:
+        all_samples.extend(generate_no_connector_complex(dist["no_connector"]))
+    if dist["anti_collapse"] > 0:
+        all_samples.extend(generate_anti_collapse(dist["anti_collapse"]))
     all_samples.extend(generate_edge_cases(dist["edge_case"]))
 
     random.shuffle(all_samples)
