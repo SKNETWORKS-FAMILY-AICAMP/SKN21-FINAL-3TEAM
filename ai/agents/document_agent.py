@@ -30,7 +30,8 @@ from ai.templates import get_system_template
 logger = logging.getLogger(__name__)
 
 # ── 문서생성 필드 수 최적화 (sLLM 학습 분포 매칭) ──
-# 학습 데이터: 6~10개 필드(평균 8.1개), 13개 이상 → decisions/action_items 빈 배열
+# 학습 데이터: 6~10개 필드(평균 8.1개)
+# always = 시스템 템플릿에서 항상 포함할 필드 (학습 데이터 100%/80% 포함)
 GENERATION_FIELD_CONFIG = {
     "meeting_minutes": {
         "always": ["title", "date", "attendees", "content", "summary", "decisions", "action_items"],
@@ -38,15 +39,35 @@ GENERATION_FIELD_CONFIG = {
         "max_fields": 10,
     },
     "report": {
-        "always": ["title", "date", "author", "content", "overview", "tasks", "next_plan"],
-        "optional": ["department", "report_type", "report_to", "main_content", "issues", "position"],
+        "always": ["title", "date", "author", "overview", "main_content", "tasks", "next_plan"],
+        "optional": ["department", "report_type", "report_to", "content", "issues", "position"],
         "max_fields": 10,
     },
     "proposal": {
-        "always": ["title", "date", "content", "purpose", "expected_effect", "schedule", "budget"],
+        "always": ["title", "date", "purpose", "content", "expected_effect", "schedule", "budget"],
         "optional": ["company", "manager", "submit_to", "background", "budget_total", "contact"],
         "max_fields": 10,
     },
+}
+
+# ── 학습된 필드 키 (LoRA가 생성 가능한 필드) ──
+# 커스텀 템플릿에서 이 키에 해당하면 1단계 LoRA에 포함,
+# 이 키에 없는 미학습 필드는 2단계 프롬프트 추출로 처리
+TRAINED_KEYS = {
+    # core (모든 유형 공통)
+    "title", "date",
+    # 회의록
+    "attendees", "content", "summary", "decisions", "action_items",
+    "time", "location", "meeting_type", "author", "moderator", "department", "duration",
+    "agenda", "meeting_purpose", "risks", "next_meeting", "notes",
+    # 보고서
+    "overview", "main_content", "tasks", "next_plan",
+    "position", "report_to", "report_type", "period", "audience",
+    "achievements", "issues", "kpi_results", "conclusion", "recommendations",
+    # 제안서
+    "purpose", "expected_effect", "schedule", "budget",
+    "submit_date", "submit_to", "company", "manager", "contact", "proposer",
+    "background", "current_situation", "scope", "budget_total", "resources", "deliverables",
 }
 
 
@@ -677,6 +698,44 @@ async def _extract_decisions_actions(content: str, summary: str = "") -> Dict[st
         return {}
 
 
+async def _extract_structured_fields(
+    content: str,
+    generated_fields: List[Dict],
+) -> Dict[str, Any]:
+    """
+    2단계: 커스텀 템플릿의 미학습 필드를 content에서 프롬프트 기반으로 추출.
+
+    generated_fields: role="generated"이면서 TRAINED_KEYS에 없는 필드 목록
+    각 필드의 description을 프롬프트에 동적 주입하여 추출.
+    """
+    if not generated_fields or not content:
+        return {}
+
+    from ai.document_parser.template_extractor import fields_to_prompt
+    from ai.llm.prompts import DOC_EXTRACT_PROMPT
+
+    field_spec = fields_to_prompt(generated_fields)
+
+    user_prompt = (
+        f"[추출 필드]\n{field_spec}\n\n"
+        f"[문서 내용]\n{content}"
+    )
+
+    print(f"[DocumentAgent] 2단계 프롬프트 추출 | {len(generated_fields)}개 필드: {[f['key'] for f in generated_fields]}")
+
+    try:
+        result_str = await _call_llm(
+            DOC_EXTRACT_PROMPT, user_prompt,
+            json_mode=True, task="extract"
+        )
+        result = json.loads(result_str)
+        print(f"[DocumentAgent] 2단계 추출 완료 | keys={list(result.keys())}")
+        return result
+    except Exception as e:
+        print(f"[DocumentAgent] 2단계 추출 실패: {e}")
+        return {}
+
+
 def _build_narrative_input(category: str, fields_data: Dict[str, Any], content: str = "") -> str:
     """폼 필드(짧은 값) → 서술형 텍스트로 변환하여 학습 데이터 형식(700~1500자)에 가깝게 만든다."""
     parts = []
@@ -824,6 +883,17 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
     is_system = getattr(template, "is_system", False) if template else False
     fields_for_llm = _select_fields_for_llm(fields, template_type, user_input, is_system)
 
+    # ── 커스텀 템플릿: 학습된 키 / 미학습 키 분리 ──
+    # 시스템 템플릿: LoRA가 전체 필드 생성 (기존 방식)
+    # 커스텀 템플릿: 1단계 LoRA(학습 키) + 2단계 프롬프트(미학습 키)
+    untrained_fields = []
+    if not is_system:
+        stage1_fields = [f for f in fields_for_llm if f["key"] in TRAINED_KEYS]
+        untrained_fields = [f for f in fields_for_llm if f["key"] not in TRAINED_KEYS
+                           and f.get("form") is not True and f.get("role") != "input"]
+        print(f"[DocumentAgent] 커스텀 템플릿 분기 | 학습키 {len(stage1_fields)}개, 미학습키 {len(untrained_fields)}개: {[f['key'] for f in untrained_fields]}")
+        fields_for_llm = stage1_fields  # 1단계에는 학습된 키만
+
     # 동적 필드 명세 생성
     from ai.document_parser.template_extractor import fields_to_prompt
     field_spec = fields_to_prompt(fields_for_llm)
@@ -851,15 +921,23 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
         f"[{input_label}]\n{user_input}"
     )
 
-    print(f"[DocumentAgent] 동적 프롬프트 생성 | LLM필드 {len(fields_for_llm)}개(전체 {len(fields)}개), 문서유형={doc_type_name}")
+    print(f"[DocumentAgent] 1단계 프롬프트 생성 | LLM필드 {len(fields_for_llm)}개(전체 {len(fields)}개), 문서유형={doc_type_name}")
     generated_json_str = await _call_llm(sys_prompt, user_prompt, json_mode=True, task="generate")
 
     try:
         data = json.loads(generated_json_str)
-        print(f"[DocumentAgent] JSON 파싱 성공 | keys={list(data.keys())}")
+        print(f"[DocumentAgent] 1단계 JSON 파싱 성공 | keys={list(data.keys())}")
     except Exception:
         print(f"[DocumentAgent] !!! JSON 파싱 실패")
         data = {"content": generated_json_str}
+
+    # ── 2단계: 커스텀 템플릿 미학습 필드 프롬프트 추출 ──
+    if untrained_fields and data.get("content"):
+        stage2_data = await _extract_structured_fields(
+            data["content"], untrained_fields
+        )
+        data.update(stage2_data)
+        print(f"[DocumentAgent] 2단계 병합 완료 | 추가 keys={list(stage2_data.keys())}")
 
     # LLM에 안 보낸 필드도 DOCX 빌더가 참조하므로 기본값 채우기
     for f in fields:
@@ -1307,11 +1385,12 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
     LLM 호출 — 모드에 따라 LLM API 또는 sLLM(vLLM + LoRA) 사용
 
     Args:
-        task: 파인튜닝 태스크명 ("generate", "qa", "summary").
+        task: 파인튜닝 태스크명 ("generate", "qa", "summary", "extract").
               DOC_AGENT_MODE=sllm일 때 해당 LoRA 어댑터로 라우팅.
+              "extract"는 커스텀 템플릿 2단계 추출용 — LoRA 없이 base/API 사용.
               None이면 항상 LLM API 사용 (template_type 감지 등).
         temperature: LLM 온도. None이면 task에 따라 자동 결정
-                     (generate=0.7, 검색/QA=0.1)
+                     (generate=0.15, extract=0.1, 검색/QA=0.1)
     """
     global _last_model_name
     if temperature is None:
@@ -1321,7 +1400,29 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
     sllm_tasks = os.getenv("DOC_SLLM_TASKS", "generate").split(",")
     print(f"[DocumentAgent] _call_llm 호출 | mode={mode}, task={task}, temperature={temperature}, json_mode={json_mode}")
     try:
-        if mode == "sllm" and task in sllm_tasks:
+        # task="extract": 커스텀 템플릿 2단계 — LoRA 없이 base 모델 또는 API
+        if task == "extract" and mode == "sllm":
+            try:
+                from ai.serving.vllm_client import VLLMProvider
+                llm = VLLMProvider()  # LoRA 안 태움
+                _last_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (base, extract)"
+                print(f"[DocumentAgent] _call_llm | sLLM base (extract, no LoRA)")
+                response = await llm.generate(
+                    prompt=user_prompt,
+                    system_prompt=sys_prompt,
+                    temperature=temperature,
+                    json_mode=json_mode,
+                )
+                result = response.content
+                print(f"[DocumentAgent] _call_llm | extract 응답 ({time.time()-_t_llm:.2f}s) 길이: {len(result)}자")
+                return result
+            except Exception as e:
+                print(f"[DocumentAgent] _call_llm | extract sLLM 실패, API fallback: {e}")
+                _last_model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini") + " (fallback)"
+                from ai.llm import get_llm
+                llm = get_llm()
+
+        elif mode == "sllm" and task in sllm_tasks:
             # sLLM 모드: vLLM — LoRA 적용 태스크만 어댑터 사용, 나머지는 base
             try:
                 from ai.serving.vllm_client import VLLMProvider

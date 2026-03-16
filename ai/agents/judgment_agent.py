@@ -21,6 +21,7 @@
 import hashlib
 import json
 import logging
+import os
 import re
 import time
 from collections import defaultdict
@@ -32,6 +33,67 @@ from ai.llm.prompts import JUDGMENT_SYSTEM_PROMPT
 from ai.rag.qdrant_pipeline import get_qdrant_pipeline
 
 logger = logging.getLogger(__name__)
+
+# ── sLLM 모드 지원 ──
+
+_judgment_model_name = "unknown"
+
+
+async def _call_judgment_llm(sys_prompt: str, user_prompt: str) -> str:
+    """판단 Agent LLM 호출 — sLLM 모드면 LoRA 사용, 아니면 API.
+
+    환경변수:
+        JUDGMENT_AGENT_MODE: "api" (기본) 또는 "sllm"
+        VLLM_USE_LORA: "true"면 v1_judgment LoRA 어댑터 사용
+    """
+    global _judgment_model_name
+    mode = os.getenv("JUDGMENT_AGENT_MODE", "api")
+    _t = time.time()
+
+    try:
+        if mode == "sllm":
+            from ai.serving.vllm_client import VLLMProvider
+            use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
+            if use_lora:
+                llm = VLLMProvider().with_lora("v1_judgment")
+                _judgment_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (LoRA v1_judgment)"
+                print(f"[JudgmentAgent] sLLM: v1_judgment LoRA")
+            else:
+                llm = VLLMProvider()
+                _judgment_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (base)"
+                print(f"[JudgmentAgent] sLLM: base model")
+
+            try:
+                response = await llm.generate(
+                    prompt=user_prompt,
+                    system_prompt=sys_prompt,
+                    temperature=0.1,
+                    json_mode=True,
+                )
+                print(f"[JudgmentAgent] sLLM 응답 ({time.time()-_t:.2f}s) 길이: {len(response.content)}자")
+                return response.content
+            except Exception as e:
+                print(f"[JudgmentAgent] sLLM 실패, API fallback: {e}")
+                _judgment_model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini") + " (fallback)"
+                llm = get_llm()
+        else:
+            llm = get_llm()
+            _judgment_model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+            print(f"[JudgmentAgent] API: {llm.__class__.__name__}")
+
+        response = await llm.generate(
+            prompt=user_prompt,
+            system_prompt=sys_prompt,
+            temperature=0.1,
+        )
+        print(f"[JudgmentAgent] 응답 ({time.time()-_t:.2f}s) 길이: {len(response.content)}자")
+        return response.content
+
+    except Exception as e:
+        print(f"[JudgmentAgent] LLM 호출 실패: {e}")
+        import traceback
+        traceback.print_exc()
+        return '{"result": "no_regulation", "confidence": 0.0, "reasoning": "LLM 호출 실패"}'
 
 # ── 허용 판단 결과 카테고리 ──
 VALID_JUDGMENT_RESULTS = {"yes", "no", "conditional", "no_regulation"}
@@ -572,24 +634,18 @@ async def judgment_agent(state: AgentState) -> AgentState:
         groups = _group_regulations(context)
         print(f"[JudgmentAgent] 규정 그룹: {list(groups.keys())}")
 
-        # 4. LLM 호출
+        # 4. LLM 호출 (sLLM 모드 지원)
         _t_llm = time.time()
         print("[JudgmentAgent] LLM 호출 중...")
-        llm = get_llm()
         context_text = _build_context_prompt(context)
         user_prompt = _build_user_prompt(
             user_input, context_text, chat_history, judgment_history
         )
 
-        response = await llm.generate(
-            prompt=user_prompt,
-            system_prompt=JUDGMENT_SYSTEM_PROMPT,
-            temperature=0.1,
-        )
-        print(f"[JudgmentAgent] LLM 응답 ({time.time()-_t_llm:.2f}s) 길이: {len(response.content)}자")
+        raw_response = await _call_judgment_llm(JUDGMENT_SYSTEM_PROMPT, user_prompt)
 
         # 5. 응답 파싱 + 3중 보조 장치 + confidence 보정
-        parsed = _parse_llm_response(response.content)
+        parsed = _parse_llm_response(raw_response)
         parsed["type"] = "judgment"
 
         # 보조장치 3: 판단 결과 카테고리 제한 (yes/no/conditional/no_regulation 외 reject)
@@ -699,13 +755,29 @@ async def judgment_agent_stream(state: AgentState) -> AsyncGenerator[str, None]:
         judgment_history = _extract_judgment_history(chat_history)
 
         # 프롬프트 구성
-        llm = get_llm()
         context_text = _build_context_prompt(context)
         user_prompt = _build_user_prompt(
             user_input, context_text, chat_history, judgment_history
         )
 
-        # 스트리밍 호출
+        # 스트리밍 호출 (sLLM 모드 지원)
+        global _judgment_model_name
+        mode = os.getenv("JUDGMENT_AGENT_MODE", "api")
+        if mode == "sllm":
+            from ai.serving.vllm_client import VLLMProvider
+            use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
+            if use_lora:
+                llm = VLLMProvider().with_lora("v1_judgment")
+                _judgment_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (LoRA v1_judgment)"
+            else:
+                llm = VLLMProvider()
+                _judgment_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (base)"
+            print(f"[JudgmentAgent] 스트리밍 sLLM: {_judgment_model_name}")
+        else:
+            llm = get_llm()
+            _judgment_model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+            print(f"[JudgmentAgent] 스트리밍 API: {llm.__class__.__name__}")
+
         full_response = ""
         async for token in llm.stream_generate(
             prompt=user_prompt,
