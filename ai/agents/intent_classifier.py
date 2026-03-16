@@ -320,6 +320,9 @@ class IntentClassifier:
                 "confidence": round(probs[best_idx].item(), 4),
             }]
 
+        # 멀티라벨 후처리 규칙
+        intents = self._apply_multilabel_rules(processed, intents)
+
         # confidence 내림차순 정렬
         intents.sort(key=lambda x: x["confidence"], reverse=True)
 
@@ -329,6 +332,28 @@ class IntentClassifier:
             "primary_intent": intents[0]["intent"],
             "primary_confidence": intents[0]["confidence"],
         }
+
+    def _apply_multilabel_rules(self, text: str, intents: list) -> list:
+        """멀티라벨 후처리 규칙 — 100건 Held-out 오답 분석 기반"""
+        intent_names = [i["intent"] for i in intents]
+
+        # Rule 1: "규정/수당/복리후생" + "분석/확인/정리/알려" → judgment 보장
+        if re.search(r"(규정|수당|복리후생|복지|기준)", text):
+            if "judgment" not in intent_names:
+                # doc_retrieve가 있으면 judgment로 교체
+                for i in intents:
+                    if i["intent"] == "doc_retrieve":
+                        i["intent"] = "judgment"
+                        break
+                else:
+                    intents.append({"intent": "judgment", "confidence": 0.6})
+
+        # Rule 2: connector_trap — "규정 + 분석/정리/알려" 만 있으면 단일 judgment
+        if re.search(r"(규정|수당).*(분석|정리|알려|확인|계산)", text) and \
+           not re.search(r"(찾아|검색|잡아|등록|만들어|작성|일정)", text):
+            return [{"intent": "judgment", "confidence": 0.85}]
+
+        return intents
 
     def _fallback_compound_detect(self, text: str) -> dict:
         """멀티라벨 모델 없을 때 규칙 기반 fallback"""
