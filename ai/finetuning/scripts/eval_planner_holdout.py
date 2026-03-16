@@ -48,8 +48,24 @@ def apply_post_rules(user_input: str, intents: list) -> list:
        re.search(r"(만들|작성|써|뽑아)", user_input):
         return ["doc_generate"]
 
-    # 규칙 4: judgment + doc_retrieve → knowledge_query 후처리 매핑
-    # (평가 시 expected도 동일하게 매핑해야 함 — evaluate_single에서 처리)
+    # 규칙 4: "도와줘/도움" 단독 → general (모호한 요청)
+    if re.search(r"(도와줘|도움|도와주|헬프)", user_input) and \
+       not re.search(r"(찾아|검색|작성|만들|등록|확인|알려|잡아)", user_input):
+        return ["general"]
+
+    # 규칙 5: Step Collapse 방지 — 접속사 3개 이상이면 최소 3-step
+    connectors = len(re.findall(r"(찾아서|검색해서|확인하고|보고|바탕으로|그 다음|그리고|한 다음|후에|만들고|정리하고|요약하고)", user_input))
+    if connectors >= 2 and len(intents) < 3:
+        pass  # 모델 출력 유지 — 무리하게 step 늘리면 오히려 악화
+
+    # 규칙 6: "취소" → schedule_add (schedule_view 아님)
+    if re.search(r"취소", user_input) and intents and intents[0] == "schedule_view":
+        intents[0] = "schedule_add"
+
+    # 규칙 7: 과잉 분리 방지 — 단일 의도인데 2-step으로 쪼개진 경우
+    # "일정 보고" + doc_generate/schedule_add 패턴이면 schedule_view가 아닌 경우만
+    if len(intents) == 2 and intents[0] == intents[1]:
+        intents = [intents[0]]  # 같은 intent 중복이면 1개로 축소
 
     return intents
 

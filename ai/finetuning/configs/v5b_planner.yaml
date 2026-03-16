@@ -1,0 +1,28 @@
+# LoRA v5b: Task Planner — LoRA 강화 + Chain-of-Thought
+# v5 대비 변경: r=16→32, epoch 3→5, CoT 프롬프트
+model:
+  base_model: "kakaocorp/kanana-1.5-8b-instruct-2505"
+  quantization: "4bit"
+
+lora:
+  r: 32
+  lora_alpha: 64
+  lora_dropout: 0.05
+  target_modules: ["q_proj", "v_proj", "k_proj", "o_proj"]
+
+training:
+  num_epochs: 5
+  batch_size: 4
+  gradient_accumulation_steps: 4
+  learning_rate: 2e-4
+  warmup_ratio: 0.1
+  max_length: 1024
+  early_stopping_patience: 3
+
+data:
+  train_path: "data/training/v5_planner/train.jsonl"
+  eval_path: "data/training/v5_planner/eval.jsonl"
+
+output:
+  output_dir: "outputs/v5b_planner"
+  save_steps: 100
