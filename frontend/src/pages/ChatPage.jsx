@@ -12,6 +12,7 @@ import DocumentViewPanel from '../components/chat/DocumentViewPanel';
 import ChatSessionSidebar from '../components/chat/ChatSessionSidebar';
 import JudgmentCard from '../components/chat/JudgmentCard';
 import ScheduleCard from '../components/chat/ScheduleCard';
+import ScheduleConfirmCard from '../components/chat/ScheduleConfirmCard';
 import GenerateCard from '../components/chat/GenerateCard';
 import MarkdownText from '../components/chat/MarkdownText';
 import SourceItem from '../components/chat/SourceItem';
@@ -184,6 +185,25 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
           actionItems={actionItems}
           onDownload={handleDocDownload}
           modelName={data.model_name || ''}
+        />
+      );
+    }
+
+    case 'schedule_confirm': {
+      const sched = data.schedule || {};
+      return (
+        <ScheduleConfirmCard
+          initialData={sched}
+          onConfirmed={(apiResult) => {
+            // 등록 완료 시 메시지의 intent/response를 schedule_add로 교체 → 자동 re-render
+            msg.resultIntent = 'schedule_add';
+            msg.agentResponse = {
+              ...data,
+              type: 'schedule_add',
+              schedule: apiResult.schedule || sched,
+              google_services: apiResult.google_services || {},
+            };
+          }}
         />
       );
     }

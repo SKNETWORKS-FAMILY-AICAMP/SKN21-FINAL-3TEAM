@@ -170,7 +170,31 @@ async def create_schedule(
         except Exception as e:
             logger.warning(f"Gmail 초대 발송 실패 (best-effort): {e}")
 
-    # 4. Slack 알림 (best-effort, slack_enabled인 경우)
+    # 4. 참석자에게 meeting_invite Approval 생성 (best-effort)
+    if data.attendee_emails:
+        try:
+            from app.models.user import User
+            from app.models.approval_request import ApprovalRequest
+            for email in data.attendee_emails:
+                target_result = await db.execute(
+                    select(User).where(User.email == email)
+                )
+                target_user = target_result.scalar_one_or_none()
+                if target_user:
+                    time_str = data.start_time.strftime("%Y-%m-%d %H:%M")
+                    approval = ApprovalRequest(
+                        type="meeting_invite",
+                        title=f"회의 초대: {data.title}",
+                        detail=f"일시: {time_str}\n회의: {data.title}",
+                        status="pending",
+                        requester_id=user_id,
+                        target_user_id=target_user.id,
+                    )
+                    db.add(approval)
+        except Exception as e:
+            logger.warning(f"Meeting invite approval 생성 실패 (best-effort): {e}")
+
+    # 5. Slack 알림 (best-effort, slack_enabled인 경우)
     try:
         from app.models.user import User
         user_result = await db.execute(select(User).where(User.id == user_id))

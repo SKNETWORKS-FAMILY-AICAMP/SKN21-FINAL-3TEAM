@@ -152,7 +152,11 @@ async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
             "message": _build_clarify_message(parsed, missing),
         }
 
-    return await _register_schedule(parsed, user_id)
+    return {
+        "type": "schedule_confirm",
+        "schedule": parsed,
+        "message": f"'{parsed['title']}' 일정을 확인하고 등록해주세요.",
+    }
 
 
 async def _register_schedule(parsed: dict, user_id: int) -> dict:
@@ -590,11 +594,20 @@ async def _parse_schedule_input(user_input: str) -> dict:
     tomorrow = (now + timedelta(days=1)).strftime("%Y-%m-%d")
     today = now.strftime("%Y-%m-%d")
 
+    # 이번 주 월요일, 저번 주 월요일 계산
+    this_monday = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
+    next_monday = (now - timedelta(days=now.weekday()) + timedelta(weeks=1)).strftime("%Y-%m-%d")
+    last_monday = (now - timedelta(days=now.weekday()) - timedelta(weeks=1)).strftime("%Y-%m-%d")
+    current_hour_min = now.strftime("%H:%M")
+
     sys_prompt = f"""당신은 일정 파싱 전문가입니다. 사용자의 자연어 입력을 구조화된 일정 JSON으로 변환하세요.
 
 현재 시각: {current_datetime} ({current_weekday}요일)
 오늘 날짜: {today}
 내일 날짜: {tomorrow}
+이번 주 월요일: {this_monday}
+다음 주 월요일: {next_monday}
+저번 주 월요일: {last_monday}
 
 반드시 실제 날짜와 시간을 계산하여 출력하세요. 절대로 "YYYY-MM-DD" 같은 형식 문자열을 출력하지 마세요.
 
@@ -611,6 +624,16 @@ async def _parse_schedule_input(user_input: str) -> dict:
 규칙:
 - "내일"은 {tomorrow}
 - "모레"는 현재 날짜 + 2일
+- "글피"는 현재 날짜 + 3일
+- "N시간 뒤/후/있다가"는 현재 시각({current_hour_min})에서 +N시간 (예: 현재 14:30이고 "1시간 뒤" → 15:30)
+- "N분 뒤/후"는 현재 시각에서 +N분
+- "반시간 뒤/후"는 현재 시각에서 +30분
+- "N일 뒤/후"는 오늘 + N일
+- "이번주 X요일"은 이번 주 월요일({this_monday}) 기준으로 해당 요일 계산 (월=0, 화=1, 수=2, 목=3, 금=4, 토=5, 일=6)
+- "다음주 X요일"은 다음 주 월요일({next_monday}) 기준으로 해당 요일 계산
+- "저번주/지난주 X요일"은 저번 주 월요일({last_monday}) 기준으로 해당 요일 계산
+- "이번 달 말"은 이번 달 마지막 날
+- "다음 달 N일"은 다음 달 N일
 - 종료 시간이 명시되지 않으면 시작 시간 + 1시간
 - 시간이 명시되지 않으면 start_time을 null로 설정 (절대 임의로 시간을 넣지 마세요)
 - "오후", "저녁" 같은 모호한 표현만 있고 구체적 시간이 없으면 start_time을 null로 설정
@@ -672,29 +695,113 @@ def _fallback_parse(user_input: str, title_hint: str = "") -> dict:
     now = datetime.now()
     text = user_input
 
+    WEEKDAY_MAP = {"월": 0, "화": 1, "수": 2, "목": 3, "금": 4, "토": 5, "일": 6}
+
     # 제목 추출: 시간/날짜 관련 키워드 제거 후 남은 것
     title = title_hint
     if not title:
-        # 간단한 제목 추출 — 시간/날짜 키워드 제거
         clean = re.sub(
-            r'(내일|모레|오늘|다음\s*주|이번\s*주|오전|오후|저녁|아침|점심)'
+            r'(내일|모레|글피|오늘|다음\s*주|이번\s*주|저번\s*주|지난\s*주|오전|오후|저녁|아침|점심)'
+            r'|\d{1,2}\s*시간?\s*(뒤|후|있다가|있다)'
+            r'|\d{1,2}\s*분\s*(뒤|후)'
+            r'|반\s*시간\s*(뒤|후)'
+            r'|\d{1,2}\s*일\s*(뒤|후)'
             r'|\d{1,2}\s*시(\s*\d{1,2}\s*분)?'
-            r'|잡아줘|등록해줘|추가해줘|넣어줘|만들어줘|해줘',
+            r'|(월|화|수|목|금|토|일)\s*요일'
+            r'|잡아줘|등록해줘|추가해줘|넣어줘|만들어줘|해줘|에',
             '', text
         ).strip()
         title = clean if clean else "새 일정"
 
-    # 날짜 추출
-    if "모레" in text:
-        date = now + timedelta(days=2)
-    elif "내일" in text:
-        date = now + timedelta(days=1)
-    elif "오늘" in text:
-        date = now
-    else:
-        date = now + timedelta(days=1)  # 기본: 내일
+    # --- 상대 시간 (N시간 뒤, N분 뒤, 반시간 뒤) → 날짜+시간 동시 결정 ---
+    use_relative_time = False
 
-    # 시간 추출
+    # "반시간 뒤/후"
+    half_hour_match = re.search(r'반\s*시간\s*(뒤|후|있다가|있다)', text)
+    if half_hour_match:
+        start = now + timedelta(minutes=30)
+        start = start.replace(second=0, microsecond=0)
+        use_relative_time = True
+
+    # "N시간 뒤/후"
+    if not use_relative_time:
+        rel_hour_match = re.search(r'(\d{1,2})\s*시간\s*(뒤|후|있다가|있다)', text)
+        if rel_hour_match:
+            delta_hours = int(rel_hour_match.group(1))
+            start = now + timedelta(hours=delta_hours)
+            start = start.replace(second=0, microsecond=0)
+            use_relative_time = True
+
+    # "N분 뒤/후"
+    if not use_relative_time:
+        rel_min_match = re.search(r'(\d{1,2})\s*분\s*(뒤|후|있다가|있다)', text)
+        if rel_min_match:
+            delta_min = int(rel_min_match.group(1))
+            start = now + timedelta(minutes=delta_min)
+            start = start.replace(second=0, microsecond=0)
+            use_relative_time = True
+
+    if use_relative_time:
+        end = start + timedelta(hours=1)
+        meeting_kw = ("회의", "미팅", "meeting", "스탠드업", "킥오프")
+        deadline_kw = ("마감", "데드라인", "deadline", "제출")
+        if any(kw in text for kw in meeting_kw):
+            schedule_type = "meeting"
+        elif any(kw in text for kw in deadline_kw):
+            schedule_type = "deadline"
+        else:
+            schedule_type = "google"
+        include_meet = any(kw in text for kw in ("회의", "미팅", "meeting", "미트"))
+        return {
+            "title": title,
+            "start_time": start.strftime("%Y-%m-%dT%H:%M:%S"),
+            "end_time": end.strftime("%Y-%m-%dT%H:%M:%S"),
+            "description": "",
+            "include_meet": include_meet,
+            "schedule_type": schedule_type,
+        }
+
+    # --- 날짜 추출 ---
+    date = None
+
+    # "N일 뒤/후"
+    n_days_match = re.search(r'(\d{1,3})\s*일\s*(뒤|후)', text)
+    if n_days_match:
+        date = now + timedelta(days=int(n_days_match.group(1)))
+
+    # "글피" (모레 다음날)
+    if date is None and "글피" in text:
+        date = now + timedelta(days=3)
+    elif date is None and "모레" in text:
+        date = now + timedelta(days=2)
+    elif date is None and "내일" in text:
+        date = now + timedelta(days=1)
+    elif date is None and "오늘" in text:
+        date = now
+
+    # "이번주/다음주/저번주/지난주 X요일"
+    if date is None:
+        week_day_match = re.search(
+            r'(이번\s*주|다음\s*주|저번\s*주|지난\s*주|차주)?\s*(월|화|수|목|금|토|일)\s*요일',
+            text
+        )
+        if week_day_match:
+            week_prefix = week_day_match.group(1) or ""
+            target_weekday = WEEKDAY_MAP[week_day_match.group(2)]
+            this_monday = now - timedelta(days=now.weekday())
+            if "다음" in week_prefix or "차주" in week_prefix:
+                base_monday = this_monday + timedelta(weeks=1)
+            elif "저번" in week_prefix or "지난" in week_prefix:
+                base_monday = this_monday - timedelta(weeks=1)
+            else:
+                base_monday = this_monday
+            date = base_monday + timedelta(days=target_weekday)
+
+    # 기본값: 내일
+    if date is None:
+        date = now + timedelta(days=1)
+
+    # --- 시간 추출 ---
     hour = None
     minute = 0
     time_match = re.search(r'(\d{1,2})\s*시\s*(\d{1,2}\s*분)?', text)
@@ -713,7 +820,6 @@ def _fallback_parse(user_input: str, title_hint: str = "") -> dict:
                 hour = 12
     elif "점심" in text:
         hour = 12
-    # "오후", "저녁" 등만 있고 구체적 시간 없으면 hour는 None 유지
 
     # schedule_type 추론
     meeting_kw = ("회의", "미팅", "meeting", "스탠드업", "킥오프")
@@ -728,7 +834,6 @@ def _fallback_parse(user_input: str, title_hint: str = "") -> dict:
     include_meet = any(kw in text for kw in ("회의", "미팅", "meeting", "미트"))
 
     if hour is None:
-        # 시간 불명확 → start_time을 None으로
         return {
             "title": title,
             "start_time": None,
@@ -782,9 +887,16 @@ async def _parse_view_request(user_input: str) -> dict:
     current_datetime = now.strftime("%Y-%m-%dT%H:%M:%S")
     current_weekday = ["월", "화", "수", "목", "금", "토", "일"][now.weekday()]
 
+    this_monday = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
+    next_monday = (now - timedelta(days=now.weekday()) + timedelta(weeks=1)).strftime("%Y-%m-%d")
+    last_monday = (now - timedelta(days=now.weekday()) - timedelta(weeks=1)).strftime("%Y-%m-%d")
+
     sys_prompt = f"""당신은 일정 조회 범위 파싱 전문가입니다. 사용자의 자연어 입력에서 조회 기간과 일정 유형을 추출하세요.
 
 현재 시각: {current_datetime} ({current_weekday}요일)
+이번 주 월요일: {this_monday}
+다음 주 월요일: {next_monday}
+저번 주 월요일: {last_monday}
 
 출력 형식(JSON):
 {{
@@ -796,9 +908,12 @@ async def _parse_view_request(user_input: str) -> dict:
 규칙:
 - "오늘 일정" → 오늘 00:00:00Z ~ 오늘 23:59:59Z
 - "내일 일정" → 내일 00:00:00Z ~ 내일 23:59:59Z
-- "이번 주 일정" → 이번 주 월요일 00:00:00Z ~ 일요일 23:59:59Z
-- "다음 주 일정" → 다음 주 월요일 00:00:00Z ~ 일요일 23:59:59Z
+- "이번 주 일정" → 이번 주 월요일({this_monday}) 00:00:00Z ~ 일요일 23:59:59Z
+- "다음 주 일정" → 다음 주 월요일({next_monday}) 00:00:00Z ~ 일요일 23:59:59Z
+- "저번 주/지난 주 일정" → 저번 주 월요일({last_monday}) 00:00:00Z ~ 일요일 23:59:59Z
 - "이번 달 일정" → 이번 달 1일 00:00:00Z ~ 말일 23:59:59Z
+- "저번 달/지난 달 일정" → 지난 달 1일 00:00:00Z ~ 말일 23:59:59Z
+- "다음 달 일정" → 다음 달 1일 00:00:00Z ~ 말일 23:59:59Z
 - "최근 일정", "일정 조회" 등 명확하지 않으면 → 오늘 00:00:00Z ~ 오늘로부터 +30일 23:59:59Z (향후 한 달)
 - 시간대는 UTC(Z) 형식으로 출력 (한국시간 KST = UTC+9 이므로 -9시간 보정)
 - schedule_type: "회의"/"미팅"/"meeting"/"스탠드업"/"킥오프" → "meeting", "마감"/"데드라인"/"deadline"/"제출" → "deadline", 특정 유형 언급 없으면 → null
