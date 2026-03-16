@@ -62,11 +62,6 @@ def apply_post_rules(user_input: str, intents: list) -> list:
     if re.search(r"취소", user_input) and intents and intents[0] == "schedule_view":
         intents[0] = "schedule_add"
 
-    # 규칙 7: 과잉 분리 방지 — 단일 의도인데 2-step으로 쪼개진 경우
-    # "일정 보고" + doc_generate/schedule_add 패턴이면 schedule_view가 아닌 경우만
-    if len(intents) == 2 and intents[0] == intents[1]:
-        intents = [intents[0]]  # 같은 intent 중복이면 1개로 축소
-
     return intents
 
 
