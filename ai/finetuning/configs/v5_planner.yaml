@@ -1,7 +1,6 @@
-# LoRA v5: Task Planner — judgment/doc_retrieve 경계 강화
+# LoRA v5: Task Planner — 5-label (judgment+doc_retrieve → knowledge_query 통합)
 # 베이스 모델: Kanana-1.5-8B
-# v4 대비 변경: judgment 단일 +90건, doc_retrieve 단일 +30건, 과잉 분리 방지 +30건
-# 시스템 프롬프트에 judgment vs doc_retrieve 구분 기준 명시
+# v4 대비 변경: 6-label → 5-label, 보강 +121건, 시스템 프롬프트 전면 교체
 model:
   base_model: "kakaocorp/kanana-1.5-8b-instruct-2505"
   quantization: "4bit"  # QLoRA
@@ -40,4 +39,4 @@ evaluation:
   usable_rate: 0.98
   planning_score: 0.93
   step_collapse_rate: 0.10
-  judgment_doc_retrieve_accuracy: 0.90  # 신규: judgment/doc_retrieve 구분 정확도
+  labels: 5  # knowledge_query, doc_generate, schedule_add, schedule_view, general
