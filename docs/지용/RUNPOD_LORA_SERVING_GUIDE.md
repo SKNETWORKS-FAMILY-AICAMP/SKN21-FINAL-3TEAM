@@ -151,6 +151,21 @@ LORA_MODULES=[{"name":"v2_generate","path":"/runpod-volume/outputs/v2_generate/k
 
 ---
 
+### 6. CUDA 12.9 컨테이너 호환성 (2026-03-16)
+
+**증상**: 워커 반복 크래시 — `nvidia-container-cli: requirement error: unsatisfied condition: cuda>=12.9`
+
+**원인**: RunPod이 플로팅 태그(`stable`) 뒤의 vLLM 이미지를 CUDA 12.9 기반(vLLM 0.16.0)으로 업데이트. 배치된 노드의 NVIDIA 드라이버가 12.9 미만이면 컨테이너 시작 불가.
+
+**해결**: Endpoint Settings에서 **Minimum CUDA → 12.9**로 변경. 12.9 이상 드라이버 노드에만 배치되도록 제한.
+
+**교훈**:
+- RunPod 플로팅 태그(`stable`, `latest`)는 예고 없이 업데이트될 수 있음
+- Docker Hub의 고정 태그(`runpod/worker-vllm:0.6.5-cuda12.1.0` 등)는 2024년 빌드라 최신 vLLM 미지원
+- 안정 운영 시 Minimum CUDA 버전을 컨테이너 요구사항에 맞춰 설정 필수
+
+---
+
 ## 롤백 방법
 
 | 상황 | 조치 |

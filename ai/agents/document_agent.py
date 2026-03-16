@@ -29,6 +29,56 @@ from ai.templates import get_system_template
 # 로거 설정
 logger = logging.getLogger(__name__)
 
+# ── 문서생성 필드 수 최적화 (sLLM 학습 분포 매칭) ──
+# 학습 데이터: 6~10개 필드(평균 8.1개), 13개 이상 → decisions/action_items 빈 배열
+GENERATION_FIELD_CONFIG = {
+    "meeting_minutes": {
+        "always": ["title", "date", "attendees", "content", "summary", "decisions", "action_items"],
+        "optional": ["meeting_type", "author", "time", "location", "risks", "notes"],
+        "max_fields": 10,
+    },
+    "report": {
+        "always": ["title", "date", "author", "content", "overview", "tasks", "next_plan"],
+        "optional": ["department", "report_type", "report_to", "main_content", "issues", "position"],
+        "max_fields": 10,
+    },
+    "proposal": {
+        "always": ["title", "date", "content", "purpose", "expected_effect", "schedule", "budget"],
+        "optional": ["company", "manager", "submit_to", "background", "budget_total", "contact"],
+        "max_fields": 10,
+    },
+}
+
+
+def _select_fields_for_llm(all_fields, template_type, user_input, is_system=True):
+    """시스템 템플릿의 필드를 학습 분포(6~10개)에 맞게 선별한다.
+    커스텀 템플릿이나 config에 없는 type은 all_fields 그대로 반환."""
+    if not is_system:
+        return all_fields
+
+    config = GENERATION_FIELD_CONFIG.get(template_type)
+    if not config:
+        return all_fields
+
+    always_keys = set(config["always"])
+    optional_keys = config["optional"]
+    max_fields = config["max_fields"]
+
+    all_keys = {f["key"] for f in all_fields}
+    selected_keys = always_keys & all_keys  # DB에 있는 always 필드만
+
+    # optional 중 user_input에 관련 키워드가 있는 것 추가
+    user_input_lower = (user_input or "").lower()
+    for opt_key in optional_keys:
+        if len(selected_keys) >= max_fields:
+            break
+        if opt_key in all_keys and opt_key in user_input_lower:
+            selected_keys.add(opt_key)
+
+    selected = [f for f in all_fields if f["key"] in selected_keys]
+    print(f"[DocumentAgent] 필드 선별: {len(all_fields)}개 → {len(selected)}개 (is_system={is_system})")
+    return selected
+
 
 def parse_summary_output(text: str) -> dict:
     """
@@ -658,23 +708,13 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
         traceback.print_exc()
         raise ValueError(f"템플릿 DB 조회 실패: {e}")
 
-    # 회의록 카테고리: summary, decisions, action_items 필드 자동 보강
-    if template_type == "meeting_minutes":
-        existing_keys = {f["key"] for f in fields}
-        meeting_extras = [
-            {"key": "summary", "description": "회의에서 논의된 주요 내용을 3~5문장으로 요약"},
-            {"key": "decisions", "description": "결정된 사항 목록 (JSON 배열)"},
-            {"key": "action_items", "description": '후속 조치 목록. 각 항목은 {"task": "할 일", "assignee": "담당자", "due_date": "기한"} 형태의 JSON 배열'},
-            {"key": "risks", "description": '리스크 목록. 각 항목은 {"description": "설명", "level": "상/중/하", "mitigation": "대응방안"} 형태의 JSON 배열'},
-        ]
-        for extra in meeting_extras:
-            if extra["key"] not in existing_keys:
-                fields.append(extra)
-                print(f"[DocumentAgent] 회의록 필수 필드 보강: {extra['key']}")
+    # 시스템 템플릿이면 학습 분포(6~10개)에 맞게 필드 선별
+    is_system = getattr(template, "is_system", False) if template else False
+    fields_for_llm = _select_fields_for_llm(fields, template_type, user_input, is_system)
 
     # 동적 필드 명세 생성
     from ai.document_parser.template_extractor import fields_to_prompt
-    field_spec = fields_to_prompt(fields)
+    field_spec = fields_to_prompt(fields_for_llm)
 
     # 문서 유형명 결정
     doc_type_names = {
@@ -699,7 +739,7 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
         f"[{input_label}]\n{user_input}"
     )
 
-    print(f"[DocumentAgent] 동적 프롬프트 생성 | 필드 {len(fields)}개, 문서유형={doc_type_name}")
+    print(f"[DocumentAgent] 동적 프롬프트 생성 | LLM필드 {len(fields_for_llm)}개(전체 {len(fields)}개), 문서유형={doc_type_name}")
     generated_json_str = await _call_llm(sys_prompt, user_prompt, json_mode=True, task="generate")
 
     try:
@@ -708,6 +748,12 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
     except Exception:
         print(f"[DocumentAgent] !!! JSON 파싱 실패")
         data = {"content": generated_json_str}
+
+    # LLM에 안 보낸 필드도 DOCX 빌더가 참조하므로 기본값 채우기
+    for f in fields:
+        if f["key"] not in data:
+            desc = f.get("description", "")
+            data[f["key"]] = [] if ("배열" in desc or "목록" in desc) else ""
 
     # 회의록: action_items 정규화 + 문자열 필드 변환
     if template_type == "meeting_minutes":
