@@ -2972,10 +2972,23 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 **`ai/scripts/download_intent_model.py` 신규 생성**:
 - EC2에서 HuggingFace Hub 모델 다운로드하는 배포 스크립트
 
+#### 5) EC2 배포 완료
+
+- develop 머지 + EC2 git pull
+- HuggingFace Hub → EC2 모델 다운로드 (6.73GB, `python -m ai.scripts.download_intent_model`)
+- 서버 재시작 (uvicorn, start.sh)
+- **label 수 불일치 버그 발견 및 수정**: `INTENT_LABELS`(8개) vs 모델 출력(6개) → `len(self.id2label)`로 수정
+- EC2에서 앙상블 추론 테스트 성공:
+  - "휴가 규정 찾아서 위반인지 판단해줘" → judgment(0.98) + doc_retrieve(0.94) [복합] ✅
+  - "내일 회의 잡아줘" → schedule_add(0.97) [단일] ✅
+  - "보고서 작성해줘" → doc_generate(0.96) [단일] ✅
+  - "이번 주 일정 보여줘" → schedule_view(0.97) [단일] ✅
+- 추론 시간: 19ms/건 (서버 초기 로딩만 ~25초, 이후 즉시 응답)
+
 ### 다음 할 일
 
-- [ ] 코드 커밋 + push
-- [ ] EC2에 모델 배포 (`python -m ai.scripts.download_intent_model`)
+- [ ] Planner v5 데이터 보강 (judgment/doc_retrieve 혼동 + 과잉 분리 방지)
+- [ ] Planner v5 학습 + Held-out 평가
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
 

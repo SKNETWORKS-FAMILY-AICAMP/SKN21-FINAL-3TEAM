@@ -1,0 +1,43 @@
+# LoRA v5: Task Planner — judgment/doc_retrieve 경계 강화
+# 베이스 모델: Kanana-1.5-8B
+# v4 대비 변경: judgment 단일 +90건, doc_retrieve 단일 +30건, 과잉 분리 방지 +30건
+# 시스템 프롬프트에 judgment vs doc_retrieve 구분 기준 명시
+model:
+  base_model: "kakaocorp/kanana-1.5-8b-instruct-2505"
+  quantization: "4bit"  # QLoRA
+
+lora:
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  target_modules: ["q_proj", "v_proj", "k_proj", "o_proj"]
+
+training:
+  num_epochs: 3
+  batch_size: 4
+  gradient_accumulation_steps: 4
+  learning_rate: 2e-4
+  warmup_ratio: 0.1
+  max_length: 1024
+  early_stopping_patience: 3
+
+data:
+  train_path: "data/training/v5_planner/train.jsonl"
+  eval_path: "data/training/v5_planner/eval.jsonl"
+  total_target: 1471
+
+  # v5 보강 포인트
+  augmentation:
+    judgment_single: 61      # "규정 알려줘" = judgment 패턴
+    doc_retrieve_single: 30  # "문서 찾아줘" = doc_retrieve 대조군
+    anti_split: 30           # 과잉 분리 방지 (1-step 유지)
+
+output:
+  output_dir: "outputs/v5_planner"
+  save_steps: 100
+
+evaluation:
+  usable_rate: 0.98
+  planning_score: 0.93
+  step_collapse_rate: 0.10
+  judgment_doc_retrieve_accuracy: 0.90  # 신규: judgment/doc_retrieve 구분 정확도
