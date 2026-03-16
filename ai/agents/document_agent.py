@@ -131,7 +131,8 @@ async def document_agent(state: AgentState) -> AgentState:
             _is_summary = bool(
                 document_content
                 or document_id
-                or re.search(r"(요약|정리|핵심|간추|줄여)(해|해줘|해주세요|부탁|하자|할래|$)", user_input)
+                or re.search(r"(요약|정리|핵심|간추리|간추려|줄여).{0,6}(해|해줘|해주세요|부탁|하자|할래|줘|주세요)", user_input)
+                or re.search(r"(요약|정리|핵심|간추리|간추려|줄여)\s*$", user_input)
             )
 
             if _is_summary:
@@ -380,7 +381,7 @@ def _detect_search_intent(query: str) -> str:
 
     # 요약 키워드 (최우선) — 동사어미 확인으로 오탐 방지
     # "정리된 자료 찾아줘" → find, "정리해줘" → summarize
-    if re.search(r"(요약|정리|핵심|간추|줄여)(해|해줘|해주세요|부탁|하자|할래)", query_lower):
+    if re.search(r"(요약|정리|핵심|간추리|간추려|줄여)\s*(해|해줘|해주세요|부탁|하자|할래|줘|주세요)", query_lower):
         return "summarize"
     if re.search(r"간단히|짧게", query_lower):
         return "summarize"
@@ -1139,18 +1140,19 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
     print(f"[DocumentAgent] _call_llm 호출 | mode={mode}, task={task}, temperature={temperature}, json_mode={json_mode}")
     try:
         if mode == "sllm" and task in sllm_tasks:
-            # sLLM 모드: vLLM + LoRA 어댑터
+            # sLLM 모드: vLLM — LoRA 적용 태스크만 어댑터 사용, 나머지는 base
             try:
                 from ai.serving.vllm_client import VLLMProvider
+                lora_tasks = set(os.getenv("DOC_LORA_TASKS", "generate").split(","))
                 use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
-                if use_lora:
+                if use_lora and task in lora_tasks:
                     llm = VLLMProvider().with_lora(f"v2_{task}")
                     _last_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + f" (LoRA v2_{task})"
                     print(f"[DocumentAgent] _call_llm | sLLM: v2_{task} LoRA 어댑터")
                 else:
                     llm = VLLMProvider()
-                    _last_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B")
-                    print(f"[DocumentAgent] _call_llm | sLLM: base model (LoRA 없음)")
+                    _last_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (base)"
+                    print(f"[DocumentAgent] _call_llm | sLLM: base model (task={task})")
                 response = await llm.generate(
                     prompt=user_prompt,
                     system_prompt=sys_prompt,
