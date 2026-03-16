@@ -3239,7 +3239,8 @@ Rule v3 + 100건 확장 — PM 88.0% (100건, 매핑+Rule 적용)
 
 - [x] ~~Intent Held-out 100건 재평가~~ → **91.0%**
 - [x] ~~Planner Held-out 100건 재평가~~ → **88.0%**
-- [ ] Intent 앙상블 모델 HuggingFace 재백업 + EC2 재배포
+- [x] ~~Intent 앙상블 모델 HuggingFace 재백업~~ → 완료 (jiyouxg/dudu-intent-ensemble v2)
+- [ ] EC2에 새 Intent 모델 배포 (HuggingFace에서 다운로드 + 서버 재시작)
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
 
