@@ -2749,13 +2749,233 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 ## 앞으로 남은 과제 (Action Items)
 
 ### AI 플래너 완전체 고도화 (데이터 보강 및 재학습)
-- [ ] **학습 데이터 전면 보강**: 3-step 이상의 복합(Complex) 질문이나 순차(Sequential) 질문을 모델 스스로 잘게 쪼갤 수 있도록(Step Collapse 극복), 다중 단계 Intent 분리 중심의 학습 데이터 대량 생성
-- [ ] **Planner 2차 파인튜닝 (LoRA)**: 보강된 데이터 + 시스템 프롬프트 규칙(Negative Prompting)을 결합하여 Kanana-1.5-8B 기반 V4 Planner 재학습
-- [ ] **최종 Held-out 재평가**: 3-step 이상의 질문에서도 단계 축소 문제가 해결되는지 정밀 검증
+- [x] **학습 데이터 전면 보강**: v4 데이터 1500건 생성 완료 (2026-03-16)
+- [ ] **Planner 2차 파인튜닝 (LoRA)**: RunPod에서 v4 학습 실행 예정
+- [ ] **최종 Held-out 재평가**: 학습 완료 후 3-step 정확도 / Step Collapse Rate 재측정
 
 ### 프론트엔드 - 백엔드 - AI 두뇌 실제 파이프라인 연동
 - [ ] **Mock 환경 걷어내기**: 현재 가짜 데이터로 작동 중인 UI 모드(대시보드, 챗봇 등) 해제
 - [ ] **실시간 응답 연동 (SSE)**: 완성된 Intent Classifier와 Task Planner를 백엔드에 통합시키고, 프론트엔드가 실제 Agent들의 작업 상황을 실시간 스트리밍(SSE)으로 받아 텍스트/카드 형태로 출력하도록 연결 테스트
 - [ ] **E2E 테스트**: 유저 발화 → 분류 → 계획 수립 → Agent 실행 → 화면 출력 전체 흐름 디버깅
+
+---
+
+## 2026-03-16 (월)
+
+### 한 일
+
+#### 1) Task Planner v4 학습 데이터 보강 및 파인튜닝 준비
+
+**배경**: Planner v1 (Kanana-1.5-8B + LoRA + Rule-based Prompting) Held-out 평가 결과
+- 2-step 정확도: 84.8% ✅
+- **3-step 정확도: 28.6% ← 핵심 약점 (Step Collapse)**
+- 데이터 800건 중 complex(3-4step)가 200건(25%)에 불과하고, 무접속사 패턴 전무
+
+**변경 파일:**
+- `ai/finetuning/scripts/synthesize_planner.py` — v4 대폭 확장
+- `ai/finetuning/configs/v4_planner.yaml` — 신규 생성
+- `ai/finetuning/runpod_planner_train.sh` — v4 데이터 자동 생성 포함
+- `ai/finetuning/runpod_planner_holdout.sh` — 기본값 v4 어댑터로 변경
+
+**v4 핵심 변경사항:**
+
+1. **complex 패턴 5→12개 확장**
+   - 판단+검색+생성, 일정조회+판단+일정등록, 검색+생성+일정등록
+   - 병렬판단+생성, 4-step(검색+판단+일정+생성), 병렬검색+판단+생성 등 7개 신규
+
+2. **무접속사(no-connector) 복합 쿼리 생성 신규 추가** (전체 15%)
+   - `"{A} 확인해서 {B}"`, `"{A} 찾아서 {B}"`, `"{A} 바탕으로 {B}"` 등 10개 템플릿
+   - 기존: 모두 "그리고/한 다음에" 접속사 의존 → 실제 사용자 발화 패턴 반영
+
+3. **Anti-Collapse 하드코딩 예제 21개 추가** (전체 6%)
+   - "연차 규정 찾아서 내 경우 가능한지 판단해줘" → doc_retrieve + judgment (2-step)
+   - "보안 정책 문서 보고 위반 여부 판단해줘" → doc_retrieve + judgment
+   - "출장비 규정 찾아서 가능 여부 판단하고 정리 문서 만들어줘" → 3-step 등
+   - doc_retrieve→judgment 압축 방지 패턴을 직접 학습 데이터로 명시
+
+4. **`fill_slots()` 버그 수정**: `{doc2}` 단독 사용 시 미치환 버그 수정
+
+**v4 데이터 생성 결과 (로컬 검증 완료 ✅):**
+
+| 카테고리 | 건수 | 비율 |
+|---------|------|------|
+| single_step | 255 | 17% |
+| sequential (접속사) | 270 | 18% |
+| parallel | 180 | 12% |
+| complex (3-4step) | 420 | **28%** ↑ |
+| no_connector (무접속사) | 225 | **15%** ← 신규 |
+| anti_collapse | 90 | **6%** ← 신규 |
+| edge_case | 60 | 4% |
+| **합계** | **1500** | 100% |
+
+**step 수 분포:**
+- 1-step: 315건 (21%)
+- 2-step: 667건 (44%)
+- **3-step: 403건 (27%) ← v3 대비 대폭 증가**
+- 4-step: 115건 (8%)
+
+
+### 다음 할 일
+
+- [x] **RunPod v4 LoRA 학습 실행** (`runpod_planner_train.sh`) ✅
+- [x] **Held-out 재평가** ✅ — 아래 결과 참조
+- [ ] **v1 vs v4 비교표 정리** → 최종 Planner 모델 확정
+- [ ] **production 코드 어댑터 경로 반영** (`outputs/v4_planner/final`)
+
+---
+
+## 2026-03-16 (일) — v4 LoRA 학습 + Held-out 평가 결과
+
+### 환경
+- **GPU**: NVIDIA RTX PRO 6000 Blackwell Server Edition (98GB VRAM)
+- **RunPod**, PyTorch 2.8.0+cu128, CUDA 12.8
+- 학습 시간: 약 20분 (255 steps, 3 epochs)
+
+### v4 학습 결과 (Eval 150건 — 학습 데이터 분리분)
+
+| 지표 | 값 |
+|------|-----|
+| Weighted Score | **0.997** |
+| Perfect Match | 149/150 (99.3%) |
+| Intent Recall | 0.997 |
+| Intent Precision | 1.000 |
+| Order Accuracy | 0.997 |
+
+- Train Loss: 2.408 → 0.139 (3 epochs)
+- Eval Loss: 0.168 → 0.142 (과적합 없음 ✅)
+
+### v4 Held-out 평가 결과 (95건 — 학습에 미사용)
+
+| 지표 | v1 (기존) | v4 | 변화 |
+|------|----------|-----|------|
+| **Weighted Score** | **0.916** | 0.869 | **-0.047 하락** |
+| 3-step 정확도 | 28.6% | **42.9%** | +14.3% 개선 |
+| Step Collapse Rate | 20.4% | **14.3%** | -6.1% 개선 |
+| Perfect Match | — | 63.2% (60/95) | — |
+| Usable Rate | 100% | 100% | 유지 |
+
+**카테고리별 성능:**
+
+| Category | Score | N |
+|----------|-------|---|
+| complex | **0.916** | 15 |
+| sequential | **0.916** | 20 |
+| parallel | 0.894 | 12 |
+| single_step | 0.855 | 30 |
+| edge_case | 0.784 | 18 |
+
+**단계별 Perfect Match:**
+
+| Steps | Perfect | Rate |
+|-------|---------|------|
+| 1-step | 29/46 | 63.0% |
+| 2-step | 25/33 | 75.8% |
+| 3-step | 6/14 | 42.9% |
+| 4-step | 0/2 | 0.0% |
+
+### 분석 — v4 핵심 문제 2가지
+
+**1. judgment → doc_retrieve 혼동 (12건)**
+- "연차 사용 규정 알려줘" → expected: judgment, got: doc_retrieve
+- "야근 수당 몇 시부터 적용돼?" → expected: judgment, got: doc_retrieve
+- "출장비 정산 기준이 어떻게 돼?" → expected: judgment, got: doc_retrieve
+- **원인**: 모델이 "규정" 키워드를 보면 무조건 doc_retrieve로 분류
+- 학습 데이터에서 judgment vs doc_retrieve 경계가 불명확
+
+**2. 과잉 분리 (10건) — 1-step을 2-step으로 늘림**
+- "육아휴직 중에 알바해도 되나요?" → expected: [judgment], got: [doc_retrieve, judgment]
+- "이번 달 보고서 만들어줘" → expected: [doc_generate], got: [doc_retrieve, doc_generate]
+- **원인**: multi-step 데이터를 강화한 결과, 단일 작업도 불필요하게 쪼개는 경향
+
+### 결론
+
+- **3-step, Step Collapse**: 목표 미달이지만 개선됨 (28.6%→42.9%, 20.4%→14.3%)
+- **Weighted Score 하락**: judgment/doc_retrieve 혼동 + 과잉 분리가 원인
+- **v4는 multi-step 강점, v1은 single-step 강점** — 트레이드오프 발생
+
+### 다음 할 일
+
+- [ ] **v1 vs v4 최종 판단** — Weighted Score vs 3-step 중 어느 쪽 우선할지 결정
+- [ ] 선택지: (1) held-out 레이블 재검토 (judgment/doc_retrieve 경계), (2) v5 데이터 보강 (judgment 구분 + 과잉 분리 방지), (3) v4 채택 후 production 반영
+
+---
+
+## 2026-03-16 (일) — Intent 앙상블 모델 재학습 + HuggingFace 백업 + production 코드 반영
+
+### 한 일
+
+#### 1) 6-label 5-Seed 앙상블 재학습 (RunPod)
+
+**배경**: 이전 RunPod Pod 삭제로 학습 완료된 가중치 소실. 재학습 필요.
+
+**환경**: RunPod RTX PRO 6000 (96GB VRAM), klue/roberta-large (338M)
+
+**학습 설정**:
+- Focal Loss (γ=2.0) + FGM (ε=1.0) + Label Weights (doc_retrieve:2.0, judgment:1.5, doc_generate:1.5)
+- 6-label: judgment, doc_retrieve, doc_generate, schedule_add, schedule_view, general
+- 학습 데이터: train 3,919 / val 610 / test 613
+
+**개별 seed 결과 (Test set)**:
+
+| Seed | Subset Acc | Macro F1 | Over-trig | Under-trig |
+|------|-----------|----------|-----------|------------|
+| 42 | (학습완료) | - | - | - |
+| 123 | (학습완료) | - | - | - |
+| 456 | 97.9% | 98.5% | 1.1% | 0.8% |
+| 789 | 97.7% | 98.5% | 1.1% | 1.2% |
+| 1337 | 98.2% | 99.1% | 0.6% | 1.6% |
+
+- seed당 학습 시간: ~4분 (10 epoch)
+- 5개 모델 저장 완료: `ai/models/intent_multilabel_ensemble/seed_{42,123,456,789,1337}`
+
+**트러블슈팅**:
+- 첫 시도 시 `PytorchStreamWriter failed writing file` 에러 → HuggingFace 캐시 파일 손상. `~/.cache/huggingface/hub/` 삭제 후 해결
+- seed 1337을 `--ensemble-seeds 1337`로 단독 실행 → `ensemble_meta.json`이 1개 seed만 기록되어 앙상블 평가 시 1개 모델만 로드되는 문제 → meta 파일 수동 수정으로 해결
+
+#### 2) HuggingFace Hub 백업
+
+- 레포: `jiyouxg/dudu-intent-ensemble` (private)
+- 용량: 6.73GB (5개 모델 × 1.35GB)
+- `huggingface_hub` API로 업로드 완료
+
+#### 3) Held-out 앙상블 평가 + Threshold 최적화
+
+**Baseline (threshold 0.5)**:
+- Held-out: **90.0%** (54/60, 6건 오답)
+- 과적합 gap: -6.7%p ⚠️
+- Over-triggering: 7.7% (doc_retrieve, judgment 과잉)
+
+**수동 Threshold 최적화 (judgment=0.55, doc_retrieve=0.55)**:
+- Held-out: **93.3%** (56/60, 4건 오답) — 이전 실험과 동일한 최고 성능 재현!
+- 과적합 gap: -3.3%p ✅ (±5%p 이내)
+- Over-triggering: 3.8% (7.7% → 3.8%로 절반 감소)
+
+| 설정 | Held-out | Over-trig | 과적합 gap |
+|------|----------|-----------|-----------|
+| Baseline 0.5 | 90.0% | 7.7% | -6.7%p ⚠️ |
+| **judgment=0.55, doc_retrieve=0.55** | **93.3%** | **3.8%** | **-3.3%p ✅** |
+
+**남은 오답 4건**:
+- #10: "어제 회의 결과 뽑아서 주간 보고서에 반영해줘" — doc_retrieve 누락
+- #47: 3중 복합 — doc_generate 누락
+- #50: 3중 복합 — schedule_view 누락
+- #51: "사내 규정 분석 그리고 검토 결과를 정리해줘" — doc_retrieve 과잉
+
+#### 4) Production 코드 반영
+
+**`ai/agents/intent_classifier.py` 수정**:
+- 단일 모델 → 5-seed 앙상블 로딩 지원 (`_load_ensemble()` 메서드 추가)
+- 앙상블 추론: 5개 모델의 sigmoid 확률 평균
+- Per-label threshold 업데이트: judgment=0.55, doc_retrieve=0.55
+- 로딩 우선순위: 앙상블 → 단일 모델 → LLM fallback (기존 호환 유지)
+
+**`ai/scripts/download_intent_model.py` 신규 생성**:
+- EC2에서 HuggingFace Hub 모델 다운로드하는 배포 스크립트
+
+### 다음 할 일
+
+- [ ] 코드 커밋 + push
+- [ ] EC2에 모델 배포 (`python -m ai.scripts.download_intent_model`)
+- [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
 

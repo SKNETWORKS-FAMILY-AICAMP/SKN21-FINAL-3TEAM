@@ -2,8 +2,9 @@
 # RunPod에서 Planner LoRA held-out 평가 실행
 #
 # 사용법:
-#   bash ai/finetuning/runpod_planner_holdout.sh              # LoRA 모델 평가
-#   bash ai/finetuning/runpod_planner_holdout.sh --base-only   # base 모델만 평가
+#   bash ai/finetuning/runpod_planner_holdout.sh                        # v4 LoRA 모델 평가 (기본)
+#   bash ai/finetuning/runpod_planner_holdout.sh --adapter outputs/v3_planner/final  # v3 평가
+#   bash ai/finetuning/runpod_planner_holdout.sh --base-only            # base 모델만 평가
 
 set -e
 
@@ -41,7 +42,12 @@ echo ""
 echo "Running held-out evaluation..."
 echo ""
 
-python3 ai/finetuning/scripts/eval_planner_holdout.py "$@"
+# 기본값: v4 어댑터 사용 (명시적으로 다른 경로 지정 시 그 경로 사용)
+if [ "$#" -eq 0 ]; then
+    python3 ai/finetuning/scripts/eval_planner_holdout.py --adapter outputs/v4_planner/final
+else
+    python3 ai/finetuning/scripts/eval_planner_holdout.py "$@"
+fi
 
 echo ""
 echo "========================================="
