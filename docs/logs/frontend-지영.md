@@ -989,13 +989,6 @@
   - 미팅·액션 카드: `dark:bg-white/[0.06] dark:border-white/[0.08]` 추가
   - 시간 박스: `dark:bg-white/10`, 시간 텍스트 `dark:text-neutral-main` (`#FAFAFA`)
   - 오늘 일정 상태 뱃지 **실시간 반영**: 하드코딩 `"예정"` → 현재 시간 기준 동적 계산
-    - 완료(종료 후) / 진행중(시작~종료) / 예정(시작 전), 1분마다 자동 갱신
-
-- **`TaskPipelineWidget.jsx`**
-  - `% COMPLETE` 바 영역, 진행 바, 스테이지 카운트 배지, 태스크 카드 구분선 다크모드 대응
-
-- **`TeamMembersWidget.jsx`**
-  - 멤버 카드, `See Details` 버튼, 팀 배지 `teamColors` 전체 다크모드 텍스트 가시성 개선
 
 #### 17) AI 챗봇 페이지 스크롤 헤더 제어 개선 (`ChatWindow.jsx`)
 - **문제**: 스크롤 시 상단 헤더(나에게 물어봐)가 떨리고, 위로 올려도 헤더가 안 나타남 / 답변 스트리밍 시 페이지 상단으로 튀는 현상
@@ -3051,7 +3044,9 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 | 10 | v7 GPT KD R2 | roberta-large | ~4,500개 | 91.7% | 86.7% | -5.0%p ✅ | 오답 타겟 보강 |
 | 11 | v8 GPT KD R3 | roberta-large | ~4,660개 | 91.7% | 88.3% | -3.3%p ✅ | doc_summary 경계 보강 |
 | 12 | +Focal+FGM | roberta-large | ~4,660개 | - | 88.3% | - | 고급 학습 기법 |
-| **13** | **5-Seed 앙상블** | **roberta-large** | **~4,660개** | **96.7%** | **93.3%** | **-3.3%p ✅** | **앙상블 + threshold 0.55** |
+| 13 | 5-Seed 앙상블 | roberta-large | ~4,660개 | 96.7% | 93.3% (60건) | -3.3%p ✅ | 앙상블 + threshold 0.55 |
+| 14 | Held-out 100건 확장 | roberta-large | ~4,660개 | - | 80.0% (100건) | -16.7%p ⚠️ | 60→100건으로 확장 → **과적합 드러남** |
+| **15** | **+35건 보강 + Rule Guide** | **roberta-large** | **~3,954개** | **-** | **91.0% (100건)** | **-4.0%p ✅** | **triple_intent +20건, connector_trap +15건, 멀티라벨 Rule 2개** |
 
 ### 2. 후보 모델 비교 (발표 핵심)
 
@@ -3074,11 +3069,24 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 | 학습 기법 | Focal Loss (γ=2.0) + FGM (ε=1.0) + Label Weights |
 | 라벨 | 6개 (judgment, doc_retrieve, doc_generate, schedule_add, schedule_view, general) |
 | Threshold | judgment=0.55, doc_retrieve=0.55, 나머지=0.50 |
-| Held-out 정확도 | **93.3%** (56/60) |
-| 과적합 gap | -3.3%p ✅ |
-| Over-triggering | 3.8% |
+| Held-out 정확도 (60건) | **93.3%** (56/60) |
+| Held-out 정확도 (100건) | **91.0%** (91/100) |
+| 과적합 gap | -4.0%p ✅ |
+| Over-triggering | **0.0%** |
 | 추론 시간 | 19ms/건 |
-| 배포 | EC2 + HuggingFace Hub 백업 완료 |
+| 학습 데이터 | 3,954건 (v9: +35건 보강) |
+| 배포 | EC2 배포 완료 + HuggingFace Hub 백업 |
+
+### 4. Held-out 100건 카테고리별 성능
+
+| 카테고리 | 이전 (100건) | 보강 후 (100건) | 변화 | 설명 |
+|---------|-------------|---------------|------|------|
+| connector_trap_single | 72.2% | **100%** | +27.8%p | judgment 단일 15건 추가 효과 |
+| triple_intent | 23.1% | **76.9%** | +53.8%p | 3중 복합 20건 추가 효과 |
+| short_compound | 90.9% | **100%** | +9.1%p | |
+| false_positive_single | 93.8% | **93.8%** | 유지 | |
+| no_connector_compound | 88.0% | **84.0%** | -4.0%p | |
+| implicit_compound | 88.2% | **82.4%** | -5.8%p | |
 
 ---
 
@@ -3096,7 +3104,9 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 | 6 | v5 5-label | Kanana 8B + LoRA | 1,471건 | 99.3% | PM 34.7% | - | 5-label 학습 (실패 — 베이스 모델이 새 라벨 무시) |
 | 7 | v5 6-label 복원 | Kanana 8B + LoRA | 1,471건 | 99.3% | PM 69.5% | PM 83.2% | 6-label 복원 + 후처리 매핑 방식으로 전환 |
 | 8 | v5 + Rule Guide v1 | Kanana 8B + LoRA | 1,471건 | 99.3% | PM 68.4% | - | Rule 7(중복 축소) 추가 → parallel 악화 ❌ |
-| 9 | v5 + Rule Guide v2 | Kanana 8B + LoRA | 1,471건 | 99.3% | PM 73.7% | PM 87.4% | Rule 7 제거, Rule 4(모호→general) + Rule 6(취소→schedule_add) 유지 |
+| 9 | v5 + Rule Guide v2 | Kanana 8B + LoRA | 1,471건 | 99.3% | PM 73.7% (95건) | PM 87.4% (95건) | Rule 7 제거, Rule 4(모호→general) + Rule 6(취소→schedule_add) 유지 |
+| 10 | v5b | Kanana 8B + LoRA r=32 | 1,557건 | 99.3% | PM 72.6% (95건) | PM 87.4% (95건) | GPT KD +86건 + r=32 + epoch 5 → 3-step 하락, v5 유지 |
+| **11** | **v5 + Rule v3 (100건)** | **Kanana 8B + LoRA** | **1,471건** | **99.3%** | **PM 71.0% (100건)** | **PM 88.0% (100건)** | **Rule 8(변경→schedule_add) + Rule 9(만들어줘→doc_generate) + 100건 확장** |
 | 10 | v5b (진행중) | Kanana 8B + LoRA r=32 | 1,557건 | - | - | - | GPT KD 86건 추가 + LoRA r=32 + epoch 5 |
 
 ### 2. 베이스 모델 선정 비교 (Kanana vs Qwen)
@@ -3110,7 +3120,7 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 
 > **선정 사유**: 유효 응답률 높고 속도 빠르며, 약점이 LoRA로 해결 가능한 패턴
 
-### 3. 현재 최고 Planner 모델 스펙 (v5 + Rule Guide v2)
+### 3. 최종 Planner 모델 스펙 (v5 + Rule Guide v3, 100건)
 
 | 항목 | 값 |
 |------|-----|
@@ -3118,13 +3128,13 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 | 학습 방식 | QLoRA (4bit 양자화, r=16, alpha=32) |
 | 라벨 | 6개 (judgment, doc_retrieve, doc_generate, schedule_add, schedule_view, general) |
 | 학습 데이터 | 1,471건 (v5) |
-| 후처리 | Rule Guide 5개 + knowledge_query 매핑 (judgment+doc_retrieve 통합) |
-| Held-out Perfect Match | **87.4%** (83/95) — 후처리 매핑+Rule 적용 |
-| Held-out 6-label 원본 | 73.7% (70/95) |
-| 카테고리별 | single_step 100%, sequential 90%, parallel 91.7%, complex 66.7%, edge_case 77.8% |
-| Step Collapse Rate | 10.2% |
+| 후처리 | Rule Guide 7개 + knowledge_query 매핑 (judgment+doc_retrieve 통합) |
+| Held-out Perfect Match (100건) | **88.0%** (88/100) — 후처리 매핑+Rule 적용 |
+| Held-out 6-label 원본 (100건) | 71.0% (71/100) |
+| 카테고리별 | single_step 100%, sequential 90%, parallel 91.7%, complex 73.7%, edge_case 78.9% |
+| Step Collapse Rate | 9.4% |
 | 추론 시간 | ~1.4s/건 |
-| v4 대비 개선 | +24.2%p (63.2% → 87.4%) |
+| v4 대비 개선 | +24.8%p (63.2% → 88.0%) |
 
 ### 4. Rule Guide 상세
 
@@ -3135,20 +3145,101 @@ Per-label Threshold는 held-out 86.7%로 오히려 하락 + over-triggering 18.2
 | 3 | 영어 minutes/report + 만들어 → doc_generate | 영어 혼용 입력 | +1건 |
 | 4 | "도와줘" 단독 → general | 모호한 요청 | +1건 |
 | 6 | "취소" + schedule_view → schedule_add | 취소는 일정 변경 | +1건 |
+| 8 | "변경/수정" + 일정 → schedule_add 단일 | 과잉 분리 방지 | +1건 |
+| 9 | "만들어줘/작성해줘"로 끝 → 마지막 step doc_generate | doc_generate 누락 방지 | +2건 |
+| ~~7~~ | ~~같은 intent 중복 축소~~ | ~~parallel 악화~~ | **제거** |
 
-### 5. 성능 개선 시도 중 (v5b)
+### 5. v5b 실험 결과 (GPT KD + LoRA 강화)
 
-**GPT Knowledge Distillation**: GPT-4o-mini로 3-step 복합 쿼리 86건 자동 생성 → train 1,471→1,557건
-**LoRA 강화**: r=16→32, epoch 3→5 (v5b config)
-**목표**: 3-step 64.3% → 75%+, 전체 87.4% → 90%+
+| 항목 | v5 + Rule v2 | v5b (r=32, GPT KD) | 변화 |
+|------|-------------|-------------------|------|
+| Train 데이터 | 1,471건 | 1,557건 (+86) | GPT-4o-mini로 3-step 자동 생성 |
+| LoRA r | 16 | 32 | 학습 파라미터 2배 |
+| Epoch | 3 | 5 | 학습 반복 증가 |
+| PM (매핑) | **87.4%** | 87.4% | 동일 |
+| 1-step | 93.5% | **95.7%** | +2.2%p ✅ |
+| 3-step | **64.3%** | 57.1% | -7.2%p ❌ |
+| sequential | 90.0% | **95.0%** | +5.0%p ✅ |
+| complex | **66.7%** | 60.0% | -6.7%p ❌ |
+| edge_case | 77.8% | **83.3%** | +5.5%p ✅ |
 
-현재 RunPod에서 v5b 학습 진행 중.
+**결론**: 총점 동일하지만 3-step/complex 하락 → **v5 유지 결정**. 데이터/파라미터 증가가 항상 성능 향상은 아님.
+
+### 6. Planner 실험 추이에 인과관계 추가
+
+| # | 버전 | Held-out (매핑+Rule) | 왜 이렇게 했는가 (인과관계) |
+|---|------|---------------------|--------------------------|
+| 1 | v1 | W.Score 0.916 | 시작점 |
+| 2 | v3 | W.Score 0.916 | v1과 동일 → 데이터 양이 아닌 **패턴 부족**이 문제 |
+| 3 | v4 | PM 63.2% | 3-step 강화했지만 **judgment→doc_retrieve 12건 오분류** 발생 |
+| 4 | v5 시도1 | - | +121건 보강 → **12건 그대로** (LoRA로 베이스 모델 사전 지식 덮어쓰기 불가) |
+| 5 | v5 시도2 | PM 83.2% | 프롬프트 교체 → PM +7건이지만 **12건 여전** |
+| 6 | v5 5-label | PM 34.7% | 라벨 합쳐서 학습 → **대실패** (베이스 모델이 새 라벨 거부) |
+| 7 | v5 6-label | PM 83.2% | **발상 전환**: 학습은 6-label, 평가만 후처리 매핑 → 12건 해소 |
+| 8 | v5 + Rule v1 | - | 중복 축소 규칙 → **parallel 악화** (규칙이 해로울 수 있음) |
+| 9 | **v5 + Rule v2** | **PM 87.4%** | 해로운 규칙 제거 + 유용한 규칙만 유지 |
+| 10 | v5b | PM 87.4% | GPT KD+r=32 → 3-step **오히려 하락** → v5 유지 |
+
+---
+
+## 발표 핵심 — 인과관계 요약
+
+### Intent 분류 모델: 실험 흐름과 의사결정
+
+```
+규칙 기반(41.7%) — 한계 명확
+    ↓ "모델 학습으로 전환"
+koelectra BERT(50→75→90%) — Dev 점수만 올라감
+    ↓ "Held-out 도입 → 과적합 발견 (진짜 76.7%)"
+roberta-large 교체 — 과적합 해소 (모델 크기 3배로 일반화 능력 향상)
+    ↓ "데이터 품질 한계"
+GPT Knowledge Distillation — LLM이 학습 데이터 생성 (80→88.3%)
+    ↓ "단일 모델 한계"
+5-Seed 앙상블 — 5개 모델 투표로 실수 보정 (88.3→93.3%, 60건)
+    ↓ "60건이 너무 적지 않나? → 100건으로 확장"
+Held-out 100건 — 93.3%→80.0% 하락 (triple_intent 23.1%, connector_trap 72.2%)
+    ↓ "약점 패턴 집중 보강"
++35건 보강 + Rule Guide — 80.0%→91.0% (+11%p, triple 76.9%, connector 100%)
+```
+
+**핵심 교훈**:
+1. Dev 점수를 믿으면 안 됨 → **Held-out으로 검증해야 진짜 성능**
+2. **Held-out 데이터도 충분해야 함** → 60건은 낙관적, 100건이 현실적
+3. 모델 크기가 크다고 좋은 게 아님 → **xlm-r(550M)보다 roberta(338M)가 우수**
+4. 가장 큰 성능 점프: **앙상블(+5.0%p) > 타겟 보강(+11%p, 100건) > GPT KD(+8.3%p)**
+
+### Task Planner: 실험 흐름과 의사결정
+
+```
+v4(PM 63.2%) — judgment→doc_retrieve 12건 오분류
+    ↓ "데이터 보강으로 해결 시도"
++121건 보강 — 12건 그대로 (LoRA 한계)
+    ↓ "프롬프트에 구분 기준 명시"
+전체 프롬프트 교체 — PM +7건이지만 12건 여전
+    ↓ "학습으로 안 되면 라벨을 합치자"
+5-label 학습 — 대실패 (34.7%, 베이스 모델이 새 라벨 거부)
+    ↓ "발상 전환: 학습은 6-label, 평가만 매핑"
+후처리 매핑 — 12건 전부 해소 (PM 83.2%)
+    ↓ "추가 개선"
+Rule Guide — edge_case +5건 (PM 87.4%)
+    ↓ "더 올릴 수 있을까?"
+v5b(GPT KD + r=32) — 3-step 오히려 하락 → v5 유지
+    ↓ "Rule Guide 추가로 edge_case 보정"
+Rule v3 + 100건 확장 — PM 88.0% (100건, 매핑+Rule 적용)
+```
+
+**핵심 교훈**:
+1. **LoRA로 베이스 모델 사전 지식을 덮어쓰기 어려움** → 후처리로 우회
+2. **규칙은 양날의 검** → Rule 7이 parallel을 망가뜨린 사례
+3. **데이터/파라미터 늘린다고 항상 좋아지진 않음** → v5b 교훈
+4. **실패한 실험(5-label, Rule v1, v5b)에서도 인사이트를 얻음**
+5. **Rule Guide는 정확한 패턴만 잡아야 함** → Rule 8(변경), 9(만들어줘) 성공
 
 ### 다음 할 일
 
-- [ ] v5b 학습 결과 + Held-out 평가 확인
-- [ ] 결과 좋으면 v5b로 확정, HuggingFace 백업 + EC2 배포
-- [ ] 멀티 seed 앙상블 시도 (Intent 모델처럼)
+- [x] ~~Intent Held-out 100건 재평가~~ → **91.0%**
+- [x] ~~Planner Held-out 100건 재평가~~ → **88.0%**
+- [ ] Intent 앙상블 모델 HuggingFace 재백업 + EC2 재배포
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
 
