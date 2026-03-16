@@ -1883,6 +1883,137 @@
           }
         ]
       }
+    },
+    {
+      "id": "C-016",
+      "category": "complex",
+      "input": "인사 규정 찾아서 채용 가능한지 확인하고 JD 작성해줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "judgment",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "doc_generate",
+            "depends_on": [
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-017",
+      "category": "complex",
+      "input": "예산 문서 검색해서 분석하고 비교 보고서 만들어줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "doc_retrieve",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "doc_generate",
+            "depends_on": [
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-018",
+      "category": "complex",
+      "input": "이번 주 미팅 일정 확인하고 빈 날 찾아서 고객 미팅 잡아줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_view",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "schedule_view",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "schedule_add",
+            "depends_on": [
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "C-019",
+      "category": "complex",
+      "input": "거래처 계약서 찾아서 검토하고 수정본 만들어줘",
+      "expected": {
+        "num_steps": 3,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "doc_retrieve",
+            "depends_on": []
+          },
+          {
+            "step_id": 2,
+            "intent": "judgment",
+            "depends_on": [
+              1
+            ]
+          },
+          {
+            "step_id": 3,
+            "intent": "doc_generate",
+            "depends_on": [
+              2
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "E-019",
+      "category": "edge_case",
+      "input": "내일 회의 시간 변경해줘",
+      "expected": {
+        "num_steps": 1,
+        "plan": [
+          {
+            "step_id": 1,
+            "intent": "schedule_add",
+            "depends_on": []
+          }
+        ]
+      }
     }
   ]
 }
