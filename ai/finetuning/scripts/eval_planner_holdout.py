@@ -46,12 +46,6 @@ def apply_post_rules(user_input: str, intents: list) -> list:
     # 규칙 1: 존재하지 않는 intent → doc_generate로 교체
     intents = [i if i in VALID_INTENTS else "doc_generate" for i in intents]
 
-    # 규칙 0: 후처리 매핑 — judgment + doc_retrieve → knowledge_query 통합
-    # LoRA 모델이 judgment/doc_retrieve를 혼동하는 문제를 근본적으로 해결
-    # 두 intent를 동일한 knowledge_query로 매핑하여 구분 자체를 제거
-    intents = ["knowledge_query" if i in ("judgment", "doc_retrieve") else i
-               for i in intents]
-
     # 규칙 2: 입력이 3글자 이하 → general 강제
     if len(user_input.strip()) <= 3:
         return ["general"]
@@ -104,6 +98,10 @@ def apply_post_rules(user_input: str, intents: list) -> list:
     if re.search(r"(만들어|작성해|써\s*줘|뽑아)\s*줘?\s*$", user_input) and \
        len(intents) >= 2 and intents[-1] != "doc_generate":
         intents[-1] = "doc_generate"
+
+    # 후처리 매핑 (맨 마지막에 적용) — judgment + doc_retrieve → knowledge_query
+    # 모든 Rule이 원본 intent로 동작한 후, 최종적으로 매핑
+    intents = apply_mapping(intents)
 
     return intents
 
