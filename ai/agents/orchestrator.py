@@ -25,7 +25,7 @@ import time
 from langgraph.graph import StateGraph, END
 
 from ai.agents.state import AgentState
-from ai.agents.intent_classifier import get_classifier, detect_compound_query
+from ai.agents.intent_classifier import get_classifier, detect_compound_query, _split_compound_text
 from ai.agents.config import INTENT_CONFIDENCE_THRESHOLD, ENABLE_COMPLEX_QUERY
 
 logger = logging.getLogger(__name__)
@@ -292,13 +292,14 @@ _PLANNER_SYSTEM_PROMPT = """당신은 업무 자동화 시스템의 Task Planner
 
 
 async def decompose_query(state: AgentState) -> AgentState:
-    """복합 질문 감지 — vLLM planner LoRA (규칙 기반 fallback)"""
+    """복합 질문 분해 — ONNX intent 활용 + planner LoRA or 규칙 기반 쿼리 분리
+
+    classify_intent에서 _is_compound=True로 판단된 후 호출됨.
+    ONNX가 이미 intent를 정확히 분류했으므로, 여기서는 쿼리 분리만 담당.
+    """
     _t = time.time()
     user_input = state["user_input"]
-
-    if not ENABLE_COMPLEX_QUERY:
-        state["sub_queries"] = []
-        return state
+    compound_intents = state.get("_compound_intents", [])
 
     import os
     use_planner_sllm = os.getenv("PLANNER_MODE", "rule") == "sllm"
@@ -306,34 +307,49 @@ async def decompose_query(state: AgentState) -> AgentState:
     sub_queries = []
 
     if use_planner_sllm:
-        # vLLM planner LoRA 호출
+        # planner LoRA로 쿼리 분리 시도 (intent는 ONNX 결과 우선)
         try:
-            sub_queries = await _planner_sllm_decompose(user_input)
-            logger.info(
-                "[Orchestrator] planner sLLM 분해 (%.2fs) | %d단계: %s",
-                time.time() - _t,
-                len(sub_queries),
-                [sq["hint"] for sq in sub_queries],
-            )
+            planner_result = await _planner_sllm_decompose(user_input)
+            if planner_result:
+                # planner가 분리한 query에 ONNX intent를 덮어씌움
+                for i, sq in enumerate(planner_result):
+                    if i < len(compound_intents):
+                        sq["hint"] = compound_intents[i]["intent"]
+                sub_queries = planner_result
+                logger.info(
+                    "[Orchestrator] planner sLLM 분리 + ONNX intent (%.2fs) | %d단계: %s",
+                    time.time() - _t, len(sub_queries), [sq["hint"] for sq in sub_queries],
+                )
         except Exception as e:
             logger.error("[Orchestrator] planner sLLM 실패, 규칙 기반 fallback: %s", e)
-            sub_queries = detect_compound_query(user_input)
-    else:
-        # 규칙 기반 (기존)
-        sub_queries = detect_compound_query(user_input)
+
+    # planner 실패 or rule 모드 → 규칙 기반 분리 + ONNX intent 매칭
+    if not sub_queries:
+        parts = _split_compound_text(user_input)
+        if parts and len(parts) >= 2:
+            for i, part in enumerate(parts):
+                hint = compound_intents[i]["intent"] if i < len(compound_intents) else "general"
+                sub_queries.append({
+                    "query": part,
+                    "hint": hint,
+                    "step_id": i + 1,
+                    "depends_on": [i] if i > 0 else [],
+                })
+        else:
+            # 분리 실패 → ONNX intent 순서대로 원문 그대로
+            for i, intent_info in enumerate(compound_intents):
+                sub_queries.append({
+                    "query": user_input,
+                    "hint": intent_info["intent"],
+                    "step_id": i + 1,
+                    "depends_on": [i] if i > 0 else [],
+                })
 
     state["sub_queries"] = sub_queries
-
-    if sub_queries:
-        logger.info(
-            "[Orchestrator] 복합 질문 감지 (%.2fs) | %d개 서브쿼리: %s",
-            time.time() - _t,
-            len(sub_queries),
-            [sq["hint"] for sq in sub_queries],
-        )
-    else:
-        logger.debug("[Orchestrator] 단일 질문 (%.2fs)", time.time() - _t)
-
+    logger.info(
+        "[Orchestrator] decompose_query 완료 (%.2fs) | %d개 서브쿼리: %s",
+        time.time() - _t, len(sub_queries), [sq["hint"] for sq in sub_queries],
+    )
     return state
 
 
@@ -410,24 +426,49 @@ def compound_pending(state: AgentState) -> AgentState:
 
 
 def classify_intent(state: AgentState) -> AgentState:
-    """Intent 분류 — BERT (→ Solar fallback → 임베딩 fallback)"""
+    """Intent 분류 — ONNX 멀티라벨 (복합 감지 포함)
+
+    멀티라벨 결과로 compound 여부도 판단:
+      - is_compound=True → sub_queries 생성 → decompose_query로
+      - is_compound=False → 단일 intent → route_by_intent로
+    """
     _t = time.time()
     user_input = state["user_input"]
     logger.info("[Orchestrator] classify_intent 시작 | input='%s'", user_input)
 
     classifier = get_classifier()
-    result = classifier.predict(user_input, return_candidates=True)
 
-    state["intent"] = result["intent"]
-    state["confidence"] = result["confidence"]
-    state["intent_candidates"] = result.get("candidates", [
-        {"intent": result["intent"], "confidence": result["confidence"]}
-    ])
+    if ENABLE_COMPLEX_QUERY:
+        # 멀티라벨로 복합 감지 + intent 분류 동시 수행
+        ml_result = classifier.predict_multilabel(user_input)
+        state["intent"] = ml_result["primary_intent"]
+        state["confidence"] = ml_result["primary_confidence"]
+        state["intent_candidates"] = [
+            {"intent": i["intent"], "confidence": i["confidence"]}
+            for i in ml_result["intents"]
+        ]
+        state["_is_compound"] = ml_result["is_compound"]
+        state["_compound_intents"] = ml_result["intents"]
 
-    logger.info(
-        "[Orchestrator] classify_intent 완료 (%.2fs) | intent=%s, confidence=%.4f",
-        time.time()-_t, state['intent'], state['confidence']
-    )
+        logger.info(
+            "[Orchestrator] classify_intent 완료 (%.2fs) | intent=%s, confidence=%.4f, compound=%s",
+            time.time()-_t, state['intent'], state['confidence'], ml_result['is_compound']
+        )
+    else:
+        # 단일 라벨 분류 (기존)
+        result = classifier.predict(user_input, return_candidates=True)
+        state["intent"] = result["intent"]
+        state["confidence"] = result["confidence"]
+        state["intent_candidates"] = result.get("candidates", [
+            {"intent": result["intent"], "confidence": result["confidence"]}
+        ])
+        state["_is_compound"] = False
+
+        logger.info(
+            "[Orchestrator] classify_intent 완료 (%.2fs) | intent=%s, confidence=%.4f",
+            time.time()-_t, state['intent'], state['confidence']
+        )
+
     return state
 
 
@@ -475,9 +516,17 @@ def _is_schedule_followup(user_input: str, chat_history: list[dict]) -> bool:
 
 
 def route_by_intent(state: AgentState) -> str:
-    """조건부 라우팅 — intent + confidence 기반 분기"""
+    """조건부 라우팅 — intent + confidence 기반 분기
+
+    복합질문이면 decompose_query로, 단일이면 Agent로 직접 라우팅.
+    """
     intent = state.get("intent", "")
     confidence = state.get("confidence", 0)
+
+    # 복합질문 감지 (classify_intent에서 멀티라벨 결과로 판단)
+    if state.get("_is_compound"):
+        logger.info("[Orchestrator] 라우팅: compound 감지 → decompose_query")
+        return "decompose_query"
 
     # schedule followup 감지 (confidence 체크보다 우선 — 이전 대화 맥락 기반)
     user_input = state.get("user_input", "")
@@ -575,13 +624,22 @@ def format_response(state: AgentState) -> AgentState:
 
 
 def build_graph():
-    """LangGraph StateGraph 빌드 + 컴파일"""
+    """LangGraph StateGraph 빌드 + 컴파일
+
+    흐름:
+      classify_intent (ONNX 멀티라벨: intent 분류 + 복합 감지)
+        ├─ compound → decompose_query (planner LoRA or 규칙 기반 쿼리 분리)
+        │              → compound_pending → format_response → END
+        ├─ single → Agent (judgment/document/schedule/general)
+        │           → format_response → END
+        └─ low_confidence → clarify_with_candidates → format_response → END
+    """
     graph = StateGraph(AgentState)
 
     # 노드 등록
+    graph.add_node("classify_intent", classify_intent)
     graph.add_node("decompose_query", decompose_query)
     graph.add_node("compound_pending", compound_pending)
-    graph.add_node("classify_intent", classify_intent)
     graph.add_node("clarify_with_candidates", clarify_with_candidates)
     graph.add_node("judgment_agent", safe_judgment_agent)
     graph.add_node("document_agent", safe_document_agent)
@@ -589,24 +647,15 @@ def build_graph():
     graph.add_node("general_response", general_response_node)
     graph.add_node("format_response", format_response)
 
-    # 엔트리 포인트 — 복합 질문 감지부터 시작
-    graph.set_entry_point("decompose_query")
+    # 엔트리 포인트 — intent 분류 먼저 (복합 감지 포함)
+    graph.set_entry_point("classify_intent")
 
-    # decompose_query → 복합/단일 분기
-    graph.add_conditional_edges(
-        "decompose_query",
-        route_after_decompose,
-        {
-            "compound_pending": "compound_pending",
-            "classify_intent": "classify_intent",
-        },
-    )
-
-    # classify_intent → intent + confidence 기반 분기
+    # classify_intent → compound면 decompose, 아니면 Agent 직행
     graph.add_conditional_edges(
         "classify_intent",
         route_by_intent,
         {
+            "decompose_query": "decompose_query",
             "clarify_with_candidates": "clarify_with_candidates",
             "judgment_agent": "judgment_agent",
             "document_agent": "document_agent",
@@ -614,6 +663,9 @@ def build_graph():
             "general_response": "general_response",
         },
     )
+
+    # decompose_query → compound_pending (chat.py에서 순차 스트리밍)
+    graph.add_edge("decompose_query", "compound_pending")
 
     # 모든 Agent/노드 → format_response → END
     graph.add_edge("compound_pending", "format_response")
