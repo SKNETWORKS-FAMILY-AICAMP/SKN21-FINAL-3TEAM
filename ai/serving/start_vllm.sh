@@ -35,10 +35,13 @@ fi
 ADAPTER_GENERATE="/workspace/SKN21-FINAL-3TEAM/outputs/v2_generate/kanana-1.5-8b-instruct-2505/final"
 ADAPTER_SUMMARY="/workspace/SKN21-FINAL-3TEAM/outputs/v2_summary/kanana-1.5-8b-instruct-2505/final"
 
+# planner (복합질문 순서 처리)
+ADAPTER_PLANNER="/workspace/models/planner-v5-lora"
+
 # 어댑터 존재 확인 + LoRA 모듈 목록 구성
 LORA_MODULES="v1_judgment=${ADAPTER_JUDGMENT_DIR}"
 
-for name_path in "v2_generate:${ADAPTER_GENERATE}" "v2_summary:${ADAPTER_SUMMARY}"; do
+for name_path in "v2_generate:${ADAPTER_GENERATE}" "v2_summary:${ADAPTER_SUMMARY}" "planner:${ADAPTER_PLANNER}"; do
     name="${name_path%%:*}"
     path="${name_path#*:}"
     if [ -f "${path}/adapter_model.safetensors" ]; then

@@ -255,9 +255,44 @@ async def safe_schedule_agent(state: AgentState) -> AgentState:
 
 # ── 복합 질문 노드 ──
 
+# planner system prompt (v5 학습 데이터와 동일)
+_PLANNER_SYSTEM_PROMPT = """당신은 업무 자동화 시스템의 Task Planner입니다.
+사용자 요청을 분석하여 실행 가능한 단계별 계획을 JSON으로 출력하세요.
 
-def decompose_query(state: AgentState) -> AgentState:
-    """복합 질문 감지 — 규칙 기반 접속사 패턴으로 분리"""
+## 사용 가능한 intent (6개)
+- judgment: 사규/규정 기반 판단 ("~해도 되나요?", "규정 확인", "규정 알려줘", "기준이 어떻게 돼?")
+- doc_retrieve: 문서 검색/조회/요약 ("~문서 찾아줘", "~자료 검색", "회의록 조회")
+- doc_generate: 문서 생성 ("보고서 만들어줘", "회의록 작성해줘")
+- schedule_add: 일정 등록 ("~에 회의 잡아줘", "휴가 등록")
+- schedule_view: 일정 조회 ("다음 주 일정 보여줘")
+- general: 일반 질문 (위에 해당하지 않는 경우)
+
+## judgment vs doc_retrieve 구분 기준 (중요!)
+- judgment: 사내 규정/규칙/기준/수당/복리후생에 대한 질문. 규정 해석, 가능 여부 판단, 기준 설명 포함.
+- doc_retrieve: 특정 문서/파일/보고서/회의록을 찾거나 검색하는 것.
+
+## 출력 형식 (반드시 이 JSON 형식만 출력)
+{
+  "plan": [
+    {
+      "step_id": 1,
+      "intent": "intent_name",
+      "query": "이 단계에서 처리할 구체적 요청",
+      "depends_on": []
+    }
+  ]
+}
+
+## 규칙
+1. depends_on: 이 단계가 실행되기 전에 완료되어야 하는 step_id 목록
+2. depends_on이 비어있으면 즉시 실행 가능 (병렬 처리 가능)
+3. 단순 요청은 1단계로 처리
+4. 최대 4단계까지만 분해
+5. JSON만 출력하고 다른 설명은 하지 마세요"""
+
+
+async def decompose_query(state: AgentState) -> AgentState:
+    """복합 질문 감지 — vLLM planner LoRA (규칙 기반 fallback)"""
     _t = time.time()
     user_input = state["user_input"]
 
@@ -265,7 +300,28 @@ def decompose_query(state: AgentState) -> AgentState:
         state["sub_queries"] = []
         return state
 
-    sub_queries = detect_compound_query(user_input)
+    import os
+    use_planner_sllm = os.getenv("PLANNER_MODE", "rule") == "sllm"
+
+    sub_queries = []
+
+    if use_planner_sllm:
+        # vLLM planner LoRA 호출
+        try:
+            sub_queries = await _planner_sllm_decompose(user_input)
+            logger.info(
+                "[Orchestrator] planner sLLM 분해 (%.2fs) | %d단계: %s",
+                time.time() - _t,
+                len(sub_queries),
+                [sq["hint"] for sq in sub_queries],
+            )
+        except Exception as e:
+            logger.error("[Orchestrator] planner sLLM 실패, 규칙 기반 fallback: %s", e)
+            sub_queries = detect_compound_query(user_input)
+    else:
+        # 규칙 기반 (기존)
+        sub_queries = detect_compound_query(user_input)
+
     state["sub_queries"] = sub_queries
 
     if sub_queries:
@@ -279,6 +335,44 @@ def decompose_query(state: AgentState) -> AgentState:
         logger.debug("[Orchestrator] 단일 질문 (%.2fs)", time.time() - _t)
 
     return state
+
+
+async def _planner_sllm_decompose(user_input: str) -> list[dict]:
+    """vLLM planner LoRA로 복합질문 분해
+
+    Returns:
+        단일이면 [] (classify_intent로 넘김)
+        복합이면 [{"query": "...", "hint": "intent_name"}, ...]
+    """
+    import json
+    from ai.serving.vllm_client import VLLMProvider
+
+    llm = VLLMProvider().with_lora("planner")
+    response = await llm.generate(
+        prompt=user_input,
+        system_prompt=_PLANNER_SYSTEM_PROMPT,
+        temperature=0.1,
+        max_tokens=512,
+    )
+
+    result = json.loads(response.content)
+    plan = result.get("plan", [])
+
+    # 1단계면 단일 질문 → 빈 리스트 (classify_intent로)
+    if len(plan) <= 1:
+        return []
+
+    # 복합: sub_queries 형식으로 변환
+    sub_queries = []
+    for step in plan:
+        sub_queries.append({
+            "query": step.get("query", user_input),
+            "hint": step.get("intent", "general"),
+            "step_id": step.get("step_id", 0),
+            "depends_on": step.get("depends_on", []),
+        })
+
+    return sub_queries
 
 
 def route_after_decompose(state: AgentState) -> str:
