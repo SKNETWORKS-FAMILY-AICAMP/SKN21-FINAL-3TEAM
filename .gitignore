@@ -23,6 +23,7 @@ outputs/
 *.safetensors
 *.safetensors.*
 *.gguf
+*.onnx
 
 # Test artifacts
 test-results/

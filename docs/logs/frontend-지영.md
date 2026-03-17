@@ -3223,7 +3223,7 @@ Rule v3 + 100건 확장 — PM 88.0% (100건, 매핑+Rule 적용)
 
 ### 한 일
 
-#### Planner v6 실험 세팅 + 실험 A, B, C 실행
+#### 1) Planner v6 실험 세팅 + 실험 A, B, C 실행
 
 **목표**: Planner Held-out PM 88.0% → 90%+ 달성
 **방향**: 후처리 매핑(knowledge_query) 대신 KNOWN_OVERRIDES + Rule Guide로 해결
@@ -3235,7 +3235,7 @@ Rule v3 + 100건 확장 — PM 88.0% (100건, 매핑+Rule 적용)
 
 ---
 
-#### 실험 A: Rule Guide 추가 (규칙 10, 11)
+#### 2) 실험 A: Rule Guide 추가 (규칙 10, 11)
 
 v5 어댑터 + 새 규칙 2개 추가 → holdout 재평가 (재학습 없음)
 
@@ -3265,7 +3265,7 @@ v5 어댑터 + 새 규칙 2개 추가 → holdout 재평가 (재학습 없음)
 
 ---
 
-#### 실험 B: Few-shot 프롬프트 (3-step 예시 3개 삽입)
+#### 3) 실험 B: Few-shot 프롬프트 (3-step 예시 3개 삽입)
 
 v5 어댑터 + 시스템 프롬프트에 3-step 예시 3개 추가 → holdout 재평가 (재학습 없음)
 
@@ -3303,7 +3303,7 @@ v5 어댑터 + 시스템 프롬프트에 3-step 예시 3개 추가 → holdout �
 
 ---
 
-#### 실험 C: 오답 타겟 보강 데이터 생성 (GPT-4o-mini)
+#### 4) 실험 C: 오답 타겟 보강 데이터 생성 (GPT-4o-mini)
 
 `augment_v6_planner.py` 스크립트로 약점 패턴 집중 생성
 
@@ -3322,7 +3322,7 @@ v6 학습 데이터 구성:
 
 ---
 
-#### 실험 후 추가 조치: Planner용 judgment KNOWN_OVERRIDES 추가
+#### 5) 실험 후 추가 조치: Planner용 judgment KNOWN_OVERRIDES 추가
 
 실험 A에서 발견된 judgment→doc_retrieve 15건을 해결하기 위해, Intent classifier의 KNOWN_OVERRIDES와 동일 전략을 Planner eval 스크립트에 적용:
 
@@ -3343,7 +3343,7 @@ judgment KNOWN_OVERRIDES 9개 패턴:
 
 ---
 
-#### 실험 D: v6 LoRA 재학습 (lr=1e-4, epoch 4, MLP 포함)
+#### 6) 실험 D: v6 LoRA 재학습 (lr=1e-4, epoch 4, MLP 포함)
 
 v6 config로 재학습 후 holdout 평가 (2가지 프롬프트로 각각 평가)
 
@@ -3444,7 +3444,7 @@ v6 config로 재학습 후 holdout 평가 (2가지 프롬프트로 각각 평가
 
 ---
 
-#### 실험 후 추가 조치: KNOWN_OVERRIDES 정교화 (v2)
+#### 7) 실험 후 추가 조치: KNOWN_OVERRIDES 정교화 (v2)
 
 실험 D 결과에서 발견된 문제: multi-step에서 KNOWN_OVERRIDES가 첫 step을 무조건 judgment로 교체 → "규정 찾아서 확인하고"에서 doc_retrieve가 judgment로 바뀌는 부작용
 
@@ -3463,7 +3463,7 @@ v6 config로 재학습 후 holdout 평가 (2가지 프롬프트로 각각 평가
 
 ---
 
-#### 실험 E, F: KNOWN_OVERRIDES v2 평가
+#### 8) 실험 E, F: KNOWN_OVERRIDES v2 평가
 
 | 실험 | 구성 | PM |
 |------|------|-----|
@@ -3476,7 +3476,7 @@ OVERRIDES v2로 single_step 100% 달성 (judgment→doc_retrieve 9건 해결). �
 
 ---
 
-#### 후처리 매핑 적용 + 실험 G, H
+#### 9) 후처리 매핑 적용 + 실험 G, H
 
 judgment + doc_retrieve → knowledge_query 매핑 구현. KNOWN_OVERRIDES 제거.
 
@@ -3487,7 +3487,7 @@ judgment + doc_retrieve → knowledge_query 매핑 구현. KNOWN_OVERRIDES 제�
 
 ---
 
-#### 하이브리드 프롬프트 + 오답 타겟 Rule 구현
+#### 10) 하이브리드 프롬프트 + 오답 타겟 Rule 구현
 
 **하이브리드 프롬프트**: 입력 복잡도에 따라 프롬프트 자동 선택
 - 접속사/동사 2개 이상 → Few-shot 프롬프트 (complex/3-step 강화)
@@ -3507,7 +3507,7 @@ judgment + doc_retrieve → knowledge_query 매핑 구현. KNOWN_OVERRIDES 제�
 
 ---
 
-#### 실험 I: 하이브리드 + 매핑 + Rule 14,16
+#### 11) 실험 I: 하이브리드 + 매핑 + Rule 14,16
 
 | 실험 | 구성 | PM |
 |------|------|-----|
@@ -3528,7 +3528,7 @@ judgment + doc_retrieve → knowledge_query 매핑 구현. KNOWN_OVERRIDES 제�
 
 ---
 
-#### Rule 정리 + 최종 재평가 확정
+#### 12) Rule 정리 + 최종 재평가 확정
 
 Rule 10,11,12,13이 매핑과 간섭하여 성능 저하 유발 → 제거.
 원래 Rule(1~9) + Rule 14,16 + 매핑 + 하이브리드 조합으로 최종 재평가.
@@ -3580,28 +3580,61 @@ Rule 10,11,12,13이 매핑과 간섭하여 성능 저하 유발 → 제거.
 
 ### 모델 백업 + 배포
 
-#### HuggingFace 백업 완료
+#### 13) HuggingFace 백업 완료
 
 | 모델 | HuggingFace repo | 성능 |
 |------|------------------|------|
 | Intent 앙상블 | `jiyouxg/dudu-intent-ensemble` (v2) | 91.0% (100건) |
 | Planner v5 LoRA | `jiyouxg/dudu-planner-v5-lora` | 87.0% (100건) |
 
-#### RunPod 네트워크 볼륨 저장 완료
+#### 14) RunPod 네트워크 볼륨 저장 완료
 
 Pod 꺼져도 유지되는 네트워크 볼륨(`/workspace/`, 2.3PB)에 저장:
 - `/workspace/models/planner-v5-lora/` — Planner LoRA 가중치
 - `/workspace/SKN21-FINAL-3TEAM/` — 프로젝트 전체 (코드, 학습 데이터, eval 스크립트)
 
-#### EC2 Intent 모델 배포 시도 → 미완료
+#### 15) EC2 Intent 모델 배포 시도 → 16)에서 해결
 
 - EC2 사양: CPU only (Intel Xeon), RAM 3.7GB, 디스크 38GB
 - 기존 앙상블 디렉토리에 **model.safetensors 가중치 파일 누락** 확인 (이전 소실 상태 그대로)
 - HuggingFace에서 다운로드 시도 → 6.73GB 다운로드 중 **진행바 멈춤 + 터미널 응답 없음** → 강제 종료
 - 원인 미확인 (EC2 메모리 부족 또는 네트워크 문제 가능성)
 
+#### 16) Intent 앙상블 모델 ONNX INT8 변환 + EC2 배포
+
+**문제**: EC2(RAM 3.7GB)에 safetensors 앙상블 5개(6.4GB) 동시 로드 불가
+
+**해결: ONNX INT8 양자화**
+- 로컬에서 HuggingFace(`jiyouxg/dudu-intent-ensemble`) → 5-seed 다운로드
+- PyTorch FP32 → ONNX 변환 (legacy exporter, opset 14)
+- ONNX → INT8 dynamic quantization
+- 변환 스크립트: `ai/scripts/convert_onnx_int8.py`
+
+| | FP32 (safetensors) | INT8 (ONNX) |
+|---|---|---|
+| seed 1개 | 1,284MB | **323MB** |
+| 5개 합계 | 6,420MB | **1,614MB** |
+| 압축률 | - | **25.1%** (75% 감소) |
+
+**EC2 업로드 + 검증**:
+- `scp`로 EC2에 업로드: `ai/models/intent_ensemble_onnx/seed_{42,123,456,789,1337}/model_int8.onnx`
+- EC2 RAM 부족(3.7GB)으로 OOM → **인스턴스 타입 8GB로 업그레이드**
+- 5-seed 앙상블 로드 후 RAM 3.9GB/7.6GB 사용 (여유 3.7GB)
+
+**검증 결과 (14건 테스트)**:
+- 정확도: **12/14 (86%)** — 단일/복합 intent 모두 정상
+- 평균 추론: ~3초/건
+- FAIL 2건: 기존 학습에서도 확인된 경계 케이스 (judgment↔doc_retrieve, doc_generate 과잉 트리거)
+
+**대화형 테스트 스크립트 배포**: `~/test_intent.py`
+- SSH 접속 후 `python3 ~/test_intent.py`로 직접 테스트 가능
+
+#### 17) EC2 인스턴스 타입 업그레이드
+
+- 3.7GB → **8GB RAM**으로 변경
+
 ### 다음 할 일
 
-- [ ] EC2 Intent 모델 배포 재시도 (wget으로 직접 다운로드 또는 scp 전송)
+- [ ] Intent ONNX 추론 코드를 `intent_classifier.py`에 통합 (production 반영)
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
