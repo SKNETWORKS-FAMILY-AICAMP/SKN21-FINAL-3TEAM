@@ -127,11 +127,8 @@ def apply_post_rules(user_input: str, intents: list) -> list:
        not re.search(r"(찾아|검색|조회|확인하고|알려)", user_input):
         intents = ["doc_generate"]
 
-    # 규칙 15: "일정 확인/일정 보고" → 첫 step이 doc_retrieve면 schedule_view로 교체
-    # C-007 "이번 달 일정 확인하고" → doc_retrieve 출력 → schedule_view로 교체
-    if re.search(r"(일정|스케줄|미팅|회의).*(확인|보고|보여|조회)", user_input) and \
-       len(intents) >= 1 and intents[0] in ("doc_retrieve", "judgment"):
-        intents[0] = "schedule_view"
+    # 규칙 15: 제거 — 부작용 심함 (SEQ-001, SEQ-020, PAR-009, C-003, C-012 깨뜨림)
+    # "(일정|회의).*(확인|보고)" 패턴이 "회의록 찾아서", "연차 확인하고"까지 매칭
 
     # 규칙 16: "A랑/이랑 B 둘 다 찾아줘" — 단일 step이면 2-step으로 복원
     # PAR-002 "마케팅 보고서랑 인사 규정 둘 다 찾아줘" → [kq] → [kq, kq]
