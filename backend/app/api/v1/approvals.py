@@ -411,12 +411,12 @@ async def generate_checklist(
 {json.dumps(schedule_summary, ensure_ascii=False, indent=2) if schedule_summary else '예정된 일정 없음'}
 """
 
-    # 3. LLM 호출
+    # 3. LLM 호출 (sLLM — vLLM/Kanana)
     try:
-        from ai.llm import get_llm
+        from ai.llm import create_llm
         from ai.llm.prompts import SCHEDULE_CHECKLIST_SYSTEM_PROMPT
 
-        llm = get_llm()
+        llm = create_llm(provider="vllm")
         response = await llm.generate(
             prompt=context,
             system_prompt=SCHEDULE_CHECKLIST_SYSTEM_PROMPT,
@@ -597,12 +597,12 @@ async def suggest_schedules(
 {json.dumps(schedule_summary, ensure_ascii=False, indent=2) if schedule_summary else '예정된 일정 없음'}
 """
 
-    # 3. LLM 호출
+    # 3. LLM 호출 (sLLM — vLLM/Kanana)
     try:
-        from ai.llm import get_llm
+        from ai.llm import create_llm
         from ai.llm.prompts import SCHEDULE_SUGGEST_SYSTEM_PROMPT
 
-        llm = get_llm()
+        llm = create_llm(provider="vllm")
         response = await llm.generate(
             prompt=context,
             system_prompt=SCHEDULE_SUGGEST_SYSTEM_PROMPT,
@@ -783,12 +783,12 @@ async def suggest_approvals(
 {json.dumps(schedule_summary, ensure_ascii=False, indent=2) if schedule_summary else '예정된 일정 없음'}
 """
 
-    # 3. LLM 호출
+    # 3. LLM 호출 (sLLM — vLLM/Kanana)
     try:
-        from ai.llm import get_llm
+        from ai.llm import create_llm
         from ai.llm.prompts import APPROVAL_SUGGEST_SYSTEM_PROMPT
 
-        llm = get_llm()
+        llm = create_llm(provider="vllm")
         response = await llm.generate(
             prompt=context,
             system_prompt=APPROVAL_SUGGEST_SYSTEM_PROMPT,
