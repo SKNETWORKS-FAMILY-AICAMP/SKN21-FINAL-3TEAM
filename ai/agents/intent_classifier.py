@@ -54,7 +54,8 @@ class IntentClassifier:
         self.onnx_dir = onnx_dir or str(_ONNX_ENSEMBLE_DIR)
         self.model = None
         self.models = []  # 앙상블 모델 리스트 (PyTorch)
-        self.onnx_sessions = []  # 앙상블 세션 리스트 (ONNX)
+        self._onnx_sessions = []  # 앙상블 ONNX 세션 리스트
+        self._onnx_tokenizer = None  # tokenizers.Tokenizer
         self.tokenizer = None
         self.id2label = None
         self._loaded = False
@@ -73,22 +74,22 @@ class IntentClassifier:
         }
 
     def load_model(self):
-        """모델 로드 — ONNX 앙상블 > PyTorch 앙상블 > 단일 모델 > fallback"""
+        """모델 로드 — ONNX 앙상블 우선, PyTorch 앙상블, 단일 모델, fallback 순"""
         if self._loaded:
             return
 
         self.id2label = {i: label for i, label in enumerate(INTENT_LABELS)}
 
-        # 1) ONNX 앙상블 디렉토리 시도 (가장 가벼움)
+        # 1) ONNX 앙상블 시도 (경량, torch 불필요)
         onnx_dir = Path(self.onnx_dir)
-        onnx_meta = onnx_dir / "ensemble_meta.json"
-        if onnx_meta.exists():
+        onnx_meta_path = onnx_dir / "ensemble_meta.json"
+        if onnx_meta_path.exists():
             try:
-                self._load_onnx_ensemble(onnx_dir, onnx_meta)
+                self._load_onnx_ensemble(onnx_dir, onnx_meta_path)
                 self._loaded = True
                 return
             except Exception as e:
-                logger.error("Failed to load ONNX ensemble: %s — falling back", e)
+                logger.error("Failed to load ONNX ensemble: %s — trying PyTorch", e)
 
         # 2) PyTorch 앙상블 디렉토리 시도
         ensemble_dir = Path(self.ensemble_dir)
@@ -107,40 +108,37 @@ class IntentClassifier:
         self._loaded = True
 
     def _load_onnx_ensemble(self, onnx_dir: Path, meta_path: Path):
-        """5-seed ONNX INT8 앙상블 모델 로드"""
+        """ONNX INT8 앙상블 모델 로드 (torch 불필요)"""
         import onnxruntime as ort
-        from transformers import AutoTokenizer
+        from tokenizers import Tokenizer
 
         with open(meta_path, "r", encoding="utf-8") as f:
             meta = json.load(f)
 
         seeds = meta["seeds"]
-        base_model = meta.get("model", "klue/roberta-large")
 
         # id2label from meta
         if "id2label" in meta:
             self.id2label = {int(k): v for k, v in meta["id2label"].items()}
 
-        # tokenizer — base_model에서 로드 (seed 디렉토리 tokenizer는 호환성 문제 가능)
-        self.tokenizer = AutoTokenizer.from_pretrained(base_model)
+        # 토크나이저 로드 (첫 seed에서)
+        first_tok_path = onnx_dir / f"seed_{seeds[0]}" / "tokenizer.json"
+        self._onnx_tokenizer = Tokenizer.from_file(str(first_tok_path))
+        self._onnx_tokenizer.enable_padding(length=128)
+        self._onnx_tokenizer.enable_truncation(max_length=128)
 
         # ONNX 세션 로드
-        sess_opts = ort.SessionOptions()
-        sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-        sess_opts.inter_op_num_threads = 1
-        sess_opts.intra_op_num_threads = 2
-
-        self.onnx_sessions = []
+        self._onnx_sessions = []
         for seed in seeds:
-            onnx_path = onnx_dir / f"seed_{seed}" / "model_int8.onnx"
-            if not onnx_path.exists():
-                logger.warning("ONNX model not found: %s, skipping", onnx_path)
+            model_path = onnx_dir / f"seed_{seed}" / "model_int8.onnx"
+            if not model_path.exists():
+                logger.warning("ONNX model not found: %s, skipping", model_path)
                 continue
-            session = ort.InferenceSession(str(onnx_path), sess_opts, providers=["CPUExecutionProvider"])
-            self.onnx_sessions.append(session)
+            sess = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
+            self._onnx_sessions.append(sess)
             logger.info("ONNX ensemble model loaded: seed_%s", seed)
 
-        if not self.onnx_sessions:
+        if not self._onnx_sessions:
             raise RuntimeError("No ONNX ensemble models loaded")
 
         self._is_onnx = True
@@ -148,39 +146,32 @@ class IntentClassifier:
         self._is_multilabel = True
 
         logger.info(
-            "Intent ONNX ensemble loaded: %d models from %s (base: %s)",
-            len(self.onnx_sessions), onnx_dir, base_model,
+            "ONNX INT8 ensemble loaded: %d models from %s",
+            len(self._onnx_sessions), onnx_dir,
         )
 
-    def _onnx_infer(self, text: str):
-        """ONNX 앙상블 추론 — sigmoid 확률 평균 반환"""
+    def _onnx_predict_probs(self, text: str):
+        """ONNX 앙상블 추론 → sigmoid 확률 배열 반환"""
         import numpy as np
 
-        inputs = self.tokenizer(
-            text,
-            return_tensors="np",
-            padding=True,
-            truncation=True,
-            max_length=128,
-        )
-
-        # ONNX 모델이 실제로 받는 입력만 전달 (RoBERTa는 token_type_ids 없음)
-        valid_names = {inp.name for inp in self.onnx_sessions[0].get_inputs()}
-        ort_inputs = {k: v for k, v in inputs.items() if k in valid_names}
+        encoded = self._onnx_tokenizer.encode(text)
+        input_ids = np.array([encoded.ids], dtype=np.int64)
+        attention_mask = np.array([encoded.attention_mask], dtype=np.int64)
 
         all_logits = []
-        for session in self.onnx_sessions:
-            outputs = session.run(None, ort_inputs)
-            all_logits.append(outputs[0][0])
+        for sess in self._onnx_sessions:
+            logits = sess.run(None, {
+                "input_ids": input_ids,
+                "attention_mask": attention_mask,
+            })[0]
+            all_logits.append(logits)
 
-        def _sigmoid(x):
-            return 1.0 / (1.0 + np.exp(-x))
-
-        all_probs = [_sigmoid(logits) for logits in all_logits]
-        return np.mean(all_probs, axis=0)
+        # 앙상블: sigmoid 확률 평균
+        probs = np.mean([1 / (1 + np.exp(-l)) for l in all_logits], axis=0)[0]
+        return probs
 
     def _load_ensemble(self, ensemble_dir: Path, meta_path: Path):
-        """5-seed 앙상블 모델 로드 (PyTorch)"""
+        """5-seed 앙상블 모델 로드"""
         from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
         with open(meta_path, "r", encoding="utf-8") as f:
@@ -293,32 +284,27 @@ class IntentClassifier:
         if not self._is_onnx and (self.model is None or self.tokenizer is None):
             return self._llm_based_predict(processed, return_candidates=return_candidates)
 
-        # ONNX 앙상블 추론
+        # ONNX 추론
         if self._is_onnx:
             import numpy as np
-
-            avg_probs = self._onnx_infer(processed)
-            pred_id = int(np.argmax(avg_probs))
-            confidence = float(avg_probs[pred_id])
+            probs_np = self._onnx_predict_probs(processed)
+            pred_id = int(np.argmax(probs_np))
+            confidence = float(probs_np[pred_id])
 
             intent = self.id2label.get(pred_id, "general")
             intent = apply_known_overrides(text, intent)
 
             result = {"intent": intent, "confidence": round(confidence, 4)}
-
             if return_candidates:
-                sorted_indices = np.argsort(avg_probs)[::-1]
-                candidates = []
-                for idx in sorted_indices[:3]:
-                    candidates.append({
-                        "intent": self.id2label.get(int(idx), "general"),
-                        "confidence": round(float(avg_probs[idx]), 4),
-                    })
+                sorted_indices = np.argsort(probs_np)[::-1]
+                candidates = [
+                    {"intent": self.id2label.get(int(idx), "general"), "confidence": round(float(probs_np[idx]), 4)}
+                    for idx in sorted_indices[:3]
+                ]
                 result["candidates"] = candidates
-
             return result
 
-        # PyTorch 단일 모델 추론
+        # PyTorch 추론
         import torch
 
         inputs = self.tokenizer(
@@ -344,6 +330,7 @@ class IntentClassifier:
         result = {"intent": intent, "confidence": round(confidence, 4)}
 
         if return_candidates:
+            # top-3 후보 추출
             sorted_indices = torch.argsort(probs[0], descending=True)
             candidates = []
             for idx in sorted_indices[:3]:
@@ -377,8 +364,10 @@ class IntentClassifier:
         self.load_model()
 
         # 멀티라벨 모델이 없으면 규칙 기반 fallback
-        if not self._is_multilabel or self.tokenizer is None:
-            if not self._is_ensemble and not self._is_onnx and self.model is None:
+        if not self._is_multilabel:
+            if not self._is_onnx and not self._is_ensemble and self.model is None:
+                return self._fallback_compound_detect(text)
+            if not self._is_onnx and self.tokenizer is None:
                 return self._fallback_compound_detect(text)
 
         # 전처리
@@ -390,27 +379,13 @@ class IntentClassifier:
 
         import numpy as np
 
-        # ONNX 앙상블
+        # ONNX 추론
         if self._is_onnx:
-            probs_np = self._onnx_infer(processed)
-        elif self._is_ensemble and self.models:
-            # PyTorch 앙상블
-            import torch
-            inputs = self.tokenizer(
-                processed,
-                return_tensors="pt",
-                padding=True,
-                truncation=True,
-                max_length=128,
-            )
-            with torch.no_grad():
-                all_probs = []
-                for m in self.models:
-                    outputs = m(**inputs)
-                    all_probs.append(torch.sigmoid(outputs.logits)[0].cpu().numpy())
-                probs_np = np.mean(all_probs, axis=0)
+            probs_np = self._onnx_predict_probs(processed)
         else:
+            # PyTorch 추론
             import torch
+
             inputs = self.tokenizer(
                 processed,
                 return_tensors="pt",
@@ -418,9 +393,17 @@ class IntentClassifier:
                 truncation=True,
                 max_length=128,
             )
+
             with torch.no_grad():
-                outputs = self.model(**inputs)
-                probs_np = torch.sigmoid(outputs.logits)[0].cpu().numpy()
+                if self._is_ensemble and self.models:
+                    all_probs = []
+                    for m in self.models:
+                        outputs = m(**inputs)
+                        all_probs.append(torch.sigmoid(outputs.logits)[0].cpu().numpy())
+                    probs_np = np.mean(all_probs, axis=0)
+                else:
+                    outputs = self.model(**inputs)
+                    probs_np = torch.sigmoid(outputs.logits)[0].cpu().numpy()
 
         # per-label threshold 이상인 intent 수집
         intents = []
