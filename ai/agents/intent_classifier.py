@@ -36,6 +36,7 @@ INTENT_LABELS = [
 # 모델 weights 경로
 _MODEL_DIR = Path(__file__).resolve().parent.parent / "models" / "intent_classifier"
 _ENSEMBLE_DIR = Path(__file__).resolve().parent.parent / "models" / "intent_multilabel_ensemble"
+_ONNX_ENSEMBLE_DIR = Path(__file__).resolve().parent.parent / "models" / "intent_ensemble_onnx"
 
 # Singleton 인스턴스
 _classifier_instance = None
@@ -47,16 +48,19 @@ class IntentClassifier:
     # 예제 임베딩 캐시 (클래스 변수 - 모든 인스턴스가 공유)
     _example_embeddings_cache = None
 
-    def __init__(self, model_path: str = None, ensemble_dir: str = None):
+    def __init__(self, model_path: str = None, ensemble_dir: str = None, onnx_dir: str = None):
         self.model_path = model_path or str(_MODEL_DIR)
         self.ensemble_dir = ensemble_dir or str(_ENSEMBLE_DIR)
+        self.onnx_dir = onnx_dir or str(_ONNX_ENSEMBLE_DIR)
         self.model = None
-        self.models = []  # 앙상블 모델 리스트
+        self.models = []  # 앙상블 모델 리스트 (PyTorch)
+        self.onnx_sessions = []  # 앙상블 세션 리스트 (ONNX)
         self.tokenizer = None
         self.id2label = None
         self._loaded = False
         self._is_multilabel = False
         self._is_ensemble = False
+        self._is_onnx = False
         self._multilabel_threshold = 0.5
         # 6-label 앙상블 수동 threshold 최적화 결과 (held-out 93.3%)
         self._per_label_thresholds = {
@@ -69,13 +73,24 @@ class IntentClassifier:
         }
 
     def load_model(self):
-        """모델 로드 — 앙상블 우선, 없으면 단일 모델, 없으면 fallback"""
+        """모델 로드 — ONNX 앙상블 > PyTorch 앙상블 > 단일 모델 > fallback"""
         if self._loaded:
             return
 
         self.id2label = {i: label for i, label in enumerate(INTENT_LABELS)}
 
-        # 1) 앙상블 디렉토리 시도
+        # 1) ONNX 앙상블 디렉토리 시도 (가장 가벼움)
+        onnx_dir = Path(self.onnx_dir)
+        onnx_meta = onnx_dir / "ensemble_meta.json"
+        if onnx_meta.exists():
+            try:
+                self._load_onnx_ensemble(onnx_dir, onnx_meta)
+                self._loaded = True
+                return
+            except Exception as e:
+                logger.error("Failed to load ONNX ensemble: %s — falling back", e)
+
+        # 2) PyTorch 앙상블 디렉토리 시도
         ensemble_dir = Path(self.ensemble_dir)
         meta_path = ensemble_dir / "ensemble_meta.json"
         if meta_path.exists():
@@ -86,13 +101,89 @@ class IntentClassifier:
             except Exception as e:
                 logger.error("Failed to load ensemble: %s — falling back to single model", e)
 
-        # 2) 단일 모델 디렉토리 시도
+        # 3) 단일 모델 디렉토리 시도
         model_dir = Path(self.model_path)
         self._load_single_model(model_dir)
         self._loaded = True
 
+    def _load_onnx_ensemble(self, onnx_dir: Path, meta_path: Path):
+        """5-seed ONNX INT8 앙상블 모델 로드"""
+        import onnxruntime as ort
+        from transformers import AutoTokenizer
+
+        with open(meta_path, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+
+        seeds = meta["seeds"]
+        base_model = meta.get("model", "klue/roberta-large")
+
+        # id2label from meta
+        if "id2label" in meta:
+            self.id2label = {int(k): v for k, v in meta["id2label"].items()}
+
+        # tokenizer — base_model에서 로드 (seed 디렉토리 tokenizer는 호환성 문제 가능)
+        self.tokenizer = AutoTokenizer.from_pretrained(base_model)
+
+        # ONNX 세션 로드
+        sess_opts = ort.SessionOptions()
+        sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        sess_opts.inter_op_num_threads = 1
+        sess_opts.intra_op_num_threads = 2
+
+        self.onnx_sessions = []
+        for seed in seeds:
+            onnx_path = onnx_dir / f"seed_{seed}" / "model_int8.onnx"
+            if not onnx_path.exists():
+                logger.warning("ONNX model not found: %s, skipping", onnx_path)
+                continue
+            session = ort.InferenceSession(str(onnx_path), sess_opts, providers=["CPUExecutionProvider"])
+            self.onnx_sessions.append(session)
+            logger.info("ONNX ensemble model loaded: seed_%s", seed)
+
+        if not self.onnx_sessions:
+            raise RuntimeError("No ONNX ensemble models loaded")
+
+        self._is_onnx = True
+        self._is_ensemble = True
+        self._is_multilabel = True
+
+        logger.info(
+            "Intent ONNX ensemble loaded: %d models from %s (base: %s)",
+            len(self.onnx_sessions), onnx_dir, base_model,
+        )
+
+    def _onnx_infer(self, text: str):
+        """ONNX 앙상블 추론 — sigmoid 확률 평균 반환"""
+        import numpy as np
+
+        inputs = self.tokenizer(
+            text,
+            return_tensors="np",
+            padding=True,
+            truncation=True,
+            max_length=128,
+        )
+
+        ort_inputs = {
+            "input_ids": inputs["input_ids"],
+            "attention_mask": inputs["attention_mask"],
+        }
+        if "token_type_ids" in inputs:
+            ort_inputs["token_type_ids"] = inputs["token_type_ids"]
+
+        all_logits = []
+        for session in self.onnx_sessions:
+            outputs = session.run(None, ort_inputs)
+            all_logits.append(outputs[0][0])
+
+        def _sigmoid(x):
+            return 1.0 / (1.0 + np.exp(-x))
+
+        all_probs = [_sigmoid(logits) for logits in all_logits]
+        return np.mean(all_probs, axis=0)
+
     def _load_ensemble(self, ensemble_dir: Path, meta_path: Path):
-        """5-seed 앙상블 모델 로드"""
+        """5-seed 앙상블 모델 로드 (PyTorch)"""
         from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
         with open(meta_path, "r", encoding="utf-8") as f:
@@ -202,10 +293,35 @@ class IntentClassifier:
             processed = text
 
         # fallback: 모델 없으면 LLM 기반 분류 (전처리된 텍스트 사용)
-        if self.model is None or self.tokenizer is None:
+        if not self._is_onnx and (self.model is None or self.tokenizer is None):
             return self._llm_based_predict(processed, return_candidates=return_candidates)
 
-        # 추론
+        # ONNX 앙상블 추론
+        if self._is_onnx:
+            import numpy as np
+
+            avg_probs = self._onnx_infer(processed)
+            pred_id = int(np.argmax(avg_probs))
+            confidence = float(avg_probs[pred_id])
+
+            intent = self.id2label.get(pred_id, "general")
+            intent = apply_known_overrides(text, intent)
+
+            result = {"intent": intent, "confidence": round(confidence, 4)}
+
+            if return_candidates:
+                sorted_indices = np.argsort(avg_probs)[::-1]
+                candidates = []
+                for idx in sorted_indices[:3]:
+                    candidates.append({
+                        "intent": self.id2label.get(int(idx), "general"),
+                        "confidence": round(float(avg_probs[idx]), 4),
+                    })
+                result["candidates"] = candidates
+
+            return result
+
+        # PyTorch 단일 모델 추론
         import torch
 
         inputs = self.tokenizer(
@@ -231,7 +347,6 @@ class IntentClassifier:
         result = {"intent": intent, "confidence": round(confidence, 4)}
 
         if return_candidates:
-            # top-3 후보 추출
             sorted_indices = torch.argsort(probs[0], descending=True)
             candidates = []
             for idx in sorted_indices[:3]:
@@ -266,7 +381,7 @@ class IntentClassifier:
 
         # 멀티라벨 모델이 없으면 규칙 기반 fallback
         if not self._is_multilabel or self.tokenizer is None:
-            if not self._is_ensemble and self.model is None:
+            if not self._is_ensemble and not self._is_onnx and self.model is None:
                 return self._fallback_compound_detect(text)
 
         # 전처리
@@ -276,34 +391,44 @@ class IntentClassifier:
         except ImportError:
             processed = text
 
-        import torch
         import numpy as np
 
-        inputs = self.tokenizer(
-            processed,
-            return_tensors="pt",
-            padding=True,
-            truncation=True,
-            max_length=128,
-        )
-
-        with torch.no_grad():
-            if self._is_ensemble and self.models:
-                # 앙상블: 모든 모델의 sigmoid 확률 평균
+        # ONNX 앙상블
+        if self._is_onnx:
+            probs_np = self._onnx_infer(processed)
+        elif self._is_ensemble and self.models:
+            # PyTorch 앙상블
+            import torch
+            inputs = self.tokenizer(
+                processed,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=128,
+            )
+            with torch.no_grad():
                 all_probs = []
                 for m in self.models:
                     outputs = m(**inputs)
                     all_probs.append(torch.sigmoid(outputs.logits)[0].cpu().numpy())
                 probs_np = np.mean(all_probs, axis=0)
-                probs = torch.tensor(probs_np)
-            else:
+        else:
+            import torch
+            inputs = self.tokenizer(
+                processed,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=128,
+            )
+            with torch.no_grad():
                 outputs = self.model(**inputs)
-                probs = torch.sigmoid(outputs.logits)[0]
+                probs_np = torch.sigmoid(outputs.logits)[0].cpu().numpy()
 
         # per-label threshold 이상인 intent 수집
         intents = []
         for idx in range(len(self.id2label)):
-            conf = probs[idx].item()
+            conf = float(probs_np[idx])
             label = self.id2label.get(idx, "general")
             threshold = self._per_label_thresholds.get(label, self._multilabel_threshold)
             if conf >= threshold:
@@ -314,10 +439,10 @@ class IntentClassifier:
 
         # threshold 이상이 하나도 없으면 최고 confidence intent 반환
         if not intents:
-            best_idx = torch.argmax(probs).item()
+            best_idx = int(np.argmax(probs_np))
             intents = [{
                 "intent": self.id2label.get(best_idx, "general"),
-                "confidence": round(probs[best_idx].item(), 4),
+                "confidence": round(float(probs_np[best_idx]), 4),
             }]
 
         # 멀티라벨 후처리 규칙

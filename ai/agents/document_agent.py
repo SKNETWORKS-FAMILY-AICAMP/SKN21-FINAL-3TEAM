@@ -194,7 +194,7 @@ async def document_agent(state: AgentState) -> AgentState:
 
     try:
         if intent == "doc_retrieve":
-            # doc_retrieve 통합 파이프라인: summary → QA → search 3-way 분기
+            # doc_retrieve 통합 파이프라인: SUMMARY → SEARCH → QA(fallback)
             document_content = state.get("document_content") or state.get("extracted_text")
             document_id = state.get("document_id")
 
@@ -216,14 +216,14 @@ async def document_agent(state: AgentState) -> AgentState:
                     user_team=user_team,
                     stream_mode=stream_mode,
                 )
-            elif _is_qa_query(user_input):
-                # 2) QA 판별: 질문형 패턴
-                print("[DocumentAgent] doc_retrieve → QA 경로")
-                response_data = await _handle_doc_qa(user_input, context, user_id=user_id, user_team=user_team, stream_mode=stream_mode)
-            else:
-                # 3) 검색 (그 외)
+            elif _is_pure_search(user_input):
+                # 2) 명시적 검색: 찾아/검색/목록 키워드 + 설명/요약 요청 없음
                 print("[DocumentAgent] doc_retrieve → search 경로")
                 response_data = await _handle_doc_search(user_input, context, user_id, user_team=user_team, stream_mode=stream_mode)
+            else:
+                # 3) fallback → QA (질문형 + 기타 전부)
+                print("[DocumentAgent] doc_retrieve → QA 경로")
+                response_data = await _handle_doc_qa(user_input, context, user_id=user_id, user_team=user_team, stream_mode=stream_mode)
 
         elif intent == "doc_search":
             # 레거시 호환: BERT가 doc_search로 분류한 경우
@@ -465,6 +465,18 @@ def _detect_search_intent(query: str) -> str:
     return "explain"
 
 
+def _is_pure_search(query: str) -> bool:
+    """순수 검색 요청인지 판별 (찾아/검색/목록 키워드 있고, 설명/요약 요청 없음)
+
+    "보고서 찾아줘" → True (순수 검색)
+    "보고서 찾아서 정리해줘" → False (복합 → QA로 넘김)
+    "출장비 규정 알려줘" → False (QA)
+    """
+    has_search = bool(re.search(r"(찾아|검색|목록|있어\s*\?|있나요|어디|어떤\s*문서)", query))
+    has_explain = bool(re.search(r"(정리|설명|알려|요약|비교|분석)", query))
+    return has_search and not has_explain
+
+
 def _is_qa_query(query: str) -> bool:
     """사용자 질문이 QA(질의응답)인지 판별
 
@@ -537,78 +549,56 @@ def _build_search_prompt(query: str, context: list) -> tuple:
 # ── Intent 핸들러 ──
 
 async def _handle_doc_search(query: str, context: List[str], user_id: int = None, user_team: str = None, stream_mode: bool = False) -> Dict[str, Any]:
-    """문서 검색 결과 처리"""
+    """문서 검색 — RAG 결과를 카드형으로 반환 (LLM 호출 없음)"""
     _t = time.time()
-    print(f"[DocumentAgent] _handle_doc_search | query='{query[:50]}', context 길이={len(context)}, stream_mode={stream_mode}")
-    search_results = []
+    print(f"[DocumentAgent] _handle_doc_search | query='{query[:50]}', stream_mode={stream_mode}")
 
-    # 1. Context가 비어있으면 RAG 검색 수행
-    if not context:
-        try:
-            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+    # 1. 공통 RAG 검색
+    search_results, context, sources = await _retrieve_context(query, user_id, user_team, top_k=7)
 
-            _t_rag = time.time()
-            print(f"[DocumentAgent] RAG 검색 수행: '{query[:50]}'")
-            rag_pipeline = get_qdrant_pipeline()
-            search_results = rag_pipeline.retrieve(query, user_id=user_id, user_team=user_team, top_k=7, filter={"source": "documents"})
-
-            # 검색된 문서의 content를 context로 사용
-            context = [f"[문서 제목: {doc.get('title', '')}]\n{doc['content']}" for doc in search_results]
-            print(f"[DocumentAgent] RAG 검색 완료 ({time.time()-_t_rag:.2f}s): {len(context)}개 문서 검색됨")
-
-        except Exception as e:
-            print(f"[DocumentAgent] !!! RAG 검색 실패: {e}")
-            import traceback
-            traceback.print_exc()
-            context = []
-
-    # 2. 출처 정보 (답변 + 출처 분리, 중복 제거)
-    sources = _build_sources(search_results)
-    print(f"[DocumentAgent] 출처 정보: {len(sources)}개")
-
-    # 3. Context가 없으면 검색 실패 (절대 점수 필터링으로 모두 제거된 경우 포함)
-    if not context:
-        print("[DocumentAgent] context 비어있음 → 관련 문서 없음 응답")
+    # 2. 검색 실패
+    if not sources:
+        print("[DocumentAgent] search: 관련 문서 없음")
         return {
             "type": "doc_retrieve",
             "sub_type": "search",
             "answer": "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요.",
             "message": "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요.",
             "sources": [],
-            "context": context,
+            "context": [],
+            "total_found": 0,
         }
 
-    # 4. 프롬프트 생성
-    sys_prompt, user_prompt = _build_search_prompt(query, context)
-    print(f"[DocumentAgent] 프롬프트 생성 완료 | search_intent={_detect_search_intent(query)}")
+    # 3. document_id 기준 중복 제거 (같은 문서의 여러 chunk)
+    seen_doc_ids = set()
+    unique_sources = []
+    for s in sources:
+        did = s.get("document_id")
+        if did and did in seen_doc_ids:
+            continue
+        if did:
+            seen_doc_ids.add(did)
+        unique_sources.append(s)
 
-    # 5. 스트리밍 모드면 LLM 호출 건너뛰기 (chat.py에서 직접 스트리밍)
-    if stream_mode:
-        print(f"[DocumentAgent] stream_mode=True → stream_pending 반환 ({time.time()-_t:.2f}s)")
-        return {
-            "type": "doc_retrieve",
-            "sub_type": "search",
-            "stream_pending": True,
-            "sys_prompt": sys_prompt,
-            "user_prompt": user_prompt,
-            "answer": "",
-            "message": "",
-            "sources": sources,
-            "context": context,
-        }
+    # 4. LLM 없이 검색 결과 메시지 구성
+    n = len(unique_sources)
+    lines = [f"**{n}건**의 관련 문서를 찾았습니다:\n"]
+    for i, s in enumerate(unique_sources, 1):
+        title = s.get("title", "제목 없음")
+        preview = s.get("content", "")[:80].replace("\n", " ")
+        score = s.get("score", 0)
+        lines.append(f"{i}. **{title}** (관련도 {score:.0%})\n   {preview}...")
+    message = "\n".join(lines)
 
-    # 6. 비스트리밍: LLM 호출
-    print("[DocumentAgent] stream_mode=False → LLM 직접 호출")
-    answer = await _call_llm(sys_prompt, user_prompt)
-    print(f"[DocumentAgent] LLM 응답 길이: {len(answer)}자")
-
+    print(f"[DocumentAgent] search 완료 ({time.time()-_t:.2f}s): {n}건 (LLM 미사용)")
     return {
         "type": "doc_retrieve",
         "sub_type": "search",
-        "answer": answer,
-        "message": answer,
-        "sources": sources,
+        "answer": message,
+        "message": message,
+        "sources": unique_sources,
         "context": context,
+        "total_found": n,
     }
 
 async def _handle_doc_generate(user_input: str, template_type: str, document_content: str = None, template_id: int = None) -> Dict[str, Any]:
@@ -1159,22 +1149,64 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_summary | document_id={document_id}, content_len={len(document_content) if document_content else 0}, stream_mode={stream_mode}")
 
-    # 문서 내용이 없으면 Qdrant에서 문서 목록 조회 후 doc_pick 반환
+    # 문서 내용이 없으면 RAG로 문서 식별 시도, 실패 시 doc_pick
     if not document_content:
-        print("[DocumentAgent] document_content 없음 → Qdrant 문서 목록 조회")
-        try:
-            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
-            pipeline = get_qdrant_pipeline()
-            doc_list = pipeline.list_documents(source="documents", user_id=user_id)
-            print(f"[DocumentAgent] Qdrant 문서 목록 {len(doc_list)}개 조회됨")
-        except Exception as e:
-            print(f"[DocumentAgent] Qdrant 문서 목록 조회 실패: {e}")
-            doc_list = []
-        return {
-            "type": "doc_pick",
-            "message": "요약할 문서를 선택해주세요:",
-            "documents": doc_list,
-        }
+        print("[DocumentAgent] document_content 없음 → RAG로 문서 식별 시도")
+
+        search_results, _, _ = await _retrieve_context(user_input, user_id, user_team, top_k=5)
+
+        if search_results:
+            # document_id 기준 중복 제거
+            seen = set()
+            unique_docs = []
+            for r in search_results:
+                did = r.get("document_id")
+                if did and did not in seen:
+                    seen.add(did)
+                    unique_docs.append({"document_id": did, "title": r.get("title", ""), "score": r.get("score", 0)})
+
+            if len(unique_docs) == 1:
+                matched_id = unique_docs[0]["document_id"]
+                print(f"[DocumentAgent] RAG 1개 매칭 → document_id={matched_id} 전체 content 조회")
+                try:
+                    from sqlalchemy import select
+                    from app.db.session import AsyncSessionLocal
+                    from app.models.document import Document
+
+                    async with AsyncSessionLocal() as db:
+                        result = await db.execute(select(Document).where(Document.id == matched_id))
+                        doc = result.scalar_one_or_none()
+                        if doc and doc.content:
+                            document_content = doc.content
+                            document_id = matched_id
+                            print(f"[DocumentAgent] DB content 확보: {len(document_content)}자")
+                except Exception as e:
+                    print(f"[DocumentAgent] DB content 조회 실패: {e}")
+
+            elif len(unique_docs) > 1:
+                print(f"[DocumentAgent] RAG {len(unique_docs)}개 매칭 → 선택지 제공")
+                return {
+                    "type": "doc_pick",
+                    "message": "요약할 문서를 선택해주세요:",
+                    "documents": unique_docs,
+                }
+
+        # RAG로도 못 찾으면 전체 목록 제공 (기존 fallback)
+        if not document_content:
+            print("[DocumentAgent] RAG 식별 실패 → 전체 문서 목록 조회")
+            try:
+                from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+                pipeline = get_qdrant_pipeline()
+                doc_list = pipeline.list_documents(source="documents", user_id=user_id)
+                print(f"[DocumentAgent] Qdrant 문서 목록 {len(doc_list)}개 조회됨")
+            except Exception as e:
+                print(f"[DocumentAgent] Qdrant 문서 목록 조회 실패: {e}")
+                doc_list = []
+            return {
+                "type": "doc_pick",
+                "message": "요약할 문서를 선택해주세요:",
+                "documents": doc_list,
+            }
 
     # ── DB에 이미 요약이 있으면 바로 반환 (sLLM 호출 스킵) ──
     if document_id:
@@ -1264,30 +1296,13 @@ async def _handle_doc_qa(query: str, context: list = None, user_id: int = None, 
     """문서 내용 기반 질의응답"""
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_qa | query='{query[:50]}', context_len={len(context) if context else 0}, stream_mode={stream_mode}")
-    search_results = []
 
-    # Context가 비어있으면 RAG 검색
+    # 공통 RAG 검색 (context가 미리 채워진 경우에도 sources 확보를 위해 검색)
+    search_results, rag_context, sources = await _retrieve_context(query, user_id, user_team, top_k=7)
     if not context:
-        try:
-            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+        context = rag_context
 
-            _t_rag = time.time()
-            print(f"[DocumentAgent] RAG 검색 수행 (doc_qa): '{query[:50]}'")
-            rag_pipeline = get_qdrant_pipeline()
-            search_results = rag_pipeline.retrieve(query, user_id=user_id, user_team=user_team, top_k=7, filter={"source": "documents"})
-            context = [f"[문서 제목: {doc.get('title', '')}]\n{doc['content']}" for doc in search_results]
-            print(f"[DocumentAgent] RAG 검색 완료 ({time.time()-_t_rag:.2f}s): {len(context)}개 문서")
-
-        except Exception as e:
-            print(f"[DocumentAgent] !!! RAG 검색 실패: {e}")
-            import traceback
-            traceback.print_exc()
-            context = []
-
-    # 출처 정보 구성
-    sources = _build_sources(search_results)
-
-    # Context가 없으면 실패 (절대 점수 필터링으로 모두 제거된 경우 포함)
+    # Context가 없으면 실패
     if not context:
         print("[DocumentAgent] context 비어있음 → 관련 문서 없음 응답")
         return {
@@ -1356,6 +1371,33 @@ def _handle_risk_detect(user_input: str) -> Dict[str, Any]:
 
 
 # ── 공통 유틸 ──
+
+
+async def _retrieve_context(query: str, user_id: int = None, user_team: str = None, top_k: int = 7) -> tuple:
+    """공통 RAG 검색 — search/QA/summary에서 재사용
+
+    Returns:
+        (search_results: list[dict], context: list[str], sources: list[dict])
+    """
+    _t = time.time()
+    print(f"[DocumentAgent] _retrieve_context | query='{query[:50]}', top_k={top_k}")
+    search_results = []
+    context = []
+    try:
+        from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+
+        pipeline = get_qdrant_pipeline()
+        search_results = pipeline.retrieve(query, user_id=user_id, user_team=user_team, top_k=top_k, filter={"source": "documents"})
+        context = [f"[문서 제목: {doc.get('title', '')}]\n{doc['content']}" for doc in search_results]
+        print(f"[DocumentAgent] _retrieve_context 완료 ({time.time()-_t:.2f}s): {len(context)}개 문서")
+    except Exception as e:
+        print(f"[DocumentAgent] !!! _retrieve_context 실패: {e}")
+        import traceback
+        traceback.print_exc()
+
+    sources = _build_sources(search_results)
+    return search_results, context, sources
+
 
 def _build_sources(search_results: list) -> list:
     """검색 결과에서 출처 정보 구성 (중복 제거)"""
