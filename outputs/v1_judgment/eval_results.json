@@ -63,5 +63,31 @@
       "no_regulation": { "correct": 67, "total": 67 },
       "yes": { "correct": 81, "total": 100 }
     }
+  },
+  "v1_hardcoded_retrain_3ep": {
+    "note": "v1 하드코딩 재학습 3epoch — 이전 어댑터 삭제 후 재학습 (83.5%)",
+    "total": 328,
+    "json_valid": 322,
+    "json_valid_rate": 0.982,
+    "result_accuracy": 0.835,
+    "category_stats": {
+      "yes": { "correct": 85, "total": 100 },
+      "no": { "correct": 49, "total": 61 },
+      "conditional": { "correct": 75, "total": 100 },
+      "no_regulation": { "correct": 65, "total": 67 }
+    }
+  },
+  "v3_hardcoded_augmented_3ep": {
+    "note": "v3 conditional 보강 19건 추가 (Type5 재량표현 14건 + 경계 5건), 3epoch — v1 재학습 대비 +1.0%p",
+    "total": 328,
+    "json_valid": 320,
+    "json_valid_rate": 0.976,
+    "result_accuracy": 0.845,
+    "category_stats": {
+      "yes": { "correct": 85, "total": 100 },
+      "no": { "correct": 49, "total": 61 },
+      "conditional": { "correct": 78, "total": 100 },
+      "no_regulation": { "correct": 65, "total": 67 }
+    }
   }
 }
