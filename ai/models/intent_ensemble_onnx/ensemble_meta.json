@@ -1,0 +1,27 @@
+{
+  "model": "klue/roberta-large",
+  "format": "onnx_int8",
+  "seeds": [
+    42,
+    123,
+    456,
+    789,
+    1337
+  ],
+  "id2label": {
+    "0": "judgment",
+    "1": "doc_retrieve",
+    "2": "doc_generate",
+    "3": "schedule_add",
+    "4": "schedule_view",
+    "5": "general"
+  },
+  "label2id": {
+    "doc_generate": 2,
+    "doc_retrieve": 1,
+    "general": 5,
+    "judgment": 0,
+    "schedule_add": 3,
+    "schedule_view": 4
+  }
+}

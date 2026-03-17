@@ -3223,7 +3223,7 @@ Rule v3 + 100건 확장 — PM 88.0% (100건, 매핑+Rule 적용)
 
 ### 한 일
 
-#### Planner v6 실험 세팅 + 실험 A, B, C 실행
+#### 1) Planner v6 실험 세팅 + 실험 A, B, C 실행
 
 **목표**: Planner Held-out PM 88.0% → 90%+ 달성
 **방향**: 후처리 매핑(knowledge_query) 대신 KNOWN_OVERRIDES + Rule Guide로 해결
@@ -3235,7 +3235,7 @@ Rule v3 + 100건 확장 — PM 88.0% (100건, 매핑+Rule 적용)
 
 ---
 
-#### 실험 A: Rule Guide 추가 (규칙 10, 11)
+#### 2) 실험 A: Rule Guide 추가 (규칙 10, 11)
 
 v5 어댑터 + 새 규칙 2개 추가 → holdout 재평가 (재학습 없음)
 
@@ -3265,7 +3265,7 @@ v5 어댑터 + 새 규칙 2개 추가 → holdout 재평가 (재학습 없음)
 
 ---
 
-#### 실험 B: Few-shot 프롬프트 (3-step 예시 3개 삽입)
+#### 3) 실험 B: Few-shot 프롬프트 (3-step 예시 3개 삽입)
 
 v5 어댑터 + 시스템 프롬프트에 3-step 예시 3개 추가 → holdout 재평가 (재학습 없음)
 
@@ -3303,7 +3303,7 @@ v5 어댑터 + 시스템 프롬프트에 3-step 예시 3개 추가 → holdout �
 
 ---
 
-#### 실험 C: 오답 타겟 보강 데이터 생성 (GPT-4o-mini)
+#### 4) 실험 C: 오답 타겟 보강 데이터 생성 (GPT-4o-mini)
 
 `augment_v6_planner.py` 스크립트로 약점 패턴 집중 생성
 
@@ -3322,7 +3322,7 @@ v6 학습 데이터 구성:
 
 ---
 
-#### 실험 후 추가 조치: Planner용 judgment KNOWN_OVERRIDES 추가
+#### 5) 실험 후 추가 조치: Planner용 judgment KNOWN_OVERRIDES 추가
 
 실험 A에서 발견된 judgment→doc_retrieve 15건을 해결하기 위해, Intent classifier의 KNOWN_OVERRIDES와 동일 전략을 Planner eval 스크립트에 적용:
 
@@ -3343,7 +3343,7 @@ judgment KNOWN_OVERRIDES 9개 패턴:
 
 ---
 
-#### 실험 D: v6 LoRA 재학습 (lr=1e-4, epoch 4, MLP 포함)
+#### 6) 실험 D: v6 LoRA 재학습 (lr=1e-4, epoch 4, MLP 포함)
 
 v6 config로 재학습 후 holdout 평가 (2가지 프롬프트로 각각 평가)
 
@@ -3444,7 +3444,7 @@ v6 config로 재학습 후 holdout 평가 (2가지 프롬프트로 각각 평가
 
 ---
 
-#### 실험 후 추가 조치: KNOWN_OVERRIDES 정교화 (v2)
+#### 7) 실험 후 추가 조치: KNOWN_OVERRIDES 정교화 (v2)
 
 실험 D 결과에서 발견된 문제: multi-step에서 KNOWN_OVERRIDES가 첫 step을 무조건 judgment로 교체 → "규정 찾아서 확인하고"에서 doc_retrieve가 judgment로 바뀌는 부작용
 
@@ -3463,7 +3463,7 @@ v6 config로 재학습 후 holdout 평가 (2가지 프롬프트로 각각 평가
 
 ---
 
-#### 실험 E, F: KNOWN_OVERRIDES v2 평가
+#### 8) 실험 E, F: KNOWN_OVERRIDES v2 평가
 
 | 실험 | 구성 | PM |
 |------|------|-----|
@@ -3476,7 +3476,7 @@ OVERRIDES v2로 single_step 100% 달성 (judgment→doc_retrieve 9건 해결). �
 
 ---
 
-#### 후처리 매핑 적용 + 실험 G, H
+#### 9) 후처리 매핑 적용 + 실험 G, H
 
 judgment + doc_retrieve → knowledge_query 매핑 구현. KNOWN_OVERRIDES 제거.
 
@@ -3487,7 +3487,7 @@ judgment + doc_retrieve → knowledge_query 매핑 구현. KNOWN_OVERRIDES 제�
 
 ---
 
-#### 하이브리드 프롬프트 + 오답 타겟 Rule 구현
+#### 10) 하이브리드 프롬프트 + 오답 타겟 Rule 구현
 
 **하이브리드 프롬프트**: 입력 복잡도에 따라 프롬프트 자동 선택
 - 접속사/동사 2개 이상 → Few-shot 프롬프트 (complex/3-step 강화)
@@ -3507,7 +3507,7 @@ judgment + doc_retrieve → knowledge_query 매핑 구현. KNOWN_OVERRIDES 제�
 
 ---
 
-#### 실험 I: 하이브리드 + 매핑 + Rule 14,16
+#### 11) 실험 I: 하이브리드 + 매핑 + Rule 14,16
 
 | 실험 | 구성 | PM |
 |------|------|-----|
@@ -3528,7 +3528,7 @@ judgment + doc_retrieve → knowledge_query 매핑 구현. KNOWN_OVERRIDES 제�
 
 ---
 
-#### Rule 정리 + 최종 재평가 확정
+#### 12) Rule 정리 + 최종 재평가 확정
 
 Rule 10,11,12,13이 매핑과 간섭하여 성능 저하 유발 → 제거.
 원래 Rule(1~9) + Rule 14,16 + 매핑 + 하이브리드 조합으로 최종 재평가.
@@ -3578,10 +3578,99 @@ Rule 10,11,12,13이 매핑과 간섭하여 성능 저하 유발 → 제거.
 5. **Few-shot > LoRA 보강**: 57건 재학습보다 예시 3개 프롬프트가 더 효과적
 6. **실패한 실험에서도 인사이트 획득**: v6, Rule 15, OVERRIDES 모두 "이 방법은 안 됨" 확인
 
+### 모델 백업 + 배포
+
+#### 13) HuggingFace 백업 완료
+
+| 모델 | HuggingFace repo | 성능 |
+|------|------------------|------|
+| Intent 앙상블 | `jiyouxg/dudu-intent-ensemble` (v2) | 91.0% (100건) |
+| Planner v5 LoRA | `jiyouxg/dudu-planner-v5-lora` | 87.0% (100건) |
+
+#### 14) RunPod 네트워크 볼륨 저장 완료
+
+Pod 꺼져도 유지되는 네트워크 볼륨(`/workspace/`, 2.3PB)에 저장:
+- `/workspace/models/planner-v5-lora/` — Planner LoRA 가중치
+- `/workspace/SKN21-FINAL-3TEAM/` — 프로젝트 전체 (코드, 학습 데이터, eval 스크립트)
+
+#### 15) EC2 Intent 모델 배포 시도 → 16)에서 해결
+
+- EC2 사양: CPU only (Intel Xeon), RAM 3.7GB, 디스크 38GB
+- 기존 앙상블 디렉토리에 **model.safetensors 가중치 파일 누락** 확인 (이전 소실 상태 그대로)
+- HuggingFace에서 다운로드 시도 → 6.73GB 다운로드 중 **진행바 멈춤 + 터미널 응답 없음** → 강제 종료
+- 원인 미확인 (EC2 메모리 부족 또는 네트워크 문제 가능성)
+
+#### 16) Intent 앙상블 모델 ONNX INT8 변환 + EC2 배포
+
+**문제**: EC2(RAM 3.7GB)에 safetensors 앙상블 5개(6.4GB) 동시 로드 불가
+
+**해결: ONNX INT8 양자화**
+- 로컬에서 HuggingFace(`jiyouxg/dudu-intent-ensemble`) → 5-seed 다운로드
+- PyTorch FP32 → ONNX 변환 (legacy exporter, opset 14)
+- ONNX → INT8 dynamic quantization
+- 변환 스크립트: `ai/scripts/convert_onnx_int8.py`
+
+| | FP32 (safetensors) | INT8 (ONNX) |
+|---|---|---|
+| seed 1개 | 1,284MB | **323MB** |
+| 5개 합계 | 6,420MB | **1,614MB** |
+| 압축률 | - | **25.1%** (75% 감소) |
+
+**EC2 업로드 + 검증**:
+- `scp`로 EC2에 업로드: `ai/models/intent_ensemble_onnx/seed_{42,123,456,789,1337}/model_int8.onnx`
+- EC2 RAM 부족(3.7GB)으로 OOM → **인스턴스 타입 8GB로 업그레이드**
+- 5-seed 앙상블 로드 후 RAM 3.9GB/7.6GB 사용 (여유 3.7GB)
+
+**검증 결과 (14건 테스트)**:
+- 정확도: **12/14 (86%)** — 단일/복합 intent 모두 정상
+- 평균 추론: ~3초/건
+- FAIL 2건: 기존 학습에서도 확인된 경계 케이스 (judgment↔doc_retrieve, doc_generate 과잉 트리거)
+
+**대화형 테스트 스크립트 배포**: `~/test_intent.py`
+- SSH 접속 후 `python3 ~/test_intent.py`로 직접 테스트 가능
+
+#### 17) 복합 의도(compound query) 감지 버그 수정
+
+**문제**: "회의록 만들고, 다음주 중간 점검 회의 월요일 오전 9시로 잡아줘" 입력 시 schedule_add 하나만 인식되어 단일 응답만 생성됨. 두 개의 의도(doc_generate + schedule_add)가 분리 처리되지 않음.
+
+**원인**: `detect_compound_query()`의 `_INTENT_VERB_PATTERNS`에서 "만들고" (연결형 활용 "~고")가 `doc_generate` 패턴에 없어서 intent 동사 매칭이 1개만 되고, 복합 질문으로 감지 실패.
+
+**수정** (`ai/agents/intent_classifier.py`):
+- `_INTENT_VERB_PATTERNS["doc_generate"]`: `만들고` 추가
+- `_INTENT_VERB_PATTERNS["schedule_add"]`: `잡고` 추가
+- `_VERB_CONNECTOR_PATTERN`: `만들` 어간 추가 (쉼표 없이도 분리 가능)
+
+**수정 후 테스트 결과** (4건 모두 정상 감지):
+- "회의록 만들고, 다음주 중간 점검 회의 월요일 오전 9시로 잡아줘" → [doc_generate, schedule_add] ✅
+- "회의록 만들고 다음주 중간 점검 회의 월요일 오전 9시로 잡아줘" → [doc_generate, schedule_add] ✅
+- "보고서 작성하고 내일 3시 회의 잡아줘" → [doc_generate, schedule_add] ✅
+- "일정 추가하고 회의록 만들어줘" → [schedule_add, doc_generate] ✅
+
+#### +)EC2 인스턴스 타입 업그레이드
+
+- 3.7GB → **8GB RAM**으로 변경
+
+#### 18) Intent ONNX INT8 추론 코드 `intent_classifier.py` 통합 (production 반영)
+
+- `intent_classifier.py`에 ONNX 앙상블 로드/추론 로직 통합 완료 (이전 커밋 `b326c0e`)
+- 모델 로드 우선순위: ONNX INT8 앙상블 → PyTorch 앙상블 → 단일 모델 → LLM fallback
+- `_load_onnx_ensemble()`: `onnxruntime` + `tokenizers`로 torch 없이 추론
+- `_onnx_predict_probs()`: 5-seed sigmoid 확률 평균 → 앙상블 추론
+
+#### 19) ScheduleCard 클릭 시 일정 페이지 이동
+
+- `ScheduleCard.jsx`: 카드 클릭 → `/schedules` 페이지로 `navigate` 추가
+- "일정 페이지에서 확인 →" 안내 텍스트 추가
+- Google Meet 링크는 `stopPropagation`으로 별도 동작 유지
+
+#### 20) 대시보드 편집모드 UI 개선
+
+- **+ 버튼 수정**: `bg-primary-600`(미정의 색상) → `bg-surface-card` + `border-neutral-border`로 변경 — X 버튼과 스타일 통일
+- **+ 버튼 위치**: 컴포넌트 밖 → 경계에 절반 걸치도록 (`top-1 right-1`)
+- **X 버튼 위치**: `-top-2 -right-2` → `-top-1 -right-1`로 조정 (절반 걸침)
+- **완료 버튼**: `bg-success`(녹색) → `bg-primary-500`(서비스 메인 컬러)로 통일
+
 ### 다음 할 일
 
-- [x] ~~Planner 최종 모델 확정~~ → **PM 87.0% (Hybrid+매핑+Rule)**
-- [x] ~~Planner v5 LoRA HuggingFace 백업~~ → 완료 (jiyouxg/dudu-planner-v5-lora)
-- [ ] EC2에 새 Intent 모델 배포
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
