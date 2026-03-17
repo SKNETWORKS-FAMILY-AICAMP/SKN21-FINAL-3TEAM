@@ -164,12 +164,9 @@ class IntentClassifier:
             max_length=128,
         )
 
-        ort_inputs = {
-            "input_ids": inputs["input_ids"],
-            "attention_mask": inputs["attention_mask"],
-        }
-        if "token_type_ids" in inputs:
-            ort_inputs["token_type_ids"] = inputs["token_type_ids"]
+        # ONNX 모델이 실제로 받는 입력만 전달 (RoBERTa는 token_type_ids 없음)
+        valid_names = {inp.name for inp in self.onnx_sessions[0].get_inputs()}
+        ort_inputs = {k: v for k, v in inputs.items() if k in valid_names}
 
         all_logits = []
         for session in self.onnx_sessions:
