@@ -35,8 +35,8 @@ always_content (100% 포함):
 
 priority_content (80% 포함):
   회의록: decisions, action_items
-  보고서: tasks, next_plan
-  제안서: schedule, budget
+  보고서: tasks, next_plan, issues
+  제안서: schedule, budget, background, current_situation
 
 content (랜덤):
   나머지 (agenda, risks, notes, achievements 등)
@@ -70,9 +70,10 @@ v3: short(50~200) 30% / mid(200~800) 40% / long(800~1500) 20% / xlong(1500+) 10%
 | 방지 수단 | 방법 |
 |-----------|------|
 | **sparse 샘플 30%** | OMITTABLE_FIELDS만 비움 (priority는 보호) |
-| **next_plan 81%** | 100%면 "항상 채워야 한다"로 학습 → 81%로 조정 |
+| **길이별 sparse 비율** | short 60% / mid 30% / long 20% / xlong 10% |
 | **content str 강제** | description에 "서술형 문자열로"를 명시하여 list/dict 방지 |
 | **budget 근거 기반** | "문서에 수치가 있을 때만" — 숫자 할루시네이션 방지 |
+| **거부 감지** | GPT 거부 메시지 패턴 3회 재시도 |
 
 ---
 
@@ -81,53 +82,74 @@ v3: short(50~200) 30% / mid(200~800) 40% / long(800~1500) 20% / xlong(1500+) 10%
 ### 3-1. 처리 흐름
 
 ```
-① Synthetic 800건 생성 (GPT-4o)
+① Synthetic 802건 생성 (GPT-4o)
+   회의록 402건 + 보고서 200건 + 제안서 200건
    → always_content 100% + priority 80% + 입력 길이 다양화
-②  AI Hub 700건 정제 (GPT-4o-mini)
-   → 빈 priority 필드 보충 + 25% 입력 축약
+   → 회의록 혼입 10건 제거 + 10건 재생성 → 402건 복원
+
+② AI Hub 700건 정제 (GPT-4o-mini)
+   → 빈 priority 필드 보충 (557건 API 호출)
+   → 25% 입력 축약 (175건) → short 데이터 확보
+
 ③ 필터링 (filter_and_select.py)
-   → C급(always 미달) 154건 제거 + short 초과분 선별 → 1077건
-④ Priority 보완 (boost_priority.py)
-   → B급의 빈 priority를 GPT로 보충 → 327건 보완
-⑤ 서술형 필드 str 변환
-   → content/main_content list/dict → str 664건 변환
+   → C급(always 미달) 제거: Synthetic 12건, AI Hub 144건
+   → Synthetic 790건 + AI Hub 556건 = 1346건
+
+④ Priority 보완 (boost_priority.py) — AI Hub만
+   → B급의 빈 priority를 GPT-4o-mini로 보충
+   → 539건 시도 → 373건 보완, 166건 근거 없어 빈값 유지
+
+⑤ AI Hub 후처리
+   → content/main_content list/dict → str: 446건 변환
+   → schedule 구→신 형식: 126건 변환
+   → budget 구→신 형식: 49건 변환
+
 ⑥ 부족분 추가 생성 (generate_supplement.py)
-   → 502건 (mid/long/xlong만, min_length 검증 + 2차 boost)
+   → 보고서 80건 + 제안서 80건 = 160건 (tasks/budget 집중 보강)
+   → 500~1500자, min_length 검증 + 2차 boost 내장
+   → 160/160 성공
+
 ⑦ 합치기 + 분할 (merge_and_split.py)
-   → 초과분 79건 제거 → 1500건 → train 1350 / eval 150
+   → Syn 790 + Supplement 160 + AHub 556 = 1506건
+   → 초과분 6건 제거 → 1500건 → train 1350 / eval 150
 ```
 
 ### 3-2. 데이터 소스
 
 | 소스 | 원본 | 필터 후 | 역할 |
 |------|:----:|:------:|------|
-| Synthetic (v2 재생성) | 800건 | 521건 | always/priority 계층 + 입력 길이 다양화 |
-| AI Hub (정제) | 700건 | 556건 | 실제 문서 패턴 + 근거 기반 보충 |
-| Supplement (부족분) | 502건 | 502건 | mid/long/xlong 부족분 보충 |
-| **합계** | **2002건** | **1579건** | **→ 1500건 (초과 제거)** |
+| Synthetic (회의록) | 402건 | 402건 | always/priority 계층 + 입력 길이 다양화 |
+| Synthetic (보고서) | 200건 | 200건 | 동일 |
+| Synthetic (제안서) | 200건 | 188건 | 동일 (C급 12건 제거) |
+| AI Hub (정제+boost) | 700건 | 556건 | 실제 문서 패턴 + 근거 기반 보충 |
+| Supplement (보강) | 160건 | 160건 | 보고서 tasks + 제안서 budget 집중 보강 |
+| **합계** | **1662건** | **1506건** | **→ 1500건 (초과 6건 제거)** |
 
-### 3-3. 최종 분포 목표
+### 3-3. 최종 분포
 
-**유형 × 길이:**
-```
-              short   mid    long   xlong   합계
-meeting:      150     200    100    50      500
-report:       150     200    100    50      500
-proposal:     150     200    100    50      500
-합계:         450     600    300    150     1500
-```
+**유형별:**
 
-**필드 채움률 (boost 후 + supplement 반영 예상):**
+| 유형 | train | eval | 합계 |
+|------|:-----:|:----:|:----:|
+| 회의록 | 419 | 42 | **461** |
+| 보고서 | 425 | 59 | **484** |
+| 제안서 | 506 | 49 | **555** |
+| **합계** | **1350** | **150** | **1500** |
 
-| 필드 | v2 | v3 (기존 1077건) | v3 (supplement 포함 예상) |
-|------|:--:|:----------------:|:----------------------:|
-| content/summary | 32~34% | 100% | 100% |
-| decisions | 34% | 93% | ~90% |
-| action_items | 34% | 96% | ~93% |
-| tasks | 14% | 73% | ~80% |
-| next_plan | 34% | 81% | ~81% |
-| schedule | 25% | 87% | ~85% |
-| budget | 25% | 43% | ~50% |
+**핵심 필드 채움률 (최종):**
+
+| 필드 | v2 | v3 (최종) | 변화 |
+|------|:--:|:---------:|:----:|
+| content/main_content | 32~34% | **100%** | +66pp |
+| summary/overview | 32~34% | **100%** | +66pp |
+| decisions | 34% | **91%** | +57pp |
+| action_items | 34% | **94%** | +60pp |
+| tasks | 14% | **63%** | +49pp |
+| next_plan | 34% | **98%** | +64pp |
+| schedule | 25% | **74%** | +49pp |
+| budget | 25% | **47%** | +22pp |
+
+> budget이 47%로 낮은 이유: AI Hub 원본에 예산 수치 자체가 없는 문서가 대다수. Synthetic만 보면 69%.
 
 ---
 
@@ -155,12 +177,15 @@ proposal:     150     200    100    50      500
 |------|:--:|:--:|
 | 필드 계층 | 2계층 (core + 랜덤) | **3계층 (always + priority + 랜덤)** |
 | content 포함률 | 32% | **100%** |
-| decisions 포함률 | 34% | **~80%** |
-| tasks 포함률 | 14% | **~80%** |
+| decisions 포함률 | 34% | **91%** |
+| tasks 포함률 | 14% | **63%** |
 | 입력 길이 | 500~1500자 균일 | **50~3000자 다양화** |
 | 짧은 입력 패턴 | 없음 | **30% (50~200자)** |
+| sparse 로직 | 균일 30% | **길이별 10~60%** |
 | content list/dict | 방치 | **str 강제 변환** |
+| schedule/budget 형식 | 구 형식 혼재 | **신 형식 통일** |
 | 데이터 파이프라인 | 1단계 (생성만) | **7단계 (생성→정제→필터→보완→변환→보충→합치기)** |
+| 총 데이터 수 | ~1000건 | **1500건** |
 
 ---
 
@@ -198,13 +223,14 @@ proposal:     150     200    100    50      500
 
 | 단계 | 상태 |
 |------|:----:|
-| Synthetic 800건 생성 | ✅ 완료 |
-| AI Hub 700건 정제 | ✅ 완료 |
-| 필터링 (1077건) | ✅ 완료 |
-| Priority 보완 (327건) | ✅ 완료 |
-| 서술형 필드 str 변환 | ✅ 완료 |
-| Supplement 502건 추가 생성 | ⏳ 진행 중 (500/502) |
-| merge_and_split → train/eval | ⏰ 대기 |
+| Synthetic 802건 생성 (회의록 402 + 보고서 200 + 제안서 200) | ✅ 완료 |
+| 회의록 혼입 10건 제거 + 10건 재생성 | ✅ 완료 |
+| AI Hub 700건 정제 (557건 API 호출) | ✅ 완료 |
+| 필터링 (C급 제거 → 1346건) | ✅ 완료 |
+| AI Hub Priority 보완 (373건 boost) | ✅ 완료 |
+| AI Hub 후처리 (str 변환 + 형식 변환) | ✅ 완료 |
+| Supplement 160건 추가 생성 (보고서 80 + 제안서 80) | ✅ 완료 |
+| merge_and_split → train 1350 / eval 150 | ✅ 완료 |
 | RunPod LoRA v3 학습 | ⏰ 대기 |
 | 평가 (구조 + 내용 + 신규 지표) | ⏰ 대기 |
 
@@ -226,17 +252,7 @@ proposal:     150     200    100    50      500
 
 > Best checkpoint: **Epoch ?** (eval_loss = ?)
 
-### 8-2. Loss 변화 상세
-
-```
-Epoch 1    ░░░░░░░░░░░░░░░░░░░░░░░░░  Train: ? → Eval: ?
-Epoch 2    ░░░░░░░░░░░░░░░░░░░░░░░░░  Train: ? → Eval: ?
-Epoch 3    ░░░░░░░░░░░░░░░░░░░░░░░░░  Train: ? → Eval: ?
-Epoch 4    ░░░░░░░░░░░░░░░░░░░░░░░░░  Train: ? → Eval: ?
-Epoch 5    ░░░░░░░░░░░░░░░░░░░░░░░░░  Train: ? → Eval: ?
-```
-
-### 8-3. 학습 효율
+### 8-2. 학습 효율
 
 | 항목 | 수치 |
 |------|------|
@@ -298,22 +314,6 @@ Epoch 5    ░░░░░░░░░░░░░░░░░░░░░░░
 | Fine-tuned Kanana (v3) | —% | — | — | —% |
 | GPT-4o-mini (API) | —% | — | — | —% |
 
-### 9-6. 정성 평가 — Before/After
-
-**예시 1: 핵심 필드 채움 개선** (v2 빈 배열 → v3 채움)
-
-| 필드 | 정답 | v2 예측 | v3 예측 |
-|------|------|---------|---------|
-| decisions | [...] | [] | — |
-| action_items | [...] | [] | — |
-
-**예시 2: 짧은 입력 대응**
-
-| | v2 | v3 |
-|---|---|---|
-| 입력 | (짧은 입력 없었음) | "마케팅 회의 결과 정리해줘" |
-| content 길이 | N/A | —자 |
-
 ---
 
 ## 10. 결론 및 향후 계획
@@ -353,8 +353,8 @@ Epoch 5    ░░░░░░░░░░░░░░░░░░░░░░░
 | 3-Way 비교 | `outputs/v2_generate/kanana-1.5-8b-instruct-2505/comparison_results.json` |
 | 학습 로그 | `outputs/v2_generate/kanana-1.5-8b-instruct-2505/train_log.json` |
 | 학습 설정 | `ai/finetuning/configs/v2_generate.yaml` |
-| 학습 데이터 | `data/training/v2_generate/train.jsonl` |
-| 평가 데이터 | `data/training/v2_generate/eval.jsonl` |
+| 학습 데이터 | `data/training/v2_generate/train.jsonl` (1350건) |
+| 평가 데이터 | `data/training/v2_generate/eval.jsonl` (150건) |
 
 ## 12. 실행 명령어
 

@@ -72,7 +72,7 @@ CONFIGS_DIR = Path(__file__).resolve().parent / "configs"
 
 # 태스크 → config 파일 매핑
 TASK_CONFIGS = {
-    "generate": CONFIGS_DIR / "v2_generate.yaml",
+    "generate": CONFIGS_DIR / "v3_generate.yaml",
     "qa": CONFIGS_DIR / "v2_qa.yaml",
     "summary": CONFIGS_DIR / "v3_summary.yaml",
 }
@@ -100,9 +100,12 @@ def load_config(config_path: Path) -> dict:
         return yaml.safe_load(f)
 
 
-def get_output_base(task: str) -> Path:
-    """태스크별 output 디렉토리"""
-    output_base = BASE_DIR / "outputs" / f"v2_{task}"
+def get_output_base(task: str, config: dict = None) -> Path:
+    """태스크별 output 디렉토리 (config에 output_dir 있으면 사용)"""
+    if config and "output" in config and "output_dir" in config["output"]:
+        output_base = BASE_DIR / config["output"]["output_dir"]
+    else:
+        output_base = BASE_DIR / "outputs" / f"v2_{task}"
     output_base.mkdir(parents=True, exist_ok=True)
     return output_base
 
@@ -255,7 +258,7 @@ def train(task: str, config: dict, base_model_override: str = None):
     """기능별 LoRA 학습"""
     model_id = base_model_override or config["model"]["base_model"]
     model_short = model_id.split("/")[-1]
-    output_base = get_output_base(task)
+    output_base = get_output_base(task, config)
 
     print(f"\n{'=' * 60}")
     print(f"  LoRA v2_{task} 학습 시작: {model_short}")
@@ -396,7 +399,7 @@ def evaluate(task: str, config: dict, adapter_path: str, base_model_override: st
     """기능별 평가 (adapter_path="base"이면 어댑터 없이 Base 모델 평가)"""
     model_id = base_model_override or config["model"]["base_model"]
     model_short = model_id.split("/")[-1]
-    output_base = get_output_base(task)
+    output_base = get_output_base(task, config)
     is_base = adapter_path == "base"
 
     label = "Base" if is_base else "Fine-tuned"
@@ -806,7 +809,7 @@ def _compute_rouge_l(prediction: str, reference: str) -> float:
 
 def compare_models(task: str, config: dict):
     """3개 모델 비교 학습 + 평가 (기능별)"""
-    output_base = get_output_base(task)
+    output_base = get_output_base(task, config)
     candidates = config.get("model_candidates", [config["model"]["base_model"]])
     all_results = {}
 
@@ -854,10 +857,10 @@ def run_single_task(task: str, mode: str, args):
     config = load_config(config_path)
     model_id = args.base_model or config["model"]["base_model"]
     model_short = model_id.split("/")[-1]
-    output_base = get_output_base(task)
+    output_base = get_output_base(task, config)
 
     print(f"\n{'#' * 60}")
-    print(f"  태스크: v2_{task}")
+    print(f"  태스크: {config.get('output', {}).get('output_dir', f'v2_{task}')}")
     print(f"  설정: {config_path}")
     print(f"  base_model: {model_id}")
     print(f"  LoRA r={config['lora']['r']}, alpha={config['lora']['lora_alpha']}")

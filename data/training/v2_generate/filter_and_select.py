@@ -20,7 +20,11 @@ if sys.platform == "win32":
 
 BASE_DIR = Path(__file__).resolve().parent
 
-SYN_PATH = BASE_DIR / "synthetic_generate.jsonl"
+SYN_PATHS = [
+    BASE_DIR / "synthetic_generate.jsonl",
+    BASE_DIR / "synthetic_report.jsonl",
+    BASE_DIR / "synthetic_proposal.jsonl",
+]
 AIHUB_PATH = BASE_DIR / "ai_hub_generate_cleaned.jsonl"
 SYN_OUT = BASE_DIR / "synthetic_filtered.jsonl"
 AIHUB_OUT = BASE_DIR / "ai_hub_filtered.jsonl"
@@ -50,8 +54,13 @@ def detect_type(user_msg):
 
 
 def get_length_cat(user_msg):
-    parts = user_msg.split("\n\n")
-    plen = len(parts[-1])
+    import re
+    match = re.search(r'\[(?:회의 내용|업무 내용|제안 내용|내용)\]\s*\n', user_msg)
+    if match:
+        actual = user_msg[match.end():].strip()
+    else:
+        actual = user_msg
+    plen = len(actual)
     if plen < 200: return "short"
     elif plen < 800: return "mid"
     elif plen < 1500: return "long"
@@ -158,8 +167,13 @@ def filter_dataset(samples, label):
 def main():
     print("=== 데이터 필터링 + 선별 ===\n")
 
-    # Synthetic
-    syn = load_jsonl(SYN_PATH)
+    # Synthetic (3개 파일 병합 로드)
+    syn = []
+    for p in SYN_PATHS:
+        if p.exists():
+            loaded = load_jsonl(p)
+            print(f"  {p.name}: {len(loaded)}건")
+            syn.extend(loaded)
     print(f"Synthetic 로드: {len(syn)}건")
     syn_filtered = filter_dataset(syn, "Synthetic")
 

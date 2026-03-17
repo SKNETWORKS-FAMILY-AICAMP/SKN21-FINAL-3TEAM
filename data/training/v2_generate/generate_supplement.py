@@ -38,14 +38,9 @@ OUTPUT_PATH = BASE_DIR / "data" / "training" / "v2_generate" / "synthetic_supple
 # 추가 생성 계획
 GEN_PLAN = [
     # (template, length_range, count, min_chars)
-    ("meeting_minutes", "200~800", 84, 200),
-    ("meeting_minutes", "800~1500", 85, 800),
-    ("meeting_minutes", "1500~3000", 50, 1500),
-    ("report", "200~800", 70, 200),
-    ("report", "800~1500", 48, 800),
-    ("report", "1500~3000", 50, 1500),
-    ("proposal", "200~800", 65, 200),
-    ("proposal", "1500~3000", 50, 1500),
+    # 부족분 154건 → report(tasks 부족)와 proposal(budget 부족)에 집중
+    ("report", "500~1500", 80, 500),      # tasks 채움률 61% 보강
+    ("proposal", "500~1500", 80, 500),    # budget 채움률 42% 보강
 ]
 
 # synthesize_generate.py에서 필요한 것들 import

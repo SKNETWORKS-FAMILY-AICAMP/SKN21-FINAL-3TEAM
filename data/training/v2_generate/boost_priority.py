@@ -61,6 +61,9 @@ def get_source_text(out):
     for key in ["content", "main_content", "overview", "summary", "purpose",
                  "background", "expected_effect"]:
         val = out.get(key, "")
+        # list/dict → str 변환
+        if isinstance(val, (list, dict)):
+            val = json.dumps(val, ensure_ascii=False)
         if isinstance(val, str) and len(val) > 30:
             parts.append(val)
     return "\n\n".join(parts)
@@ -112,7 +115,6 @@ def main():
     args = parser.parse_args()
 
     paths = [
-        BASE_DIR / "data" / "training" / "v2_generate" / "synthetic_filtered.jsonl",
         BASE_DIR / "data" / "training" / "v2_generate" / "ai_hub_filtered.jsonl",
     ]
 

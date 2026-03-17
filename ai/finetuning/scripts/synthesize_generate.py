@@ -308,11 +308,11 @@ OMITTABLE_FIELDS = {
     ],
     "report": [
         "department", "position", "report_to", "report_type", "period", "audience",
-        "achievements", "issues", "kpi_results", "conclusion", "recommendations",
+        "achievements", "kpi_results", "conclusion", "recommendations",
     ],
     "proposal": [
         "submit_to", "company", "manager", "contact", "proposer", "period",
-        "background", "current_situation", "scope", "budget_total", "resources", "risks", "deliverables",
+        "scope", "budget_total", "resources", "risks", "deliverables",
     ],
 }
 
