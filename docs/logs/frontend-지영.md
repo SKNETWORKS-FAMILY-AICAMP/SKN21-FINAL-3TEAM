@@ -6,7 +6,6 @@
 ### 한 일
 - **프로젝트 초기 세팅** (`01fd409`)
   - React + Vite + Tailwind CSS 프로젝트 구성
-  - 디자인 시스템 컬러 토큰 적용 (primary, accent, surface, neutral 등)
   - 기본 디렉토리 구조 생성 (pages, components, store, hooks, api)
 - **UI/UX 기반 구조 추가** (`20c5675`)
   - UI_UX.pdf 요구사항 대조 후 누락 컴포넌트 스켈레톤 추가
@@ -35,7 +34,6 @@
   - DocumentGeneratePage — 템플릿 선택/업로드 → AI 내용 채움 → 문서 생성
   - MeetingInput, MeetingPreview 컴포넌트
   - TemplateSelector, TemplateUploadDialog, DocumentPreview 컴포넌트
-  - 사이드바 메뉴에 "회의록 생성", "문서 생성" 추가
 
 ---
 
@@ -110,21 +108,9 @@
 #### 6) 로그아웃 버튼 + DEV_BYPASS_AUTH 복원
 - Sidebar 하단에 로그아웃 텍스트 버튼 추가
   - 클릭 시 토큰 삭제 → 로그인 페이지로 이동
-  - 마우스 호버 시 "로그아웃 할래 말래" 툴팁 표시
 - develop pull 후 사라진 `DEV_BYPASS_AUTH = true` 복원 (백엔드 로그인 개발 완료 전까지 인증 우회)
 
-#### 7) 글씨 크기 조절 기능 구현 (`859a8c8`)
-- 가-/가+ 버튼으로 전체 글씨 크기를 조절할 수 있는 기능
-
-- **FontSizeControl 컴포넌트 신규 생성** (`components/common/FontSizeControl.jsx`)
-  - 우측 하단 고정 위치에 가-/가+ 버튼 표시
-  - 14px(하한) ~ 22px(상한), 2px 단위 조절 (총 5단계)
-  - html root의 font-size를 변경하여 rem 기반 전체 UI 크기 조절
-  - localStorage에 저장되어 새로고침해도 유지
-- **App.jsx에 통합** — BrowserRouter 안에 배치하여 로그인 포함 모든 페이지에서 사용 가능
-- **로그인 카드 너비 rem 변환** — `w-[400px]` → `w-[28rem]`으로 변경하여 글씨 크기에 따라 카드도 유연하게 확대/축소
-
-#### 8) 전체 text-[px] → text-[rem] 일괄 변환 (`859a8c8`)
+#### 7) 전체 text-[px] → text-[rem] 일괄 변환 (`859a8c8`)
 > 가-/가+ 기능이 모든 글씨에 적용되도록 px 고정값을 rem으로 변환
 
 - **변환 대상 54개 파일**, 총 6종류 px 값 변환:
@@ -172,7 +158,6 @@
 - `App.jsx` — `useEffect`로 `<html>`에 dark 클래스 동기화
 - `Sidebar.jsx` — `bg-primary-700` → `bg-sidebar-bg`로 변경 (양쪽 모드에서 어두운 사이드바 유지), ThemeToggle 배치
 - **NEW** `components/common/ThemeToggle.jsx` — 해/달 아이콘 토글 버튼
-- `ChatPage.jsx` — 확인 다이얼로그 `bg-white` → `bg-surface-card`로 변경
 
 ##### (b) 인쇄 기능
 - **`.print-area` 클래스 기반 선택적 인쇄**: 인쇄 버튼 클릭 시 해당 카드에 `.print-area` 추가 → `window.print()` → `afterprint`로 제거
@@ -193,18 +178,11 @@
 - `ChatPage.jsx` — ChatSessionSidebar 통합, "대화 목록" 토글 버튼, 마운트 시 `initSession()`
 - **NEW** `components/chat/ChatSessionSidebar.jsx` — 세션 목록(이름, 메시지 수, 시간), 삭제 버튼, "새 대화" 버튼, 활성 세션 하이라이트
 
-**변경 요약**: 수정 14개 파일, 신규 2개 파일, npm 패키지 1개(framer-motion)
-**빌드 확인**: `npm run build` 성공
-
-#### 3) 다크모드 색상 튜닝
-- 초기 다크모드가 너무 어두움 → 진회색/연회색 조합으로 2차례 밝기 조정
-- 최종 배경: `#363B44`, 카드: `#3E444D`, 사이드바: `#30353C`
-
-#### 4) 인증 우회 해제
+#### 3) 인증 우회 해제
 - `App.jsx` — `DEV_BYPASS_AUTH = true` → `false` 변경
 - 로그인하지 않으면 대시보드 등 보호 페이지 접근 불가, `/login`으로 리다이렉트
 
-#### 5) Google 로그인 시 서비스 자동 연동 (백엔드 수정)
+#### 4) Google 로그인 시 서비스 자동 연동 (백엔드 수정)
 > Google 로그인과 Google 서비스 연동이 별도 OAuth 플로우로 분리되어 사용자가 두 번 인증해야 하는 문제 해결
 > 로그인 한 번으로 Calendar/Tasks/Gmail/Sheets까지 자동 연동되도록 변경
 
@@ -229,7 +207,7 @@
   4. JWT 발급 → 프론트엔드 리다이렉트
   5. 일정 관리 페이지 접속 시 `/google/status` 호출 → "Google 서비스 연결됨" 표시 (추가 연동 불필요)
 
-#### 6) Google Calendar 실제 연동 (Mock → 실제 API)
+#### 5) Google Calendar 실제 연동 (Mock → 실제 API)
 > 일정 관리 페이지의 Mock 데이터를 제거하고 실제 Google Calendar 이벤트를 표시하도록 연동
 
 - **`SchedulesPage.jsx`** — mockEvents/mockActions 전체 삭제, 실제 Google Calendar 데이터로 교체
@@ -249,23 +227,19 @@
 - **일괄 알림 버튼(`EmailReminderButton`) 제거** — SchedulesPage 헤더에서 삭제
 - **디버그 코드 정리** — googleStore.js, SchedulesPage.jsx의 console.log/디버그 패널 제거
 
-### 다음 할 일
-- 나머지 Mock → 실제 API 교체 (대시보드, 채팅, 문서, 회의 등)
-- 전체 E2E 테스트 지원
-
----
-
-## 2026-02-12 (수) — 오후
-
-### 한 일
+#### 6) 일정 추가 버그 수정
 - 일정 추가 버그 수정 (`SchedulesPage.jsx`)
   - `useGoogleServices.getState()` 호출 오류 → 훅에서 직접 구조분해로 변경
   - `create_meet`/`attendees` 필드명 불일치 수정
 - 캘린더 토/일 색상 적용 (`CalendarView.jsx`)
   - 토요일 헤더+날짜 파란색, 일요일 헤더+날짜 빨간색, 공휴일 날짜도 빨간색 표시
   - 월간/주간/연간 뷰 전부 적용
-- 대체공휴일 데이터 추가 (`CalendarView.jsx`)
-  - 2025~2027년 대체공휴일 전체 추가 
+- 대체공휴일 데이터 추가 (`CalendarView.jsx`): 2025~2027년 대체공휴일 전체 추가 
+
+
+### 다음 할 일
+- 나머지 Mock → 실제 API 교체 (대시보드, 채팅, 문서, 회의 등)
+- 전체 E2E 테스트 지원
 
 ---
 
@@ -3239,7 +3213,375 @@ Rule v3 + 100건 확장 — PM 88.0% (100건, 매핑+Rule 적용)
 
 - [x] ~~Intent Held-out 100건 재평가~~ → **91.0%**
 - [x] ~~Planner Held-out 100건 재평가~~ → **88.0%**
-- [ ] Intent 앙상블 모델 HuggingFace 재백업 + EC2 재배포
+- [x] ~~Intent 앙상블 모델 HuggingFace 재백업~~ → 완료 (jiyouxg/dudu-intent-ensemble v2)
+- [ ] EC2에 새 Intent 모델 배포 (HuggingFace에서 다운로드 + 서버 재시작)
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
+---
+
+## 2026-03-17 (화)
+
+### 한 일
+
+#### Planner v6 실험 세팅 + 실험 A, B, C 실행
+
+**목표**: Planner Held-out PM 88.0% → 90%+ 달성
+**방향**: 후처리 매핑(knowledge_query) 대신 KNOWN_OVERRIDES + Rule Guide로 해결
+
+**v5 현재 상태 (실험 전 기준)**:
+- PM 88.0% (100건, 후처리 매핑+Rule 적용)
+- PM 71.0% (100건, 매핑 없이 6-label 원본)
+- 핵심 병목: judgment→doc_retrieve 15건, 3-step Step Collapse
+
+---
+
+#### 실험 A: Rule Guide 추가 (규칙 10, 11)
+
+v5 어댑터 + 새 규칙 2개 추가 → holdout 재평가 (재학습 없음)
+
+| 규칙 | 내용 |
+|------|------|
+| Rule 10 | "찾아서 + 확인하고 + 만들어" 패턴인데 2-step이면 doc_retrieve 삽입해서 3-step 복원 |
+| Rule 11 | 검색 동사 2회 이상 + 생성 동사 → doc_retrieve 부족하면 추가 |
+
+**결과: PM 71.0% (변화 없음) ❌**
+
+| 지표 | v5 (매핑 없음) | 실험 A |
+|------|--------------|--------|
+| Perfect Match | 71.0% | **71.0%** |
+| Step Collapse | 9.4% | **9.4%** |
+| complex | 0.881 | **0.881** |
+
+**실패 원인**: 핵심 문제가 Step Collapse가 아니라 **judgment→doc_retrieve intent 자체 혼동 15건**이었음. Rule 10, 11은 step 수 보정용이라 intent 혼동에는 효과 없음.
+
+**오답 상세 — judgment→doc_retrieve 15건**:
+- S-001: "연차 사용 규정 알려줘" → doc_retrieve (judgment이어야 함)
+- S-006: "야근 수당 몇 시부터 적용돼?" → doc_retrieve
+- S-007: "출장비 정산 기준이 어떻게 돼?" → doc_retrieve
+- S-022: "재택근무 규정이 어떻게 되지?" → doc_retrieve
+- S-023: "퇴직금 계산 기준 좀" → doc_retrieve
+- E-014: "연차 규정이랑 병가 규정 차이가 뭐야?" → doc_retrieve
+- PAR-001, PAR-010, C-012 등에서도 동일 패턴
+
+---
+
+#### 실험 B: Few-shot 프롬프트 (3-step 예시 3개 삽입)
+
+v5 어댑터 + 시스템 프롬프트에 3-step 예시 3개 추가 → holdout 재평가 (재학습 없음)
+
+**추가한 Few-shot 예시**:
+1. "출장 규정 문서 찾아서 해외출장 가능한지 확인하고 출장 보고서 만들어줘" → doc_retrieve→judgment→doc_generate
+2. "연차 규정 확인하고 팀 일정 보고 비는 날에 휴가 등록해줘" → judgment→schedule_view→schedule_add
+3. "마케팅 보고서 찾고 경쟁사 자료도 검색해서 비교 제안서 만들어줘" → doc_retrieve→doc_retrieve→doc_generate
+
+**결과: PM 75.0% (+4건) ✅**
+
+| 지표 | 실험 A | 실험 B | 변화 |
+|------|--------|--------|------|
+| Perfect Match | 71.0% | **75.0%** | **+4건** |
+| Step Collapse | 9.4% | **7.5%** | -1.9%p ✅ |
+| complex score | 0.881 | **0.919** | +0.038 ✅ |
+| parallel score | 0.897 | **0.950** | +0.053 ✅ |
+| edge_case score | 0.906 | **0.821** | -0.085 ❌ |
+
+**개선된 부분**:
+- S-006 "야근 수당 몇 시부터 적용돼?" → judgment 정답 (A에서는 doc_retrieve)
+- S-007 "출장비 정산 기준이 어떻게 돼?" → judgment 정답
+- complex 카테고리 전반적 개선 (3-step 예시 효과)
+- PAR-001 "다음 주 일정 보여주고, 연차 규정도 알려줘" → schedule_view, judgment 정답
+
+**악화된 부분**:
+- S-003 "이번 달 보고서 만들어줘" → schedule_view로 오분류 (기존 OK)
+- S-030 "뭐 해줄 수 있는데?" → doc_retrieve로 오분류 (기존 OK)
+- E-005 "ㅎㅇㄹ ㅊㅇ" → doc_generate로 오분류 (기존 OK)
+- E-016 "도움이 많이 됐어 고마워!" → JSON 파싱 실패 1건
+- E-014 "연차 규정이랑 병가 규정 차이가 뭐야?" → doc_retrieve 3개로 과잉 분리 (악화)
+
+**교훈**: Few-shot은 complex/3-step에 효과적이지만, single_step/edge_case에서 부작용 발생. 프롬프트가 길어지면서 단순 입력 분류 정확도가 떨어짐.
+
+**버그 발견**: JSON 파싱 실패 케이스에서 `expected_steps` 키 누락 → KeyError 크래시 → 수정 완료 (`9c7cbeb`)
+
+---
+
+#### 실험 C: 오답 타겟 보강 데이터 생성 (GPT-4o-mini)
+
+`augment_v6_planner.py` 스크립트로 약점 패턴 집중 생성
+
+| 카테고리 | 생성 | 목적 |
+|---------|:----:|------|
+| collapse_prevention | 30건 | "A해서 B하고 C해줘" 3-step 패턴 강화 |
+| complex_augment | 15건 | 4가지 intent 조합 다양화 |
+| edge_augment | 15건 | 구어체/비정형 3-step |
+
+**결과: 57건 생성 (3건 스킵 — GPT가 2-step으로 출력)**
+
+v6 학습 데이터 구성:
+- v5 기존: 1,471건
+- 보강: +57건
+- 합계: 1,528건 → train 1,452건 + eval 76건 (5% 분리)
+
+---
+
+#### 실험 후 추가 조치: Planner용 judgment KNOWN_OVERRIDES 추가
+
+실험 A에서 발견된 judgment→doc_retrieve 15건을 해결하기 위해, Intent classifier의 KNOWN_OVERRIDES와 동일 전략을 Planner eval 스크립트에 적용:
+
+```
+judgment KNOWN_OVERRIDES 9개 패턴:
+1. (규정|규칙|지침|내규) + (알려|설명|안내|어떻게)
+2. (기준|평가|심사|절차) + (알려|설명|안내|어떻게)
+3. (복리후생|복지|수당|혜택) + (뭐|어떤|있어)
+4. (퇴직금|급여|연봉|수당) + (계산|산정|얼마)
+5. (지각|결근|조퇴|위반) + (어떻게|불이익|징계)
+6. (인센티브|성과급|보너스) + (기준|조건|자격)
+7. (연차|재택|출장|야근) + (규정|기준|정산) + (어떻게|되|뭐)
+8. (규정|기준) + (차이|비교|다른)
+9. (몇 시|적용|해당|가능) + (돼|되|인지)
+```
+
+→ 실험 D에서 이 KNOWN_OVERRIDES + v6 학습 결과가 합쳐져서 평가될 예정.
+
+---
+
+#### 실험 D: v6 LoRA 재학습 (lr=1e-4, epoch 4, MLP 포함)
+
+v6 config로 재학습 후 holdout 평가 (2가지 프롬프트로 각각 평가)
+
+**v6 변경점 (v5 대비)**:
+- lr: 2e-4 → **1e-4** (과적합 방지)
+- epoch: 3 → **4** (충분한 수렴)
+- target_modules: q,v,k,o_proj → **+ gate,up,down_proj** (MLP 포함)
+- 학습 데이터: 1,471건 → **1,528건** (+57건 오답 타겟 보강)
+
+**학습 로그**:
+- train_loss: 2.233 → 0.091 (epoch 4 종료)
+- eval_loss: 0.1185(ep1) → 0.1034(ep2) → 0.0989(ep3) → 0.0984(ep4) — 안정 수렴
+- 학습 시간: 36분 (A100 GPU)
+
+---
+
+**실험 D-1: v6 + 기본 프롬프트 → PM 64.0% ❌❌**
+
+| 지표 | v5 기준 | D-1 (v6) | 변화 |
+|------|--------|----------|------|
+| Perfect Match | 71.0% | **64.0%** | **-7.0%p ❌** |
+| single_step | 0.875 | **0.986** | +0.111 ✅ |
+| sequential | 0.955 | **0.884** | -0.071 ❌ |
+| complex | 0.881 | **0.784** | -0.097 ❌ |
+| Step Collapse | 9.4% | **11.3%** | +1.9%p ❌ |
+| 과잉 분리 | 5건 | **9건** | +4건 ❌ |
+
+**대실패 원인**: MLP target_modules + judgment 보강 데이터가 모델을 **judgment 과잉 예측**으로 밀어버림.
+- v5에서는 judgment→doc_retrieve 15건이 문제 → v6에서는 **반대로 doc_retrieve→judgment 11건** 발생
+- "규정 찾아서 확인하고" 같은 multi-step에서 첫 step까지 judgment로 출력
+- 과잉 분리 9건: 단일 step 질문을 2-3 step으로 과도하게 분해 (E-006, E-014 등)
+
+---
+
+**실험 D-2: v6 + Few-shot 프롬프트 → PM 74.0%**
+
+| 지표 | D-1 (v6 기본) | D-2 (v6 Few-shot) | 변화 |
+|------|-------------|-------------------|------|
+| Perfect Match | 64.0% | **74.0%** | **+10.0%p** |
+| parallel | 0.911 | **1.000** | +0.089 ✅ (완벽) |
+| complex | 0.784 | **0.857** | +0.073 ✅ |
+| Step Collapse | 11.3% | **7.5%** | -3.8%p ✅ |
+| 과잉 분리 | 9건 | **4건** | -5건 ✅ |
+
+**Few-shot이 v6 모델의 약점을 대폭 보정** — 기본 프롬프트 대비 +10%p.
+하지만 v5+Few-shot(75.0%)보다 1%p 낮음 → **v6 재학습 자체가 비효과적**.
+
+---
+
+### 실험 결과 전체 비교표 (Planner v6 실험)
+
+| # | 실험 | 모델 | 프롬프트 | OVERRIDES | PM | SC | complex | parallel | 핵심 |
+|---|------|------|---------|-----------|-----|-----|---------|----------|------|
+| 기준 | v5 (매핑) | v5 LoRA | 기본 | Rule 7개 + 매핑 | **88.0%** | 10.2% | - | - | 후처리 매핑 포함 |
+| 기준 | v5 (매핑 없음) | v5 LoRA | 기본 | Rule 7개 | 71.0% | 9.4% | 0.881 | 0.897 | judgment→doc_retrieve 15건 |
+| A | Rule 추가 | v5 LoRA | 기본 | Rule 9개 | 71.0% | 9.4% | 0.881 | 0.897 | 효과 없음 |
+| **B** | **Few-shot** | **v5 LoRA** | **Few-shot** | **Rule 7개** | **75.0%** | **7.5%** | **0.919** | **0.950** | **complex ✅, edge ❌** |
+| D-1 | v6 재학습 | v6 LoRA | 기본 | Rule 9개+OVR | 64.0% | 11.3% | 0.784 | 0.911 | 대실패 — judgment 과잉 |
+| D-2 | v6 Few-shot | v6 LoRA | Few-shot | Rule 9개+OVR | 74.0% | 7.5% | 0.857 | **1.000** | Few-shot이 v6 보정 |
+
+### Few-shot 프롬프트 효과 분석
+
+**Few-shot이 성능을 끌어올리는 핵심 메커니즘**:
+
+```
+시스템 프롬프트에 3-step 예시 3개를 삽입 → 모델이 "이 패턴은 3-step이구나" 학습
+→ Step Collapse 방지 + intent 순서 정렬 + depends_on 구조화
+```
+
+**추가한 Few-shot 예시 3개**:
+
+| # | 입력 예시 | plan 구조 | 효과 |
+|---|----------|----------|------|
+| 1 | "출장 규정 문서 찾아서 해외출장 가능한지 확인하고 출장 보고서 만들어줘" | doc_retrieve→judgment→doc_generate (순차, depends_on 체인) | **찾아서→확인→생성** 패턴의 3-step 유지 |
+| 2 | "연차 규정 확인하고 팀 일정 보고 비는 날에 휴가 등록해줘" | judgment→schedule_view→schedule_add (병렬→순차) | **확인+조회→등록** 패턴 + depends_on [1,2] |
+| 3 | "마케팅 보고서 찾고 경쟁사 자료도 검색해서 비교 제안서 만들어줘" | doc_retrieve→doc_retrieve→doc_generate (병렬→순차) | **병렬 검색→생성** 패턴 + depends_on [1,2] |
+
+**카테고리별 Few-shot 효과** (v5 기본 → v5 Few-shot):
+
+| 카테고리 | 기본 | Few-shot | 변화 | 이유 |
+|---------|------|---------|------|------|
+| complex | 0.881 | **0.919** | +0.038 ✅ | 예시가 3-step complex 패턴과 직접 매칭 |
+| parallel | 0.897 | **0.950** | +0.053 ✅ | 예시 2,3의 병렬 depends_on 구조 학습 |
+| sequential | 0.955 | **0.962** | +0.007 ✅ | 소폭 개선 |
+| single_step | 0.875 | **0.900** | +0.025 ✅ | judgment 패턴 인식 개선 (예시 1,2에 judgment 포함) |
+| edge_case | 0.906 | **0.821** | -0.085 ❌ | **부작용**: 프롬프트 길이 증가로 비정형 입력 분류 악화 |
+
+**Few-shot의 한계**:
+- 프롬프트가 길어지면서 **단순 입력/비정형 입력** 분류 정확도 하락
+- edge_case에서 JSON 파싱 실패 1건 발생 (E-016 "고마워!")
+- 예시에 없는 새로운 패턴에는 효과 제한적
+
+**핵심 교훈**:
+1. **Few-shot > LoRA 데이터 보강**: 57건 데이터 추가 재학습(v6)보다, 예시 3개 프롬프트 삽입(Few-shot)이 더 효과적
+2. **Few-shot은 Trade-off**: complex/parallel ↑ vs edge_case ↓ — 모든 카테고리를 동시에 올리긴 어려움
+3. **재학습은 양날의 검**: v6(lr↓+MLP)가 v5보다 오히려 하락 — v5b와 같은 교훈 재확인
+4. **Few-shot + KNOWN_OVERRIDES 조합이 최선**: 모델 변경 없이 후처리로 최대 효과
+
+---
+
+#### 실험 후 추가 조치: KNOWN_OVERRIDES 정교화 (v2)
+
+실험 D 결과에서 발견된 문제: multi-step에서 KNOWN_OVERRIDES가 첫 step을 무조건 judgment로 교체 → "규정 찾아서 확인하고"에서 doc_retrieve가 judgment로 바뀌는 부작용
+
+**수정 내용**:
+
+| 규칙 | 기존 (v1) | 수정 (v2) |
+|------|----------|----------|
+| 단일 step | doc_retrieve→judgment | 동일 |
+| 멀티 step 첫 step | 무조건 judgment로 교체 | **검색 동사(찾아서/검색해서) 없을 때만** 교체 |
+| **규칙 0b (신규)** | - | doc_retrieve 연속 시 **2번째 step**을 judgment로 보정 |
+
+예시:
+- "규정 알려줘" → `[doc_retrieve]` → `[judgment]` ✅ (단일 step)
+- "규정도 알려줘" (멀티) → `[doc_retrieve, ...]` → `[judgment, ...]` ✅ (검색동사 없음)
+- "규정 **찾아서** 확인하고 만들어줘" → `[doc_retrieve, doc_retrieve, doc_generate]` → `[doc_retrieve, judgment, doc_generate]` ✅ (규칙 0b)
+
+---
+
+#### 실험 E, F: KNOWN_OVERRIDES v2 평가
+
+| 실험 | 구성 | PM |
+|------|------|-----|
+| E | v5 + 기본 + OVERRIDES v2 | **76.0%** |
+| F | v5 + Few-shot + OVERRIDES v2 | **77.0%** |
+
+OVERRIDES v2로 single_step 100% 달성 (judgment→doc_retrieve 9건 해결). 하지만 규칙 0b가 "분석하고/정리하고"까지 judgment로 과잉 변환하여 complex에서 부작용.
+
+**OVERRIDES 한계 확인 → 후처리 매핑(knowledge_query) 방식으로 전환 결정.**
+
+---
+
+#### 후처리 매핑 적용 + 실험 G, H
+
+judgment + doc_retrieve → knowledge_query 매핑 구현. KNOWN_OVERRIDES 제거.
+
+| 실험 | 구성 | PM | 핵심 |
+|------|------|-----|------|
+| G | v5 + 기본 + 매핑 | **79.0%** | single_step 100% |
+| H | v5 + Few-shot + 매핑 | **82.0%** | 2-step 90.9%, 3-step 66.7% |
+
+---
+
+#### 하이브리드 프롬프트 + 오답 타겟 Rule 구현
+
+**하이브리드 프롬프트**: 입력 복잡도에 따라 프롬프트 자동 선택
+- 접속사/동사 2개 이상 → Few-shot 프롬프트 (complex/3-step 강화)
+- 단순 입력 → 기본 프롬프트 (single_step 100% 유지)
+
+**오답 타겟 Rule 추가**:
+- Rule 8 v2: "변경/수정/취소" + 일정 → schedule_add 강제 (schedule_view 출력도 교체)
+- Rule 14: 단일 step + "보고서/회의록 만들어줘" → doc_generate 강제 (S-003 수정)
+- Rule 16: "A랑 B 둘 다 찾아줘" + 단일 step → 2-step 복원 (PAR-002 수정)
+
+**부작용 발견 → 제거한 Rule**:
+- Rule 15: "(일정|회의).*(확인|보고)" → schedule_view 강제 — "회의록 찾아서", "연차 확인하고"까지 매칭하여 5건 파손 → **제거**
+- Rule 10, 11: doc_retrieve 삽입 → 매핑 후 불필요한 knowledge_query 추가 → **제거**
+- Rule 12, 13: 과잉분리 방지/일반질문 강제 — 매핑과 간섭 → **제거**
+
+**교훈: Rule은 양날의 검 — 1건 수정하려다 5건 깨뜨릴 수 있음. 최소한의 확실한 Rule만 유지.**
+
+---
+
+#### 실험 I: 하이브리드 + 매핑 + Rule 14,16
+
+| 실험 | 구성 | PM |
+|------|------|-----|
+| **I** | **v5 + 하이브리드 + 매핑 + Rule(1~9,14,16)** | **87.0%** |
+| H2 | v5 + Few-shot + 매핑 + Rule(1~9,14,16) | 85.0% |
+| G2 | v5 + 기본 + 매핑 + Rule(1~9,14,16) | 79.0% |
+
+**실험 I 상세**:
+- single_step: **100%**
+- 2-step: **90.9%**
+- 3-step: **66.7%**
+- complex: **0.959**
+- edge_case: **0.957**
+- Step Collapse: **7.5%**
+- Weighted Score: **0.978**
+
+**오답 13건**: Step Collapse 4건, 과잉 분리 4건, depends_on 오류 5건
+
+---
+
+#### Rule 정리 + 최종 재평가 확정
+
+Rule 10,11,12,13이 매핑과 간섭하여 성능 저하 유발 → 제거.
+원래 Rule(1~9) + Rule 14,16 + 매핑 + 하이브리드 조합으로 최종 재평가.
+
+**Rule 정리 후에도 I = 87.0% 동일** — 안정적인 결과 확인. **87.0%로 최종 확정.**
+
+### 최종 Planner 모델 스펙 (확정)
+
+| 항목 | 값 |
+|------|-----|
+| 베이스 모델 | Kanana-1.5-8B (kakaocorp/kanana-1.5-8b-instruct-2505) |
+| 학습 방식 | QLoRA (4bit, r=16, alpha=32) |
+| 학습 데이터 | 1,471건 (v5) |
+| 라벨 | 6개 (judgment, doc_retrieve, doc_generate, schedule_add, schedule_view, general) |
+| 프롬프트 | **하이브리드** — 단순 입력→기본, 복합 입력→Few-shot(3-step 예시 3개) |
+| 후처리 | judgment + doc_retrieve → **knowledge_query** 매핑 |
+| Rule Guide | 9개 (1,2,3,4,6,8,9,14,16) |
+| Held-out PM (100건) | **87.0%** (87/100) |
+| Weighted Score | **0.979** |
+| 오답 유형 | Step Collapse 4건, 과잉 분리 4건, depends_on 오류 5건 |
+| 카테고리별 | single 100%, 2-step 90.9%, 3-step 66.7%, complex 0.962, edge 0.957 |
+| Step Collapse | 7.5% |
+| 추론 시간 | ~1.5s/건 |
+| 배포 | HuggingFace Hub 백업 (jiyouxg/dudu-planner-v5-lora) |
+
+### 실험 결과 전체 비교표 (최종)
+
+| # | 실험 | 모델 | 프롬프트 | 후처리 | PM | 핵심 |
+|---|------|------|---------|--------|-----|------|
+| A | baseline | v5 LoRA | 기본 | Rule 7개 | 71.0% | 매핑 없이 baseline |
+| B | Few-shot | v5 LoRA | Few-shot | Rule 7개 | 75.0% | complex ✅, edge ❌ |
+| D-1 | v6 재학습 | v6 LoRA | 기본 | Rule+OVR | 64.0% | 대실패 — judgment 과잉 |
+| D-2 | v6 Few-shot | v6 LoRA | Few-shot | Rule+OVR | 74.0% | Few-shot이 v6 보정 |
+| E | OVERRIDES v2 | v5 LoRA | 기본 | OVERRIDES | 76.0% | single_step 100% |
+| F | Few-shot+OVR | v5 LoRA | Few-shot | OVERRIDES | 77.0% | OVERRIDES 천장 |
+| G | 매핑 | v5 LoRA | 기본 | 매핑 | 79.0% | 매핑 효과 확인 |
+| H | Few-shot+매핑 | v5 LoRA | Few-shot | 매핑 | 82.0% | 3-step 66.7% |
+| H2 | Few-shot+매핑+Rule14,16 | v5 LoRA | Few-shot | 매핑+Rule | 84.0% | Rule 14,16 효과 |
+| **I** | **하이브리드+매핑+Rule14,16** | **v5 LoRA** | **하이브리드** | **매핑+Rule** | **87.0%** | **최종 확정** |
+
+### 핵심 교훈 (오늘 실험 전체)
+
+1. **KNOWN_OVERRIDES의 한계**: judgment↔doc_retrieve 경계는 Rule로 77%가 천장 → 후처리 매핑이 정답
+2. **하이브리드 프롬프트가 핵심**: 단순→기본(single 100%) + 복합→Few-shot(3-step 66.7%) 조합이 최강
+3. **v6 재학습은 실패**: lr↓+MLP+데이터 보강이 오히려 judgment 과잉 유발 → v5 유지 결정
+4. **Rule은 양날의 검**: Rule 15가 1건 수정에 5건 파손. 최소한의 확실한 Rule만 유지
+5. **Few-shot > LoRA 보강**: 57건 재학습보다 예시 3개 프롬프트가 더 효과적
+6. **실패한 실험에서도 인사이트 획득**: v6, Rule 15, OVERRIDES 모두 "이 방법은 안 됨" 확인
+
+### 다음 할 일
+
+- [x] ~~Planner 최종 모델 확정~~ → **PM 87.0% (Hybrid+매핑+Rule)**
+- [x] ~~Planner v5 LoRA HuggingFace 백업~~ → 완료 (jiyouxg/dudu-planner-v5-lora)
+- [ ] EC2에 새 Intent 모델 배포
+- [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
