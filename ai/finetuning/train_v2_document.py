@@ -319,7 +319,8 @@ def train(task: str, config: dict, base_model_override: str = None):
         gradient_checkpointing=True,
         optim="adamw_torch" if "exaone" in model_id.lower() else "paged_adamw_8bit",
         report_to="none",
-        max_length=train_cfg["max_length"],
+        max_seq_length=train_cfg["max_length"],
+        dataset_text_field="text",
     )
 
     # trl 버전에 따라 dataset_text_field 위치가 다름

@@ -127,7 +127,7 @@ v2 summary LoRA는 학습은 됐으나 실서비스에서 쓸 수 없었음:
 | 항목 | 값 |
 |------|-----|
 | Train loss (final) | 0.933 |
-| Eval loss (epoch 5) | 1.029 |
+| Best eval loss | **0.9910** (epoch 2) |
 | 총 학습 시간 | **21분 50초** |
 | 처리 속도 | 3.43 samples/sec |
 | 총 스텝 수 | 285 steps |
@@ -137,9 +137,13 @@ v2 summary LoRA는 학습은 됐으나 실서비스에서 쓸 수 없었음:
 
 | Epoch | Eval Loss | 비고 |
 |-------|-----------|------|
-| 2 | 0.9892 | |
-| 3 | (로그 확인 필요) | |
-| 4 | 1.0138 | |
+| 1 | 1.0238 | 초기 |
+| 2 | **0.9910** | **Best** |
+| 3 | 0.9970 | 소폭 상승 |
+| 4 | 1.0146 | 과적합 시작 |
+| 5 | 1.0289 | 학습 종료 |
+
+> Best checkpoint: **Epoch 2** (eval_loss = 0.9910)
 | 5 | 1.0289 | |
 
 ---
@@ -333,8 +337,17 @@ python ai/finetuning/train_v2_document.py --task summary --mode eval \
 | 평가 방식 | ROUGE-L + 태그 F1 (부적합) | BERTScore + 정성 (적합) |
 | BERTScore | 미측정 | **0.8594** |
 
+### 블로커: vLLM LoRA 서빙 버그
+
+어댑터 자체는 정상이지만 **vLLM 0.16.0 serverless에서 한글 깨짐** 발생. peft 직접 로드 시 완벽 동작.
+
+- r=16, r=32 모두 동일 증상
+- adapter_config 정리, peft re-save, ENFORCE_EAGER, tokenizer 삭제 전부 효과 없음
+- v1_judgment(구 peft)와 v2_generate만 정상 → 학습 환경 차이 또는 vLLM 버그
+- 상세: `docs/finetuning/vLLM_LoRA_서빙_버그.md`
+
 ### 향후
-1. vLLM 서빙 연동 (어댑터 로드)
+1. **vLLM 서빙 버그 해결** (최우선 — 버그 문서 참고)
 2. 챗봇 + 문서관리 페이지 동일 출력 포맷 적용
 3. 태그 8~9개 생성 19건 → 서빙 시 후처리로 7개 클리핑
 4. (선택) LLM-as-Judge로 할루시네이션 정량 평가
