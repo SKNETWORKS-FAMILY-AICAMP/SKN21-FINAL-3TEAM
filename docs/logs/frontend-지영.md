@@ -3369,27 +3369,131 @@ judgment KNOWN_OVERRIDES 9개 패턴:
 
 ---
 
-#### 실험 D: v6 학습 (진행중)
+#### 실험 D: v6 LoRA 재학습 (lr=1e-4, epoch 4, MLP 포함)
 
-RunPod에서 실행중:
-- v6 config: lr 2e-4→**1e-4**, epoch 3→**4**, target_modules에 **MLP(gate/up/down_proj)** 추가
-- 학습 데이터: 1,528건 (v5 1,471 + 보강 57건)
-- judgment KNOWN_OVERRIDES 9개 + Rule Guide 9개 (기존 7 + 신규 10, 11) 적용
+v6 config로 재학습 후 holdout 평가 (2가지 프롬프트로 각각 평가)
 
-### 실험 결과 비교표 (Planner v6)
+**v6 변경점 (v5 대비)**:
+- lr: 2e-4 → **1e-4** (과적합 방지)
+- epoch: 3 → **4** (충분한 수렴)
+- target_modules: q,v,k,o_proj → **+ gate,up,down_proj** (MLP 포함)
+- 학습 데이터: 1,471건 → **1,528건** (+57건 오답 타겟 보강)
 
-| # | 실험 | PM | Step Collapse | complex | 핵심 |
-|---|------|-----|-------------|---------|------|
-| 기준 | v5 매핑 없음 | 71.0% | 9.4% | 0.881 | judgment→doc_retrieve 15건 |
-| A | Rule 10,11 추가 | 71.0% | 9.4% | 0.881 | 효과 없음 (intent 혼동에는 무력) |
-| B | Few-shot 프롬프트 | **75.0%** | **7.5%** | **0.919** | complex ✅, edge_case ❌ |
-| C | 데이터 생성 | - | - | - | 57건 생성 (v6 train 준비) |
-| D | v6 학습 + OVERRIDES | **진행중** | - | - | lr↓ + epoch↑ + MLP + 보강 + OVERRIDES |
+**학습 로그**:
+- train_loss: 2.233 → 0.091 (epoch 4 종료)
+- eval_loss: 0.1185(ep1) → 0.1034(ep2) → 0.0989(ep3) → 0.0984(ep4) — 안정 수렴
+- 학습 시간: 36분 (A100 GPU)
+
+---
+
+**실험 D-1: v6 + 기본 프롬프트 → PM 64.0% ❌❌**
+
+| 지표 | v5 기준 | D-1 (v6) | 변화 |
+|------|--------|----------|------|
+| Perfect Match | 71.0% | **64.0%** | **-7.0%p ❌** |
+| single_step | 0.875 | **0.986** | +0.111 ✅ |
+| sequential | 0.955 | **0.884** | -0.071 ❌ |
+| complex | 0.881 | **0.784** | -0.097 ❌ |
+| Step Collapse | 9.4% | **11.3%** | +1.9%p ❌ |
+| 과잉 분리 | 5건 | **9건** | +4건 ❌ |
+
+**대실패 원인**: MLP target_modules + judgment 보강 데이터가 모델을 **judgment 과잉 예측**으로 밀어버림.
+- v5에서는 judgment→doc_retrieve 15건이 문제 → v6에서는 **반대로 doc_retrieve→judgment 11건** 발생
+- "규정 찾아서 확인하고" 같은 multi-step에서 첫 step까지 judgment로 출력
+- 과잉 분리 9건: 단일 step 질문을 2-3 step으로 과도하게 분해 (E-006, E-014 등)
+
+---
+
+**실험 D-2: v6 + Few-shot 프롬프트 → PM 74.0%**
+
+| 지표 | D-1 (v6 기본) | D-2 (v6 Few-shot) | 변화 |
+|------|-------------|-------------------|------|
+| Perfect Match | 64.0% | **74.0%** | **+10.0%p** |
+| parallel | 0.911 | **1.000** | +0.089 ✅ (완벽) |
+| complex | 0.784 | **0.857** | +0.073 ✅ |
+| Step Collapse | 11.3% | **7.5%** | -3.8%p ✅ |
+| 과잉 분리 | 9건 | **4건** | -5건 ✅ |
+
+**Few-shot이 v6 모델의 약점을 대폭 보정** — 기본 프롬프트 대비 +10%p.
+하지만 v5+Few-shot(75.0%)보다 1%p 낮음 → **v6 재학습 자체가 비효과적**.
+
+---
+
+### 실험 결과 전체 비교표 (Planner v6 실험)
+
+| # | 실험 | 모델 | 프롬프트 | OVERRIDES | PM | SC | complex | parallel | 핵심 |
+|---|------|------|---------|-----------|-----|-----|---------|----------|------|
+| 기준 | v5 (매핑) | v5 LoRA | 기본 | Rule 7개 + 매핑 | **88.0%** | 10.2% | - | - | 후처리 매핑 포함 |
+| 기준 | v5 (매핑 없음) | v5 LoRA | 기본 | Rule 7개 | 71.0% | 9.4% | 0.881 | 0.897 | judgment→doc_retrieve 15건 |
+| A | Rule 추가 | v5 LoRA | 기본 | Rule 9개 | 71.0% | 9.4% | 0.881 | 0.897 | 효과 없음 |
+| **B** | **Few-shot** | **v5 LoRA** | **Few-shot** | **Rule 7개** | **75.0%** | **7.5%** | **0.919** | **0.950** | **complex ✅, edge ❌** |
+| D-1 | v6 재학습 | v6 LoRA | 기본 | Rule 9개+OVR | 64.0% | 11.3% | 0.784 | 0.911 | 대실패 — judgment 과잉 |
+| D-2 | v6 Few-shot | v6 LoRA | Few-shot | Rule 9개+OVR | 74.0% | 7.5% | 0.857 | **1.000** | Few-shot이 v6 보정 |
+
+### Few-shot 프롬프트 효과 분석
+
+**Few-shot이 성능을 끌어올리는 핵심 메커니즘**:
+
+```
+시스템 프롬프트에 3-step 예시 3개를 삽입 → 모델이 "이 패턴은 3-step이구나" 학습
+→ Step Collapse 방지 + intent 순서 정렬 + depends_on 구조화
+```
+
+**추가한 Few-shot 예시 3개**:
+
+| # | 입력 예시 | plan 구조 | 효과 |
+|---|----------|----------|------|
+| 1 | "출장 규정 문서 찾아서 해외출장 가능한지 확인하고 출장 보고서 만들어줘" | doc_retrieve→judgment→doc_generate (순차, depends_on 체인) | **찾아서→확인→생성** 패턴의 3-step 유지 |
+| 2 | "연차 규정 확인하고 팀 일정 보고 비는 날에 휴가 등록해줘" | judgment→schedule_view→schedule_add (병렬→순차) | **확인+조회→등록** 패턴 + depends_on [1,2] |
+| 3 | "마케팅 보고서 찾고 경쟁사 자료도 검색해서 비교 제안서 만들어줘" | doc_retrieve→doc_retrieve→doc_generate (병렬→순차) | **병렬 검색→생성** 패턴 + depends_on [1,2] |
+
+**카테고리별 Few-shot 효과** (v5 기본 → v5 Few-shot):
+
+| 카테고리 | 기본 | Few-shot | 변화 | 이유 |
+|---------|------|---------|------|------|
+| complex | 0.881 | **0.919** | +0.038 ✅ | 예시가 3-step complex 패턴과 직접 매칭 |
+| parallel | 0.897 | **0.950** | +0.053 ✅ | 예시 2,3의 병렬 depends_on 구조 학습 |
+| sequential | 0.955 | **0.962** | +0.007 ✅ | 소폭 개선 |
+| single_step | 0.875 | **0.900** | +0.025 ✅ | judgment 패턴 인식 개선 (예시 1,2에 judgment 포함) |
+| edge_case | 0.906 | **0.821** | -0.085 ❌ | **부작용**: 프롬프트 길이 증가로 비정형 입력 분류 악화 |
+
+**Few-shot의 한계**:
+- 프롬프트가 길어지면서 **단순 입력/비정형 입력** 분류 정확도 하락
+- edge_case에서 JSON 파싱 실패 1건 발생 (E-016 "고마워!")
+- 예시에 없는 새로운 패턴에는 효과 제한적
+
+**핵심 교훈**:
+1. **Few-shot > LoRA 데이터 보강**: 57건 데이터 추가 재학습(v6)보다, 예시 3개 프롬프트 삽입(Few-shot)이 더 효과적
+2. **Few-shot은 Trade-off**: complex/parallel ↑ vs edge_case ↓ — 모든 카테고리를 동시에 올리긴 어려움
+3. **재학습은 양날의 검**: v6(lr↓+MLP)가 v5보다 오히려 하락 — v5b와 같은 교훈 재확인
+4. **Few-shot + KNOWN_OVERRIDES 조합이 최선**: 모델 변경 없이 후처리로 최대 효과
+
+---
+
+#### 실험 후 추가 조치: KNOWN_OVERRIDES 정교화 (v2)
+
+실험 D 결과에서 발견된 문제: multi-step에서 KNOWN_OVERRIDES가 첫 step을 무조건 judgment로 교체 → "규정 찾아서 확인하고"에서 doc_retrieve가 judgment로 바뀌는 부작용
+
+**수정 내용**:
+
+| 규칙 | 기존 (v1) | 수정 (v2) |
+|------|----------|----------|
+| 단일 step | doc_retrieve→judgment | 동일 |
+| 멀티 step 첫 step | 무조건 judgment로 교체 | **검색 동사(찾아서/검색해서) 없을 때만** 교체 |
+| **규칙 0b (신규)** | - | doc_retrieve 연속 시 **2번째 step**을 judgment로 보정 |
+
+예시:
+- "규정 알려줘" → `[doc_retrieve]` → `[judgment]` ✅ (단일 step)
+- "규정도 알려줘" (멀티) → `[doc_retrieve, ...]` → `[judgment, ...]` ✅ (검색동사 없음)
+- "규정 **찾아서** 확인하고 만들어줘" → `[doc_retrieve, doc_retrieve, doc_generate]` → `[doc_retrieve, judgment, doc_generate]` ✅ (규칙 0b)
+
+→ 실험 E, F에서 v5 + OVERRIDES v2 + Few-shot 조합 평가 예정
 
 ### 다음 할 일
 
-- [ ] 실험 D 결과 확인 및 분석
-- [ ] 최종 Planner 모델 확정 (v5 vs v6 비교)
+- [ ] 실험 E, F 결과 확인 (v5 + OVERRIDES v2 ± Few-shot)
+- [ ] PM 80%+ 달성 시 → v5 + Few-shot + OVERRIDES v2로 확정
+- [ ] PM 80% 미달 시 → 후처리 매핑(knowledge_query) 방식으로 전환
 - [ ] EC2에 새 Intent 모델 배포
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
