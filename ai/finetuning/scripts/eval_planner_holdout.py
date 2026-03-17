@@ -60,36 +60,11 @@ def apply_post_rules(user_input: str, intents: list) -> list:
        not re.search(r"(찾아|검색|작성|만들|등록|확인|알려|잡아)", user_input):
         return ["general"]
 
-    # 규칙 5: Step Collapse 방지 — 접속사 3개 이상이면 최소 3-step
-    connectors = len(re.findall(r"(찾아서|검색해서|확인하고|보고|바탕으로|그 다음|그리고|한 다음|후에|만들고|정리하고|요약하고)", user_input))
-    if connectors >= 2 and len(intents) < 3:
-        pass  # 모델 출력 유지 — 무리하게 step 늘리면 오히려 악화
-
-    # 규칙 10: "A 찾아서 B 확인하고 C 만들어줘" 패턴 — doc_retrieve→judgment 축소 방지
-    # 문서를 찾고 + 판단/확인 + 생성/등록이 모두 포함된 입력인데 2-step이면 doc_retrieve 복원
-    if re.search(r"(찾아서|검색해서|조회해서)", user_input) and \
-       re.search(r"(확인하고|판단하고|보고|검토하고)", user_input) and \
-       re.search(r"(만들어|작성해|잡아|등록|넣어)", user_input) and \
-       len(intents) == 2:
-        # 2-step → 3-step 복원: 첫 step 앞에 doc_retrieve 삽입
-        if intents[0] != "doc_retrieve":
-            intents.insert(0, "doc_retrieve")
-
-    # 규칙 11: "A도 찾아서 B도 찾아서" — 검색 동사 2회 이상 + 생성 → 최소 3-step
-    search_verbs = len(re.findall(r"(찾아|검색|조회|찾고|검색하고)", user_input))
-    if search_verbs >= 2 and \
-       re.search(r"(만들어|작성해|뽑아|써\s*줘)", user_input) and \
-       len(intents) < 3:
-        # doc_retrieve가 1개면 하나 더 추가
-        if intents.count("doc_retrieve") < 2:
-            intents.insert(0, "doc_retrieve")
-
     # 규칙 6: "취소" → schedule_add (schedule_view 아님)
     if re.search(r"취소", user_input) and intents and intents[0] == "schedule_view":
         intents[0] = "schedule_add"
 
     # 규칙 8: "변경/수정/취소" + 일정 관련 → schedule_add 단일
-    # v2: schedule_add가 출력에 없어도 schedule_view를 schedule_add로 교체
     if re.search(r"(변경|수정|취소)", user_input) and \
        re.search(r"(회의|미팅|일정|스케줄|시간)", user_input):
         if len(intents) >= 2 and "schedule_add" in intents:
@@ -102,22 +77,6 @@ def apply_post_rules(user_input: str, intents: list) -> list:
     if re.search(r"(만들어|작성해|써\s*줘|뽑아)\s*줘?\s*$", user_input) and \
        len(intents) >= 2 and intents[-1] != "doc_generate":
         intents[-1] = "doc_generate"
-
-    # 규칙 12: 과잉 분리 방지 — 단일 주제인데 같은 intent가 2개 이상 연속이면 축소
-    # E-015 "회의 취소해줘" → [schedule_add, schedule_add] → [schedule_add]
-    if len(intents) >= 2 and len(set(intents)) == 1 and \
-       not re.search(r"(그리고|이랑|하고|도\s|둘\s*다|각각)", user_input):
-        # 생성/등록 동사가 없는데 같은 intent 3개 이상 → 1개로 축소 (E-006)
-        if len(intents) >= 3 and not re.search(r"(만들|작성|등록|잡아|넣어)", user_input):
-            intents = [intents[0]]
-        # 2개 연속은 유지 (정상적인 2-step일 수 있음) — 단, 매우 짧은 단일 요청이면 축소
-        elif len(intents) == 2 and len(user_input.strip()) < 20:
-            intents = [intents[0]]
-
-    # 규칙 13: "트렌드/뉴스/소식" 등 일반 질문 → general 강제
-    if re.search(r"(트렌드|뉴스|소식|근황|날씨)", user_input) and \
-       not re.search(r"(규정|문서|보고서|회의|일정)", user_input):
-        intents = ["general"]
 
     # 규칙 14: 단일 step + 문서 생성 패턴 → doc_generate 강제
     # S-003 "이번 달 보고서 만들어줘" → schedule_view 출력 → doc_generate로 교체
