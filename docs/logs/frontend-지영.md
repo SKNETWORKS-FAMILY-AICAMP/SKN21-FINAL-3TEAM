@@ -3578,10 +3578,30 @@ Rule 10,11,12,13이 매핑과 간섭하여 성능 저하 유발 → 제거.
 5. **Few-shot > LoRA 보강**: 57건 재학습보다 예시 3개 프롬프트가 더 효과적
 6. **실패한 실험에서도 인사이트 획득**: v6, Rule 15, OVERRIDES 모두 "이 방법은 안 됨" 확인
 
+### 모델 백업 + 배포
+
+#### HuggingFace 백업 완료
+
+| 모델 | HuggingFace repo | 성능 |
+|------|------------------|------|
+| Intent 앙상블 | `jiyouxg/dudu-intent-ensemble` (v2) | 91.0% (100건) |
+| Planner v5 LoRA | `jiyouxg/dudu-planner-v5-lora` | 87.0% (100건) |
+
+#### RunPod 네트워크 볼륨 저장 완료
+
+Pod 꺼져도 유지되는 네트워크 볼륨(`/workspace/`, 2.3PB)에 저장:
+- `/workspace/models/planner-v5-lora/` — Planner LoRA 가중치
+- `/workspace/SKN21-FINAL-3TEAM/` — 프로젝트 전체 (코드, 학습 데이터, eval 스크립트)
+
+#### EC2 Intent 모델 배포 시도 → 미완료
+
+- EC2 사양: CPU only (Intel Xeon), RAM 3.7GB, 디스크 38GB
+- 기존 앙상블 디렉토리에 **model.safetensors 가중치 파일 누락** 확인 (이전 소실 상태 그대로)
+- HuggingFace에서 다운로드 시도 → 6.73GB 다운로드 중 **진행바 멈춤 + 터미널 응답 없음** → 강제 종료
+- 원인 미확인 (EC2 메모리 부족 또는 네트워크 문제 가능성)
+
 ### 다음 할 일
 
-- [x] ~~Planner 최종 모델 확정~~ → **PM 87.0% (Hybrid+매핑+Rule)**
-- [x] ~~Planner v5 LoRA HuggingFace 백업~~ → 완료 (jiyouxg/dudu-planner-v5-lora)
-- [ ] EC2에 새 Intent 모델 배포
+- [ ] EC2 Intent 모델 배포 재시도 (wget으로 직접 다운로드 또는 scp 전송)
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
