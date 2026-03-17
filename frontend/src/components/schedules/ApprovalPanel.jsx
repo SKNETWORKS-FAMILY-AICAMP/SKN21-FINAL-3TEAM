@@ -115,6 +115,10 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
     const [pickerStartTime, setPickerStartTime] = useState('10:00');
     const [pickerEndTime, setPickerEndTime] = useState('11:00');
     const [pickerAllDay, setPickerAllDay] = useState(false);
+    const [pickerScheduleType, setPickerScheduleType] = useState('meeting');
+    const [pickerShareScope, setPickerShareScope] = useState('project'); // 'team' | 'project'
+    const [pickerGoogleMeet, setPickerGoogleMeet] = useState(false);
+    const [pickerAttendees, setPickerAttendees] = useState('');  // comma-separated emails
 
     // Schedule result modal (success / failure)
     const [scheduleResult, setScheduleResult] = useState(null); // { success: bool, title: string, message: string }
@@ -367,6 +371,10 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
         setPickerEndTime(`${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`);
         setPickerTitle(s.title);
         setPickerAllDay(false);
+        setPickerScheduleType(s.schedule_type || 'meeting');
+        setPickerShareScope('project');
+        setPickerGoogleMeet(false);
+        setPickerAttendees('');
         setSchedulePickerData({ suggestion: s, idx });
     };
 
@@ -393,13 +401,21 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
             }
 
             const addedTitle = pickerTitle.trim() || s.title;
+            const attendeeList = pickerAttendees
+                .split(',')
+                .map(e => e.trim())
+                .filter(e => e.includes('@'));
+
             await createSchedule({
                 title: addedTitle,
                 description: s.description || s.reason || '',
                 start_time: startStr,
                 end_time: endStr,
-                schedule_type: s.schedule_type || 'task',
+                schedule_type: pickerScheduleType,
                 priority: s.priority || 'medium',
+                create_meet: pickerGoogleMeet,
+                share_scope: pickerShareScope,
+                attendees: attendeeList.length > 0 ? attendeeList : undefined,
             });
 
             // 추가 성공 → 해당 항목 제거 & 모달 닫기 & 캘린더 새로고침
@@ -1238,7 +1254,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                 <div className="w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-50 flex items-center justify-center">
                                     <CalendarPlus size={20} className="text-primary-700" />
                                 </div>
-                                <h3 className="text-base font-bold text-neutral-main dark:text-white">캘린더에 추가</h3>
+                                <h3 className="text-base font-bold text-neutral-main dark:text-white">일정 추가</h3>
                             </div>
                             <button onClick={() => setSchedulePickerData(null)} className="w-8 h-8 rounded-lg hover:bg-surface-sub dark:hover:bg-white/5 text-neutral-muted transition-colors flex items-center justify-center">
                                 <X size={18} />
@@ -1248,7 +1264,6 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                         {/* 일정 제목 (수정 가능) */}
                         <div className="space-y-3">
                             <div>
-                                <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">일정 이름</label>
                                 <input
                                     type="text"
                                     value={pickerTitle}
@@ -1260,6 +1275,59 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                     <p className="text-[10px] text-neutral-muted mt-1.5 ml-0.5 line-clamp-2">{schedulePickerData.suggestion.reason}</p>
                                 )}
                             </div>
+
+                            {/* 일정 유형 토글 */}
+                            <div>
+                                <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">일정 유형</label>
+                                <div className="flex gap-1.5 flex-wrap">
+                                    {[
+                                        { value: 'meeting', label: '회의', color: 'bg-blue-100 text-blue-700 border-blue-300' },
+                                        { value: 'deadline', label: '마감일', color: 'bg-red-100 text-red-700 border-red-300' },
+                                        { value: 'project', label: '프로젝트', color: 'bg-green-100 text-green-700 border-green-300' },
+                                        { value: 'personal', label: '개인 일정', color: 'bg-gray-100 text-gray-700 border-gray-300' },
+                                    ].map(t => (
+                                        <button
+                                            key={t.value}
+                                            onClick={() => setPickerScheduleType(t.value)}
+                                            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${
+                                                pickerScheduleType === t.value
+                                                    ? t.color + ' ring-2 ring-offset-1 ring-primary-300'
+                                                    : 'bg-white dark:bg-surface-card text-neutral-muted border-neutral-border hover:border-neutral-400'
+                                            }`}
+                                        >
+                                            {t.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* 공유 범위 */}
+                            <div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setPickerShareScope('team')}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${
+                                            pickerShareScope === 'team'
+                                                ? 'bg-primary-50 text-primary-700 border-primary-300'
+                                                : 'bg-white dark:bg-surface-card text-neutral-muted border-neutral-border'
+                                        }`}
+                                    >
+                                        팀 공유
+                                    </button>
+                                    <button
+                                        onClick={() => setPickerShareScope('project')}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${
+                                            pickerShareScope === 'project'
+                                                ? 'bg-purple-50 text-purple-700 border-purple-300'
+                                                : 'bg-white dark:bg-surface-card text-neutral-muted border-neutral-border'
+                                        }`}
+                                    >
+                                        프로젝트 공유
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 날짜 */}
                             <div>
                                 <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">날짜</label>
                                 <DatePicker
@@ -1268,15 +1336,51 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                     placeholder="날짜를 선택하세요"
                                 />
                             </div>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={pickerAllDay}
-                                    onChange={(e) => setPickerAllDay(e.target.checked)}
-                                    className="w-4 h-4 rounded border-neutral-border accent-primary-700"
-                                />
-                                <span className="text-sm text-neutral-main dark:text-neutral-sub">종일</span>
-                            </label>
+
+                            {/* Google Meet + 종일 */}
+                            <div className="flex items-center gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={pickerGoogleMeet}
+                                        onChange={(e) => setPickerGoogleMeet(e.target.checked)}
+                                        className="w-4 h-4 rounded border-neutral-border accent-primary-700"
+                                    />
+                                    <span className="text-sm text-neutral-main dark:text-neutral-sub">
+                                        Google Meet 링크 생성
+                                    </span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={pickerAllDay}
+                                        onChange={(e) => setPickerAllDay(e.target.checked)}
+                                        className="w-4 h-4 rounded border-neutral-border accent-primary-700"
+                                    />
+                                    <span className="text-sm text-neutral-main dark:text-neutral-sub">종일</span>
+                                </label>
+                            </div>
+
+                            {/* 참석자 이메일 (Google Meet 체크 시 표시) */}
+                            {pickerGoogleMeet && (
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-neutral-muted mb-1.5 ml-0.5">참석자 초대 (이메일)</label>
+                                    <textarea
+                                        value={pickerAttendees}
+                                        onChange={(e) => setPickerAttendees(e.target.value)}
+                                        placeholder="이메일을 쉼표(,)로 구분하여 입력&#10;예: kim@company.com, lee@company.com"
+                                        rows={2}
+                                        className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-border dark:border-neutral-border bg-white dark:bg-surface-card text-sm outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all placeholder:text-neutral-muted resize-none"
+                                    />
+                                    {pickerAttendees && (
+                                        <p className="text-[10px] text-neutral-muted mt-1 ml-0.5">
+                                            {pickerAttendees.split(',').filter(e => e.trim().includes('@')).length}명 초대 예정 — Meet 링크 + 초대 메일이 발송됩니다
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* 시간 선택 */}
                             {!pickerAllDay && (
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
