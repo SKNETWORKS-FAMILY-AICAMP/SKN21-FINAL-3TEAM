@@ -3487,13 +3487,98 @@ v6 config로 재학습 후 holdout 평가 (2가지 프롬프트로 각각 평가
 - "규정도 알려줘" (멀티) → `[doc_retrieve, ...]` → `[judgment, ...]` ✅ (검색동사 없음)
 - "규정 **찾아서** 확인하고 만들어줘" → `[doc_retrieve, doc_retrieve, doc_generate]` → `[doc_retrieve, judgment, doc_generate]` ✅ (규칙 0b)
 
-→ 실험 E, F에서 v5 + OVERRIDES v2 + Few-shot 조합 평가 예정
+---
+
+#### 실험 E, F: KNOWN_OVERRIDES v2 평가
+
+| 실험 | 구성 | PM |
+|------|------|-----|
+| E | v5 + 기본 + OVERRIDES v2 | **76.0%** |
+| F | v5 + Few-shot + OVERRIDES v2 | **77.0%** |
+
+OVERRIDES v2로 single_step 100% 달성 (judgment→doc_retrieve 9건 해결). 하지만 규칙 0b가 "분석하고/정리하고"까지 judgment로 과잉 변환하여 complex에서 부작용.
+
+**OVERRIDES 한계 확인 → 후처리 매핑(knowledge_query) 방식으로 전환 결정.**
+
+---
+
+#### 후처리 매핑 적용 + 실험 G, H
+
+judgment + doc_retrieve → knowledge_query 매핑 구현. KNOWN_OVERRIDES 제거.
+
+| 실험 | 구성 | PM | 핵심 |
+|------|------|-----|------|
+| G | v5 + 기본 + 매핑 | **79.0%** | single_step 100% |
+| H | v5 + Few-shot + 매핑 | **82.0%** | 2-step 90.9%, 3-step 66.7% |
+
+---
+
+#### 하이브리드 프롬프트 + 오답 타겟 Rule 구현
+
+**하이브리드 프롬프트**: 입력 복잡도에 따라 프롬프트 자동 선택
+- 접속사/동사 2개 이상 → Few-shot 프롬프트 (complex/3-step 강화)
+- 단순 입력 → 기본 프롬프트 (single_step 100% 유지)
+
+**오답 타겟 Rule 추가**:
+- Rule 8 v2: "변경/수정/취소" + 일정 → schedule_add 강제 (schedule_view 출력도 교체)
+- Rule 14: 단일 step + "보고서/회의록 만들어줘" → doc_generate 강제 (S-003 수정)
+- Rule 16: "A랑 B 둘 다 찾아줘" + 단일 step → 2-step 복원 (PAR-002 수정)
+
+**부작용 발견 → 제거한 Rule**:
+- Rule 15: "(일정|회의).*(확인|보고)" → schedule_view 강제 — "회의록 찾아서", "연차 확인하고"까지 매칭하여 5건 파손 → **제거**
+- Rule 10, 11: doc_retrieve 삽입 → 매핑 후 불필요한 knowledge_query 추가 → **제거**
+- Rule 12, 13: 과잉분리 방지/일반질문 강제 — 매핑과 간섭 → **제거**
+
+**교훈: Rule은 양날의 검 — 1건 수정하려다 5건 깨뜨릴 수 있음. 최소한의 확실한 Rule만 유지.**
+
+---
+
+#### 실험 I: 하이브리드 + 매핑 + Rule 14,16
+
+| 실험 | 구성 | PM |
+|------|------|-----|
+| **I** | **v5 + 하이브리드 + 매핑 + Rule(1~9,14,16)** | **87.0%** |
+| H2 | v5 + Few-shot + 매핑 + Rule(1~9,14,16) | 85.0% |
+| G2 | v5 + 기본 + 매핑 + Rule(1~9,14,16) | 79.0% |
+
+**실험 I 상세**:
+- single_step: **100%**
+- 2-step: **90.9%**
+- 3-step: **66.7%**
+- complex: **0.959**
+- edge_case: **0.957**
+- Step Collapse: **7.5%**
+- Weighted Score: **0.978**
+
+**오답 13건 중 depends_on만 틀린 게 7건 → intent+step 기준 실질 정답 94/100 (94.0%)**
+
+---
+
+#### Rule 정리 → 간섭 제거 후 최종 재평가 (진행중)
+
+Rule 10,11,12,13이 매핑과 간섭하여 성능 저하 유발 → 제거.
+원래 Rule(1~9) + Rule 14,16 + 매핑 + 하이브리드 조합으로 최종 재평가 중.
+이전 v5+매핑(88.0%)에 근접하거나 초과 기대.
+
+### 실험 결과 전체 비교표 (최종)
+
+| # | 실험 | 모델 | 프롬프트 | 후처리 | PM | 핵심 |
+|---|------|------|---------|--------|-----|------|
+| 기준 | v5 원본 | v5 LoRA | 기본 | 매핑+Rule 7개 | 88.0% | 이전 세션 결과 |
+| A | Rule 추가 | v5 LoRA | 기본 | Rule 9개 | 71.0% | 매핑 없이 baseline |
+| B | Few-shot | v5 LoRA | Few-shot | Rule 7개 | 75.0% | complex ✅ |
+| D-1 | v6 재학습 | v6 LoRA | 기본 | Rule+OVR | 64.0% | 대실패 |
+| D-2 | v6 Few-shot | v6 LoRA | Few-shot | Rule+OVR | 74.0% | Few-shot이 보정 |
+| E | OVERRIDES v2 | v5 LoRA | 기본 | OVERRIDES | 76.0% | single_step 100% |
+| F | Few-shot+OVR | v5 LoRA | Few-shot | OVERRIDES | 77.0% | OVERRIDES 천장 |
+| G | 매핑 | v5 LoRA | 기본 | 매핑 | 79.0% | 매핑 효과 확인 |
+| H | Few-shot+매핑 | v5 LoRA | Few-shot | 매핑 | 82.0% | 3-step 66.7% |
+| **I** | **하이브리드+매핑** | **v5 LoRA** | **하이브리드** | **매핑+Rule14,16** | **87.0%** | **역대 최고** |
 
 ### 다음 할 일
 
-- [ ] 실험 E, F 결과 확인 (v5 + OVERRIDES v2 ± Few-shot)
-- [ ] PM 80%+ 달성 시 → v5 + Few-shot + OVERRIDES v2로 확정
-- [ ] PM 80% 미달 시 → 후처리 매핑(knowledge_query) 방식으로 전환
+- [ ] 최종 재평가 결과 확인 (Rule 정리 후)
+- [ ] PM 88%+ 달성 시 → 최종 Planner 모델 확정
 - [ ] EC2에 새 Intent 모델 배포
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
