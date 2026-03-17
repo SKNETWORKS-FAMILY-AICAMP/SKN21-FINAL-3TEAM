@@ -40,28 +40,28 @@ if [ ! -d "${V5_ADAPTER}" ]; then
     V5_ADAPTER="outputs/v4_planner/final"
 fi
 
-# ── 실험 E: v5 + 기본 프롬프트 + 정교한 OVERRIDES ──
+# ── 실험 G: v5 + 기본 + 후처리 매핑 (knowledge_query) ──
 echo ""
 echo "═══════════════════════════════════════"
-echo " 실험 E: v5 + 기본 + OVERRIDES v2"
+echo " 실험 G: v5 + 기본 + 후처리 매핑"
 echo "═══════════════════════════════════════"
 python3 ai/finetuning/scripts/eval_planner_holdout.py \
     --adapter ${V5_ADAPTER} \
-    --output ${RESULTS_DIR}/exp_E_overrides_v2.json \
-    2>&1 | tee ${RESULTS_DIR}/exp_E_log.txt
-echo "✓ 실험 E 완료"
+    --output ${RESULTS_DIR}/exp_G_mapping.json \
+    2>&1 | tee ${RESULTS_DIR}/exp_G_log.txt
+echo "✓ 실험 G 완료"
 
-# ── 실험 F: v5 + Few-shot + 정교한 OVERRIDES ──
+# ── 실험 H: v5 + Few-shot + 후처리 매핑 ──
 echo ""
 echo "═══════════════════════════════════════"
-echo " 실험 F: v5 + Few-shot + OVERRIDES v2"
+echo " 실험 H: v5 + Few-shot + 후처리 매핑"
 echo "═══════════════════════════════════════"
 python3 ai/finetuning/scripts/eval_planner_holdout.py \
     --adapter ${V5_ADAPTER} \
     --fewshot \
-    --output ${RESULTS_DIR}/exp_F_fewshot_overrides.json \
-    2>&1 | tee ${RESULTS_DIR}/exp_F_log.txt
-echo "✓ 실험 F 완료"
+    --output ${RESULTS_DIR}/exp_H_fewshot_mapping.json \
+    2>&1 | tee ${RESULTS_DIR}/exp_H_log.txt
+echo "✓ 실험 H 완료"
 
 # ── 결과 비교 ──
 echo ""
