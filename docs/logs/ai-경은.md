@@ -4,6 +4,31 @@
 
 ---
 
+## 2026-03-17 (월)
+
+### 한 일
+- **v3 Judgment LoRA 재학습** (RunPod A100 80GB)
+  - conditional 보강 데이터 기반, Kanana-1.5-8B + LoRA (r=16, alpha=32, 3 epochs)
+  - train_loss: 0.2212, eval_loss: 0.1067
+  - 학습 시간: ~2시간 20분
+- **v3 평가 완료**: 판단 정확도 **85.4%** (v1 83.5% → +1.9%p)
+  - conditional 78.0% (+3.0%), no 83.6% (+3.3%), yes 86.0% (+1.0%), no_regulation 97.0% (동일)
+  - JSON 유효율: 97.6%
+- **HuggingFace 업로드 완료**: `yoongyeongeun/v1-judgment-hardcoded`
+  - vLLM 서빙 재시작 시 자동 적용 (코드 변경 불필요)
+- **8주차 산출물 작성**
+  - 시스템 구성도 (컬러/무채색) — sLLM 전환 완료 반영
+  - 테스트 계획 및 결과 보고서 (106개 시나리오)
+  - 개발된 LLM 연동 웹 애플리케이션 문서
+- **산출물 push**: feat/ai-yoon + develop 반영
+
+### 다음 할 일
+- vLLM 서빙에서 v3 모델 적용 확인
+- LoRA v3 RAG 연동 평가 (실제 검색 컨텍스트 기반)
+- 최종 발표 준비
+
+---
+
 ## 2026-02-11 (화)
 
 **모델 벤치마크 테스트셋 + 스크립트 구현 (#7):**
