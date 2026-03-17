@@ -106,15 +106,15 @@ FIELD_POOLS = {
         ],
         "always_content": [
             ("overview", "업무 내용을 요약한 보고 개요 (3~5문장)"),
-            ("main_content", "업무 세부 내용을 항목별로 구체적으로 작성"),
+            ("main_content", "업무 세부 내용을 서술형 문자열로 구체적으로 작성"),
         ],
         "priority_content": [
             ("tasks", '진행 업무 목록 배열. 각 항목은 {"item": "업무명", "assignee": "담당자", "progress": "진행률", "start_date": "시작일", "end_date": "종료일"} 형태'),
             ("next_plan", "향후 계획 (구체적으로 작성)"),
+            ("issues", "이슈 및 건의사항 (서술형 문자열, 없으면 빈 문자열)"),
         ],
         "content": [
             ("achievements", "주요 성과 목록 (배열)"),
-            ("issues", "이슈 및 건의사항 (없으면 빈 문자열)"),
             ("kpi_results", "KPI 달성 현황 (없으면 빈 문자열)"),
             ("conclusion", "결론 및 종합 의견"),
             ("recommendations", "권장 사항 목록 (배열)"),
@@ -137,16 +137,16 @@ FIELD_POOLS = {
             ("period", "제안 기간 (예: '2026년 3월 ~ 6월')"),
         ],
         "always_content": [
-            ("content", "제안 내용을 항목별로 구체적으로 작성"),
-            ("expected_effect", "기대 효과 (3~5문장)"),
+            ("content", "제안 내용을 서술형 문자열로 구체적으로 작성"),
+            ("expected_effect", "기대 효과 (3~5문장, 서술형 문자열)"),
         ],
         "priority_content": [
-            ("schedule", '추진 일정 배열. 각 항목은 {"phase": "단계", "task": "업무", "period": "기간"} 형태'),
-            ("budget", '예산 배열. 각 항목은 {"item": "항목", "amount": "금액"} 형태'),
+            ("schedule", '추진 일정 배열. 각 항목은 {"item": "추진항목", "phase1": "1단계 내용", "phase2": "2단계 내용", "phase3": "3단계 내용", "phase4": "4단계 내용"} 형태'),
+            ("budget", '예산 배열. 각 항목은 {"item": "항목", "quantity": "수량", "unit_price": "단가", "amount": "금액"} 형태'),
+            ("background", "제안 배경 (2~3문장, 서술형 문자열)"),
+            ("current_situation", "현황 분석 (3~5문장, 서술형 문자열)"),
         ],
         "content": [
-            ("background", "제안 배경 (2~3문장)"),
-            ("current_situation", "현황 분석 (3~5문장)"),
             ("scope", "사업 범위 (2~3문장)"),
             ("budget_total", "합계 금액 (없으면 빈 문자열)"),
             ("resources", "필요 자원 (인력, 장비 등)"),
@@ -523,8 +523,16 @@ def synthesize_template(
                 failed += 1
                 continue
 
-            # ~30% 확률로 빈 필드 학습 샘플 생성 (할루시네이션 방지)
-            is_sparse = rng.random() < empty_field_ratio
+            # 입력 길이에 따라 sparse 비율 조정 (짧을수록 빈 필드 많이)
+            # short: 정보 부족 → 60% sparse / long: 정보 풍부 → 10% sparse
+            _sparse_by_length = {
+                "50~200": 0.60,    # short: 빈 필드 많이 (할루시네이션 방지)
+                "200~800": 0.30,   # mid: 표준
+                "800~1500": 0.20,  # long: 대부분 채움
+                "1500~3000": 0.10, # xlong: 거의 다 채움
+            }
+            _effective_sparse = _sparse_by_length.get(length_range, empty_field_ratio)
+            is_sparse = rng.random() < _effective_sparse
             omit_fields = []
             if is_sparse:
                 # 선택된 필드 중 OMITTABLE에 해당하는 것만 비울 수 있음

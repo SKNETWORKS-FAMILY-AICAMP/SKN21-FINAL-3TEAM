@@ -107,9 +107,9 @@ SYSTEM_TEMPLATES = [
                 {"key": "purpose", "form": False, "description": "제안 목적 및 필요성 (3~5문장)"},
                 {"key": "background", "form": False, "description": "제안 배경 (2~3문장)"},
                 {"key": "schedule", "form": False,
-                 "description": '추진 일정 배열. 각 항목은 {"phase": "단계", "task": "업무", "period": "기간"} 형태'},
+                 "description": '추진 일정 배열. 각 항목은 {"item": "추진항목", "phase1": "1단계 내용", "phase2": "2단계 내용", "phase3": "3단계 내용", "phase4": "4단계 내용"} 형태'},
                 {"key": "budget", "form": False,
-                 "description": '예산 배열. 각 항목은 {"item": "항목", "amount": "금액"} 형태'},
+                 "description": '예산 배열. 각 항목은 {"item": "항목", "quantity": "수량", "unit_price": "단가", "amount": "금액"} 형태'},
                 {"key": "budget_total", "form": False, "description": "합계 금액 (없으면 빈 문자열)"},
                 {"key": "expected_effect", "form": False, "description": "기대 효과 (3~5문장)"},
             ]

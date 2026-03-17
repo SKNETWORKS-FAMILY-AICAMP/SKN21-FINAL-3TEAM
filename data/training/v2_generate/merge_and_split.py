@@ -18,9 +18,11 @@ if sys.platform == "win32":
 
 BASE_DIR = Path(__file__).resolve().parent
 
-SYNTHETIC_PATH = BASE_DIR / "synthetic_generate.jsonl"
-AIHUB_CLEANED_PATH = BASE_DIR / "ai_hub_generate_cleaned.jsonl"
-AIHUB_ORIGINAL_PATH = BASE_DIR / "ai_hub_generate.jsonl"
+SYNTHETIC_PATH = BASE_DIR / "synthetic_filtered.jsonl"
+SYNTHETIC_SUPPLEMENT_PATH = BASE_DIR / "synthetic_supplement.jsonl"
+SYNTHETIC_FALLBACK_PATH = BASE_DIR / "synthetic_generate.jsonl"
+AIHUB_CLEANED_PATH = BASE_DIR / "ai_hub_filtered.jsonl"
+AIHUB_FALLBACK_PATH = BASE_DIR / "ai_hub_generate_cleaned.jsonl"
 TRAIN_PATH = BASE_DIR / "train.jsonl"
 EVAL_PATH = BASE_DIR / "eval.jsonl"
 
@@ -98,25 +100,36 @@ def main():
     # 데이터 로드
     print("데이터 로드 중...")
 
+    # Synthetic (filtered 우선, 없으면 원본)
     if SYNTHETIC_PATH.exists():
         synthetic = load_jsonl(SYNTHETIC_PATH)
-        print(f"  Synthetic: {len(synthetic)}건")
+        print(f"  Synthetic (filtered): {len(synthetic)}건")
+    elif SYNTHETIC_FALLBACK_PATH.exists():
+        synthetic = load_jsonl(SYNTHETIC_FALLBACK_PATH)
+        print(f"  Synthetic (원본): {len(synthetic)}건")
     else:
-        print(f"  [경고] {SYNTHETIC_PATH} 없음")
+        print(f"  [경고] Synthetic 없음")
         synthetic = []
 
+    # Synthetic supplement
+    supplement = []
+    if SYNTHETIC_SUPPLEMENT_PATH.exists():
+        supplement = load_jsonl(SYNTHETIC_SUPPLEMENT_PATH)
+        print(f"  Synthetic supplement: {len(supplement)}건")
+
+    # AI Hub (filtered 우선, 없으면 cleaned)
     if AIHUB_CLEANED_PATH.exists():
         aihub = load_jsonl(AIHUB_CLEANED_PATH)
-        print(f"  AI Hub (정제): {len(aihub)}건")
-    elif AIHUB_ORIGINAL_PATH.exists():
-        aihub = load_jsonl(AIHUB_ORIGINAL_PATH)
-        print(f"  AI Hub (원본, 정제본 없음): {len(aihub)}건")
+        print(f"  AI Hub (filtered): {len(aihub)}건")
+    elif AIHUB_FALLBACK_PATH.exists():
+        aihub = load_jsonl(AIHUB_FALLBACK_PATH)
+        print(f"  AI Hub (cleaned): {len(aihub)}건")
     else:
-        print(f"  [경고] AI Hub 데이터 없음")
+        print(f"  [경고] AI Hub 없음")
         aihub = []
 
     # 합치기
-    all_samples = synthetic + aihub
+    all_samples = synthetic + supplement + aihub
     print(f"\n합산: {len(all_samples)}건")
 
     if not all_samples:
@@ -136,6 +149,15 @@ def main():
     if invalid:
         print(f"  JSON 무효 제거: {invalid}건")
     print(f"  유효 데이터: {len(valid)}건")
+
+    # 목표 1500건에 맞게 초과분 제거
+    TARGET_TOTAL = 1500
+    if len(valid) > TARGET_TOTAL:
+        trim_rng = random.Random(args.seed)
+        trim_rng.shuffle(valid)
+        removed = len(valid) - TARGET_TOTAL
+        valid = valid[:TARGET_TOTAL]
+        print(f"  초과분 제거: {removed}건 → {len(valid)}건")
 
     # 분할 전 분석
     analyze_fields(valid, "전체 (분할 전)")
