@@ -207,3 +207,168 @@ proposal:     150     200    100    50      500
 | merge_and_split → train/eval | ⏰ 대기 |
 | RunPod LoRA v3 학습 | ⏰ 대기 |
 | 평가 (구조 + 내용 + 신규 지표) | ⏰ 대기 |
+
+---
+
+## 8. 학습 결과
+
+> 학습 후 기록
+
+### 8-1. Epoch별 지표 추이
+
+| Epoch | Train Loss | Eval Loss | Token Accuracy | 비고 |
+|-------|-----------|-----------|----------------|------|
+| 1 | — | — | — | |
+| 2 | — | — | — | |
+| 3 | — | — | — | |
+| 4 | — | — | — | |
+| 5 | — | — | — | |
+
+> Best checkpoint: **Epoch ?** (eval_loss = ?)
+
+### 8-2. Loss 변화 상세
+
+```
+Epoch 1    ░░░░░░░░░░░░░░░░░░░░░░░░░  Train: ? → Eval: ?
+Epoch 2    ░░░░░░░░░░░░░░░░░░░░░░░░░  Train: ? → Eval: ?
+Epoch 3    ░░░░░░░░░░░░░░░░░░░░░░░░░  Train: ? → Eval: ?
+Epoch 4    ░░░░░░░░░░░░░░░░░░░░░░░░░  Train: ? → Eval: ?
+Epoch 5    ░░░░░░░░░░░░░░░░░░░░░░░░░  Train: ? → Eval: ?
+```
+
+### 8-3. 학습 효율
+
+| 항목 | 수치 |
+|------|------|
+| 총 학습 시간 | — |
+| 처리 속도 | — samples/sec |
+| 총 스텝 수 | — steps |
+| VRAM 사용량 | — GB (학습) / — GB (추론) |
+| 어댑터 크기 | — MB |
+
+---
+
+## 9. 평가 결과
+
+### 9-1. 구조 지표 (v2 → v3)
+
+| 지표 | v2 결과 | v3 결과 | 변화 |
+|------|:-------:|:-------:|:----:|
+| JSON 유효율 | 98.67% | —% | — |
+| 필드 완성도 | 98.67% | —% | — |
+| 필드 정확도 | 100% | —% | — |
+
+### 9-2. 내용 품질 지표 (v2 → v3)
+
+| 지표 | v2 결과 | v3 결과 | 변화 | 의미 |
+|------|:-------:|:-------:|:----:|------|
+| 빈 필드 정확도 | 83.07% | —% | — | 할루시네이션 |
+| false fill율 | 16.93% | —% | — | 지어내기 |
+| ROUGE-L | 0.5779 | — | — | 내용 일치도 |
+| BERTScore F1 | 0.9222 | — | — | 의미 유사도 |
+| 평균 출력 길이 | 974자 | —자 | — | 간결성 |
+
+> BERTScore 모델: `klue/roberta-large` (한국어 특화 임베딩)
+
+### 9-3. 신규 지표 — 핵심 필드 채움률
+
+| 지표 | v2 | v3 | 목표 |
+|------|:--:|:--:|:----:|
+| decisions 채움률 | 34% | —% | 80%+ |
+| action_items 채움률 | 34% | —% | 80%+ |
+| tasks 채움률 | 14% | —% | 70%+ |
+| next_plan 채움률 | 34% | —% | 70%+ |
+| schedule 채움률 | 25% | —% | 70%+ |
+| budget 채움률 | 25% | —% | 50%+ |
+
+### 9-4. 짧은 입력 대응력
+
+| 입력 길이 | 건수 | content 300자+ 비율 | JSON 유효율 |
+|----------|:----:|:------------------:|:-----------:|
+| short (50~200자) | — | —% | —% |
+| mid (200~800자) | — | —% | —% |
+| long (800~1500자) | — | —% | —% |
+| xlong (1500+자) | — | —% | —% |
+
+### 9-5. 3-Way 비교 (Base vs Fine-tuned vs GPT-4o-mini)
+
+| 모델 | JSON 유효율 | ROUGE-L | BERTScore F1 | 빈 필드 정확도 |
+|------|:-----------:|:-------:|:------------:|:-------------:|
+| Base Kanana (LoRA 없음) | —% | — | — | —% |
+| Fine-tuned Kanana (v3) | —% | — | — | —% |
+| GPT-4o-mini (API) | —% | — | — | —% |
+
+### 9-6. 정성 평가 — Before/After
+
+**예시 1: 핵심 필드 채움 개선** (v2 빈 배열 → v3 채움)
+
+| 필드 | 정답 | v2 예측 | v3 예측 |
+|------|------|---------|---------|
+| decisions | [...] | [] | — |
+| action_items | [...] | [] | — |
+
+**예시 2: 짧은 입력 대응**
+
+| | v2 | v3 |
+|---|---|---|
+| 입력 | (짧은 입력 없었음) | "마케팅 회의 결과 정리해줘" |
+| content 길이 | N/A | —자 |
+
+---
+
+## 10. 결론 및 향후 계획
+
+### 성과
+
+> 학습 후 기록
+
+- v2 대비 핵심 필드 채움률: decisions ?% → ?%, tasks ?% → ?%
+- 짧은 입력 대응: —
+- ROUGE-L: 0.5779 → ?
+- BERTScore F1: 0.9222 → ?
+
+### v2 → v3 핵심 개선점
+
+| 항목 | v2 | v3 |
+|------|:--:|:--:|
+| 핵심 필드 채움 | 14~34% | —% |
+| 짧은 입력 대응 | 불가 | — |
+| 할루시네이션 | false fill 17% | —% |
+| 데이터 파이프라인 | 1단계 | 7단계 |
+
+### 향후
+
+1. vLLM 서빙 연동 (v3 어댑터 로드)
+2. summary/qa LoRA 추가 학습 → 멀티 어댑터 서빙
+3. GPT-4o 대비 정량 비교 후 sLLM 전환 최종 판단
+
+---
+
+## 11. 산출물
+
+| 파일 | 경로 |
+|------|------|
+| LoRA 어댑터 | `outputs/v2_generate/kanana-1.5-8b-instruct-2505/final/` |
+| 평가 결과 | `outputs/v2_generate/kanana-1.5-8b-instruct-2505/eval_results.json` |
+| 3-Way 비교 | `outputs/v2_generate/kanana-1.5-8b-instruct-2505/comparison_results.json` |
+| 학습 로그 | `outputs/v2_generate/kanana-1.5-8b-instruct-2505/train_log.json` |
+| 학습 설정 | `ai/finetuning/configs/v2_generate.yaml` |
+| 학습 데이터 | `data/training/v2_generate/train.jsonl` |
+| 평가 데이터 | `data/training/v2_generate/eval.jsonl` |
+
+## 12. 실행 명령어
+
+```bash
+# 학습 + 평가
+python ai/finetuning/train_v2_document.py --task generate --mode all
+
+# 학습만
+python ai/finetuning/train_v2_document.py --task generate --mode train
+
+# 평가만
+python ai/finetuning/train_v2_document.py --task generate --mode eval \
+    --adapter_path outputs/v2_generate/kanana-1.5-8b-instruct-2505/final
+
+# 3개 모델 비교
+python ai/finetuning/train_v2_document.py --task generate --mode compare
+```

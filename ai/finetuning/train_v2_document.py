@@ -74,7 +74,7 @@ CONFIGS_DIR = Path(__file__).resolve().parent / "configs"
 TASK_CONFIGS = {
     "generate": CONFIGS_DIR / "v2_generate.yaml",
     "qa": CONFIGS_DIR / "v2_qa.yaml",
-    "summary": CONFIGS_DIR / "v2_summary.yaml",
+    "summary": CONFIGS_DIR / "v3_summary.yaml",
 }
 
 # doc_generate: 템플릿별 JSON 필수 필드
@@ -392,18 +392,24 @@ def compute_token_f1(prediction: str, reference: str) -> float:
 
 
 def evaluate(task: str, config: dict, adapter_path: str, base_model_override: str = None):
-    """기능별 평가"""
+    """기능별 평가 (adapter_path="base"이면 어댑터 없이 Base 모델 평가)"""
     model_id = base_model_override or config["model"]["base_model"]
     model_short = model_id.split("/")[-1]
     output_base = get_output_base(task)
+    is_base = adapter_path == "base"
 
+    label = "Base" if is_base else "Fine-tuned"
     print(f"\n{'=' * 60}")
-    print(f"  LoRA v2_{task} 평가: {model_short}")
+    print(f"  LoRA v2_{task} 평가 [{label}]: {model_short}")
     print(f"{'=' * 60}")
-    print(f"  어댑터 로드: {adapter_path}")
 
     tokenizer, base_model = load_base_model(config, for_training=False, base_model_override=base_model_override)
-    model = PeftModel.from_pretrained(base_model, adapter_path)
+    if is_base:
+        print(f"  Base 모델 평가 (어댑터 없음)")
+        model = base_model
+    else:
+        print(f"  어댑터 로드: {adapter_path}")
+        model = PeftModel.from_pretrained(base_model, adapter_path)
     model.eval()
     torch.cuda.empty_cache()
 
@@ -503,25 +509,75 @@ def evaluate(task: str, config: dict, adapter_path: str, base_model_override: st
 
     elif task == "summary":
         format_rate = stats["format_ok"] / total if total else 0
-        avg_rouge = stats["rouge_l_sum"] / total if total else 0
-        tag_count_rate = stats.get("tag_count_ok", 0) / total if total else 0
+        cat_valid_rate = stats.get("category_valid", 0) / total if total else 0
+        tag_any_rate = stats.get("tag_has_any", 0) / total if total else 0
+        tag_ideal_rate = stats.get("tag_ideal", 0) / total if total else 0
         avg_tags = stats.get("tag_count_sum", 0) / total if total else 0
-        print(f"    포맷 준수율:    {stats['format_ok']}/{total} ({format_rate*100:.1f}%)")
-        print(f"    태그수 준수율:  {stats.get('tag_count_ok', 0)}/{total} ({tag_count_rate*100:.1f}%)")
-        print(f"    평균 태그 수:   {avg_tags:.1f}")
-        print(f"    ROUGE-L:        {avg_rouge:.4f}")
+        summary_len_rate = stats.get("summary_length_ok", 0) / total if total else 0
+        avg_summary_len = stats.get("summary_length_sum", 0) / total if total else 0
+        avg_rouge = stats["rouge_l_sum"] / total if total else 0
+
+        # BERTScore 일괄 계산
+        bertscore_f1 = 0.0
+        if stats.get("bertscore_preds"):
+            try:
+                from bert_score import score as bert_score_fn
+                P, R, F1 = bert_score_fn(
+                    stats["bertscore_preds"], stats["bertscore_refs"],
+                    model_type="klue/roberta-large", num_layers=24,
+                    lang="ko", verbose=False, device="cuda",
+                )
+                bertscore_f1 = F1.mean().item()
+            except Exception as e:
+                print(f"    BERTScore:       계산 실패 ({e})")
+
+        print(f"\n  [정량 평가]")
+        print(f"    포맷 준수율:      {stats['format_ok']}/{total} ({format_rate*100:.1f}%)")
+        print(f"    분류 유효율:      {stats.get('category_valid', 0)}/{total} ({cat_valid_rate*100:.1f}%)")
+        print(f"    태그 존재율:      {stats.get('tag_has_any', 0)}/{total} ({tag_any_rate*100:.1f}%)")
+        print(f"    태그 적정(3~7):   {stats.get('tag_ideal', 0)}/{total} ({tag_ideal_rate*100:.1f}%)")
+        print(f"    평균 태그 수:     {avg_tags:.1f}")
+        print(f"    요약 길이 적정:   {stats.get('summary_length_ok', 0)}/{total} ({summary_len_rate*100:.1f}%)")
+        print(f"    평균 요약 길이:   {avg_summary_len:.0f}자")
+        print(f"    BERTScore F1:     {bertscore_f1:.4f}")
+        print(f"    ROUGE-L (참고):   {avg_rouge:.4f}")
+
+        # 정성 평가: 샘플 출력
+        preds = stats.get("all_predictions", [])
+        if preds:
+            print(f"\n  [정성 평가 샘플 — 5건]")
+            for idx in [0, len(preds)//4, len(preds)//2, len(preds)*3//4, len(preds)-1]:
+                if idx < len(preds):
+                    p = preds[idx]
+                    print(f"\n    --- [{idx}] 분류: {p['gold_category']} -> {p['pred_category']} | ROUGE-L: {p['rouge_l']:.3f} ---")
+                    print(f"    Gold 요약: {p['gold_summary'][:120]}")
+                    print(f"    Pred 요약: {p['pred_summary'][:120]}")
+
         eval_results.update({
             "format_compliance": round(format_rate, 4),
-            "tag_count_compliance": round(tag_count_rate, 4),
+            "category_valid_rate": round(cat_valid_rate, 4),
+            "tag_any_rate": round(tag_any_rate, 4),
+            "tag_ideal_rate": round(tag_ideal_rate, 4),
             "avg_tag_count": round(avg_tags, 1),
+            "summary_length_ok_rate": round(summary_len_rate, 4),
+            "avg_summary_length": round(avg_summary_len),
+            "bertscore_f1": round(bertscore_f1, 4),
             "rouge_l": round(avg_rouge, 4),
         })
 
+        # 정성 평가 전체 저장 (별도 파일)
+        if preds:
+            qualitative_path = output_base / model_short / "qualitative_samples.json"
+            with open(qualitative_path, "w", encoding="utf-8") as f:
+                json.dump(preds, f, ensure_ascii=False, indent=2)
+            print(f"\n  정성 평가 저장: {qualitative_path} ({len(preds)}건)")
+
     print(f"\n{'=' * 60}")
 
-    # 결과 저장
-    result_path = output_base / model_short / "eval_results.json"
-    result_path.parent.mkdir(parents=True, exist_ok=True)
+    # 결과 저장 (base면 별도 디렉토리)
+    save_dir = output_base / model_short / ("base_eval" if is_base else "")
+    save_dir.mkdir(parents=True, exist_ok=True)
+    result_path = save_dir / "eval_results.json"
     with open(result_path, "w", encoding="utf-8") as f:
         json.dump(eval_results, f, ensure_ascii=False, indent=2)
     print(f"  결과 저장: {result_path}")
@@ -606,42 +662,117 @@ def _eval_doc_qa(st: dict, pred_text: str, gold_text: str):
         st["citation_correct"] += 1
 
 
-def _eval_doc_summary(st: dict, pred_text: str, gold_text: str):
-    """doc_summary 평가 — 태그+요약 형식
+VALID_CATEGORIES = {"회의록", "보고서", "제안서", "계약서", "정책문서", "인사문서", "기타"}
 
-    기대 형식:
-        태그: #태그1 #태그2 #태그3
-        요약: 2~3문장 요약 텍스트
-    """
-    # 포맷 준수: 태그+요약 구조 체크
-    lines = pred_text.strip().split("\n")
-    has_tag = any(line.strip().startswith("태그:") for line in lines)
-    has_summary = any(line.strip().startswith("요약:") for line in lines)
 
-    # 태그 개수 체크 (3~7개)
-    tag_count = 0
+def _parse_summary_fields(text: str) -> dict:
+    """분류/태그/요약 포맷에서 각 필드 추출 (멀티라인 요약 대응)"""
+    result = {"category": "", "tags": [], "summary": ""}
+    lines = text.strip().split("\n")
+    summary_started = False
+    summary_lines = []
+
     for line in lines:
-        if line.strip().startswith("태그:"):
-            tag_count = line.count("#")
-            break
+        stripped = line.strip()
+        if stripped.startswith("분류:"):
+            result["category"] = stripped.replace("분류:", "").strip()
+            summary_started = False
+        elif stripped.startswith("태그:"):
+            result["tags"] = [t.lstrip("#").strip() for t in stripped.replace("태그:", "").split() if t.startswith("#")]
+            summary_started = False
+        elif stripped.startswith("요약:"):
+            # 같은 줄에 텍스트가 있으면 추출, 없으면 다음 줄부터
+            after = stripped.replace("요약:", "").strip()
+            if after:
+                summary_lines.append(after)
+            summary_started = True
+        elif summary_started and stripped:
+            summary_lines.append(stripped)
 
-    tag_count_ok = 3 <= tag_count <= 7
-    format_ok = has_tag and has_summary and tag_count_ok
+    result["summary"] = " ".join(summary_lines)
+    return result
+
+
+def _eval_doc_summary(st: dict, pred_text: str, gold_text: str):
+    """doc_summary 평가 — 실서비스 기준
+
+    정량 평가:
+        1. 포맷 준수율: 분류/태그/요약 3줄 구조
+        2. 분류 유효율: 7종 중 하나
+        3. 태그 개수 적절성: 1개 이상
+        4. 요약 길이 적절성: 20~500자
+        5. BERTScore F1: 의미적 요약 품질 (klue/roberta-large)
+        6. ROUGE-L: 참고용 (보조 지표)
+
+    정성 평가 (샘플 저장):
+        - 예측 vs 정답 쌍을 저장하여 수동 검토 가능
+    """
+    pred = _parse_summary_fields(pred_text)
+    gold = _parse_summary_fields(gold_text)
+
+    # ── 1. 포맷 준수 (3줄 구조) ──
+    lines = pred_text.strip().split("\n")
+    has_category = any(l.strip().startswith("분류:") for l in lines)
+    has_tag = any(l.strip().startswith("태그:") for l in lines)
+    has_summary = any(l.strip().startswith("요약:") for l in lines)
+    format_ok = has_category and has_tag and has_summary
 
     if format_ok:
         st["format_ok"] += 1
 
-    # 태그 개수 통계 (별도 집계)
-    if "tag_count_ok" not in st:
-        st["tag_count_ok"] = 0
-        st["tag_count_sum"] = 0
-    if tag_count_ok:
-        st["tag_count_ok"] += 1
-    st["tag_count_sum"] += tag_count
+    # ── 2. 분류 유효성 (7종 중 하나) ──
+    if "category_valid" not in st:
+        st["category_valid"] = 0
+    if pred["category"] in VALID_CATEGORIES:
+        st["category_valid"] += 1
 
-    # ROUGE-L (간이 구현 — LCS 기반)
-    rouge_l = _compute_rouge_l(pred_text, gold_text)
+    # ── 3. 태그 개수 (1개 이상이면 OK, 3~7개면 ideal) ──
+    if "tag_has_any" not in st:
+        st["tag_has_any"] = 0
+        st["tag_ideal"] = 0
+        st["tag_count_sum"] = 0
+    tag_count = len(pred["tags"])
+    st["tag_count_sum"] += tag_count
+    if tag_count >= 1:
+        st["tag_has_any"] += 1
+    if 3 <= tag_count <= 7:
+        st["tag_ideal"] += 1
+
+    # ── 4. 요약 길이 적절성 ──
+    if "summary_length_ok" not in st:
+        st["summary_length_ok"] = 0
+        st["summary_length_sum"] = 0
+    summary_len = len(pred["summary"])
+    st["summary_length_sum"] += summary_len
+    if 20 <= summary_len <= 500:
+        st["summary_length_ok"] += 1
+
+    # ── 5. BERTScore용 텍스트 저장 (일괄 계산) ──
+    pred_summary = pred["summary"] or pred_text
+    gold_summary = gold["summary"] or gold_text
+    if "bertscore_preds" not in st:
+        st["bertscore_preds"] = []
+        st["bertscore_refs"] = []
+    st["bertscore_preds"].append(pred_summary)
+    st["bertscore_refs"].append(gold_summary)
+
+    # ── 6. ROUGE-L (보조 지표) ──
+    rouge_l = _compute_rouge_l(pred_summary, gold_summary)
     st["rouge_l_sum"] += rouge_l
+
+    # ── 정성 평가: 전체 예측 저장 ──
+    if "all_predictions" not in st:
+        st["all_predictions"] = []
+    st["all_predictions"].append({
+        "gold_category": gold["category"],
+        "pred_category": pred["category"],
+        "gold_tags": gold["tags"],
+        "pred_tags": pred["tags"],
+        "gold_summary": gold["summary"],
+        "pred_summary": pred["summary"],
+        "format_ok": format_ok,
+        "rouge_l": rouge_l,
+    })
 
 
 def _compute_rouge_l(prediction: str, reference: str) -> float:
