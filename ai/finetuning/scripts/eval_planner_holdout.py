@@ -104,16 +104,40 @@ def apply_post_rules(user_input: str, intents: list) -> list:
         intents[-1] = "doc_generate"
 
     # 규칙 12: 과잉 분리 방지 — 단일 주제인데 같은 intent가 2개 이상 연속이면 축소
-    # E-006 "재택근무 가능한지" → [knowledge_query, knowledge_query] → [knowledge_query]
     # E-015 "회의 취소해줘" → [schedule_add, schedule_add] → [schedule_add]
     if len(intents) >= 2 and len(set(intents)) == 1 and \
-       not re.search(r"(그리고|이랑|하고|도\s)", user_input):
-        intents = [intents[0]]
+       not re.search(r"(그리고|이랑|하고|도\s|둘\s*다|각각)", user_input):
+        # 생성/등록 동사가 없는데 같은 intent 3개 이상 → 1개로 축소 (E-006)
+        if len(intents) >= 3 and not re.search(r"(만들|작성|등록|잡아|넣어)", user_input):
+            intents = [intents[0]]
+        # 2개 연속은 유지 (정상적인 2-step일 수 있음) — 단, 매우 짧은 단일 요청이면 축소
+        elif len(intents) == 2 and len(user_input.strip()) < 20:
+            intents = [intents[0]]
 
     # 규칙 13: "트렌드/뉴스/소식" 등 일반 질문 → general 강제
     if re.search(r"(트렌드|뉴스|소식|근황|날씨)", user_input) and \
        not re.search(r"(규정|문서|보고서|회의|일정)", user_input):
         intents = ["general"]
+
+    # 규칙 14: 단일 step + 문서 생성 패턴 → doc_generate 강제
+    # S-003 "이번 달 보고서 만들어줘" → schedule_view 출력 → doc_generate로 교체
+    if len(intents) == 1 and intents[0] != "doc_generate" and \
+       re.search(r"(보고서|회의록|제안서|기획서|JD|인수인계서)", user_input) and \
+       re.search(r"(만들어|작성해|써\s*줘|뽑아|생성)", user_input) and \
+       not re.search(r"(찾아|검색|조회|확인하고|알려)", user_input):
+        intents = ["doc_generate"]
+
+    # 규칙 15: "일정 확인/일정 보고" → 첫 step이 doc_retrieve면 schedule_view로 교체
+    # C-007 "이번 달 일정 확인하고" → doc_retrieve 출력 → schedule_view로 교체
+    if re.search(r"(일정|스케줄|미팅|회의).*(확인|보고|보여|조회)", user_input) and \
+       len(intents) >= 1 and intents[0] in ("doc_retrieve", "judgment"):
+        intents[0] = "schedule_view"
+
+    # 규칙 16: "A랑/이랑 B 둘 다 찾아줘" — 단일 step이면 2-step으로 복원
+    # PAR-002 "마케팅 보고서랑 인사 규정 둘 다 찾아줘" → [kq] → [kq, kq]
+    if re.search(r"(이랑|랑|하고|과\s).*(둘\s*다|각각|같이|함께)", user_input) and \
+       len(intents) == 1:
+        intents = [intents[0], intents[0]]
 
     # 후처리 매핑 (맨 마지막에 적용) — judgment + doc_retrieve → knowledge_query
     # 모든 Rule이 원본 intent로 동작한 후, 최종적으로 매핑
