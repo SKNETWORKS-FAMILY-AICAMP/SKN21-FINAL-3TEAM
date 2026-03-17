@@ -468,6 +468,8 @@ export default function ChatPage() {
       setLastInput(q);
       sendMessage(q);
     } else {
+      // 페이지 진입 시 즉시 새 대화창으로 초기화 (이전 대화 안 보이게)
+      startNewSession();
       initSession();
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
