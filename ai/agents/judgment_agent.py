@@ -133,7 +133,7 @@ def _group_regulations(context: list[dict]) -> dict[str, list[dict]]:
     return dict(groups)
 
 
-def _build_context_prompt(context: list[dict]) -> str:
+def _build_context_prompt(context: list[dict], max_docs: int = 3) -> str:
     """RAG 검색 결과를 학습 데이터(eval.jsonl)와 동일한 형식으로 변환.
 
     학습 데이터 형식:
@@ -142,12 +142,16 @@ def _build_context_prompt(context: list[dict]) -> str:
 
         ### 개인정보처리규정 — 제5조 (개인정보 수집 원칙)
         {규정 내용}
+
+    Args:
+        context: RAG 검색 결과 (reranker 점수 순으로 정렬됨)
+        max_docs: 프롬프트에 포함할 최대 문서 수 (상위 N개만 사용, 노이즈 감소)
     """
     if not context:
         return "(관련 규정을 찾지 못했습니다)"
 
     parts = []
-    for doc in context:
+    for doc in context[:max_docs]:
         title = doc.get("title", "")
         article = doc.get("article", "")
         content = doc.get("content", "")
@@ -556,6 +560,20 @@ def _calibrate_confidence(
         - hallucination_penalty
         - article_penalty
     )
+
+    # 개별 요소 임계값 보호 — 어느 하나라도 심각하면 confidence 상한 제한
+    # (가중합만으로는 한 요소가 0이어도 다른 요소로 높은 점수가 나올 수 있는 문제 방지)
+    cap_note = None
+    if rag_factor < 0.2:
+        calibrated = min(calibrated, 0.4)
+        cap_note = "RAG 검색 품질 낮음 — 최대 0.4 제한"
+    if keyword_match < 0.2:
+        calibrated = min(calibrated, 0.3)
+        cap_note = "환각 의심 심각 — 최대 0.3 제한"
+    if article_validations and all(not v["exists"] for v in article_validations):
+        calibrated = min(calibrated, 0.25)
+        cap_note = "인용 조항 전부 미존재 — 최대 0.25 제한"
+
     final = round(max(0.0, min(1.0, calibrated)), 3)
 
     breakdown = {
@@ -570,6 +588,8 @@ def _calibrate_confidence(
         "article_penalty": round(article_penalty, 3),
         "final": final,
     }
+    if cap_note:
+        breakdown["cap_note"] = cap_note
 
     return final, breakdown
 

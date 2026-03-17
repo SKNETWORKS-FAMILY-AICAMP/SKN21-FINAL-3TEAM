@@ -1,6 +1,11 @@
 #!/bin/bash
 # vLLM 서버 시작 스크립트 (RunPod GPU Pod용)
 # 사용법: bash start_vllm.sh
+#
+# 지원 LoRA 어댑터:
+#   - v1_judgment: 규정 판단 (yoongyeongeun/v1-judgment-hardcoded)
+#   - v2_generate: 문서 생성
+#   - v2_summary: 문서 요약
 
 set -e
 
@@ -8,31 +13,53 @@ echo "=== vLLM 서빙 환경 설정 ==="
 
 # 패키지 설치
 pip install -U vllm torch torchvision --index-url https://download.pytorch.org/whl/cu124 -q 2>/dev/null
-pip install peft bitsandbytes -q 2>/dev/null
+pip install peft bitsandbytes huggingface_hub -q 2>/dev/null
 
 echo "=== 패키지 설치 완료 ==="
 
 # 모델 및 어댑터 경로
 BASE_MODEL="kakaocorp/kanana-1.5-8b-instruct-2505"
-ADAPTER_GENERATE="/workspace/SKN21-FINAL-3TEAM/outputs/v2_generate/kanana-1.5-8b-instruct-2505/final"
-ADAPTER_SUMMARY="/workspace/SKN21-FINAL-3TEAM/outputs/v2_summary/kanana-1.5-8b-instruct-2505/final"
 PORT=8000
 
-# 어댑터 존재 확인
-for adapter in "${ADAPTER_GENERATE}" "${ADAPTER_SUMMARY}"; do
-    if [ ! -f "${adapter}/adapter_model.safetensors" ]; then
-        echo "WARNING: adapter weights not found at ${adapter}"
+# v1_judgment 어댑터: HuggingFace에서 다운로드
+ADAPTER_JUDGMENT_DIR="/workspace/adapters/v1_judgment"
+if [ ! -f "${ADAPTER_JUDGMENT_DIR}/adapter_model.safetensors" ]; then
+    echo "=== v1_judgment 어댑터 다운로드 (HuggingFace) ==="
+    mkdir -p "${ADAPTER_JUDGMENT_DIR}"
+    huggingface-cli download yoongyeongeun/v1-judgment-hardcoded \
+        --local-dir "${ADAPTER_JUDGMENT_DIR}" \
+        --local-dir-use-symlinks False
+fi
+
+# v2 어댑터 경로 (로컬 학습 결과)
+ADAPTER_GENERATE="/workspace/SKN21-FINAL-3TEAM/outputs/v2_generate/kanana-1.5-8b-instruct-2505/final"
+ADAPTER_SUMMARY="/workspace/SKN21-FINAL-3TEAM/outputs/v2_summary/kanana-1.5-8b-instruct-2505/final"
+
+# 어댑터 존재 확인 + LoRA 모듈 목록 구성
+LORA_MODULES="v1_judgment=${ADAPTER_JUDGMENT_DIR}"
+
+for name_path in "v2_generate:${ADAPTER_GENERATE}" "v2_summary:${ADAPTER_SUMMARY}"; do
+    name="${name_path%%:*}"
+    path="${name_path#*:}"
+    if [ -f "${path}/adapter_model.safetensors" ]; then
+        LORA_MODULES="${LORA_MODULES} ${name}=${path}"
+        echo "  LoRA 어댑터 발견: ${name}"
+    else
+        echo "  WARNING: ${name} adapter weights not found at ${path} (건너뜀)"
     fi
 done
 
+echo ""
 echo "=== vLLM 서버 시작 ==="
 echo "  Base model: ${BASE_MODEL}"
-echo "  LoRA adapter: ${ADAPTER_PATH}"
+echo "  LoRA modules: ${LORA_MODULES}"
 echo "  Port: ${PORT}"
 echo ""
 echo "  백엔드 .env에서 아래 설정:"
+echo "    JUDGMENT_AGENT_MODE=sllm"
 echo "    DOC_AGENT_MODE=sllm"
 echo "    VLLM_BASE_URL=http://<이 서버 IP>:${PORT}/v1"
+echo "    VLLM_USE_LORA=true"
 echo ""
 
 python -m vllm.entrypoints.openai.api_server \
@@ -41,7 +68,7 @@ python -m vllm.entrypoints.openai.api_server \
     --host 0.0.0.0 \
     --trust-remote-code \
     --enable-lora \
-    --lora-modules v2_generate=${ADAPTER_GENERATE} v2_summary=${ADAPTER_SUMMARY} \
+    --lora-modules ${LORA_MODULES} \
     --max-lora-rank 32 \
     --max-model-len 8192 \
     --gpu-memory-utilization 0.85 \
