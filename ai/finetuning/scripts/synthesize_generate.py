@@ -515,8 +515,19 @@ def synthesize_template(
             length_range = _pick_length_range(rng)
             print(f"    [{i+1}/{count}] {industry} / {topic} ({len(selected_fields)}필드, {length_range}자)", end=" ", flush=True)
 
-            # Step A: 시나리오 생성
-            passage = generate_scenario(template, industry, topic, model=model, length_range=length_range)
+            # Step A: 시나리오 생성 (거부 감지 시 재시도)
+            _REFUSAL_PATTERNS = ("죄송", "불가능", "작성할 수 없", "도와드릴 수 없", "I can't", "I cannot")
+            passage = None
+            for _retry in range(3):
+                passage = generate_scenario(template, industry, topic, model=model, length_range=length_range)
+                if not passage:
+                    continue
+                # 거부 메시지 감지
+                if any(p in passage[:100] for p in _REFUSAL_PATTERNS):
+                    print(f"(거부 감지, 재시도 {_retry+1}/3)", end=" ", flush=True)
+                    passage = None
+                    continue
+                break
             min_len = 30 if length_range.startswith("50") else 100
             if not passage or len(passage) < min_len:
                 print("- 시나리오 실패")

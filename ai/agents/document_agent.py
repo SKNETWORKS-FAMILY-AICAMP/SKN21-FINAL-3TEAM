@@ -39,14 +39,14 @@ GENERATION_FIELD_CONFIG = {
         "max_fields": 10,
     },
     "report": {
-        "always": ["title", "date", "author", "overview", "main_content", "tasks", "next_plan"],
-        "optional": ["department", "report_type", "report_to", "content", "issues", "position"],
+        "always": ["title", "date", "author", "overview", "main_content", "tasks", "next_plan", "issues"],
+        "optional": ["department", "report_type", "report_to", "content", "position"],
         "max_fields": 10,
     },
     "proposal": {
-        "always": ["title", "date", "purpose", "content", "expected_effect", "schedule", "budget"],
-        "optional": ["company", "manager", "submit_to", "background", "budget_total", "contact"],
-        "max_fields": 10,
+        "always": ["title", "date", "purpose", "content", "expected_effect", "schedule", "budget", "background", "current_situation"],
+        "optional": ["company", "manager", "submit_to", "budget_total", "contact"],
+        "max_fields": 11,
     },
 }
 
