@@ -311,10 +311,11 @@ async def decompose_query(state: AgentState) -> AgentState:
         try:
             planner_result = await _planner_sllm_decompose(user_input)
             if planner_result:
-                # planner가 분리한 query에 ONNX intent를 덮어씌움
-                for i, sq in enumerate(planner_result):
-                    if i < len(compound_intents):
-                        sq["hint"] = compound_intents[i]["intent"]
+                # planner가 분리한 각 query를 ONNX로 개별 분류
+                classifier = get_classifier()
+                for sq in planner_result:
+                    part_result = classifier.predict(sq["query"])
+                    sq["hint"] = part_result["intent"]
                 sub_queries = planner_result
                 logger.info(
                     "[Orchestrator] planner sLLM 분리 + ONNX intent (%.2fs) | %d단계: %s",
@@ -323,15 +324,16 @@ async def decompose_query(state: AgentState) -> AgentState:
         except Exception as e:
             logger.error("[Orchestrator] planner sLLM 실패, 규칙 기반 fallback: %s", e)
 
-    # planner 실패 or rule 모드 → 규칙 기반 분리 + ONNX intent 매칭
+    # planner 실패 or rule 모드 → 규칙 기반 분리 + 각 part를 ONNX로 개별 분류
     if not sub_queries:
+        classifier = get_classifier()
         parts = _split_compound_text(user_input)
         if parts and len(parts) >= 2:
             for i, part in enumerate(parts):
-                hint = compound_intents[i]["intent"] if i < len(compound_intents) else "general"
+                part_result = classifier.predict(part)
                 sub_queries.append({
                     "query": part,
-                    "hint": hint,
+                    "hint": part_result["intent"],
                     "step_id": i + 1,
                     "depends_on": [i] if i > 0 else [],
                 })
