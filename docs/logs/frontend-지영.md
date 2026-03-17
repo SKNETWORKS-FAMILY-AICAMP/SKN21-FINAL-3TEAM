@@ -3243,4 +3243,153 @@ Rule v3 + 100건 확장 — PM 88.0% (100건, 매핑+Rule 적용)
 - [ ] EC2에 새 Intent 모델 배포 (HuggingFace에서 다운로드 + 서버 재시작)
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
+---
+
+## 2026-03-17 (화)
+
+### 한 일
+
+#### Planner v6 실험 세팅 + 실험 A, B, C 실행
+
+**목표**: Planner Held-out PM 88.0% → 90%+ 달성
+**방향**: 후처리 매핑(knowledge_query) 대신 KNOWN_OVERRIDES + Rule Guide로 해결
+
+**v5 현재 상태 (실험 전 기준)**:
+- PM 88.0% (100건, 후처리 매핑+Rule 적용)
+- PM 71.0% (100건, 매핑 없이 6-label 원본)
+- 핵심 병목: judgment→doc_retrieve 15건, 3-step Step Collapse
+
+---
+
+#### 실험 A: Rule Guide 추가 (규칙 10, 11)
+
+v5 어댑터 + 새 규칙 2개 추가 → holdout 재평가 (재학습 없음)
+
+| 규칙 | 내용 |
+|------|------|
+| Rule 10 | "찾아서 + 확인하고 + 만들어" 패턴인데 2-step이면 doc_retrieve 삽입해서 3-step 복원 |
+| Rule 11 | 검색 동사 2회 이상 + 생성 동사 → doc_retrieve 부족하면 추가 |
+
+**결과: PM 71.0% (변화 없음) ❌**
+
+| 지표 | v5 (매핑 없음) | 실험 A |
+|------|--------------|--------|
+| Perfect Match | 71.0% | **71.0%** |
+| Step Collapse | 9.4% | **9.4%** |
+| complex | 0.881 | **0.881** |
+
+**실패 원인**: 핵심 문제가 Step Collapse가 아니라 **judgment→doc_retrieve intent 자체 혼동 15건**이었음. Rule 10, 11은 step 수 보정용이라 intent 혼동에는 효과 없음.
+
+**오답 상세 — judgment→doc_retrieve 15건**:
+- S-001: "연차 사용 규정 알려줘" → doc_retrieve (judgment이어야 함)
+- S-006: "야근 수당 몇 시부터 적용돼?" → doc_retrieve
+- S-007: "출장비 정산 기준이 어떻게 돼?" → doc_retrieve
+- S-022: "재택근무 규정이 어떻게 되지?" → doc_retrieve
+- S-023: "퇴직금 계산 기준 좀" → doc_retrieve
+- E-014: "연차 규정이랑 병가 규정 차이가 뭐야?" → doc_retrieve
+- PAR-001, PAR-010, C-012 등에서도 동일 패턴
+
+---
+
+#### 실험 B: Few-shot 프롬프트 (3-step 예시 3개 삽입)
+
+v5 어댑터 + 시스템 프롬프트에 3-step 예시 3개 추가 → holdout 재평가 (재학습 없음)
+
+**추가한 Few-shot 예시**:
+1. "출장 규정 문서 찾아서 해외출장 가능한지 확인하고 출장 보고서 만들어줘" → doc_retrieve→judgment→doc_generate
+2. "연차 규정 확인하고 팀 일정 보고 비는 날에 휴가 등록해줘" → judgment→schedule_view→schedule_add
+3. "마케팅 보고서 찾고 경쟁사 자료도 검색해서 비교 제안서 만들어줘" → doc_retrieve→doc_retrieve→doc_generate
+
+**결과: PM 75.0% (+4건) ✅**
+
+| 지표 | 실험 A | 실험 B | 변화 |
+|------|--------|--------|------|
+| Perfect Match | 71.0% | **75.0%** | **+4건** |
+| Step Collapse | 9.4% | **7.5%** | -1.9%p ✅ |
+| complex score | 0.881 | **0.919** | +0.038 ✅ |
+| parallel score | 0.897 | **0.950** | +0.053 ✅ |
+| edge_case score | 0.906 | **0.821** | -0.085 ❌ |
+
+**개선된 부분**:
+- S-006 "야근 수당 몇 시부터 적용돼?" → judgment 정답 (A에서는 doc_retrieve)
+- S-007 "출장비 정산 기준이 어떻게 돼?" → judgment 정답
+- complex 카테고리 전반적 개선 (3-step 예시 효과)
+- PAR-001 "다음 주 일정 보여주고, 연차 규정도 알려줘" → schedule_view, judgment 정답
+
+**악화된 부분**:
+- S-003 "이번 달 보고서 만들어줘" → schedule_view로 오분류 (기존 OK)
+- S-030 "뭐 해줄 수 있는데?" → doc_retrieve로 오분류 (기존 OK)
+- E-005 "ㅎㅇㄹ ㅊㅇ" → doc_generate로 오분류 (기존 OK)
+- E-016 "도움이 많이 됐어 고마워!" → JSON 파싱 실패 1건
+- E-014 "연차 규정이랑 병가 규정 차이가 뭐야?" → doc_retrieve 3개로 과잉 분리 (악화)
+
+**교훈**: Few-shot은 complex/3-step에 효과적이지만, single_step/edge_case에서 부작용 발생. 프롬프트가 길어지면서 단순 입력 분류 정확도가 떨어짐.
+
+**버그 발견**: JSON 파싱 실패 케이스에서 `expected_steps` 키 누락 → KeyError 크래시 → 수정 완료 (`9c7cbeb`)
+
+---
+
+#### 실험 C: 오답 타겟 보강 데이터 생성 (GPT-4o-mini)
+
+`augment_v6_planner.py` 스크립트로 약점 패턴 집중 생성
+
+| 카테고리 | 생성 | 목적 |
+|---------|:----:|------|
+| collapse_prevention | 30건 | "A해서 B하고 C해줘" 3-step 패턴 강화 |
+| complex_augment | 15건 | 4가지 intent 조합 다양화 |
+| edge_augment | 15건 | 구어체/비정형 3-step |
+
+**결과: 57건 생성 (3건 스킵 — GPT가 2-step으로 출력)**
+
+v6 학습 데이터 구성:
+- v5 기존: 1,471건
+- 보강: +57건
+- 합계: 1,528건 → train 1,452건 + eval 76건 (5% 분리)
+
+---
+
+#### 실험 후 추가 조치: Planner용 judgment KNOWN_OVERRIDES 추가
+
+실험 A에서 발견된 judgment→doc_retrieve 15건을 해결하기 위해, Intent classifier의 KNOWN_OVERRIDES와 동일 전략을 Planner eval 스크립트에 적용:
+
+```
+judgment KNOWN_OVERRIDES 9개 패턴:
+1. (규정|규칙|지침|내규) + (알려|설명|안내|어떻게)
+2. (기준|평가|심사|절차) + (알려|설명|안내|어떻게)
+3. (복리후생|복지|수당|혜택) + (뭐|어떤|있어)
+4. (퇴직금|급여|연봉|수당) + (계산|산정|얼마)
+5. (지각|결근|조퇴|위반) + (어떻게|불이익|징계)
+6. (인센티브|성과급|보너스) + (기준|조건|자격)
+7. (연차|재택|출장|야근) + (규정|기준|정산) + (어떻게|되|뭐)
+8. (규정|기준) + (차이|비교|다른)
+9. (몇 시|적용|해당|가능) + (돼|되|인지)
+```
+
+→ 실험 D에서 이 KNOWN_OVERRIDES + v6 학습 결과가 합쳐져서 평가될 예정.
+
+---
+
+#### 실험 D: v6 학습 (진행중)
+
+RunPod에서 실행중:
+- v6 config: lr 2e-4→**1e-4**, epoch 3→**4**, target_modules에 **MLP(gate/up/down_proj)** 추가
+- 학습 데이터: 1,528건 (v5 1,471 + 보강 57건)
+- judgment KNOWN_OVERRIDES 9개 + Rule Guide 9개 (기존 7 + 신규 10, 11) 적용
+
+### 실험 결과 비교표 (Planner v6)
+
+| # | 실험 | PM | Step Collapse | complex | 핵심 |
+|---|------|-----|-------------|---------|------|
+| 기준 | v5 매핑 없음 | 71.0% | 9.4% | 0.881 | judgment→doc_retrieve 15건 |
+| A | Rule 10,11 추가 | 71.0% | 9.4% | 0.881 | 효과 없음 (intent 혼동에는 무력) |
+| B | Few-shot 프롬프트 | **75.0%** | **7.5%** | **0.919** | complex ✅, edge_case ❌ |
+| C | 데이터 생성 | - | - | - | 57건 생성 (v6 train 준비) |
+| D | v6 학습 + OVERRIDES | **진행중** | - | - | lr↓ + epoch↑ + MLP + 보강 + OVERRIDES |
+
+### 다음 할 일
+
+- [ ] 실험 D 결과 확인 및 분석
+- [ ] 최종 Planner 모델 확정 (v5 vs v6 비교)
+- [ ] EC2에 새 Intent 모델 배포
+- [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
