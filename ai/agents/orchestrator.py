@@ -394,18 +394,34 @@ async def _planner_sllm_decompose(user_input: str) -> list[dict]:
     """
     import json
     import re
+    import asyncio
     from ai.serving.vllm_client import VLLMProvider
 
     # Hybrid: 단순/복합에 따라 프롬프트 자동 선택
     system_prompt = _get_planner_prompt(user_input)
 
     llm = VLLMProvider().with_lora("planner")
-    response = await llm.generate(
-        prompt=user_input,
-        system_prompt=system_prompt,
-        temperature=0.1,
-        max_tokens=512,
-    )
+
+    # cold start 대응: 최대 2회 재시도
+    response = None
+    for attempt in range(3):
+        try:
+            response = await llm.generate(
+                prompt=user_input,
+                system_prompt=system_prompt,
+                temperature=0.1,
+                max_tokens=512,
+            )
+            break
+        except Exception as e:
+            if attempt < 2 and ("404" in str(e) or "timeout" in str(e).lower()):
+                logger.warning("[Orchestrator] planner 호출 실패 (시도 %d/3), 재시도: %s", attempt + 1, e)
+                await asyncio.sleep(2)
+            else:
+                raise
+
+    if response is None:
+        return []
 
     # 응답에서 JSON 블록만 추출 (설명 텍스트 섞여있을 수 있음)
     content = response.content.strip()
