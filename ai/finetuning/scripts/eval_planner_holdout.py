@@ -39,6 +39,31 @@ def apply_post_rules(user_input: str, intents: list) -> list:
     # 규칙 1: 존재하지 않는 intent → doc_generate로 교체
     intents = [i if i in VALID_INTENTS else "doc_generate" for i in intents]
 
+    # 규칙 0 (judgment KNOWN_OVERRIDES): Planner가 judgment를 doc_retrieve로 출력하는 패턴 보정
+    # Intent classifier의 KNOWN_OVERRIDES와 동일 — 단일 step에서만 적용
+    _JUDGMENT_PATTERNS = [
+        r"(규정|규칙|지침|내규).*(알려|설명|안내|어떻게)",
+        r"(기준|평가|심사|절차).*(알려|설명|안내|어떻게)",
+        r"(복리후생|복지|수당|혜택|지원금|포상).*(뭐|어떤|있어|있나|있습니까)",
+        r"(퇴직금|급여|연봉|월급|수당|상여).*(계산|산정|산출|얼마)",
+        r"(지각|결근|조퇴|무단|위반|어기).*(어떻게|불이익|처벌|징계|벌|감봉)",
+        r"(인센티브|성과급|보너스).*(기준|조건|자격)",
+        r"(연차|재택|출장|야근|경조사|퇴직).*(규정|기준|정산).*(어떻게|되|돼|뭐|좀)",
+        r"(규정|기준).*(차이|비교|다른)",
+        r"(몇\s*시|적용|해당|가능).*(돼|되|인지|한지)",
+    ]
+    if len(intents) == 1 and intents[0] == "doc_retrieve":
+        for pat in _JUDGMENT_PATTERNS:
+            if re.search(pat, user_input):
+                intents[0] = "judgment"
+                break
+    # 멀티 step에서도 첫 step이 doc_retrieve인데 judgment 패턴이면 교체
+    elif len(intents) >= 2 and intents[0] == "doc_retrieve":
+        for pat in _JUDGMENT_PATTERNS:
+            if re.search(pat, user_input):
+                intents[0] = "judgment"
+                break
+
     # 규칙 2: 입력이 3글자 이하 → general 강제
     if len(user_input.strip()) <= 3:
         return ["general"]
@@ -253,18 +278,21 @@ def evaluate_single(test_case: dict, pred_text: str, latency_ms: float) -> dict:
     expected = test_case["expected"]
     expected_intents = [s["intent"] for s in expected["plan"]]
     result["expected_intents"] = expected_intents
+    result["expected_steps"] = expected.get("num_steps", len(expected_intents))
 
     # JSON 파싱
     parsed = extract_json(pred_text)
     if parsed is None:
         result["error"] = "JSON 파싱 실패"
         result["actual_intents"] = []
+        result["actual_steps"] = 0
         return result
     result["json_valid"] = True
 
     if "plan" not in parsed or not isinstance(parsed["plan"], list):
         result["error"] = "plan 필드 없음"
         result["actual_intents"] = []
+        result["actual_steps"] = 0
         return result
 
     plan = parsed["plan"]
@@ -273,6 +301,7 @@ def evaluate_single(test_case: dict, pred_text: str, latency_ms: float) -> dict:
     if not result["plan_nonempty"]:
         result["error"] = "빈 plan"
         result["actual_intents"] = []
+        result["actual_steps"] = 0
         return result
 
     result["usable"] = True
