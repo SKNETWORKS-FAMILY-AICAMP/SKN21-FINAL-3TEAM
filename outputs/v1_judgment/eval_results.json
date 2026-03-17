@@ -89,5 +89,25 @@
       "conditional": { "correct": 78, "total": 100 },
       "no_regulation": { "correct": 65, "total": 67 }
     }
+  },
+  "v3_hardcoded_augmented_3ep_runpod_retrain": {
+    "note": "v3 RunPod A100 80GB 재학습 — eval_loss 0.1067, train_loss 0.2212, HuggingFace 업로드 완료",
+    "total": 328,
+    "json_valid": 320,
+    "json_valid_rate": 0.976,
+    "result_accuracy": 0.854,
+    "category_stats": {
+      "yes": { "correct": 86, "total": 100 },
+      "no": { "correct": 51, "total": 61 },
+      "conditional": { "correct": 78, "total": 100 },
+      "no_regulation": { "correct": 65, "total": 67 }
+    },
+    "training_info": {
+      "gpu": "NVIDIA A100 80GB PCIe",
+      "train_runtime_sec": 8441,
+      "eval_loss": 0.1067,
+      "train_loss": 0.2212,
+      "uploaded_to": "yoongyeongeun/v1-judgment-hardcoded"
+    }
   }
 }
