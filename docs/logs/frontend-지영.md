@@ -3550,7 +3550,7 @@ judgment + doc_retrieve → knowledge_query 매핑 구현. KNOWN_OVERRIDES 제�
 - Step Collapse: **7.5%**
 - Weighted Score: **0.978**
 
-**오답 13건 중 depends_on만 틀린 게 7건 → intent+step 기준 실질 정답 94/100 (94.0%)**
+**오답 13건**: Step Collapse 4건, 과잉 분리 4건, depends_on 오류 5건
 
 ---
 
@@ -3574,7 +3574,7 @@ Rule 10,11,12,13이 매핑과 간섭하여 성능 저하 유발 → 제거.
 | Rule Guide | 9개 (1,2,3,4,6,8,9,14,16) |
 | Held-out PM (100건) | **87.0%** (87/100) |
 | Weighted Score | **0.979** |
-| intent+step 실질 정답 | **94/100 (94.0%)** — depends_on만 틀린 7건 제외 |
+| 오답 유형 | Step Collapse 4건, 과잉 분리 4건, depends_on 오류 5건 |
 | 카테고리별 | single 100%, 2-step 90.9%, 3-step 66.7%, complex 0.962, edge 0.957 |
 | Step Collapse | 7.5% |
 | 추론 시간 | ~1.5s/건 |
