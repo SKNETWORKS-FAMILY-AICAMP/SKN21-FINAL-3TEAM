@@ -345,6 +345,7 @@ async def _planner_sllm_decompose(user_input: str) -> list[dict]:
         복합이면 [{"query": "...", "hint": "intent_name"}, ...]
     """
     import json
+    import re
     from ai.serving.vllm_client import VLLMProvider
 
     llm = VLLMProvider().with_lora("planner")
@@ -355,7 +356,17 @@ async def _planner_sllm_decompose(user_input: str) -> list[dict]:
         max_tokens=512,
     )
 
-    result = json.loads(response.content)
+    # 응답에서 JSON 블록만 추출 (설명 텍스트 섞여있을 수 있음)
+    content = response.content.strip()
+    try:
+        result = json.loads(content)
+    except json.JSONDecodeError:
+        match = re.search(r'\{[^{}]*"plan"\s*:\s*\[.*?\]\s*\}', content, re.DOTALL)
+        if not match:
+            logger.warning("[Orchestrator] planner 응답에서 JSON 추출 실패: %s", content[:200])
+            return []
+        result = json.loads(match.group())
+
     plan = result.get("plan", [])
 
     # 1단계면 단일 질문 → 빈 리스트 (classify_intent로)
