@@ -392,7 +392,7 @@ function WidgetItem({ id, col, editMode, onHide, isDragging, isDropTarget, onDra
       </div>
       <button
         onClick={() => onHide(id)}
-        className="absolute -top-2 -right-2 z-10 w-6 h-6 rounded-full bg-surface-card text-neutral-muted border border-neutral-border flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+        className="absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full bg-surface-card text-neutral-muted border border-neutral-border flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
       >
         <X size={14} />
       </button>
@@ -616,15 +616,13 @@ export default function DashboardPage() {
                         className="relative group cursor-grab active:cursor-grabbing h-fit"
                       >
                         {/* Add Button */}
-                        <div className="absolute top-6 right-6 z-20 overflow-hidden rounded-full">
-                          <button
-                            type="button"
-                            onClick={() => restoreWidget(id)}
-                            className="w-12 h-12 rounded-full bg-primary-600/90 hover:bg-primary-600 text-white shadow-2xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center group/btn"
-                          >
-                            <Plus size={24} className="group-hover/btn:rotate-90 transition-transform duration-300" />
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => restoreWidget(id)}
+                          className="absolute top-1 right-1 z-10 w-6 h-6 rounded-full bg-surface-card text-neutral-muted border border-neutral-border flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+                        >
+                          <Plus size={14} className="group-hover/btn:rotate-90 transition-transform duration-300" />
+                        </button>
 
                         {/* Dashed Border Container */}
                         <div className="absolute inset-0 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-[3rem] -z-10 group-hover:border-primary-400 group-hover:bg-primary-500/5 transition-all duration-300 bg-white/10 dark:bg-black/10" />
@@ -658,7 +656,7 @@ export default function DashboardPage() {
         <button
           onClick={toggleEditMode}
           className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-sm ${editMode
-            ? 'bg-success text-white hover:bg-success/90'
+            ? 'bg-primary-500 text-white hover:bg-primary-700'
             : 'bg-surface-card border border-neutral-border text-neutral-main hover:bg-surface-hover'
             }`}
         >

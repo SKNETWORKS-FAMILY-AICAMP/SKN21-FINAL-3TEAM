@@ -3629,12 +3629,48 @@ Pod 꺼져도 유지되는 네트워크 볼륨(`/workspace/`, 2.3PB)에 저장:
 **대화형 테스트 스크립트 배포**: `~/test_intent.py`
 - SSH 접속 후 `python3 ~/test_intent.py`로 직접 테스트 가능
 
-#### 17) EC2 인스턴스 타입 업그레이드
+#### 17) 복합 의도(compound query) 감지 버그 수정
+
+**문제**: "회의록 만들고, 다음주 중간 점검 회의 월요일 오전 9시로 잡아줘" 입력 시 schedule_add 하나만 인식되어 단일 응답만 생성됨. 두 개의 의도(doc_generate + schedule_add)가 분리 처리되지 않음.
+
+**원인**: `detect_compound_query()`의 `_INTENT_VERB_PATTERNS`에서 "만들고" (연결형 활용 "~고")가 `doc_generate` 패턴에 없어서 intent 동사 매칭이 1개만 되고, 복합 질문으로 감지 실패.
+
+**수정** (`ai/agents/intent_classifier.py`):
+- `_INTENT_VERB_PATTERNS["doc_generate"]`: `만들고` 추가
+- `_INTENT_VERB_PATTERNS["schedule_add"]`: `잡고` 추가
+- `_VERB_CONNECTOR_PATTERN`: `만들` 어간 추가 (쉼표 없이도 분리 가능)
+
+**수정 후 테스트 결과** (4건 모두 정상 감지):
+- "회의록 만들고, 다음주 중간 점검 회의 월요일 오전 9시로 잡아줘" → [doc_generate, schedule_add] ✅
+- "회의록 만들고 다음주 중간 점검 회의 월요일 오전 9시로 잡아줘" → [doc_generate, schedule_add] ✅
+- "보고서 작성하고 내일 3시 회의 잡아줘" → [doc_generate, schedule_add] ✅
+- "일정 추가하고 회의록 만들어줘" → [schedule_add, doc_generate] ✅
+
+#### +)EC2 인스턴스 타입 업그레이드
 
 - 3.7GB → **8GB RAM**으로 변경
 
+#### 18) Intent ONNX INT8 추론 코드 `intent_classifier.py` 통합 (production 반영)
+
+- `intent_classifier.py`에 ONNX 앙상블 로드/추론 로직 통합 완료 (이전 커밋 `b326c0e`)
+- 모델 로드 우선순위: ONNX INT8 앙상블 → PyTorch 앙상블 → 단일 모델 → LLM fallback
+- `_load_onnx_ensemble()`: `onnxruntime` + `tokenizers`로 torch 없이 추론
+- `_onnx_predict_probs()`: 5-seed sigmoid 확률 평균 → 앙상블 추론
+
+#### 19) ScheduleCard 클릭 시 일정 페이지 이동
+
+- `ScheduleCard.jsx`: 카드 클릭 → `/schedules` 페이지로 `navigate` 추가
+- "일정 페이지에서 확인 →" 안내 텍스트 추가
+- Google Meet 링크는 `stopPropagation`으로 별도 동작 유지
+
+#### 20) 대시보드 편집모드 UI 개선
+
+- **+ 버튼 수정**: `bg-primary-600`(미정의 색상) → `bg-surface-card` + `border-neutral-border`로 변경 — X 버튼과 스타일 통일
+- **+ 버튼 위치**: 컴포넌트 밖 → 경계에 절반 걸치도록 (`top-1 right-1`)
+- **X 버튼 위치**: `-top-2 -right-2` → `-top-1 -right-1`로 조정 (절반 걸침)
+- **완료 버튼**: `bg-success`(녹색) → `bg-primary-500`(서비스 메인 컬러)로 통일
+
 ### 다음 할 일
 
-- [ ] Intent ONNX 추론 코드를 `intent_classifier.py`에 통합 (production 반영)
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
