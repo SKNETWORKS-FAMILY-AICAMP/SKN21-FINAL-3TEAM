@@ -58,6 +58,25 @@ def apply_post_rules(user_input: str, intents: list) -> list:
     if connectors >= 2 and len(intents) < 3:
         pass  # 모델 출력 유지 — 무리하게 step 늘리면 오히려 악화
 
+    # 규칙 10: "A 찾아서 B 확인하고 C 만들어줘" 패턴 — doc_retrieve→judgment 축소 방지
+    # 문서를 찾고 + 판단/확인 + 생성/등록이 모두 포함된 입력인데 2-step이면 doc_retrieve 복원
+    if re.search(r"(찾아서|검색해서|조회해서)", user_input) and \
+       re.search(r"(확인하고|판단하고|보고|검토하고)", user_input) and \
+       re.search(r"(만들어|작성해|잡아|등록|넣어)", user_input) and \
+       len(intents) == 2:
+        # 2-step → 3-step 복원: 첫 step 앞에 doc_retrieve 삽입
+        if intents[0] != "doc_retrieve":
+            intents.insert(0, "doc_retrieve")
+
+    # 규칙 11: "A도 찾아서 B도 찾아서" — 검색 동사 2회 이상 + 생성 → 최소 3-step
+    search_verbs = len(re.findall(r"(찾아|검색|조회|찾고|검색하고)", user_input))
+    if search_verbs >= 2 and \
+       re.search(r"(만들어|작성해|뽑아|써\s*줘)", user_input) and \
+       len(intents) < 3:
+        # doc_retrieve가 1개면 하나 더 추가
+        if intents.count("doc_retrieve") < 2:
+            intents.insert(0, "doc_retrieve")
+
     # 규칙 6: "취소" → schedule_add (schedule_view 아님)
     if re.search(r"취소", user_input) and intents and intents[0] == "schedule_view":
         intents[0] = "schedule_add"
@@ -113,6 +132,64 @@ PLANNER_SYSTEM_PROMPT = """당신은 업무 자동화 시스템의 Task Planner�
 ## 작성 규칙 (Rule)
 1. depends_on: 이 단계가 실행되기 전에 완료되어야 하는 step_id 목록. 비어있으면 즉시 실행 가능(병렬).
 2. [금지 1 - 과도한 압축 금지]: 문서를 찾고(doc_retrieve) 그 내용을 바탕으로 판단(judgment)을 요구하는 경우, 절대 judgment 하나로 압축하지 마세요. 두 단계가 모두 필요합니다.
+3. [금지 2 - Intent 혼동 방지]: 규정이나 문서를 단순히 찾아달라는 요청은 doc_retrieve입니다. judgment는 명확히 가부(가능 여부) 판단을 물을 때만 사용하세요.
+4. [금지 3 - 과잉 분리 금지]: 동일한 대상(예: 하나의 규정)에 대해 판단할 때 judgment를 여러 번 분리하지 말고 한 번의 step으로 처리하세요.
+5. 단순 요청은 1단계로 처리하고, 최대 4단계까지만 분해하세요.
+6. JSON만 출력하고 다른 설명은 하지 마세요."""
+
+# Few-shot 프롬프트 (실험 B용)
+PLANNER_SYSTEM_PROMPT_FEWSHOT = """당신은 업무 자동화 시스템의 Task Planner입니다.
+사용자 요청을 분석하여 실행 가능한 단계별 계획을 JSON으로 출력하세요.
+
+## 사용 가능한 intent (6개)
+- judgment: 사규/규정 기반 판단 ("~해도 되나요?", "규정 확인")
+- doc_retrieve: 문서 검색/조회/요약 ("~문서 찾아줘", "~내용 알려줘")
+- doc_generate: 문서 생성 ("보고서 만들어줘", "회의록 작성해줘")
+- schedule_add: 일정 등록 ("~에 회의 잡아줘", "휴가 등록")
+- schedule_view: 일정 조회 ("다음 주 일정 보여줘")
+- general: 일반 질문 (위에 해당하지 않는 경우)
+
+## 출력 형식 (반드시 이 JSON 형식만 출력)
+{
+  "plan": [
+    {
+      "step_id": 1,
+      "intent": "intent_name",
+      "query": "이 단계에서 처리할 구체적 요청",
+      "depends_on": []
+    }
+  ]
+}
+
+## 3-step 예시 (중요! 이런 패턴은 절대 2-step으로 줄이지 마세요)
+
+예시 1: "출장 규정 문서 찾아서 해외출장 가능한지 확인하고 출장 보고서 만들어줘"
+→ {"plan": [
+    {"step_id": 1, "intent": "doc_retrieve", "query": "출장 규정 문서 검색", "depends_on": []},
+    {"step_id": 2, "intent": "judgment", "query": "해외출장 가능 여부 판단", "depends_on": [1]},
+    {"step_id": 3, "intent": "doc_generate", "query": "출장 보고서 작성", "depends_on": [2]}
+  ]}
+
+예시 2: "연차 규정 확인하고 팀 일정 보고 비는 날에 휴가 등록해줘"
+→ {"plan": [
+    {"step_id": 1, "intent": "judgment", "query": "연차 규정 확인", "depends_on": []},
+    {"step_id": 2, "intent": "schedule_view", "query": "팀 일정 조회", "depends_on": []},
+    {"step_id": 3, "intent": "schedule_add", "query": "비는 날에 휴가 등록", "depends_on": [1, 2]}
+  ]}
+
+예시 3: "마케팅 보고서 찾고 경쟁사 자료도 검색해서 비교 제안서 만들어줘"
+→ {"plan": [
+    {"step_id": 1, "intent": "doc_retrieve", "query": "마케팅 보고서 검색", "depends_on": []},
+    {"step_id": 2, "intent": "doc_retrieve", "query": "경쟁사 자료 검색", "depends_on": []},
+    {"step_id": 3, "intent": "doc_generate", "query": "비교 제안서 작성", "depends_on": [1, 2]}
+  ]}
+
+## 절대 규칙 (System Constraints)
+{intent_constraints}
+
+## 작성 규칙 (Rule)
+1. depends_on: 이 단계가 실행되기 전에 완료되어야 하는 step_id 목록. 비어있으면 즉시 실행 가능(병렬).
+2. [금지 1 - 과도한 압축 금지]: "A 찾아서 B 확인하고 C 만들어줘"는 반드시 3단계입니다. 절대로 2단계로 압축하지 마세요.
 3. [금지 2 - Intent 혼동 방지]: 규정이나 문서를 단순히 찾아달라는 요청은 doc_retrieve입니다. judgment는 명확히 가부(가능 여부) 판단을 물을 때만 사용하세요.
 4. [금지 3 - 과잉 분리 금지]: 동일한 대상(예: 하나의 규정)에 대해 판단할 때 judgment를 여러 번 분리하지 말고 한 번의 step으로 처리하세요.
 5. 단순 요청은 1단계로 처리하고, 최대 4단계까지만 분해하세요.
@@ -302,10 +379,12 @@ def load_model(adapter_path: str | None = None):
     return tokenizer, model, mode
 
 
-def generate(model, tokenizer, user_input: str) -> tuple[str, float]:
+def generate(model, tokenizer, user_input: str,
+             use_fewshot: bool = False) -> tuple[str, float]:
     """추론 실행"""
+    sys_prompt = PLANNER_SYSTEM_PROMPT_FEWSHOT if use_fewshot else PLANNER_SYSTEM_PROMPT
     messages = [
-        {"role": "system", "content": PLANNER_SYSTEM_PROMPT},
+        {"role": "system", "content": sys_prompt},
         {"role": "user", "content": user_input},
     ]
 
@@ -342,6 +421,8 @@ def main():
                         help="held-out 테스트 JSON 경로")
     parser.add_argument("--output", default=None,
                         help="결과 저장 경로")
+    parser.add_argument("--fewshot", action="store_true",
+                        help="Few-shot 프롬프트 사용 (3-step 예시 포함)")
     args = parser.parse_args()
 
     # 프로젝트 루트
@@ -374,17 +455,21 @@ def main():
             print("  --base-only 로 base 모델만 평가하거나, --adapter 경로를 지정하세요")
             return
 
+    use_fewshot = getattr(args, 'fewshot', False)
+    prompt_mode = "fewshot" if use_fewshot else "default"
+
     print(f"\n모델 로드 중...")
     tokenizer, model, mode = load_model(adapter_path)
 
     # 평가
     print(f"\n{'='*65}")
-    print(f"  HELD-OUT 평가 시작 ({mode.upper()} model, {len(test_cases)}건)")
+    print(f"  HELD-OUT 평가 시작 ({mode.upper()} model, prompt={prompt_mode}, {len(test_cases)}건)")
     print(f"{'='*65}\n")
 
     results = []
     for i, tc in enumerate(test_cases, 1):
-        pred_text, latency = generate(model, tokenizer, tc["input"])
+        pred_text, latency = generate(model, tokenizer, tc["input"],
+                                       use_fewshot=use_fewshot)
         result = evaluate_single(tc, pred_text, latency)
         results.append(result)
 
