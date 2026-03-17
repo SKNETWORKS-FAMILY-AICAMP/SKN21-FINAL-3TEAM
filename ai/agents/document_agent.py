@@ -1470,10 +1470,16 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
                 from ai.serving.vllm_client import VLLMProvider
                 lora_tasks = set(os.getenv("DOC_LORA_TASKS", "generate").split(","))
                 use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
+                # task별 LoRA 어댑터 이름 매핑
+                LORA_ADAPTER_NAMES = {
+                    "generate": "v2_generate",
+                    "summary": "v3_summary",
+                }
                 if use_lora and task in lora_tasks:
-                    llm = VLLMProvider().with_lora(f"v2_{task}")
-                    _last_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + f" (LoRA v2_{task})"
-                    print(f"[DocumentAgent] _call_llm | sLLM: v2_{task} LoRA 어댑터")
+                    adapter_name = LORA_ADAPTER_NAMES.get(task, f"v2_{task}")
+                    llm = VLLMProvider().with_lora(adapter_name)
+                    _last_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + f" (LoRA {adapter_name})"
+                    print(f"[DocumentAgent] _call_llm | sLLM: {adapter_name} LoRA 어댑터")
                 else:
                     llm = VLLMProvider()
                     _last_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (base)"
