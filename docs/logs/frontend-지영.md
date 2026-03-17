@@ -3554,31 +3554,60 @@ judgment + doc_retrieve → knowledge_query 매핑 구현. KNOWN_OVERRIDES 제�
 
 ---
 
-#### Rule 정리 → 간섭 제거 후 최종 재평가 (진행중)
+#### Rule 정리 + 최종 재평가 확정
 
 Rule 10,11,12,13이 매핑과 간섭하여 성능 저하 유발 → 제거.
-원래 Rule(1~9) + Rule 14,16 + 매핑 + 하이브리드 조합으로 최종 재평가 중.
-이전 v5+매핑(88.0%)에 근접하거나 초과 기대.
+원래 Rule(1~9) + Rule 14,16 + 매핑 + 하이브리드 조합으로 최종 재평가.
+
+**Rule 정리 후에도 I = 87.0% 동일** — 안정적인 결과 확인. **87.0%로 최종 확정.**
+
+### 최종 Planner 모델 스펙 (확정)
+
+| 항목 | 값 |
+|------|-----|
+| 베이스 모델 | Kanana-1.5-8B (kakaocorp/kanana-1.5-8b-instruct-2505) |
+| 학습 방식 | QLoRA (4bit, r=16, alpha=32) |
+| 학습 데이터 | 1,471건 (v5) |
+| 라벨 | 6개 (judgment, doc_retrieve, doc_generate, schedule_add, schedule_view, general) |
+| 프롬프트 | **하이브리드** — 단순 입력→기본, 복합 입력→Few-shot(3-step 예시 3개) |
+| 후처리 | judgment + doc_retrieve → **knowledge_query** 매핑 |
+| Rule Guide | 9개 (1,2,3,4,6,8,9,14,16) |
+| Held-out PM (100건) | **87.0%** (87/100) |
+| Weighted Score | **0.979** |
+| intent+step 실질 정답 | **94/100 (94.0%)** — depends_on만 틀린 7건 제외 |
+| 카테고리별 | single 100%, 2-step 90.9%, 3-step 66.7%, complex 0.962, edge 0.957 |
+| Step Collapse | 7.5% |
+| 추론 시간 | ~1.5s/건 |
+| 배포 | HuggingFace Hub 백업 (jiyouxg/dudu-planner-v5-lora) |
 
 ### 실험 결과 전체 비교표 (최종)
 
 | # | 실험 | 모델 | 프롬프트 | 후처리 | PM | 핵심 |
 |---|------|------|---------|--------|-----|------|
-| 기준 | v5 원본 | v5 LoRA | 기본 | 매핑+Rule 7개 | 88.0% | 이전 세션 결과 |
-| A | Rule 추가 | v5 LoRA | 기본 | Rule 9개 | 71.0% | 매핑 없이 baseline |
-| B | Few-shot | v5 LoRA | Few-shot | Rule 7개 | 75.0% | complex ✅ |
-| D-1 | v6 재학습 | v6 LoRA | 기본 | Rule+OVR | 64.0% | 대실패 |
-| D-2 | v6 Few-shot | v6 LoRA | Few-shot | Rule+OVR | 74.0% | Few-shot이 보정 |
+| A | baseline | v5 LoRA | 기본 | Rule 7개 | 71.0% | 매핑 없이 baseline |
+| B | Few-shot | v5 LoRA | Few-shot | Rule 7개 | 75.0% | complex ✅, edge ❌ |
+| D-1 | v6 재학습 | v6 LoRA | 기본 | Rule+OVR | 64.0% | 대실패 — judgment 과잉 |
+| D-2 | v6 Few-shot | v6 LoRA | Few-shot | Rule+OVR | 74.0% | Few-shot이 v6 보정 |
 | E | OVERRIDES v2 | v5 LoRA | 기본 | OVERRIDES | 76.0% | single_step 100% |
 | F | Few-shot+OVR | v5 LoRA | Few-shot | OVERRIDES | 77.0% | OVERRIDES 천장 |
 | G | 매핑 | v5 LoRA | 기본 | 매핑 | 79.0% | 매핑 효과 확인 |
 | H | Few-shot+매핑 | v5 LoRA | Few-shot | 매핑 | 82.0% | 3-step 66.7% |
-| **I** | **하이브리드+매핑** | **v5 LoRA** | **하이브리드** | **매핑+Rule14,16** | **87.0%** | **역대 최고** |
+| H2 | Few-shot+매핑+Rule14,16 | v5 LoRA | Few-shot | 매핑+Rule | 84.0% | Rule 14,16 효과 |
+| **I** | **하이브리드+매핑+Rule14,16** | **v5 LoRA** | **하이브리드** | **매핑+Rule** | **87.0%** | **최종 확정** |
+
+### 핵심 교훈 (오늘 실험 전체)
+
+1. **KNOWN_OVERRIDES의 한계**: judgment↔doc_retrieve 경계는 Rule로 77%가 천장 → 후처리 매핑이 정답
+2. **하이브리드 프롬프트가 핵심**: 단순→기본(single 100%) + 복합→Few-shot(3-step 66.7%) 조합이 최강
+3. **v6 재학습은 실패**: lr↓+MLP+데이터 보강이 오히려 judgment 과잉 유발 → v5 유지 결정
+4. **Rule은 양날의 검**: Rule 15가 1건 수정에 5건 파손. 최소한의 확실한 Rule만 유지
+5. **Few-shot > LoRA 보강**: 57건 재학습보다 예시 3개 프롬프트가 더 효과적
+6. **실패한 실험에서도 인사이트 획득**: v6, Rule 15, OVERRIDES 모두 "이 방법은 안 됨" 확인
 
 ### 다음 할 일
 
-- [ ] 최종 재평가 결과 확인 (Rule 정리 후)
-- [ ] PM 88%+ 달성 시 → 최종 Planner 모델 확정
+- [x] ~~Planner 최종 모델 확정~~ → **PM 87.0% (하이브리드+매핑+Rule)**
+- [ ] Planner v5 LoRA HuggingFace 백업 (진행중)
 - [ ] EC2에 새 Intent 모델 배포
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
