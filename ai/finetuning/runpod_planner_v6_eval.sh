@@ -40,28 +40,39 @@ if [ ! -d "${V5_ADAPTER}" ]; then
     V5_ADAPTER="outputs/v4_planner/final"
 fi
 
-# ── 실험 G: v5 + 기본 + 후처리 매핑 (knowledge_query) ──
+# ── 실험 I: v5 + 하이브리드 프롬프트 + 후처리 매핑 + Rule v2 ──
 echo ""
 echo "═══════════════════════════════════════"
-echo " 실험 G: v5 + 기본 + 후처리 매핑"
+echo " 실험 I: v5 + 하이브리드 + 매핑 + Rule v2"
 echo "═══════════════════════════════════════"
 python3 ai/finetuning/scripts/eval_planner_holdout.py \
     --adapter ${V5_ADAPTER} \
-    --output ${RESULTS_DIR}/exp_G_mapping.json \
-    2>&1 | tee ${RESULTS_DIR}/exp_G_log.txt
-echo "✓ 실험 G 완료"
+    --hybrid \
+    --output ${RESULTS_DIR}/exp_I_hybrid_mapping.json \
+    2>&1 | tee ${RESULTS_DIR}/exp_I_log.txt
+echo "✓ 실험 I 완료"
 
-# ── 실험 H: v5 + Few-shot + 후처리 매핑 ──
+# ── 비교용: G, H 재실행 (Rule v2 적용) ──
 echo ""
 echo "═══════════════════════════════════════"
-echo " 실험 H: v5 + Few-shot + 후처리 매핑"
+echo " 실험 G2: v5 + 기본 + 매핑 + Rule v2"
+echo "═══════════════════════════════════════"
+python3 ai/finetuning/scripts/eval_planner_holdout.py \
+    --adapter ${V5_ADAPTER} \
+    --output ${RESULTS_DIR}/exp_G2_mapping_rulev2.json \
+    2>&1 | tee ${RESULTS_DIR}/exp_G2_log.txt
+echo "✓ 실험 G2 완료"
+
+echo ""
+echo "═══════════════════════════════════════"
+echo " 실험 H2: v5 + Few-shot + 매핑 + Rule v2"
 echo "═══════════════════════════════════════"
 python3 ai/finetuning/scripts/eval_planner_holdout.py \
     --adapter ${V5_ADAPTER} \
     --fewshot \
-    --output ${RESULTS_DIR}/exp_H_fewshot_mapping.json \
-    2>&1 | tee ${RESULTS_DIR}/exp_H_log.txt
-echo "✓ 실험 H 완료"
+    --output ${RESULTS_DIR}/exp_H2_fewshot_mapping_rulev2.json \
+    2>&1 | tee ${RESULTS_DIR}/exp_H2_log.txt
+echo "✓ 실험 H2 완료"
 
 # ── 결과 비교 ──
 echo ""
