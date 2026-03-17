@@ -6,7 +6,6 @@
 ### 한 일
 - **프로젝트 초기 세팅** (`01fd409`)
   - React + Vite + Tailwind CSS 프로젝트 구성
-  - 디자인 시스템 컬러 토큰 적용 (primary, accent, surface, neutral 등)
   - 기본 디렉토리 구조 생성 (pages, components, store, hooks, api)
 - **UI/UX 기반 구조 추가** (`20c5675`)
   - UI_UX.pdf 요구사항 대조 후 누락 컴포넌트 스켈레톤 추가
@@ -35,7 +34,6 @@
   - DocumentGeneratePage — 템플릿 선택/업로드 → AI 내용 채움 → 문서 생성
   - MeetingInput, MeetingPreview 컴포넌트
   - TemplateSelector, TemplateUploadDialog, DocumentPreview 컴포넌트
-  - 사이드바 메뉴에 "회의록 생성", "문서 생성" 추가
 
 ---
 
@@ -110,21 +108,9 @@
 #### 6) 로그아웃 버튼 + DEV_BYPASS_AUTH 복원
 - Sidebar 하단에 로그아웃 텍스트 버튼 추가
   - 클릭 시 토큰 삭제 → 로그인 페이지로 이동
-  - 마우스 호버 시 "로그아웃 할래 말래" 툴팁 표시
 - develop pull 후 사라진 `DEV_BYPASS_AUTH = true` 복원 (백엔드 로그인 개발 완료 전까지 인증 우회)
 
-#### 7) 글씨 크기 조절 기능 구현 (`859a8c8`)
-- 가-/가+ 버튼으로 전체 글씨 크기를 조절할 수 있는 기능
-
-- **FontSizeControl 컴포넌트 신규 생성** (`components/common/FontSizeControl.jsx`)
-  - 우측 하단 고정 위치에 가-/가+ 버튼 표시
-  - 14px(하한) ~ 22px(상한), 2px 단위 조절 (총 5단계)
-  - html root의 font-size를 변경하여 rem 기반 전체 UI 크기 조절
-  - localStorage에 저장되어 새로고침해도 유지
-- **App.jsx에 통합** — BrowserRouter 안에 배치하여 로그인 포함 모든 페이지에서 사용 가능
-- **로그인 카드 너비 rem 변환** — `w-[400px]` → `w-[28rem]`으로 변경하여 글씨 크기에 따라 카드도 유연하게 확대/축소
-
-#### 8) 전체 text-[px] → text-[rem] 일괄 변환 (`859a8c8`)
+#### 7) 전체 text-[px] → text-[rem] 일괄 변환 (`859a8c8`)
 > 가-/가+ 기능이 모든 글씨에 적용되도록 px 고정값을 rem으로 변환
 
 - **변환 대상 54개 파일**, 총 6종류 px 값 변환:
@@ -172,7 +158,6 @@
 - `App.jsx` — `useEffect`로 `<html>`에 dark 클래스 동기화
 - `Sidebar.jsx` — `bg-primary-700` → `bg-sidebar-bg`로 변경 (양쪽 모드에서 어두운 사이드바 유지), ThemeToggle 배치
 - **NEW** `components/common/ThemeToggle.jsx` — 해/달 아이콘 토글 버튼
-- `ChatPage.jsx` — 확인 다이얼로그 `bg-white` → `bg-surface-card`로 변경
 
 ##### (b) 인쇄 기능
 - **`.print-area` 클래스 기반 선택적 인쇄**: 인쇄 버튼 클릭 시 해당 카드에 `.print-area` 추가 → `window.print()` → `afterprint`로 제거
@@ -193,18 +178,11 @@
 - `ChatPage.jsx` — ChatSessionSidebar 통합, "대화 목록" 토글 버튼, 마운트 시 `initSession()`
 - **NEW** `components/chat/ChatSessionSidebar.jsx` — 세션 목록(이름, 메시지 수, 시간), 삭제 버튼, "새 대화" 버튼, 활성 세션 하이라이트
 
-**변경 요약**: 수정 14개 파일, 신규 2개 파일, npm 패키지 1개(framer-motion)
-**빌드 확인**: `npm run build` 성공
-
-#### 3) 다크모드 색상 튜닝
-- 초기 다크모드가 너무 어두움 → 진회색/연회색 조합으로 2차례 밝기 조정
-- 최종 배경: `#363B44`, 카드: `#3E444D`, 사이드바: `#30353C`
-
-#### 4) 인증 우회 해제
+#### 3) 인증 우회 해제
 - `App.jsx` — `DEV_BYPASS_AUTH = true` → `false` 변경
 - 로그인하지 않으면 대시보드 등 보호 페이지 접근 불가, `/login`으로 리다이렉트
 
-#### 5) Google 로그인 시 서비스 자동 연동 (백엔드 수정)
+#### 4) Google 로그인 시 서비스 자동 연동 (백엔드 수정)
 > Google 로그인과 Google 서비스 연동이 별도 OAuth 플로우로 분리되어 사용자가 두 번 인증해야 하는 문제 해결
 > 로그인 한 번으로 Calendar/Tasks/Gmail/Sheets까지 자동 연동되도록 변경
 
@@ -229,7 +207,7 @@
   4. JWT 발급 → 프론트엔드 리다이렉트
   5. 일정 관리 페이지 접속 시 `/google/status` 호출 → "Google 서비스 연결됨" 표시 (추가 연동 불필요)
 
-#### 6) Google Calendar 실제 연동 (Mock → 실제 API)
+#### 5) Google Calendar 실제 연동 (Mock → 실제 API)
 > 일정 관리 페이지의 Mock 데이터를 제거하고 실제 Google Calendar 이벤트를 표시하도록 연동
 
 - **`SchedulesPage.jsx`** — mockEvents/mockActions 전체 삭제, 실제 Google Calendar 데이터로 교체
@@ -249,23 +227,19 @@
 - **일괄 알림 버튼(`EmailReminderButton`) 제거** — SchedulesPage 헤더에서 삭제
 - **디버그 코드 정리** — googleStore.js, SchedulesPage.jsx의 console.log/디버그 패널 제거
 
-### 다음 할 일
-- 나머지 Mock → 실제 API 교체 (대시보드, 채팅, 문서, 회의 등)
-- 전체 E2E 테스트 지원
-
----
-
-## 2026-02-12 (수) — 오후
-
-### 한 일
+#### 6) 일정 추가 버그 수정
 - 일정 추가 버그 수정 (`SchedulesPage.jsx`)
   - `useGoogleServices.getState()` 호출 오류 → 훅에서 직접 구조분해로 변경
   - `create_meet`/`attendees` 필드명 불일치 수정
 - 캘린더 토/일 색상 적용 (`CalendarView.jsx`)
   - 토요일 헤더+날짜 파란색, 일요일 헤더+날짜 빨간색, 공휴일 날짜도 빨간색 표시
   - 월간/주간/연간 뷰 전부 적용
-- 대체공휴일 데이터 추가 (`CalendarView.jsx`)
-  - 2025~2027년 대체공휴일 전체 추가 
+- 대체공휴일 데이터 추가 (`CalendarView.jsx`): 2025~2027년 대체공휴일 전체 추가 
+
+
+### 다음 할 일
+- 나머지 Mock → 실제 API 교체 (대시보드, 채팅, 문서, 회의 등)
+- 전체 E2E 테스트 지원
 
 ---
 
@@ -3606,8 +3580,8 @@ Rule 10,11,12,13이 매핑과 간섭하여 성능 저하 유발 → 제거.
 
 ### 다음 할 일
 
-- [x] ~~Planner 최종 모델 확정~~ → **PM 87.0% (하이브리드+매핑+Rule)**
-- [ ] Planner v5 LoRA HuggingFace 백업 (진행중)
+- [x] ~~Planner 최종 모델 확정~~ → **PM 87.0% (Hybrid+매핑+Rule)**
+- [x] ~~Planner v5 LoRA HuggingFace 백업~~ → 완료 (jiyouxg/dudu-planner-v5-lora)
 - [ ] EC2에 새 Intent 모델 배포
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
