@@ -255,8 +255,9 @@ async def safe_schedule_agent(state: AgentState) -> AgentState:
 
 # ── 복합 질문 노드 ──
 
-# planner system prompt (v5 학습 데이터와 동일)
-_PLANNER_SYSTEM_PROMPT = """당신은 업무 자동화 시스템의 Task Planner입니다.
+# ── Planner 프롬프트 (Hybrid: 기본 + Few-shot) ──
+
+_PLANNER_BASE_PROMPT = """당신은 업무 자동화 시스템의 Task Planner입니다.
 사용자 요청을 분석하여 실행 가능한 단계별 계획을 JSON으로 출력하세요.
 
 ## 사용 가능한 intent (6개)
@@ -267,28 +268,54 @@ _PLANNER_SYSTEM_PROMPT = """당신은 업무 자동화 시스템의 Task Planner
 - schedule_view: 일정 조회 ("다음 주 일정 보여줘")
 - general: 일반 질문 (위에 해당하지 않는 경우)
 
-## judgment vs doc_retrieve 구분 기준 (중요!)
-- judgment: 사내 규정/규칙/기준/수당/복리후생에 대한 질문. 규정 해석, 가능 여부 판단, 기준 설명 포함.
-- doc_retrieve: 특정 문서/파일/보고서/회의록을 찾거나 검색하는 것.
-
 ## 출력 형식 (반드시 이 JSON 형식만 출력)
-{
-  "plan": [
-    {
-      "step_id": 1,
-      "intent": "intent_name",
-      "query": "이 단계에서 처리할 구체적 요청",
-      "depends_on": []
-    }
-  ]
-}
+{"plan": [{"step_id": 1, "intent": "intent_name", "query": "구체적 요청", "depends_on": []}]}
 
 ## 규칙
 1. depends_on: 이 단계가 실행되기 전에 완료되어야 하는 step_id 목록
-2. depends_on이 비어있으면 즉시 실행 가능 (병렬 처리 가능)
+2. depends_on이 비어있으면 즉시 실행 가능
 3. 단순 요청은 1단계로 처리
 4. 최대 4단계까지만 분해
 5. JSON만 출력하고 다른 설명은 하지 마세요"""
+
+_PLANNER_FEWSHOT_PROMPT = _PLANNER_BASE_PROMPT + """
+
+## 예시
+
+사용자: 연차 규정 확인하고 다음 주 금요일에 휴가 등록해줘
+{"plan": [{"step_id": 1, "intent": "judgment", "query": "연차 규정 확인", "depends_on": []}, {"step_id": 2, "intent": "schedule_add", "query": "다음 주 금요일에 휴가 등록", "depends_on": [1]}]}
+
+사용자: 지난달 매출 보고서 찾아서 요약하고, 그 내용으로 이번 달 보고서 작성해줘
+{"plan": [{"step_id": 1, "intent": "doc_retrieve", "query": "지난달 매출 보고서 검색 및 요약", "depends_on": []}, {"step_id": 2, "intent": "doc_generate", "query": "이번 달 보고서 작성", "depends_on": [1]}]}
+
+사용자: 이번 주 회의 일정 확인하고, 회의록 양식 만들어줘
+{"plan": [{"step_id": 1, "intent": "schedule_view", "query": "이번 주 회의 일정 확인", "depends_on": []}, {"step_id": 2, "intent": "doc_generate", "query": "회의록 양식 만들기", "depends_on": [1]}]}"""
+
+# knowledge_query 매핑: planner가 judgment/doc_retrieve를 혼동하는 문제 해결
+# 두 intent를 knowledge_query로 통합 → 실제 라우팅은 ONNX 개별 분류로 결정
+_KNOWLEDGE_QUERY_INTENTS = {"judgment", "doc_retrieve"}
+
+
+def _is_complex_input(text: str) -> bool:
+    """입력이 복합(complex)인지 판별 — 접속사/동사 개수 기반
+
+    Hybrid 프롬프트 선택에 사용:
+      복합 → Few-shot 프롬프트 (예시 포함)
+      단순 → 기본 프롬프트
+    """
+    import re
+    connectors = len(re.findall(r"(하고|해서|한 다음|그리고|그런 다음|바탕으로|기반으로|확인하고|찾아서)", text))
+    verbs = len(re.findall(r"(해줘|만들어줘|작성해줘|등록해줘|잡아줘|보여줘|알려줘|찾아줘|확인해줘|검색해줘)", text))
+    return connectors >= 1 or verbs >= 2
+
+
+def _get_planner_prompt(user_input: str) -> str:
+    """Hybrid 프롬프트 — 단순/복합 자동 선택"""
+    if _is_complex_input(user_input):
+        logger.debug("[Orchestrator] Hybrid: Few-shot 프롬프트 선택")
+        return _PLANNER_FEWSHOT_PROMPT
+    logger.debug("[Orchestrator] Hybrid: 기본 프롬프트 선택")
+    return _PLANNER_BASE_PROMPT
 
 
 async def decompose_query(state: AgentState) -> AgentState:
@@ -307,18 +334,19 @@ async def decompose_query(state: AgentState) -> AgentState:
     sub_queries = []
 
     if use_planner_sllm:
-        # planner LoRA로 쿼리 분리 시도 (intent는 ONNX 결과 우선)
+        # planner LoRA로 쿼리 분리 (Hybrid 프롬프트 + knowledge_query 매핑)
         try:
             planner_result = await _planner_sllm_decompose(user_input)
             if planner_result:
-                # planner가 분리한 각 query를 ONNX로 개별 분류
+                # knowledge_query → ONNX로 실제 intent 해소 (judgment vs doc_retrieve)
+                # 그 외 intent(doc_generate, schedule_* 등)도 ONNX로 검증
                 classifier = get_classifier()
                 for sq in planner_result:
                     part_result = classifier.predict(sq["query"])
                     sq["hint"] = part_result["intent"]
                 sub_queries = planner_result
                 logger.info(
-                    "[Orchestrator] planner sLLM 분리 + ONNX intent (%.2fs) | %d단계: %s",
+                    "[Orchestrator] planner sLLM + ONNX (%.2fs) | %d단계: %s",
                     time.time() - _t, len(sub_queries), [sq["hint"] for sq in sub_queries],
                 )
         except Exception as e:
@@ -358,6 +386,8 @@ async def decompose_query(state: AgentState) -> AgentState:
 async def _planner_sllm_decompose(user_input: str) -> list[dict]:
     """vLLM planner LoRA로 복합질문 분해
 
+    Hybrid 프롬프트 + knowledge_query 매핑 적용.
+
     Returns:
         단일이면 [] (classify_intent로 넘김)
         복합이면 [{"query": "...", "hint": "intent_name"}, ...]
@@ -366,10 +396,13 @@ async def _planner_sllm_decompose(user_input: str) -> list[dict]:
     import re
     from ai.serving.vllm_client import VLLMProvider
 
+    # Hybrid: 단순/복합에 따라 프롬프트 자동 선택
+    system_prompt = _get_planner_prompt(user_input)
+
     llm = VLLMProvider().with_lora("planner")
     response = await llm.generate(
         prompt=user_input,
-        system_prompt=_PLANNER_SYSTEM_PROMPT,
+        system_prompt=system_prompt,
         temperature=0.1,
         max_tokens=512,
     )
@@ -391,16 +424,25 @@ async def _planner_sllm_decompose(user_input: str) -> list[dict]:
     if len(plan) <= 1:
         return []
 
-    # 복합: sub_queries 형식으로 변환
+    # 복합: sub_queries 형식으로 변환 + knowledge_query 매핑
     sub_queries = []
     for step in plan:
+        intent = step.get("intent", "general")
+        # knowledge_query 매핑: judgment/doc_retrieve → knowledge_query로 통합
+        # 실제 라우팅은 ONNX 개별 분류에서 결정
+        if intent in _KNOWLEDGE_QUERY_INTENTS:
+            intent = "knowledge_query"
         sub_queries.append({
             "query": step.get("query", user_input),
-            "hint": step.get("intent", "general"),
+            "hint": intent,
             "step_id": step.get("step_id", 0),
             "depends_on": step.get("depends_on", []),
         })
 
+    logger.info(
+        "[Orchestrator] planner 분해: %d단계 (매핑 후: %s)",
+        len(sub_queries), [sq["hint"] for sq in sub_queries],
+    )
     return sub_queries
 
 
