@@ -603,6 +603,10 @@ async def suggest_schedules(
         from ai.llm.prompts import SCHEDULE_SUGGEST_SYSTEM_PROMPT
 
         llm = create_llm(provider="vllm")
+        model_name = getattr(llm, 'model', 'unknown')
+        provider_name = llm.__class__.__name__
+        logger.info(f"[일정추천] LLM 호출: provider={provider_name}, model={model_name}")
+
         response = await llm.generate(
             prompt=context,
             system_prompt=SCHEDULE_SUGGEST_SYSTEM_PROMPT,
@@ -611,6 +615,9 @@ async def suggest_schedules(
             max_tokens=1500,
         )
 
+        # 실제 응답에서 모델명 추출 (vLLM이 반환하는 실제 모델명)
+        actual_model = getattr(response, 'model', model_name)
+
         result = json.loads(response.content)
         return {
             "suggestions": result.get("suggestions", []),
@@ -618,6 +625,11 @@ async def suggest_schedules(
                 "total_tasks": total_tasks,
                 "done_pct": done_pct,
                 "upcoming_events": len(schedule_summary),
+            },
+            "model_info": {
+                "provider": "sllm" if provider_name == "VLLMProvider" else "api",
+                "model": actual_model,
+                "provider_class": provider_name,
             },
         }
     except Exception as e:
@@ -684,6 +696,11 @@ async def suggest_schedules(
             "upcoming_events": len(schedule_summary),
         },
         "fallback": True,
+        "model_info": {
+            "provider": "fallback",
+            "model": "rule-based",
+            "provider_class": "Fallback",
+        },
     }
 
 
@@ -789,6 +806,10 @@ async def suggest_approvals(
         from ai.llm.prompts import APPROVAL_SUGGEST_SYSTEM_PROMPT
 
         llm = create_llm(provider="vllm")
+        model_name = getattr(llm, 'model', 'unknown')
+        provider_name = llm.__class__.__name__
+        logger.info(f"[결재추천] LLM 호출: provider={provider_name}, model={model_name}")
+
         response = await llm.generate(
             prompt=context,
             system_prompt=APPROVAL_SUGGEST_SYSTEM_PROMPT,
@@ -796,6 +817,8 @@ async def suggest_approvals(
             temperature=0.4,
             max_tokens=1500,
         )
+
+        actual_model = getattr(response, 'model', model_name)
 
         result = json.loads(response.content)
         return {
@@ -805,6 +828,11 @@ async def suggest_approvals(
                 "stage_counts": stage_counts,
                 "done_pct": done_pct,
                 "upcoming_events": len(schedule_summary),
+            },
+            "model_info": {
+                "provider": "sllm" if provider_name == "VLLMProvider" else "api",
+                "model": actual_model,
+                "provider_class": provider_name,
             },
         }
     except Exception as e:
@@ -876,6 +904,11 @@ async def suggest_approvals(
             "upcoming_events": len(schedule_summary),
         },
         "fallback": True,
+        "model_info": {
+            "provider": "fallback",
+            "model": "rule-based",
+            "provider_class": "Fallback",
+        },
     }
 
 
@@ -980,12 +1013,16 @@ async def suggest_for_project(
 {json.dumps(schedule_summary, ensure_ascii=False, indent=2) if schedule_summary else '예정된 일정 없음'}
 """
 
-    # 5. LLM 호출
+    # 5. LLM 호출 (sLLM — vLLM/Kanana)
     try:
-        from ai.llm import get_llm
+        from ai.llm import create_llm
         from ai.llm.prompts import PROJECT_SUGGEST_SYSTEM_PROMPT
 
-        llm = get_llm()
+        llm = create_llm(provider="vllm")
+        model_name = getattr(llm, 'model', 'unknown')
+        provider_name = llm.__class__.__name__
+        logger.info(f"[프로젝트추천] LLM 호출: provider={provider_name}, model={model_name}")
+
         response = await llm.generate(
             prompt=context,
             system_prompt=PROJECT_SUGGEST_SYSTEM_PROMPT,
@@ -993,6 +1030,8 @@ async def suggest_for_project(
             temperature=0.4,
             max_tokens=2000,
         )
+
+        actual_model = getattr(response, 'model', model_name)
 
         result = json.loads(response.content)
         # related_project 자동 주입
@@ -1008,6 +1047,11 @@ async def suggest_for_project(
                 "done_pct": done_pct,
                 "upcoming_events": len(schedule_summary),
                 "members": project_members,
+            },
+            "model_info": {
+                "provider": "sllm" if provider_name == "VLLMProvider" else "api",
+                "model": actual_model,
+                "provider_class": provider_name,
             },
         }
     except Exception as e:
@@ -1113,4 +1157,9 @@ async def suggest_for_project(
             "members": project_members,
         },
         "fallback": True,
+        "model_info": {
+            "provider": "fallback",
+            "model": "rule-based",
+            "provider_class": "Fallback",
+        },
     }

@@ -225,6 +225,7 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
     const [aiApprovals, setAiApprovals] = useState([]);
     const [aiSchedules, setAiSchedules] = useState([]);
     const [aiContext, setAiContext] = useState(null);
+    const [aiModelInfo, setAiModelInfo] = useState(null); // LLM 모델 디버깅 정보
     const [aiGlow, setAiGlow] = useState(!!filterProject); // 프로젝트 안에 들어왔을 때 반짝임
     const [addingScheduleIdx, setAddingScheduleIdx] = useState(null); // AI 추천 일정 추가 중인 인덱스
 
@@ -505,11 +506,13 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
         setAiGlow(false); // 열면 반짝임 끄기
         setShowAiPanel(true);
         setAiLoading(true);
+        setAiModelInfo(null);
         try {
             const res = await suggestForProject(projName);
             setAiApprovals(res.data.approvals || []);
             setAiSchedules(res.data.schedules || []);
             setAiContext(res.data.context || null);
+            if (res.data.model_info) setAiModelInfo(res.data.model_info);
         } catch (err) {
             toast.error(err.response?.data?.detail || 'AI 추천 실패');
         } finally {
@@ -526,6 +529,7 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
             setAiApprovals(res.data.approvals || []);
             setAiSchedules(res.data.schedules || []);
             setAiContext(res.data.context || null);
+            if (res.data.model_info) setAiModelInfo(res.data.model_info);
         } catch { /* 조용히 실패 */ }
     };
 
@@ -1132,6 +1136,17 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                                 <div className="flex items-center gap-2">
                                     <Sparkles size={16} className="text-violet-500" />
                                     <span className="text-sm font-black text-neutral-main tracking-tight">AI 추천</span>
+                                    {aiModelInfo && (
+                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                                            aiModelInfo.provider === 'sllm'
+                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                : aiModelInfo.provider === 'fallback'
+                                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                                    : 'bg-blue-50 text-blue-700 border-blue-200'
+                                        }`}>
+                                            {aiModelInfo.provider === 'sllm' ? 'Kanana-1.5-8B' : aiModelInfo.provider === 'fallback' ? 'GPT-4o-mini' : aiModelInfo.model}
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-1">
                                     <button
@@ -1148,12 +1163,19 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                                 </div>
                             </div>
                             {aiContext && (
-                                <div className="flex items-center gap-2 text-[10px] text-neutral-muted mb-3">
+                                <div className="flex items-center gap-2 text-[10px] text-neutral-muted mb-1">
                                     <span className="font-bold text-violet-600 dark:text-violet-400">{aiContext.project_name}</span>
                                     <span>·</span>
                                     <span>태스크 {aiContext.total_tasks}개</span>
                                     <span>·</span>
                                     <span>완료 {aiContext.done_pct}%</span>
+                                </div>
+                            )}
+                            {aiModelInfo && (
+                                <div className="flex items-center gap-1.5 text-[9px] text-neutral-400 mb-3">
+                                    {aiModelInfo.provider === 'sllm' && <span className="text-emerald-600 font-medium">sLLM · vLLM 서빙</span>}
+                                    {aiModelInfo.provider === 'fallback' && <span className="text-amber-500 font-medium">Fallback · 규칙 기반</span>}
+                                    {aiModelInfo.provider === 'api' && <span className="text-blue-500 font-medium">LLM API</span>}
                                 </div>
                             )}
                             {/* Tabs */}
