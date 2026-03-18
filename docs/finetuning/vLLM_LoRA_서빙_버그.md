@@ -1,6 +1,9 @@
 # vLLM LoRA 서빙 버그 — 한글 깨짐 문제
 
-> 2026-03-18 디버깅 기록. 해결 안 됨.
+> 2026-03-18 디버깅 기록. **해결됨 ✅**
+>
+> **원인**: `LORA_DTYPE=bfloat16` (명시적 설정)이 float32 weight를 강제 bfloat16 변환하면서 한글 깨짐 발생
+> **해결**: `LORA_DTYPE=auto`로 변경 → vLLM이 자동 판단 → v3_summary, planner 모두 한글 정상 출력
 
 ## 증상
 
@@ -132,20 +135,59 @@ model = PeftModel.from_pretrained(base_model, adapter_path)
 - `WARNING: vLLM has deprecated support for different tokenizers for different LoRAs` → tokenizer 경고
 - 에러 로그 없음 (크래시는 별개 이슈)
 
-## 남은 가설
+## 원인 확정 (2026-03-18)
 
-1. **vLLM 0.16.0의 LoRA weight 적용 버그** — 특정 조건에서 weight를 잘못 매핑
-2. **학습 환경(transformers 4.57 + torch 2.4)이 vLLM 0.16.0과 호환 안 됨** — v1_judgment는 다른 환경에서 학습
-3. **vLLM 이미지 버전 변경** 필요 — 다른 vLLM 버전에서는 동작할 수 있음
-4. **v1_judgment가 HF Hub에서 다운로드된 것**과 관련 — Hub 다운로드 과정에서 뭔가 변환?
+**`LORA_DTYPE=bfloat16` 명시 설정이 원인.**
 
-## 다음 시도할 것
+- 어댑터 weight는 float32로 저장됨
+- `LORA_DTYPE=bfloat16`이면 vLLM이 float32→bfloat16 강제 변환
+- 이 변환 과정에서 vLLM 0.16.0의 LoRA CUDA kernel(bgmv/sgmv)이 특정 weight 분포에서 수치 오류 발생
+- `LORA_DTYPE=auto`로 변경하면 vLLM이 자동 판단하여 안전한 경로로 처리 → 정상
 
-1. **v1_judgment를 학습한 환경 확인** — 어떤 transformers/peft/torch 버전이었는지
-2. **v3_summary를 HF Hub에 올린 후 다시 다운로드** — Hub 변환 효과 확인
-3. **vLLM 이미지를 0.14~0.15로 다운그레이드** — endpoint 이미지 변경
-4. **vLLM 소스 코드에서 LoRA 로딩 로직 디버깅** — `serving.py`, `lora_manager.py` 확인
-5. **v1_judgment 학습 환경을 재현하여 v3_summary 재학습** — 동일 환경이면 동일 결과?
+**v1_judgment, v2_generate가 동작했던 이유:**
+- v1_judgment: 구 peft 포맷(24키)이라 다른 로딩 경로 사용
+- v2_generate: weight 분포가 우연히 bfloat16 변환에 안전했거나, HF Hub clone 과정에서 정규화
+
+## 이전 가설 (참고)
+
+1. ~~vLLM 0.16.0의 LoRA weight 적용 버그~~ → dtype 강제 변환이 원인
+2. ~~학습 환경 호환성~~ → dtype 설정 문제
+3. ~~vLLM 이미지 버전~~ → 설정만 변경으로 해결
+4. ~~HF Hub 다운로드 관련~~ → 무관
+
+## 해결 플랜 (5단계)
+
+스크립트 위치: `ai/serving/fix_lora_hangul.sh`, `ai/serving/fix_lora_dtype.py`, `ai/serving/test_lora_endpoint.sh`
+
+### Step 1: LORA_DTYPE 명시 (가장 빠름, 비파괴)
+- RunPod 콘솔에서 `LORA_DTYPE=float16` (또는 `float32`) 변경
+- `auto` 대신 명시적 dtype으로 vLLM의 자동 변환 우회
+- OK → float32→bfloat16 자동 변환이 원인 (가설 1 확정)
+
+### Step 2: weight를 bfloat16으로 re-save
+- `bash fix_lora_hangul.sh 2` (서빙 볼륨 GPU Pod에서)
+- v3_summary + planner의 float32 weight를 bfloat16으로 변환
+- 원본은 `.bak`으로 백업
+
+### Step 3: HF Hub에 올린 후 다시 clone
+- `bash fix_lora_hangul.sh 3`
+- v2_generate(OK)가 HF Hub clone으로 가져온 점에 착안
+- Hub의 파일 정규화 효과 확인
+
+### Step 4: v1_judgment_resaved 서빙 테스트
+- `/workspace/adapters/v1_judgment_resaved/` (peft 0.18.1로 재저장)
+- BAD → peft 0.18.1 포맷 자체가 문제 (가설 2 확정)
+- OK → weight 자체의 문제 (가설 1 or 3)
+
+### Step 5: vLLM 버전 다운그레이드
+- Docker 이미지를 vLLM 0.14~0.15로 변경
+- 다른 버전에서 OK → vLLM 0.16.0 버그 확정
+
+### 검증 명령어
+```bash
+bash test_lora_endpoint.sh all    # 전체 어댑터 테스트
+bash test_lora_endpoint.sh v3_summary  # 개별 테스트
+```
 
 ## 관련 파일 위치
 
