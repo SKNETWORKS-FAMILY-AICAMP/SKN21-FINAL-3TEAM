@@ -1530,3 +1530,29 @@ v2_generate AI Hub 데이터 탈락:
 1. v3_generate 평가 결과를 학습결과 문서 6절에 기입
 2. 커스텀 템플릿 2단계 추출 아키텍처 구현
 3. 프론트엔드 수동 QA
+
+---
+
+## 2026-03-18 (화)
+
+#### docs/ 폴더 구조 정리
+- 62개 md 파일 전수 조사 → KEEP(40개) / ARCHIVE(18개) 분류
+- 용도별 폴더 재구성:
+  - `architecture/` (9): agent 설계, 오케스트레이터, 파이프라인
+  - `experiments/` (4): intent 실험, 데이터 생성 프롬프트
+  - `guides/` (3): RunPod, Docker, 파인튜닝 가이드
+  - `plans/` (6): 활성 TODO/계획 문서
+  - `mentoring/` (1): KEEP 피드백만
+  - `archive/` (31): 완료된 발표/초기설계/deprecated
+- 빈 폴더 삭제: `지용/`, `중간발표_전/`, `중간발표준비/`, `멘토링/`, `agent/`
+
+#### vLLM LoRA 서빙 상태 확인
+- RunPod 엔드포인트 정상 서빙 확인 (HF 토큰 만료 이슈는 해소됨)
+- **LoRA 4개 + 베이스 모델 전부 응답 정상**:
+  - `v1_judgment`, `v2_generate`, `v3_summary`, `planner`
+- 터미널 한글 깨짐 = Windows CP949 문제 (파일 저장 후 확인하면 정상 UTF-8)
+
+**다음 할 일:**
+1. v3_generate 평가 결과 문서 기입
+2. 커스텀 템플릿 2단계 추출 아키텍처 구현
+3. 프론트엔드 수동 QA
