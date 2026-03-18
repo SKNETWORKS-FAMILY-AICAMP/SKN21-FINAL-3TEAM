@@ -18,6 +18,7 @@ echo "============================================"
 echo " v4 Judgment 학습"
 echo " - 스트리밍 프롬프트 (자연어 + JSON)"
 echo " - 질문 어체 다양화 (+500건)"
+echo " - 랜덤 시드 고정: 42 (재현성 보장)"
 echo " - Mode: ${MODE}"
 echo "============================================"
 
@@ -59,7 +60,8 @@ touch ${WORK}/ai/__init__.py
 touch ${WORK}/ai/finetuning/__init__.py
 
 # -- 4. save_strategy 패치 (disk quota 방지) --
-echo "[4/5] Patching save_strategy..."
+echo "[4/5] Patching save_strategy + seed..."
+sed -i 's/save_strategy="epoch"/save_strategy="no"/g' ${WORK}/ai/finetuning/train_v1_judgment.py 2>/dev/null || true
 sed -i 's/save_strategy="steps"/save_strategy="no"/g' ${WORK}/ai/finetuning/train_v1_judgment.py 2>/dev/null || true
 sed -i 's/save_steps=cfg_save_steps/save_steps=0/g' ${WORK}/ai/finetuning/train_v1_judgment.py 2>/dev/null || true
 
@@ -69,6 +71,11 @@ rm -rf /root/.cache/huggingface/hub/models--* 2>/dev/null || true
 # -- 5. 학습 + 평가 실행 --
 echo "[5/5] Starting training..."
 cd ${WORK}
+
+pip install -q huggingface_hub 2>/dev/null || true
+
+# HF 업로드 설정 (학습 완료 후 자동 백업)
+export HF_UPLOAD_REPO="${HF_UPLOAD_REPO:-yoongyeongeun/v4-judgment}"
 
 if [ "${MODE}" = "eval" ]; then
     python -m ai.finetuning.train_v1_judgment \
@@ -86,5 +93,10 @@ else
     echo " 로그: tail -f /workspace/train_v4_log.txt"
     echo " 예상 소요: ~2-3시간 (A100 기준)"
     echo " 데이터: 3,468건 (기존 2,968 + 보강 500)"
+    echo " 시드: 42 (재현성 보장)"
+    echo " HF 백업: ${HF_UPLOAD_REPO}"
     echo "============================================"
+    echo ""
+    echo " 학습 완료 후 자동으로 HuggingFace에 업로드됩니다."
+    echo " 수동 업로드: huggingface-cli upload ${HF_UPLOAD_REPO} outputs/v4_judgment/final"
 fi

@@ -24,10 +24,13 @@ LoRA 판단 파인튜닝 (v1/v2 공용)
 
 import argparse
 import json
+import os
+import random
 import re
 from collections import Counter
 from pathlib import Path
 
+import numpy as np
 import torch
 import yaml
 from datasets import Dataset
@@ -37,8 +40,26 @@ from transformers import (
     AutoTokenizer,
     BitsAndBytesConfig,
     TrainingArguments,
+    set_seed,
 )
 from trl import SFTTrainer, SFTConfig
+
+# ── 재현성을 위한 랜덤 시드 고정 ──
+SEED = 42
+
+
+def fix_seed(seed: int = SEED):
+    """모든 랜덤 소스의 시드를 고정하여 학습 재현성 확보"""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    # cuDNN 결정론적 모드 (약간 느려질 수 있지만 재현성 보장)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    # HuggingFace transformers 시드
+    set_seed(seed)
 
 # ── 경로 ──
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -159,8 +180,10 @@ def load_base_model(config: dict, for_training: bool = True):
 
 
 def train(config: dict):
+    fix_seed(SEED)
     output_base = get_output_base(config)
 
+    print(f"\n[0/4] 랜덤 시드 고정: {SEED}")
     print("\n[1/4] 모델 로드 중...")
     tokenizer, model = load_base_model(config, for_training=True)
 
@@ -199,6 +222,8 @@ def train(config: dict):
         gradient_checkpointing=True,
         optim="paged_adamw_8bit",
         report_to="none",
+        seed=SEED,
+        data_seed=SEED,
     )
 
     print("\n[3/4] 학습 시작...")
@@ -217,6 +242,21 @@ def train(config: dict):
     trainer.model.save_pretrained(str(final_path))
     tokenizer.save_pretrained(str(final_path))
     print(f"  저장 완료: {final_path}")
+
+    # HuggingFace 자동 백업 (huggingface-cli login 되어있으면 실행)
+    hf_repo = os.environ.get("HF_UPLOAD_REPO")
+    if hf_repo:
+        try:
+            from huggingface_hub import HfApi
+            api = HfApi()
+            api.upload_folder(
+                folder_path=str(final_path),
+                repo_id=hf_repo,
+                repo_type="model",
+            )
+            print(f"  HuggingFace 업로드 완료: {hf_repo}")
+        except Exception as e:
+            print(f"  HuggingFace 업로드 실패 (수동 업로드 필요): {e}")
 
 
 # ── 평가 ──
