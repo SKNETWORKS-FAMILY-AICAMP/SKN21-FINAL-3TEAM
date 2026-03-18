@@ -597,43 +597,40 @@ async def suggest_schedules(
 {json.dumps(schedule_summary, ensure_ascii=False, indent=2) if schedule_summary else '예정된 일정 없음'}
 """
 
-    # 3. LLM 호출 (sLLM — vLLM/Kanana)
+    # 3. LLM 호출 (sLLM 우선 → OpenAI fallback → 규칙 기반 fallback)
+    from ai.llm import create_llm
+    from ai.llm.prompts import SCHEDULE_SUGGEST_SYSTEM_PROMPT
+
+    _sched_llm_args = dict(prompt=context, system_prompt=SCHEDULE_SUGGEST_SYSTEM_PROMPT, json_mode=True, temperature=0.4, max_tokens=1500)
+    _sched_context = {"total_tasks": total_tasks, "done_pct": done_pct, "upcoming_events": len(schedule_summary)}
+
+    # 3-1. sLLM 시도
     try:
-        from ai.llm import create_llm
-        from ai.llm.prompts import SCHEDULE_SUGGEST_SYSTEM_PROMPT
-
         llm = create_llm(provider="vllm")
-        model_name = getattr(llm, 'model', 'unknown')
-        provider_name = llm.__class__.__name__
-        logger.info(f"[일정추천] LLM 호출: provider={provider_name}, model={model_name}")
-
-        response = await llm.generate(
-            prompt=context,
-            system_prompt=SCHEDULE_SUGGEST_SYSTEM_PROMPT,
-            json_mode=True,
-            temperature=0.4,
-            max_tokens=1500,
-        )
-
-        # 실제 응답에서 모델명 추출 (vLLM이 반환하는 실제 모델명)
-        actual_model = getattr(response, 'model', model_name)
-
+        logger.info(f"[일정추천] sLLM 호출: model={getattr(llm, 'model', '?')}")
+        response = await llm.generate(**_sched_llm_args)
         result = json.loads(response.content)
         return {
             "suggestions": result.get("suggestions", []),
-            "context": {
-                "total_tasks": total_tasks,
-                "done_pct": done_pct,
-                "upcoming_events": len(schedule_summary),
-            },
-            "model_info": {
-                "provider": "sllm" if provider_name == "VLLMProvider" else "api",
-                "model": actual_model,
-                "provider_class": provider_name,
-            },
+            "context": _sched_context,
+            "model_info": {"provider": "sllm", "model": getattr(response, 'model', getattr(llm, 'model', 'unknown')), "provider_class": "VLLMProvider"},
         }
     except Exception as e:
-        logger.error(f"일정 추천 AI 실패: {e}", exc_info=True)
+        logger.warning(f"[일정추천] sLLM 실패, OpenAI fallback: {e}")
+
+    # 3-2. OpenAI API fallback
+    try:
+        llm = create_llm(provider="openai")
+        logger.info(f"[일정추천] OpenAI fallback: model={getattr(llm, 'model', '?')}")
+        response = await llm.generate(**_sched_llm_args)
+        result = json.loads(response.content)
+        return {
+            "suggestions": result.get("suggestions", []),
+            "context": _sched_context,
+            "model_info": {"provider": "api", "model": getattr(response, 'model', getattr(llm, 'model', 'unknown')) + " (fallback)", "provider_class": "OpenAIProvider"},
+        }
+    except Exception as e:
+        logger.error(f"[일정추천] OpenAI fallback도 실패: {e}", exc_info=True)
 
     # 4. 폴백
     fallback = []
@@ -800,43 +797,40 @@ async def suggest_approvals(
 {json.dumps(schedule_summary, ensure_ascii=False, indent=2) if schedule_summary else '예정된 일정 없음'}
 """
 
-    # 3. LLM 호출 (sLLM — vLLM/Kanana)
+    # 3. LLM 호출 (sLLM 우선 → OpenAI fallback → 규칙 기반 fallback)
+    from ai.llm import create_llm
+    from ai.llm.prompts import APPROVAL_SUGGEST_SYSTEM_PROMPT
+
+    _appr_llm_args = dict(prompt=context, system_prompt=APPROVAL_SUGGEST_SYSTEM_PROMPT, json_mode=True, temperature=0.4, max_tokens=1500)
+    _appr_context = {"total_tasks": total_tasks, "stage_counts": stage_counts, "done_pct": done_pct, "upcoming_events": len(schedule_summary)}
+
+    # 3-1. sLLM 시도
     try:
-        from ai.llm import create_llm
-        from ai.llm.prompts import APPROVAL_SUGGEST_SYSTEM_PROMPT
-
         llm = create_llm(provider="vllm")
-        model_name = getattr(llm, 'model', 'unknown')
-        provider_name = llm.__class__.__name__
-        logger.info(f"[결재추천] LLM 호출: provider={provider_name}, model={model_name}")
-
-        response = await llm.generate(
-            prompt=context,
-            system_prompt=APPROVAL_SUGGEST_SYSTEM_PROMPT,
-            json_mode=True,
-            temperature=0.4,
-            max_tokens=1500,
-        )
-
-        actual_model = getattr(response, 'model', model_name)
-
+        logger.info(f"[결재추천] sLLM 호출: model={getattr(llm, 'model', '?')}")
+        response = await llm.generate(**_appr_llm_args)
         result = json.loads(response.content)
         return {
             "suggestions": result.get("suggestions", []),
-            "context": {
-                "total_tasks": total_tasks,
-                "stage_counts": stage_counts,
-                "done_pct": done_pct,
-                "upcoming_events": len(schedule_summary),
-            },
-            "model_info": {
-                "provider": "sllm" if provider_name == "VLLMProvider" else "api",
-                "model": actual_model,
-                "provider_class": provider_name,
-            },
+            "context": _appr_context,
+            "model_info": {"provider": "sllm", "model": getattr(response, 'model', getattr(llm, 'model', 'unknown')), "provider_class": "VLLMProvider"},
         }
     except Exception as e:
-        logger.error(f"AI 추천 실패: {e}", exc_info=True)
+        logger.warning(f"[결재추천] sLLM 실패, OpenAI fallback: {e}")
+
+    # 3-2. OpenAI API fallback
+    try:
+        llm = create_llm(provider="openai")
+        logger.info(f"[결재추천] OpenAI fallback: model={getattr(llm, 'model', '?')}")
+        response = await llm.generate(**_appr_llm_args)
+        result = json.loads(response.content)
+        return {
+            "suggestions": result.get("suggestions", []),
+            "context": _appr_context,
+            "model_info": {"provider": "api", "model": getattr(response, 'model', getattr(llm, 'model', 'unknown')) + " (fallback)", "provider_class": "OpenAIProvider"},
+        }
+    except Exception as e:
+        logger.error(f"[결재추천] OpenAI fallback도 실패: {e}", exc_info=True)
 
     # 4. LLM 실패 시 규칙 기반 폴백 (항상 도달)
     fallback = []
@@ -1013,49 +1007,37 @@ async def suggest_for_project(
 {json.dumps(schedule_summary, ensure_ascii=False, indent=2) if schedule_summary else '예정된 일정 없음'}
 """
 
-    # 5. LLM 호출 (sLLM — vLLM/Kanana)
-    try:
-        from ai.llm import create_llm
-        from ai.llm.prompts import PROJECT_SUGGEST_SYSTEM_PROMPT
+    # 5. LLM 호출 (sLLM 우선 → OpenAI fallback → 규칙 기반 fallback)
+    from ai.llm import create_llm
+    from ai.llm.prompts import PROJECT_SUGGEST_SYSTEM_PROMPT
 
-        llm = create_llm(provider="vllm")
-        model_name = getattr(llm, 'model', 'unknown')
-        provider_name = llm.__class__.__name__
-        logger.info(f"[프로젝트추천] LLM 호출: provider={provider_name}, model={model_name}")
+    _proj_llm_args = dict(prompt=context, system_prompt=PROJECT_SUGGEST_SYSTEM_PROMPT, json_mode=True, temperature=0.4, max_tokens=2000)
+    _proj_context = {"project_name": project_name, "total_tasks": total_tasks, "stage_counts": stage_counts, "done_pct": done_pct, "upcoming_events": len(schedule_summary), "members": project_members}
 
-        response = await llm.generate(
-            prompt=context,
-            system_prompt=PROJECT_SUGGEST_SYSTEM_PROMPT,
-            json_mode=True,
-            temperature=0.4,
-            max_tokens=2000,
-        )
-
-        actual_model = getattr(response, 'model', model_name)
-
-        result = json.loads(response.content)
-        # related_project 자동 주입
+    def _build_proj_result(result, model_info):
         for a in result.get("approvals", []):
             a["related_project"] = project_name
-        return {
-            "approvals": result.get("approvals", []),
-            "schedules": result.get("schedules", []),
-            "context": {
-                "project_name": project_name,
-                "total_tasks": total_tasks,
-                "stage_counts": stage_counts,
-                "done_pct": done_pct,
-                "upcoming_events": len(schedule_summary),
-                "members": project_members,
-            },
-            "model_info": {
-                "provider": "sllm" if provider_name == "VLLMProvider" else "api",
-                "model": actual_model,
-                "provider_class": provider_name,
-            },
-        }
+        return {"approvals": result.get("approvals", []), "schedules": result.get("schedules", []), "context": _proj_context, "model_info": model_info}
+
+    # 5-1. sLLM 시도
+    try:
+        llm = create_llm(provider="vllm")
+        logger.info(f"[프로젝트추천] sLLM 호출: model={getattr(llm, 'model', '?')}")
+        response = await llm.generate(**_proj_llm_args)
+        result = json.loads(response.content)
+        return _build_proj_result(result, {"provider": "sllm", "model": getattr(response, 'model', getattr(llm, 'model', 'unknown')), "provider_class": "VLLMProvider"})
     except Exception as e:
-        logger.error(f"프로젝트 추천 AI 실패: {e}", exc_info=True)
+        logger.warning(f"[프로젝트추천] sLLM 실패, OpenAI fallback: {e}")
+
+    # 5-2. OpenAI API fallback
+    try:
+        llm = create_llm(provider="openai")
+        logger.info(f"[프로젝트추천] OpenAI fallback: model={getattr(llm, 'model', '?')}")
+        response = await llm.generate(**_proj_llm_args)
+        result = json.loads(response.content)
+        return _build_proj_result(result, {"provider": "api", "model": getattr(response, 'model', getattr(llm, 'model', 'unknown')) + " (fallback)", "provider_class": "OpenAIProvider"})
+    except Exception as e:
+        logger.error(f"[프로젝트추천] OpenAI fallback도 실패: {e}", exc_info=True)
 
     # 6. 폴백
     approval_fallback = []

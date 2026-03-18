@@ -196,7 +196,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
         setSchedSuggestError(null);
         setSchedModelInfo(null);
         try {
-            const res = await client.post('/approvals/suggest-schedules');
+            const res = await client.post('/approvals/suggest-schedules', {}, { timeout: 120000 });
             setScheduleSuggestions(res.data?.suggestions || []);
             if (res.data?.model_info) setSchedModelInfo(res.data.model_info);
         } catch (err) {
