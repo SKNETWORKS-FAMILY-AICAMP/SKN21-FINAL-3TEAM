@@ -1642,3 +1642,37 @@ eval.jsonl의 conditional 100건을 5가지 유형으로 분류 분석:
 | `frontend/src/components/chat/ChatWindow.jsx` | ResizeObserver 자동 스크롤 |
 | `frontend/src/api/approvals.js` | 타임아웃 180s |
 | `ai/finetuning/scripts/augment_v4_question_patterns.py` | v4 데이터 보강 스크립트 |
+
+### 6. 판단 Agent sLLM 2단계 호출 구조
+
+JSON 파싱 실패 문제 해결을 위해 2단계 호출 구조 적용:
+
+```
+1단계: 카나나 + LoRA(v1_judgment) + 비스트리밍 프롬프트 -> JSON 수신
+2단계: 카나나 base + 질문/reasoning으로 자연어 설명 스트리밍
+실패 시: OpenAI API fallback
+```
+
+**2단계 프롬프트 (지용님 제안):**
+```
+시스템: "너는 사내 규정 안내 봇이야. 아래 제공된 [판단 데이터]를 바탕으로
+       [사용자 질문]에 대해 친절하게 답변해줘.
+       반드시 제공된 근거(Reasoning) 안에서만 답변하고, 모르는 내용은 지어내지 마."
+
+사용자 질문: {user_query}
+
+판단 데이터:
+- 결과: {result}
+- 근거: {reasoning}
+- 추가조건: {conditions}
+```
+- alternatives(권장대안)는 환각 가능성 때문에 제외 (지용님 의견)
+- 8B 모델이 입력에 없는 내용을 지어낼 수 있어서 제공된 데이터만 사용하도록 제한
+
+### 7. JSON 파싱 실패 근본 원인
+
+- v1~v3 학습 데이터 system prompt (1,010자)와 서비스 프롬프트 (1,518자)가 불일치
+- 학습 안 한 프롬프트를 받으면 sLLM이 JSON 형식을 무시하고 자연어로 응답
+- v4 학습(스트리밍 프롬프트, 1,331자)으로 해결 예정
+- v4 데이터 생성 완료: 3,468건 (train) + 328건 (eval)
+- RunPod 학습 스크립트: `ai/finetuning/runpod_v4_judgment.sh`
