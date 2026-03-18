@@ -1569,3 +1569,76 @@ eval.jsonl의 conditional 100건을 5가지 유형으로 분류 분석:
 - v3 어댑터 HuggingFace 업로드 → vLLM 서빙에 적용
 - 지용님 vLLM 서버 재시작 대기 → 실서비스 테스트
 - sLLM 서빙 상태에서 E2E 판단 정확도 확인
+
+## 2026-03-18 (화) - sLLM 서빙 + 디버깅 + v4 데이터 보강
+
+### 1. sLLM 전환 + 모델 디버깅 표시
+- 일정/결재/프로젝트 추천 3개 엔드포인트 전부 sLLM(vLLM) 전환
+- 프론트에 현재 사용 모델 배지 표시 (Kanana-1.5-8B / GPT-4o-mini / Fallback)
+- 판단 Agent 채팅 스트리밍도 sLLM 우선 + API fallback 구조로 변경
+- AgentIndicator에 모델명 표시 (sLLM 초록 배지, fallback 노란 배지)
+
+### 2. sLLM fallback 구조 적용
+- approvals.py 4개 엔드포인트: sLLM -> OpenAI -> 규칙 기반 3단계 fallback
+- chat.py 판단 Agent 스트리밍: sLLM -> OpenAI fallback
+- vLLM 클라이언트 max_retries=0 (재시도 비활성화, 60초 타임아웃)
+- 프론트 타임아웃 30s -> 180s
+
+### 3. 프롬프트 불일치 발견 (핵심 이슈)
+- **학습 데이터 system prompt (1,010자)** vs **서비스 프롬프트가 불일치**
+  - JUDGMENT_SYSTEM_PROMPT (비스트리밍, 1,518자): JSON만 출력
+  - JUDGMENT_STREAMING_SYSTEM_PROMPT (스트리밍, 1,331자): 자연어 + ```json 코드블록
+  - 학습 데이터: JSON만 출력 형식 (1,010자)
+- v1~v3는 비스트리밍 프롬프트로 학습했지만, 채팅은 스트리밍 프롬프트를 사용
+- 이 불일치가 **sLLM JSON 파싱 실패의 근본 원인**
+- sLLM이 자연어만 출력하고 JSON을 안 만드는 현상 발생 (간헐적)
+
+### 4. v4 데이터 보강 (진행 중)
+- **system prompt를 JUDGMENT_STREAMING_SYSTEM_PROMPT로 교체**
+- **assistant 응답을 "자연어 설명 + ```json 코드블록" 형태로 변환** (GPT로 변환)
+- 질문 어체 다양화 500건 추가 ("~알려줘", "~뭐야", "~궁금해" 등)
+- 기존 2,968건 + 보강 500건 = ~3,468건
+- v3 HuggingFace: yoongyeongeun/v1-judgment-hardcoded (v3로 덮어쓰기됨)
+
+### 5. 멀티 Agent 파이프라인 기획 (향후 계획)
+
+비스트리밍 판단 Agent(v1~v3)를 다른 Agent의 내부 검증 도구로 활용:
+
+**일정 Agent + 판단 Agent:**
+- 일정 등록 시 규정 자동 검증 (재택근무 가능 여부 체크)
+- 출장 일정 등록 시 사전 승인 필요 여부 체크
+- 초과근무 등록 시 규정 경고
+- 일정 추천 시 규정 기반 필터링 (위반 항목 제외/경고)
+- 연차/휴가 시 잔여일수 규정 체크
+
+**결재 추천 + 판단 Agent:**
+- 출장비 결재 추천 시 규정 한도 체크
+- 규정 위반 시 "한도 초과, 사전 승인 필요" 정보 추가
+
+**문서 Agent + 판단 Agent:**
+- 문서 생성 시 규정 준수 검증 (출장 보고서 정산 기한 체크)
+- 제안서/기획서 규정 적합성 체크 (현행 규정과 충돌 부분 자동 생성)
+- 문서 검색/요약 + 규정 위반 가능성 체크
+- JD(직무기술서) 생성 시 복리후생/근무조건 규정 자동 반영
+- 회의록 결정사항에서 규정 관련 내용 자동 검증
+
+**파이프라인 태스크 검증:**
+- 보안 관련 태스크 규정 위반 여부 체크
+
+공통 패턴: Agent가 액션 -> 판단 Agent가 비스트리밍으로 규정 검증 (JSON 반환) -> 결과 반영
+
+### 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `backend/app/api/v1/approvals.py` | sLLM 전환 + fallback 3단계 + model_info |
+| `backend/app/api/v1/chat.py` | 판단 Agent sLLM 스트리밍 + fallback + JSON 코드블록 필터 |
+| `ai/serving/vllm_client.py` | max_retries=0, timeout 60s |
+| `ai/agents/orchestrator.py` | sLLM일 때 학습 프롬프트 사용 |
+| `ai/agents/judgment_agent.py` | JSON 복구 로직 + 파싱 실패 원문 로그 |
+| `frontend/src/components/chat/AgentIndicator.jsx` | 모델명 배지 (sLLM/fallback) |
+| `frontend/src/components/schedules/ApprovalPanel.jsx` | 모델 배지 + 카드 색상 통일 |
+| `frontend/src/components/schedules/KanbanBoard.jsx` | Pipeline AI 추천 모델 배지 |
+| `frontend/src/components/chat/ChatWindow.jsx` | ResizeObserver 자동 스크롤 |
+| `frontend/src/api/approvals.js` | 타임아웃 180s |
+| `ai/finetuning/scripts/augment_v4_question_patterns.py` | v4 데이터 보강 스크립트 |

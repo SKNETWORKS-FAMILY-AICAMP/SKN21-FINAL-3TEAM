@@ -668,50 +668,47 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                     {/* ── Column 3: New Tasks (AI 추천 - 결재 + 일정) ── */}
                     <div className="flex flex-col min-h-[420px]">
                         <div className="flex items-center justify-center gap-2 mb-3">
-                            <div className="w-2 h-2 rounded-full bg-primary-500" />
-                            <span className="text-sm font-bold text-neutral-main tracking-tight">New Tasks</span>
+                            <div className="w-2 h-2 rounded-full bg-violet-500" />
+                            <span className="text-sm font-bold text-violet-700 dark:text-violet-400 tracking-tight">New Tasks</span>
+                            {/* Model info badge - 헤더 옆 */}
+                            {(() => {
+                                const info = newTasksTab === 'approvals' ? suggestModelInfo : schedModelInfo;
+                                if (!info) return null;
+                                const isSllm = info.provider === 'sllm';
+                                const isFallback = info.provider === 'fallback';
+                                const badgeColor = isSllm
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : isFallback
+                                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                        : 'bg-blue-50 text-blue-700 border-blue-200';
+                                const displayName = isSllm ? 'Kanana-1.5-8B' : isFallback ? 'GPT-4o-mini' : info.model;
+                                return (
+                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${badgeColor}`}>
+                                        {displayName}
+                                    </span>
+                                );
+                            })()}
                             <button
                                 onClick={() => newTasksTab === 'approvals' ? handleSuggest() : loadScheduleSuggestions()}
                                 disabled={suggestLoading || schedSuggestLoading}
-                                className="p-1 rounded-lg hover:bg-neutral-divider/60 dark:hover:bg-surface-hover/40 text-neutral-muted hover:text-neutral-sub transition-colors"
+                                className="p-1 rounded-lg hover:bg-violet-100/60 dark:hover:bg-surface-hover/40 text-neutral-muted hover:text-violet-600 transition-colors"
                                 title="새로고침"
                             >
                                 <RefreshCw size={12} className={(suggestLoading || schedSuggestLoading) ? 'animate-spin' : ''} />
                             </button>
                         </div>
 
-                        {/* Model info badge */}
-                        {(() => {
-                            const info = newTasksTab === 'approvals' ? suggestModelInfo : schedModelInfo;
-                            if (!info) return null;
-                            const isSllm = info.provider === 'sllm';
-                            const isFallback = info.provider === 'fallback';
-                            const badgeColor = isSllm
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : isFallback
-                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                    : 'bg-blue-50 text-blue-700 border-blue-200';
-                            const displayName = isSllm ? 'Kanana-1.5-8B' : isFallback ? 'GPT-4o-mini' : info.model;
-                            return (
-                                <div className="flex items-center justify-center gap-1.5 mb-1">
-                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${badgeColor}`}>
-                                        {displayName}
-                                    </span>
-                                </div>
-                            );
-                        })()}
-
                         {/* Sub-tabs */}
                         <div className="flex gap-1 mb-2">
                             <button
                                 onClick={() => switchNewTasksTab('approvals')}
-                                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all ${newTasksTab === 'approvals' ? 'bg-primary-100 text-primary-700' : 'text-neutral-muted hover:bg-surface-sub'}`}
+                                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all ${newTasksTab === 'approvals' ? 'bg-violet-100 text-violet-700' : 'text-neutral-muted hover:bg-surface-sub'}`}
                             >
                                 결재 추천
                             </button>
                             <button
                                 onClick={() => switchNewTasksTab('schedules')}
-                                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${newTasksTab === 'schedules' ? 'bg-primary-100 text-primary-700' : 'text-neutral-muted hover:bg-surface-sub'}`}
+                                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${newTasksTab === 'schedules' ? 'bg-violet-100 text-violet-700' : 'text-neutral-muted hover:bg-surface-sub'}`}
                             >
                                 <CalendarClock size={11} /> 일정 추천
                             </button>
@@ -877,7 +874,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                                             <button
                                                                 onClick={() => openSchedulePicker(s, idx)}
                                                                 disabled={isAdding}
-                                                                className="w-full flex items-center justify-center gap-1.5 py-2 bg-primary-50 hover:bg-primary-700 text-primary-700 hover:text-white text-[11px] font-bold rounded-lg transition-all disabled:opacity-50"
+                                                                className="w-full flex items-center justify-center gap-1.5 py-2 bg-violet-50 hover:bg-violet-600 text-violet-700 hover:text-white text-[11px] font-bold rounded-lg transition-all disabled:opacity-50"
                                                             >
                                                                 {isAdding ? (
                                                                     <RefreshCw size={12} className="animate-spin" />
