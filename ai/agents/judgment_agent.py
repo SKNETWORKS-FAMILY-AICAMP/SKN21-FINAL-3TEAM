@@ -266,7 +266,24 @@ def _parse_llm_response(raw: str) -> dict:
     try:
         return json.loads(text)
     except json.JSONDecodeError:
+        # JSON 복구 시도: 잘린 JSON 닫기, 제어문자 제거 등
+        try:
+            # 제어문자 제거
+            cleaned = re.sub(r'[\x00-\x1f\x7f]', '', text)
+            # 트레일링 콤마 제거
+            cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
+            # 닫히지 않은 JSON 복구 시도
+            open_braces = cleaned.count('{') - cleaned.count('}')
+            open_brackets = cleaned.count('[') - cleaned.count(']')
+            cleaned += ']' * max(0, open_brackets) + '}' * max(0, open_braces)
+            result = json.loads(cleaned)
+            logger.info("LLM 응답 JSON 복구 성공 (제어문자/잘림 보정)")
+            return result
+        except json.JSONDecodeError:
+            pass
+
         logger.warning("LLM 응답 JSON 파싱 실패, 원문을 reasoning에 저장")
+        logger.warning(f"[파싱실패 원문] {raw[:500]}")
         return {
             "result": "no_regulation",
             "confidence": 0.0,

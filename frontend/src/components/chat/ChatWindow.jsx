@@ -133,6 +133,23 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
     }
   }, [messages, isStreaming]);
 
+  // 카드 렌더링 등으로 컨텐츠 높이가 변할 때 자동 스크롤
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver(() => {
+      // 사용자가 위로 스크롤한 상태가 아닐 때만 자동 스크롤
+      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+      if (isNearBottom) {
+        markProgrammaticScroll();
+        container.scrollTop = container.scrollHeight;
+      }
+    });
+    // 스크롤 컨테이너의 직접 자식들 높이 변화 감지
+    Array.from(container.children).forEach(child => observer.observe(child));
+    return () => observer.disconnect();
+  }, [messages]);
+
   const addFiles = useCallback((fileList) => {
     setFileError(null);
     const newFiles = [];

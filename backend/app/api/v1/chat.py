@@ -362,8 +362,12 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                 else:
                                     raise
 
-                            # 토큰 즉시 전송, ```json 이후만 숨김 (버퍼링으로 ``` 누출 방지)
+                            # 토큰 즉시 전송, ```json 또는 JSON 코드블록 이후 숨김
                             _JSON_PREFIXES = ("`", "``", "```", "```j", "```js", "```jso", "```json")
+                            _JSON_KR_BUFFER_PREFIXES = ("J", "JS", "JSO", "JSON", "JSON ", "JSON 코", "JSON 코드", "JSON 코드블", "JSON 코드블록",
+                                                        "json", "json ", "json 코", "json 코드", "json 코드블", "json 코드블록",
+                                                        "JSON코", "JSON코드", "JSON코드블", "JSON코드블록")
+                            _JSON_KR_FULL = ("JSON 코드블록", "JSON 코드 블록", "json 코드블록", "JSON코드블록")
                             full_response = ""
                             in_json_block = False
                             token_count = 0
@@ -381,11 +385,13 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                     if "```json" in full_response:
                                         in_json_block = True
                                         pending_tokens.clear()
-                                    elif full_response.rstrip().endswith(_JSON_PREFIXES):
-                                        # 백틱이 쌓이는 중 — ```json 될 수 있으므로 버퍼에 보관
+                                    elif any(marker in full_response for marker in _JSON_KR_FULL):
+                                        in_json_block = True
+                                        pending_tokens.clear()
+                                    elif full_response.rstrip().endswith(_JSON_PREFIXES) or full_response.rstrip().endswith(_JSON_KR_BUFFER_PREFIXES):
+                                        # 백틱 또는 "JSON 코드블록"이 쌓이는 중 — 버퍼에 보관
                                         pending_tokens.append(token)
                                     else:
-                                        # 안전 — 버퍼 flush 후 전송
                                         for pt in pending_tokens:
                                             token_count += 1
                                             yield f"data: {json.dumps({'type': 'token', 'value': pt}, ensure_ascii=False)}\n\n"
@@ -405,6 +411,33 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             )
 
                             parsed = _parse_llm_response(full_response)
+
+                            # sLLM JSON 파싱 실패 시 OpenAI로 재시도
+                            if parsed.get("confidence") == 0.0 and _j_use_sllm:
+                                logger.warning("[Chat] judgment sLLM JSON 파싱 실패, OpenAI로 재시도")
+                                try:
+                                    _retry_key = _os_j.getenv("OPENAI_API_KEY")
+                                    _retry_base = _os_j.getenv("LLM_BASE_URL") or None
+                                    _retry_client = _AsyncOpenAI_j(api_key=_retry_key, base_url=_retry_base) if _retry_base else _AsyncOpenAI_j(api_key=_retry_key)
+                                    _retry_model = _os_j.getenv("OPENAI_MODEL", "gpt-4o-mini")
+                                    _retry_resp = await _retry_client.chat.completions.create(
+                                        model=_retry_model,
+                                        messages=[
+                                            {"role": "system", "content": agent_response["sys_prompt"]},
+                                            {"role": "user", "content": agent_response["user_prompt"]},
+                                        ],
+                                        temperature=0.1,
+                                        max_tokens=2048,
+                                    )
+                                    _retry_content = _retry_resp.choices[0].message.content or ""
+                                    _retry_parsed = _parse_llm_response(_retry_content)
+                                    if _retry_parsed.get("confidence", 0) > 0:
+                                        parsed = _retry_parsed
+                                        _j_stream_model = _retry_model + " (retry)"
+                                        logger.info("[Chat] judgment OpenAI 재시도 성공")
+                                except Exception as _retry_err:
+                                    logger.error("[Chat] judgment OpenAI 재시도 실패: %s", _retry_err)
+
                             parsed["type"] = "judgment"
                             parsed = _validate_result_category(parsed)
 
