@@ -312,7 +312,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                 j_client = _AsyncOpenAI_j(
                                     api_key=vllm_api_key,
                                     base_url=vllm_base,
-                                    timeout=_httpx_j.Timeout(300.0, connect=30.0),
+                                    timeout=_httpx_j.Timeout(30.0, connect=10.0),
                                 )
                                 _j_stream_model = vllm_model
                                 logger.info("[Chat] judgment_agent sLLM 스트리밍: model=%s, base_url=%s", vllm_model, vllm_base)
@@ -494,7 +494,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                 _use_lora = _os2.getenv("VLLM_USE_LORA", "false").lower() == "true"
                                 if _use_lora:
                                     vllm_model = f"v2_{_doc_task}"
-                                doc_client = _AsyncOpenAI2(api_key=vllm_api_key, base_url=vllm_base, timeout=_httpx_d.Timeout(300.0, connect=30.0))
+                                doc_client = _AsyncOpenAI2(api_key=vllm_api_key, base_url=vllm_base, timeout=_httpx_d.Timeout(30.0, connect=10.0))
                                 _stream_model = vllm_model
                                 logger.info("[Chat] document_agent sLLM 스트리밍: model=%s, base_url=%s", vllm_model, vllm_base)
                             else:
