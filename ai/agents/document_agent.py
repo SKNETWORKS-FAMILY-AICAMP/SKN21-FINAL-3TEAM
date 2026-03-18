@@ -1472,11 +1472,11 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
                 use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
                 # task별 LoRA 어댑터 이름 매핑
                 LORA_ADAPTER_NAMES = {
-                    "generate": "v2_generate",
+                    "generate": "v3_generate",
                     "summary": "v3_summary",
                 }
                 if use_lora and task in lora_tasks:
-                    adapter_name = LORA_ADAPTER_NAMES.get(task, f"v2_{task}")
+                    adapter_name = LORA_ADAPTER_NAMES.get(task, f"v3_{task}")
                     llm = VLLMProvider().with_lora(adapter_name)
                     _last_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + f" (LoRA {adapter_name})"
                     print(f"[DocumentAgent] _call_llm | sLLM: {adapter_name} LoRA 어댑터")

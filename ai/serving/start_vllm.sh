@@ -4,8 +4,8 @@
 #
 # 지원 LoRA 어댑터:
 #   - v1_judgment: 규정 판단 (yoongyeongeun/v1-judgment-hardcoded)
-#   - v2_generate: 문서 생성
-#   - v2_summary: 문서 요약
+#   - v3_generate: 문서 생성 (v3)
+#   - v3_summary: 문서 요약 (v3)
 
 set -e
 
@@ -31,9 +31,9 @@ if [ ! -f "${ADAPTER_JUDGMENT_DIR}/adapter_model.safetensors" ]; then
         --local-dir-use-symlinks False
 fi
 
-# v2 어댑터 경로 (로컬 학습 결과)
-ADAPTER_GENERATE="/workspace/SKN21-FINAL-3TEAM/outputs/v2_generate/kanana-1.5-8b-instruct-2505/final"
-ADAPTER_SUMMARY="/workspace/SKN21-FINAL-3TEAM/outputs/v2_summary/kanana-1.5-8b-instruct-2505/final"
+# v3 어댑터 경로
+ADAPTER_GENERATE="/workspace/adapters/v3_generate"
+ADAPTER_SUMMARY="/workspace/adapters/v3_summary"
 
 # planner (복합질문 순서 처리)
 ADAPTER_PLANNER="/workspace/models/planner-v5-lora"
@@ -41,7 +41,7 @@ ADAPTER_PLANNER="/workspace/models/planner-v5-lora"
 # 어댑터 존재 확인 + LoRA 모듈 목록 구성
 LORA_MODULES="v1_judgment=${ADAPTER_JUDGMENT_DIR}"
 
-for name_path in "v2_generate:${ADAPTER_GENERATE}" "v2_summary:${ADAPTER_SUMMARY}" "planner:${ADAPTER_PLANNER}"; do
+for name_path in "v3_generate:${ADAPTER_GENERATE}" "v3_summary:${ADAPTER_SUMMARY}" "planner:${ADAPTER_PLANNER}"; do
     name="${name_path%%:*}"
     path="${name_path#*:}"
     if [ -f "${path}/adapter_model.safetensors" ]; then
