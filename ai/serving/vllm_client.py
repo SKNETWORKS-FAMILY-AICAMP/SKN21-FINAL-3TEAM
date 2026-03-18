@@ -60,7 +60,7 @@ class VLLMProvider(BaseLLM):
             self._client = AsyncOpenAI(
                 api_key=self.api_key,
                 base_url=self.base_url,
-                timeout=httpx.Timeout(30.0, connect=10.0),
+                timeout=httpx.Timeout(60.0, connect=15.0),
             )
         return self._client
 
