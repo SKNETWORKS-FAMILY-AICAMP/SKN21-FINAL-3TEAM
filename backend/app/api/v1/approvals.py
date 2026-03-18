@@ -28,6 +28,69 @@ from app.models.schedule import Schedule
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+
+# ── 내부 규정 검증 헬퍼 ──
+
+async def _check_regulations_for_items(items: list, item_type: str = "suggestion") -> list:
+    """추천 항목들에 대해 규정 검증을 수행하고 경고 태그를 붙인다.
+
+    Args:
+        items: 추천 항목 리스트 (각 항목은 dict)
+        item_type: "schedule" | "approval" | "task"
+
+    Returns:
+        규정 검증 결과가 추가된 items
+    """
+    try:
+        from ai.agents.regulation_checker import regulation_check
+    except ImportError:
+        return items
+
+    for item in items:
+        try:
+            title = item.get("title", "")
+            detail = item.get("detail", item.get("description", ""))
+            item_subtype = item.get("type", item.get("schedule_type", ""))
+
+            # 검증 쿼리 생성
+            if item_type == "schedule":
+                query = f"'{title}' 일정이 회사 규정상 허용되는가? (유형: {item_subtype})"
+            elif item_type == "approval":
+                query = f"'{title}' 결재 요청이 회사 규정 절차에 부합하는가? (유형: {item_subtype}, 내용: {detail[:100]})"
+            elif item_type == "task":
+                query = f"'{title}' 작업이 보안 규정이나 회사 규정에 위반되는가? (내용: {detail[:100]})"
+            else:
+                continue
+
+            check = await regulation_check(query)
+
+            if not check.get("checked"):
+                continue
+
+            # 결과에 따라 태그 추가
+            result = check.get("result", "unknown")
+            if result == "no":
+                item["regulation_warning"] = {
+                    "level": "danger",
+                    "message": check.get("reason", "규정 위반 가능성"),
+                    "regulation": check.get("regulation"),
+                    "confidence": check.get("confidence", 0),
+                }
+            elif result == "conditional":
+                item["regulation_warning"] = {
+                    "level": "warning",
+                    "message": check.get("reason", "조건부 허용 — 규정 확인 필요"),
+                    "regulation": check.get("regulation"),
+                    "confidence": check.get("confidence", 0),
+                }
+            # yes, no_regulation → 경고 없음 (정상)
+
+        except Exception as e:
+            logger.debug("[RegCheck] 항목 '%s' 검증 스킵: %s", item.get("title", "?"), e)
+            continue
+
+    return items
+
 UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads" / "approvals"
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt", ".png", ".jpg", ".jpeg", ".gif", ".webp"}
 
@@ -424,7 +487,9 @@ async def generate_checklist(
         logger.info(f"[체크리스트] sLLM 호출: model={getattr(llm, 'model', '?')}")
         response = await llm.generate(**_chk_llm_args)
         result = json.loads(response.content)
-        return {"checklist": result.get("checklist", []), "context": _chk_context}
+        items = result.get("checklist", [])
+        items = await _check_regulations_for_items(items, item_type="task")
+        return {"checklist": items, "context": _chk_context}
     except Exception as e:
         logger.warning(f"[체크리스트] sLLM 실패, OpenAI fallback: {e}")
 
@@ -434,7 +499,9 @@ async def generate_checklist(
         logger.info(f"[체크리스트] OpenAI fallback: model={getattr(llm, 'model', '?')}")
         response = await llm.generate(**_chk_llm_args)
         result = json.loads(response.content)
-        return {"checklist": result.get("checklist", []), "context": _chk_context}
+        items = result.get("checklist", [])
+        items = await _check_regulations_for_items(items, item_type="task")
+        return {"checklist": items, "context": _chk_context}
     except Exception as e:
         logger.error(f"[체크리스트] OpenAI fallback도 실패: {e}", exc_info=True)
 
@@ -611,8 +678,9 @@ async def suggest_schedules(
         logger.info(f"[일정추천] sLLM 호출: model={getattr(llm, 'model', '?')}")
         response = await llm.generate(**_sched_llm_args)
         result = json.loads(response.content)
+        items = await _check_regulations_for_items(result.get("suggestions", []), item_type="schedule")
         return {
-            "suggestions": result.get("suggestions", []),
+            "suggestions": items,
             "context": _sched_context,
             "model_info": {"provider": "sllm", "model": getattr(response, 'model', getattr(llm, 'model', 'unknown')), "provider_class": "VLLMProvider"},
         }
@@ -625,8 +693,9 @@ async def suggest_schedules(
         logger.info(f"[일정추천] OpenAI fallback: model={getattr(llm, 'model', '?')}")
         response = await llm.generate(**_sched_llm_args)
         result = json.loads(response.content)
+        items = await _check_regulations_for_items(result.get("suggestions", []), item_type="schedule")
         return {
-            "suggestions": result.get("suggestions", []),
+            "suggestions": items,
             "context": _sched_context,
             "model_info": {"provider": "api", "model": getattr(response, 'model', getattr(llm, 'model', 'unknown')) + " (fallback)", "provider_class": "OpenAIProvider"},
         }
@@ -811,8 +880,9 @@ async def suggest_approvals(
         logger.info(f"[결재추천] sLLM 호출: model={getattr(llm, 'model', '?')}")
         response = await llm.generate(**_appr_llm_args)
         result = json.loads(response.content)
+        items = await _check_regulations_for_items(result.get("suggestions", []), item_type="approval")
         return {
-            "suggestions": result.get("suggestions", []),
+            "suggestions": items,
             "context": _appr_context,
             "model_info": {"provider": "sllm", "model": getattr(response, 'model', getattr(llm, 'model', 'unknown')), "provider_class": "VLLMProvider"},
         }
@@ -825,8 +895,9 @@ async def suggest_approvals(
         logger.info(f"[결재추천] OpenAI fallback: model={getattr(llm, 'model', '?')}")
         response = await llm.generate(**_appr_llm_args)
         result = json.loads(response.content)
+        items = await _check_regulations_for_items(result.get("suggestions", []), item_type="approval")
         return {
-            "suggestions": result.get("suggestions", []),
+            "suggestions": items,
             "context": _appr_context,
             "model_info": {"provider": "api", "model": getattr(response, 'model', getattr(llm, 'model', 'unknown')) + " (fallback)", "provider_class": "OpenAIProvider"},
         }
