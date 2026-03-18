@@ -288,35 +288,79 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         }
 
                     elif node_name == "judgment_agent":
-                        # 2-4. 판단 Agent 스트리밍 (document_agent와 동일한 패턴)
+                        # 2-4. 판단 Agent 스트리밍 (sLLM 우선 + API fallback)
                         agent_response = node_output.get("agent_response", {})
                         if agent_response.get("stream_pending"):
                             import os as _os_j
                             from openai import AsyncOpenAI as _AsyncOpenAI_j
+                            import httpx as _httpx_j
 
-                            openai_key = _os_j.getenv("OPENAI_API_KEY")
-                            openai_model = _os_j.getenv("OPENAI_MODEL", "gpt-4o-mini")
-                            openai_base = _os_j.getenv("LLM_BASE_URL") or None
+                            # sLLM 모드 판별
+                            _j_mode = _os_j.getenv("JUDGMENT_AGENT_MODE", "api")
+                            _j_use_sllm = _j_mode == "sllm"
+                            _j_stream_model = None
+                            j_client = None
 
-                            if not openai_key:
-                                yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
-                                continue
+                            if _j_use_sllm:
+                                # sLLM: vLLM OpenAI 호환 서버로 스트리밍
+                                vllm_base = _os_j.getenv("VLLM_BASE_URL", "http://localhost:8000/v1")
+                                vllm_api_key = _os_j.getenv("VLLM_API_KEY", "EMPTY")
+                                vllm_model = _os_j.getenv("VLLM_MODEL", "kakaocorp/kanana-1.5-8b-instruct-2505")
+                                _j_use_lora = _os_j.getenv("VLLM_USE_LORA", "false").lower() == "true"
+                                if _j_use_lora:
+                                    vllm_model = "v1_judgment"
+                                j_client = _AsyncOpenAI_j(
+                                    api_key=vllm_api_key,
+                                    base_url=vllm_base,
+                                    timeout=_httpx_j.Timeout(300.0, connect=30.0),
+                                )
+                                _j_stream_model = vllm_model
+                                logger.info("[Chat] judgment_agent sLLM 스트리밍: model=%s, base_url=%s", vllm_model, vllm_base)
 
-                            j_client = _AsyncOpenAI_j(
-                                api_key=openai_key,
-                                base_url=openai_base,
-                            )
+                            if not _j_use_sllm or j_client is None:
+                                # API 모드: 기존 OpenAI
+                                openai_key = _os_j.getenv("OPENAI_API_KEY")
+                                if not openai_key:
+                                    yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
+                                    continue
+                                openai_base = _os_j.getenv("LLM_BASE_URL") or None
+                                j_client = _AsyncOpenAI_j(api_key=openai_key, base_url=openai_base) if openai_base else _AsyncOpenAI_j(api_key=openai_key)
+                                _j_stream_model = _os_j.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-                            j_stream = await j_client.chat.completions.create(
-                                model=openai_model,
-                                messages=[
-                                    {"role": "system", "content": agent_response["sys_prompt"]},
-                                    {"role": "user", "content": agent_response["user_prompt"]},
-                                ],
-                                temperature=0.1,
-                                max_tokens=2048,
-                                stream=True,
-                            )
+                            # sLLM 호출 시도 → 실패하면 API fallback
+                            try:
+                                j_stream = await j_client.chat.completions.create(
+                                    model=_j_stream_model,
+                                    messages=[
+                                        {"role": "system", "content": agent_response["sys_prompt"]},
+                                        {"role": "user", "content": agent_response["user_prompt"]},
+                                    ],
+                                    temperature=0.1,
+                                    max_tokens=2048,
+                                    stream=True,
+                                )
+                            except Exception as _sllm_err:
+                                if _j_use_sllm:
+                                    logger.warning("[Chat] judgment_agent sLLM 실패, API fallback: %s", _sllm_err)
+                                    openai_key = _os_j.getenv("OPENAI_API_KEY")
+                                    if not openai_key:
+                                        yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
+                                        continue
+                                    openai_base = _os_j.getenv("LLM_BASE_URL") or None
+                                    j_client = _AsyncOpenAI_j(api_key=openai_key, base_url=openai_base) if openai_base else _AsyncOpenAI_j(api_key=openai_key)
+                                    _j_stream_model = _os_j.getenv("OPENAI_MODEL", "gpt-4o-mini") + " (fallback)"
+                                    j_stream = await j_client.chat.completions.create(
+                                        model=_os_j.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+                                        messages=[
+                                            {"role": "system", "content": agent_response["sys_prompt"]},
+                                            {"role": "user", "content": agent_response["user_prompt"]},
+                                        ],
+                                        temperature=0.1,
+                                        max_tokens=2048,
+                                        stream=True,
+                                    )
+                                else:
+                                    raise
 
                             # 토큰 즉시 전송, ```json 이후만 숨김 (버퍼링으로 ``` 누출 방지)
                             _JSON_PREFIXES = ("`", "``", "```", "```j", "```js", "```jso", "```json")
@@ -405,7 +449,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             agent_response.pop("user_prompt", None)
                             agent_response.pop("_rag_context", None)
                             agent_response.update(parsed)
-                            agent_response["model_name"] = openai_model
+                            agent_response["model_name"] = _j_stream_model
                             final_state["agent_response"] = agent_response
                         else:
                             yield f"data: {json.dumps({'type': 'status', 'value': 'judgment_agent 처리 완료'}, ensure_ascii=False)}\n\n"
