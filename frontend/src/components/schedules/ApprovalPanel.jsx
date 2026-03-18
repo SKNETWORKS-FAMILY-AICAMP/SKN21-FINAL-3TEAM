@@ -126,6 +126,10 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
     // New Tasks tab: 'approvals' | 'schedules'
     const [newTasksTab, setNewTasksTab] = useState('approvals');
 
+    // LLM model info for debugging
+    const [suggestModelInfo, setSuggestModelInfo] = useState(null);
+    const [schedModelInfo, setSchedModelInfo] = useState(null);
+
     const loadAll = async () => {
         setLoading(true);
         try {
@@ -190,9 +194,11 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
         setSchedSuggestLoading(true);
         setScheduleSuggestions([]);
         setSchedSuggestError(null);
+        setSchedModelInfo(null);
         try {
-            const res = await client.post('/approvals/suggest-schedules');
+            const res = await client.post('/approvals/suggest-schedules', {}, { timeout: 120000 });
             setScheduleSuggestions(res.data?.suggestions || []);
+            if (res.data?.model_info) setSchedModelInfo(res.data.model_info);
         } catch (err) {
             const status = err.response?.status;
             const detail = err.response?.data?.detail || err.message || '알 수 없는 오류';
@@ -334,10 +340,12 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
         setSuggestLoading(true);
         setSuggestions([]);
         setSuggestError(null);
+        setSuggestModelInfo(null);
         try {
             const res = await suggestApprovals();
             setSuggestions(res.data?.suggestions || []);
             setSuggestContext(res.data?.context || null);
+            if (res.data?.model_info) setSuggestModelInfo(res.data.model_info);
         } catch (err) {
             const status = err.response?.status;
             const detail = err.response?.data?.detail || err.message || '알 수 없는 오류';
@@ -675,6 +683,27 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                 <RefreshCw size={12} className={(suggestLoading || schedSuggestLoading) ? 'animate-spin' : ''} />
                             </button>
                         </div>
+
+                        {/* Model info badge */}
+                        {(() => {
+                            const info = newTasksTab === 'approvals' ? suggestModelInfo : schedModelInfo;
+                            if (!info) return null;
+                            const isSllm = info.provider === 'sllm';
+                            const isFallback = info.provider === 'fallback';
+                            const badgeColor = isSllm
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : isFallback
+                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                    : 'bg-blue-50 text-blue-700 border-blue-200';
+                            const displayName = isSllm ? 'Kanana-1.5-8B' : isFallback ? 'GPT-4o-mini' : info.model;
+                            return (
+                                <div className="flex items-center justify-center gap-1.5 mb-1">
+                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${badgeColor}`}>
+                                        {displayName}
+                                    </span>
+                                </div>
+                            );
+                        })()}
 
                         {/* Sub-tabs */}
                         <div className="flex gap-1 mb-2">
