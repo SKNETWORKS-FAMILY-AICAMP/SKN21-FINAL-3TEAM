@@ -302,7 +302,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             j_client = None
 
                             if _j_use_sllm:
-                                # sLLM: vLLM OpenAI 호환 서버로 스트리밍
+                                # === sLLM 2단계 호출: 1) JSON 받기 2) 자연어 스트리밍 ===
                                 vllm_base = _os_j.getenv("VLLM_BASE_URL", "http://localhost:8000/v1")
                                 vllm_api_key = _os_j.getenv("VLLM_API_KEY", "EMPTY")
                                 vllm_model = _os_j.getenv("VLLM_MODEL", "kakaocorp/kanana-1.5-8b-instruct-2505")
@@ -313,24 +313,85 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                     api_key=vllm_api_key,
                                     base_url=vllm_base,
                                     timeout=_httpx_j.Timeout(60.0, connect=15.0),
+                                    max_retries=0,
                                 )
                                 _j_stream_model = vllm_model
-                                logger.info("[Chat] judgment_agent sLLM 스트리밍: model=%s, base_url=%s", vllm_model, vllm_base)
+                                logger.info("[Chat] judgment sLLM 2단계: model=%s", vllm_model)
 
-                            if not _j_use_sllm or j_client is None:
-                                # API 모드: 기존 OpenAI
+                                # 1단계: 비스트리밍으로 JSON 받기 (학습된 프롬프트 사용)
+                                from ai.llm.prompts import JUDGMENT_SYSTEM_PROMPT as _J_SYS
+                                try:
+                                    _j_resp = await j_client.chat.completions.create(
+                                        model=_j_stream_model,
+                                        messages=[
+                                            {"role": "system", "content": _J_SYS},
+                                            {"role": "user", "content": agent_response["user_prompt"]},
+                                        ],
+                                        temperature=0.1,
+                                        max_tokens=2048,
+                                    )
+                                    full_response = _j_resp.choices[0].message.content or ""
+                                    logger.info("[Chat] judgment sLLM 1단계 JSON 수신 (%d자)", len(full_response))
+                                except Exception as _sllm_err:
+                                    logger.warning("[Chat] judgment sLLM 1단계 실패, API fallback: %s", _sllm_err)
+                                    _j_use_sllm = False  # fallback으로 전환
+                                    full_response = ""
+
+                                # 1단계 성공 시 → 2단계: 자연어 설명 스트리밍
+                                if _j_use_sllm and full_response:
+                                    from ai.agents.judgment_agent import _parse_llm_response as _plr
+                                    _j_parsed_check = _plr(full_response)
+
+                                    if _j_parsed_check.get("confidence", 0) > 0:
+                                        # JSON 파싱 성공 → 자연어 설명 스트리밍
+                                        _user_q = agent_response["user_prompt"].split("## 사용자 질문")[-1].strip() if "## 사용자 질문" in agent_response["user_prompt"] else agent_response["user_prompt"].split("\n")[-1]
+                                        _reasoning = _j_parsed_check.get("reasoning", "")
+                                        _result = _j_parsed_check.get("result", "")
+                                        _regs = _j_parsed_check.get("regulations", [])
+                                        _reg_info = ", ".join(r.get("article", "") for r in _regs) if _regs else ""
+
+                                        _explain_prompt = f"""다음 규정 판단 결과를 자연어로 설명해주세요. 2-4문장으로 간결하게 설명하세요.
+섹션 헤더(##, 1부 등) 없이 바로 설명을 시작하세요.
+
+사용자 질문: {_user_q}
+판단 결과: {_result}
+판단 근거: {_reasoning}
+관련 규정: {_reg_info}"""
+
+                                        try:
+                                            _explain_stream = await j_client.chat.completions.create(
+                                                model=_os_j.getenv("VLLM_MODEL", "kakaocorp/kanana-1.5-8b-instruct-2505"),
+                                                messages=[{"role": "user", "content": _explain_prompt}],
+                                                temperature=0.3,
+                                                max_tokens=512,
+                                                stream=True,
+                                            )
+                                            async for chunk in _explain_stream:
+                                                if chunk.choices[0].delta.content:
+                                                    yield f"data: {json.dumps({'type': 'token', 'value': chunk.choices[0].delta.content}, ensure_ascii=False)}\n\n"
+                                            logger.info("[Chat] judgment sLLM 2단계 자연어 스트리밍 완료")
+                                        except Exception as _exp_err:
+                                            # 2단계 실패해도 1단계 JSON은 유효
+                                            logger.warning("[Chat] judgment 2단계 스트리밍 실패: %s", _exp_err)
+                                            yield f"data: {json.dumps({'type': 'token', 'value': _reasoning}, ensure_ascii=False)}\n\n"
+                                    else:
+                                        # JSON 파싱 실패 → API fallback
+                                        logger.warning("[Chat] judgment sLLM JSON 파싱 실패, API fallback")
+                                        _j_use_sllm = False
+                                        full_response = ""
+
+                            if not _j_use_sllm:
+                                # API 모드: 기존 OpenAI (스트리밍)
                                 openai_key = _os_j.getenv("OPENAI_API_KEY")
                                 if not openai_key:
                                     yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
                                     continue
                                 openai_base = _os_j.getenv("LLM_BASE_URL") or None
                                 j_client = _AsyncOpenAI_j(api_key=openai_key, base_url=openai_base) if openai_base else _AsyncOpenAI_j(api_key=openai_key)
-                                _j_stream_model = _os_j.getenv("OPENAI_MODEL", "gpt-4o-mini")
+                                _j_stream_model = _os_j.getenv("OPENAI_MODEL", "gpt-4o-mini") + (" (fallback)" if _j_mode == "sllm" else "")
 
-                            # sLLM 호출 시도 → 실패하면 API fallback
-                            try:
                                 j_stream = await j_client.chat.completions.create(
-                                    model=_j_stream_model,
+                                    model=_os_j.getenv("OPENAI_MODEL", "gpt-4o-mini"),
                                     messages=[
                                         {"role": "system", "content": agent_response["sys_prompt"]},
                                         {"role": "user", "content": agent_response["user_prompt"]},
@@ -339,65 +400,29 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                     max_tokens=2048,
                                     stream=True,
                                 )
-                            except Exception as _sllm_err:
-                                if _j_use_sllm:
-                                    logger.warning("[Chat] judgment_agent sLLM 실패, API fallback: %s", _sllm_err)
-                                    openai_key = _os_j.getenv("OPENAI_API_KEY")
-                                    if not openai_key:
-                                        yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
-                                        continue
-                                    openai_base = _os_j.getenv("LLM_BASE_URL") or None
-                                    j_client = _AsyncOpenAI_j(api_key=openai_key, base_url=openai_base) if openai_base else _AsyncOpenAI_j(api_key=openai_key)
-                                    _j_stream_model = _os_j.getenv("OPENAI_MODEL", "gpt-4o-mini") + " (fallback)"
-                                    j_stream = await j_client.chat.completions.create(
-                                        model=_os_j.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-                                        messages=[
-                                            {"role": "system", "content": agent_response["sys_prompt"]},
-                                            {"role": "user", "content": agent_response["user_prompt"]},
-                                        ],
-                                        temperature=0.1,
-                                        max_tokens=2048,
-                                        stream=True,
-                                    )
-                                else:
-                                    raise
 
-                            # 토큰 즉시 전송, ```json 또는 JSON 코드블록 이후 숨김
-                            _JSON_PREFIXES = ("`", "``", "```", "```j", "```js", "```jso", "```json")
-                            _JSON_KR_BUFFER_PREFIXES = ("J", "JS", "JSO", "JSON", "JSON ", "JSON 코", "JSON 코드", "JSON 코드블", "JSON 코드블록",
-                                                        "json", "json ", "json 코", "json 코드", "json 코드블", "json 코드블록",
-                                                        "JSON코", "JSON코드", "JSON코드블", "JSON코드블록")
-                            _JSON_KR_FULL = ("JSON 코드블록", "JSON 코드 블록", "json 코드블록", "JSON코드블록")
-                            full_response = ""
-                            in_json_block = False
-                            token_count = 0
-                            pending_tokens = []
+                                full_response = ""
+                                _JSON_PREFIXES = ("`", "``", "```", "```j", "```js", "```jso", "```json")
+                                in_json_block = False
+                                pending_tokens = []
 
-                            async for chunk in j_stream:
-                                delta = chunk.choices[0].delta
-                                if delta.content:
-                                    token = delta.content
-                                    full_response += token
-
-                                    if in_json_block:
-                                        continue
-
-                                    if "```json" in full_response:
-                                        in_json_block = True
-                                        pending_tokens.clear()
-                                    elif any(marker in full_response for marker in _JSON_KR_FULL):
-                                        in_json_block = True
-                                        pending_tokens.clear()
-                                    elif full_response.rstrip().endswith(_JSON_PREFIXES) or full_response.rstrip().endswith(_JSON_KR_BUFFER_PREFIXES):
-                                        # 백틱 또는 "JSON 코드블록"이 쌓이는 중 — 버퍼에 보관
-                                        pending_tokens.append(token)
-                                    else:
-                                        for pt in pending_tokens:
-                                            token_count += 1
-                                            yield f"data: {json.dumps({'type': 'token', 'value': pt}, ensure_ascii=False)}\n\n"
-                                        pending_tokens.clear()
-                                        token_count += 1
-                                        yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
+                                async for chunk in j_stream:
+                                    delta = chunk.choices[0].delta
+                                    if delta.content:
+                                        token = delta.content
+                                        full_response += token
+                                        if in_json_block:
+                                            continue
+                                        if "```json" in full_response:
+                                            in_json_block = True
+                                            pending_tokens.clear()
+                                        elif full_response.rstrip().endswith(_JSON_PREFIXES):
+                                            pending_tokens.append(token)
+                                        else:
+                                            for pt in pending_tokens:
+                                                yield f"data: {json.dumps({'type': 'token', 'value': pt}, ensure_ascii=False)}\n\n"
+                                            pending_tokens.clear()
+                                            yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
 
                             # JSON 파싱 + 3중 검증
                             from ai.agents.judgment_agent import (
@@ -411,32 +436,6 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             )
 
                             parsed = _parse_llm_response(full_response)
-
-                            # sLLM JSON 파싱 실패 시 OpenAI로 재시도
-                            if parsed.get("confidence") == 0.0 and _j_use_sllm:
-                                logger.warning("[Chat] judgment sLLM JSON 파싱 실패, OpenAI로 재시도")
-                                try:
-                                    _retry_key = _os_j.getenv("OPENAI_API_KEY")
-                                    _retry_base = _os_j.getenv("LLM_BASE_URL") or None
-                                    _retry_client = _AsyncOpenAI_j(api_key=_retry_key, base_url=_retry_base) if _retry_base else _AsyncOpenAI_j(api_key=_retry_key)
-                                    _retry_model = _os_j.getenv("OPENAI_MODEL", "gpt-4o-mini")
-                                    _retry_resp = await _retry_client.chat.completions.create(
-                                        model=_retry_model,
-                                        messages=[
-                                            {"role": "system", "content": agent_response["sys_prompt"]},
-                                            {"role": "user", "content": agent_response["user_prompt"]},
-                                        ],
-                                        temperature=0.1,
-                                        max_tokens=2048,
-                                    )
-                                    _retry_content = _retry_resp.choices[0].message.content or ""
-                                    _retry_parsed = _parse_llm_response(_retry_content)
-                                    if _retry_parsed.get("confidence", 0) > 0:
-                                        parsed = _retry_parsed
-                                        _j_stream_model = _retry_model + " (retry)"
-                                        logger.info("[Chat] judgment OpenAI 재시도 성공")
-                                except Exception as _retry_err:
-                                    logger.error("[Chat] judgment OpenAI 재시도 실패: %s", _retry_err)
 
                             parsed["type"] = "judgment"
                             parsed = _validate_result_category(parsed)
