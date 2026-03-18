@@ -484,6 +484,8 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                 _doc_task = "qa"
                             _use_sllm = _doc_mode == "sllm" and _doc_task in _doc_sllm_tasks
 
+                            import httpx as _httpx_d
+
                             if _use_sllm:
                                 # sLLM: vLLM OpenAI 호환 서버로 스트리밍
                                 vllm_base = _os2.getenv("VLLM_BASE_URL", "http://localhost:8000/v1")
@@ -492,7 +494,11 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                 _use_lora = _os2.getenv("VLLM_USE_LORA", "false").lower() == "true"
                                 if _use_lora:
                                     vllm_model = f"v2_{_doc_task}"
-                                doc_client = _AsyncOpenAI2(api_key=vllm_api_key, base_url=vllm_base)
+                                doc_client = _AsyncOpenAI2(
+                                    api_key=vllm_api_key,
+                                    base_url=vllm_base,
+                                    timeout=_httpx_d.Timeout(60.0, connect=15.0),
+                                )
                                 _stream_model = vllm_model
                                 logger.info("[Chat] document_agent sLLM 스트리밍: model=%s, base_url=%s", vllm_model, vllm_base)
                             else:
@@ -505,16 +511,40 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                 doc_client = _AsyncOpenAI2(api_key=openai_key, base_url=openai_base) if openai_base else _AsyncOpenAI2(api_key=openai_key)
                                 _stream_model = _os2.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-                            doc_stream = await doc_client.chat.completions.create(
-                                model=_stream_model,
-                                messages=[
-                                    {"role": "system", "content": agent_response["sys_prompt"]},
-                                    {"role": "user", "content": agent_response["user_prompt"]},
-                                ],
-                                temperature=0.1,
-                                max_tokens=1024,
-                                stream=True,
-                            )
+                            # sLLM 호출 시도 → 실패하면 API fallback
+                            try:
+                                doc_stream = await doc_client.chat.completions.create(
+                                    model=_stream_model,
+                                    messages=[
+                                        {"role": "system", "content": agent_response["sys_prompt"]},
+                                        {"role": "user", "content": agent_response["user_prompt"]},
+                                    ],
+                                    temperature=0.1,
+                                    max_tokens=1024,
+                                    stream=True,
+                                )
+                            except Exception as _doc_sllm_err:
+                                if _use_sllm:
+                                    logger.warning("[Chat] document_agent sLLM 실패, API fallback: %s", _doc_sllm_err)
+                                    openai_key = _os2.getenv("OPENAI_API_KEY")
+                                    if not openai_key:
+                                        yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
+                                        continue
+                                    openai_base = _os2.getenv("LLM_BASE_URL") or None
+                                    doc_client = _AsyncOpenAI2(api_key=openai_key, base_url=openai_base) if openai_base else _AsyncOpenAI2(api_key=openai_key)
+                                    _stream_model = _os2.getenv("OPENAI_MODEL", "gpt-4o-mini") + " (fallback)"
+                                    doc_stream = await doc_client.chat.completions.create(
+                                        model=_os2.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+                                        messages=[
+                                            {"role": "system", "content": agent_response["sys_prompt"]},
+                                            {"role": "user", "content": agent_response["user_prompt"]},
+                                        ],
+                                        temperature=0.1,
+                                        max_tokens=1024,
+                                        stream=True,
+                                    )
+                                else:
+                                    raise
 
                             full_doc_response = ""
                             async for chunk in doc_stream:
