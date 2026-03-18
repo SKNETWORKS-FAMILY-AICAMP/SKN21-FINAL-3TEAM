@@ -3674,3 +3674,62 @@ Pod 꺼져도 유지되는 네트워크 볼륨(`/workspace/`, 2.3PB)에 저장:
 
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
+---
+
+## 2026-03-18 (화)
+
+### 한 일
+
+#### Planner LoRA v5 서빙 환경 검증 — 3가지 방식 100건 비교 테스트
+
+팀원이 "Planner LoRA v5 품질이 낮다 (5개 질문 0/5)" 보고 → 원인 추적 및 검증 수행.
+
+**1) Intent Classifier (ONNX 앙상블) 검증 — EC2 서빙 환경**
+
+5개 질문 테스트 → **5/5 PASS**. Intent Classifier는 정상.
+
+| # | 질문 | 기대 | 실제 | 판정 |
+|---|------|------|------|------|
+| 1 | 회의록 찾아서 보고서 만들어줘 | doc_retrieve + doc_generate | doc_generate(0.97), doc_retrieve(0.90) | PASS |
+| 2 | 이번주 일정 보여줘 | schedule_view | schedule_view(0.95) | PASS |
+| 3 | 출장비 규정 알려줘 | judgment | judgment(override, 원래 doc_retrieve 0.61) | PASS |
+| 4 | 연차 규정 확인하고 휴가 등록 | judgment + schedule_add | judgment(0.93), schedule_add(0.90) | PASS |
+| 5 | 보고서 작성해줘 | doc_generate | doc_generate(0.96) | PASS |
+
+**2) Planner 서빙 환경 확인**
+
+- RunPod Serverless 엔드포인트: `https://api.runpod.ai/v2/0e5gus1dyiqj00/openai/v1`
+- 등록된 LoRA 4개: `v1_judgment`, `v2_generate`, `v2_summary`, `planner`
+- vLLM 0.17.1, Kanana-1.5-8B base
+
+**3) 100건 Held-out 테스트 — 3가지 방식 비교 (EC2 → RunPod Serverless)**
+
+| 방식 | 정확도 | 평균 응답 시간 |
+|------|:-:|:-:|
+| **Planner LoRA** | **78/100 (78%)** | 1,519ms |
+| Base (LoRA 없음) | 71/100 (71%) | 1,397ms |
+| ONNX + 규칙기반 Split | 60/100 (60%) | 2,162ms |
+
+**카테고리별 비교:**
+
+| 카테고리 | LoRA | Base | ONNX+Rule |
+|---------|:-:|:-:|:-:|
+| single_step (30건) | **97%** | 93% | **97%** |
+| sequential (20건) | **65%** | 60% | 60% |
+| parallel (12건) | **92%** | 75% | 33% |
+| complex (19건) | **74%** | 53% | **0%** |
+| edge_case (19건) | 58% | **63%** | **79%** |
+
+**핵심 발견:**
+
+1. **Planner LoRA가 가장 우수** — parallel(+59%p vs ONNX), complex(+74%p vs ONNX)
+2. **ONNX+Rule 치명적 약점** — 같은 intent 2회 감지 불가(parallel 33%), 순서 보장 불가, complex 0%
+3. **Base 모델도 단순 질문은 OK** — single_step 93%, 하지만 복합에서 과잉 분리 발생
+4. **팀원 테스트 실패 원인 추정** — LoRA 어댑터 미지정(model="planner" 대신 base 호출) 또는 후처리 미적용
+
+**결론: 복합/병렬 질문 처리에는 Planner LoRA가 필수. 단순 질문만이면 Base로도 충분.**
+
+### 다음 할 일
+
+- [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
+
