@@ -411,31 +411,32 @@ async def generate_checklist(
 {json.dumps(schedule_summary, ensure_ascii=False, indent=2) if schedule_summary else '예정된 일정 없음'}
 """
 
-    # 3. LLM 호출 (sLLM — vLLM/Kanana)
+    # 3. LLM 호출 (sLLM 우선 → OpenAI fallback → 규칙 기반 fallback)
+    from ai.llm import create_llm
+    from ai.llm.prompts import SCHEDULE_CHECKLIST_SYSTEM_PROMPT
+
+    _chk_llm_args = dict(prompt=context, system_prompt=SCHEDULE_CHECKLIST_SYSTEM_PROMPT, json_mode=True, temperature=0.3, max_tokens=1500)
+    _chk_context = {"total_tasks": len(pipeline_tasks), "stage_counts": stage_counts, "upcoming_events": len(schedule_summary)}
+
+    # 3-1. sLLM 시도
     try:
-        from ai.llm import create_llm
-        from ai.llm.prompts import SCHEDULE_CHECKLIST_SYSTEM_PROMPT
-
         llm = create_llm(provider="vllm")
-        response = await llm.generate(
-            prompt=context,
-            system_prompt=SCHEDULE_CHECKLIST_SYSTEM_PROMPT,
-            json_mode=True,
-            temperature=0.3,
-            max_tokens=1500,
-        )
-
+        logger.info(f"[체크리스트] sLLM 호출: model={getattr(llm, 'model', '?')}")
+        response = await llm.generate(**_chk_llm_args)
         result = json.loads(response.content)
-        return {
-            "checklist": result.get("checklist", []),
-            "context": {
-                "total_tasks": len(pipeline_tasks),
-                "stage_counts": stage_counts,
-                "upcoming_events": len(schedule_summary),
-            },
-        }
+        return {"checklist": result.get("checklist", []), "context": _chk_context}
     except Exception as e:
-        logger.error(f"체크리스트 AI 생성 실패: {e}", exc_info=True)
+        logger.warning(f"[체크리스트] sLLM 실패, OpenAI fallback: {e}")
+
+    # 3-2. OpenAI API fallback
+    try:
+        llm = create_llm(provider="openai")
+        logger.info(f"[체크리스트] OpenAI fallback: model={getattr(llm, 'model', '?')}")
+        response = await llm.generate(**_chk_llm_args)
+        result = json.loads(response.content)
+        return {"checklist": result.get("checklist", []), "context": _chk_context}
+    except Exception as e:
+        logger.error(f"[체크리스트] OpenAI fallback도 실패: {e}", exc_info=True)
 
     # 4. LLM 실패 시 규칙 기반 폴백
     fallback = []

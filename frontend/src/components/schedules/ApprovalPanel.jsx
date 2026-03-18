@@ -196,7 +196,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
         setSchedSuggestError(null);
         setSchedModelInfo(null);
         try {
-            const res = await client.post('/approvals/suggest-schedules', {}, { timeout: 120000 });
+            const res = await client.post('/approvals/suggest-schedules', {}, { timeout: 180000 });
             setScheduleSuggestions(res.data?.suggestions || []);
             if (res.data?.model_info) setSchedModelInfo(res.data.model_info);
         } catch (err) {
@@ -530,11 +530,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
         const IconComp = cfg.icon;
         const isApproved = item.status === 'approved';
         const isPending = item.status === 'pending';
-        const cardBg = isPending
-            ? 'bg-white/60 dark:bg-neutral-800/60'
-            : isApproved
-                ? 'bg-success-bg/40 dark:bg-success-bg/10'
-                : 'bg-error-bg/40 dark:bg-error-bg/10';
+        const cardBg = 'bg-white/40 dark:bg-neutral-800/40';
         return (
             <motion.div
                 key={item.id}
@@ -1089,7 +1085,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                     <motion.div
                         initial={{ scale: 0.95, opacity: 0, y: 20 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
-                        className={`relative backdrop-blur-xl rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden ${selectedSent.status === 'approved' ? 'bg-success-bg/70 dark:bg-success-bg/20' : selectedSent.status === 'pending' ? 'bg-white/80 dark:bg-neutral-900/80' : 'bg-error-bg/70 dark:bg-error-bg/20'}`}
+                        className="relative backdrop-blur-xl rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden bg-white/80 dark:bg-neutral-900/80"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* 헤더 */}
