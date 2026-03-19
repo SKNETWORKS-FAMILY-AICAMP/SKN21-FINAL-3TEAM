@@ -88,7 +88,6 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
   const fileInputRef = useRef(null);
   const dragCounterRef = useRef(0);
   const mountedRef = useRef(false);
-  const headerHiddenRef = useRef(false);
   const lastScrollTopRef = useRef(0);
   const programmaticScrollRef = useRef(false);
   const programmaticTimerRef = useRef(null);
@@ -105,18 +104,11 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
     if (programmaticScrollRef.current) return;
 
     const scrollTop = e.target.scrollTop;
-    const prev = lastScrollTopRef.current;
     lastScrollTopRef.current = scrollTop;
 
-    // 브라우저 뷰포트 변경(헤더 축소)으로 인해 강제로 scrollTop이 줄어들어 스크롤 방향이 위로 착각되는 현상 방지
-    const isAtBottom = Math.abs(e.target.scrollHeight - e.target.clientHeight - scrollTop) <= 2;
-
-    if (scrollTop < prev && headerHiddenRef.current && !isAtBottom) {
-      headerHiddenRef.current = false;
-      onScrollChange?.(false);
-    } else if (scrollTop > prev && scrollTop > 80 && !headerHiddenRef.current) {
-      headerHiddenRef.current = true;
-      onScrollChange?.(true);
+    // 스크롤이 100px 이상 내려가면 헤더 숨김
+    if (onScrollChange) {
+      onScrollChange(scrollTop > 100);
     }
   };
 
@@ -249,7 +241,9 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       )}
 
 
-      <div ref={scrollContainerRef} className={`flex-1 min-h-0 overflow-y-auto pb-4 px-4 custom-scrollbar transition-[padding] duration-300 ${topbarScrolled ? 'pt-[86px]' : 'pt-4'}`} data-main-scroll="" onScroll={handleScroll}>{children}<div ref={bottomRef} /></div>
+      {/* 헤더는 ChatPage에서 별도로 렌더링됨 */}
+
+      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto py-4 px-4 scroll-smooth custom-scrollbar" data-main-scroll="" onScroll={handleScroll}>{children}<div ref={bottomRef} /></div>
 
       {/* 선택 문서 칩 & 파일 칩 & 에러 */}
       {(selectedDocumentName || files.length > 0 || fileError) && (

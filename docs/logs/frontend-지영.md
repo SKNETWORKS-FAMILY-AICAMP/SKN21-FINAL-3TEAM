@@ -78,8 +78,6 @@
 - **RegulationManagement (규정 관리)**
   - "규정 추가" 버튼 → 모달 (규정명, 조항 수, 상태)
   - "수정" 버튼 → 기존 정보 수정 모달
-  - "삭제" 버튼 → "정말 삭제하시겠습니까?" 확인 다이얼로그
-  - 상태: 적용중/개정중/폐지 중 선택
 - **SystemStats (시스템 통계)**
   - 일간/주간/월간 탭 클릭 시 실제로 다른 통계 데이터가 표시되도록 구현
   - 프로그레스 바 전환 시 애니메이션 효과 추가
@@ -107,20 +105,7 @@
 
 #### 6) 로그아웃 버튼 + DEV_BYPASS_AUTH 복원
 - Sidebar 하단에 로그아웃 텍스트 버튼 추가
-  - 클릭 시 토큰 삭제 → 로그인 페이지로 이동
 - develop pull 후 사라진 `DEV_BYPASS_AUTH = true` 복원 (백엔드 로그인 개발 완료 전까지 인증 우회)
-
-#### 7) 전체 text-[px] → text-[rem] 일괄 변환 (`859a8c8`)
-> 가-/가+ 기능이 모든 글씨에 적용되도록 px 고정값을 rem으로 변환
-
-- **변환 대상 54개 파일**, 총 6종류 px 값 변환:
-  - `text-[10px]` → `text-[0.625rem]`
-  - `text-[11px]` → `text-[0.6875rem]`
-  - `text-[13px]` → `text-[0.8125rem]`
-  - `text-[15px]` → `text-[0.9375rem]`
-  - `text-[22px]` → `text-[1.375rem]`, `text-[28px]` → `text-[1.75rem]`, `text-[32px]` → `text-[2rem]`
-- **적용 영역**: pages, dashboard, chat, documents, meetings, schedules, admin, auth, common 컴포넌트 + globals.css
-- 변환 후 `text-[Npx]` 잔여 0건 확인 완료
 
 ### 다음 할 일
 - 백엔드 연동 준비 (Mock → 실제 API 교체)
@@ -498,7 +483,6 @@
 ### 한 일
 
 #### 1) 문서 생성 페이지 입력 폼 개선 (`MeetingInput.jsx`, `DocumentGeneratePage.jsx`)
-
 
 - **공통 (회의록 · 보고서 · 제안서 3개 폼)**
   - 담당자 초기값: 로그인 유저 이름 자동 입력
@@ -3674,3 +3658,101 @@ Pod 꺼져도 유지되는 네트워크 볼륨(`/workspace/`, 2.3PB)에 저장:
 
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 
+---
+
+## 2026-03-18 (화)
+
+### 한 일
+
+#### Planner LoRA v5 서빙 환경 검증 — 3가지 방식 100건 비교 테스트
+
+팀원이 "Planner LoRA v5 품질이 낮다 (5개 질문 0/5)" 보고 → 원인 추적 및 검증 수행.
+
+**1) Intent Classifier (ONNX 앙상블) 검증 — EC2 서빙 환경**
+
+5개 질문 테스트 → **5/5 PASS**. Intent Classifier는 정상.
+
+| # | 질문 | 기대 | 실제 | 판정 |
+|---|------|------|------|------|
+| 1 | 회의록 찾아서 보고서 만들어줘 | doc_retrieve + doc_generate | doc_generate(0.97), doc_retrieve(0.90) | PASS |
+| 2 | 이번주 일정 보여줘 | schedule_view | schedule_view(0.95) | PASS |
+| 3 | 출장비 규정 알려줘 | judgment | judgment(override, 원래 doc_retrieve 0.61) | PASS |
+| 4 | 연차 규정 확인하고 휴가 등록 | judgment + schedule_add | judgment(0.93), schedule_add(0.90) | PASS |
+| 5 | 보고서 작성해줘 | doc_generate | doc_generate(0.96) | PASS |
+
+**2) Planner 서빙 환경 확인**
+
+- RunPod Serverless 엔드포인트: `https://api.runpod.ai/v2/0e5gus1dyiqj00/openai/v1`
+- 등록된 LoRA 4개: `v1_judgment`, `v2_generate`, `v2_summary`, `planner`
+- vLLM 0.17.1, Kanana-1.5-8B base
+
+**3) 100건 Held-out 테스트 — 3가지 방식 비교 (EC2 → RunPod Serverless)**
+
+| 방식 | 정확도 | 평균 응답 시간 |
+|------|:-:|:-:|
+| **Planner LoRA** | **78/100 (78%)** | 1,519ms |
+| Base (LoRA 없음) | 71/100 (71%) | 1,397ms |
+| ONNX + 규칙기반 Split | 60/100 (60%) | 2,162ms |
+
+**카테고리별 비교:**
+
+| 카테고리 | LoRA | Base | ONNX+Rule |
+|---------|:-:|:-:|:-:|
+| single_step (30건) | **97%** | 93% | **97%** |
+| sequential (20건) | **65%** | 60% | 60% |
+| parallel (12건) | **92%** | 75% | 33% |
+| complex (19건) | **74%** | 53% | **0%** |
+| edge_case (19건) | 58% | **63%** | **79%** |
+
+**핵심 발견:**
+
+1. **Planner LoRA가 가장 우수** — parallel(+59%p vs ONNX), complex(+74%p vs ONNX)
+2. **ONNX+Rule 치명적 약점** — 같은 intent 2회 감지 불가(parallel 33%), 순서 보장 불가, complex 0%
+3. **Base 모델도 단순 질문은 OK** — single_step 93%, 하지만 복합에서 과잉 분리 발생
+4. **팀원 테스트 실패 원인 추정** — LoRA 어댑터 미지정(model="planner" 대신 base 호출) 또는 후처리 미적용
+
+**결론: 복합/병렬 질문 처리에는 Planner LoRA가 필수. 단순 질문만이면 Base로도 충분.**
+
+### 다음 할 일
+
+- [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
+
+
+---
+
+## 2026-03-19 (목)
+
+### 한 일
+
+1. **챗봇 페이지 헤더 스크롤 동작 개선** (`수정 완료`)
+   - 스크롤 시 헤더가 상단에 고정되도록 position 변경 (relative → fixed)
+   - 초기 로드 시 헤더 겹침 문제 해결 (상단바와 헤더가 겹치지 않도록 조정)
+   - 스크롤 시 헤더 축소 및 컴팩트 배치 (텍스트 크기, 패딩, 버튼 크기 조정)
+   - 불필요한 공간 제거 (border 조건부 적용, padding-top 최적화)
+   - 부드러운 전환 애니메이션 적용 (transition-all duration-300)
+   - 구현: `ChatPage.jsx` (헤더 position 동적 변경), `ChatWindow.jsx` (스크롤 이벤트 감지)
+
+2. **sLLM 기반 대화 요약 메모리 기능 구현** (`구현 완료 + 로컬 테스트 통과`)
+   - 챗봇에서 3턴 초과 대화 시 오래된 메시지를 sLLM으로 요약하여 DB에 저장
+   - Agent 호출 시 요약(chat_summary) + 최근 3턴(chat_history)을 함께 전달 → 긴 대화에서도 맥락 유지
+   - 토큰 절약 + 대화 기억력 강화
+   - 신규 파일: `ai/llm/summarizer.py`, `tests/test_chat_summary.py`, 마이그레이션 파일
+   - 수정 파일: `chat_session.py`, `state.py`, `chat.py`, `orchestrator.py`, `alembic/env.py`
+
+3. **DB 마이그레이션 적용** (`RDS 적용 완료`)
+   - `chat_sessions` 테이블에 `summary`(TEXT), `summary_turn_count`(INTEGER) 컬럼 추가
+   - EC2 SSH 경유하여 RDS에 직접 SQL 실행으로 적용
+
+4. **일반 응답 시스템 프롬프트에 오늘 날짜 자동 주입** (`수정 완료`)
+   - GPT가 날짜를 모르는 문제 해결 (chat.py, orchestrator.py)
+
+5. **로컬 서버 테스트** (`통과`)
+   - SSH 터널(로컬 5433 → RDS 5432) 구성하여 로컬 백엔드에서 RDS 접속
+   - 7턴 대화 후 2턴째 일정 정보를 6턴째에서 정확히 응답 확인 (요약 동작 검증)
+   - summarizer 단독 테스트 4개 항목 전부 통과
+
+### 다음 할 일
+- [ ] develop에 push하여 EC2 자동 배포
+- [ ] 다른 Agent(judgment, document, schedule)에도 chat_summary 활용 확대 검토
+- [ ] 챗봇 UI 추가 개선사항 검토
+- [ ] 다른 페이지들의 반응형 디자인 점검
