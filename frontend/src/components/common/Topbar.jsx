@@ -17,11 +17,11 @@ import dayjs from 'dayjs';
 import client from '../../api/client';
 
 const BLOCK_COLORS = [
-  '#8EA1B1', // Blueish
-  '#9DB099', // Greenish
-  '#B1C9C2', // Mint
-  '#C58B8B', // Rose
-  '#C5A58B', // Tan
+  '#A1BC98', // 소프트 그린
+  '#8EAEC6', // 소프트 블루
+  '#CCA5A4', // 소프트 로즈
+  '#C8AE8E', // 소프트 탄
+  '#C8B4DD', // 소프트 라벤더
   '#C5B173', // Yellow/Gold
   '#C5919F', // Pink
   '#9F91C5', // Lavender
@@ -662,11 +662,11 @@ export default function Topbar({ isScrolled = false }) {
                   {/* Fixed Playhead (Now Indicator) - Outside of hidden mask */}
                   {eventLayouts.length > 0 && (
                     <div className="absolute top-0 bottom-0 z-50 pointer-events-none flex flex-col items-center" style={{ left: `${PLAYHEAD_X_PCT}%`, transform: 'translateX(-50%)' }}>
-                      <div className="absolute -top-[14px] z-10 bg-primary-900 dark:bg-primary-800 text-white text-[10px] xl:text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1.5 whitespace-nowrap">
+                      <div className="absolute -top-[14px] z-10 bg-white/40 dark:bg-white/20 backdrop-blur-md text-primary-800 dark:text-white text-[10px] xl:text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.6)] border border-white/50 dark:border-white/20 flex items-center gap-1.5 whitespace-nowrap">
                         <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_4px_#4ade80]" />
                         {currentTime.format('h:mm A')}
                       </div>
-                      <div className="absolute top-[4px] bottom-0 w-[1.5px] bg-primary-900 dark:bg-primary-400/80 z-0 shadow-sm" />
+                      <div className="absolute top-[4px] bottom-0 w-[3px] rounded-full bg-white/30 dark:bg-white/15 backdrop-blur-sm shadow-[0_0_6px_rgba(255,255,255,0.2)] z-0" />
                     </div>
                   )}
                 </div>
