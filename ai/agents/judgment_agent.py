@@ -318,11 +318,10 @@ def _extract_cited_articles(parsed: dict) -> list[str]:
         for m in _CITED_ARTICLE_RE.finditer(text):
             articles.add(m.group().replace(" ", ""))
 
-    # 1. regulations 필드에서 추출
+    # 1. regulations 필드에서 조항 번호 패턴만 추출 (타이틀 포함 문자열 제외)
     for reg in parsed.get("regulations", []):
         article = reg.get("article", "")
         if article:
-            articles.add(article)
             _find_articles(article)
 
     # 2. reasoning 텍스트에서 패턴 추출
@@ -561,9 +560,14 @@ def _calibrate_confidence(
         hallucination_penalty = 0.0
 
     # 조항 존재 검증 보정 (보조장치 2)
+    # 보조장치 1(keyword_match)과 동일 대상을 검증하므로, 이중 감점 방지를 위해
+    # article_penalty는 keyword_match가 중립(0.5) 이상일 때만 적용한다.
     if article_validations is None:
         article_validations = _validate_article_exists(parsed, context)
-    if article_validations:
+    if article_validations and keyword_match < 0.5:
+        # keyword_match가 이미 감점했으므로 article_penalty는 적용하지 않음
+        article_penalty = 0.0
+    elif article_validations:
         missing_count = sum(1 for v in article_validations if not v["exists"])
         article_penalty = 0.05 * missing_count
     else:
@@ -580,16 +584,16 @@ def _calibrate_confidence(
 
     # 개별 요소 임계값 보호 — 어느 하나라도 심각하면 confidence 상한 제한
     # (가중합만으로는 한 요소가 0이어도 다른 요소로 높은 점수가 나올 수 있는 문제 방지)
-    cap_note = None
+    cap_notes = []
     if rag_factor < 0.2:
         calibrated = min(calibrated, 0.4)
-        cap_note = "RAG 검색 품질 낮음 — 최대 0.4 제한"
+        cap_notes.append("RAG 검색 품질 낮음 — 최대 0.4 제한")
     if keyword_match < 0.2:
         calibrated = min(calibrated, 0.3)
-        cap_note = "환각 의심 심각 — 최대 0.3 제한"
+        cap_notes.append("환각 의심 심각 — 최대 0.3 제한")
     if article_validations and all(not v["exists"] for v in article_validations):
         calibrated = min(calibrated, 0.25)
-        cap_note = "인용 조항 전부 미존재 — 최대 0.25 제한"
+        cap_notes.append("인용 조항 전부 미존재 — 최대 0.25 제한")
 
     final = round(max(0.0, min(1.0, calibrated)), 3)
 
@@ -605,8 +609,8 @@ def _calibrate_confidence(
         "article_penalty": round(article_penalty, 3),
         "final": final,
     }
-    if cap_note:
-        breakdown["cap_note"] = cap_note
+    if cap_notes:
+        breakdown["cap_note"] = " / ".join(cap_notes)
 
     return final, breakdown
 
