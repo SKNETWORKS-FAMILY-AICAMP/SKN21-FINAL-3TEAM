@@ -25,6 +25,10 @@ outputs/
 *.gguf
 *.onnx
 
+# Codex artifacts
+MEMORY.md
+docs/PROJECT_UNDERSTANDING_NOTE.md
+
 # Test artifacts
 test-results/
 tests/screenshots/
