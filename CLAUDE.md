@@ -101,7 +101,7 @@ main (배포용 - PM 지용만 머지)
       └── feat/frontend-지영
 ```
 
-- develop 직접 커밋 금지 — 반드시 자기 브랜치에서 PR
+- develop 직접 push 허용 (자기 브랜치에서 머지)
 - main 직접 커밋 금지 — develop → main은 PM만
 - 충돌은 자기 브랜치에서 해결
 
