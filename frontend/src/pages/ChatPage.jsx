@@ -578,15 +578,13 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-full bg-surface-main">
-      <header className={`z-20 bg-surface-main transition-all duration-300 ${isHeaderHidden ? 'fixed top-0 left-0 right-0' : 'relative border-b border-neutral-border'}`}>
-        <div className={`flex justify-between items-center pl-8 pr-8 transition-all duration-300 ${isHeaderHidden ? 'py-2' : 'py-6'}`}>
+      <header className="z-20 bg-surface-main relative border-b border-neutral-border shrink-0">
+        <div className="flex justify-between items-center pl-8 pr-8 py-4">
           <div>
-            <h1 className={`font-bold transition-all duration-300 ${isHeaderHidden ? 'text-lg' : 'text-2xl'}`}>나에게 물어봐</h1>
-            {!isHeaderHidden && (
-              <p className="text-neutral-sub text-sm mt-0.5 transition-all duration-300">규정 판단, 문서 분석, 일정 관리를 도와드립니다</p>
-            )}
+            <h1 className="font-bold text-xl">나에게 물어봐</h1>
+            <p className="text-neutral-sub text-sm mt-0.5">규정 판단, 문서 분석, 일정 관리를 도와드립니다</p>
           </div>
-          <div className={`flex items-center gap-2 transition-all duration-300 ${isHeaderHidden ? 'scale-90' : 'scale-100'}`}>
+          <div className="flex items-center gap-2">
             <button
               onClick={() => exportChat(messages)}
               disabled={messages.length === 0}
@@ -678,7 +676,7 @@ export default function ChatPage() {
         </div>
 
         {/* 챗 영역 */}
-        <div className={`flex-1 min-w-0 transition-all duration-300 ${isHeaderHidden ? 'pt-2' : 'pt-0'}`}>
+        <div className="flex-1 min-w-0">
           <ChatWindow onSend={handleSend} messages={messages} selectedDocumentName={selectedDocumentName} onClearDocument={clearSelectedDocument} activeIntent={currentIntent || messages.filter(m => m.role === 'assistant').at(-1)?.resultIntent || messages.filter(m => m.role === 'assistant').at(-1)?.intent} isStreaming={isStreaming} panelOpen={panelOpen || !!docViewDoc} onScrollChange={setIsHeaderHidden}>
             {/* 메시지가 없을 때 — 추천 질문 */}
             {messages.length === 0 && (
