@@ -425,7 +425,6 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
 }
 
 export default function ChatPage() {
-  const [isChatScrolled, setIsChatScrolled] = useState(false);
   const [searchParams] = useSearchParams();
   const { messages, isStreaming, currentIntent, currentStatus, sendMessage } = useChat();
   const clearMessages = useChatStore((s) => s.clearMessages);
@@ -449,6 +448,7 @@ export default function ChatPage() {
   const [docList, setDocList] = useState([]);
   const [docSearch, setDocSearch] = useState('');
   const [hasNewRegulations, setHasNewRegulations] = useState(false);
+  const [isHeaderHidden, setIsHeaderHidden] = useState(false);
 
   const mountedRef = useRef(false);
   const lastSeenJudgmentIdxRef = useRef(-1);
@@ -578,137 +578,79 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-full bg-surface-main">
-      <header className={`flex justify-between items-center pl-8 pr-8 z-10 flex-shrink-0 transition-all duration-300 overflow-hidden ${isChatScrolled ? 'h-[0px] py-0 opacity-0' : 'h-[100px] py-6 opacity-100'}`}>
-        <div>
-          <h1 className="font-bold text-2xl">나에게 물어봐</h1>
-          <p className="text-neutral-sub text-sm mt-0.5">규정 판단, 문서 분석, 일정 관리를 도와드립니다</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => exportChat(messages)}
-            disabled={messages.length === 0}
-            className="btn-outline text-xs disabled:opacity-40 disabled:cursor-not-allowed"
-            title="대화 내보내기"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            내보내기
-          </button>
-          <button
-            onClick={handleClear}
-            disabled={messages.length === 0}
-            className="btn-outline text-xs disabled:opacity-40 disabled:cursor-not-allowed text-red-500 border-red-200 hover:bg-red-50"
-            title="대화 초기화"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-            </svg>
-            초기화
-          </button>
-          <button
-            onClick={() => setDocPickerOpen(true)}
-            className={`btn-outline text-xs ${selectedDocumentId ? 'bg-accent-50 border-accent-300 text-accent-700' : ''}`}
-            title="요약할 문서 선택"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-            </svg>
-            {selectedDocumentId ? '문서 선택됨' : '문서 선택'}
-          </button>
-          <button
-            onClick={() => {
-              const opening = !panelOpen;
-              setPanelOpen(opening);
-              if (opening) {
-                setHasNewRegulations(false);
-                for (let i = messages.length - 1; i >= 0; i--) {
-                  if (messages[i].resultIntent === 'judgment' && messages[i].agentResponse?.regulations?.length > 0) {
-                    lastSeenJudgmentIdxRef.current = i;
-                    break;
+      <header className={`z-20 bg-surface-main transition-all duration-300 ${isHeaderHidden ? 'fixed top-0 left-0 right-0' : 'relative border-b border-neutral-border'}`}>
+        <div className={`flex justify-between items-center pl-8 pr-8 transition-all duration-300 ${isHeaderHidden ? 'py-2' : 'py-6'}`}>
+          <div>
+            <h1 className={`font-bold transition-all duration-300 ${isHeaderHidden ? 'text-lg' : 'text-2xl'}`}>나에게 물어봐</h1>
+            {!isHeaderHidden && (
+              <p className="text-neutral-sub text-sm mt-0.5 transition-all duration-300">규정 판단, 문서 분석, 일정 관리를 도와드립니다</p>
+            )}
+          </div>
+          <div className={`flex items-center gap-2 transition-all duration-300 ${isHeaderHidden ? 'scale-90' : 'scale-100'}`}>
+            <button
+              onClick={() => exportChat(messages)}
+              disabled={messages.length === 0}
+              className="btn-outline text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+              title="대화 내보내기"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              내보내기
+            </button>
+            <button
+              onClick={handleClear}
+              disabled={messages.length === 0}
+              className="btn-outline text-xs disabled:opacity-40 disabled:cursor-not-allowed text-red-500 border-red-200 hover:bg-red-50"
+              title="대화 초기화"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+              초기화
+            </button>
+            <button
+              onClick={() => setDocPickerOpen(true)}
+              className={`btn-outline text-xs ${selectedDocumentId ? 'bg-accent-50 border-accent-300 text-accent-700' : ''}`}
+              title="요약할 문서 선택"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              {selectedDocumentId ? '문서 선택됨' : '문서 선택'}
+            </button>
+            <button
+              onClick={() => {
+                const opening = !panelOpen;
+                setPanelOpen(opening);
+                if (opening) {
+                  setHasNewRegulations(false);
+                  for (let i = messages.length - 1; i >= 0; i--) {
+                    if (messages[i].resultIntent === 'judgment' && messages[i].agentResponse?.regulations?.length > 0) {
+                      lastSeenJudgmentIdxRef.current = i;
+                      break;
+                    }
                   }
                 }
-              }
-            }}
-            className={`btn-outline text-xs relative ${panelOpen ? 'bg-primary-50 border-primary-300' : ''} ${hasNewRegulations && !panelOpen ? 'border-primary-400 bg-primary-50 text-primary-700 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : ''}`}
-            style={hasNewRegulations && !panelOpen ? { animation: 'reg-glow 1.5s ease-in-out infinite' } : undefined}
-          >
-            규정 패널
-            {hasNewRegulations && !panelOpen && (
-              <span className="absolute -top-1.5 -right-1.5 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary-500"></span>
-              </span>
-            )}
-          </button>
+              }}
+              className={`btn-outline text-xs relative ${panelOpen ? 'bg-primary-50 border-primary-300' : ''} ${hasNewRegulations && !panelOpen ? 'border-primary-400 bg-primary-50 text-primary-700 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : ''}`}
+              style={hasNewRegulations && !panelOpen ? { animation: 'reg-glow 1.5s ease-in-out infinite' } : undefined}
+            >
+              규정 패널
+              {hasNewRegulations && !panelOpen && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-primary-500"></span>
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </header>
-
-      {/* 문서 선택 피커 */}
-      {docPickerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { setDocPickerOpen(false); setDocSearch(''); }}>
-          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-xl shadow-xl w-[28rem] max-w-[90vw] overflow-hidden border border-white/40 dark:border-white/10" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-divider">
-              <h3 className="text-sm font-semibold text-neutral-main">요약할 문서 선택</h3>
-              <button onClick={() => { setDocPickerOpen(false); setDocSearch(''); }} className="text-neutral-muted hover:text-neutral-main transition">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-            <div className="px-4 py-3 border-b border-neutral-divider">
-              <input
-                autoFocus
-                value={docSearch}
-                onChange={(e) => setDocSearch(e.target.value)}
-                placeholder="문서 검색..."
-                className="w-full px-3 py-2 text-sm border border-neutral-border rounded-md bg-surface-main outline-none focus:border-primary-300 text-neutral-main placeholder:text-neutral-muted"
-              />
-            </div>
-            <div className="max-h-64 overflow-y-auto py-1">
-              {docList.filter(d => !docSearch || d.title?.includes(docSearch) || d.original_filename?.includes(docSearch)).length === 0 ? (
-                <div className="py-8 text-center text-sm text-neutral-muted">
-                  {docList.length === 0 ? '등록된 문서가 없습니다' : '검색 결과 없음'}
-                </div>
-              ) : (
-                docList
-                  .filter(d => !docSearch || d.title?.includes(docSearch) || d.original_filename?.includes(docSearch))
-                  .map((doc) => (
-                    <button
-                      key={doc.id}
-                      onClick={() => { setSelectedDocument(doc.id, doc.title || doc.original_filename); setDocPickerOpen(false); setDocSearch(''); }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-hover transition text-sm ${selectedDocumentId === doc.id ? 'bg-accent-50 text-accent-700' : 'text-neutral-main'}`}
-                    >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-neutral-muted">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                      </svg>
-                      <span className="truncate">{doc.title || doc.original_filename}</span>
-                    </button>
-                  ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 초기화 확인 다이얼로그 */}
-      {showClearConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-xl shadow-xl p-6 max-w-sm w-full mx-4 border border-white/40 dark:border-white/10">
-            <h3 className="text-base font-semibold mb-2">대화 기록을 초기화할까요?</h3>
-            <p className="text-sm text-neutral-sub mb-5">모든 대화 내용이 삭제됩니다. 이 작업은 되돌릴 수 없습니다.</p>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setShowClearConfirm(false)} className="btn-outline text-sm px-4 py-2">취소</button>
-              <button onClick={confirmClear} className="bg-red-500 hover:bg-red-600 text-white text-sm px-4 py-2 rounded-md transition">삭제</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="flex flex-1 min-h-0">
         {/* 왼쪽 아이콘 레일 + 세션 사이드바 */}
@@ -736,8 +678,8 @@ export default function ChatPage() {
         </div>
 
         {/* 챗 영역 */}
-        <div className="flex-1 min-w-0">
-          <ChatWindow onScrollChange={setIsChatScrolled} onSend={handleSend} messages={messages} selectedDocumentName={selectedDocumentName} onClearDocument={clearSelectedDocument} activeIntent={currentIntent || messages.filter(m => m.role === 'assistant').at(-1)?.resultIntent || messages.filter(m => m.role === 'assistant').at(-1)?.intent} isStreaming={isStreaming} panelOpen={panelOpen || !!docViewDoc}>
+        <div className={`flex-1 min-w-0 transition-all duration-300 ${isHeaderHidden ? 'pt-2' : 'pt-0'}`}>
+          <ChatWindow onSend={handleSend} messages={messages} selectedDocumentName={selectedDocumentName} onClearDocument={clearSelectedDocument} activeIntent={currentIntent || messages.filter(m => m.role === 'assistant').at(-1)?.resultIntent || messages.filter(m => m.role === 'assistant').at(-1)?.intent} isStreaming={isStreaming} panelOpen={panelOpen || !!docViewDoc} onScrollChange={setIsHeaderHidden}>
             {/* 메시지가 없을 때 — 추천 질문 */}
             {messages.length === 0 && (
               <SuggestedQuestions onSelect={handleSend} />
@@ -809,6 +751,68 @@ export default function ChatPage() {
           />
         )}
       </div>
+
+      {/* 문서 선택 피커 */}
+      {docPickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { setDocPickerOpen(false); setDocSearch(''); }}>
+          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-xl shadow-xl w-[28rem] max-w-[90vw] overflow-hidden border border-white/40 dark:border-white/10" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-divider">
+              <h3 className="text-sm font-semibold text-neutral-main">요약할 문서 선택</h3>
+              <button onClick={() => { setDocPickerOpen(false); setDocSearch(''); }} className="text-neutral-muted hover:text-neutral-main transition">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-4 py-3 border-b border-neutral-divider">
+              <input
+                autoFocus
+                value={docSearch}
+                onChange={(e) => setDocSearch(e.target.value)}
+                placeholder="문서 검색..."
+                className="w-full px-3 py-2 text-sm border border-neutral-border rounded-md bg-surface-main outline-none focus:border-primary-300 text-neutral-main placeholder:text-neutral-muted"
+              />
+            </div>
+            <div className="max-h-64 overflow-y-auto py-1">
+              {docList.filter(d => !docSearch || d.title?.includes(docSearch) || d.original_filename?.includes(docSearch)).length === 0 ? (
+                <div className="py-8 text-center text-sm text-neutral-muted">
+                  {docList.length === 0 ? '등록된 문서가 없습니다' : '검색 결과 없음'}
+                </div>
+              ) : (
+                docList
+                  .filter(d => !docSearch || d.title?.includes(docSearch) || d.original_filename?.includes(docSearch))
+                  .map((doc) => (
+                    <button
+                      key={doc.id}
+                      onClick={() => { setSelectedDocument(doc.id, doc.title || doc.original_filename); setDocPickerOpen(false); setDocSearch(''); }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-hover transition text-sm ${selectedDocumentId === doc.id ? 'bg-accent-50 text-accent-700' : 'text-neutral-main'}`}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-neutral-muted">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                      </svg>
+                      <span className="truncate">{doc.title || doc.original_filename}</span>
+                    </button>
+                  ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 대화 초기화 확인 */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-xl shadow-xl p-6 max-w-sm w-full mx-4 border border-white/40 dark:border-white/10">
+            <h3 className="text-base font-semibold mb-2">대화 기록을 초기화할까요?</h3>
+            <p className="text-sm text-neutral-sub mb-5">모든 대화 내용이 삭제됩니다. 이 작업은 되돌릴 수 없습니다.</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowClearConfirm(false)} className="btn-outline text-sm px-4 py-2">취소</button>
+              <button onClick={confirmClear} className="bg-red-500 hover:bg-red-600 text-white text-sm px-4 py-2 rounded-md transition">삭제</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

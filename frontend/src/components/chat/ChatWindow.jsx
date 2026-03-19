@@ -88,7 +88,6 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
   const fileInputRef = useRef(null);
   const dragCounterRef = useRef(0);
   const mountedRef = useRef(false);
-  const headerHiddenRef = useRef(false);
   const lastScrollTopRef = useRef(0);
   const programmaticScrollRef = useRef(false);
   const programmaticTimerRef = useRef(null);
@@ -105,15 +104,11 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
     if (programmaticScrollRef.current) return;
 
     const scrollTop = e.target.scrollTop;
-    const prev = lastScrollTopRef.current;
     lastScrollTopRef.current = scrollTop;
 
-    if (scrollTop < prev && headerHiddenRef.current) {
-      headerHiddenRef.current = false;
-      onScrollChange?.(false);
-    } else if (scrollTop > prev && scrollTop > 80 && !headerHiddenRef.current) {
-      headerHiddenRef.current = true;
-      onScrollChange?.(true);
+    // 스크롤이 100px 이상 내려가면 헤더 숨김
+    if (onScrollChange) {
+      onScrollChange(scrollTop > 100);
     }
   };
 
@@ -228,6 +223,8 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
         </div>
       )}
 
+
+      {/* 헤더는 ChatPage에서 별도로 렌더링됨 */}
 
       <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto py-4 px-4 scroll-smooth custom-scrollbar" data-main-scroll="" onScroll={handleScroll}>{children}<div ref={bottomRef} /></div>
 

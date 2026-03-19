@@ -35,6 +35,7 @@ def _build_initial_state(request: ChatRequest, user, stream_mode: bool = False) 
         "context": [],
         "agent_response": {},
         "chat_history": [],
+        "chat_summary": None,
         "error": None,
         "template_id": request.template_id,
         "template_type": request.template_type,
@@ -64,6 +65,77 @@ def _get_agent_type(intent: str) -> str:
     return "general"
 
 
+async def _maybe_update_summary(db: AsyncSession, session_id: str, user_id: int):
+    """대화가 3턴을 초과하면 sLLM으로 요약을 갱신한다.
+
+    최근 3턴(6메시지)은 chat_history로 직접 전달되므로,
+    그보다 오래된 메시지만 요약에 포함시킨다.
+    """
+    from sqlalchemy import func as sa_func
+    from ai.llm.summarizer import summarize_chat_history, SUMMARY_TRIGGER_TURNS
+
+    # 현재 세션의 총 메시지(턴) 수
+    count_result = await db.execute(
+        select(sa_func.count(ChatLog.id))
+        .where(ChatLog.session_id == session_id, ChatLog.user_id == user_id)
+    )
+    total_logs = count_result.scalar() or 0
+
+    if total_logs <= SUMMARY_TRIGGER_TURNS:
+        return  # 아직 요약 불필요
+
+    # 세션 정보 로드
+    sess_result = await db.execute(
+        select(ChatSession).where(ChatSession.session_id == session_id)
+    )
+    session_row = sess_result.scalar_one_or_none()
+    if not session_row:
+        return
+
+    # 이미 이 턴 수에 대해 요약 완료했으면 스킵
+    if session_row.summary_turn_count >= total_logs:
+        return
+
+    # 최근 3턴을 제외한 나머지(요약 대상) 로드
+    recent_skip = SUMMARY_TRIGGER_TURNS  # 최근 3턴은 제외
+    older_result = await db.execute(
+        select(ChatLog)
+        .where(ChatLog.session_id == session_id, ChatLog.user_id == user_id)
+        .order_by(ChatLog.created_at.asc())
+        .limit(total_logs - recent_skip)
+    )
+    older_logs = older_result.scalars().all()
+
+    if not older_logs:
+        return
+
+    # 요약 대상 메시지 구성
+    messages_to_summarize = []
+    for log in older_logs:
+        messages_to_summarize.append({"role": "user", "content": log.user_message})
+        try:
+            ar = json.loads(log.agent_response) if log.agent_response else {}
+        except json.JSONDecodeError:
+            ar = {}
+        messages_to_summarize.append({
+            "role": "assistant",
+            "content": ar.get("message", ""),
+        })
+
+    # sLLM으로 요약 생성
+    new_summary = await summarize_chat_history(
+        messages=messages_to_summarize,
+        existing_summary=None,  # 매번 전체 재요약 (점진적 누적보다 정확)
+    )
+
+    # DB 업데이트
+    session_row.summary = new_summary
+    session_row.summary_turn_count = total_logs
+    await db.commit()
+    logger.info("[Chat] 대화 요약 갱신 완료: session=%s, turns=%d, summary=%d자",
+                session_id, total_logs, len(new_summary))
+
+
 @router.post("/stream")
 async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """SSE 스트리밍 챗봇 응답"""
@@ -80,9 +152,10 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
             graph = get_graph()
             initial_state = _build_initial_state(request, user, stream_mode=True)
 
-            # session_id로 이전 대화 이력 로드 (schedule_followup 등 맥락 판단용)
+            # session_id로 이전 대화 이력 + 요약 로드
             if request.session_id:
                 try:
+                    # 최근 3턴 메시지 로드
                     hist_result = await db.execute(
                         select(ChatLog)
                         .where(ChatLog.session_id == request.session_id, ChatLog.user_id == user.id)
@@ -103,6 +176,16 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             "agentResponse": ar,
                         })
                     initial_state["chat_history"] = chat_history
+
+                    # 세션 요약 로드
+                    sess_result = await db.execute(
+                        select(ChatSession).where(ChatSession.session_id == request.session_id)
+                    )
+                    session_row = sess_result.scalar_one_or_none()
+                    if session_row and session_row.summary:
+                        initial_state["chat_summary"] = session_row.summary
+                        logger.debug("[Chat] chat_summary 로드 (%d자)", len(session_row.summary))
+
                     logger.debug("[Chat] chat_history 로드: %d개 메시지", len(chat_history))
                 except Exception as hist_err:
                     logger.warning("[Chat] chat_history 로드 실패: %s", hist_err)
@@ -262,10 +345,17 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         user_input = final_state.get("user_input", "")
                         chat_history = final_state.get("chat_history", [])
 
+                        # 대화 요약이 있으면 시스템 프롬프트에 포함
+                        from datetime import date as _date
+                        _gen_sys = f"당신은 업무 도우미 '듀듀'입니다. 한국어로 친절하게 답변하세요.\n오늘 날짜: {_date.today().isoformat()}"
+                        _chat_summary = final_state.get("chat_summary")
+                        if _chat_summary:
+                            _gen_sys += f"\n\n[이전 대화 요약]\n{_chat_summary}"
+
                         stream = await client.chat.completions.create(
                             model="gpt-4o-mini",
                             messages=[
-                                {"role": "system", "content": "당신은 업무 도우미 '듀듀'입니다. 한국어로 친절하게 답변하세요."},
+                                {"role": "system", "content": _gen_sys},
                                 *chat_history,
                                 {"role": "user", "content": user_input},
                             ],
@@ -670,6 +760,12 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                 logger.debug("[Chat] chat_log 저장 완료 (id=%s)", log.id)
             except Exception as log_err:
                 logger.warning("[Chat] chat_log 저장 실패: %s", log_err)
+
+            # 5. 대화 요약 갱신 (비동기, 사용자 응답 차단 안 함)
+            try:
+                await _maybe_update_summary(db, session_id, user.id)
+            except Exception as sum_err:
+                logger.warning("[Chat] 요약 갱신 실패 (무시): %s", sum_err)
 
             logger.info("[Chat] 스트림 완료 (%.2fs)", _t_done)
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
