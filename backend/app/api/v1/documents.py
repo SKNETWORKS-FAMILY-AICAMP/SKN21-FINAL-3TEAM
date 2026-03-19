@@ -35,6 +35,12 @@ class GenerateDocumentRequest(BaseModel):
     fields_data: dict = {}
     content: str = ""
 
+
+class FillFieldsRequest(BaseModel):
+    """AI 필드 채우기 요청 — DOCX 생성 없이 필드 값만 리턴"""
+    template_id: int
+    content: str
+
 router = APIRouter()
 
 
@@ -138,6 +144,85 @@ async def generate_document(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"문서 생성 중 오류 발생: {str(e)}")
+
+
+@router.post("/fill-fields")
+async def fill_fields(
+    request: FillFieldsRequest,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """
+    AI 필드 채우기 — DOCX 생성 없이 필드 값만 리턴
+    프론트에서 폼에 채운 후 사용자가 편집 → /generate로 최종 생성
+    """
+    import json as _json
+    from app.models.document_template import DocumentTemplate
+    from sqlalchemy import select
+
+    # 0. 입력 길이 체크
+    if len(request.content.strip()) < 20:
+        raise HTTPException(status_code=400, detail="내용이 너무 짧습니다. 20자 이상 입력해주세요.")
+
+    # 1. 템플릿 조회
+    result = await db.execute(
+        select(DocumentTemplate).where(DocumentTemplate.id == request.template_id)
+    )
+    template = result.scalar_one_or_none()
+    if not template or not template.parsed_structure:
+        raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다.")
+
+    raw_ps = _json.loads(template.parsed_structure)
+    fields = raw_ps.get("fields", raw_ps) if isinstance(raw_ps, dict) else raw_ps
+    if not isinstance(fields, list):
+        fields = []
+
+    # 2. 필드 12개 제한 (LoRA 학습 분포 기반)
+    MAX_FIELDS = 12
+    if len(fields) > MAX_FIELDS:
+        fields = fields[:MAX_FIELDS]
+
+    # 3. 필드 명세 → 프롬프트 → LoRA 호출
+    from ai.document_parser.template_extractor import fields_to_prompt
+    from ai.llm.prompts import DOC_GENERATE_SLLM_PROMPT
+    from ai.agents.document._common import _call_llm, get_last_model_name
+
+    field_spec = fields_to_prompt(fields)
+    doc_type = template.category or "문서"
+    doc_type_names = {"meeting_minutes": "회의록", "report": "업무보고서", "proposal": "제안서"}
+    doc_type_label = doc_type_names.get(doc_type, template.name or "문서")
+
+    user_prompt = (
+        f"다음 내용을 바탕으로 문서를 JSON 형식으로 작성해주세요.\n\n"
+        f"[문서 유형] {doc_type_label}\n\n"
+        f"[필드 명세]\n{field_spec}\n\n"
+        f"[내용]\n{request.content}"
+    )
+
+    generated_str = await _call_llm(
+        DOC_GENERATE_SLLM_PROMPT, user_prompt,
+        json_mode=True, task="generate"
+    )
+
+    try:
+        data = _json.loads(generated_str)
+    except Exception:
+        data = {}
+
+    # 4. 빈 필드 기본값 채우기
+    for f in fields:
+        if f["key"] not in data:
+            desc = f.get("description", "")
+            data[f["key"]] = [] if ("배열" in desc or "목록" in desc) else ""
+
+    return {
+        "template_id": template.id,
+        "template_name": template.name,
+        "category": template.category,
+        "fields": fields,
+        "data": data,
+        "model_name": get_last_model_name(),
+    }
 
 
 @router.post("/analyze-all")

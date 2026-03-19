@@ -54,26 +54,6 @@ GENERATION_FIELD_CONFIG = {
     },
 }
 
-# ── 학습된 필드 키 (LoRA가 생성 가능한 필드) ──
-# 커스텀 템플릿에서 이 키에 해당하면 1단계 LoRA에 포함,
-# 이 키에 없는 미학습 필드는 2단계 프롬프트 추출로 처리
-TRAINED_KEYS = {
-    # core (모든 유형 공통)
-    "title", "date",
-    # 회의록
-    "attendees", "content", "summary", "decisions", "action_items",
-    "time", "location", "meeting_type", "author", "moderator", "department", "duration",
-    "agenda", "meeting_purpose", "risks", "next_meeting", "notes",
-    # 보고서
-    "overview", "main_content", "tasks", "next_plan",
-    "position", "report_to", "report_type", "period", "audience",
-    "achievements", "issues", "kpi_results", "conclusion", "recommendations",
-    # 제안서
-    "purpose", "expected_effect", "schedule", "budget",
-    "submit_date", "submit_to", "company", "manager", "contact", "proposer",
-    "background", "current_situation", "scope", "budget_total", "resources", "deliverables",
-}
-
 
 def _select_fields_for_llm(all_fields, template_type, user_input, is_system=True):
     """시스템 템플릿의 필드를 학습 분포(6~10개)에 맞게 선별한다.
@@ -274,43 +254,6 @@ async def _extract_decisions_actions(content: str, summary: str = "") -> Dict[st
         return {}
 
 
-async def _extract_structured_fields(
-    content: str,
-    generated_fields: List[Dict],
-) -> Dict[str, Any]:
-    """
-    2단계: 커스텀 템플릿의 미학습 필드를 content에서 프롬프트 기반으로 추출.
-
-    generated_fields: role="generated"이면서 TRAINED_KEYS에 없는 필드 목록
-    각 필드의 description을 프롬프트에 동적 주입하여 추출.
-    """
-    if not generated_fields or not content:
-        return {}
-
-    from ai.document_parser.template_extractor import fields_to_prompt
-    from ai.llm.prompts import DOC_EXTRACT_PROMPT
-
-    field_spec = fields_to_prompt(generated_fields)
-
-    user_prompt = (
-        f"[추출 필드]\n{field_spec}\n\n"
-        f"[문서 내용]\n{content}"
-    )
-
-    print(f"[DocumentAgent] 2단계 프롬프트 추출 | {len(generated_fields)}개 필드: {[f['key'] for f in generated_fields]}")
-
-    try:
-        result_str = await _call_llm(
-            DOC_EXTRACT_PROMPT, user_prompt,
-            json_mode=True, task="extract"
-        )
-        result = json.loads(result_str)
-        print(f"[DocumentAgent] 2단계 추출 완료 | keys={list(result.keys())}")
-        return result
-    except Exception as e:
-        print(f"[DocumentAgent] 2단계 추출 실패: {e}")
-        return {}
-
 
 def _build_narrative_input(category: str, fields_data: Dict[str, Any], content: str = "") -> str:
     """폼 필드(짧은 값) → 서술형 텍스트로 변환하여 학습 데이터 형식(700~1500자)에 가깝게 만든다."""
@@ -502,16 +445,10 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
     is_system = getattr(template, "is_system", False) if template else False
     fields_for_llm = _select_fields_for_llm(fields, template_type, user_input, is_system)
 
-    # ── 커스텀 템플릿: 학습된 키 / 미학습 키 분리 ──
-    # 시스템 템플릿: LoRA가 전체 필드 생성 (기존 방식)
-    # 커스텀 템플릿: 1단계 LoRA(학습 키) + 2단계 프롬프트(미학습 키)
-    untrained_fields = []
-    if not is_system:
-        stage1_fields = [f for f in fields_for_llm if f["key"] in TRAINED_KEYS]
-        untrained_fields = [f for f in fields_for_llm if f["key"] not in TRAINED_KEYS
-                           and f.get("form") is not True and f.get("role") != "input"]
-        print(f"[DocumentAgent] 커스텀 템플릿 분기 | 학습키 {len(stage1_fields)}개, 미학습키 {len(untrained_fields)}개: {[f['key'] for f in untrained_fields]}")
-        fields_for_llm = stage1_fields  # 1단계에는 학습된 키만
+    # ── 모든 필드를 LoRA에 전달 (trained/untrained 분리 제거) ──
+    # LoRA는 [필드 명세]를 읽고 따르는 패턴으로 학습됨
+    # 커스텀 키도 description과 함께 명세에 넣으면 instruction following으로 대응
+    print(f"[DocumentAgent] 전체 필드 LoRA 전달 | {len(fields_for_llm)}개 (시스템={is_system})")
 
     # 동적 필드 명세 생성
     from ai.document_parser.template_extractor import fields_to_prompt
@@ -553,29 +490,9 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
     elif isinstance(content_val, str) and content_val.strip().startswith("{"):
         data["content"] = user_input
 
-    # 빈 필드가 많으면 2단계 추출 파이프라인으로 복구
-    empty_fields = [f for f in fields_for_llm if not data.get(f["key"])]
-    if empty_fields:
-        print(f"[DocumentAgent] 빈 필드 {len(empty_fields)}개 - 2단계 추출 시도")
-        stage2_data = await _extract_structured_fields(
-            user_input, empty_fields
-        )
-        for k, v in stage2_data.items():
-            if not data.get(k):
-                data[k] = v
-        print(f"[DocumentAgent] 2단계 추출 완료 | 복구 keys={list(stage2_data.keys())}")
-
     # current_situation(현황 분석)이 비어있으면 background로 fallback
     if not data.get("current_situation") and data.get("background"):
         data["current_situation"] = data["background"]
-
-    # ── 기존 2단계: 커스텀 템플릿 미학습 필드 추출 ──
-    if untrained_fields and data.get("content"):
-        stage2_data = await _extract_structured_fields(
-            data["content"], untrained_fields
-        )
-        data.update(stage2_data)
-        print(f"[DocumentAgent] 미학습 필드 추출 완료 | keys={list(stage2_data.keys())}")
 
     # LLM에 안 보낸 필드도 DOCX 빌더가 참조하므로 기본값 채우기
     for f in fields:

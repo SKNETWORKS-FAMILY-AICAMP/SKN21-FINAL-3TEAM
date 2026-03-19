@@ -6,7 +6,7 @@ import TemplateSelector from '../components/documents/TemplateSelector';
 import TemplateUploadDialog from '../components/documents/TemplateUploadDialog';
 import DocumentPreview from '../components/documents/DocumentPreview';
 import MeetingPreview from '../components/meetings/MeetingPreview';
-import { generateDocument, downloadDocument, uploadTemplate, listTemplates, getTemplate } from '../api/documents';
+import { generateDocument, downloadDocument, uploadTemplate, listTemplates, getTemplate, fillFields } from '../api/documents';
 import DatePicker from '../components/common/DatePicker';
 import { toast } from '../store/toastStore';
 
@@ -432,6 +432,12 @@ export default function DocumentGeneratePage() {
   const [selectedTeam, setSelectedTeam] = useState(user?.team || '');
   const [selectedAttendees, setSelectedAttendees] = useState([]);
 
+  // 커스텀 템플릿: 자연어 입력 + AI 채우기
+  const [freeText, setFreeText] = useState('');
+  const [filling, setFilling] = useState(false);
+  const [filled, setFilled] = useState(false);  // AI가 채웠는지 여부
+  const isCustom = !!selectedCustomTemplate;
+
   const fetchCustomTemplates = () => {
     listTemplates()
       .then(res => setCustomTemplates((res.data || []).filter(t => !t.is_system)))
@@ -457,6 +463,8 @@ export default function DocumentGeneratePage() {
     requestAnimationFrame(() => window.scrollTo(0, scrollY));
     setSelectedTeam(user?.team || '');
     setSelectedAttendees([]);
+    setFreeText('');
+    setFilled(false);
 
     const templateId = customTpl?.id;
     setSelectedTemplateId(templateId || null);
@@ -502,6 +510,43 @@ export default function DocumentGeneratePage() {
 
   const handleFieldChange = (key, value) => {
     setFormData(prev => ({ ...prev, [key]: value }));
+  };
+
+  /** 커스텀 템플릿: AI 필드 채우기 */
+  const handleFillFields = async () => {
+    if (!selectedTemplateId || !freeText.trim()) return;
+    setFilling(true);
+    try {
+      const response = await fillFields({
+        template_id: selectedTemplateId,
+        content: freeText,
+      });
+      const apiData = response.data;
+      const data = apiData.data || {};
+
+      // AI가 채운 값을 폼에 반영 (빈 값은 제외, 기존 사용자 입력 보존)
+      setFormData(prev => {
+        const next = { ...prev };
+        for (const [key, val] of Object.entries(data)) {
+          if (val && val !== '' && (!Array.isArray(val) || val.length > 0)) {
+            next[key] = val;
+          }
+        }
+        return next;
+      });
+
+      // AI가 채운 필드가 있으면 templateFields도 업데이트 (fields 정보 포함)
+      if (apiData.fields) {
+        setTemplateFields(apiData.fields);
+      }
+
+      setFilled(true);
+      toast.success(`AI가 필드를 채웠습니다. 확인 후 수정할 수 있습니다.`);
+    } catch (err) {
+      toast.error('AI 채우기 실패: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setFilling(false);
+    }
   };
 
   /** 통합 생성 핸들러 */
@@ -655,12 +700,109 @@ export default function DocumentGeneratePage() {
           }}
         />
 
-        {/* 통합 입력 폼 */}
-        {selectedTemplate && (isMeeting || templateFields.length > 0) && (
+        {/* 커스텀 템플릿: 자연어 입력 + AI 채우기 + 편집 폼 */}
+        {isCustom && selectedTemplate && templateFields.length > 0 && (
           <div className="card">
             <div className="card-header">
               <div className="card-title">
-                {selectedCustomTemplate?.name || categoryLabel[selectedTemplate] || '문서'} 내용 입력
+                {selectedCustomTemplate?.name || '커스텀 문서'} 작성
+              </div>
+            </div>
+            <div className="card-body space-y-5">
+              {/* 자연어 입력 영역 */}
+              <div>
+                <label className="block text-[0.8125rem] font-semibold mb-1.5">내용을 자유롭게 입력하세요</label>
+                <textarea
+                  value={freeText}
+                  onChange={(e) => setFreeText(e.target.value)}
+                  placeholder="예: 오늘 오후 3시에 회의실B에서 김철수, 이영희 참석해서 신규 프로젝트 킥오프 회의했어..."
+                  rows={5}
+                  onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 300) + 'px'; }}
+                  className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[300px]"
+                />
+                <div className="flex justify-end mt-2">
+                  <button
+                    onClick={handleFillFields}
+                    disabled={filling || !freeText.trim()}
+                    className="btn-primary text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {filling ? 'AI 분석 중...' : 'AI가 필드 채우기'}
+                  </button>
+                </div>
+              </div>
+
+              {/* 구분선 */}
+              {filled && (
+                <div className="flex items-center gap-3 text-xs text-neutral-muted">
+                  <div className="flex-1 border-t border-neutral-divider" />
+                  <span>AI가 채운 결과 — 수정 후 문서를 생성하세요</span>
+                  <div className="flex-1 border-t border-neutral-divider" />
+                </div>
+              )}
+
+              {/* 모든 필드 편집 폼 (AI 채움 여부 무관하게 표시) */}
+              <div className="space-y-3">
+                {templateFields.map((field) => {
+                  const value = formData[field.key] ?? '';
+                  const isFilled = filled && value !== '' && (!Array.isArray(value) || value.length > 0);
+                  const formatValue = (v) => {
+                    if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
+                      return Object.values(v).filter(Boolean).join(' / ');
+                    }
+                    return String(v);
+                  };
+                  const displayValue = Array.isArray(value)
+                    ? value.map((v, i) => `${i + 1}. ${formatValue(v)}`).join('\n')
+                    : (typeof value === 'object' && value !== null ? formatValue(value) : String(value));
+
+                  return (
+                    <div key={field.key}>
+                      <label className="block text-[0.8125rem] font-semibold mb-1">
+                        {field.label || field.key}
+                        {isFilled && <span className="ml-1.5 text-[0.6875rem] font-normal text-primary-600">AI</span>}
+                        {!isFilled && filled && <span className="ml-1.5 text-[0.6875rem] font-normal text-neutral-400">직접 입력</span>}
+                      </label>
+                      {(field.description || '').includes('배열') || (field.description || '').includes('목록') || (field.description || '').includes('문장') || displayValue.length > 80 ? (
+                        <textarea
+                          value={displayValue}
+                          onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                          rows={3}
+                          onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px'; }}
+                          className={`w-full px-3.5 py-2.5 border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[200px] ${isFilled ? 'border-primary-200 bg-primary-50/30' : 'border-neutral-border'}`}
+                        />
+                      ) : (
+                        <input
+                          value={displayValue}
+                          onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                          placeholder={field.description || `${field.label || field.key}을(를) 입력하세요`}
+                          className={`w-full px-3.5 py-2.5 border rounded-md text-sm outline-none focus:border-primary-500 ${isFilled ? 'border-primary-200 bg-primary-50/30' : 'border-neutral-border'}`}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* 문서 생성 버튼 */}
+              <div className="flex justify-end">
+                <button
+                  onClick={handleGenerate}
+                  disabled={loading}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'AI 생성 중...' : '문서 생성'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 시스템 템플릿: 기존 입력 폼 */}
+        {!isCustom && selectedTemplate && (isMeeting || templateFields.length > 0) && (
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">
+                {categoryLabel[selectedTemplate] || '문서'} 내용 입력
               </div>
             </div>
             <div className="card-body space-y-4">
