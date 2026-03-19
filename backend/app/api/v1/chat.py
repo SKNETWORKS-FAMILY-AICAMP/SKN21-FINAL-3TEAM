@@ -594,6 +594,31 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                 except Exception as _db_err:
                                     logger.warning("[Chat] doc_summary DB 업데이트 실패: %s", _db_err)
 
+                            # ── 스트리밍 doc_retrieve(QA/summary) 규정 연결 ──
+                            _doc_sub_type_reg = agent_response.get("sub_type", "")
+                            if (
+                                _doc_sub_type_reg in ("qa", "summary")
+                                and full_doc_response
+                                and len(full_doc_response) > 50
+                            ):
+                                try:
+                                    from ai.agents.regulation_validator import check_content_regulations
+                                    yield f"data: {json.dumps({'type': 'status', 'value': '규정 연관성 확인 중...'}, ensure_ascii=False)}\n\n"
+
+                                    _reg_result = await check_content_regulations(
+                                        full_doc_response, user_id=user.id
+                                    )
+                                    if _reg_result.get("notes"):
+                                        _reg_summary = _reg_result["summary"]
+                                        # 규정 노트를 토큰으로 스트리밍
+                                        yield f"data: {json.dumps({'type': 'token', 'value': _reg_summary}, ensure_ascii=False)}\n\n"
+                                        agent_response["regulation_check"] = _reg_result
+                                        agent_response["message"] = full_doc_response + _reg_summary
+                                        agent_response["answer"] = full_doc_response + _reg_summary
+                                        logger.info("[Chat] doc_retrieve 규정 연결: %d건", len(_reg_result["notes"]))
+                                except Exception as _reg_err:
+                                    logger.warning("[Chat] doc_retrieve 규정 연결 실패 (비차단): %s", _reg_err)
+
                             agent_response.pop("stream_pending", None)
                             agent_response.pop("sys_prompt", None)
                             agent_response.pop("user_prompt", None)
