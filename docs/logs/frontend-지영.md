@@ -3787,20 +3787,32 @@ Pod 꺼져도 유지되는 네트워크 볼륨(`/workspace/`, 2.3PB)에 저장:
 - **문제**: 메모 + 버튼 눌렀다가 뒤로 나가기를 반복하면 빈 메모가 계속 생성됨
 - **해결**: `addMemo` 시 빈 메모가 이미 있으면 새로 만들지 않고 기존 빈 메모를 선택하도록 수정
 
-#### 12) 대시보드 태스크 추가 팝업 취소 버튼 구분 (TaskPipelineWidget.jsx)
-
-- 취소 버튼에 테두리(`border border-neutral-border`) 추가하여 등록 버튼과 시각적 구분
-
-#### 13) 문서 생성 폼 border-radius 통일 (DocumentGeneratePage.jsx + DatePicker.jsx)
+#### 12) 문서 생성 폼 border-radius 통일 (DocumentGeneratePage.jsx + DatePicker.jsx)
 
 - 입력 칸, 드롭다운, DatePicker의 border-radius를 `rounded-md`로 통일
 - DatePicker 높이/패딩도 input과 동일하게 맞춤 (`h-[38px]` → `py-2.5`)
 
-#### 14) 챗봇 새 대화 버튼 동작 개선 (ChatPage.jsx + ChatWindow.jsx)
+#### 13) 챗봇 새 대화 버튼 동작 개선 (ChatPage.jsx + ChatWindow.jsx)
 
 - **목록 안 열리게**: 새 대화 클릭 시 세션 사이드바가 열리던 동작 제거 (`setSessionSidebarOpen(false)`)
 - **헤더 흔들림 수정**: 새 대화 시 `setIsHeaderHidden(false)`로 헤더 즉시 초기화
 - **스크롤 흔들림 수정**: 메시지가 없을 때 스크롤 이벤트가 헤더 상태를 변경하지 않도록 가드 추가
+
+#### 14) 문서 생성 폼 DynamicForm 통일 리팩토링 (DocumentGeneratePage.jsx)
+
+- **하드코딩 → DynamicForm 통합**: 회의록/보고서/제안서 각각 하드코딩하던 폼을 DynamicForm 하나로 통일
+- **field.type 분기 추가**: `date`→DatePicker, `team_dropdown`→TeamDropdown, `team_attendee`→TeamAttendeePicker
+- **layout: 'half' 지원**: 연속된 half 필드 2개를 자동으로 2열 그리드(`grid-cols-2`)로 묶음
+- **DEFAULT_TEMPLATE_FIELDS**: 기본 템플릿 필드 정의를 프론트에서 fallback으로 관리 (DB에 layout/type 없을 때 사용)
+- **DB form:true 추가 필드**: 기본 필드 아래에 자동 렌더링 (중복 키 `submit_date` 등은 제외)
+- **제안서 '날짜'→'제출일'**: 라벨 변경 + 하단 중복 제출일 칸 제거
+
+#### 15) 태스크 파이프라인 폼 UI 통일 (TasksPage.jsx + KanbanBoard.jsx)
+
+- **마감일 달력**: 네이티브 `<input type="date">` → 서비스 `DatePicker` 컴포넌트로 교체 (TasksPage, KanbanBoard 모두)
+- **폼 스타일 통일**: border-radius(`rounded-md`), 패딩(`px-3.5 py-2.5`), 보더(`border-neutral-border`), 배경(`bg-surface-card`), 포커스(`focus:border-primary-500`), 라벨(`text-[0.8125rem] font-semibold`) 전부 서비스 디자인 토큰으로 통일
+- **취소 버튼 구분**: 테두리 추가
+- **담당자 버튼**: `rounded-full` → `rounded-md`로 통일
 
 ### 다음 할 일
 

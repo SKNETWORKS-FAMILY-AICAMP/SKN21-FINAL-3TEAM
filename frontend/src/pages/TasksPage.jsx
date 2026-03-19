@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GitMerge, Clock, CheckCircle2, AlertTriangle, Plus, Trash2, X, Pencil } from 'lucide-react';
 import { listPipelineTasks, createPipelineTask, updatePipelineTask, deletePipelineTask } from '../api/tasks';
 import client from '../api/client';
+import DatePicker from '../components/common/DatePicker';
 
 const priorityColors = {
   high: 'bg-error-bg text-error dark:bg-red-900/40 dark:text-red-400',
@@ -324,33 +325,33 @@ export default function TasksPage() {
                   <X size={20} className="text-neutral-400" />
                 </button>
               </div>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">제목 *</label>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-[0.8125rem] font-semibold mb-1.5">제목 <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     value={form.title}
                     onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                    className="w-full px-5 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-neutral-300 dark:text-white"
+                    className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500 bg-surface-card"
                     placeholder="태스크 제목을 입력하세요"
                     required
                     autoFocus
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">설명</label>
+                <div>
+                  <label className="block text-[0.8125rem] font-semibold mb-1.5">설명</label>
                   <textarea
                     value={form.description}
                     onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                     rows={3}
-                    className="w-full px-5 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-neutral-300 dark:text-white resize-none"
+                    className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500 bg-surface-card resize-none"
                     placeholder="태스크에 대한 설명"
                   />
                 </div>
 
                 {/* 담당자 선택 */}
-                <div className="space-y-2">
-                  <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">담당자</label>
+                <div>
+                  <label className="block text-[0.8125rem] font-semibold mb-1.5">담당자</label>
                   <div className="flex flex-wrap gap-2">
                     {members.length === 0 && (
                       <span className="text-xs text-neutral-muted">팀원이 없습니다</span>
@@ -363,9 +364,9 @@ export default function TasksPage() {
                           key={m.id}
                           type="button"
                           onClick={() => setForm(f => ({ ...f, assignee: selected ? '' : m.name }))}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${selected
-                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 ring-1 ring-primary-300'
-                            : 'border-neutral-border text-neutral-sub hover:border-neutral-muted dark:bg-white/5'
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium border transition-all ${selected
+                            ? 'border-primary-500 bg-primary-50 text-primary-700 ring-1 ring-primary-300'
+                            : 'border-neutral-border text-neutral-sub hover:border-primary-300 bg-surface-card'
                             }`}
                         >
                           <img src={avatarSrc} alt={m.name} className="w-5 h-5 rounded-full bg-surface-card" />
@@ -376,50 +377,49 @@ export default function TasksPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">우선순위</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[0.8125rem] font-semibold mb-1.5">우선순위</label>
                     <select
                       value={form.priority}
                       onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all dark:text-white appearance-none cursor-pointer"
+                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500 bg-surface-card appearance-none cursor-pointer"
                     >
                       <option value="high">높음</option>
                       <option value="medium">보통</option>
                       <option value="low">낮음</option>
                     </select>
                   </div>
-                  <div className="space-y-2">
-                    <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">마감일</label>
-                    <input
-                      type="date"
+                  <div>
+                    <label className="block text-[0.8125rem] font-semibold mb-1.5">마감일</label>
+                    <DatePicker
                       value={form.dueDate}
-                      onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all dark:text-white"
+                      onChange={(v) => setForm(f => ({ ...f, dueDate: v }))}
+                      placeholder="마감일 선택"
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="block text-[11px] font-black uppercase tracking-widest text-neutral-400 ml-1">태그</label>
+                <div>
+                  <label className="block text-[0.8125rem] font-semibold mb-1.5">태그</label>
                   <input
                     type="text"
                     value={form.tags}
                     onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
-                    className="w-full px-5 py-3 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-neutral-300 dark:text-white"
+                    className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500 bg-surface-card"
                     placeholder="Frontend, API (쉼표로 구분)"
                   />
                 </div>
-                <div className="flex gap-3 pt-6">
+                <div className="flex gap-2 pt-4">
                   <button
                     type="button"
                     onClick={closeModal}
-                    className="flex-1 py-4 text-xs font-black rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all"
+                    className="flex-1 py-3 text-xs font-black rounded-md border border-neutral-border text-neutral-sub hover:bg-surface-hover hover:text-neutral-main transition-all"
                   >
                     취소
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-4 bg-primary-700 text-white text-xs font-black rounded-xl shadow-xl hover:bg-primary-900 hover:scale-105 active:scale-95 transition-all"
+                    className="flex-1 py-3 bg-primary-700 text-white text-xs font-black rounded-md shadow-xl shadow-primary-700/20 hover:bg-primary-800 hover:scale-105 transition-all"
                   >
                     {editingTask ? '저장' : '추가'}
                   </button>

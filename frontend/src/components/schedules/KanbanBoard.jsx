@@ -12,6 +12,7 @@ import client from '../../api/client';
 import { toast } from '../../store/toastStore';
 import MemberDropdown from '../common/MemberDropdown';
 import useScheduleTypeStore, { DEFAULT_TYPES } from '../../store/scheduleTypeStore';
+import DatePicker from '../common/DatePicker';
 import useAuthStore from '../../store/authStore';
 
 const priorityColors = {
@@ -1012,7 +1013,7 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-1 ml-1">Due Date</label>
-                                    <input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} className={`${INPUT_CLS} py-2`} />
+                                    <DatePicker value={form.dueDate} onChange={(v) => setForm(f => ({ ...f, dueDate: v }))} placeholder="마감일 선택" />
                                 </div>
                             </div>
 
