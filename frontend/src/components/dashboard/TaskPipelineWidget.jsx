@@ -486,7 +486,7 @@ export default function TaskPipelineWidget() {
                                 <button
                                     type="button"
                                     onClick={() => setShowAddModal(false)}
-                                    className="flex-1 py-4 text-xs font-black rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all"
+                                    className="flex-1 py-4 text-xs font-black rounded-xl border border-neutral-border text-neutral-sub hover:bg-surface-hover hover:text-neutral-main transition-all"
                                 >
                                     취소
                                 </button>
