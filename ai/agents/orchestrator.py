@@ -80,10 +80,17 @@ async def general_response_node(state: AgentState) -> AgentState:
             base_url=settings.LLM_BASE_URL,  # None이면 기본 OpenAI URL 사용
         )
 
+        # 대화 요약이 있으면 시스템 프롬프트에 포함
+        from datetime import date as _date
+        sys_prompt = f"당신은 업무 도우미 '듀듀'입니다. 한국어로 친절하게 답변하세요.\n오늘 날짜: {_date.today().isoformat()}"
+        chat_summary = state.get("chat_summary")
+        if chat_summary:
+            sys_prompt += f"\n\n[이전 대화 요약]\n{chat_summary}"
+
         response = await client.chat.completions.create(
             model=settings.OPENAI_MODEL,
             messages=[
-                {"role": "system", "content": "당신은 업무 도우미 '듀듀'입니다. 한국어로 친절하게 답변하세요."},
+                {"role": "system", "content": sys_prompt},
                 *state.get("chat_history", []),
                 {"role": "user", "content": state["user_input"]},
             ],

@@ -30,6 +30,7 @@ class AgentState(TypedDict):
 
     # ── 대화 이력 (경은) ──
     chat_history: list[dict]                # [{"role": "user"|"assistant", "content": "..."}]
+    chat_summary: Optional[str]             # sLLM 기반 이전 대화 요약 (긴 대화 맥락 유지용)
 
     # ── 에러 (경은) ──
     error: Optional[str]                    # 에러 메시지 (없으면 None)

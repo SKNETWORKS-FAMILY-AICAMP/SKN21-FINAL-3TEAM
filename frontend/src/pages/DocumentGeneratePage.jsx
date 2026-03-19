@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronDown, X } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import client from '../api/client';
@@ -7,6 +7,7 @@ import TemplateUploadDialog from '../components/documents/TemplateUploadDialog';
 import DocumentPreview from '../components/documents/DocumentPreview';
 import MeetingPreview from '../components/meetings/MeetingPreview';
 import { generateDocument, downloadDocument, uploadTemplate, listTemplates, getTemplate } from '../api/documents';
+import DatePicker from '../components/common/DatePicker';
 import { toast } from '../store/toastStore';
 
 
@@ -14,9 +15,71 @@ import { toast } from '../store/toastStore';
  * 팀 + 참석자 선택 UI (회의록 전용)
  * — DB에서 전체 멤버를 불러와 팀별 필터링 + 체크박스 선택
  */
+function TeamDropdown({ user, value, onChange }) {
+  const [allMembers, setAllMembers] = useState([]);
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    client.get('/auth/all-members')
+      .then(res => setAllMembers(res.data || []))
+      .catch(() => setAllMembers([]));
+  }, []);
+
+  useEffect(() => {
+    const handler = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const teams = useMemo(() => {
+    const set = new Set(allMembers.map(m => m.team).filter(Boolean));
+    if (user?.team) set.add(user.team);
+    return [...set].sort();
+  }, [allMembers, user]);
+
+  return (
+    <div>
+      <label className="block text-[0.8125rem] font-semibold mb-1.5">팀</label>
+      <div ref={ref} className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen(v => !v)}
+          className={`w-full flex items-center justify-between px-3.5 py-2.5 border rounded-md text-sm transition ${open
+            ? 'border-primary-500 bg-primary-50 text-primary-700'
+            : 'border-neutral-border bg-surface-card text-neutral-main hover:border-primary-300'
+          }`}
+        >
+          <span className={value ? '' : 'text-neutral-400'}>{value || '팀 선택'}</span>
+          <ChevronDown size={14} className={`text-neutral-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        </button>
+        {open && (
+          <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-surface-card border border-neutral-border rounded-md shadow-lg overflow-hidden">
+            {teams.map(t => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => { onChange(t); setOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 text-sm transition ${t === value
+                  ? 'bg-primary-100 text-primary-700 font-semibold'
+                  : 'text-neutral-main hover:bg-primary-50'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendees, onAttendeesChange }) {
   const [allMembers, setAllMembers] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [teamOpen, setTeamOpen] = useState(false);
+  const teamRef = useRef(null);
 
   useEffect(() => {
     client.get('/auth/all-members')
@@ -32,6 +95,12 @@ function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendee
       })
       .catch(() => setAllMembers([]));
   }, [user]);
+
+  useEffect(() => {
+    const handler = (e) => { if (!teamRef.current?.contains(e.target)) setTeamOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const teams = useMemo(() => {
     const set = new Set(allMembers.map(m => m.team).filter(Boolean));
@@ -55,22 +124,39 @@ function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendee
   };
 
   return (
-    <>
+    <div className="grid grid-cols-2 gap-3">
       {/* 팀 선택 */}
       <div>
         <label className="block text-[0.8125rem] font-semibold mb-1.5">팀</label>
-        <div className="relative">
-          <select
-            value={selectedTeam}
-            onChange={(e) => onTeamChange(e.target.value)}
-            className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 appearance-none bg-white dark:bg-neutral-900 cursor-pointer"
+        <div ref={teamRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setTeamOpen(v => !v)}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 border rounded-md text-sm transition ${teamOpen
+              ? 'border-primary-500 bg-primary-50 text-primary-700'
+              : 'border-neutral-border bg-surface-card text-neutral-main hover:border-primary-300'
+            }`}
           >
-            <option value="">팀 선택</option>
-            {teams.map(t => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+            <span className={selectedTeam ? '' : 'text-neutral-400'}>{selectedTeam || '팀 선택'}</span>
+            <ChevronDown size={14} className={`text-neutral-400 transition-transform duration-200 ${teamOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {teamOpen && (
+            <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-surface-card border border-neutral-border rounded-md shadow-lg overflow-hidden">
+              {teams.map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => { onTeamChange(t); setTeamOpen(false); }}
+                  className={`w-full text-left px-3.5 py-2.5 text-sm transition ${t === selectedTeam
+                    ? 'bg-primary-100 text-primary-700 font-semibold'
+                    : 'text-neutral-main hover:bg-primary-50'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -80,7 +166,7 @@ function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendee
         <div className="relative">
           <div
             onClick={() => setShowDropdown(prev => !prev)}
-            className="w-full min-h-[42px] px-3.5 py-2 border border-neutral-border rounded-sm text-sm outline-none focus-within:border-primary-500 cursor-pointer flex flex-wrap items-center gap-1.5"
+            className="w-full min-h-[42px] px-3.5 py-2 border border-neutral-border rounded-md text-sm outline-none focus-within:border-primary-500 cursor-pointer flex flex-wrap items-center gap-1.5"
           >
             {selectedAttendees.length > 0 ? (
               selectedAttendees.map(name => (
@@ -140,7 +226,7 @@ function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendee
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -149,7 +235,33 @@ function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendee
 const FORM_KEYS = {
   meeting_minutes: ['title', 'date', 'attendees', 'team', 'content'],
   report: ['title', 'date', 'author', 'department', 'report_to', 'content'],
-  proposal: ['title', 'submit_date', 'company', 'manager', 'submit_to', 'content'],
+  proposal: ['title', 'date', 'company', 'manager', 'submit_to', 'content'],
+};
+
+// 기본 템플릿 필드 정의 (DB에 layout/type 정보가 없을 때 fallback)
+const DEFAULT_TEMPLATE_FIELDS = {
+  meeting_minutes: [
+    { key: 'title', label: '회의 제목', type: 'text', layout: 'half', form: true, required: true },
+    { key: 'date', label: '날짜', type: 'date', layout: 'half', form: true },
+    { key: '_team_attendee', label: '팀/참석자', type: 'team_attendee', form: true },
+    { key: 'content', label: '회의 내용', type: 'textarea', form: true },
+  ],
+  report: [
+    { key: 'title', label: '보고서 제목', type: 'text', layout: 'half', form: true, required: true },
+    { key: 'date', label: '날짜', type: 'date', layout: 'half', form: true },
+    { key: 'department', label: '팀', type: 'team_dropdown', layout: 'half', form: true },
+    { key: 'author', label: '작성자', type: 'text', layout: 'half', form: true },
+    { key: 'report_to', label: '보고 대상', type: 'text', form: true },
+    { key: 'content', label: '보고 내용', type: 'textarea', form: true },
+  ],
+  proposal: [
+    { key: 'title', label: '제안서 제목', type: 'text', layout: 'half', form: true, required: true },
+    { key: 'date', label: '제출일', type: 'date', layout: 'half', form: true },
+    { key: 'company', label: '회사명', type: 'text', layout: 'half', form: true },
+    { key: 'manager', label: '담당자', type: 'text', layout: 'half', form: true },
+    { key: 'submit_to', label: '제출처', type: 'text', form: true },
+    { key: 'content', label: '제안 내용', type: 'textarea', form: true },
+  ],
 };
 
 /**
@@ -157,93 +269,146 @@ const FORM_KEYS = {
  * attendees/team 필드는 회의록일 때 TeamAttendeePicker로 대체되므로 스킵
  * form: false 필드는 LLM이 생성하므로 UI에 표시하지 않음
  */
-function DynamicForm({ fields, formData, onChange, skipKeys = [], category }) {
+function DynamicForm({ fields, formData, onChange, skipKeys = [], category, user, selectedTeam, onTeamChange, selectedAttendees, onAttendeesChange }) {
   if (!fields || fields.length === 0) return null;
 
-  const inputClass = 'w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500';
+  const inputClass = 'w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500';
 
   const filteredFields = fields
     .filter(f => !skipKeys.includes(f.key))
     .filter(f => {
-      // form 플래그가 명시적이면 그대로 사용
       if (f.form === false) return false;
       if (f.form === true) return true;
-      // form 없으면 (커스텀 템플릿) → FORM_KEYS로 판단
       const formKeys = FORM_KEYS[category] || ['title', 'date', 'content'];
       return formKeys.includes(f.key);
     });
   if (filteredFields.length === 0) return null;
 
+  // layout: 'half' 필드들을 2열 그리드로 묶기
+  const rows = [];
+  let i = 0;
+  while (i < filteredFields.length) {
+    const field = filteredFields[i];
+    if (field.layout === 'half' && i + 1 < filteredFields.length && filteredFields[i + 1].layout === 'half') {
+      rows.push([field, filteredFields[i + 1]]);
+      i += 2;
+    } else {
+      rows.push([field]);
+      i += 1;
+    }
+  }
+
+  const renderField = (field) => {
+    const value = formData[field.key] || '';
+
+    // DatePicker
+    if (field.type === 'date') {
+      return (
+        <div key={field.key}>
+          <label className="block text-[0.8125rem] font-semibold mb-1.5">
+            {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <DatePicker
+            value={value}
+            onChange={(v) => onChange(field.key, v)}
+            placeholder="날짜 선택"
+          />
+        </div>
+      );
+    }
+
+    // 팀 드롭다운
+    if (field.type === 'team_dropdown') {
+      return (
+        <TeamDropdown
+          key={field.key}
+          user={user}
+          value={value}
+          onChange={(v) => onChange(field.key, v)}
+        />
+      );
+    }
+
+    // 팀 + 참석자 (회의록 전용)
+    if (field.type === 'team_attendee') {
+      return (
+        <TeamAttendeePicker
+          key={field.key}
+          user={user}
+          selectedTeam={selectedTeam}
+          onTeamChange={onTeamChange}
+          selectedAttendees={selectedAttendees}
+          onAttendeesChange={onAttendeesChange}
+        />
+      );
+    }
+
+    // textarea
+    if (field.type === 'textarea') {
+      return (
+        <div key={field.key}>
+          <label className="block text-[0.8125rem] font-semibold mb-1.5">
+            {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <textarea
+            value={value}
+            onChange={(e) => onChange(field.key, e.target.value)}
+            placeholder={`${field.label}을(를) 입력하세요`}
+            rows={10}
+            onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 400) + 'px'; }}
+            className={`${inputClass} resize-none overflow-y-auto max-h-[400px]`}
+          />
+        </div>
+      );
+    }
+
+    // list
+    if (field.type === 'list') {
+      return (
+        <div key={field.key}>
+          <label className="block text-[0.8125rem] font-semibold mb-1.5">
+            {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <input
+            value={value}
+            onChange={(e) => onChange(field.key, e.target.value)}
+            placeholder={`${field.label} (쉼표로 구분)`}
+            className={inputClass}
+          />
+        </div>
+      );
+    }
+
+    // default: text
+    return (
+      <div key={field.key}>
+        <label className="block text-[0.8125rem] font-semibold mb-1.5">
+          {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+        <input
+          value={value}
+          onChange={(e) => onChange(field.key, e.target.value)}
+          placeholder={`${field.label}을(를) 입력하세요`}
+          className={inputClass}
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
-      {filteredFields.map((field) => {
-        const value = formData[field.key] || '';
-
-        if (field.type === 'textarea') {
-          return (
-            <div key={field.key}>
-              <label className="block text-[0.8125rem] font-semibold mb-1.5">
-                {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
-              </label>
-              <textarea
-                value={value}
-                onChange={(e) => onChange(field.key, e.target.value)}
-                placeholder={`${field.label}을(를) 입력하세요`}
-                rows={4}
-                onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px'; }}
-                className={`${inputClass} resize-none overflow-y-auto max-h-[200px]`}
-              />
-            </div>
-          );
-        }
-
-        if (field.type === 'date') {
-          return (
-            <div key={field.key} className="w-1/2">
-              <label className="block text-[0.8125rem] font-semibold mb-1.5">
-                {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
-              </label>
-              <input
-                type="date"
-                value={value}
-                onChange={(e) => onChange(field.key, e.target.value)}
-                className={inputClass}
-              />
-            </div>
-          );
-        }
-
-        if (field.type === 'list') {
-          return (
-            <div key={field.key}>
-              <label className="block text-[0.8125rem] font-semibold mb-1.5">
-                {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
-              </label>
-              <input
-                value={value}
-                onChange={(e) => onChange(field.key, e.target.value)}
-                placeholder={`${field.label} (쉼표로 구분)`}
-                className={inputClass}
-              />
-            </div>
-          );
-        }
-
-        // default: text
-        return (
-          <div key={field.key}>
-            <label className="block text-[0.8125rem] font-semibold mb-1.5">
-              {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
-            </label>
-            <input
-              value={value}
-              onChange={(e) => onChange(field.key, e.target.value)}
-              placeholder={`${field.label}을(를) 입력하세요`}
-              className={inputClass}
-            />
+      {rows.map((row, idx) =>
+        row.length === 2 ? (
+          <div key={idx} className="grid grid-cols-2 gap-3">
+            {renderField(row[0])}
+            {renderField(row[1])}
           </div>
-        );
-      })}
+        ) : row[0].type === 'team_attendee' ? (
+          renderField(row[0])
+        ) : (
+          <div key={idx}>{renderField(row[0])}</div>
+        )
+      )}
     </div>
   );
 }
@@ -281,12 +446,15 @@ export default function DocumentGeneratePage() {
 
   // 템플릿 선택 → parsed_structure 로드 → 동적 폼 초기화
   const handleTemplateSelect = async (template, customTpl = null) => {
+    // 스크롤 위치 보존
+    const scrollY = window.scrollY;
     setSelectedTemplate(template);
     setSelectedCustomTemplate(customTpl);
     setResult(null);
     setMeetingResult(null);
-    setFormData({});
+    setFormData({ date: new Date().toISOString().split('T')[0] });
     setTemplateFields([]);
+    requestAnimationFrame(() => window.scrollTo(0, scrollY));
     setSelectedTeam(user?.team || '');
     setSelectedAttendees([]);
 
@@ -313,7 +481,7 @@ export default function DocumentGeneratePage() {
           const fields = ps.fields || ps;
           setTemplateFields(Array.isArray(fields) ? fields : []);
 
-          const defaults = {};
+          const defaults = { date: new Date().toISOString().split('T')[0] };
           const formKeys = FORM_KEYS[template] || ['title', 'date', 'content'];
           for (const f of (Array.isArray(fields) ? fields : [])) {
             // form: false 필드는 폼 초기값에서 제외 (LLM이 생성)
@@ -442,8 +610,17 @@ export default function DocumentGeneratePage() {
     proposal: '제안서',
   };
 
-  // 회의록일 때 DynamicForm에서 제외할 키 (TeamAttendeePicker가 대신 렌더링)
-  const meetingSkipKeys = isMeeting ? ['attendees', 'team'] : [];
+  // 기본 필드 + DB 추가 필드 머지
+  const mergedFields = useMemo(() => {
+    const defaults = DEFAULT_TEMPLATE_FIELDS[selectedTemplate];
+    if (!defaults) return templateFields; // 커스텀 템플릿은 DB 필드 그대로
+
+    const defaultKeys = new Set(defaults.map(f => f.key));
+    // 기본 필드와 중복되는 DB 필드 제외 (예: submit_date는 date로 대체됨)
+    const skipExtras = new Set([...defaultKeys, 'submit_date']);
+    const extras = templateFields.filter(f => !skipExtras.has(f.key) && f.form !== false);
+    return [...defaults, ...extras];
+  }, [selectedTemplate, templateFields]);
 
   return (
     <div>
@@ -487,24 +664,17 @@ export default function DocumentGeneratePage() {
               </div>
             </div>
             <div className="card-body space-y-4">
-              {/* 회의록: 팀 + 참석자 (항상 표시) */}
-              {isMeeting && (
-                <TeamAttendeePicker
-                  user={user}
-                  selectedTeam={selectedTeam}
-                  onTeamChange={setSelectedTeam}
-                  selectedAttendees={selectedAttendees}
-                  onAttendeesChange={setSelectedAttendees}
-                />
-              )}
-
-              {/* 동적 폼 필드 (회의록이면 attendees/team 제외) */}
               <DynamicForm
-                fields={templateFields}
+                fields={mergedFields}
                 formData={formData}
                 onChange={handleFieldChange}
-                skipKeys={meetingSkipKeys}
+                skipKeys={[]}
                 category={selectedTemplate}
+                user={user}
+                selectedTeam={selectedTeam}
+                onTeamChange={setSelectedTeam}
+                selectedAttendees={selectedAttendees}
+                onAttendeesChange={setSelectedAttendees}
               />
 
               <div className="flex justify-end">

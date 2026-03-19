@@ -131,6 +131,23 @@ async def create_pipeline_task(
     db: AsyncSession = Depends(get_db),
 ):
     """Pipeline Task 생성 (자동으로 사용자의 팀 배정)"""
+    # 규정 검증 (내부 — 보안/규정 위반 체크)
+    regulation_warning = None
+    try:
+        from ai.agents.regulation_checker import regulation_check
+        check = await regulation_check(
+            f"'{req.title}' 작업이 보안 규정이나 회사 규정에 위반되는가? (내용: {(req.description or '')[:100]})"
+        )
+        if check.get("checked") and check.get("result") in ("no", "conditional"):
+            regulation_warning = {
+                "level": "danger" if check["result"] == "no" else "warning",
+                "message": check.get("reason", "규정 확인 필요"),
+                "regulation": check.get("regulation"),
+                "confidence": check.get("confidence", 0),
+            }
+    except Exception:
+        pass
+
     task = PipelineTask(
         title=req.title,
         description=req.description,
@@ -145,12 +162,15 @@ async def create_pipeline_task(
     )
     db.add(task)
     await db.flush()
-    return {
+    result = {
         "id": task.id,
         "title": task.title,
         "stage": task.stage,
         "team": task.team,
     }
+    if regulation_warning:
+        result["regulation_warning"] = regulation_warning
+    return result
 
 
 @router.put("/{task_id}")

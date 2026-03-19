@@ -71,7 +71,7 @@ export default function DatePicker({ value, onChange, placeholder = '날짜 선�
       <button
         type="button"
         onClick={() => setIsOpen((o) => !o)}
-        className="flex items-center gap-2 bg-surface-card border border-neutral-border rounded-md px-4 w-full h-[38px] text-[0.8125rem] hover:border-primary-400 transition"
+        className="flex items-center gap-2 bg-surface-card border border-neutral-border rounded-md px-3.5 w-full py-2.5 text-sm hover:border-primary-400 transition"
       >
         <Calendar size={15} className="text-neutral-muted flex-shrink-0" />
         <span className={value ? 'text-neutral-main' : 'text-neutral-muted'}>

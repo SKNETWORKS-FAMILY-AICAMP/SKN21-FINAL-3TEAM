@@ -95,6 +95,8 @@ const useUIStore = create((set) => ({
   toggleMemo: () => set((state) => ({ memoOpen: !state.memoOpen })),
   selectMemo: (id) => set({ activeMemoId: id }),
   addMemo: () => set((state) => {
+    const existing = state.memos.find(m => !m.text.trim())
+    if (existing) return { activeMemoId: existing.id }
     const newMemo = { id: Date.now().toString(), text: '', createdAt: Date.now() }
     const next = [newMemo, ...state.memos]
     saveMemos(next)

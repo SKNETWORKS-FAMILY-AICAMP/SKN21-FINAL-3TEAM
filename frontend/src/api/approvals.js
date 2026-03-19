@@ -27,11 +27,11 @@ export const updateApproval = (id, data) => {
   });
 };
 export const seedApprovals = () => client.post('/approvals/seed');
-export const suggestApprovals = () => client.post('/approvals/suggest', {}, { timeout: 120000 });
-export const generateChecklist = () => client.post('/approvals/checklist', {}, { timeout: 120000 });
-export const suggestSchedules = () => client.post('/approvals/suggest-schedules', {}, { timeout: 120000 });
+export const suggestApprovals = () => client.post('/approvals/suggest', {}, { timeout: 180000 });
+export const generateChecklist = () => client.post('/approvals/checklist', {}, { timeout: 180000 });
+export const suggestSchedules = () => client.post('/approvals/suggest-schedules', {}, { timeout: 180000 });
 export const suggestForProject = (projectName) =>
-  client.post('/approvals/suggest-project', { project_name: projectName }, { timeout: 120000 });
+  client.post('/approvals/suggest-project', { project_name: projectName }, { timeout: 180000 });
 
 export const getApprovalFileUrl = (id) => `/api/v1/approvals/${id}/file`;
 
