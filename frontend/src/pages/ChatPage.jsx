@@ -425,6 +425,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
 }
 
 export default function ChatPage() {
+  const { isScrolled: topbarScrolled } = useOutletContext();
   const [isChatScrolled, setIsChatScrolled] = useState(false);
   const [searchParams] = useSearchParams();
   const { messages, isStreaming, currentIntent, currentStatus, sendMessage } = useChat();
@@ -713,7 +714,7 @@ export default function ChatPage() {
       <div className="flex flex-1 min-h-0">
         {/* 왼쪽 아이콘 레일 + 세션 사이드바 */}
         <div className="flex flex-shrink-0 h-full relative z-10">
-          <div className="w-16 flex flex-col items-center py-4 gap-4 bg-transparent">
+          <div className="w-16 flex flex-col items-center py-4 gap-4 bg-transparent sticky top-[86px] z-20">
             <button
               onClick={() => setSessionSidebarOpen(!sessionSidebarOpen)}
               title={sessionSidebarOpen ? '대화 목록 닫기' : '대화 목록'}
@@ -737,7 +738,7 @@ export default function ChatPage() {
 
         {/* 챗 영역 */}
         <div className="flex-1 min-w-0">
-          <ChatWindow onScrollChange={setIsChatScrolled} onSend={handleSend} messages={messages} selectedDocumentName={selectedDocumentName} onClearDocument={clearSelectedDocument} activeIntent={currentIntent || messages.filter(m => m.role === 'assistant').at(-1)?.resultIntent || messages.filter(m => m.role === 'assistant').at(-1)?.intent} isStreaming={isStreaming} panelOpen={panelOpen || !!docViewDoc}>
+          <ChatWindow onScrollChange={setIsChatScrolled} onSend={handleSend} messages={messages} selectedDocumentName={selectedDocumentName} onClearDocument={clearSelectedDocument} activeIntent={currentIntent || messages.filter(m => m.role === 'assistant').at(-1)?.resultIntent || messages.filter(m => m.role === 'assistant').at(-1)?.intent} isStreaming={isStreaming} panelOpen={panelOpen || !!docViewDoc} topbarScrolled={topbarScrolled}>
             {/* 메시지가 없을 때 — 추천 질문 */}
             {messages.length === 0 && (
               <SuggestedQuestions onSelect={handleSend} />

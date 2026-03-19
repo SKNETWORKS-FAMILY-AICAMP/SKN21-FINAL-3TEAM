@@ -105,7 +105,7 @@ export default function RegulationPanel({ regulations = [], isOpen, onClose, sea
               )}
               {typeof reg.relevance === 'number' && !isNaN(reg.relevance) && (
                 <div className="mt-2 flex items-center gap-1 text-[0.6875rem] text-neutral-muted">
-                  <span>관련도</span>
+                  <span>신뢰도</span>
                   <div className="flex-1 h-1.5 bg-neutral-divider rounded-full overflow-hidden">
                     <div
                       className="h-full bg-primary-500 rounded-full"
