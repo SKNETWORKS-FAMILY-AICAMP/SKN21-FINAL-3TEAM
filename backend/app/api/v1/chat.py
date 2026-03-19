@@ -288,7 +288,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         }
 
                     elif node_name == "judgment_agent":
-                        # 2-4. 판단 Agent 스트리밍 (sLLM 우선 + API fallback)
+                        # 2-4. 판단 Agent 2단계 sLLM (1: JSON 추출, 2: 자연어 설명 스트리밍)
                         agent_response = node_output.get("agent_response", {})
                         if agent_response.get("stream_pending"):
                             import os as _os_j
@@ -300,29 +300,29 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             _j_use_sllm = _j_mode == "sllm"
                             _j_stream_model = None
                             j_client = None
+                            full_response = ""
 
                             if _j_use_sllm:
-                                # === sLLM 2단계 호출: 1) JSON 받기 2) 자연어 스트리밍 ===
+                                # === sLLM 2단계 호출 ===
                                 vllm_base = _os_j.getenv("VLLM_BASE_URL", "http://localhost:8000/v1")
                                 vllm_api_key = _os_j.getenv("VLLM_API_KEY", "EMPTY")
                                 vllm_model = _os_j.getenv("VLLM_MODEL", "kakaocorp/kanana-1.5-8b-instruct-2505")
                                 _j_use_lora = _os_j.getenv("VLLM_USE_LORA", "false").lower() == "true"
-                                if _j_use_lora:
-                                    vllm_model = "v1_judgment"
+                                lora_model = "v1_judgment" if _j_use_lora else vllm_model
                                 j_client = _AsyncOpenAI_j(
                                     api_key=vllm_api_key,
                                     base_url=vllm_base,
                                     timeout=_httpx_j.Timeout(60.0, connect=15.0),
                                     max_retries=0,
                                 )
-                                _j_stream_model = vllm_model
-                                logger.info("[Chat] judgment sLLM 2단계: model=%s", vllm_model)
+                                _j_stream_model = lora_model
+                                logger.info("[Chat] judgment sLLM 2단계: model=%s", lora_model)
 
-                                # 1단계: 비스트리밍으로 JSON 받기 (학습된 프롬프트 사용)
+                                # ── 1단계: LoRA로 JSON 추출 (비스트리밍) ──
                                 from ai.llm.prompts import JUDGMENT_SYSTEM_PROMPT as _J_SYS
                                 try:
                                     _j_resp = await j_client.chat.completions.create(
-                                        model=_j_stream_model,
+                                        model=lora_model,
                                         messages=[
                                             {"role": "system", "content": _J_SYS},
                                             {"role": "user", "content": agent_response["user_prompt"]},
@@ -331,57 +331,79 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                         max_tokens=2048,
                                     )
                                     full_response = _j_resp.choices[0].message.content or ""
-                                    logger.info("[Chat] judgment sLLM 1단계 JSON 수신 (%d자)", len(full_response))
+                                    logger.info("[Chat] judgment 1단계 JSON 수신 (%d자)", len(full_response))
                                 except Exception as _sllm_err:
-                                    logger.warning("[Chat] judgment sLLM 1단계 실패, API fallback: %s", _sllm_err)
-                                    _j_use_sllm = False  # fallback으로 전환
+                                    logger.warning("[Chat] judgment 1단계 실패, API fallback: %s", _sllm_err)
+                                    _j_use_sllm = False
                                     full_response = ""
 
-                                # 1단계 성공 시 → 2단계: 자연어 설명 스트리밍
+                                # ── 2단계: base 모델로 자연어 설명 스트리밍 ──
                                 if _j_use_sllm and full_response:
                                     from ai.agents.judgment_agent import _parse_llm_response as _plr
                                     _j_parsed_check = _plr(full_response)
 
                                     if _j_parsed_check.get("confidence", 0) > 0:
-                                        # JSON 파싱 성공 → 자연어 설명 스트리밍
                                         _user_q = agent_response["user_prompt"].split("## 사용자 질문")[-1].strip() if "## 사용자 질문" in agent_response["user_prompt"] else agent_response["user_prompt"].split("\n")[-1]
                                         _reasoning = _j_parsed_check.get("reasoning", "")
                                         _result = _j_parsed_check.get("result", "")
+                                        _conditions = _j_parsed_check.get("conditions", "")
                                         _regs = _j_parsed_check.get("regulations", [])
-                                        _reg_info = ", ".join(r.get("article", "") for r in _regs) if _regs else ""
+                                        _reg_info = ", ".join(f"{r.get('article', '')} ({r.get('content', '')})" for r in _regs[:3]) if _regs else ""
 
-                                        _explain_prompt = f"""다음 규정 판단 결과를 자연어로 설명해주세요. 2-4문장으로 간결하게 설명하세요.
-섹션 헤더(##, 1부 등) 없이 바로 설명을 시작하세요.
+                                        # RAG 규정 원문 상위 2개 포함
+                                        _rag_ctx = agent_response.get("_rag_context", [])
+                                        _rag_text = ""
+                                        for _rc in _rag_ctx[:2]:
+                                            _rc_content = _rc.get("content", "") if isinstance(_rc, dict) else str(_rc)
+                                            if _rc_content:
+                                                _rag_text += f"\n- {_rc_content[:200]}"
 
-사용자 질문: {_user_q}
-판단 결과: {_result}
+                                        _result_kr = {"yes": "가능", "no": "불가", "conditional": "조건부 가능", "no_regulation": "관련 규정 없음"}.get(_result, _result)
+
+                                        _explain_sys = """당신은 사내 규정 안내 전문가입니다.
+아래 판단 데이터를 바탕으로 사용자에게 친절하고 구체적으로 답변하세요.
+
+규칙:
+- 반드시 제공된 판단 근거(reasoning) 안에서만 답변하세요. 없는 내용을 지어내지 마세요.
+- 관련 규정 조항을 자연스럽게 언급하세요 (예: "제8조에 따르면...")
+- 조건부(conditional)이면 필요한 조건을 구체적으로 안내하세요
+- 불가(no)이면 왜 안 되는지 명확히 설명하세요
+- 3~5문장으로 간결하게 답변하세요
+- "1부", "2부", "##" 같은 섹션 헤더 없이 바로 설명을 시작하세요"""
+
+                                        _explain_user = f"""사용자 질문: {_user_q}
+
+판단 결과: {_result_kr}
 판단 근거: {_reasoning}
-관련 규정: {_reg_info}"""
+{f'조건: {_conditions}' if _conditions else ''}
+관련 규정: {_reg_info}
+{f'규정 원문 참고:{_rag_text}' if _rag_text else ''}"""
 
                                         try:
                                             _explain_stream = await j_client.chat.completions.create(
-                                                model=_os_j.getenv("VLLM_MODEL", "kakaocorp/kanana-1.5-8b-instruct-2505"),
-                                                messages=[{"role": "user", "content": _explain_prompt}],
-                                                temperature=0.3,
+                                                model=vllm_model,  # base 모델 (LoRA 없이)
+                                                messages=[
+                                                    {"role": "system", "content": _explain_sys},
+                                                    {"role": "user", "content": _explain_user},
+                                                ],
+                                                temperature=0.4,
                                                 max_tokens=512,
                                                 stream=True,
                                             )
                                             async for chunk in _explain_stream:
                                                 if chunk.choices[0].delta.content:
                                                     yield f"data: {json.dumps({'type': 'token', 'value': chunk.choices[0].delta.content}, ensure_ascii=False)}\n\n"
-                                            logger.info("[Chat] judgment sLLM 2단계 자연어 스트리밍 완료")
+                                            logger.info("[Chat] judgment 2단계 자연어 스트리밍 완료")
                                         except Exception as _exp_err:
-                                            # 2단계 실패해도 1단계 JSON은 유효
-                                            logger.warning("[Chat] judgment 2단계 스트리밍 실패: %s", _exp_err)
+                                            logger.warning("[Chat] judgment 2단계 실패: %s", _exp_err)
                                             yield f"data: {json.dumps({'type': 'token', 'value': _reasoning}, ensure_ascii=False)}\n\n"
                                     else:
-                                        # JSON 파싱 실패 → API fallback
-                                        logger.warning("[Chat] judgment sLLM JSON 파싱 실패, API fallback")
+                                        logger.warning("[Chat] judgment 1단계 JSON 파싱 실패, API fallback")
                                         _j_use_sllm = False
                                         full_response = ""
 
                             if not _j_use_sllm:
-                                # API 모드: 기존 OpenAI (스트리밍)
+                                # API 모드: OpenAI 스트리밍 (자연어 + JSON)
                                 openai_key = _os_j.getenv("OPENAI_API_KEY")
                                 if not openai_key:
                                     yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
@@ -468,14 +490,10 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             if inconsistency:
                                 parsed["consistency_flag"] = inconsistency
 
-                            # message = ```json 이전 자연어 부분
-                            if "```json" in full_response:
-                                clean_natural = full_response.split("```json")[0].strip()
-                            else:
-                                clean_natural = ""
-                            parsed["message"] = clean_natural or parsed.get("reasoning", "")
+                            # message: 2단계 스트리밍에서는 reasoning 사용
+                            parsed["message"] = parsed.get("reasoning", "")
 
-                            # agent_response 업데이트 (document_agent와 동일 패턴)
+                            # agent_response 업데이트
                             agent_response.pop("stream_pending", None)
                             agent_response.pop("sys_prompt", None)
                             agent_response.pop("user_prompt", None)
