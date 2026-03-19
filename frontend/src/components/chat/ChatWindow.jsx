@@ -78,7 +78,7 @@ function AgentBar({ activeIntent, isStreaming }) {
   );
 }
 
-export default function ChatWindow({ messages, onSend, selectedDocumentName, onClearDocument, activeIntent, isStreaming, panelOpen, onScrollChange, children }) {
+export default function ChatWindow({ messages, onSend, selectedDocumentName, onClearDocument, activeIntent, isStreaming, panelOpen, onScrollChange, topbarScrolled, children }) {
   const [input, setInput] = useState('');
   const [files, setFiles] = useState([]);
   const [dragOver, setDragOver] = useState(false);
@@ -108,7 +108,10 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
     const prev = lastScrollTopRef.current;
     lastScrollTopRef.current = scrollTop;
 
-    if (scrollTop < prev && headerHiddenRef.current) {
+    // 브라우저 뷰포트 변경(헤더 축소)으로 인해 강제로 scrollTop이 줄어들어 스크롤 방향이 위로 착각되는 현상 방지
+    const isAtBottom = Math.abs(e.target.scrollHeight - e.target.clientHeight - scrollTop) <= 2;
+
+    if (scrollTop < prev && headerHiddenRef.current && !isAtBottom) {
       headerHiddenRef.current = false;
       onScrollChange?.(false);
     } else if (scrollTop > prev && scrollTop > 80 && !headerHiddenRef.current) {
@@ -246,7 +249,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       )}
 
 
-      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto py-4 px-4 scroll-smooth custom-scrollbar" data-main-scroll="" onScroll={handleScroll}>{children}<div ref={bottomRef} /></div>
+      <div ref={scrollContainerRef} className={`flex-1 min-h-0 overflow-y-auto pb-4 px-4 custom-scrollbar transition-[padding] duration-300 ${topbarScrolled ? 'pt-[86px]' : 'pt-4'}`} data-main-scroll="" onScroll={handleScroll}>{children}<div ref={bottomRef} /></div>
 
       {/* 선택 문서 칩 & 파일 칩 & 에러 */}
       {(selectedDocumentName || files.length > 0 || fileError) && (
