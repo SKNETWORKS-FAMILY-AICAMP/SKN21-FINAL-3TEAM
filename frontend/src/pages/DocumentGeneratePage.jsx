@@ -45,7 +45,7 @@ function TeamDropdown({ user, value, onChange }) {
         <button
           type="button"
           onClick={() => setOpen(v => !v)}
-          className={`w-full flex items-center justify-between px-3.5 py-2.5 border rounded-sm text-sm transition ${open
+          className={`w-full flex items-center justify-between px-3.5 py-2.5 border rounded-md text-sm transition ${open
             ? 'border-primary-500 bg-primary-50 text-primary-700'
             : 'border-neutral-border bg-surface-card text-neutral-main hover:border-primary-300'
           }`}
@@ -132,7 +132,7 @@ function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendee
           <button
             type="button"
             onClick={() => setTeamOpen(v => !v)}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 border rounded-sm text-sm transition ${teamOpen
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 border rounded-md text-sm transition ${teamOpen
               ? 'border-primary-500 bg-primary-50 text-primary-700'
               : 'border-neutral-border bg-surface-card text-neutral-main hover:border-primary-300'
             }`}
@@ -166,7 +166,7 @@ function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendee
         <div className="relative">
           <div
             onClick={() => setShowDropdown(prev => !prev)}
-            className="w-full min-h-[42px] px-3.5 py-2 border border-neutral-border rounded-sm text-sm outline-none focus-within:border-primary-500 cursor-pointer flex flex-wrap items-center gap-1.5"
+            className="w-full min-h-[42px] px-3.5 py-2 border border-neutral-border rounded-md text-sm outline-none focus-within:border-primary-500 cursor-pointer flex flex-wrap items-center gap-1.5"
           >
             {selectedAttendees.length > 0 ? (
               selectedAttendees.map(name => (
@@ -246,7 +246,7 @@ const FORM_KEYS = {
 function DynamicForm({ fields, formData, onChange, skipKeys = [], category }) {
   if (!fields || fields.length === 0) return null;
 
-  const inputClass = 'w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500';
+  const inputClass = 'w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500';
 
   const filteredFields = fields
     .filter(f => !skipKeys.includes(f.key))
@@ -587,7 +587,7 @@ export default function DocumentGeneratePage() {
                         value={formData.title || ''}
                         onChange={(e) => handleFieldChange('title', e.target.value)}
                         placeholder="회의 제목을 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
+                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
                       />
                     </div>
                     <div>
@@ -616,7 +616,7 @@ export default function DocumentGeneratePage() {
                       placeholder="회의 내용을 입력하세요"
                       rows={10}
                       onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 400) + 'px'; }}
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[400px]"
+                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[400px]"
                     />
                   </div>
                 </>
@@ -630,7 +630,7 @@ export default function DocumentGeneratePage() {
                         value={formData.title || ''}
                         onChange={(e) => handleFieldChange('title', e.target.value)}
                         placeholder="보고서 제목을 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
+                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
                       />
                     </div>
                     <div>
@@ -655,7 +655,7 @@ export default function DocumentGeneratePage() {
                         value={formData.author || ''}
                         onChange={(e) => handleFieldChange('author', e.target.value)}
                         placeholder="작성자를 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
+                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
                       />
                     </div>
                   </div>
@@ -668,7 +668,7 @@ export default function DocumentGeneratePage() {
                       placeholder="보고 내용을 입력하세요"
                       rows={10}
                       onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 400) + 'px'; }}
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[400px]"
+                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[400px]"
                     />
                   </div>
                 </>
@@ -682,7 +682,7 @@ export default function DocumentGeneratePage() {
                         value={formData.title || ''}
                         onChange={(e) => handleFieldChange('title', e.target.value)}
                         placeholder="제안서 제목을 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
+                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
                       />
                     </div>
                     <div>
@@ -702,7 +702,7 @@ export default function DocumentGeneratePage() {
                         value={formData.company || ''}
                         onChange={(e) => handleFieldChange('company', e.target.value)}
                         placeholder="회사명을 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
+                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
                       />
                     </div>
                     <div>
@@ -711,7 +711,7 @@ export default function DocumentGeneratePage() {
                         value={formData.manager || ''}
                         onChange={(e) => handleFieldChange('manager', e.target.value)}
                         placeholder="담당자를 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
+                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
                       />
                     </div>
                   </div>
@@ -724,7 +724,7 @@ export default function DocumentGeneratePage() {
                       placeholder="제안 내용을 입력하세요"
                       rows={10}
                       onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 400) + 'px'; }}
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[400px]"
+                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[400px]"
                     />
                   </div>
                 </>
