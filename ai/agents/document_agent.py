@@ -268,6 +268,83 @@ async def document_agent(state: AgentState) -> AgentState:
 
     print(f"[DocumentAgent] 완료 ({time.time()-_t_agent:.2f}s) | response type={response_data.get('type')}, keys={list(response_data.keys())}")
 
+    # ── 규정 검증 파이프라인 (Document + Judgment Agent 결합) ──
+    # doc_generate: 생성된 문서를 판단 agent가 규정 검증
+    # doc_retrieve (비스트리밍): 검색/요약 결과에 규정 연결
+    if response_data.get("type") == "doc_generate" and response_data.get("data"):
+        try:
+            from ai.agents.regulation_validator import (
+                validate_document_regulations,
+                append_regulation_section_to_docx,
+            )
+            _t_reg = time.time()
+            print("[DocumentAgent] 규정 검증 파이프라인 시작")
+
+            reg_result = await validate_document_regulations(
+                response_data["data"],
+                response_data.get("template_type", ""),
+                user_id=user_id,
+            )
+
+            if reg_result.get("notes"):
+                # 응답에 규정 검증 결과 포함
+                response_data["regulation_check"] = reg_result
+
+                # 프리뷰에 규정 검증 결과 추가
+                if reg_result.get("summary"):
+                    response_data["preview"] = (
+                        response_data.get("preview", "") + reg_result["summary"]
+                    )
+
+                # DOCX에 규정 검증 섹션 추가
+                docx_path = response_data.get("docx_path")
+                if docx_path:
+                    append_regulation_section_to_docx(docx_path, reg_result["notes"])
+
+                print(
+                    f"[DocumentAgent] 규정 검증 완료 ({time.time()-_t_reg:.2f}s) | "
+                    f"{len(reg_result['notes'])}건, "
+                    f"violations={reg_result['has_violations']}, "
+                    f"conditions={reg_result['has_conditions']}"
+                )
+            else:
+                print(f"[DocumentAgent] 규정 검증 완료 ({time.time()-_t_reg:.2f}s) | 관련 규정 없음")
+
+        except Exception as e:
+            print(f"[DocumentAgent] 규정 검증 실패 (비차단): {e}")
+            import traceback
+            traceback.print_exc()
+
+    elif (
+        response_data.get("type") == "doc_retrieve"
+        and response_data.get("sub_type") in ("qa", "summary")
+        and not stream_mode
+    ):
+        # 비스트리밍 doc_retrieve: 검색/요약 결과에 규정 연결
+        answer_text = response_data.get("answer", "") or response_data.get("message", "")
+        if answer_text and len(answer_text) > 50:
+            try:
+                from ai.agents.regulation_validator import check_content_regulations
+                _t_reg = time.time()
+                print("[DocumentAgent] 컨텐츠 규정 연결 시작")
+
+                reg_result = await check_content_regulations(answer_text, user_id=user_id)
+
+                if reg_result.get("notes"):
+                    response_data["regulation_check"] = reg_result
+                    reg_summary = reg_result["summary"]
+                    response_data["message"] = response_data.get("message", "") + reg_summary
+                    response_data["answer"] = response_data.get("answer", "") + reg_summary
+                    print(
+                        f"[DocumentAgent] 컨텐츠 규정 연결 완료 ({time.time()-_t_reg:.2f}s) | "
+                        f"{len(reg_result['notes'])}건"
+                    )
+                else:
+                    print(f"[DocumentAgent] 컨텐츠 규정 연결 완료 ({time.time()-_t_reg:.2f}s) | 관련 규정 없음")
+
+            except Exception as e:
+                print(f"[DocumentAgent] 컨텐츠 규정 연결 실패 (비차단): {e}")
+
     # 모델명 추가 (프론트에서 표시용)
     response_data["model_name"] = _last_model_name
 
