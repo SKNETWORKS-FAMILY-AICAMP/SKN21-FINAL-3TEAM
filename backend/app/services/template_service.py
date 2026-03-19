@@ -72,7 +72,6 @@ SYSTEM_TEMPLATES = [
                  "description": "업무 내용을 상세히 입력"},
                 # form: false (LLM이 생성, UI에 안 보임)
                 {"key": "position", "form": False, "description": "직급 (없으면 빈 문자열)"},
-                {"key": "report_to", "form": False, "description": "보고 대상 (없으면 빈 문자열)"},
                 {"key": "report_type", "form": False,
                  "description": "'일일', '주간', '월간', '수시' 중 하나"},
                 {"key": "overview", "form": False,
