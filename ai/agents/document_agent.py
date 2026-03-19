@@ -839,7 +839,7 @@ def _build_narrative_input(category: str, fields_data: Dict[str, Any], content: 
         title = fields_data.get("title", "")
         company = fields_data.get("company", "")
         manager = fields_data.get("manager", "")
-        date = fields_data.get("submit_date", "") or fields_data.get("date", "")
+        date = fields_data.get("submit_date", "")
         if title:
             parts.append(f"제안명: {title}")
         if company:
@@ -878,6 +878,11 @@ async def generate_document(
         template_id: 커스텀 템플릿 ID (None이면 시스템 기본)
         user_input: 자연어 텍스트 (챗봇 fallback용, fields_data가 없을 때 사용)
     """
+    # 제안서: 프론트에서 date로 오면 submit_date로 통일 (LoRA 학습 키)
+    if fields_data and category == "proposal":
+        if "date" in fields_data and "submit_date" not in fields_data:
+            fields_data["submit_date"] = fields_data.pop("date")
+
     # fields_data가 있으면 서술형으로 변환, 없으면 user_input 그대로 사용 (챗봇)
     if fields_data:
         narrative = _build_narrative_input(category, fields_data, content)
@@ -1184,8 +1189,6 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
         for key in override_keys:
             if key in fields_data and fields_data[key]:
                 data[key] = fields_data[key]
-        if "date" in fields_data and fields_data["date"] and not data.get("submit_date"):
-            data["submit_date"] = fields_data["date"]
 
     # DOCX 생성: 원본 양식 → 시스템 빌더 → 범용 레이아웃 순으로 분기
     try:
