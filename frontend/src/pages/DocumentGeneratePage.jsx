@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronDown, X } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import client from '../api/client';
@@ -7,6 +7,7 @@ import TemplateUploadDialog from '../components/documents/TemplateUploadDialog';
 import DocumentPreview from '../components/documents/DocumentPreview';
 import MeetingPreview from '../components/meetings/MeetingPreview';
 import { generateDocument, downloadDocument, uploadTemplate, listTemplates, getTemplate } from '../api/documents';
+import DatePicker from '../components/common/DatePicker';
 import { toast } from '../store/toastStore';
 
 
@@ -14,9 +15,71 @@ import { toast } from '../store/toastStore';
  * 팀 + 참석자 선택 UI (회의록 전용)
  * — DB에서 전체 멤버를 불러와 팀별 필터링 + 체크박스 선택
  */
+function TeamDropdown({ user, value, onChange }) {
+  const [allMembers, setAllMembers] = useState([]);
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    client.get('/auth/all-members')
+      .then(res => setAllMembers(res.data || []))
+      .catch(() => setAllMembers([]));
+  }, []);
+
+  useEffect(() => {
+    const handler = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const teams = useMemo(() => {
+    const set = new Set(allMembers.map(m => m.team).filter(Boolean));
+    if (user?.team) set.add(user.team);
+    return [...set].sort();
+  }, [allMembers, user]);
+
+  return (
+    <div>
+      <label className="block text-[0.8125rem] font-semibold mb-1.5">팀</label>
+      <div ref={ref} className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen(v => !v)}
+          className={`w-full flex items-center justify-between px-3.5 py-2.5 border rounded-sm text-sm transition ${open
+            ? 'border-primary-500 bg-primary-50 text-primary-700'
+            : 'border-neutral-border bg-surface-card text-neutral-main hover:border-primary-300'
+          }`}
+        >
+          <span className={value ? '' : 'text-neutral-400'}>{value || '팀 선택'}</span>
+          <ChevronDown size={14} className={`text-neutral-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        </button>
+        {open && (
+          <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-surface-card border border-neutral-border rounded-md shadow-lg overflow-hidden">
+            {teams.map(t => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => { onChange(t); setOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 text-sm transition ${t === value
+                  ? 'bg-primary-100 text-primary-700 font-semibold'
+                  : 'text-neutral-main hover:bg-primary-50'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendees, onAttendeesChange }) {
   const [allMembers, setAllMembers] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [teamOpen, setTeamOpen] = useState(false);
+  const teamRef = useRef(null);
 
   useEffect(() => {
     client.get('/auth/all-members')
@@ -32,6 +95,12 @@ function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendee
       })
       .catch(() => setAllMembers([]));
   }, [user]);
+
+  useEffect(() => {
+    const handler = (e) => { if (!teamRef.current?.contains(e.target)) setTeamOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const teams = useMemo(() => {
     const set = new Set(allMembers.map(m => m.team).filter(Boolean));
@@ -55,22 +124,39 @@ function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendee
   };
 
   return (
-    <>
+    <div className="grid grid-cols-2 gap-3">
       {/* 팀 선택 */}
       <div>
         <label className="block text-[0.8125rem] font-semibold mb-1.5">팀</label>
-        <div className="relative">
-          <select
-            value={selectedTeam}
-            onChange={(e) => onTeamChange(e.target.value)}
-            className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 appearance-none bg-white dark:bg-neutral-900 cursor-pointer"
+        <div ref={teamRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setTeamOpen(v => !v)}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 border rounded-sm text-sm transition ${teamOpen
+              ? 'border-primary-500 bg-primary-50 text-primary-700'
+              : 'border-neutral-border bg-surface-card text-neutral-main hover:border-primary-300'
+            }`}
           >
-            <option value="">팀 선택</option>
-            {teams.map(t => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+            <span className={selectedTeam ? '' : 'text-neutral-400'}>{selectedTeam || '팀 선택'}</span>
+            <ChevronDown size={14} className={`text-neutral-400 transition-transform duration-200 ${teamOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {teamOpen && (
+            <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-surface-card border border-neutral-border rounded-md shadow-lg overflow-hidden">
+              {teams.map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => { onTeamChange(t); setTeamOpen(false); }}
+                  className={`w-full text-left px-3.5 py-2.5 text-sm transition ${t === selectedTeam
+                    ? 'bg-primary-100 text-primary-700 font-semibold'
+                    : 'text-neutral-main hover:bg-primary-50'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -140,7 +226,7 @@ function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendee
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -207,7 +293,8 @@ function DynamicForm({ fields, formData, onChange, skipKeys = [], category }) {
                 type="date"
                 value={value}
                 onChange={(e) => onChange(field.key, e.target.value)}
-                className={inputClass}
+                onClick={(e) => e.target.showPicker?.()}
+                className={`${inputClass} cursor-pointer`}
               />
             </div>
           );
@@ -281,12 +368,15 @@ export default function DocumentGeneratePage() {
 
   // 템플릿 선택 → parsed_structure 로드 → 동적 폼 초기화
   const handleTemplateSelect = async (template, customTpl = null) => {
+    // 스크롤 위치 보존
+    const scrollY = window.scrollY;
     setSelectedTemplate(template);
     setSelectedCustomTemplate(customTpl);
     setResult(null);
     setMeetingResult(null);
-    setFormData({});
+    setFormData({ date: new Date().toISOString().split('T')[0] });
     setTemplateFields([]);
+    requestAnimationFrame(() => window.scrollTo(0, scrollY));
     setSelectedTeam(user?.team || '');
     setSelectedAttendees([]);
 
@@ -313,7 +403,7 @@ export default function DocumentGeneratePage() {
           const fields = ps.fields || ps;
           setTemplateFields(Array.isArray(fields) ? fields : []);
 
-          const defaults = {};
+          const defaults = { date: new Date().toISOString().split('T')[0] };
           const formKeys = FORM_KEYS[template] || ['title', 'date', 'content'];
           for (const f of (Array.isArray(fields) ? fields : [])) {
             // form: false 필드는 폼 초기값에서 제외 (LLM이 생성)
@@ -487,25 +577,166 @@ export default function DocumentGeneratePage() {
               </div>
             </div>
             <div className="card-body space-y-4">
-              {/* 회의록: 팀 + 참석자 (항상 표시) */}
-              {isMeeting && (
-                <TeamAttendeePicker
-                  user={user}
-                  selectedTeam={selectedTeam}
-                  onTeamChange={setSelectedTeam}
-                  selectedAttendees={selectedAttendees}
-                  onAttendeesChange={setSelectedAttendees}
+              {isMeeting ? (
+                <>
+                  {/* 회의록: 제목+날짜 한 줄 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[0.8125rem] font-semibold mb-1.5">회의 제목<span className="text-red-500 ml-0.5">*</span></label>
+                      <input
+                        value={formData.title || ''}
+                        onChange={(e) => handleFieldChange('title', e.target.value)}
+                        placeholder="회의 제목을 입력하세요"
+                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[0.8125rem] font-semibold mb-1.5">날짜</label>
+                      <DatePicker
+                        value={formData.date || ''}
+                        onChange={(v) => handleFieldChange('date', v)}
+                        placeholder="날짜 선택"
+                      />
+                    </div>
+                  </div>
+                  {/* 팀+참석자 한 줄 (1:1) */}
+                  <TeamAttendeePicker
+                    user={user}
+                    selectedTeam={selectedTeam}
+                    onTeamChange={setSelectedTeam}
+                    selectedAttendees={selectedAttendees}
+                    onAttendeesChange={setSelectedAttendees}
+                  />
+                  {/* 회의 내용 */}
+                  <div>
+                    <label className="block text-[0.8125rem] font-semibold mb-1.5">회의 내용</label>
+                    <textarea
+                      value={formData.content || ''}
+                      onChange={(e) => handleFieldChange('content', e.target.value)}
+                      placeholder="회의 내용을 입력하세요"
+                      rows={10}
+                      onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 400) + 'px'; }}
+                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[400px]"
+                    />
+                  </div>
+                </>
+              ) : selectedTemplate === 'report' ? (
+                <>
+                  {/* 보고서: 제목+날짜 한 줄 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[0.8125rem] font-semibold mb-1.5">보고서 제목<span className="text-red-500 ml-0.5">*</span></label>
+                      <input
+                        value={formData.title || ''}
+                        onChange={(e) => handleFieldChange('title', e.target.value)}
+                        placeholder="보고서 제목을 입력하세요"
+                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[0.8125rem] font-semibold mb-1.5">날짜</label>
+                      <DatePicker
+                        value={formData.date || ''}
+                        onChange={(v) => handleFieldChange('date', v)}
+                        placeholder="날짜 선택"
+                      />
+                    </div>
+                  </div>
+                  {/* 팀(드롭다운)+작성자 한 줄 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <TeamDropdown
+                      user={user}
+                      value={formData.department || ''}
+                      onChange={(v) => handleFieldChange('department', v)}
+                    />
+                    <div>
+                      <label className="block text-[0.8125rem] font-semibold mb-1.5">작성자</label>
+                      <input
+                        value={formData.author || ''}
+                        onChange={(e) => handleFieldChange('author', e.target.value)}
+                        placeholder="작성자를 입력하세요"
+                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
+                      />
+                    </div>
+                  </div>
+                  {/* 내용 */}
+                  <div>
+                    <label className="block text-[0.8125rem] font-semibold mb-1.5">보고 내용</label>
+                    <textarea
+                      value={formData.content || ''}
+                      onChange={(e) => handleFieldChange('content', e.target.value)}
+                      placeholder="보고 내용을 입력하세요"
+                      rows={10}
+                      onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 400) + 'px'; }}
+                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[400px]"
+                    />
+                  </div>
+                </>
+              ) : selectedTemplate === 'proposal' ? (
+                <>
+                  {/* 제안서: 제목+날짜 한 줄 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[0.8125rem] font-semibold mb-1.5">제안서 제목<span className="text-red-500 ml-0.5">*</span></label>
+                      <input
+                        value={formData.title || ''}
+                        onChange={(e) => handleFieldChange('title', e.target.value)}
+                        placeholder="제안서 제목을 입력하세요"
+                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[0.8125rem] font-semibold mb-1.5">날짜</label>
+                      <DatePicker
+                        value={formData.date || ''}
+                        onChange={(v) => handleFieldChange('date', v)}
+                        placeholder="날짜 선택"
+                      />
+                    </div>
+                  </div>
+                  {/* 회사명+담당자 한 줄 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[0.8125rem] font-semibold mb-1.5">회사명</label>
+                      <input
+                        value={formData.company || ''}
+                        onChange={(e) => handleFieldChange('company', e.target.value)}
+                        placeholder="회사명을 입력하세요"
+                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[0.8125rem] font-semibold mb-1.5">담당자</label>
+                      <input
+                        value={formData.manager || ''}
+                        onChange={(e) => handleFieldChange('manager', e.target.value)}
+                        placeholder="담당자를 입력하세요"
+                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
+                      />
+                    </div>
+                  </div>
+                  {/* 내용 */}
+                  <div>
+                    <label className="block text-[0.8125rem] font-semibold mb-1.5">제안 내용</label>
+                    <textarea
+                      value={formData.content || ''}
+                      onChange={(e) => handleFieldChange('content', e.target.value)}
+                      placeholder="제안 내용을 입력하세요"
+                      rows={10}
+                      onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 400) + 'px'; }}
+                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[400px]"
+                    />
+                  </div>
+                </>
+              ) : (
+                <DynamicForm
+                  fields={templateFields}
+                  formData={formData}
+                  onChange={handleFieldChange}
+                  skipKeys={meetingSkipKeys}
+                  category={selectedTemplate}
                 />
               )}
-
-              {/* 동적 폼 필드 (회의록이면 attendees/team 제외) */}
-              <DynamicForm
-                fields={templateFields}
-                formData={formData}
-                onChange={handleFieldChange}
-                skipKeys={meetingSkipKeys}
-                category={selectedTemplate}
-              />
 
               <div className="flex justify-end">
                 <button
