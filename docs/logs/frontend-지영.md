@@ -3787,6 +3787,21 @@ Pod 꺼져도 유지되는 네트워크 볼륨(`/workspace/`, 2.3PB)에 저장:
 - **문제**: 메모 + 버튼 눌렀다가 뒤로 나가기를 반복하면 빈 메모가 계속 생성됨
 - **해결**: `addMemo` 시 빈 메모가 이미 있으면 새로 만들지 않고 기존 빈 메모를 선택하도록 수정
 
+#### 12) 대시보드 태스크 추가 팝업 취소 버튼 구분 (TaskPipelineWidget.jsx)
+
+- 취소 버튼에 테두리(`border border-neutral-border`) 추가하여 등록 버튼과 시각적 구분
+
+#### 13) 문서 생성 폼 border-radius 통일 (DocumentGeneratePage.jsx + DatePicker.jsx)
+
+- 입력 칸, 드롭다운, DatePicker의 border-radius를 `rounded-md`로 통일
+- DatePicker 높이/패딩도 input과 동일하게 맞춤 (`h-[38px]` → `py-2.5`)
+
+#### 14) 챗봇 새 대화 버튼 동작 개선 (ChatPage.jsx + ChatWindow.jsx)
+
+- **목록 안 열리게**: 새 대화 클릭 시 세션 사이드바가 열리던 동작 제거 (`setSessionSidebarOpen(false)`)
+- **헤더 흔들림 수정**: 새 대화 시 `setIsHeaderHidden(false)`로 헤더 즉시 초기화
+- **스크롤 흔들림 수정**: 메시지가 없을 때 스크롤 이벤트가 헤더 상태를 변경하지 않도록 가드 추가
+
 ### 다음 할 일
 
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개

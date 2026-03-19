@@ -667,7 +667,7 @@ export default function ChatPage() {
               <Menu size={20} />
             </button>
             <button
-              onClick={() => { startNewSession(); setSessionSidebarOpen(true); }}
+              onClick={() => { startNewSession(); setSessionSidebarOpen(false); setIsHeaderHidden(false); }}
               title="새 대화"
               className="w-11 h-11 flex items-center justify-center rounded-full bg-surface-card text-neutral-sub border border-neutral-border shadow-sm transition hover:shadow-md hover:text-neutral-main"
             >
