@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 GENERATION_FIELD_CONFIG = {
     "meeting_minutes": {
         "always": ["title", "date", "attendees", "content", "summary", "decisions", "action_items"],
-        "optional": ["meeting_type", "author", "time", "location", "risks", "notes"],
+        "optional": ["meeting_type", "author", "time", "location", "notes"],
         "max_fields": 10,
     },
     "report": {

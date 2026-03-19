@@ -45,8 +45,6 @@ SYSTEM_TEMPLATES = [
                 {"key": "decisions", "form": False, "description": "결정된 사항 목록 (JSON 배열)"},
                 {"key": "action_items", "form": False,
                  "description": '후속 조치 목록 배열. 각 항목은 {"task": "할 일", "assignee": "담당자", "due_date": "기한"} 형태'},
-                {"key": "risks", "form": False,
-                 "description": '리스크 목록 배열. 각 항목은 {"description": "설명", "level": "상/중/하", "mitigation": "대응방안"} 형태'},
                 {"key": "notes", "form": False, "description": "기타 메모 (없으면 빈 문자열)"},
             ]
         }, ensure_ascii=False),
@@ -72,7 +70,6 @@ SYSTEM_TEMPLATES = [
                  "description": "업무 내용을 상세히 입력"},
                 # form: false (LLM이 생성, UI에 안 보임)
                 {"key": "position", "form": False, "description": "직급 (없으면 빈 문자열)"},
-                {"key": "report_to", "form": False, "description": "보고 대상 (없으면 빈 문자열)"},
                 {"key": "report_type", "form": False,
                  "description": "'일일', '주간', '월간', '수시' 중 하나"},
                 {"key": "overview", "form": False,
