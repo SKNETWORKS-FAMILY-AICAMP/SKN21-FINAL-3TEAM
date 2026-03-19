@@ -235,7 +235,33 @@ function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendee
 const FORM_KEYS = {
   meeting_minutes: ['title', 'date', 'attendees', 'team', 'content'],
   report: ['title', 'date', 'author', 'department', 'report_to', 'content'],
-  proposal: ['title', 'submit_date', 'company', 'manager', 'submit_to', 'content'],
+  proposal: ['title', 'date', 'company', 'manager', 'submit_to', 'content'],
+};
+
+// 기본 템플릿 필드 정의 (DB에 layout/type 정보가 없을 때 fallback)
+const DEFAULT_TEMPLATE_FIELDS = {
+  meeting_minutes: [
+    { key: 'title', label: '회의 제목', type: 'text', layout: 'half', form: true, required: true },
+    { key: 'date', label: '날짜', type: 'date', layout: 'half', form: true },
+    { key: '_team_attendee', label: '팀/참석자', type: 'team_attendee', form: true },
+    { key: 'content', label: '회의 내용', type: 'textarea', form: true },
+  ],
+  report: [
+    { key: 'title', label: '보고서 제목', type: 'text', layout: 'half', form: true, required: true },
+    { key: 'date', label: '날짜', type: 'date', layout: 'half', form: true },
+    { key: 'department', label: '팀', type: 'team_dropdown', layout: 'half', form: true },
+    { key: 'author', label: '작성자', type: 'text', layout: 'half', form: true },
+    { key: 'report_to', label: '보고 대상', type: 'text', form: true },
+    { key: 'content', label: '보고 내용', type: 'textarea', form: true },
+  ],
+  proposal: [
+    { key: 'title', label: '제안서 제목', type: 'text', layout: 'half', form: true, required: true },
+    { key: 'date', label: '제출일', type: 'date', layout: 'half', form: true },
+    { key: 'company', label: '회사명', type: 'text', layout: 'half', form: true },
+    { key: 'manager', label: '담당자', type: 'text', layout: 'half', form: true },
+    { key: 'submit_to', label: '제출처', type: 'text', form: true },
+    { key: 'content', label: '제안 내용', type: 'textarea', form: true },
+  ],
 };
 
 /**
@@ -243,7 +269,7 @@ const FORM_KEYS = {
  * attendees/team 필드는 회의록일 때 TeamAttendeePicker로 대체되므로 스킵
  * form: false 필드는 LLM이 생성하므로 UI에 표시하지 않음
  */
-function DynamicForm({ fields, formData, onChange, skipKeys = [], category }) {
+function DynamicForm({ fields, formData, onChange, skipKeys = [], category, user, selectedTeam, onTeamChange, selectedAttendees, onAttendeesChange }) {
   if (!fields || fields.length === 0) return null;
 
   const inputClass = 'w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500';
@@ -251,86 +277,138 @@ function DynamicForm({ fields, formData, onChange, skipKeys = [], category }) {
   const filteredFields = fields
     .filter(f => !skipKeys.includes(f.key))
     .filter(f => {
-      // form 플래그가 명시적이면 그대로 사용
       if (f.form === false) return false;
       if (f.form === true) return true;
-      // form 없으면 (커스텀 템플릿) → FORM_KEYS로 판단
       const formKeys = FORM_KEYS[category] || ['title', 'date', 'content'];
       return formKeys.includes(f.key);
     });
   if (filteredFields.length === 0) return null;
 
+  // layout: 'half' 필드들을 2열 그리드로 묶기
+  const rows = [];
+  let i = 0;
+  while (i < filteredFields.length) {
+    const field = filteredFields[i];
+    if (field.layout === 'half' && i + 1 < filteredFields.length && filteredFields[i + 1].layout === 'half') {
+      rows.push([field, filteredFields[i + 1]]);
+      i += 2;
+    } else {
+      rows.push([field]);
+      i += 1;
+    }
+  }
+
+  const renderField = (field) => {
+    const value = formData[field.key] || '';
+
+    // DatePicker
+    if (field.type === 'date') {
+      return (
+        <div key={field.key}>
+          <label className="block text-[0.8125rem] font-semibold mb-1.5">
+            {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <DatePicker
+            value={value}
+            onChange={(v) => onChange(field.key, v)}
+            placeholder="날짜 선택"
+          />
+        </div>
+      );
+    }
+
+    // 팀 드롭다운
+    if (field.type === 'team_dropdown') {
+      return (
+        <TeamDropdown
+          key={field.key}
+          user={user}
+          value={value}
+          onChange={(v) => onChange(field.key, v)}
+        />
+      );
+    }
+
+    // 팀 + 참석자 (회의록 전용)
+    if (field.type === 'team_attendee') {
+      return (
+        <TeamAttendeePicker
+          key={field.key}
+          user={user}
+          selectedTeam={selectedTeam}
+          onTeamChange={onTeamChange}
+          selectedAttendees={selectedAttendees}
+          onAttendeesChange={onAttendeesChange}
+        />
+      );
+    }
+
+    // textarea
+    if (field.type === 'textarea') {
+      return (
+        <div key={field.key}>
+          <label className="block text-[0.8125rem] font-semibold mb-1.5">
+            {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <textarea
+            value={value}
+            onChange={(e) => onChange(field.key, e.target.value)}
+            placeholder={`${field.label}을(를) 입력하세요`}
+            rows={10}
+            onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 400) + 'px'; }}
+            className={`${inputClass} resize-none overflow-y-auto max-h-[400px]`}
+          />
+        </div>
+      );
+    }
+
+    // list
+    if (field.type === 'list') {
+      return (
+        <div key={field.key}>
+          <label className="block text-[0.8125rem] font-semibold mb-1.5">
+            {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <input
+            value={value}
+            onChange={(e) => onChange(field.key, e.target.value)}
+            placeholder={`${field.label} (쉼표로 구분)`}
+            className={inputClass}
+          />
+        </div>
+      );
+    }
+
+    // default: text
+    return (
+      <div key={field.key}>
+        <label className="block text-[0.8125rem] font-semibold mb-1.5">
+          {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+        <input
+          value={value}
+          onChange={(e) => onChange(field.key, e.target.value)}
+          placeholder={`${field.label}을(를) 입력하세요`}
+          className={inputClass}
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
-      {filteredFields.map((field) => {
-        const value = formData[field.key] || '';
-
-        if (field.type === 'textarea') {
-          return (
-            <div key={field.key}>
-              <label className="block text-[0.8125rem] font-semibold mb-1.5">
-                {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
-              </label>
-              <textarea
-                value={value}
-                onChange={(e) => onChange(field.key, e.target.value)}
-                placeholder={`${field.label}을(를) 입력하세요`}
-                rows={4}
-                onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px'; }}
-                className={`${inputClass} resize-none overflow-y-auto max-h-[200px]`}
-              />
-            </div>
-          );
-        }
-
-        if (field.type === 'date') {
-          return (
-            <div key={field.key} className="w-1/2">
-              <label className="block text-[0.8125rem] font-semibold mb-1.5">
-                {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
-              </label>
-              <input
-                type="date"
-                value={value}
-                onChange={(e) => onChange(field.key, e.target.value)}
-                onClick={(e) => e.target.showPicker?.()}
-                className={`${inputClass} cursor-pointer`}
-              />
-            </div>
-          );
-        }
-
-        if (field.type === 'list') {
-          return (
-            <div key={field.key}>
-              <label className="block text-[0.8125rem] font-semibold mb-1.5">
-                {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
-              </label>
-              <input
-                value={value}
-                onChange={(e) => onChange(field.key, e.target.value)}
-                placeholder={`${field.label} (쉼표로 구분)`}
-                className={inputClass}
-              />
-            </div>
-          );
-        }
-
-        // default: text
-        return (
-          <div key={field.key}>
-            <label className="block text-[0.8125rem] font-semibold mb-1.5">
-              {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
-            </label>
-            <input
-              value={value}
-              onChange={(e) => onChange(field.key, e.target.value)}
-              placeholder={`${field.label}을(를) 입력하세요`}
-              className={inputClass}
-            />
+      {rows.map((row, idx) =>
+        row.length === 2 ? (
+          <div key={idx} className="grid grid-cols-2 gap-3">
+            {renderField(row[0])}
+            {renderField(row[1])}
           </div>
-        );
-      })}
+        ) : row[0].type === 'team_attendee' ? (
+          renderField(row[0])
+        ) : (
+          <div key={idx}>{renderField(row[0])}</div>
+        )
+      )}
     </div>
   );
 }
@@ -532,8 +610,17 @@ export default function DocumentGeneratePage() {
     proposal: '제안서',
   };
 
-  // 회의록일 때 DynamicForm에서 제외할 키 (TeamAttendeePicker가 대신 렌더링)
-  const meetingSkipKeys = isMeeting ? ['attendees', 'team'] : [];
+  // 기본 필드 + DB 추가 필드 머지
+  const mergedFields = useMemo(() => {
+    const defaults = DEFAULT_TEMPLATE_FIELDS[selectedTemplate];
+    if (!defaults) return templateFields; // 커스텀 템플릿은 DB 필드 그대로
+
+    const defaultKeys = new Set(defaults.map(f => f.key));
+    // 기본 필드와 중복되는 DB 필드 제외 (예: submit_date는 date로 대체됨)
+    const skipExtras = new Set([...defaultKeys, 'submit_date']);
+    const extras = templateFields.filter(f => !skipExtras.has(f.key) && f.form !== false);
+    return [...defaults, ...extras];
+  }, [selectedTemplate, templateFields]);
 
   return (
     <div>
@@ -577,166 +664,18 @@ export default function DocumentGeneratePage() {
               </div>
             </div>
             <div className="card-body space-y-4">
-              {isMeeting ? (
-                <>
-                  {/* 회의록: 제목+날짜 한 줄 */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">회의 제목<span className="text-red-500 ml-0.5">*</span></label>
-                      <input
-                        value={formData.title || ''}
-                        onChange={(e) => handleFieldChange('title', e.target.value)}
-                        placeholder="회의 제목을 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">날짜</label>
-                      <DatePicker
-                        value={formData.date || ''}
-                        onChange={(v) => handleFieldChange('date', v)}
-                        placeholder="날짜 선택"
-                      />
-                    </div>
-                  </div>
-                  {/* 팀+참석자 한 줄 (1:1) */}
-                  <TeamAttendeePicker
-                    user={user}
-                    selectedTeam={selectedTeam}
-                    onTeamChange={setSelectedTeam}
-                    selectedAttendees={selectedAttendees}
-                    onAttendeesChange={setSelectedAttendees}
-                  />
-                  {/* 회의 내용 */}
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">회의 내용</label>
-                    <textarea
-                      value={formData.content || ''}
-                      onChange={(e) => handleFieldChange('content', e.target.value)}
-                      placeholder="회의 내용을 입력하세요"
-                      rows={10}
-                      onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 400) + 'px'; }}
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[400px]"
-                    />
-                  </div>
-                </>
-              ) : selectedTemplate === 'report' ? (
-                <>
-                  {/* 보고서: 제목+날짜 한 줄 */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">보고서 제목<span className="text-red-500 ml-0.5">*</span></label>
-                      <input
-                        value={formData.title || ''}
-                        onChange={(e) => handleFieldChange('title', e.target.value)}
-                        placeholder="보고서 제목을 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">날짜</label>
-                      <DatePicker
-                        value={formData.date || ''}
-                        onChange={(v) => handleFieldChange('date', v)}
-                        placeholder="날짜 선택"
-                      />
-                    </div>
-                  </div>
-                  {/* 팀(드롭다운)+작성자 한 줄 */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <TeamDropdown
-                      user={user}
-                      value={formData.department || ''}
-                      onChange={(v) => handleFieldChange('department', v)}
-                    />
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">작성자</label>
-                      <input
-                        value={formData.author || ''}
-                        onChange={(e) => handleFieldChange('author', e.target.value)}
-                        placeholder="작성자를 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
-                      />
-                    </div>
-                  </div>
-                  {/* 내용 */}
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">보고 내용</label>
-                    <textarea
-                      value={formData.content || ''}
-                      onChange={(e) => handleFieldChange('content', e.target.value)}
-                      placeholder="보고 내용을 입력하세요"
-                      rows={10}
-                      onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 400) + 'px'; }}
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[400px]"
-                    />
-                  </div>
-                </>
-              ) : selectedTemplate === 'proposal' ? (
-                <>
-                  {/* 제안서: 제목+날짜 한 줄 */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">제안서 제목<span className="text-red-500 ml-0.5">*</span></label>
-                      <input
-                        value={formData.title || ''}
-                        onChange={(e) => handleFieldChange('title', e.target.value)}
-                        placeholder="제안서 제목을 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">날짜</label>
-                      <DatePicker
-                        value={formData.date || ''}
-                        onChange={(v) => handleFieldChange('date', v)}
-                        placeholder="날짜 선택"
-                      />
-                    </div>
-                  </div>
-                  {/* 회사명+담당자 한 줄 */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">회사명</label>
-                      <input
-                        value={formData.company || ''}
-                        onChange={(e) => handleFieldChange('company', e.target.value)}
-                        placeholder="회사명을 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">담당자</label>
-                      <input
-                        value={formData.manager || ''}
-                        onChange={(e) => handleFieldChange('manager', e.target.value)}
-                        placeholder="담당자를 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
-                      />
-                    </div>
-                  </div>
-                  {/* 내용 */}
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">제안 내용</label>
-                    <textarea
-                      value={formData.content || ''}
-                      onChange={(e) => handleFieldChange('content', e.target.value)}
-                      placeholder="제안 내용을 입력하세요"
-                      rows={10}
-                      onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 400) + 'px'; }}
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[400px]"
-                    />
-                  </div>
-                </>
-              ) : (
-                <DynamicForm
-                  fields={templateFields}
-                  formData={formData}
-                  onChange={handleFieldChange}
-                  skipKeys={meetingSkipKeys}
-                  category={selectedTemplate}
-                />
-              )}
+              <DynamicForm
+                fields={mergedFields}
+                formData={formData}
+                onChange={handleFieldChange}
+                skipKeys={[]}
+                category={selectedTemplate}
+                user={user}
+                selectedTeam={selectedTeam}
+                onTeamChange={setSelectedTeam}
+                selectedAttendees={selectedAttendees}
+                onAttendeesChange={setSelectedAttendees}
+              />
 
               <div className="flex justify-end">
                 <button

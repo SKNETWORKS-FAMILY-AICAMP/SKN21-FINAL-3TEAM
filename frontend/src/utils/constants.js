@@ -154,15 +154,14 @@ export const SUGGESTED_QUESTIONS = [
   { text: '연차 사용 기준이 어떻게 돼?', intent: 'judgment', category: 'regulation' },
   { text: '인턴도 법인카드 쓸 수 있어?', intent: 'judgment', category: 'regulation' },
   { text: '회의록 만들어줘', intent: 'doc_generate', category: 'document' },
-  { text: '보고서 만들어줘', intent: 'doc_generate', category: 'document' },
   { text: '이 문서 요약해줘', intent: 'doc_retrieve', category: 'document' },
   { text: '지난 회의 결정사항이 뭐야?', intent: 'doc_retrieve', category: 'document' },
   { text: '신입 온보딩 가이드 있어?', intent: 'doc_retrieve', category: 'document' },
   { text: '오늘 일정 알려줘', intent: 'schedule_view', category: 'schedule' },
   { text: '내일 오후 2시에 회의 잡아줘', intent: 'schedule_add', category: 'schedule' },
   { text: '이번 주 미팅 일정 보여줘', intent: 'schedule_view', category: 'schedule' },
-  { text: '우리 회사 복지 제도 알려줘', intent: 'general', category: 'general' },
-  { text: '부서 연락처 알려줘', intent: 'general', category: 'general' },
+  { text: '요즘 AI 트렌드가 뭐야?', intent: 'general', category: 'general' },
+  { text: '업무 효율 높이는 팁 알려줘', intent: 'general', category: 'general' },
 ]
 
 // 알림 설정 (Phase 2)
