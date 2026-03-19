@@ -4,6 +4,28 @@
 
 ---
 
+## 2026-03-19 (수)
+
+**v3_generate 문서 생성 통합 테스트 + 버그 수정**
+
+한 일:
+- 회의록(M1~M3), 보고서(R1~R3), 제안서(P1~P3) LoRA v3_generate 생성 테스트 완료
+- Base sLLM vs LoRA 비교 테스트 — LoRA가 JSON 스키마 준수 + 할루시네이션 억제에서 우위
+- 자연어 입력(구어체/메모) 테스트 3건(N1~N3) — 격식체 변환 + 담당자/기한 추론 정상
+- **버그 수정 — content/summary 우선순위**: DOCX 회의 내용에 summary가 들어가던 문제 (`document_agent.py` 1108줄)
+- **근본 원인 수정 — 제안서 필드명 불일치**: 학습 데이터(`submit_date`, `current_situation`) vs 시스템 템플릿(`date`, `analysis`) 불일치 → 템플릿을 학습 데이터에 맞춤
+- **override 타이밍 수정**: fields_data(사용자 입력)가 DOCX 빌드 후에 반영되던 문제 → 빌드 전으로 이동
+- **DOCX 빌더 키 매핑**: `proposal_name`→`title`, `proposal_date`→`submit_date`, `proposer`→`company` fallback 추가
+- **2단계 추출 fallback**: JSON 파싱 실패 시 정규식 대신 `_extract_structured_fields` 파이프라인 활용
+- **폼 필드 추가**: 보고서 `report_to`(보고 대상), 제안서 `submit_to`(제출처) → 프론트 전달 필요
+
+다음 할 일:
+- 프론트엔드에 report_to/submit_to 폼 필드 추가 전달 (지영)
+- 보고서 필드명 학습 데이터 일치 확인 (현재 일치함)
+- 짧은 입력(100자 이하) 할루시네이션 개선은 v4 학습 데이터 과제
+
+---
+
 ## 2026-02-10 (월)
 
 **GitHub 전면 정비:**
@@ -1472,6 +1494,87 @@ v2_generate AI Hub 데이터 탈락:
 - knowledge_query 매핑은 발표용 수치 계산에만 사용, 서비스 코드는 현행 유지
 
 **다음 할 일:**
-1. Synthetic 800건 생성 완료 대기 → merge_and_split.py 실행 → RunPod LoRA v3 학습
+1. ~~Synthetic 800건 생성 완료 대기 → merge_and_split.py 실행 → RunPod LoRA v3 학습~~ ✅
 2. Step 2: 커스텀 템플릿 role 스키마 + 필드 편집 UI (지영님 프론트 협업)
+3. 프론트엔드 수동 QA
+
+---
+
+## 2026-03-18 (화)
+
+### LoRA v3_generate 학습 데이터 재설계 + 학습 + 평가 + 서빙 배포
+
+#### 데이터 QA & 정제
+- Synthetic 데이터 QA: 회의록 402건, 보고서 200건, 제안서 200건 검토
+- **회의록 혼입 10건 발견** (보고서 데이터가 섞임) → 제거 + 10건 재생성
+- 보고서 `main_content` vs `content` 키 확인 → 전체 시스템 `main_content` 일관성 확인
+
+#### AI Hub 데이터 파이프라인
+- `clean_aihub.py` 실행 → 557건 정제 + 175건 입력 축약
+- `filter_and_select.py` 수정: 3개 Synthetic 파일 병합 로드 + 입력 길이 측정 버그 수정
+- C등급 필터링: Synthetic 12건 + AI Hub 144건 제거 → 1346건
+- `boost_priority.py` AI Hub만 실행 → 373건 priority 필드 보완
+- AI Hub 후처리: content str 변환 446건 + schedule/budget 신형식 변환 175건
+- `generate_supplement.py` 보고서 80건 + 제안서 80건 = 160건 추가 생성 (tasks/budget 집중)
+- `merge_and_split.py` → 1500건 (train 1350 / eval 150)
+
+#### 최종 데이터 QA
+- 전건 통과: JSON 파싱 100%, 한국어 키 0건, content 비문자열 0건, schedule/budget 구형식 0건
+- 중복 0건, 시스템 프롬프트 1종 통일
+
+#### LoRA v3 학습 (RunPod H200)
+- `v3_generate.yaml` 신규 생성 (output → `outputs/v3_generate/`)
+- 학습 51분 46초, Best: Epoch 2 (eval_loss=0.508, token_acc=85.8%)
+- `train_v2_document.py` 수정: `TASK_CONFIGS` v3 매핑 + `get_output_base()` config 기반
+
+#### 평가 (Fine-tuned vs Base 비교)
+- `eval_v3_generate.py` 전용 스크립트 작성 (구조/내용/할루시네이션/핵심필드/정성 평가)
+- 결과:
+  - JSON 유효율: Base 77.3% → **FT 87.3%** (+10pp)
+  - ROUGE-L: Base 0.465 → **FT 0.665** (+0.200)
+  - BERTScore F1: Base 0.896 → **FT 0.926** (+0.030)
+  - False Fill율: Base 44.3% → **FT 17.9%** (-26.4pp)
+  - decisions 채움률: Base 66.7% → **FT 87.5%**
+
+#### vLLM 서빙 배포 (EU RO 엔드포인트)
+- NC → EU 어댑터 전송: `/runpod-volume/adapters/v3_generate/`
+- `v2_generate` → `v2_generate_deprecated` 이름 변경
+- `document_agent.py` 어댑터 매핑 v3 업데이트
+- `start_vllm.sh` 어댑터 경로/이름 v3 업데이트
+- 엔드포인트 환경변수 `/runpod-volume/` 경로로 수정
+- **4개 어댑터 테스트 성공**: v3_generate, v1_judgment, v3_summary, planner
+
+#### 문서 업데이트
+- `docs/finetuning/v3_generate_학습결과.md` 전체 업데이트 (학습 결과 + 평가 구조 정리)
+- 커밋: `feat: LoRA v3 학습 데이터 재설계 — 1500건 파이프라인 완성`
+
+**다음 할 일:**
+1. v3_generate 평가 결과를 학습결과 문서 6절에 기입
+2. 커스텀 템플릿 2단계 추출 아키텍처 구현
+3. 프론트엔드 수동 QA
+
+---
+
+## 2026-03-18 (화)
+
+#### docs/ 폴더 구조 정리
+- 62개 md 파일 전수 조사 → KEEP(40개) / ARCHIVE(18개) 분류
+- 용도별 폴더 재구성:
+  - `architecture/` (9): agent 설계, 오케스트레이터, 파이프라인
+  - `experiments/` (4): intent 실험, 데이터 생성 프롬프트
+  - `guides/` (3): RunPod, Docker, 파인튜닝 가이드
+  - `plans/` (6): 활성 TODO/계획 문서
+  - `mentoring/` (1): KEEP 피드백만
+  - `archive/` (31): 완료된 발표/초기설계/deprecated
+- 빈 폴더 삭제: `지용/`, `중간발표_전/`, `중간발표준비/`, `멘토링/`, `agent/`
+
+#### vLLM LoRA 서빙 상태 확인
+- RunPod 엔드포인트 정상 서빙 확인 (HF 토큰 만료 이슈는 해소됨)
+- **LoRA 4개 + 베이스 모델 전부 응답 정상**:
+  - `v1_judgment`, `v2_generate`, `v3_summary`, `planner`
+- 터미널 한글 깨짐 = Windows CP949 문제 (파일 저장 후 확인하면 정상 UTF-8)
+
+**다음 할 일:**
+1. v3_generate 평가 결과 문서 기입
+2. 커스텀 템플릿 2단계 추출 아키텍처 구현
 3. 프론트엔드 수동 QA

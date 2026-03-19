@@ -25,9 +25,17 @@ outputs/
 *.gguf
 *.onnx
 
+# Codex artifacts
+MEMORY.md
+docs/PROJECT_UNDERSTANDING_NOTE.md
+
 # Test artifacts
 test-results/
 tests/screenshots/
+tests/results/
+tests/*_result.json
+tests/m1_raw.json
+tests/debug_p3.py
 frontend/e2e/results/
 frontend/playwright-report/
 
