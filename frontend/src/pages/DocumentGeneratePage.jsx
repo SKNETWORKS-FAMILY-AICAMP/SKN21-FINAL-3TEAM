@@ -148,8 +148,8 @@ function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendee
 // 카테고리별 폼에 표시할 필드 키 (form 플래그 없는 커스텀 템플릿용 fallback)
 const FORM_KEYS = {
   meeting_minutes: ['title', 'date', 'attendees', 'team', 'content'],
-  report: ['title', 'date', 'author', 'department', 'content'],
-  proposal: ['title', 'date', 'company', 'manager', 'content'],
+  report: ['title', 'date', 'author', 'department', 'report_to', 'content'],
+  proposal: ['title', 'submit_date', 'company', 'manager', 'submit_to', 'content'],
 };
 
 /**
@@ -319,7 +319,7 @@ export default function DocumentGeneratePage() {
             // form: false 필드는 폼 초기값에서 제외 (LLM이 생성)
             if (f.form === false) continue;
             if (f.form !== true && !formKeys.includes(f.key)) continue;
-            if (f.key === 'date') defaults[f.key] = new Date().toISOString().split('T')[0];
+            if (f.key === 'date' || f.key === 'submit_date') defaults[f.key] = new Date().toISOString().split('T')[0];
             else if (f.key === 'author' || f.key === 'manager') defaults[f.key] = user?.name || '';
             else if (f.key === 'department') defaults[f.key] = user?.team || '';
             else defaults[f.key] = '';
