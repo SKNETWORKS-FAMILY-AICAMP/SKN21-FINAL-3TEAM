@@ -41,7 +41,7 @@ export const JUDGMENT_RESULTS = {
 }
 
 // 팀(부서) 목록
-export const TEAMS = ['개발', 'QA기획', 'UI/UX', '영업', '마케팅', 'CS'];
+export const TEAMS = ['개발', 'QA기획', 'UI/UX', '영업', '마케팅', 'CS', '경영', 'HR'];
 
 // 문서 scope
 export const DOCUMENT_SCOPES = {

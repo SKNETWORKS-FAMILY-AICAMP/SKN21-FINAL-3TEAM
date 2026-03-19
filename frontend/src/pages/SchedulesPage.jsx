@@ -275,7 +275,7 @@ export default function SchedulesPage() {
     const eventYear = event.year || new Date().getFullYear();
     setEditingSchedule({
       id: event.scheduleId,
-      title: event.label,
+      title: event.label.replace(/^\[.*?\]\s*/, ''),
       date: event.startDate || `${eventYear}-${String(event.month).padStart(2, '0')}-${String(event.day).padStart(2, '0')}`,
       endDate: event.endDate || '',
       startTime: event.rawStartTime || '09:00',
