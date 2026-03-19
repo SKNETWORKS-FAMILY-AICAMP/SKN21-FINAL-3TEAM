@@ -4,6 +4,28 @@
 
 ---
 
+## 2026-03-19 (수)
+
+**v3_generate 문서 생성 통합 테스트 + 버그 수정**
+
+한 일:
+- 회의록(M1~M3), 보고서(R1~R3), 제안서(P1~P3) LoRA v3_generate 생성 테스트 완료
+- Base sLLM vs LoRA 비교 테스트 — LoRA가 JSON 스키마 준수 + 할루시네이션 억제에서 우위
+- 자연어 입력(구어체/메모) 테스트 3건(N1~N3) — 격식체 변환 + 담당자/기한 추론 정상
+- **버그 수정 — content/summary 우선순위**: DOCX 회의 내용에 summary가 들어가던 문제 (`document_agent.py` 1108줄)
+- **근본 원인 수정 — 제안서 필드명 불일치**: 학습 데이터(`submit_date`, `current_situation`) vs 시스템 템플릿(`date`, `analysis`) 불일치 → 템플릿을 학습 데이터에 맞춤
+- **override 타이밍 수정**: fields_data(사용자 입력)가 DOCX 빌드 후에 반영되던 문제 → 빌드 전으로 이동
+- **DOCX 빌더 키 매핑**: `proposal_name`→`title`, `proposal_date`→`submit_date`, `proposer`→`company` fallback 추가
+- **2단계 추출 fallback**: JSON 파싱 실패 시 정규식 대신 `_extract_structured_fields` 파이프라인 활용
+- **폼 필드 추가**: 보고서 `report_to`(보고 대상), 제안서 `submit_to`(제출처) → 프론트 전달 필요
+
+다음 할 일:
+- 프론트엔드에 report_to/submit_to 폼 필드 추가 전달 (지영)
+- 보고서 필드명 학습 데이터 일치 확인 (현재 일치함)
+- 짧은 입력(100자 이하) 할루시네이션 개선은 v4 학습 데이터 과제
+
+---
+
 ## 2026-02-10 (월)
 
 **GitHub 전면 정비:**

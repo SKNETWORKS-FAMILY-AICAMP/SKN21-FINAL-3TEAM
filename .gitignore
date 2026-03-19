@@ -28,6 +28,10 @@ outputs/
 # Test artifacts
 test-results/
 tests/screenshots/
+tests/results/
+tests/*_result.json
+tests/m1_raw.json
+tests/debug_p3.py
 frontend/e2e/results/
 frontend/playwright-report/
 

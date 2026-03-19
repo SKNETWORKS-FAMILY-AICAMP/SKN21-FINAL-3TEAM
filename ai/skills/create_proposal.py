@@ -334,17 +334,22 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
         _inject(t0.rows[3].cells[1], data.get("manager", ""))
         _inject(t0.rows[4].cells[1], data.get("contact", ""))
 
-        # 기본 정보
-        _inject(t1.rows[0].cells[1], data.get("proposal_name", ""))
+        # 기본 정보 (LoRA 출력 키 → 빌더 키 매핑)
+        _inject(t1.rows[0].cells[1], data.get("proposal_name", "") or data.get("title", ""))
         _inject(t1.rows[1].cells[1], data.get("background", ""))
-        _inject(t1.rows[2].cells[1], data.get("proposal_date", ""))
+        _inject(t1.rows[2].cells[1], data.get("proposal_date", "") or data.get("submit_date", ""))
         _inject(t1.rows[2].cells[3], data.get("period", ""))
-        _inject(t1.rows[3].cells[1], data.get("proposer", ""))
-        _inject(t1.rows[3].cells[3], data.get("manager_contact", ""))
+        _inject(t1.rows[3].cells[1], data.get("proposer", "") or data.get("company", ""))
+        manager_contact = data.get("manager_contact", "")
+        if not manager_contact:
+            m = data.get("manager", "")
+            c = data.get("contact", "")
+            manager_contact = f"{m} / {c}" if m and c else m or c
+        _inject(t1.rows[3].cells[3], manager_contact)
 
         # 본문 섹션
         _inject(t2.rows[1].cells[0], data.get("purpose", ""))
-        _inject(t3.rows[1].cells[0], data.get("analysis", ""))
+        _inject(t3.rows[1].cells[0], data.get("current_situation", "") or data.get("analysis", ""))
         _inject(t4.rows[1].cells[0], data.get("content", ""))
 
         # 추진 일정 (LLM이 list 또는 dict로 반환할 수 있으므로 정규화)
