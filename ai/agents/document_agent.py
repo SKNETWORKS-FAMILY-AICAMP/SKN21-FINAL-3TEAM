@@ -23,6 +23,7 @@ from typing import Any, Dict, List
 
 GENERATED_DOCS_DIR = Path(__file__).resolve().parents[2] / "backend" / "generated_docs"
 
+
 from ai.agents.state import AgentState
 from ai.templates import get_system_template
 
@@ -35,7 +36,7 @@ logger = logging.getLogger(__name__)
 GENERATION_FIELD_CONFIG = {
     "meeting_minutes": {
         "always": ["title", "date", "attendees", "content", "summary", "decisions", "action_items"],
-        "optional": ["meeting_type", "author", "time", "location", "risks", "notes"],
+        "optional": ["meeting_type", "author", "time", "location", "notes"],
         "max_fields": 10,
     },
     "report": {
@@ -44,7 +45,7 @@ GENERATION_FIELD_CONFIG = {
         "max_fields": 10,
     },
     "proposal": {
-        "always": ["title", "date", "purpose", "content", "expected_effect", "schedule", "budget", "background", "current_situation"],
+        "always": ["title", "submit_date", "purpose", "content", "expected_effect", "schedule", "budget", "background", "current_situation"],
         "optional": ["company", "manager", "submit_to", "budget_total", "contact"],
         "max_fields": 11,
     },
@@ -838,7 +839,7 @@ def _build_narrative_input(category: str, fields_data: Dict[str, Any], content: 
         title = fields_data.get("title", "")
         company = fields_data.get("company", "")
         manager = fields_data.get("manager", "")
-        date = fields_data.get("date", "")
+        date = fields_data.get("submit_date", "") or fields_data.get("date", "")
         if title:
             parts.append(f"제안명: {title}")
         if company:
@@ -846,7 +847,7 @@ def _build_narrative_input(category: str, fields_data: Dict[str, Any], content: 
         if manager:
             parts.append(f"담당자: {manager}")
         if date:
-            parts.append(f"날짜: {date}")
+            parts.append(f"제출일: {date}")
     else:
         # 기타 카테고리: 모든 필드를 나열
         for k, v in fields_data.items():
@@ -884,27 +885,18 @@ async def generate_document(
         narrative = user_input or content or ""
 
     if template_id:
-        result = await _generate_with_custom_template(narrative, template_id, category)
+        result = await _generate_with_custom_template(narrative, template_id, category, fields_data)
     elif (system_tpl_id := await _get_system_template_id(category)):
-        result = await _generate_with_custom_template(narrative, system_tpl_id, category)
+        result = await _generate_with_custom_template(narrative, system_tpl_id, category, fields_data)
     else:
         raise ValueError(f"시스템 템플릿이 DB에 없습니다. 카테고리: {category}. DB 시딩을 확인하세요.")
-
-    # fields_data의 사용자 입력 값으로 덮어쓰기 (할루시네이션 방지)
-    if fields_data:
-        data = result.get("data", {})
-        override_keys = {"title", "date", "attendees", "author", "department", "company", "manager", "team"}
-        for key in override_keys:
-            if key in fields_data and fields_data[key]:
-                data[key] = fields_data[key]
-        result["data"] = data
 
     # 사용된 모델명 추가 (프론트에서 LoRA/Base 표시용)
     result["model_name"] = _last_model_name
     return result
 
 
-async def _generate_with_custom_template(user_input: str, template_id: int, template_type: str) -> Dict[str, Any]:
+async def _generate_with_custom_template(user_input: str, template_id: int, template_type: str, fields_data: Dict[str, Any] | None = None) -> Dict[str, Any]:
     """커스텀 양식(DB 등록)으로 문서 생성 — 동적 필드 명세"""
     _t = time.time()
     print(f"[DocumentAgent] _generate_with_custom_template | template_id={template_id}")
@@ -995,16 +987,39 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
         data = json.loads(generated_json_str)
         print(f"[DocumentAgent] 1단계 JSON 파싱 성공 | keys={list(data.keys())}")
     except Exception:
-        print(f"[DocumentAgent] !!! JSON 파싱 실패")
-        data = {"content": generated_json_str}
+        print(f"[DocumentAgent] !!! JSON 파싱 실패 - 2단계 추출로 복구")
+        data = {"content": user_input}
 
-    # ── 2단계: 커스텀 템플릿 미학습 필드 프롬프트 추출 ──
+    # content가 JSON 문자열/dict이면 user_input으로 대체
+    content_val = data.get("content", "")
+    if isinstance(content_val, dict):
+        data["content"] = user_input
+    elif isinstance(content_val, str) and content_val.strip().startswith("{"):
+        data["content"] = user_input
+
+    # 빈 필드가 많으면 2단계 추출 파이프라인으로 복구
+    empty_fields = [f for f in fields_for_llm if not data.get(f["key"])]
+    if empty_fields:
+        print(f"[DocumentAgent] 빈 필드 {len(empty_fields)}개 - 2단계 추출 시도")
+        stage2_data = await _extract_structured_fields(
+            user_input, empty_fields
+        )
+        for k, v in stage2_data.items():
+            if not data.get(k):
+                data[k] = v
+        print(f"[DocumentAgent] 2단계 추출 완료 | 복구 keys={list(stage2_data.keys())}")
+
+    # current_situation(현황 분석)이 비어있으면 background로 fallback
+    if not data.get("current_situation") and data.get("background"):
+        data["current_situation"] = data["background"]
+
+    # ── 기존 2단계: 커스텀 템플릿 미학습 필드 추출 ──
     if untrained_fields and data.get("content"):
         stage2_data = await _extract_structured_fields(
             data["content"], untrained_fields
         )
         data.update(stage2_data)
-        print(f"[DocumentAgent] 2단계 병합 완료 | 추가 keys={list(stage2_data.keys())}")
+        print(f"[DocumentAgent] 미학습 필드 추출 완료 | keys={list(stage2_data.keys())}")
 
     # LLM에 안 보낸 필드도 DOCX 빌더가 참조하므로 기본값 채우기
     for f in fields:
@@ -1163,6 +1178,15 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
     GENERATED_DOCS_DIR.mkdir(parents=True, exist_ok=True)
     output_path = str(GENERATED_DOCS_DIR / f"{doc_uuid}.docx")
 
+    # fields_data 사용자 입력값을 DOCX 빌드 전에 반영
+    if fields_data:
+        override_keys = {"title", "date", "submit_date", "attendees", "author", "department", "company", "manager", "team", "report_to", "submit_to"}
+        for key in override_keys:
+            if key in fields_data and fields_data[key]:
+                data[key] = fields_data[key]
+        if "date" in fields_data and fields_data["date"] and not data.get("submit_date"):
+            data["submit_date"] = fields_data["date"]
+
     # DOCX 생성: 원본 양식 → 시스템 빌더 → 범용 레이아웃 순으로 분기
     try:
         from ai.skills.create_from_template import fill_template_docx, create_generic_document
@@ -1182,7 +1206,7 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
                 "meeting_type": data.get("meeting_type", "정기"),
                 "attendees": data.get("attendees", []),
                 "author": data.get("author", ""),
-                "content": data.get("summary", data.get("content", "")),
+                "content": data.get("content", data.get("summary", "")),
                 "decisions": data.get("decisions", []),
                 "action_items": data.get("action_items", []),
                 "notes": data.get("notes", ""),
@@ -1549,11 +1573,11 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
                 use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
                 # task별 LoRA 어댑터 이름 매핑
                 LORA_ADAPTER_NAMES = {
-                    "generate": "v2_generate",
+                    "generate": "v3_generate",
                     "summary": "v3_summary",
                 }
                 if use_lora and task in lora_tasks:
-                    adapter_name = LORA_ADAPTER_NAMES.get(task, f"v2_{task}")
+                    adapter_name = LORA_ADAPTER_NAMES.get(task, f"v3_{task}")
                     llm = VLLMProvider().with_lora(adapter_name)
                     _last_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + f" (LoRA {adapter_name})"
                     print(f"[DocumentAgent] _call_llm | sLLM: {adapter_name} LoRA 어댑터")

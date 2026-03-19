@@ -127,7 +127,7 @@ export default function Layout() {
         ref={mainRef}
         onScrollCapture={handleScroll}
         className={`flex-1 min-h-0 relative transition-[padding] duration-300 ease-in-out ${isChatPage
-          ? `overflow-hidden flex flex-col ${isScrolled ? 'pt-[76px]' : (topbarScheduleHidden ? 'pt-[96px]' : 'pt-[180px]')}`
+          ? `overflow-hidden flex flex-col ${isScrolled ? 'pt-0' : (topbarScheduleHidden ? 'pt-[96px]' : 'pt-[180px]')}`
           : `overflow-y-auto overflow-x-hidden ${topbarScheduleHidden ? 'pt-[100px]' : 'pt-[180px]'} px-4 md:px-8 pb-20`
           }`}
       >

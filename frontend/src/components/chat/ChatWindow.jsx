@@ -78,7 +78,7 @@ function AgentBar({ activeIntent, isStreaming }) {
   );
 }
 
-export default function ChatWindow({ messages, onSend, selectedDocumentName, onClearDocument, activeIntent, isStreaming, panelOpen, onScrollChange, children }) {
+export default function ChatWindow({ messages, onSend, selectedDocumentName, onClearDocument, activeIntent, isStreaming, panelOpen, onScrollChange, topbarScrolled, children }) {
   const [input, setInput] = useState('');
   const [files, setFiles] = useState([]);
   const [dragOver, setDragOver] = useState(false);
@@ -88,7 +88,6 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
   const fileInputRef = useRef(null);
   const dragCounterRef = useRef(0);
   const mountedRef = useRef(false);
-  const headerHiddenRef = useRef(false);
   const lastScrollTopRef = useRef(0);
   const programmaticScrollRef = useRef(false);
   const programmaticTimerRef = useRef(null);
@@ -105,15 +104,11 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
     if (programmaticScrollRef.current) return;
 
     const scrollTop = e.target.scrollTop;
-    const prev = lastScrollTopRef.current;
     lastScrollTopRef.current = scrollTop;
 
-    if (scrollTop < prev && headerHiddenRef.current) {
-      headerHiddenRef.current = false;
-      onScrollChange?.(false);
-    } else if (scrollTop > prev && scrollTop > 80 && !headerHiddenRef.current) {
-      headerHiddenRef.current = true;
-      onScrollChange?.(true);
+    // 스크롤이 100px 이상 내려가면 헤더 숨김
+    if (onScrollChange) {
+      onScrollChange(scrollTop > 100);
     }
   };
 
@@ -132,6 +127,23 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       container.scrollTop = container.scrollHeight;
     }
   }, [messages, isStreaming]);
+
+  // 카드 렌더링 등으로 컨텐츠 높이가 변할 때 자동 스크롤
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver(() => {
+      // 사용자가 위로 스크롤한 상태가 아닐 때만 자동 스크롤
+      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+      if (isNearBottom) {
+        markProgrammaticScroll();
+        container.scrollTop = container.scrollHeight;
+      }
+    });
+    // 스크롤 컨테이너의 직접 자식들 높이 변화 감지
+    Array.from(container.children).forEach(child => observer.observe(child));
+    return () => observer.disconnect();
+  }, [messages]);
 
   const addFiles = useCallback((fileList) => {
     setFileError(null);
@@ -228,6 +240,8 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
         </div>
       )}
 
+
+      {/* 헤더는 ChatPage에서 별도로 렌더링됨 */}
 
       <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto py-4 px-4 scroll-smooth custom-scrollbar" data-main-scroll="" onScroll={handleScroll}>{children}<div ref={bottomRef} /></div>
 

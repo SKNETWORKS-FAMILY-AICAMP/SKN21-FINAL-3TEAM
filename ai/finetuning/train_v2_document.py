@@ -322,7 +322,7 @@ def train(task: str, config: dict, base_model_override: str = None):
         gradient_checkpointing=True,
         optim="adamw_torch" if "exaone" in model_id.lower() else "paged_adamw_8bit",
         report_to="none",
-        max_seq_length=train_cfg["max_length"],
+        max_length=train_cfg["max_length"],
         dataset_text_field="text",
     )
 
@@ -489,14 +489,86 @@ def evaluate(task: str, config: dict, adapter_path: str, base_model_override: st
         json_rate = stats["json_valid"] / total if total else 0
         field_complete = stats["field_complete"] / total if total else 0
         field_accurate = stats["field_accurate"] / max(stats["json_valid"], 1)
+        avg_rouge = stats["rouge_l_sum"] / total if total else 0
+        avg_output_len = stats.get("output_len_sum", 0) / total if total else 0
+
+        # BERTScore
+        bertscore_f1 = 0.0
+        if stats.get("bertscore_preds"):
+            try:
+                from bert_score import score as bert_score_fn
+                P, R, F1 = bert_score_fn(
+                    stats["bertscore_preds"], stats["bertscore_refs"],
+                    model_type="klue/roberta-large", num_layers=24,
+                    lang="ko", verbose=False, device="cuda",
+                )
+                bertscore_f1 = F1.mean().item()
+            except Exception as e:
+                print(f"    BERTScore 계산 실패: {e}")
+
+        # 빈 필드 정확도
+        empty_total = stats.get("empty_field_total", 0)
+        empty_correct = stats.get("empty_field_correct", 0)
+        false_fill = stats.get("false_fill", 0)
+        empty_acc = empty_correct / empty_total if empty_total else 0
+        false_fill_rate = false_fill / empty_total if empty_total else 0
+
+        print(f"\n  [구조 지표]")
         print(f"    JSON 유효율:    {stats['json_valid']}/{total} ({json_rate*100:.1f}%)")
         print(f"    필드 완전성:    {stats['field_complete']}/{total} ({field_complete*100:.1f}%)")
         print(f"    필드명 정확도:  {stats['field_accurate']}/{stats['json_valid']} ({field_accurate*100:.1f}%)")
+
+        print(f"\n  [내용 품질]")
+        print(f"    ROUGE-L:        {avg_rouge:.4f}")
+        print(f"    BERTScore F1:   {bertscore_f1:.4f}")
+        print(f"    평균 출력 길이: {avg_output_len:.0f}자")
+
+        print(f"\n  [할루시네이션]")
+        print(f"    빈 필드 정확도: {empty_correct}/{empty_total} ({empty_acc*100:.1f}%)")
+        print(f"    False Fill:     {false_fill}/{empty_total} ({false_fill_rate*100:.1f}%)")
+
+        print(f"\n  [핵심 필드 채움률]")
+        key_field_results = {}
+        for key in ["decisions", "action_items", "tasks", "issues", "next_plan",
+                     "schedule", "budget", "background", "current_situation"]:
+            t_key = f"key_field_{key}_total"
+            f_key = f"key_field_{key}_filled"
+            if stats.get(t_key, 0) > 0:
+                fill_rate = stats.get(f_key, 0) / stats[t_key]
+                print(f"    {key:25s}: {stats.get(f_key, 0)}/{stats[t_key]} ({fill_rate*100:.1f}%)")
+                key_field_results[key] = round(fill_rate, 4)
+
+        # 정성 평가 샘플 출력
+        preds = stats.get("all_predictions", [])
+        if preds:
+            print(f"\n  [정성 평가 샘플 — 5건]")
+            indices = [0, len(preds)//4, len(preds)//2, len(preds)*3//4, min(len(preds)-1, 4)]
+            for idx in sorted(set(indices)):
+                if idx < len(preds):
+                    p = preds[idx]
+                    print(f"\n    --- [{idx}] {p['doc_type']} | ROUGE-L: {p['rouge_l']:.3f} ---")
+                    print(f"    Gold: {p['gold'][:150]}")
+                    print(f"    Pred: {p['pred'][:150]}")
+
         eval_results.update({
             "json_valid_rate": round(json_rate, 4),
             "field_completeness": round(field_complete, 4),
             "field_accuracy": round(field_accurate, 4),
+            "rouge_l": round(avg_rouge, 4),
+            "bertscore_f1": round(bertscore_f1, 4),
+            "avg_output_length": round(avg_output_len),
+            "empty_field_accuracy": round(empty_acc, 4),
+            "false_fill_rate": round(false_fill_rate, 4),
+            "key_field_fill_rates": key_field_results,
         })
+
+        # 정성 평가 전체 저장
+        if preds:
+            qual_path = output_base / model_short / ("base_eval" if is_base else "") / "qualitative_samples.json"
+            qual_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(qual_path, "w", encoding="utf-8") as f:
+                json.dump(preds, f, ensure_ascii=False, indent=2)
+            print(f"\n  정성 평가 저장: {qual_path} ({len(preds)}건)")
 
     elif task == "qa":
         json_rate = stats["json_valid"] / total if total else 0
@@ -608,8 +680,26 @@ def _parse_field_spec_from_user(user_content: str) -> list[str]:
     return fields
 
 
+def _detect_doc_type_from_user(user_content: str) -> str:
+    if "회의록" in user_content:
+        return "meeting_minutes"
+    elif "보고서" in user_content or "업무보고" in user_content:
+        return "report"
+    elif "제안서" in user_content:
+        return "proposal"
+    return "unknown"
+
+
+# 핵심 필드 목록 (채움률 측정 대상)
+_KEY_FIELDS = {
+    "meeting_minutes": ["decisions", "action_items"],
+    "report": ["tasks", "issues", "next_plan"],
+    "proposal": ["schedule", "budget", "background", "current_situation"],
+}
+
+
 def _eval_doc_generate(st: dict, pred_text: str, gold_text: str, sample: dict):
-    """doc_generate 평가 (동적 필드 명세 기반)"""
+    """doc_generate 평가 — 구조 + 내용 + 핵심 필드 채움률"""
     pred_json = parse_json_from_text(pred_text)
     if pred_json is None:
         return
@@ -625,24 +715,66 @@ def _eval_doc_generate(st: dict, pred_text: str, gold_text: str, sample: dict):
 
     expected_fields = _parse_field_spec_from_user(user_content)
     present_fields = set(pred_json.keys())
+    doc_type = _detect_doc_type_from_user(user_content)
 
     if expected_fields:
-        # 필드 완전성: 명세의 모든 필드가 존재?
         if all(f in present_fields for f in expected_fields):
             st["field_complete"] += 1
-
-        # 필드명 정확도: 명세 필드와 정확히 일치?
         expected_set = set(expected_fields)
         if expected_set == present_fields or expected_set.issubset(present_fields):
             st["field_accurate"] += 1
     else:
-        # 필드 명세 파싱 실패 시 gold JSON 기준 fallback
         gold_json = parse_json_from_text(gold_text)
         if gold_json:
             gold_keys = set(gold_json.keys())
             if gold_keys and gold_keys.issubset(present_fields):
                 st["field_complete"] += 1
                 st["field_accurate"] += 1
+
+    # ── ROUGE-L ──
+    from rouge_score import rouge_scorer
+    scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=False)
+    rouge_result = scorer.score(gold_text, pred_text)
+    st["rouge_l_sum"] += rouge_result["rougeL"].fmeasure
+
+    # ── BERTScore용 저장 ──
+    st.setdefault("bertscore_preds", []).append(pred_text[:2000])
+    st.setdefault("bertscore_refs", []).append(gold_text[:2000])
+
+    # ── 빈 필드 정확도 (false fill 감지) ──
+    gold_json = parse_json_from_text(gold_text)
+    if gold_json and expected_fields:
+        for field in expected_fields:
+            gold_val = gold_json.get(field)
+            pred_val = pred_json.get(field)
+            gold_empty = (gold_val is None or gold_val == "" or gold_val == [] or gold_val == {})
+            pred_empty = (pred_val is None or pred_val == "" or pred_val == [] or pred_val == {})
+            if gold_empty:
+                st["empty_field_total"] = st.get("empty_field_total", 0) + 1
+                if pred_empty:
+                    st["empty_field_correct"] = st.get("empty_field_correct", 0) + 1
+                else:
+                    st["false_fill"] = st.get("false_fill", 0) + 1
+
+    # ── 핵심 필드 채움률 ──
+    for key in _KEY_FIELDS.get(doc_type, []):
+        if key in expected_fields if expected_fields else True:
+            st_key = f"key_field_{key}"
+            st[f"{st_key}_total"] = st.get(f"{st_key}_total", 0) + 1
+            pred_val = pred_json.get(key)
+            if pred_val and pred_val != [] and pred_val != "" and pred_val != {}:
+                st[f"{st_key}_filled"] = st.get(f"{st_key}_filled", 0) + 1
+
+    # ── 출력 길이 ──
+    st["output_len_sum"] = st.get("output_len_sum", 0) + len(pred_text)
+
+    # ── 정성 평가 저장 ──
+    st.setdefault("all_predictions", []).append({
+        "doc_type": doc_type,
+        "gold": gold_text[:500],
+        "pred": pred_text[:500],
+        "rouge_l": rouge_result["rougeL"].fmeasure,
+    })
 
 
 def _eval_doc_qa(st: dict, pred_text: str, gold_text: str):

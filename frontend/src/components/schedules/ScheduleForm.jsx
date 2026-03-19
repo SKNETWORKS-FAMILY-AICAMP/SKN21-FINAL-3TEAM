@@ -217,7 +217,7 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
                   : 'border-neutral-divider dark:border-white/10 bg-white/50 dark:bg-black/20 text-neutral-500'
                   }`}
               >
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+                <span className={`w-2 h-2 rounded-full ${form.type === id ? 'ring-1 ring-white' : ''}`} style={{ backgroundColor: color }} />
                 {label}
               </button>
             ))}
@@ -227,7 +227,7 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
         {/* 공유 설정 */}
         {(hasTeam || projects.length > 0) && (
           <div className="space-y-2">
-            <div className="flex justify-center gap-2">
+            <div className="flex gap-2">
               {hasTeam && (
                 <button
                   type="button"
@@ -276,7 +276,6 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
 
         {/* 날짜 */}
         <div>
-          <label className="text-[0.8125rem] font-semibold block mb-2">날짜</label>
           <RangePicker
             startDate={form.date}
             endDate={form.endDate}
@@ -360,7 +359,7 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
 
         {/* 버튼 */}
         <div className="flex gap-2 pt-4">
-          <button onClick={onClose} disabled={submitting} className="flex-1 py-3 text-xs font-black rounded-xl text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-all">취소</button>
+          <button onClick={onClose} disabled={submitting} className="flex-1 py-3 text-xs font-black rounded-xl border border-neutral-border text-neutral-sub hover:bg-surface-hover hover:text-neutral-main transition-all">취소</button>
           <button onClick={handleSubmit} disabled={submitting} className="flex-1 py-3 bg-primary-700 text-white text-xs font-black rounded-xl shadow-xl shadow-primary-700/20 hover:bg-primary-800 hover:scale-105 transition-all">
             {submitting ? (isEditMode ? '수정 중...' : '등록 중...') : (isEditMode ? '수정' : '등록')}
           </button>

@@ -4,9 +4,68 @@ import MarkdownText from './MarkdownText';
 
 const borderColors = { deny: 'border-l-error', conditional: 'border-l-warning', ref: 'border-l-primary-300' };
 
+const SCALE_SEGMENTS = [
+  { pct: 50, bg: '#f87171', label: '근거 부족', range: '0~49%', desc: 'RAG 검색·규정 커버리지가 낮아 보정 점수가 크게 하락한 상태' },
+  { pct: 20, bg: '#fbbf24', label: '적용 어려움', range: '50~69%', desc: '관련 규정은 검색되었으나 가중합 점수가 높지 않은 상태' },
+  { pct: 20, bg: '#4ade80', label: '해석 필요', range: '70~89%', desc: 'LLM·RAG·커버리지 모두 양호하나 일부 감점 요소 존재' },
+  { pct: 10, bg: '#16a34a', label: '높은 신뢰', range: '90~100%', desc: '모든 구성 요소가 높고 감점이 거의 없는 최고 신뢰 상태' },
+];
+
+function ConfidenceScaleBar() {
+  const [hover, setHover] = useState(null);
+  const active = hover !== null ? SCALE_SEGMENTS[hover] : null;
+  return (
+    <div className="pt-4 mx-auto" style={{ maxWidth: '85%' }}>
+      {/* 막대 */}
+      <div className="flex w-full h-3 rounded-full overflow-hidden">
+        {SCALE_SEGMENTS.map((seg, i) => (
+          <div
+            key={seg.label}
+            className="cursor-pointer transition-all duration-150"
+            style={{
+              width: `${seg.pct}%`,
+              backgroundColor: seg.bg,
+              opacity: hover !== null && hover !== i ? 0.35 : 1,
+              transform: hover === i ? 'scaleY(1.8)' : 'scaleY(1)',
+            }}
+            onMouseEnter={() => setHover(i)}
+            onMouseLeave={() => setHover(null)}
+          />
+        ))}
+      </div>
+
+      {/* 눈금 */}
+      <div className="relative w-full mt-1" style={{ height: '0.875rem' }}>
+        <span className="absolute text-[0.625rem] text-neutral-sub" style={{ left: 0 }}>0%</span>
+        <span className="absolute text-[0.625rem] text-neutral-sub" style={{ left: '50%', transform: 'translateX(-50%)' }}>50%</span>
+        <span className="absolute text-[0.625rem] text-neutral-sub" style={{ left: '70%', transform: 'translateX(-50%)' }}>70%</span>
+        <span className="absolute text-[0.625rem] text-neutral-sub" style={{ left: '90%', transform: 'translateX(-50%)' }}>90%</span>
+        <span className="absolute text-[0.625rem] text-neutral-sub" style={{ right: 0 }}>100%</span>
+      </div>
+
+      {/* 호버 시 구간 설명 (고정 높이) */}
+      <div className="mt-1.5 h-9 flex items-center gap-2 px-2 rounded-md text-[0.6875rem] transition-colors duration-150" style={{ backgroundColor: active ? active.bg + '18' : 'transparent' }}>
+        {active ? (
+          <>
+            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-0.5" style={{ backgroundColor: active.bg }} />
+            <div>
+              <span className="font-semibold text-neutral-main">{active.label}</span>
+              <span className="text-neutral-sub ml-1">({active.range})</span>
+              <span className="text-neutral-sub ml-1">— {active.desc}</span>
+            </div>
+          </>
+        ) : (
+          <div className="w-full text-[0.625rem] text-neutral-400 text-center">각 구간에 마우스를 올리면 설명이 표시됩니다</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function getConfidenceColor(value) {
+  if (value >= 0.9) return { bar: 'bg-green-600', text: 'text-green-700' };
   if (value >= 0.7) return { bar: 'bg-green-500', text: 'text-green-600' };
-  if (value >= 0.4) return { bar: 'bg-yellow-500', text: 'text-yellow-600' };
+  if (value >= 0.5) return { bar: 'bg-yellow-500', text: 'text-yellow-600' };
   return { bar: 'bg-red-500', text: 'text-red-600' };
 }
 
@@ -124,6 +183,26 @@ export default function JudgmentCard({ summary, regulations = [], alternatives =
 
             {open && (
               <div className="px-4 pb-3 space-y-3">
+                {/* LLM Raw vs 보정 점수 비교 */}
+                {typeof confidenceBreakdown.llm_raw === 'number' && hasScore && (
+                  <div className="flex items-center gap-3 text-[0.6875rem] text-neutral-sub bg-neutral-50 rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-1.5">
+                      <span>LLM 원본 점수:</span>
+                      <span className="font-bold text-neutral-main">{(confidenceBreakdown.llm_raw * 100).toFixed(1)}%</span>
+                    </div>
+                    <span className="text-neutral-300">→</span>
+                    <div className="flex items-center gap-1.5">
+                      <span>보정 후:</span>
+                      <span className={`font-bold ${scoreColor.text}`}>{(finalScore * 100).toFixed(1)}%</span>
+                    </div>
+                    {confidenceBreakdown.llm_raw !== finalScore && (
+                      <span className={`text-[0.625rem] ${finalScore < confidenceBreakdown.llm_raw ? 'text-red-500' : 'text-green-600'}`}>
+                        ({finalScore < confidenceBreakdown.llm_raw ? '' : '+'}{((finalScore - confidenceBreakdown.llm_raw) * 100).toFixed(1)}%p)
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* 구성 요소 */}
                 <div className="space-y-1.5">
                   <div className="text-[0.6875rem] font-semibold text-neutral-sub">구성 요소</div>
@@ -154,22 +233,6 @@ export default function JudgmentCard({ summary, regulations = [], alternatives =
                   )}
                 </div>
 
-                {/* 신뢰도 기준 범례 */}
-                <div className="pt-3 border-t border-neutral-divider flex items-center justify-center gap-4 text-[0.6875rem] text-neutral-sub mt-2">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span>가능 (70% 이상)</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                    <span>조건부 (40% ~ 69%)</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                    <span>불가능 (40% 미만)</span>
-                  </div>
-                </div>
-
                 {/* 경고 */}
                 {hasWarnings && (
                   <div className="space-y-1">
@@ -186,6 +249,11 @@ export default function JudgmentCard({ summary, regulations = [], alternatives =
                     </ul>
                   </div>
                 )}
+
+                {/* 신뢰도 기준 바 (호버 툴팁) */}
+                <div className="mt-5">
+                  <ConfidenceScaleBar />
+                </div>
               </div>
             )}
           </div>

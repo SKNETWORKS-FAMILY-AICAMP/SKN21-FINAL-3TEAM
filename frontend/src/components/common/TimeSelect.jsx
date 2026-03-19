@@ -40,12 +40,18 @@ export default function TimeSelect({ value, onChange }) {
   useEffect(() => {
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
+      const dropdownHeight = 192; // max-h-48 = 12rem = 192px
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openUpward = spaceBelow < dropdownHeight && rect.top > spaceBelow;
+
       setDropStyle({
         position: 'fixed',
-        top: rect.bottom + 2,
         left: rect.left,
         width: rect.width,
         zIndex: 9999,
+        ...(openUpward
+          ? { bottom: window.innerHeight - rect.top + 2 }
+          : { top: rect.bottom + 2 }),
       });
     }
   }, [isOpen]);

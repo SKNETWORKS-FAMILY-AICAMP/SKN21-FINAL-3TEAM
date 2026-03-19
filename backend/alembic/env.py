@@ -2,9 +2,15 @@
 Alembic 마이그레이션 환경 (팀원 D 관리)
 """
 import os
+from pathlib import Path
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
+from dotenv import load_dotenv
+
+# 프로젝트 루트의 .env 로드 (로컬 실행 시 EC2 DB 접속용)
+_project_root = Path(__file__).resolve().parents[2]
+load_dotenv(_project_root / ".env", override=False)
 
 from app.db.base import Base
 from app.models import *  # noqa: F401,F403 - 모든 모델 import
