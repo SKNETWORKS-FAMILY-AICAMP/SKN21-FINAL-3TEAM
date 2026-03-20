@@ -1,5 +1,5 @@
 """
-DOCX 양식 필드 추출기 v2 (구조 기반, LLM 불필요)
+DOCX 양식 필드 추출기 v3 (구조 기반 + 메타데이터 자동 부여)
 
 어떤 DOCX 양식이든 구조를 분석하여 필드를 자동 추출한다.
 
@@ -13,6 +13,12 @@ DOCX 양식 필드 추출기 v2 (구조 기반, LLM 불필요)
 키 생성:
   - FIELD_MAPPING에 있으면 → 영어 키 (title, date 등)
   - 없으면 → 정규화된 한글 라벨을 키로 사용 (커스텀 필드)
+
+메타데이터 (v3):
+  - group: "meta" (기본 정보) / "body" (본문 서술)
+  - type: "date" / "text" / "textarea" / "array"
+  - fill: "extract" (텍스트에서 추출) / "generate" (AI 생성)
+  - desc_source: "mapping" / "partial" / "fallback" (description 출처)
 
 사용법:
     from ai.document_parser.template_extractor import extract_template_fields
@@ -194,8 +200,10 @@ def _match_field(label: str, use_mapping: bool = False) -> dict | None:
 
     # FIELD_MAPPING에서 description 가져오기 (키 매핑과 별개)
     desc = f"{clean_label} 내용을 작성"
+    desc_source = "fallback"
     if normalized in FIELD_MAPPING and FIELD_MAPPING[normalized]:
         desc = FIELD_MAPPING[normalized]["desc"]
+        desc_source = "mapping"
     else:
         normalized_lower = normalized.lower()
         for map_key in _SORTED_MAPPING_KEYS:
@@ -204,12 +212,13 @@ def _match_field(label: str, use_mapping: bool = False) -> dict | None:
                 continue
             if map_key in normalized_lower or normalized_lower in map_key:
                 desc = mapping["desc"]
+                desc_source = "partial"
                 break
 
     if use_mapping:
         # 기존 로직: FIELD_MAPPING에서 영어 키 반환
         if normalized in FIELD_MAPPING and FIELD_MAPPING[normalized]:
-            return {"key": FIELD_MAPPING[normalized]["key"], "label": clean_label, "description": desc}
+            return {"key": FIELD_MAPPING[normalized]["key"], "label": clean_label, "description": desc, "desc_source": desc_source}
 
         normalized_lower = normalized.lower()
         for map_key in _SORTED_MAPPING_KEYS:
@@ -217,7 +226,7 @@ def _match_field(label: str, use_mapping: bool = False) -> dict | None:
             if mapping is None:
                 continue
             if map_key in normalized_lower or normalized_lower in map_key:
-                return {"key": mapping["key"], "label": clean_label, "description": desc}
+                return {"key": mapping["key"], "label": clean_label, "description": desc, "desc_source": desc_source}
 
     # 한글 라벨을 키로 사용
     custom_key = re.sub(r"[^가-힣a-zA-Z0-9]", "_", normalized)
@@ -228,6 +237,7 @@ def _match_field(label: str, use_mapping: bool = False) -> dict | None:
         "key": custom_key,
         "label": clean_label,
         "description": desc,
+        "desc_source": desc_source,
     }
 
 
@@ -337,7 +347,124 @@ def extract_template_fields(file_path: str, use_mapping: bool = False) -> list[d
         if match:
             _add_field(match.group(1))
 
-    logger.info("양식 필드 추출 완료: %s → %d개 필드", file_path, len(fields))
+    # ── 4. 메타데이터 자동 부여 (v3) ──
+    fields = [_infer_field_meta(f) for f in fields]
+
+    logger.info("양식 필드 추출 완료: %s → %d개 필드 (meta=%d, body=%d)",
+                file_path, len(fields),
+                sum(1 for f in fields if f["group"] == "meta"),
+                sum(1 for f in fields if f["group"] == "body"))
+    return fields
+
+
+def _infer_field_meta(field: dict) -> dict:
+    """필드에 group/type/fill 메타데이터를 자동 부여한다.
+
+    group: "meta" (기본 정보, 짧은 텍스트) / "body" (본문, 서술형)
+    type: "date" / "text" / "textarea" / "array"
+    fill: "extract" (사용자 텍스트에서 추출) / "generate" (AI가 작성)
+    """
+    label = field.get("label", "")
+    desc = field.get("description", "")
+    normalized = _normalize_label(label)
+
+    # ── type 추론 ──
+    desc_lower = desc.lower()
+    label_and_desc = f"{normalized} {desc_lower}"
+
+    # date: description/라벨에 날짜 관련 키워드
+    _date_kw = ("날짜", "일자", "일시", "yyyy", "yy-mm", "date")
+    # array: 배열/목록/각 항목은
+    _array_kw = ("배열", "목록", "각 항목은")
+    # textarea: 서술형 필드
+    _textarea_kw = ("문장", "구체적으로", "상세하게", "항목별", "기술")
+
+    if any(kw in label_and_desc for kw in _date_kw):
+        ftype = "date"
+    elif any(kw in desc_lower for kw in _array_kw):
+        ftype = "array"
+    elif any(kw in desc_lower for kw in _textarea_kw):
+        ftype = "textarea"
+    else:
+        ftype = "text"
+
+    # ── group 추론 ──
+    group = "meta"  # 기본값
+
+    # 1차: 번호 접두사 ("1. 보고 개요" 등) → 거의 확실히 body
+    if re.match(r"^\d+[\s.]", label):
+        group = "body"
+    # 2차: type이 textarea/array → body
+    elif ftype in ("textarea", "array"):
+        group = "body"
+    # 3차: description에 서술형 키워드
+    elif any(kw in desc_lower for kw in ("문장", "구체적", "상세", "항목별", "배열", "목록")):
+        group = "body"
+    # 4차: 라벨 글자 수 6자 이상 + description이 "내용을 작성" 이 아닌 경우 → body 후보
+    # (짧은 라벨은 meta: "부서", "직급", 긴 라벨은 body: "제안목적및필요성", "이슈및건의사항")
+    elif len(normalized) >= 6 and "없으면" not in desc_lower:
+        group = "body"
+    # 5차: 라벨에 body성 키워드 포함 (fallback)
+    else:
+        _body_kw = ("개요", "내용", "분석", "계획", "효과", "배경", "결론", "목적", "필요성",
+                     "사양", "방법", "절차", "결과", "평가", "소감", "의견", "요약", "현황")
+        if any(kw in normalized for kw in _body_kw):
+            group = "body"
+
+    # ── fill 추론 ──
+    fill = "generate" if group == "body" else "extract"
+
+    return {**field, "group": group, "type": ftype, "fill": fill}
+
+
+async def enrich_descriptions(fields: list[dict], doc_type: str = "문서") -> list[dict]:
+    """FIELD_MAPPING에 없는 필드(desc_source=fallback)의 description을 LLM으로 보강한다.
+
+    업로드 시 1회만 호출. 실패하면 기존 description 유지.
+    보강 후 type/group/fill 메타데이터를 재추론한다.
+    """
+    fallback_fields = [f for f in fields if f.get("desc_source") == "fallback"]
+    if not fallback_fields:
+        return fields  # 보강할 필드 없음
+
+    # 이미 파악된 필드를 컨텍스트로 제공
+    known_context = ", ".join(
+        f'{f["label"]}({f["description"]})' for f in fields if f.get("desc_source") != "fallback"
+    )
+    unknown_labels = "\n".join(f'- {f["label"]}' for f in fallback_fields)
+
+    prompt = (
+        f"이 문서는 \"{doc_type}\" 양식입니다.\n"
+        f"이미 파악된 필드: {known_context}\n\n"
+        f"아래 필드가 어떤 내용을 담는지 한 줄(20자 이내)로 설명해주세요.\n"
+        f"구체적 방법론이나 프레임워크는 언급하지 마세요.\n"
+        f"JSON 형식으로 출력: {{\"필드라벨\": \"설명\", ...}}\n\n"
+        f"{unknown_labels}"
+    )
+
+    try:
+        from ai.agents.document._common import _call_llm
+        result_str = await _call_llm(
+            "당신은 문서 양식 분석 전문가입니다. 필드 설명을 간결하게 작성하세요.",
+            prompt,
+            json_mode=True,
+            task="extract",
+            temperature=0,
+        )
+        enriched = json.loads(result_str)
+
+        # fallback 필드의 description 교체
+        label_to_desc = {k.strip(): v.strip() for k, v in enriched.items() if v}
+        for f in fields:
+            if f.get("desc_source") == "fallback" and f["label"] in label_to_desc:
+                f["description"] = label_to_desc[f["label"]]
+                f["desc_source"] = "llm"
+        logger.info("description 보강 완료: %d개 중 %d개 enriched", len(fallback_fields), len(label_to_desc))
+    except Exception as e:
+        logger.warning("description 보강 실패 (fallback 유지): %s", e)
+
+    # description 변경 후 메타데이터 재추론
+    fields = [_infer_field_meta(f) for f in fields]
     return fields
 
 
