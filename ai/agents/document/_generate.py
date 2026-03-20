@@ -221,6 +221,7 @@ async def _llm_detect_template_type(user_input: str) -> str:
     return _detect_template_type(user_input)
 
 
+
 async def _extract_decisions_actions(content: str, summary: str = "") -> Dict[str, Any]:
     """
     후처리 fallback — 1차 생성에서 decisions/action_items가 비어있을 때

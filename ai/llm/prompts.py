@@ -272,6 +272,7 @@ DOC_EXTRACT_PROMPT = """\
 - 반드시 JSON만 출력하세요.\
 """
 
+
 SCHEDULE_CHECKLIST_SYSTEM_PROMPT = """\
 당신은 팀원의 일정과 파이프라인 태스크를 분석하여 오늘/이번 주 해야 할 일 체크리스트를 생성하는 AI 어시스턴트입니다.
 

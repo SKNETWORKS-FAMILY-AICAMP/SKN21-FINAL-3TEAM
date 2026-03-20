@@ -40,6 +40,7 @@ class FillFieldsRequest(BaseModel):
     """AI 필드 채우기 요청 — DOCX 생성 없이 필드 값만 리턴"""
     template_id: int
     content: str
+    meta_values: dict | None = None  # 프론트에서 meta 필드 직접 입력값
 
 router = APIRouter()
 
@@ -153,18 +154,20 @@ async def fill_fields(
     db=Depends(get_db),
 ):
     """
-    AI 필드 채우기 — DOCX 생성 없이 필드 값만 리턴
-    프론트에서 폼에 채운 후 사용자가 편집 → /generate로 최종 생성
+    AI 필드 채우기 — meta/body 역할 분리 파이프라인
+
+    meta: 사용자 직접 입력(meta_values) > Phase 0 fallback > null
+    body: sLLM(LoRA v3_generate) 1회 호출 > null
+    정규화 단계 제거 — 원문 그대로 sLLM에 전달
     """
     import json as _json
     from app.models.document_template import DocumentTemplate
     from sqlalchemy import select
+    from datetime import date
 
-    # 0. 입력 길이 체크
     if len(request.content.strip()) < 20:
         raise HTTPException(status_code=400, detail="내용이 너무 짧습니다. 20자 이상 입력해주세요.")
 
-    # 1. 템플릿 조회
     result = await db.execute(
         select(DocumentTemplate).where(DocumentTemplate.id == request.template_id)
     )
@@ -177,43 +180,49 @@ async def fill_fields(
     if not isinstance(fields, list):
         fields = []
 
-    # 2. 필드 12개 제한 (LoRA 학습 분포 기반)
-    MAX_FIELDS = 12
-    if len(fields) > MAX_FIELDS:
-        fields = fields[:MAX_FIELDS]
+    from ai.agents.document._common import get_last_model_name
+    from datetime import date as _date
 
-    # 3. 필드 명세 → 프롬프트 → LoRA 호출
-    from ai.document_parser.template_extractor import fields_to_prompt
-    from ai.llm.prompts import DOC_GENERATE_SLLM_PROMPT
-    from ai.agents.document._common import _call_llm, get_last_model_name
-
-    field_spec = fields_to_prompt(fields)
+    today = _date.today().isoformat()
     doc_type = template.category or "문서"
     doc_type_names = {"meeting_minutes": "회의록", "report": "업무보고서", "proposal": "제안서"}
     doc_type_label = doc_type_names.get(doc_type, template.name or "문서")
 
-    user_prompt = (
-        f"다음 내용을 바탕으로 문서를 JSON 형식으로 작성해주세요.\n\n"
-        f"[문서 유형] {doc_type_label}\n\n"
-        f"[필드 명세]\n{field_spec}\n\n"
-        f"[내용]\n{request.content}"
-    )
+    user_name = getattr(user, "name", "") or ""
+    user_team = getattr(user, "team", "") or ""
 
-    generated_str = await _call_llm(
-        DOC_GENERATE_SLLM_PROMPT, user_prompt,
-        json_mode=True, task="generate"
-    )
+    # ── Phase 0: 사용자 컨텍스트 (fallback용) ──
+    phase0 = _phase0_defaults(fields, today, user_name, user_team)
 
-    try:
-        data = _json.loads(generated_str)
-    except Exception:
-        data = {}
+    # ── meta/body 분리: body 필드만 sLLM에 전달 ──
+    meta_values = request.meta_values or {}
+    body_fields = [f for f in fields if f.get("group") == "body"]
+    meta_fields = [f for f in fields if f.get("group") != "body"]
 
-    # 4. 빈 필드 기본값 채우기
+    # sLLM 호출: body 필드만 (정규화 없이 원문 그대로)
+    sllm_result = await _sllm_generate(body_fields, request.content, doc_type_label)
+
+    # ── 병합: meta는 사용자입력 > Phase 0, body는 sLLM > null ──
+    data = {}
     for f in fields:
-        if f["key"] not in data:
-            desc = f.get("description", "")
-            data[f["key"]] = [] if ("배열" in desc or "목록" in desc) else ""
+        key = f["key"]
+        group = f.get("group", "meta")
+
+        if group != "body":
+            # meta: 사용자 입력 > Phase 0 > null
+            if key in meta_values and meta_values[key] not in (None, ""):
+                data[key] = meta_values[key]
+            elif key in phase0:
+                data[key] = phase0[key]
+            else:
+                data[key] = None
+        else:
+            # body: sLLM 출력 > null
+            sllm_val = sllm_result.get(key)
+            if sllm_val is not None and sllm_val != "" and sllm_val != []:
+                data[key] = sllm_val
+            else:
+                data[key] = None
 
     return {
         "template_id": template.id,
@@ -223,6 +232,105 @@ async def fill_fields(
         "data": data,
         "model_name": get_last_model_name(),
     }
+
+
+def _phase0_defaults(fields: list, today: str, user_name: str, user_team: str) -> dict:
+    """사용자 컨텍스트 기반 기본값. label/description으로 매칭."""
+    # 중복 필드는 Phase 0에서도 제외
+    dup_keys = _find_duplicate_fields(fields)
+
+    data = {}
+    for f in fields:
+        if f["key"] in dup_keys or _is_skippable(f):
+            continue
+        label = f.get("label", "").lower()
+        hint = f"{label} {f.get('description', '')}".lower()
+        # 복합 라벨 (X/Y) 은 건너뛰기
+        if "/" in label or "·" in label:
+            continue
+        if f.get("type") == "date" and any(k in hint for k in ("작성일", "제출일", "보고일", "제안일")):
+            data[f["key"]] = today
+        elif user_name and any(k in hint for k in ("작성자", "담당자", "기록자")):
+            # "연락처"가 포함된 필드는 제외 (연락처에 이름 넣기 방지)
+            if "연락" not in hint:
+                data[f["key"]] = user_name
+        elif user_team and any(k in hint for k in ("부서", "소속")):
+            data[f["key"]] = user_team
+    return data
+
+
+# sLLM에서 제외할 필드 판정
+_SKIP_LABELS = {"첨부", "첨부자료", "첨부 자료"}
+
+def _is_skippable(field: dict) -> bool:
+    """sLLM에 보내지 않아도 되는 필드인지 판정."""
+    label = field.get("label", "").strip()
+    # 첨부자료: AI가 채울 수 없음
+    if label in _SKIP_LABELS or "첨부" in label:
+        return True
+    return False
+
+
+def _find_duplicate_fields(fields: list) -> set:
+    """중복 필드 키를 찾아 제거 대상 반환. (예: 담당자 + 담당자/연락처)"""
+    keys = [f["key"] for f in fields]
+    skip = set()
+    for i, f in enumerate(fields):
+        label = f.get("label", "")
+        # "X / Y" 형태의 병합 필드: X와 Y가 개별 필드로 이미 있으면 중복
+        if "/" in label or "·" in label:
+            parts = [p.strip() for p in label.replace("·", "/").split("/")]
+            # 각 파트가 다른 필드의 라벨에 포함되는지 확인
+            other_labels = [fields[j].get("label", "") for j in range(len(fields)) if j != i]
+            if all(any(p in ol for ol in other_labels) for p in parts):
+                skip.add(f["key"])
+    return skip
+
+
+async def _sllm_generate(
+    fields: list, content: str, doc_type: str,
+) -> dict:
+    """파인튜닝 학습 형식 그대로 sLLM 1회 호출.
+
+    body 필드만 받아서 sLLM에 전달한다.
+    meta 필드는 호출자가 제외하고 넘겨야 한다.
+    중복 필드와 채울 수 없는 필드만 추가 제외.
+    """
+    import json as _json
+    from ai.document_parser.template_extractor import fields_to_prompt
+    from ai.llm.prompts import DOC_GENERATE_SLLM_PROMPT
+    from ai.agents.document._common import _call_llm
+
+    # 중복 + 스킵 대상만 제외
+    dup_keys = _find_duplicate_fields(fields)
+    sllm_fields = [f for f in fields if f["key"] not in dup_keys and not _is_skippable(f)]
+
+    field_spec = fields_to_prompt(sllm_fields)
+
+    # 학습 데이터와 동일한 내용 섹션 이름
+    _CONTENT_SECTION_NAMES = {
+        "회의록": "회의 내용",
+        "업무보고서": "업무 내용",
+        "제안서": "제안 내용",
+    }
+    section_name = _CONTENT_SECTION_NAMES.get(doc_type, "내용")
+
+    # 파인튜닝 학습 형식과 동일한 user 프롬프트 (참고 프리픽스 없음)
+    user_prompt = (
+        f"다음 내용을 바탕으로 문서를 JSON 형식으로 작성해주세요.\n\n"
+        f"[문서 유형] {doc_type}\n\n"
+        f"[필드 명세]\n{field_spec}\n\n"
+        f"[{section_name}]\n{content}"
+    )
+
+    try:
+        result_str = await _call_llm(
+            DOC_GENERATE_SLLM_PROMPT, user_prompt,
+            json_mode=True, task="generate",
+        )
+        return _json.loads(result_str)
+    except Exception:
+        return {}
 
 
 @router.post("/analyze-all")
@@ -305,11 +413,15 @@ async def upload_template(
         tmp_path = tmp.name
 
     try:
-        from ai.document_parser.template_extractor import extract_template_fields, fields_to_parsed_structure
+        from ai.document_parser.template_extractor import extract_template_fields, fields_to_parsed_structure, enrich_descriptions
         fields = extract_template_fields(tmp_path)
 
         if not fields:
             raise HTTPException(status_code=400, detail="양식에서 필드를 추출하지 못했습니다. DOCX 양식 파일인지 확인해주세요.")
+
+        # fallback description을 LLM으로 보강 (실패해도 진행)
+        doc_type_label = name or category or "문서"
+        fields = await enrich_descriptions(fields, doc_type=doc_type_label)
 
         parsed_structure = fields_to_parsed_structure(fields)
 
