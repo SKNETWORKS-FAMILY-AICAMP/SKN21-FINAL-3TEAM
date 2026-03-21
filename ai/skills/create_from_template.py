@@ -103,6 +103,44 @@ def _inject_cell_text(cell, text: str):
         para.runs[0].font.size = Pt(10)
 
 
+def _inject_array_to_table(table, header_row_idx: int, items: list[dict]) -> bool:
+    """배열 데이터를 테이블 데이터 행에 분배 주입.
+
+    구조: header_row(병합) → column_header_row → data_rows
+    items의 각 dict 값을 data_rows 셀에 순서대로 넣는다.
+    """
+    rows = table.rows
+    # 헤더 다음 행이 컬럼 헤더인지 확인
+    col_header_idx = header_row_idx + 1
+    if col_header_idx >= len(rows):
+        return False
+
+    # 데이터 행 시작: 컬럼 헤더 다음
+    data_start = col_header_idx + 1
+    if data_start >= len(rows):
+        return False
+
+    # 컬럼 헤더에서 키 매핑 추출 (No., 추진 항목, 1단계, ...)
+    col_headers = [c.text.strip() for c in rows[col_header_idx].cells]
+
+    for item_idx, item in enumerate(items):
+        row_idx = data_start + item_idx
+        if row_idx >= len(rows):
+            break  # 테이블 행이 부족하면 거기까지만
+
+        row_cells = rows[row_idx].cells
+        vals = list(item.values())
+
+        for ci in range(len(row_cells)):
+            if ci == 0:
+                # No. 열: 번호
+                _inject_cell_text(row_cells[ci], str(item_idx + 1))
+            elif ci - 1 < len(vals):
+                _inject_cell_text(row_cells[ci], str(vals[ci - 1]) if vals[ci - 1] else "")
+
+    return True
+
+
 def _find_data_key(cell_text: str, data: dict) -> str | None:
     """셀 텍스트에서 data 키를 찾는다. 추출 시와 동일한 정규화 적용."""
     from ai.document_parser.template_extractor import _normalize_label as _extract_normalize
@@ -152,6 +190,15 @@ def fill_template_docx(template_path: str, output_path: str, data: dict) -> bool
                 val = _format_value(data[key])
                 if not val:
                     continue
+
+                raw_val = data[key]
+
+                # 배열 데이터 + 다중 행 테이블: 데이터 행에 분배
+                if isinstance(raw_val, list) and len(raw_val) > 0 and isinstance(raw_val[0], dict):
+                    injected = _inject_array_to_table(table, ri, raw_val)
+                    if injected:
+                        filled_keys.add(key)
+                        continue
 
                 # 같은 행의 다음 셀(옆)에 주입 시도
                 injected = False
