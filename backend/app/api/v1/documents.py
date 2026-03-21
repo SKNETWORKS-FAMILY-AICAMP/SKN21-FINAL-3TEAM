@@ -195,6 +195,9 @@ async def fill_fields(
     # ── 전체 필드를 sLLM에 전달 (학습 형식 그대로) ──
     sllm_result = await _sllm_generate(fields, request.content, doc_type_label)
 
+    # ── 후처리: sLLM hallucination 보정 ──
+    sllm_result = _postprocess_sllm(sllm_result, fields, today, user_name, user_team)
+
     # ── 병합: sLLM > Phase 0 fallback > null ──
     data = {}
     for f in fields:
@@ -240,6 +243,42 @@ def _phase0_defaults(fields: list, today: str, user_name: str, user_team: str) -
         elif user_team and any(k in hint for k in ("부서", "소속")):
             data[f["key"]] = user_team
     return data
+
+
+def _postprocess_sllm(
+    sllm_result: dict, fields: list, today: str, user_name: str, user_team: str,
+) -> dict:
+    """sLLM 결과 후처리 — 명확한 hallucination만 보정.
+
+    1. 날짜 필드: 올해가 아닌 날짜 → today로 교체
+    2. 담당자/작성자: sLLM이 빈값이면 user.name으로 보충
+    3. body 필드는 건드리지 않음 (sLLM 생성 신뢰)
+    """
+    import re
+    from datetime import date as _date
+
+    current_year = str(_date.today().year)
+    result = dict(sllm_result)
+
+    for f in fields:
+        key = f["key"]
+        val = result.get(key)
+        hint = f"{f.get('label', '')} {f.get('description', '')}".lower()
+
+        # 날짜 hallucination 보정: 올해가 아닌 연도 → today
+        if isinstance(val, str) and val:
+            if f.get("type") == "date" or any(k in hint for k in ("날짜", "일자", "일시", "date")):
+                year_match = re.search(r"(20\d{2})", val)
+                if year_match and year_match.group(1) != current_year:
+                    result[key] = today
+
+        # 담당자/작성자: sLLM이 못 채웠으면 user_name 보충
+        if (val is None or val == "") and user_name:
+            if any(k in hint for k in ("작성자", "담당자", "기록자")):
+                if "연락" not in hint:
+                    result[key] = user_name
+
+    return result
 
 
 # sLLM에서 제외할 필드 판정
