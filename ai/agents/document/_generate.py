@@ -442,64 +442,67 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
         traceback.print_exc()
         raise ValueError(f"템플릿 DB 조회 실패: {e}")
 
-    # 시스템 템플릿이면 학습 분포(6~10개)에 맞게 필드 선별
-    is_system = getattr(template, "is_system", False) if template else False
-    fields_for_llm = _select_fields_for_llm(fields, template_type, user_input, is_system)
-
-    # ── 모든 필드를 LoRA에 전달 (trained/untrained 분리 제거) ──
-    # LoRA는 [필드 명세]를 읽고 따르는 패턴으로 학습됨
-    # 커스텀 키도 description과 함께 명세에 넣으면 instruction following으로 대응
-    print(f"[DocumentAgent] 전체 필드 LoRA 전달 | {len(fields_for_llm)}개 (시스템={is_system})")
-
-    # 동적 필드 명세 생성
-    from ai.document_parser.template_extractor import fields_to_prompt
-    field_spec = fields_to_prompt(fields_for_llm)
-
-    # 문서 유형명 결정 (프롬프트용 — report만 "업무보고서"로 상세화)
+    # 문서 유형명 (미리보기/DOCX 빌더에서 사용)
     _PROMPT_TYPE_NAMES = {**DOC_TYPE_NAMES, "report": "업무보고서"}
     doc_type_name = _PROMPT_TYPE_NAMES.get(template_type, template_name)
-    input_label = {
-        "meeting_minutes": "회의 내용",
-        "report": "업무 내용",
-        "proposal": "제안 내용",
-    }.get(template_type, "내용")
 
-    # sLLM용 프롬프트 (학습 데이터와 동일한 형식)
-    from ai.llm.prompts import DOC_GENERATE_SLLM_PROMPT
-    sys_prompt = DOC_GENERATE_SLLM_PROMPT
-    user_prompt = (
-        f"다음 내용을 바탕으로 문서를 JSON 형식으로 작성해주세요.\n\n"
-        f"[문서 유형] {doc_type_name}\n\n"
-        f"[필드 명세]\n{field_spec}\n\n"
-        f"[{input_label}]\n{user_input}"
-    )
+    # ── fill-fields에서 이미 채운 데이터가 있으면 sLLM 재호출 생략 ──
+    if fields_data:
+        filled_count = sum(1 for v in fields_data.values() if v not in (None, "", []))
+        if filled_count >= 3:
+            print(f"[DocumentAgent] fill-fields 데이터 사용 (sLLM 생략) | {filled_count}개 채워짐")
+            data = dict(fields_data)
+            # 빠진 필드 기본값 채우기
+            for f in fields:
+                if f["key"] not in data:
+                    desc = f.get("description", "")
+                    data[f["key"]] = [] if ("배열" in desc or "목록" in desc) else ""
+        else:
+            fields_data = None  # 데이터 부족 → sLLM 호출로 fallback
 
-    print(f"[DocumentAgent] 1단계 프롬프트 생성 | LLM필드 {len(fields_for_llm)}개(전체 {len(fields)}개), 문서유형={doc_type_name}")
-    generated_json_str = await _call_llm(sys_prompt, user_prompt, json_mode=True, task="generate")
+    if not fields_data:
+        # sLLM 호출 (fill-fields를 거치지 않은 경우: 챗봇 등)
+        is_system = getattr(template, "is_system", False) if template else False
+        fields_for_llm = _select_fields_for_llm(fields, template_type, user_input, is_system)
 
-    try:
-        data = json.loads(generated_json_str)
-        print(f"[DocumentAgent] 1단계 JSON 파싱 성공 | keys={list(data.keys())}")
-    except Exception:
-        print(f"[DocumentAgent] !!! JSON 파싱 실패 - 2단계 추출로 복구")
-        data = {"content": user_input}
+        from ai.document_parser.template_extractor import fields_to_prompt
+        field_spec = fields_to_prompt(fields_for_llm)
 
-    # content가 JSON 문자열/dict이면 user_input으로 대체
-    content_val = data.get("content", "")
-    if isinstance(content_val, dict):
-        data["content"] = user_input
-    elif isinstance(content_val, str) and content_val.strip().startswith("{"):
-        data["content"] = user_input
+        input_label = {
+            "meeting_minutes": "회의 내용",
+            "report": "업무 내용",
+            "proposal": "제안 내용",
+        }.get(template_type, "내용")
 
-    # current_situation(현황 분석)이 비어있으면 background로 fallback
-    if not data.get("current_situation") and data.get("background"):
-        data["current_situation"] = data["background"]
+        from ai.llm.prompts import DOC_GENERATE_SLLM_PROMPT
+        user_prompt = (
+            f"다음 내용을 바탕으로 문서를 JSON 형식으로 작성해주세요.\n\n"
+            f"[문서 유형] {doc_type_name}\n\n"
+            f"[필드 명세]\n{field_spec}\n\n"
+            f"[{input_label}]\n{user_input}"
+        )
 
-    # LLM에 안 보낸 필드도 DOCX 빌더가 참조하므로 기본값 채우기
-    for f in fields:
-        if f["key"] not in data:
-            desc = f.get("description", "")
-            data[f["key"]] = [] if ("배열" in desc or "목록" in desc) else ""
+        print(f"[DocumentAgent] sLLM 호출 | {len(fields_for_llm)}개 필드, 문서유형={doc_type_name}")
+        generated_json_str = await _call_llm(DOC_GENERATE_SLLM_PROMPT, user_prompt, json_mode=True, task="generate")
+
+        try:
+            data = json.loads(generated_json_str)
+        except Exception:
+            data = {"content": user_input}
+
+        content_val = data.get("content", "")
+        if isinstance(content_val, dict):
+            data["content"] = user_input
+        elif isinstance(content_val, str) and content_val.strip().startswith("{"):
+            data["content"] = user_input
+
+        if not data.get("current_situation") and data.get("background"):
+            data["current_situation"] = data["background"]
+
+        for f in fields:
+            if f["key"] not in data:
+                desc = f.get("description", "")
+                data[f["key"]] = [] if ("배열" in desc or "목록" in desc) else ""
 
     # 회의록: action_items 정규화 + 문자열 필드 변환
     if template_type == "meeting_minutes":
@@ -633,12 +636,11 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
     GENERATED_DOCS_DIR.mkdir(parents=True, exist_ok=True)
     output_path = str(GENERATED_DOCS_DIR / f"{doc_uuid}.docx")
 
-    # fields_data 사용자 입력값을 DOCX 빌드 전에 반영
+    # fields_data가 있으면 사용자 수정값 반영 (fill-fields 결과를 이미 data로 쓴 경우 중복이지만 안전)
     if fields_data:
-        override_keys = {"title", "date", "submit_date", "attendees", "author", "department", "company", "manager", "team", "report_to", "submit_to"}
-        for key in override_keys:
-            if key in fields_data and fields_data[key]:
-                data[key] = fields_data[key]
+        for key, val in fields_data.items():
+            if val not in (None, "", []):
+                data[key] = val
 
     # DOCX 생성: 원본 양식 → 시스템 빌더 → 범용 레이아웃 순으로 분기
     try:
