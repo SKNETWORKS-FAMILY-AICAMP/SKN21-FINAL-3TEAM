@@ -447,20 +447,27 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
     doc_type_name = _PROMPT_TYPE_NAMES.get(template_type, template_name)
 
     # ── fill-fields에서 이미 채운 데이터가 있으면 sLLM 재호출 생략 ──
+    # 조건: 전체 필드의 절반 이상이 채워져 있고, 긴 텍스트(body) 필드가 1개 이상 있어야 함
     if fields_data:
         filled_count = sum(1 for v in fields_data.values() if v not in (None, "", []))
-        if filled_count >= 3:
-            print(f"[DocumentAgent] fill-fields 데이터 사용 (sLLM 생략) | {filled_count}개 채워짐")
+        has_body = any(
+            isinstance(v, str) and len(v) > 50
+            for v in fields_data.values() if v
+        ) or any(isinstance(v, list) and len(v) > 0 for v in fields_data.values())
+        skip_sllm = filled_count >= len(fields) // 2 and has_body
+
+        if skip_sllm:
+            print(f"[DocumentAgent] fill-fields 데이터 사용 (sLLM 생략) | {filled_count}/{len(fields)}개 채워짐")
             data = dict(fields_data)
-            # 빠진 필드 기본값 채우기
             for f in fields:
                 if f["key"] not in data:
                     desc = f.get("description", "")
                     data[f["key"]] = [] if ("배열" in desc or "목록" in desc) else ""
         else:
-            fields_data = None  # 데이터 부족 → sLLM 호출로 fallback
+            print(f"[DocumentAgent] fill-fields 데이터 부족 (sLLM 호출) | {filled_count}/{len(fields)}개, body={has_body}")
+            skip_sllm = False
 
-    if not fields_data:
+    if not skip_sllm:
         # sLLM 호출 (fill-fields를 거치지 않은 경우: 챗봇 등)
         is_system = getattr(template, "is_system", False) if template else False
         fields_for_llm = _select_fields_for_llm(fields, template_type, user_input, is_system)
