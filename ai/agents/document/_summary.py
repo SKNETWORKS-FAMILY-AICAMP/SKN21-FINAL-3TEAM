@@ -149,6 +149,7 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
                         "message": answer,
                         "tags": tags,
                         "summary": doc.summary,
+                        "document_id": document_id,
                     }
                 elif doc and doc.summary and not doc.tags:
                     # 구 형식: summary만 있고 tags 없음 → sLLM 재호출로 넘어감
@@ -216,4 +217,5 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
         "message": answer,
         "tags": parsed["tags"],
         "summary": parsed["summary"],
+        "document_id": document_id,
     }

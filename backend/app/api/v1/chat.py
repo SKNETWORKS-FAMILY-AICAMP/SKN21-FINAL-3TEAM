@@ -130,6 +130,7 @@ def _build_initial_state(request: ChatRequest, user, stream_mode: bool = False) 
         "intent_candidates": None,
         "sub_queries": None,
         "sub_responses": None,
+        "force_intent": request.force_intent,
     }
 
 
