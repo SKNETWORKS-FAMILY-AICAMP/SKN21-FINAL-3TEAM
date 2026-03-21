@@ -103,6 +103,23 @@ def _inject_cell_text(cell, text: str):
         para.runs[0].font.size = Pt(10)
 
 
+def _find_data_key(cell_text: str, data: dict) -> str | None:
+    """셀 텍스트에서 data 키를 찾는다. 추출 시와 동일한 정규화 적용."""
+    from ai.document_parser.template_extractor import _normalize_label as _extract_normalize
+
+    # 1순위: 추출기와 같은 정규화 → 한글 키 직접 매칭
+    normalized = _extract_normalize(cell_text)
+    if normalized in data:
+        return normalized
+
+    # 2순위: _LABEL_TO_KEY → 영어 키 매칭 (기본 템플릿 호환)
+    eng_key = _normalize_label(cell_text)
+    if eng_key and eng_key in data:
+        return eng_key
+
+    return None
+
+
 def fill_template_docx(template_path: str, output_path: str, data: dict) -> bool:
     """
     원본 양식 DOCX를 열어서 데이터를 채워넣는다.
@@ -110,7 +127,7 @@ def fill_template_docx(template_path: str, output_path: str, data: dict) -> bool
     Args:
         template_path: 원본 DOCX 양식 파일 경로
         output_path: 출력 DOCX 파일 경로
-        data: LLM이 생성한 데이터 dict
+        data: LLM이 생성한 데이터 dict (한글 키 또는 영어 키)
 
     Returns:
         True if successful
@@ -128,17 +145,9 @@ def fill_template_docx(template_path: str, output_path: str, data: dict) -> bool
                 if not cell_text or len(cell_text) > 35:
                     continue
 
-                key = _normalize_label(cell_text)
+                key = _find_data_key(cell_text, data)
                 if not key or key in filled_keys:
                     continue
-                if key not in data:
-                    # data key와 직접 매칭 시도
-                    for dk in data:
-                        if dk == cell_text or _LABEL_TO_KEY.get(cell_text) == dk:
-                            key = dk
-                            break
-                    if key not in data:
-                        continue
 
                 val = _format_value(data[key])
                 if not val:
@@ -169,8 +178,8 @@ def fill_template_docx(template_path: str, output_path: str, data: dict) -> bool
             continue
 
         label = match.group(1).strip()
-        key = _normalize_label(label)
-        if not key or key in filled_keys or key not in data:
+        key = _find_data_key(label, data)
+        if not key or key in filled_keys:
             continue
 
         val = _format_value(data[key])
