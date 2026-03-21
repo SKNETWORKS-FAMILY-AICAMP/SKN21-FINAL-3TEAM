@@ -40,7 +40,6 @@ class FillFieldsRequest(BaseModel):
     """AI 필드 채우기 요청 — DOCX 생성 없이 필드 값만 리턴"""
     template_id: int
     content: str
-    meta_values: dict | None = None  # 프론트에서 meta 필드 직접 입력값
 
 router = APIRouter()
 
@@ -154,11 +153,10 @@ async def fill_fields(
     db=Depends(get_db),
 ):
     """
-    AI 필드 채우기 — meta/body 역할 분리 파이프라인
+    AI 필드 채우기 — 전체 필드 sLLM 전달 파이프라인
 
-    meta: 사용자 직접 입력(meta_values) > Phase 0 fallback > null
-    body: sLLM(LoRA v3_generate) 1회 호출 > null
-    정규화 단계 제거 — 원문 그대로 sLLM에 전달
+    sLLM이 자연어에서 전체 필드를 채움 (학습 형식 그대로)
+    sLLM이 못 채운 필드는 Phase 0 fallback (날짜→today, 담당자→user.name)
     """
     import json as _json
     from app.models.document_template import DocumentTemplate
@@ -194,35 +192,20 @@ async def fill_fields(
     # ── Phase 0: 사용자 컨텍스트 (fallback용) ──
     phase0 = _phase0_defaults(fields, today, user_name, user_team)
 
-    # ── meta/body 분리: body 필드만 sLLM에 전달 ──
-    meta_values = request.meta_values or {}
-    body_fields = [f for f in fields if f.get("group") == "body"]
-    meta_fields = [f for f in fields if f.get("group") != "body"]
+    # ── 전체 필드를 sLLM에 전달 (학습 형식 그대로) ──
+    sllm_result = await _sllm_generate(fields, request.content, doc_type_label)
 
-    # sLLM 호출: body 필드만 (정규화 없이 원문 그대로)
-    sllm_result = await _sllm_generate(body_fields, request.content, doc_type_label)
-
-    # ── 병합: meta는 사용자입력 > Phase 0, body는 sLLM > null ──
+    # ── 병합: sLLM > Phase 0 fallback > null ──
     data = {}
     for f in fields:
         key = f["key"]
-        group = f.get("group", "meta")
-
-        if group != "body":
-            # meta: 사용자 입력 > Phase 0 > null
-            if key in meta_values and meta_values[key] not in (None, ""):
-                data[key] = meta_values[key]
-            elif key in phase0:
-                data[key] = phase0[key]
-            else:
-                data[key] = None
+        sllm_val = sllm_result.get(key)
+        if sllm_val is not None and sllm_val != "" and sllm_val != []:
+            data[key] = sllm_val
+        elif key in phase0:
+            data[key] = phase0[key]
         else:
-            # body: sLLM 출력 > null
-            sllm_val = sllm_result.get(key)
-            if sllm_val is not None and sllm_val != "" and sllm_val != []:
-                data[key] = sllm_val
-            else:
-                data[key] = None
+            data[key] = None
 
     return {
         "template_id": template.id,
@@ -292,9 +275,7 @@ async def _sllm_generate(
 ) -> dict:
     """파인튜닝 학습 형식 그대로 sLLM 1회 호출.
 
-    body 필드만 받아서 sLLM에 전달한다.
-    meta 필드는 호출자가 제외하고 넘겨야 한다.
-    중복 필드와 채울 수 없는 필드만 추가 제외.
+    전체 필드를 받아서 중복/skip 대상만 제외 후 sLLM에 전달.
     """
     import json as _json
     from ai.document_parser.template_extractor import fields_to_prompt

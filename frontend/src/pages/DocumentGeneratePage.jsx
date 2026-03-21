@@ -432,11 +432,10 @@ export default function DocumentGeneratePage() {
   const [selectedTeam, setSelectedTeam] = useState(user?.team || '');
   const [selectedAttendees, setSelectedAttendees] = useState([]);
 
-  // 커스텀 템플릿: meta 직접입력 + body AI 생성
+  // 커스텀 템플릿: 자연어 입력 → AI가 전체 필드 채움
   const [freeText, setFreeText] = useState('');
   const [filling, setFilling] = useState(false);
-  const [filled, setFilled] = useState(false);  // AI가 body를 채웠는지 여부
-  const [bodyData, setBodyData] = useState({});  // AI가 생성한 body 필드 값
+  const [filled, setFilled] = useState(false);
   const isCustom = !!selectedCustomTemplate;
 
   const fetchCustomTemplates = () => {
@@ -466,7 +465,6 @@ export default function DocumentGeneratePage() {
     setSelectedAttendees([]);
     setFreeText('');
     setFilled(false);
-    setBodyData({});
 
     const templateId = customTpl?.id;
     setSelectedTemplateId(templateId || null);
@@ -495,19 +493,9 @@ export default function DocumentGeneratePage() {
           const fieldArr = Array.isArray(fields) ? fields : [];
 
           if (customTpl) {
-            // 커스텀 템플릿: meta 필드만 폼에 초기화 (Phase 0 auto-fill)
+            // 커스텀 템플릿: 전체 필드 빈값 초기화 (AI가 채울 예정)
             for (const f of fieldArr) {
-              if (f.group === 'body') continue;  // body는 AI가 생성
-              const hint = `${(f.label || '').toLowerCase()} ${(f.description || '').toLowerCase()}`;
-              if (f.type === 'date' || hint.includes('작성일') || hint.includes('제출일') || hint.includes('보고일')) {
-                defaults[f.key] = new Date().toISOString().split('T')[0];
-              } else if (hint.includes('작성자') || hint.includes('담당자') || hint.includes('기록자')) {
-                defaults[f.key] = user?.name || '';
-              } else if (hint.includes('부서') || hint.includes('소속')) {
-                defaults[f.key] = user?.team || '';
-              } else {
-                defaults[f.key] = '';
-              }
+              defaults[f.key] = '';
             }
           } else {
             // 시스템 템플릿: 기존 로직
@@ -533,54 +521,32 @@ export default function DocumentGeneratePage() {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
 
-  /** 커스텀 템플릿: AI body 필드 생성 (meta는 사용자 직접 입력) */
+  /** 커스텀 템플릿: AI가 전체 필드 채우기 */
   const handleFillFields = async () => {
     if (!selectedTemplateId || !freeText.trim()) return;
     setFilling(true);
     try {
-      // meta 필드 값 수집 (사용자가 직접 입력한 값)
-      const metaFields = templateFields.filter(f => f.group !== 'body');
-      const metaValues = {};
-      for (const f of metaFields) {
-        const val = formData[f.key];
-        if (val !== undefined && val !== null && val !== '') {
-          metaValues[f.key] = val;
-        }
-      }
-
       const response = await fillFields({
         template_id: selectedTemplateId,
         content: freeText,
-        meta_values: metaValues,
       });
       const apiData = response.data;
       const data = apiData.data || {};
 
-      // body 필드만 bodyData에 저장, meta는 formData 유지
-      const newBodyData = {};
-      for (const [key, val] of Object.entries(data)) {
-        const field = templateFields.find(f => f.key === key);
-        if (field?.group === 'body') {
-          newBodyData[key] = val;
-        } else if (field?.group !== 'body' && val !== null && val !== undefined && val !== '') {
-          // Phase 0 fallback으로 채워진 meta도 formData에 반영 (빈 값일 때만)
-          setFormData(prev => {
-            if (!prev[key] || prev[key] === '') return { ...prev, [key]: val };
-            return prev;
-          });
+      // AI 결과를 전부 formData에 반영
+      setFormData(prev => {
+        const next = { ...prev };
+        for (const [key, val] of Object.entries(data)) {
+          if (val !== undefined) next[key] = val;
         }
-      }
-      setBodyData(newBodyData);
+        return next;
+      });
 
-      // fields 정보 업데이트
-      if (apiData.fields) {
-        setTemplateFields(apiData.fields);
-      }
+      if (apiData.fields) setTemplateFields(apiData.fields);
 
       setFilled(true);
-      const bodyCount = Object.values(newBodyData).filter(v => v !== null && v !== undefined && v !== '').length;
-      const totalBody = templateFields.filter(f => f.group === 'body').length;
-      toast.success(`AI가 본문 ${bodyCount}/${totalBody}개 필드를 작성했습니다.`);
+      const filledCount = Object.values(data).filter(v => v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0)).length;
+      toast.success(`AI가 ${filledCount}/${templateFields.length}개 필드를 채웠습니다. 확인 후 수정하세요.`);
     } catch (err) {
       toast.error('AI 작성 실패: ' + (err.response?.data?.detail || err.message));
     } finally {
@@ -593,8 +559,7 @@ export default function DocumentGeneratePage() {
     if (!selectedTemplate) return;
     setLoading(true);
     try {
-      // 폼 데이터 = meta(formData) + body(bodyData) 병합
-      const fieldsData = { ...formData, ...bodyData };
+      const fieldsData = { ...formData };
       if (isMeeting) {
         fieldsData.attendees = selectedAttendees;
         fieldsData.team = selectedTeam;
@@ -739,76 +704,69 @@ export default function DocumentGeneratePage() {
           }}
         />
 
-        {/* 커스텀 템플릿: meta 직접입력 + body AI 생성 */}
+        {/* 커스텀 템플릿: 내용 입력 → AI가 전체 필드 채움 → 사용자 수정 */}
         {isCustom && selectedTemplate && templateFields.length > 0 && (() => {
-          const metaFields = templateFields.filter(f => f.group !== 'body');
-          const bodyFields = templateFields.filter(f => f.group === 'body');
+          const skipLabels = ['첨부', '첨부자료', '첨부 자료'];
+          const editableFields = templateFields.filter(f => {
+            const label = (f.label || '').trim();
+            return !skipLabels.includes(label) && !label.includes('첨부');
+          });
 
           const formatValue = (v) => {
-            if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
-              return Object.values(v).filter(Boolean).join(' / ');
-            }
+            if (typeof v === 'object' && v !== null && !Array.isArray(v)) return Object.values(v).filter(Boolean).join(' / ');
             return String(v);
           };
           const getDisplayValue = (value) => {
             if (value === null || value === undefined) return '';
-            if (Array.isArray(value))
-              return value.map((v, i) => `${i + 1}. ${formatValue(v)}`).join('\n');
+            if (Array.isArray(value)) return value.map((v, i) => `${i + 1}. ${formatValue(v)}`).join('\n');
             if (typeof value === 'object') return formatValue(value);
             return String(value);
           };
           const isEmpty = (value) => value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0);
 
-          const renderMetaField = (field) => {
-            const value = formData[field.key] || '';
+          const renderField = (field) => {
+            const raw = formData[field.key];
+            const value = getDisplayValue(raw);
+            const aiFilled = filled && !isEmpty(raw);
+            const needInput = filled && isEmpty(raw);
+            const isLong = field.type === 'textarea' || field.type === 'array'
+              || (field.description || '').includes('배열') || (field.description || '').includes('목록')
+              || (field.description || '').includes('문장') || value.length > 80;
+
+            const borderClass = needInput ? 'border-amber-400 bg-amber-50/30'
+              : aiFilled ? 'border-primary-200 bg-primary-50/30'
+              : 'border-neutral-border';
+
             return (
-              <div key={field.key}>
+              <div key={field.key} className={isLong ? 'col-span-2' : ''}>
                 <label className="block text-[0.8125rem] font-semibold mb-1">
                   {field.label || field.key}
+                  {aiFilled && <span className="ml-1.5 text-[0.6875rem] font-normal text-primary-600">AI</span>}
+                  {needInput && <span className="ml-1.5 text-[0.6875rem] font-normal text-amber-500">입력 필요</span>}
                 </label>
-                <input
-                  type={field.type === 'date' ? 'date' : 'text'}
-                  value={value}
-                  onChange={(e) => handleFieldChange(field.key, e.target.value)}
-                  placeholder={field.description || `${field.label || field.key}을(를) 입력하세요`}
-                  className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
-                />
+                {isLong ? (
+                  <textarea
+                    value={value}
+                    onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                    rows={3}
+                    onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px'; }}
+                    placeholder={field.description || `${field.label || field.key}을(를) 입력하세요`}
+                    className={`w-full px-3.5 py-2.5 border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[200px] ${borderClass}`}
+                  />
+                ) : (
+                  <input
+                    type={field.type === 'date' ? 'date' : 'text'}
+                    value={value}
+                    onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                    placeholder={field.description || `${field.label || field.key}을(를) 입력하세요`}
+                    className={`w-full px-3.5 py-2.5 border rounded-md text-sm outline-none focus:border-primary-500 ${borderClass}`}
+                  />
+                )}
               </div>
             );
           };
 
-          const renderBodyField = (field) => {
-            const value = bodyData[field.key] ?? '';
-            const displayValue = getDisplayValue(value);
-            const isFilled = filled && !isEmpty(value);
-            const isNull = filled && isEmpty(value);
-
-            const borderClass = isNull
-              ? 'border-amber-400 bg-amber-50/30'
-              : isFilled
-                ? 'border-primary-200 bg-primary-50/30'
-                : 'border-neutral-border bg-neutral-50';
-
-            return (
-              <div key={field.key}>
-                <label className="block text-[0.8125rem] font-semibold mb-1">
-                  {field.label || field.key}
-                  {isFilled && <span className="ml-1.5 text-[0.6875rem] font-normal text-primary-600">AI</span>}
-                  {isNull && <span className="ml-1.5 text-[0.6875rem] font-normal text-amber-500">입력 필요</span>}
-                </label>
-                <textarea
-                  value={displayValue}
-                  onChange={(e) => setBodyData(prev => ({ ...prev, [field.key]: e.target.value }))}
-                  rows={4}
-                  onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px'; }}
-                  placeholder={filled ? '' : 'AI가 작성합니다'}
-                  className={`w-full px-3.5 py-2.5 border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[200px] ${borderClass}`}
-                />
-              </div>
-            );
-          };
-
-          const filledBodyCount = filled ? bodyFields.filter(f => !isEmpty(bodyData[f.key])).length : 0;
+          const aiCount = filled ? editableFields.filter(f => !isEmpty(formData[f.key])).length : 0;
 
           return (
             <div className="card">
@@ -818,23 +776,13 @@ export default function DocumentGeneratePage() {
                 </div>
               </div>
               <div className="card-body space-y-5">
-                {/* 기본 정보 (meta) — 사용자 직접 입력, 2열 그리드 */}
-                {metaFields.length > 0 && (
-                  <div>
-                    <h3 className="text-[0.8125rem] font-semibold text-neutral-500 mb-2">기본 정보 — 직접 입력</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {metaFields.map(f => renderMetaField(f))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 본문 — AI가 작성 */}
+                {/* 핵심 내용 입력 + AI 작성 버튼 */}
                 <div>
-                  <h3 className="text-[0.8125rem] font-semibold text-neutral-500 mb-2">본문 — AI가 작성합니다</h3>
+                  <h3 className="text-[0.8125rem] font-semibold text-neutral-500 mb-2">핵심 내용을 입력하세요</h3>
                   <textarea
                     value={freeText}
                     onChange={(e) => setFreeText(e.target.value)}
-                    placeholder="핵심 내용을 입력해주세요 (불릿 포인트로 입력하면 더 정확합니다)"
+                    placeholder="문서에 담을 내용을 자유롭게 입력하세요 (불릿 포인트로 입력하면 더 정확합니다)"
                     rows={5}
                     onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 300) + 'px'; }}
                     className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[300px]"
@@ -850,26 +798,19 @@ export default function DocumentGeneratePage() {
                   </div>
                 </div>
 
-                {/* AI 작성 결과 — body 필드 미리보기 + 편집 */}
-                {filled && bodyFields.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-3 text-xs mb-3">
-                      <div className="flex-1 border-t border-neutral-divider" />
-                      <span className="text-primary-600 font-medium">{filledBodyCount}/{bodyFields.length}개 본문 필드 작성됨</span>
-                      <div className="flex-1 border-t border-neutral-divider" />
-                    </div>
-                    <div className="space-y-3">
-                      {bodyFields.map(f => renderBodyField(f))}
-                    </div>
+                {/* AI 작성 결과 카운트 */}
+                {filled && (
+                  <div className="flex items-center gap-3 text-xs">
+                    <div className="flex-1 border-t border-neutral-divider" />
+                    <span className="text-primary-600 font-medium">AI가 {aiCount}/{editableFields.length}개 필드를 채웠습니다 — 확인 후 수정하세요</span>
+                    <div className="flex-1 border-t border-neutral-divider" />
                   </div>
                 )}
 
-                {/* group 정보가 없는 레거시 템플릿 fallback */}
-                {metaFields.length === 0 && bodyFields.length === 0 && (
-                  <div className="space-y-3">
-                    {templateFields.map(f => renderMetaField(f))}
-                  </div>
-                )}
+                {/* 전체 필드 — 2열 그리드 (긴 필드는 col-span-2) */}
+                <div className="grid grid-cols-2 gap-3">
+                  {editableFields.map(f => renderField(f))}
+                </div>
 
                 {/* 문서 생성 버튼 */}
                 <div className="flex justify-end">
