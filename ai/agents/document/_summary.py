@@ -62,7 +62,7 @@ async def summarize_document(text: str) -> dict:
     return parse_summary_output(answer)
 
 
-async def _handle_doc_summary(user_input: str, document_content: str = None, document_id: int = None, user_id: int = None, user_team: str = None, stream_mode: bool = False) -> Dict[str, Any]:
+async def _handle_doc_summary(user_input: str, document_content: str = None, document_id: int = None, user_id: int = None, user_team: str = None, stream_mode: bool = False, chat_history: list = None) -> Dict[str, Any]:
     """문서 요약 처리 — DB 저장된 요약 우선, 없으면 sLLM 호출"""
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_summary | document_id={document_id}, content_len={len(document_content) if document_content else 0}, stream_mode={stream_mode}")
@@ -162,16 +162,25 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
     truncated = truncate_by_paragraph(document_content, max_chars=10000)
     user_prompt = f"다음 문서를 요약해주세요.\n\n사용자 요청: {user_input}\n\n문서 내용:\n{truncated}"
 
-    # 스트리밍 모드: stream_pending 패턴
+    # 스트리밍 모드: StreamRequest 프로토콜
     if stream_mode:
-        print(f"[DocumentAgent] stream_mode=True → stream_pending 반환 ({time.time()-_t:.2f}s)")
+        print(f"[DocumentAgent] stream_mode=True → StreamRequest 반환 ({time.time()-_t:.2f}s)")
         return {
             "type": "doc_retrieve",
             "sub_type": "summary",
             "stream_pending": True,
-            "sys_prompt": sys_prompt,
-            "user_prompt": user_prompt,
-            "document_id": document_id,
+            "llm_config": {
+                "sys_prompt": sys_prompt,
+                "user_prompt": user_prompt,
+                "temperature": 0.1,
+                "max_tokens": 1024,
+                "task": "summary",
+            },
+            "post_stream": {
+                "update_summary_db": document_id,
+                "check_regulation": True,
+                "filter_sources": False,
+            },
             "answer": "",
             "message": "",
         }

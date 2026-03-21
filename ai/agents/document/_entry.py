@@ -29,6 +29,8 @@ async def document_agent(state: AgentState) -> AgentState:
     user_id = state.get("user_id")
     user_team = state.get("user_team")
 
+    chat_history = state.get("chat_history", [])
+
     _t_agent = time.time()
     print(f"[DocumentAgent] 진입 | intent={intent}, user_input='{user_input[:50]}...', user_id={user_id}, user_team={user_team}")
 
@@ -60,6 +62,7 @@ async def document_agent(state: AgentState) -> AgentState:
                     user_id=user_id,
                     user_team=user_team,
                     stream_mode=stream_mode,
+                    chat_history=chat_history,
                 )
             elif _is_pure_search(user_input):
                 # 2) 명시적 검색: 찾아/검색/목록 키워드 + 설명/요약 요청 없음
@@ -68,7 +71,12 @@ async def document_agent(state: AgentState) -> AgentState:
             else:
                 # 3) fallback → QA (질문형 + 기타 전부)
                 print("[DocumentAgent] doc_retrieve → QA 경로")
-                response_data = await _handle_doc_qa(user_input, context, user_id=user_id, user_team=user_team, stream_mode=stream_mode)
+                response_data = await _handle_doc_qa(
+                    user_input, context, user_id=user_id,
+                    user_team=user_team, stream_mode=stream_mode,
+                    chat_history=chat_history,
+                    document_content=document_content,
+                )
 
         elif intent == "doc_search":
             # 레거시 호환: BERT가 doc_search로 분류한 경우
@@ -95,6 +103,7 @@ async def document_agent(state: AgentState) -> AgentState:
                 user_id=user_id,
                 user_team=user_team,
                 stream_mode=stream_mode,
+                chat_history=chat_history,
             )
 
         elif intent == "risk_detect":

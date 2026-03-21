@@ -46,6 +46,22 @@ def _to_readable_str(val) -> str:
     return str(val) if val else ""
 
 
+def _format_chat_context(chat_history: list, max_turns: int = 3) -> str:
+    """최근 N턴 대화를 프롬프트용 텍스트로 변환"""
+    if not chat_history:
+        return ""
+    recent = chat_history[-max_turns * 2:]
+    lines = []
+    for msg in recent:
+        role = "사용자" if msg["role"] == "user" else "어시스턴트"
+        content = msg.get("content", "")[:200]
+        if content:
+            lines.append(f"{role}: {content}")
+    if not lines:
+        return ""
+    return "[이전 대화]\n" + "\n".join(lines)
+
+
 def truncate_by_paragraph(text: str, max_chars: int = 8000) -> str:
     """문단 기준으로 텍스트를 자른다. 문장 중간 잘림 방지."""
     if len(text) <= max_chars:
@@ -64,21 +80,30 @@ def truncate_by_paragraph(text: str, max_chars: int = 8000) -> str:
 
 # ── RAG ──
 
-async def _retrieve_context(query: str, user_id: int = None, user_team: str = None, top_k: int = 7) -> tuple:
+async def _retrieve_context(query: str, user_id: int = None, user_team: str = None, top_k: int = 7, use_reranker: bool = False, score_threshold: float = None) -> tuple:
     """공통 RAG 검색 — search/QA/summary에서 재사용
+
+    Args:
+        use_reranker: Cross-Encoder 재정렬 사용 여부 (정밀도 ↑, 지연 +2~5초)
+        score_threshold: 최소 점수 기준 (미달 문서 제거)
 
     Returns:
         (search_results: list[dict], context: list[str], sources: list[dict])
     """
     _t = time.time()
-    print(f"[DocumentAgent] _retrieve_context | query='{query[:50]}', top_k={top_k}")
+    print(f"[DocumentAgent] _retrieve_context | query='{query[:50]}', top_k={top_k}, reranker={use_reranker}, threshold={score_threshold}")
     search_results = []
     context = []
     try:
         from ai.rag.qdrant_pipeline import get_qdrant_pipeline
 
         pipeline = get_qdrant_pipeline()
-        search_results = pipeline.retrieve(query, user_id=user_id, user_team=user_team, top_k=top_k, filter={"source": "documents"})
+        search_results = pipeline.retrieve(
+            query, user_id=user_id, user_team=user_team,
+            top_k=top_k, filter={"source": "documents"},
+            use_reranker=use_reranker,
+            score_threshold=score_threshold,
+        )
         context = [f"[문서 제목: {doc.get('title', '')}]\n{doc['content']}" for doc in search_results]
         print(f"[DocumentAgent] _retrieve_context 완료 ({time.time()-_t:.2f}s): {len(context)}개 문서")
     except Exception as e:
