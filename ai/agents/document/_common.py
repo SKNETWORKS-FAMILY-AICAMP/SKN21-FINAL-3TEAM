@@ -179,7 +179,7 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
                 from ai.llm import get_llm
                 llm = get_llm()
 
-        elif mode == "sllm" and task in sllm_tasks:
+        elif mode == "sllm" and task:
             # sLLM 모드: vLLM — LoRA 적용 태스크만 어댑터 사용, 나머지는 base
             try:
                 from ai.serving.vllm_client import VLLMProvider
