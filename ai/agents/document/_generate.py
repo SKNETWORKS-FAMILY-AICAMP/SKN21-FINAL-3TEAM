@@ -649,16 +649,13 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
             if val not in (None, "", []):
                 data[key] = val
 
-    # DOCX 생성: 원본 양식 → 시스템 빌더 → 범용 레이아웃 순으로 분기
+    # DOCX 생성: 시스템 빌더 → 범용 레이아웃 순으로 분기
+    # 커스텀 템플릿은 범용 레이아웃 사용 (원본 양식 레이아웃 보존이 불완전하므로)
     try:
-        from ai.skills.create_from_template import fill_template_docx, create_generic_document
+        from ai.skills.create_from_template import create_generic_document
 
-        template_file = getattr(template, "file_path", None) if template else None
-        if template_file and Path(template_file).exists():
-            # 원본 양식 DOCX에 LLM 데이터를 채워넣기
-            print(f"[DocumentAgent] 원본 양식으로 DOCX 생성: {template_file}")
-            fill_template_docx(template_file, output_path, data)
-        elif template_type == "meeting_minutes":
+        is_system = getattr(template, "is_system", False) if template else False
+        if is_system and template_type == "meeting_minutes":
             from ai.skills.create_meeting_minutes import create_meeting_minutes
             docx_data = {
                 "title": data.get("title", "회의록"),
@@ -675,16 +672,16 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
             }
             print(f"[DocumentAgent] 시스템 회의록 빌더로 DOCX 생성")
             create_meeting_minutes(output_path, docx_data)
-        elif template_type == "report":
+        elif is_system and template_type == "report":
             from ai.skills.create_report import create_report
             print(f"[DocumentAgent] 시스템 보고서 빌더로 DOCX 생성")
             create_report(output_path, data)
-        elif template_type == "proposal":
+        elif is_system and template_type == "proposal":
             from ai.skills.create_proposal import create_proposal
             print(f"[DocumentAgent] 시스템 제안서 빌더로 DOCX 생성")
             create_proposal(output_path, data)
         else:
-            # 커스텀 카테고리 → 범용 레이아웃
+            # 커스텀 템플릿 → 범용 레이아웃 (깔끔한 새 DOCX)
             print(f"[DocumentAgent] 범용 레이아웃으로 DOCX 생성")
             create_generic_document(output_path, data, fields, DOC_TYPE_NAMES.get(template_type, template_name))
         print(f"[DocumentAgent] 커스텀 DOCX 생성 완료: {output_path}")

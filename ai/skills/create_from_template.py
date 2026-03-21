@@ -305,16 +305,93 @@ def _style_section(cell, text: str):
     para.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
 
+def _is_short_value(val) -> bool:
+    """짧은 값인지 판별 (2열 테이블 렌더링용)"""
+    if val is None or val == "":
+        return True
+    if isinstance(val, list):
+        return False
+    return isinstance(val, str) and len(val) <= 50
+
+
+def _add_spacer(doc, pt_size: int = 4):
+    """작은 빈 줄 추가 (섹션 간 간격 조절)"""
+    p = doc.add_paragraph()
+    p.paragraph_format.space_before = Pt(pt_size)
+    p.paragraph_format.space_after = Pt(0)
+    run = p.add_run("")
+    run.font.size = Pt(1)
+
+
+def _render_array_section(doc, label: str, items: list):
+    """배열 데이터를 섹션으로 렌더링 (헤더 + 테이블)"""
+    if not items:
+        return
+
+    if isinstance(items[0], dict):
+        # dict 배열: 컬럼 헤더 + 데이터 행
+        cols = list(items[0].keys())
+        row_count = len(items) + 2
+        col_count = len(cols) + 1
+
+        t = doc.add_table(rows=row_count, cols=col_count)
+        t.style = "Table Grid"
+
+        for i in range(1, col_count):
+            t.rows[0].cells[0].merge(t.rows[0].cells[i])
+        _style_section(t.rows[0].cells[0], label)
+
+        _style_label(t.rows[1].cells[0], "No.")
+        for ci, col in enumerate(cols):
+            _style_label(t.rows[1].cells[ci + 1], col)
+
+        for ri, item in enumerate(items):
+            row_idx = ri + 2
+            bg = _ALT_BG if ri % 2 == 0 else "FFFFFF"
+            for c in range(col_count):
+                _set_shading(t.rows[row_idx].cells[c], bg)
+            _style_value(t.rows[row_idx].cells[0], str(ri + 1))
+            for ci, col in enumerate(cols):
+                _style_value(t.rows[row_idx].cells[ci + 1], str(item.get(col, "")))
+    else:
+        # 문자열 배열: 섹션 헤더 + 번호 테이블
+        t = doc.add_table(rows=len(items) + 1, cols=2)
+        t.style = "Table Grid"
+        t.rows[0].cells[0].merge(t.rows[0].cells[1])
+        _style_section(t.rows[0].cells[0], label)
+        for ri, item in enumerate(items):
+            bg = _ALT_BG if ri % 2 == 0 else "FFFFFF"
+            _set_shading(t.rows[ri + 1].cells[0], bg)
+            _set_shading(t.rows[ri + 1].cells[1], bg)
+            t.rows[ri + 1].cells[0].width = Cm(1)
+            _style_value(t.rows[ri + 1].cells[0], str(ri + 1))
+            _style_value(t.rows[ri + 1].cells[1], str(item))
+
+    _add_spacer(doc, 2)
+
+
+def _set_row_height(row, height_cm: float):
+    """행 높이 설정"""
+    tr = row._tr
+    trPr = tr.get_or_add_trPr()
+    trHeight = OxmlElement("w:trHeight")
+    trHeight.set(qn("w:val"), str(int(height_cm * 567)))
+    trHeight.set(qn("w:hRule"), "atLeast")
+    trPr.append(trHeight)
+
+
 def create_generic_document(output_path: str, data: dict, fields: list[dict], doc_title: str = "문서") -> str:
     """
-    범용 DOCX 생성 (원본 양식이 없을 때 사용)
+    범용 DOCX 생성 — 기본 템플릿(meeting.docx, proposal.docx)과 동일한 스타일
 
-    Args:
-        output_path: 출력 파일 경로
-        data: LLM이 생성한 데이터 dict
-        fields: parsed_structure 필드 목록
-        doc_title: 문서 제목 (카테고리명)
+    기본 템플릿 빌더(create_meeting_minutes 등)의 스타일 함수를 재사용하여
+    동일한 품질의 문서를 동적 필드로 생성한다.
     """
+    from ai.skills.create_meeting_minutes import (
+        style_section_header, style_label_cell, style_value_cell,
+        set_row_height, _set_shading, _BLUE_ALT,
+    )
+
     doc = Document()
 
     section = doc.sections[0]
@@ -323,8 +400,14 @@ def create_generic_document(output_path: str, data: dict, fields: list[dict], do
     section.left_margin = Cm(2.5)
     section.right_margin = Cm(2.5)
 
-    # 제목
-    title = data.get("title", doc_title)
+    # ── 제목 ──
+    title = doc_title
+    title_keys = ["title", "제목", "제안명", "보고서제목", "회의제목", "제안서제목"]
+    for tk in title_keys:
+        if tk in data and data[tk]:
+            title = str(data[tk])
+            break
+
     title_para = doc.add_paragraph()
     title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
     title_run = title_para.add_run(title)
@@ -344,82 +427,120 @@ def create_generic_document(output_path: str, data: dict, fields: list[dict], do
     pBdr.append(bottom)
     pPr.append(pBdr)
 
-    # 단답형 필드: 테이블로 렌더링
-    short_fields = [f for f in fields if f.get("type") in ("text", "date", "list") and f["key"] != "title"]
-    long_fields = [f for f in fields if f.get("type") in ("textarea",)]
+    # ── 필드 분류 ──
+    skip_keys = {tk for tk in title_keys if tk in data}
+    short_items = []
+    long_items = []
+    array_items = []
 
-    if short_fields:
-        # 2열 테이블: 라벨 | 값
-        t = doc.add_table(rows=len(short_fields), cols=2)
-        t.style = "Table Grid"
-        for i, field in enumerate(short_fields):
-            t.rows[i].cells[0].width = Cm(3)
-            t.rows[i].cells[1].width = Cm(13)
-            _style_label(t.rows[i].cells[0], field.get("label", field["key"]))
-            val = _format_value(data.get(field["key"], ""))
-            _style_value(t.rows[i].cells[1], val)
-        doc.add_paragraph()
+    for f in fields:
+        key = f["key"]
+        if key in skip_keys:
+            continue
+        val = data.get(key)
+        if val is None or val == "" or val == []:
+            continue
+        label = f.get("label", key)
 
-    # 장문 필드: 섹션 테이블로 렌더링
-    for field in long_fields:
-        t = doc.add_table(rows=2, cols=1)
-        t.style = "Table Grid"
-        _style_section(t.rows[0].cells[0], field.get("label", field["key"]))
-        val = _format_value(data.get(field["key"], ""))
-        _style_value(t.rows[1].cells[0], val)
+        if isinstance(val, list):
+            array_items.append((label, val))
+        elif _is_short_value(val):
+            short_items.append((label, str(val)))
+        else:
+            long_items.append((label, str(val)))
 
-        # 높이 설정
-        tr = t.rows[1]._tr
-        trPr = tr.get_or_add_trPr()
-        trHeight = OxmlElement("w:trHeight")
-        trHeight.set(qn("w:val"), str(int(4.0 * 567)))
-        trHeight.set(qn("w:hRule"), "atLeast")
-        trPr.append(trHeight)
-        doc.add_paragraph()
+    # ── 1. 기본 정보: 4열 테이블 (기본 템플릿과 동일) ──
+    if short_items:
+        # 첫 번째 항목은 전체 너비 (제목 행처럼)
+        first = short_items[0]
+        rest = short_items[1:]
 
-    # action_items가 있으면 별도 테이블
-    action_items = data.get("action_items", [])
-    if action_items and isinstance(action_items, list) and len(action_items) > 0:
-        row_count = len(action_items) + 2  # 섹션헤더 + 컬럼헤더 + 데이터
+        row_count = 1 + (len(rest) + 1) // 2  # 첫 행 + 나머지 2개씩
         t = doc.add_table(rows=row_count, cols=4)
         t.style = "Table Grid"
 
-        # 섹션 헤더
-        for i in range(1, 4):
-            t.rows[0].cells[0].merge(t.rows[0].cells[i])
-        _style_section(t.rows[0].cells[0], "Action Items")
+        for row in t.rows:
+            row.cells[0].width = Cm(2.5)
+            row.cells[1].width = Cm(6.0)
+            row.cells[2].width = Cm(2.5)
+            row.cells[3].width = Cm(5.0)
 
-        # 컬럼 헤더
-        for i, h in enumerate(["No.", "할 일", "담당자", "기한"]):
-            _style_label(t.rows[1].cells[i], h)
+        # 첫 행: 값 셀 병합 (제목처럼)
+        t.rows[0].cells[1].merge(t.rows[0].cells[3])
+        style_label_cell(t.rows[0].cells[0], first[0])
+        style_value_cell(t.rows[0].cells[1], first[1])
+        set_row_height(t.rows[0], 1.0)
 
-        # 데이터
-        for r, item in enumerate(action_items):
-            row_idx = r + 2
-            bg = _ALT_BG if r % 2 == 0 else "FFFFFF"
-            for c in range(4):
-                _set_shading(t.rows[row_idx].cells[c], bg)
+        # 나머지: 2개씩 배치
+        for i, (label, val) in enumerate(rest):
+            ri = 1 + i // 2
+            ci = (i % 2) * 2
+            style_label_cell(t.rows[ri].cells[ci], label)
+            style_value_cell(t.rows[ri].cells[ci + 1], val)
 
-            _style_value(t.rows[row_idx].cells[0], str(r + 1))
-            if isinstance(item, dict):
-                _style_value(t.rows[row_idx].cells[1], item.get("task", item.get("content", "")))
-                _style_value(t.rows[row_idx].cells[2], item.get("assignee", ""))
-                _style_value(t.rows[row_idx].cells[3], item.get("due_date", ""))
-            else:
-                _style_value(t.rows[row_idx].cells[1], str(item))
+        # 홀수면 마지막 행 오른쪽 빈칸
+        if len(rest) % 2 == 1:
+            last_ri = 1 + len(rest) // 2
+            if last_ri < row_count:
+                style_label_cell(t.rows[last_ri].cells[2], "")
+                style_value_cell(t.rows[last_ri].cells[3], "")
+
         doc.add_paragraph()
 
-    # 남은 필드 (fields에 없는 data key) — 추가 섹션으로 렌더링
-    rendered_keys = {f["key"] for f in fields} | {"title", "action_items"}
-    extra_keys = [k for k in data if k not in rendered_keys and data[k]]
-    for key in extra_keys:
-        val = _format_value(data[key])
-        if not val:
-            continue
+    # ── 2. 본문: 섹션 헤더 + 내용 (기본 템플릿과 동일) ──
+    for label, val in long_items:
         t = doc.add_table(rows=2, cols=1)
         t.style = "Table Grid"
-        _style_section(t.rows[0].cells[0], key)
-        _style_value(t.rows[1].cells[0], val)
+        style_section_header(t.rows[0].cells[0], label)
+        style_value_cell(t.rows[1].cells[0], val)
+        # 내용 길이 기반 행 높이
+        line_count = max(val.count('\n') + 1, len(val) // 60 + 1)
+        height = max(3.0, min(line_count * 0.8, 8.0))
+        set_row_height(t.rows[1], height)
+        doc.add_paragraph()
+
+    # ── 3. 배열: 기본 템플릿 Action Item/추진일정 스타일 ──
+    for label, items in array_items:
+        if not items:
+            continue
+
+        if isinstance(items[0], dict):
+            cols = list(items[0].keys())
+            col_count = len(cols) + 1
+            row_count = len(items) + 2
+
+            t = doc.add_table(rows=row_count, cols=col_count)
+            t.style = "Table Grid"
+
+            # 섹션 헤더 (병합)
+            for i in range(1, col_count):
+                t.rows[0].cells[0].merge(t.rows[0].cells[i])
+            style_section_header(t.rows[0].cells[0], label)
+
+            # 컬럼 헤더
+            style_label_cell(t.rows[1].cells[0], "No.")
+            for ci, col in enumerate(cols):
+                style_label_cell(t.rows[1].cells[ci + 1], col)
+
+            # 데이터 행 (교대 색상)
+            for ri, item in enumerate(items):
+                row_idx = ri + 2
+                bg = _BLUE_ALT if ri % 2 == 0 else "FFFFFF"
+                for c in range(col_count):
+                    _set_shading(t.rows[row_idx].cells[c], bg)
+                style_value_cell(t.rows[row_idx].cells[0], str(ri + 1))
+                for ci, col in enumerate(cols):
+                    style_value_cell(t.rows[row_idx].cells[ci + 1], str(item.get(col, "")))
+                set_row_height(t.rows[row_idx], 0.8)
+        else:
+            # 문자열 배열
+            t = doc.add_table(rows=2, cols=1)
+            t.style = "Table Grid"
+            style_section_header(t.rows[0].cells[0], label)
+            val = "\n".join(f"• {item}" for item in items)
+            style_value_cell(t.rows[1].cells[0], val)
+            set_row_height(t.rows[1], max(2.0, len(items) * 0.6))
+
         doc.add_paragraph()
 
     doc.save(output_path)
