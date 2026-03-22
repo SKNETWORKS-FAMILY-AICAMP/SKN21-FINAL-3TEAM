@@ -80,7 +80,7 @@ async def _handle_doc_qa(
         # 둘 다 없으면 RAG 검색
         search_results, rag_context, rag_sources, _rag_status = await _retrieve_context(
             query, user_id, user_team,
-            top_k=7, use_reranker=False,
+            top_k=5, use_reranker=False,
         )
         context = rag_context
         sources = rag_sources
@@ -102,7 +102,7 @@ async def _handle_doc_qa(
         }
 
     # ── 3. user_prompt 구성 (컨텍스트 크기 가드) ──
-    MAX_CONTEXT_CHARS = 12000  # 토큰 초과 방지
+    MAX_CONTEXT_CHARS = 8000  # 토큰 초과 방지 + 응답 속도 최적화
 
     parts = []
 
