@@ -95,7 +95,7 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
     if not document_content:
         print("[DocumentAgent] document_content 없음 → RAG로 문서 식별 시도")
 
-        search_results, _, _ = await _retrieve_context(user_input, user_id, user_team, top_k=5)
+        search_results, _, _, _rag_status = await _retrieve_context(user_input, user_id, user_team, top_k=5)
 
         if search_results:
             # document_id 기준 중복 제거

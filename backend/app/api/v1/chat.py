@@ -689,10 +689,27 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         # 2-2. 문서 Agent 스트리밍
                         agent_response = node_output.get("agent_response", {})
 
-                        # 관련 문서 없음 등 stream_pending 없이 바로 응답하는 경우 → token으로 메시지 전송
+                        # sub_type 조기 알림 → 프론트에서 "문서 검색 중..." 등 표시
+                        _status_hint = agent_response.pop("_status_hint", None)
+                        _SUB_TYPE_LABELS = {
+                            "search": "문서 검색 중...",
+                            "qa": "문서 질의응답 준비 중...",
+                            "summary": "문서 요약 준비 중...",
+                        }
+                        if _status_hint and _status_hint in _SUB_TYPE_LABELS:
+                            yield f"data: {json.dumps({'type': 'status', 'value': _SUB_TYPE_LABELS[_status_hint]}, ensure_ascii=False)}\n\n"
+                            yield f"data: {json.dumps({'type': 'doc_sub_type', 'value': _status_hint}, ensure_ascii=False)}\n\n"
+
+                        # 관련 문서 없음 등 stream_pending 없이 바로 응답하는 경우
                         if not agent_response.get("stream_pending") and agent_response.get("message"):
                             msg = agent_response["message"]
-                            yield f"data: {json.dumps({'type': 'token', 'value': msg}, ensure_ascii=False)}\n\n"
+                            # 검색 결과는 청크 단위로 스트리밍 (자연스러운 UX)
+                            if agent_response.get("sub_type") == "search" and len(msg) > 100:
+                                lines = msg.split("\n")
+                                for line in lines:
+                                    yield f"data: {json.dumps({'type': 'token', 'value': line + chr(10)}, ensure_ascii=False)}\n\n"
+                            else:
+                                yield f"data: {json.dumps({'type': 'token', 'value': msg}, ensure_ascii=False)}\n\n"
 
                         if agent_response.get("stream_pending"):
                             # ── StreamRequest 프로토콜: agent가 준비한 설정대로 vLLM 스트리밍 ──

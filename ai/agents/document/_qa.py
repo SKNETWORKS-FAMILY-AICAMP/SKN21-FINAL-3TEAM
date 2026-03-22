@@ -76,7 +76,7 @@ async def _handle_doc_qa(
         print(f"[DocumentAgent] 기존 context 사용 ({len(context)}개)")
     else:
         # 둘 다 없으면 RAG 검색
-        search_results, rag_context, rag_sources = await _retrieve_context(
+        search_results, rag_context, rag_sources, _rag_status = await _retrieve_context(
             query, user_id, user_team,
             top_k=7, use_reranker=False,
         )
