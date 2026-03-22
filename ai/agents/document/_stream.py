@@ -83,6 +83,8 @@ async def execute_doc_stream(
             raise
 
     # 토큰 스트리밍 (빈 응답 시 1회 재시도)
+    logger.info("[DocStream] 스트림 생성 완료, 토큰 수신 시작 | model=%s, prompt_len=%d",
+                model, len(llm_config.get("user_prompt", "")))
     full_response = ""
     max_attempts = 2
     for attempt in range(max_attempts):
@@ -103,10 +105,13 @@ async def execute_doc_stream(
                 break
 
         stream_iter = stream.__aiter__()
+        chunk_count = 0
         while True:
             try:
                 chunk = await asyncio.wait_for(stream_iter.__anext__(), timeout=30)
+                chunk_count += 1
             except StopAsyncIteration:
+                logger.info("[DocStream] 스트림 종료: %d chunks, %d자 수신", chunk_count, len(full_response))
                 break
             except asyncio.TimeoutError:
                 logger.warning("[DocStream] chunk 타임아웃 (30초)")
