@@ -108,13 +108,13 @@ async def execute_doc_stream(
         chunk_count = 0
         while True:
             try:
-                chunk = await asyncio.wait_for(stream_iter.__anext__(), timeout=30)
+                chunk = await asyncio.wait_for(stream_iter.__anext__(), timeout=90)
                 chunk_count += 1
             except StopAsyncIteration:
                 logger.info("[DocStream] 스트림 종료: %d chunks, %d자 수신", chunk_count, len(full_response))
                 break
             except asyncio.TimeoutError:
-                logger.warning("[DocStream] chunk 타임아웃 (30초)")
+                logger.warning("[DocStream] chunk 타임아웃 (90초)")
                 if not full_response:
                     full_response = "응답 생성 중 시간이 초과되었습니다."
                     yield full_response

@@ -800,9 +800,9 @@ export default function ChatPage() {
               // 스트리밍 중이지만 result가 이미 도착한 경우 → 카드 UI로 바로 전환
               if ((isLastAssistant || isWaitingForResponse) && !(msg.agentResponse && msg.resultIntent)) {
                 const intent = currentIntent || msg.resultIntent || msg.intent || 'general';
-                // doc_retrieve/doc_search: 스트리밍 텍스트 대신 로딩만 표시 → result 도착 시 카드로 전환
-                // (날것 텍스트 → 카드 이중 렌더링 방지)
-                const hideStreamText = ['doc_retrieve', 'doc_search', 'doc_summary'].includes(intent);
+                // 요약/검색: 스트리밍 텍스트 숨김 (메타데이터 "분류:/태그:" 노출 방지)
+                // QA/일반/판단: 자연어 텍스트이므로 실시간 스트리밍 표시
+                const hideStreamText = ['doc_search', 'doc_summary'].includes(intent);
                 return (
                   <MessageBubble key={i} type="bot" intent={intent}>
                     <StreamingMessage
