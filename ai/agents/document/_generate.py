@@ -376,7 +376,7 @@ async def _handle_doc_generate(user_input: str, template_type: str, document_con
             "type": "clarify",
             "message": (
                 f"{guide['title']}을 작성할게요. 아래 내용을 알려주세요:\n\n"
-                f"• {guide['fields']}\n\n"
+                f"- {guide['fields']}\n\n"
                 f"예시: \"{guide['example']}\""
             ),
         }
