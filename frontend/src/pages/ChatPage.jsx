@@ -224,7 +224,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
               </div>
             </div>
             <div className="p-4">
-              {content && <div className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5"><MarkdownText>{content}</MarkdownText></div>}
+              {(content || data.answer) && <div className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5"><MarkdownText>{content || data.answer}</MarkdownText></div>}
               {citations.length > 0 && (
                 <div className="mb-3">
                   <div className="text-xs font-semibold text-neutral-sub mb-2">인용 ({citations.length}건)</div>
@@ -281,7 +281,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
               )}
             </div>
             <div className="p-4">
-              {content && <div className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5"><MarkdownText>{content}</MarkdownText></div>}
+              {(content || data.answer || data.message) && <div className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5"><MarkdownText>{content || data.answer || data.message}</MarkdownText></div>}
               {sources.length > 0 && (
                 <div>
                   <div className="text-xs font-semibold text-neutral-sub mb-2">출처 ({sources.length}건)</div>
@@ -291,7 +291,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                 </div>
               )}
             </div>
-            {sources.length > 0 && !isLastAndStreaming && (
+            {!isLastAndStreaming && (
               <div className="px-4 py-2.5 border-t border-neutral-divider flex flex-wrap gap-2">
                 {firstSourceTitle && (
                   <ActionBtn icon={FileText} label="요약해줘" primary
