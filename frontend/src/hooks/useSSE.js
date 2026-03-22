@@ -130,7 +130,7 @@ export default function useSSE() {
               case 'doc_sub_type':
                 // 문서 Agent sub_type 조기 알림 (검색/QA/요약)
                 setCurrentSubType(event.value)
-                setCurrentStatus(event.value === 'search' ? '문서 검색 중...' : event.value === 'qa' ? '문서 질의응답 준비 중...' : event.value === 'summary' ? '문서 요약 준비 중...' : `${event.value} 처리 중...`)
+                setCurrentStatus(event.value === 'search' ? '문서 검색 중...' : event.value === 'qa' ? '문서 질의응답 준비 중...' : event.value === 'summary' ? '문서 요약 준비 중...' : event.value === 'generate' ? '문서 생성 준비 중...' : `${event.value} 처리 중...`)
                 break
               case 'compound_start':
                 setCurrentStatus(`복합 질문 감지: ${event.total || ''}개 하위 질문 처리 중...`)

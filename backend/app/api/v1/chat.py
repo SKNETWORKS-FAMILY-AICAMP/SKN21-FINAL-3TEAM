@@ -414,6 +414,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             "search": "문서 검색 중...",
                             "qa": "문서 질의응답 준비 중...",
                             "summary": "문서 요약 준비 중...",
+                            "generate": "문서 생성 준비 중...",
                         }
                         if _status_hint and _status_hint in _SUB_TYPE_LABELS:
                             yield f"data: {json.dumps({'type': 'status', 'value': _SUB_TYPE_LABELS[_status_hint]}, ensure_ascii=False)}\n\n"
@@ -430,8 +431,35 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             else:
                                 yield f"data: {json.dumps({'type': 'token', 'value': msg}, ensure_ascii=False)}\n\n"
 
+                        elif agent_response.get("stream_pending") and agent_response.get("generate_config"):
+                            # ── 문서 생성 단계별 실행 (토큰 스트리밍 아님, 블로킹 + 상태 표시) ──
+                            gen_cfg = agent_response["generate_config"]
+                            t_type = gen_cfg.get("template_type", "report")
+                            type_label = {"meeting_minutes": "회의록", "report": "보고서", "proposal": "제안서"}.get(t_type, "문서")
+
+                            yield f"data: {json.dumps({'type': 'status', 'value': f'{type_label} 생성 중... (내용 분석)'}, ensure_ascii=False)}\n\n"
+
+                            try:
+                                from ai.agents.document._generate import generate_document
+                                result = await generate_document(
+                                    category=gen_cfg["template_type"],
+                                    user_input=gen_cfg["user_input"],
+                                    template_id=gen_cfg.get("template_id"),
+                                )
+                                yield f"data: {json.dumps({'type': 'status', 'value': 'DOCX 생성 완료'}, ensure_ascii=False)}\n\n"
+
+                                agent_response.update(result)
+                            except Exception as e:
+                                logger.error("[Chat] 문서 생성 실패: %s", e)
+                                agent_response["message"] = f"문서 생성 중 오류가 발생했습니다: {e}"
+                                agent_response["type"] = "doc_generate"
+
+                            agent_response.pop("stream_pending", None)
+                            agent_response.pop("generate_config", None)
+                            final_state["agent_response"] = agent_response
+
                         elif agent_response.get("stream_pending"):
-                            # ── StreamRequest 프로토콜: _stream.py로 위임 ──
+                            # ── StreamRequest 프로토콜: QA/summary 토큰 스트리밍 ──
                             from ai.agents.document._stream import execute_doc_stream
 
                             cfg = agent_response.get("llm_config", {})
