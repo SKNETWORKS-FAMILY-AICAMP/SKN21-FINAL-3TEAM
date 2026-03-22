@@ -103,7 +103,8 @@ async def document_agent(state: AgentState) -> AgentState:
                     print(f"[DocumentAgent] RAG 선검색 완료: {len(sources)}건, top_score={top_score:.2f}")
 
                     # 3) QA 판별: 의문형 패턴 + RAG 점수 충분할 때만 QA
-                    if _needs_llm_answer(user_input) and top_score > 0.5:
+                    is_qa_query = _needs_llm_answer(user_input)
+                    if is_qa_query and top_score > 0.5:
                         _sub_type_hint = "qa"
                         print(f"[DocumentAgent] doc_retrieve → QA 경로 (의문형 + score={top_score:.2f})")
                         response_data = await _handle_doc_qa(
@@ -117,7 +118,7 @@ async def document_agent(state: AgentState) -> AgentState:
                     else:
                         # 4) 기본값: search (빠른 검색 카드 반환)
                         _sub_type_hint = "search"
-                        reason = "기본값" if not _needs_llm_answer(user_input) else f"score 부족({top_score:.2f})"
+                        reason = "기본값" if not is_qa_query else f"score 부족({top_score:.2f})"
                         print(f"[DocumentAgent] doc_retrieve → search 경로 ({reason})")
                         response_data = await _handle_doc_search(
                             user_input, rag_context, user_id, user_team=user_team,
