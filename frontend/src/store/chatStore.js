@@ -204,6 +204,9 @@ const useChatStore = create((set, get) => ({
 
   setCurrentStatus: (status) => set({ currentStatus: status }),
 
+  currentSubType: null,
+  setCurrentSubType: (subType) => set({ currentSubType: subType }),
+
   appendToken: (token) =>
     set((state) => {
       const messages = [...state.messages]

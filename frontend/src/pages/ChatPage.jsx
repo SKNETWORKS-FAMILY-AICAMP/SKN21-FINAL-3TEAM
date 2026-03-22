@@ -798,9 +798,25 @@ export default function ChatPage() {
               // 스트리밍 중이지만 result가 이미 도착한 경우 → 카드 UI로 바로 전환
               if ((isLastAssistant || isWaitingForResponse) && !(msg.agentResponse && msg.resultIntent)) {
                 const intent = currentIntent || msg.resultIntent || msg.intent || 'general';
-                // 요약/검색: 스트리밍 텍스트 숨김 (메타데이터 "분류:/태그:" 노출 방지)
-                // QA/일반/판단: 자연어 텍스트이므로 실시간 스트리밍 표시
-                const hideStreamText = ['doc_search', 'doc_summary'].includes(intent);
+                const subType = useChatStore.getState().currentSubType;
+
+                // QA: 카드 스켈레톤 안에서 텍스트 스트리밍 (날것 → 카드 전환 방지)
+                if (intent === 'doc_retrieve' && subType === 'qa' && msg.content) {
+                  const partialMsg = {
+                    ...msg,
+                    resultIntent: 'doc_retrieve',
+                    agentResponse: { sub_type: 'qa', confidence: null },
+                  };
+                  return (
+                    <MessageBubble key={i} type="bot" intent={intent}>
+                      {renderCardMessage(partialMsg, handleSend, setDocViewDoc, messages, i, true)}
+                    </MessageBubble>
+                  );
+                }
+
+                // 요약/검색: 로딩만 표시 (메타데이터 노출 방지)
+                // 일반/판단: 실시간 스트리밍 텍스트
+                const hideStreamText = ['doc_retrieve', 'doc_search', 'doc_summary'].includes(intent);
                 return (
                   <MessageBubble key={i} type="bot" intent={intent}>
                     <StreamingMessage
