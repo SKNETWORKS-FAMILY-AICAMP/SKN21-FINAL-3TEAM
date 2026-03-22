@@ -796,14 +796,16 @@ export default function ChatPage() {
               }
 
               // 스트리밍 중이지만 result가 이미 도착한 경우 → 카드 UI로 바로 전환
-              // (날것 마크다운 → 카드 이중 렌더링 방지)
               if ((isLastAssistant || isWaitingForResponse) && !(msg.agentResponse && msg.resultIntent)) {
                 const intent = currentIntent || msg.resultIntent || msg.intent || 'general';
+                // doc_retrieve/doc_search: 스트리밍 텍스트 대신 로딩만 표시 → result 도착 시 카드로 전환
+                // (날것 텍스트 → 카드 이중 렌더링 방지)
+                const hideStreamText = ['doc_retrieve', 'doc_search', 'doc_summary'].includes(intent);
                 return (
                   <MessageBubble key={i} type="bot" intent={intent}>
                     <StreamingMessage
-                      text={intent === 'judgment' ? cleanResultText(msg.content) : msg.content}
-                      status={currentStatus}
+                      text={hideStreamText ? '' : (intent === 'judgment' ? cleanResultText(msg.content) : msg.content)}
+                      status={currentStatus || (hideStreamText && msg.content ? '문서 응답 생성 중...' : null)}
                       intent={intent}
                       isInsideBubble
                     />
