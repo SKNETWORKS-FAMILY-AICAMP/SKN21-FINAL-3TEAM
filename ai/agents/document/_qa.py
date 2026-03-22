@@ -102,10 +102,10 @@ async def _handle_doc_qa(
         }
 
     # ── 3. user_prompt 구성 (컨텍스트 크기 가드) ──
-    # RunPod vLLM max_model_len=4096 제약:
+    # RunPod vLLM max_model_len=8192
     # 시스템프롬프트(~200) + 대화이력(~300) + 질문(~50) + max_tokens(2048) = ~2600
-    # → context에 쓸 수 있는 토큰 ≈ 1400 → 한국어 ~2000자
-    MAX_CONTEXT_CHARS = 2000
+    # → context에 쓸 수 있는 토큰 ≈ 5500 → 한국어 ~5000자
+    MAX_CONTEXT_CHARS = 5000
 
     parts = []
 
@@ -142,7 +142,7 @@ async def _handle_doc_qa(
                 "sys_prompt": DOC_QA_STREAMING_PROMPT,
                 "user_prompt": user_prompt,
                 "temperature": 0.1,
-                "max_tokens": 1024,
+                "max_tokens": 2048,
                 "task": "qa",
             },
             "post_stream": {
