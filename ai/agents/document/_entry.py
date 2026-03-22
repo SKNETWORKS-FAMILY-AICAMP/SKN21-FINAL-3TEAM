@@ -226,7 +226,13 @@ async def document_agent(state: AgentState) -> AgentState:
                 print(f"[DocumentAgent] 컨텐츠 규정 연결 실패 (비차단): {e}")
 
     # 모델명 추가 (프론트에서 표시용)
-    response_data["model_name"] = get_last_model_name()
+    if response_data.get("sub_type") == "search":
+        response_data["model_name"] = "RAG (BM25+Vector)"
+    elif response_data.get("stream_pending"):
+        # stream_pending=True면 chat.py에서 LLM 호출 → 거기서 모델명 설정
+        response_data["model_name"] = response_data.get("model_name", "streaming")
+    else:
+        response_data["model_name"] = get_last_model_name()
 
     # State 업데이트
     state["agent_response"] = response_data
