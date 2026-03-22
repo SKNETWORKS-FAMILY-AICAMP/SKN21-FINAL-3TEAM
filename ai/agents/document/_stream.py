@@ -108,7 +108,13 @@ async def execute_doc_stream(
 
     # ── post_stream 처리 ──
     if post_stream.get("update_summary_db") and full_response:
-        await _post_update_summary(db, post_stream["update_summary_db"], full_response)
+        parsed = await _post_update_summary(db, post_stream["update_summary_db"], full_response)
+        # 파싱 결과를 agent_response에 반영 (프론트 요약 카드에서 태그/요약 표시용)
+        if parsed:
+            agent_response["tags"] = parsed.get("tags", [])
+            agent_response["summary"] = parsed.get("summary", "")
+            agent_response["document_id"] = post_stream["update_summary_db"]
+            agent_response.setdefault("sub_type", "summary")
 
     if post_stream.get("check_regulation") and full_response and len(full_response) > 50:
         reg = await _post_check_regulation(full_response, user_id)
@@ -127,18 +133,21 @@ async def execute_doc_stream(
         agent_response.pop(k, None)
 
 
-async def _post_update_summary(db, document_id: int, response_text: str):
-    """요약 스트리밍 후 DB 업데이트 (파싱 실패 시 폴백 포함)"""
+async def _post_update_summary(db, document_id: int, response_text: str) -> dict | None:
+    """요약 스트리밍 후 DB 업데이트 (파싱 실패 시 폴백 포함)
+
+    Returns:
+        parse_summary_output 결과 dict (tags, summary 포함) 또는 None
+    """
     try:
         from ai.agents.document._summary import parse_summary_output
         from app.models.document import Document
         from sqlalchemy import select
 
         parsed = parse_summary_output(response_text)
-        # parse_summary_output에 이미 폴백이 있으므로 tags가 비어있을 가능성 낮음
         if not parsed["summary"]:
             logger.warning("[DocStream] 요약 파싱 결과 비어있음, 스킵")
-            return
+            return parsed  # 비어있어도 반환 (호출측에서 판단)
 
         result = await db.execute(select(Document).where(Document.id == document_id))
         doc = result.scalar_one_or_none()
@@ -147,8 +156,10 @@ async def _post_update_summary(db, document_id: int, response_text: str):
             doc.tags = parsed["tags"]
             await db.commit()
             logger.info("[DocStream] DB 요약 업데이트 완료: document_id=%s", document_id)
+        return parsed
     except Exception as e:
         logger.warning("[DocStream] DB 요약 업데이트 실패: %s", e)
+        return None
 
 
 async def _post_check_regulation(text: str, user_id: int) -> dict | None:

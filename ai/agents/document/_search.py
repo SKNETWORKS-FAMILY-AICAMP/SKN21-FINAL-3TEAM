@@ -49,15 +49,21 @@ async def _handle_doc_search(query: str, context: List[str], user_id: int = None
             "rag_status": rag_status,
         }
 
-    # 3. document_id 기준 중복 제거 (같은 문서의 여러 chunk)
+    # 3. 중복 제거 (document_id 우선, 없으면 title 기준)
     seen_doc_ids = set()
+    seen_titles = set()
     unique_sources = []
     for s in sources:
         did = s.get("document_id")
-        if did and did in seen_doc_ids:
-            continue
+        title = s.get("title", "")
         if did:
+            if did in seen_doc_ids:
+                continue
             seen_doc_ids.add(did)
+        elif title:
+            if title in seen_titles:
+                continue
+            seen_titles.add(title)
         unique_sources.append(s)
 
     # 4. LLM 없이 검색 결과 메시지 구성

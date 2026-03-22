@@ -188,11 +188,12 @@ def _build_sources(search_results: list) -> list:
                 continue
             seen_sources.add(content_key)
 
+            full_content = doc.get("content", "")
             sources.append({
                 "title": doc.get("title") or doc.get("chapter") or doc.get("source", "제목 없음"),
                 "source": doc.get("source", ""),
                 "score": doc.get("score", 0.0),
-                "content": doc.get("content", ""),
+                "content": full_content[:300],  # SSE 전송 크기 최적화 (프론트 미리보기용)
                 "document_id": doc.get("document_id"),
             })
     return sources
