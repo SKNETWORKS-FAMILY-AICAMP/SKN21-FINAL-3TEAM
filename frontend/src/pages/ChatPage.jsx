@@ -127,27 +127,6 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
         navigator.clipboard.writeText(text).catch(() => {});
       };
 
-      // 액션 버튼 공통 컴포넌트 (클릭 피드백 포함)
-      const ActionBtn = ({ icon: Icon, label, primary, onClick }) => {
-        const [clicked, setClicked] = useState(false);
-        return (
-          <button
-            disabled={clicked}
-            onClick={() => { setClicked(true); onClick?.(); }}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border transition ${
-              clicked
-                ? 'opacity-50 cursor-not-allowed border-neutral-200 bg-neutral-50 text-neutral-400'
-                : primary
-                  ? 'border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100'
-                  : 'border-neutral-border bg-surface-hover text-neutral-sub hover:bg-neutral-100'
-            }`}
-          >
-            {clicked ? <Loader2 size={12} className="animate-spin" /> : <Icon size={12} />}
-            {clicked ? '처리 중...' : label}
-          </button>
-        );
-      };
-
       // sub_type=summary → 요약 카드
       if (subType === 'summary' || tags.length > 0) {
         const topicHint = tags[0] || '';
@@ -186,16 +165,6 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                 </div>
               )}
             </div>
-            {!isLastAndStreaming && (
-              <div className="px-4 py-2.5 border-t border-neutral-divider flex flex-wrap gap-2">
-                <ActionBtn icon={MessageCircle} label="이 문서에 질문하기" primary
-                  onClick={() => onSelectClarify?.(topicHint ? `${topicHint} 관련해서 질문할게` : '이 문서 내용에 대해 질문할게', { forceIntent: 'doc_retrieve:qa', documentId: data.document_id })} />
-                <ActionBtn icon={Search} label="관련 문서 더 찾기"
-                  onClick={() => onSelectClarify?.(topicHint ? `${topicHint} 관련 문서 더 찾아줘` : '관련 문서 더 찾아줘', { forceIntent: 'doc_retrieve:search' })} />
-                <ActionBtn icon={PenTool} label="이 내용으로 보고서 작성" primary
-                  onClick={() => onSelectClarify?.(`${topicHint || '요약 내용'} 기반으로 보고서 작성해줘`, { forceIntent: 'doc_generate' })} />
-              </div>
-            )}
           </div>
         );
       }
@@ -258,16 +227,6 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                 </div>
               )}
             </div>
-            {!isLastAndStreaming && (
-              <div className="px-4 py-2.5 border-t border-neutral-divider flex flex-wrap gap-2">
-                {firstSourceTitle && (
-                  <ActionBtn icon={FileText} label="출처 문서 요약" primary
-                    onClick={() => onSelectClarify?.(`${firstSourceTitle} 요약해줘`, { forceIntent: 'doc_retrieve:summary', documentId: sources[0]?.document_id })} />
-                )}
-                <ActionBtn icon={Search} label="관련 문서 더 찾기"
-                  onClick={() => onSelectClarify?.('관련 문서 더 찾아줘', { forceIntent: 'doc_retrieve:search' })} />
-              </div>
-            )}
           </div>
         );
       }
@@ -295,27 +254,11 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                 <div>
                   <div className="text-xs font-semibold text-neutral-sub mb-2">출처 ({sources.length}건)</div>
                   {sources.map((s, idx) => (
-                    <div key={idx} className="mb-2">
-                      <SourceItem source={s} index={idx} onSelect={onSelectDoc} />
-                      {!isLastAndStreaming && (
-                        <div className="flex gap-1.5 mt-1 ml-4">
-                          <button onClick={() => onSelectClarify?.(`${s.title || '문서'} 요약해줘`, { forceIntent: 'doc_retrieve:summary', documentId: s.document_id })}
-                            className="text-[0.625rem] px-2 py-0.5 rounded-full border border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 transition">요약</button>
-                          <button onClick={() => onSelectClarify?.(`${s.title || '문서'} 내용 자세히 알려줘`, { forceIntent: 'doc_retrieve:qa', documentId: s.document_id })}
-                            className="text-[0.625rem] px-2 py-0.5 rounded-full border border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 transition">질문하기</button>
-                        </div>
-                      )}
-                    </div>
+                    <SourceItem key={idx} source={s} index={idx} onSelect={onSelectDoc} />
                   ))}
                 </div>
               )}
             </div>
-            {!isLastAndStreaming && (
-              <div className="px-4 py-2.5 border-t border-neutral-divider flex flex-wrap gap-2">
-                <ActionBtn icon={PenTool} label="보고서 작성"
-                  onClick={() => onSelectClarify?.(`${firstSourceTitle || '검색 결과'} 기반으로 보고서 작성해줘`, { forceIntent: 'doc_generate' })} />
-              </div>
-            )}
           </div>
         );
       }
