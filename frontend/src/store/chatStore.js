@@ -204,32 +204,15 @@ const useChatStore = create((set, get) => ({
 
   setCurrentStatus: (status) => set({ currentStatus: status }),
 
-  // 토큰 배치 버퍼 — 빠르게 오는 토큰을 모아서 한번에 렌더링 (부드러운 스트리밍)
-  _tokenBuffer: '',
-  _tokenFlushTimer: null,
-
-  appendToken: (token) => {
-    const store = useChatStore.getState()
-    store._tokenBuffer += token
-
-    if (!store._tokenFlushTimer) {
-      store._tokenFlushTimer = requestAnimationFrame(() => {
-        const buffered = useChatStore.getState()._tokenBuffer
-        if (buffered) {
-          set((state) => {
-            const messages = [...state.messages]
-            const last = messages[messages.length - 1]
-            if (last && last.role === 'assistant') {
-              messages[messages.length - 1] = { ...last, content: last.content + buffered }
-            }
-            return { messages, _tokenBuffer: '', _tokenFlushTimer: null }
-          })
-        } else {
-          set({ _tokenFlushTimer: null })
-        }
-      })
-    }
-  },
+  appendToken: (token) =>
+    set((state) => {
+      const messages = [...state.messages]
+      const last = messages[messages.length - 1]
+      if (last && last.role === 'assistant') {
+        messages[messages.length - 1] = { ...last, content: last.content + token }
+      }
+      return { messages }
+    }),
 
   setLastAssistantResult: (intent, agentResponse) =>
     set((state) => {
