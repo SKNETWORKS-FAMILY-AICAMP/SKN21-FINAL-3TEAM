@@ -82,28 +82,49 @@ async def execute_doc_stream(
         else:
             raise
 
-    # 토큰 스트리밍
+    # 토큰 스트리밍 (빈 응답 시 1회 재시도)
     full_response = ""
-    stream_iter = stream.__aiter__()
-    while True:
-        try:
-            chunk = await asyncio.wait_for(stream_iter.__anext__(), timeout=30)
-        except StopAsyncIteration:
-            break
-        except asyncio.TimeoutError:
-            logger.warning("[DocStream] chunk 타임아웃 (30초)")
-            if not full_response:
-                full_response = "응답 생성 중 시간이 초과되었습니다."
-                yield full_response
-            break
-        if chunk.choices and chunk.choices[0].delta.content:
-            token = chunk.choices[0].delta.content
-            full_response += token
-            yield token
+    max_attempts = 2
+    for attempt in range(max_attempts):
+        if attempt > 0:
+            logger.info("[DocStream] 빈 응답 → 재시도 %d/%d", attempt + 1, max_attempts)
+            try:
+                stream = await client.chat.completions.create(
+                    model=model.replace(" (base, LoRA fallback)", ""),
+                    messages=[
+                        {"role": "system", "content": llm_config["sys_prompt"]},
+                        {"role": "user", "content": llm_config["user_prompt"]},
+                    ],
+                    temperature=llm_config.get("temperature", 0.1),
+                    max_tokens=llm_config.get("max_tokens", 1024),
+                    stream=True,
+                )
+            except Exception:
+                break
 
-    # 빈 응답 방어 (vLLM cold start 시 토큰 0개로 종료될 수 있음)
+        stream_iter = stream.__aiter__()
+        while True:
+            try:
+                chunk = await asyncio.wait_for(stream_iter.__anext__(), timeout=30)
+            except StopAsyncIteration:
+                break
+            except asyncio.TimeoutError:
+                logger.warning("[DocStream] chunk 타임아웃 (30초)")
+                if not full_response:
+                    full_response = "응답 생성 중 시간이 초과되었습니다."
+                    yield full_response
+                break
+            if chunk.choices and chunk.choices[0].delta.content:
+                token = chunk.choices[0].delta.content
+                full_response += token
+                yield token
+
+        if full_response.strip():
+            break  # 응답 있으면 재시도 안 함
+
+    # 재시도 후에도 빈 응답
     if not full_response.strip():
-        full_response = "응답을 생성하지 못했습니다. 잠시 후 다시 시도해주세요. (모델 워커 준비 중일 수 있습니다)"
+        full_response = "응답을 생성하지 못했습니다. 잠시 후 다시 시도해주세요."
         yield full_response
 
     # agent_response 업데이트
