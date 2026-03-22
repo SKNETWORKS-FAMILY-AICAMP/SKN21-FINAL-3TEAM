@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
-import { MessageSquarePlus, Menu, CheckCircle, XCircle, AlertTriangle, HelpCircle, ShieldCheck, FileText, Search, MessageCircle, Copy, PenTool, Loader2 } from 'lucide-react';
+import { MessageSquarePlus, Menu, CheckCircle, XCircle, AlertTriangle, HelpCircle, ShieldCheck, FileText, Search, MessageCircle, Copy } from 'lucide-react';
 import ChatWindow from '../components/chat/ChatWindow';
 import MessageBubble from '../components/chat/MessageBubble';
 import StreamingMessage from '../components/chat/StreamingMessage';
