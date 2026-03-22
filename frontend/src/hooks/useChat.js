@@ -9,7 +9,9 @@ export default function useChat() {
   const { startStream, stopStream } = useSSE()
 
   const sendMessage = async (text, options = {}) => {
-    if (!text.trim() || useChatStore.getState().isStreaming) return
+    if (!text.trim()) return
+    // 후속 액션(doc_pick, 버튼 클릭)은 isStreaming 중에도 허용
+    if (useChatStore.getState().isStreaming && !options.forceIntent) return
 
     // 후속 액션 옵션: { forceIntent, documentId, documentName }
     const { forceIntent, documentId, documentName } = options
