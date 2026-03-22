@@ -199,7 +199,8 @@ export default function useSSE() {
     setStreaming(false)
     setCurrentIntent(null)
     setCurrentStatus(null)
-  }, [setStreaming, setCurrentIntent, setCurrentStatus])
+    setCurrentSubType(null)
+  }, [setStreaming, setCurrentIntent, setCurrentStatus, setCurrentSubType])
 
   return { startStream, stopStream }
 }

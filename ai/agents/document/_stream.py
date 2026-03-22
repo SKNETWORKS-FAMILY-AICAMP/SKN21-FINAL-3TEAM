@@ -22,7 +22,7 @@ def get_streaming_client(task: str) -> tuple:
     vllm_model = os.getenv("VLLM_MODEL", "kakaocorp/kanana-1.5-8b-instruct-2505")
     use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
 
-    model = LORA_ADAPTER_NAMES.get(task, vllm_model) if use_lora else vllm_model
+    model = (LORA_ADAPTER_NAMES.get(task) or vllm_model) if use_lora else vllm_model
 
     client = AsyncOpenAI(
         api_key=vllm_api_key, base_url=vllm_base,

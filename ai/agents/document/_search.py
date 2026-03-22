@@ -6,28 +6,47 @@ from typing import Any, Dict, List
 from ai.agents.document._common import _retrieve_context
 
 
-def _is_pure_search(query: str) -> bool:
-    """순수 검색 요청인지 판별 (찾아/검색/목록 키워드 있고, 설명/요약 요청 없음)
+def _needs_llm_answer(query: str) -> bool:
+    """QA(LLM 답변)가 필요한 질문인지 판별
 
-    "보고서 찾아줘" → True (순수 검색)
-    "보고서 찾아서 정리해줘" → False (복합 → QA로 넘김)
-    "출장비 규정 알려줘" → False (QA)
+    기본값은 search(검색 카드). 명확한 의문형/설명 요청만 QA로 보냄.
+
+    "출장비 정산 절차가 뭐야?" → True  (내용 질문)
+    "계약서 비교해줘"          → True  (분석 요청)
+    "계약서 찾아줘"            → False (검색)
+    "계약서 알려줘"            → False (애매 → 검색이 안전)
+    "출장 관련 문서"           → False (목록 요청)
     """
-    has_search = bool(re.search(r"(찾아|검색|목록|있어\s*\?|있나요|어디|어떤\s*문서)", query))
-    has_explain = bool(re.search(r"(정리|설명|알려|요약|비교|분석)", query))
-    return has_search and not has_explain
+    # 의문형: 내용을 물어보는 패턴
+    if re.search(r"(뭐야|뭔가요|무엇인|어떻게|어떤\s*방법|왜\s|인가요|인지|절차|방법이|차이|의미|뜻)", query):
+        return True
+    # 설명/분석 요청 (단, "찾아서 설명" 같은 복합은 검색 우선)
+    if re.search(r"(설명|분석|비교|해석|정리).{0,4}(해|해줘|해주세요|줘|주세요|하자)", query):
+        if not re.search(r"(찾아|검색)", query):
+            return True
+    return False
 
 
-async def _handle_doc_search(query: str, context: List[str], user_id: int = None, user_team: str = None, **_kwargs) -> Dict[str, Any]:
-    """문서 검색 — RAG 결과를 카드형으로 반환 (LLM 호출 없음, 스트리밍 불필요)"""
+async def _handle_doc_search(
+    query: str, context: List[str], user_id: int = None, user_team: str = None,
+    pre_fetched: tuple = None, **_kwargs,
+) -> Dict[str, Any]:
+    """문서 검색 — RAG 결과를 카드형으로 반환 (LLM 호출 없음, 스트리밍 불필요)
+
+    Args:
+        pre_fetched: (search_results, context, sources, rag_status) — _entry.py에서 이미 검색한 경우
+    """
     _t = time.time()
-    print(f"[DocumentAgent] _handle_doc_search | query='{query[:50]}'")
+    print(f"[DocumentAgent] _handle_doc_search | query='{query[:50]}', pre_fetched={'Y' if pre_fetched else 'N'}")
 
-    # 1. 공통 RAG 검색 (reranker 비활성화 — EC2 메모리 부족)
-    search_results, context, sources, rag_status = await _retrieve_context(
-        query, user_id, user_team,
-        top_k=10, use_reranker=False, score_threshold=0.1,
-    )
+    # 1. 공통 RAG 검색 (pre_fetched 있으면 스킵)
+    if pre_fetched:
+        search_results, context, sources, rag_status = pre_fetched
+    else:
+        search_results, context, sources, rag_status = await _retrieve_context(
+            query, user_id, user_team,
+            top_k=10, use_reranker=False, score_threshold=0.1,
+        )
 
     # 2. 검색 실패 — 타임아웃과 결과 없음 구분
     if not sources:

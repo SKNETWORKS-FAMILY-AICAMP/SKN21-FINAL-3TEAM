@@ -46,6 +46,8 @@ async def _handle_doc_qa(
     stream_mode: bool = False,
     chat_history: list = None,
     document_content: str = None,
+    pre_sources: list = None,
+    pre_top_score: float = None,
 ) -> Dict[str, Any]:
     """문서 내용 기반 질의응답
 
@@ -57,6 +59,8 @@ async def _handle_doc_qa(
         stream_mode: 스트리밍 모드 (True → StreamRequest 반환)
         chat_history: 이전 대화 이력 (멀티턴)
         document_content: 특정 문서 내용 (있으면 RAG 스킵)
+        pre_sources: _entry.py에서 이미 검색한 sources (인용 표시용)
+        pre_top_score: _entry.py에서 이미 계산한 RAG 최고 점수
     """
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_qa | query='{query[:50]}', "
@@ -64,8 +68,8 @@ async def _handle_doc_qa(
           f"doc_content={'Y' if document_content else 'N'}, "
           f"stream_mode={stream_mode}")
 
-    sources = []
-    rag_top_score = 0.0  # RAG 최고 점수 (confidence 계산용)
+    sources = pre_sources or []
+    rag_top_score = pre_top_score if pre_top_score is not None else 0.0
 
     # ── 1. context 확보 (RAG 중복 호출 방지) ──
     if document_content:
@@ -76,8 +80,8 @@ async def _handle_doc_qa(
         rag_top_score = 1.0  # 사용자가 직접 선택 → 최대 신뢰도
         print("[DocumentAgent] document_content 사용 (RAG 스킵)")
     elif context:
-        # 이미 context가 있으면 그대로 사용
-        print(f"[DocumentAgent] 기존 context 사용 ({len(context)}개)")
+        # 이미 context가 있으면 그대로 사용 (pre_sources/pre_top_score도 활용)
+        print(f"[DocumentAgent] 기존 context 사용 ({len(context)}개), sources={len(sources)}개")
     else:
         # 둘 다 없으면 RAG 검색
         search_results, rag_context, rag_sources, _rag_status = await _retrieve_context(
@@ -174,7 +178,11 @@ async def _handle_doc_qa(
           f"citations={len(qa_result.get('citations', []))}")
 
     # confidence: LLM 자체 confidence와 RAG 점수를 혼합
-    llm_confidence = qa_result.get("confidence")
+    raw_confidence = qa_result.get("confidence")
+    try:
+        llm_confidence = float(raw_confidence) if raw_confidence is not None else None
+    except (TypeError, ValueError):
+        llm_confidence = None
     if llm_confidence is not None and rag_top_score > 0:
         final_confidence = (llm_confidence + rag_top_score) / 2
     elif rag_top_score > 0:

@@ -22,7 +22,7 @@ async def _get_document(document_id: int):
 
 def _format_cached_summary(doc) -> dict | None:
     """DB에 저장된 요약이 있으면 응답 dict 반환, 없으면 None"""
-    if not (doc and doc.summary and doc.tags):
+    if not (doc and doc.summary):
         return None
     tags = doc.tags or []
     tags_str = " ".join(f"#{t}" for t in tags)
@@ -169,7 +169,7 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
                 print(f"[DocumentAgent] RAG {len(unique_docs)}개 매칭 → 선택지 제공")
                 return {
                     "type": "doc_pick",
-                    "message": "요약할 문서를 선택해주세요:",
+                    "message": f"'{user_input}' 관련 문서가 {len(unique_docs)}건 있습니다. 요약할 문서를 선택해주세요:",
                     "documents": unique_docs,
                     "model_name": "RAG (문서 식별)",
                 }
@@ -187,7 +187,7 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
                 doc_list = []
             return {
                 "type": "doc_pick",
-                "message": "요약할 문서를 선택해주세요:",
+                "message": "어떤 문서를 요약할까요? 아래에서 선택해주세요:",
                 "documents": doc_list,
                 "model_name": "RAG (문서 목록)",
             }

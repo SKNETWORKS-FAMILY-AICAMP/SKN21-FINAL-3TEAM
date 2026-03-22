@@ -11,9 +11,11 @@ logger = logging.getLogger("document_agent")
 GENERATED_DOCS_DIR = Path(__file__).resolve().parents[3] / "backend" / "generated_docs"
 
 # task별 LoRA 어댑터 이름 매핑 (vLLM 스트리밍/비스트리밍 공통)
+# None = base 모델 사용 (LoRA 없음)
 LORA_ADAPTER_NAMES = {
     "generate": "v3_generate",
     "summary": "v3_summary",
+    "qa": None,  # QA는 base 모델 사용 (LoRA 미학습)
 }
 
 # ── 모델명 getter/setter (요청별 격리) ──
@@ -247,8 +249,8 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
             lora_tasks = set(os.getenv("DOC_LORA_TASKS", "generate").split(","))
             use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
 
-            if use_lora and task in lora_tasks:
-                adapter_name = LORA_ADAPTER_NAMES.get(task, f"v3_{task}")
+            adapter_name = LORA_ADAPTER_NAMES.get(task) if use_lora and task in lora_tasks else None
+            if adapter_name:
                 try:
                     llm = VLLMProvider().with_lora(adapter_name)
                     set_last_model_name(os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + f" (LoRA {adapter_name})")
