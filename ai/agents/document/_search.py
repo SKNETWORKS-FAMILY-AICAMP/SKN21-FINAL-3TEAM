@@ -83,7 +83,6 @@ async def _handle_doc_search(query: str, context: List[str], user_id: int = None
         "answer": message,
         "message": message,
         "sources": unique_sources,
-        "context": context,
         "total_found": n,
         "search_info": {
             "query_used": query,
