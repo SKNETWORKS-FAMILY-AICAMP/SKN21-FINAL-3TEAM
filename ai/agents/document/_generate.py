@@ -106,18 +106,10 @@ async def _query_custom_templates(category: str) -> list:
     """DB에서 해당 카테고리의 커스텀 템플릿 목록 조회"""
     try:
         from sqlalchemy import select
-        from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-        from sqlalchemy.orm import sessionmaker
-
-        db_url = os.getenv("DATABASE_URL", "")
-        if not db_url:
-            return []
-
-        engine = create_async_engine(db_url)
-        async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        from app.db.session import async_session
+        from app.models.document_template import DocumentTemplate
 
         async with async_session() as session:
-            from app.models.document_template import DocumentTemplate
             result = await session.execute(
                 select(DocumentTemplate).where(
                     DocumentTemplate.category == category,
@@ -125,8 +117,6 @@ async def _query_custom_templates(category: str) -> list:
                 ).order_by(DocumentTemplate.created_at.desc())
             )
             templates = result.scalars().all()
-
-        await engine.dispose()
 
         items = []
         for t in templates:
@@ -154,18 +144,10 @@ async def _get_system_template_id(category: str) -> int | None:
     """DB에서 해당 카테고리의 시스템 기본 템플릿 ID 조회"""
     try:
         from sqlalchemy import select
-        from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-        from sqlalchemy.orm import sessionmaker
-
-        db_url = os.getenv("DATABASE_URL", "")
-        if not db_url:
-            return None
-
-        engine = create_async_engine(db_url)
-        async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        from app.db.session import async_session
+        from app.models.document_template import DocumentTemplate
 
         async with async_session() as session:
-            from app.models.document_template import DocumentTemplate
             result = await session.execute(
                 select(DocumentTemplate.id).where(
                     DocumentTemplate.category == category,
@@ -174,7 +156,6 @@ async def _get_system_template_id(category: str) -> int | None:
             )
             row = result.scalar_one_or_none()
 
-        await engine.dispose()
         return row
     except Exception as e:
         print(f"[DocumentAgent] 시스템 템플릿 ID 조회 실패: {e}")
@@ -410,21 +391,14 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
     # DB에서 parsed_structure 조회
     try:
         from sqlalchemy import select
-        from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-        from sqlalchemy.orm import sessionmaker
-
-        db_url = os.getenv("DATABASE_URL", "")
-        engine = create_async_engine(db_url)
-        async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        from app.db.session import async_session
+        from app.models.document_template import DocumentTemplate
 
         async with async_session() as session:
-            from app.models.document_template import DocumentTemplate
             result = await session.execute(
                 select(DocumentTemplate).where(DocumentTemplate.id == template_id)
             )
             template = result.scalar_one_or_none()
-
-        await engine.dispose()
 
         if not template or not template.parsed_structure:
             raise ValueError(f"template_id={template_id} 없거나 parsed_structure 없음. DB 시딩을 확인하세요.")

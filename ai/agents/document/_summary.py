@@ -88,7 +88,7 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
                 print(f"[DocumentAgent] RAG 1개 매칭 → document_id={matched_id} 전체 content 조회")
                 try:
                     from sqlalchemy import select
-                    from app.db.session import AsyncSessionLocal
+                    from app.db.session import async_session as AsyncSessionLocal
                     from app.models.document import Document
 
                     async with AsyncSessionLocal() as db:
@@ -130,7 +130,7 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
     if document_id:
         try:
             from sqlalchemy import select
-            from app.db.session import AsyncSessionLocal
+            from app.db.session import async_session as AsyncSessionLocal
             from app.models.document import Document
 
             async with AsyncSessionLocal() as db:
@@ -196,7 +196,7 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
     if document_id and parsed["tags"]:
         try:
             from sqlalchemy import select
-            from app.db.session import AsyncSessionLocal
+            from app.db.session import async_session as AsyncSessionLocal
             from app.models.document import Document
 
             async with AsyncSessionLocal() as db:
