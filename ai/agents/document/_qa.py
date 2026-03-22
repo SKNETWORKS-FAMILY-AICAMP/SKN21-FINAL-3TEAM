@@ -70,7 +70,9 @@ async def _handle_doc_qa(
     # ── 1. context 확보 (RAG 중복 호출 방지) ──
     if document_content:
         # 특정 문서가 선택된 경우 → 해당 문서만 context로 사용
-        context = [f"[선택된 문서]\n{truncate_by_paragraph(document_content, max_chars=8000)}"]
+        # vLLM max_model_len=8192 제약: sys(200)+history(300)+question(50)+max_tokens(2048)=2600
+        # → context 가용 ≈ 5500토큰 ≈ 4000자
+        context = [f"[선택된 문서]\n{truncate_by_paragraph(document_content, max_chars=4000)}"]
         rag_top_score = 1.0  # 사용자가 직접 선택 → 최대 신뢰도
         print("[DocumentAgent] document_content 사용 (RAG 스킵)")
     elif context:
