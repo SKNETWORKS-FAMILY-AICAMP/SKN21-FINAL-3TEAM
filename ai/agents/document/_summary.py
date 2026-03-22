@@ -35,6 +35,7 @@ def _format_cached_summary(doc) -> dict | None:
         "tags": tags,
         "summary": doc.summary,
         "document_id": doc.id,
+        "model_name": "DB 캐시 (LLM 미사용)",
     }
 
 
@@ -170,6 +171,7 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
                     "type": "doc_pick",
                     "message": "요약할 문서를 선택해주세요:",
                     "documents": unique_docs,
+                    "model_name": "RAG (문서 식별)",
                 }
 
         # RAG로도 못 찾으면 전체 목록 제공 (기존 fallback)
@@ -187,6 +189,7 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
                 "type": "doc_pick",
                 "message": "요약할 문서를 선택해주세요:",
                 "documents": doc_list,
+                "model_name": "RAG (문서 목록)",
             }
 
     # ── DB에 이미 요약이 있으면 바로 반환 (sLLM 호출 스킵) ──

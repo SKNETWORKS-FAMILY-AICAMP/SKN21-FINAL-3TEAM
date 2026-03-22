@@ -795,8 +795,9 @@ export default function ChatPage() {
                 return <ErrorMessage key={i} message={msg.error} onRetry={handleRetry} />;
               }
 
-              // 스트리밍 중인 AI 응답 (데이터가 미리 왔더라도 텍스트 출력을 우선으로 보여줌)
-              if (isLastAssistant || isWaitingForResponse) {
+              // 스트리밍 중이지만 result가 이미 도착한 경우 → 카드 UI로 바로 전환
+              // (날것 마크다운 → 카드 이중 렌더링 방지)
+              if ((isLastAssistant || isWaitingForResponse) && !(msg.agentResponse && msg.resultIntent)) {
                 const intent = currentIntent || msg.resultIntent || msg.intent || 'general';
                 return (
                   <MessageBubble key={i} type="bot" intent={intent}>
@@ -810,7 +811,7 @@ export default function ChatPage() {
                 );
               }
 
-              // AI 완료 — agentResponse 카드 렌더링
+              // AI 완료 또는 result 도착 — agentResponse 카드 렌더링
               if (msg.agentResponse && msg.resultIntent) {
                 return (
                   <MessageBubble key={i} type="bot" intent={msg.resultIntent || msg.intent} modelName={msg.agentResponse?.model_name}>

@@ -98,6 +98,7 @@ async def _handle_doc_qa(
             "sources": [],
             "citations": [],
             "confidence": 0.0,
+            "model_name": "RAG (검색 결과 없음)",
         }
 
     # ── 3. user_prompt 구성 (컨텍스트 크기 가드) ──
