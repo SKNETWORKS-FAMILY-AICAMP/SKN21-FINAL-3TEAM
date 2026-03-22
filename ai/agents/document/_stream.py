@@ -101,6 +101,11 @@ async def execute_doc_stream(
             full_response += token
             yield token
 
+    # 빈 응답 방어 (vLLM cold start 시 토큰 0개로 종료될 수 있음)
+    if not full_response.strip():
+        full_response = "응답을 생성하지 못했습니다. 잠시 후 다시 시도해주세요. (모델 워커 준비 중일 수 있습니다)"
+        yield full_response
+
     # agent_response 업데이트
     agent_response["message"] = full_response
     agent_response["answer"] = full_response
