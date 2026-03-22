@@ -463,7 +463,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                   key={idx}
                   onClick={() => {
                     useChatStore.getState().setSelectedDocument(doc.document_id, doc.title);
-                    onSelectClarify?.(originalQuery);
+                    onSelectClarify?.(`${doc.title} 요약해줘`, { forceIntent: 'doc_retrieve:summary', documentId: doc.document_id });
                   }}
                   className="flex items-center gap-2 px-4 py-2.5 text-sm bg-surface-card border border-neutral-border rounded-xl hover:bg-primary-50 hover:border-primary-300 text-neutral-main hover:text-primary-700 transition text-left"
                 >
