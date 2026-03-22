@@ -94,3 +94,11 @@ docker/Dockerfile.backend
 .ruff_cache/
 
 docs/mentoring/2026-02-15-멘토링-대본.md
+test_docs/테스트 결과 사진/회의록 (2) 빈양식.png
+test_docs/테스트 결과 사진/회의록 (2) 생성 후 1페이지.png
+test_docs/테스트 결과 사진/회의록 (2) 생성 후 2페이지.png
+test_docs/테스트 결과 사진/회의록 (3) 빈양식.png
+test_docs/테스트 결과 사진/회의록 (3) 생성 후 2페이지.png
+test_docs/테스트 결과 사진/회의록 (3) 생성 후.png
+test_회의록(2).docx
+test_회의록(3).docx

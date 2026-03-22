@@ -50,22 +50,29 @@ async def _handle_doc_search(query: str, context: List[str], user_id: int = None
     print(f"[DocumentAgent] _handle_doc_search | query='{query[:50]}', stream_mode={stream_mode}")
 
     # 1. 공통 RAG 검색 (reranker 비활성화 — EC2 메모리 부족)
-    search_results, context, sources = await _retrieve_context(
+    search_results, context, sources, rag_status = await _retrieve_context(
         query, user_id, user_team,
         top_k=10, use_reranker=False, score_threshold=0.1,
     )
 
-    # 2. 검색 실패
+    # 2. 검색 실패 — 타임아웃과 결과 없음 구분
     if not sources:
-        print("[DocumentAgent] search: 관련 문서 없음")
+        if rag_status == "timeout":
+            msg = "문서 검색이 시간 초과되었습니다. 더 구체적인 키워드로 다시 시도해주세요."
+        elif rag_status == "error":
+            msg = "문서 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+        else:
+            msg = "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요."
+        print(f"[DocumentAgent] search: {rag_status}")
         return {
             "type": "doc_retrieve",
             "sub_type": "search",
-            "answer": "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요.",
-            "message": "관련 문서를 찾지 못했습니다. 다른 키워드로 검색해보세요.",
+            "answer": msg,
+            "message": msg,
             "sources": [],
             "context": [],
             "total_found": 0,
+            "rag_status": rag_status,
         }
 
     # 3. document_id 기준 중복 제거 (같은 문서의 여러 chunk)

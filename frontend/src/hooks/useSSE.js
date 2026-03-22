@@ -127,6 +127,10 @@ export default function useSSE() {
                 console.error('[SSE] 서버 에러:', event.message || event.value)
                 setLastAssistantError(event.message || event.value || '서버 오류가 발생했습니다')
                 break
+              case 'doc_sub_type':
+                // 문서 Agent sub_type 조기 알림 (검색/QA/요약)
+                setCurrentStatus(event.value === 'search' ? '문서 검색 중...' : event.value === 'qa' ? '문서 질의응답 준비 중...' : event.value === 'summary' ? '문서 요약 준비 중...' : `${event.value} 처리 중...`)
+                break
               case 'compound_start':
                 setCurrentStatus(`복합 질문 감지: ${event.total || ''}개 하위 질문 처리 중...`)
                 break

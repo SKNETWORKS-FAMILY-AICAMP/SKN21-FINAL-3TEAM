@@ -48,6 +48,9 @@ async def document_agent(state: AgentState) -> AgentState:
             # force_sub_type: 후속 액션 버튼에서 강제 지정 → regex 스킵
             force_sub_type = state.get("force_sub_type")
 
+            # sub_type 힌트를 state에 저장 → chat.py에서 조기 상태 알림용
+            _sub_type_hint = force_sub_type or None
+
             if force_sub_type:
                 print(f"[DocumentAgent] force_sub_type={force_sub_type} → regex 스킵")
                 if force_sub_type == "summary":
@@ -77,6 +80,7 @@ async def document_agent(state: AgentState) -> AgentState:
                 )
 
                 if _is_summary:
+                    _sub_type_hint = "summary"
                     print("[DocumentAgent] doc_retrieve → summary 경로")
                     response_data = await _handle_doc_summary(
                         user_input,
@@ -88,11 +92,11 @@ async def document_agent(state: AgentState) -> AgentState:
                         chat_history=chat_history,
                     )
                 elif _is_pure_search(user_input):
-                    # 2) 명시적 검색: 찾아/검색/목록 키워드 + 설명/요약 요청 없음
+                    _sub_type_hint = "search"
                     print("[DocumentAgent] doc_retrieve → search 경로")
                     response_data = await _handle_doc_search(user_input, context, user_id, user_team=user_team, stream_mode=stream_mode)
                 else:
-                    # 3) fallback → QA (질문형 + 기타 전부)
+                    _sub_type_hint = "qa"
                     print("[DocumentAgent] doc_retrieve → QA 경로")
                     response_data = await _handle_doc_qa(
                         user_input, context, user_id=user_id,
@@ -144,6 +148,11 @@ async def document_agent(state: AgentState) -> AgentState:
         response_data = {"error": str(e)}
 
     print(f"[DocumentAgent] 완료 ({time.time()-_t_agent:.2f}s) | response type={response_data.get('type')}, keys={list(response_data.keys())}")
+
+    # sub_type 힌트 (chat.py에서 조기 상태 메시지 전송용)
+    _hint = locals().get("_sub_type_hint") or response_data.get("sub_type")
+    if _hint:
+        response_data["_status_hint"] = _hint
 
     # NOTE: 규정 검증 비활성화 (2026-03-22) — RAG+LLM 추가 호출로 응답 지연/OOM 유발
     # TODO: 문서 생성 시 1회만 체크하는 경량 방식으로 재설계

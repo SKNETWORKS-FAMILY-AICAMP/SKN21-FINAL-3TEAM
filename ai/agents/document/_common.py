@@ -90,12 +90,14 @@ async def _retrieve_context(query: str, user_id: int = None, user_team: str = No
         score_threshold: 최소 점수 기준 (미달 문서 제거)
 
     Returns:
-        (search_results: list[dict], context: list[str], sources: list[dict])
+        (search_results, context, sources, rag_status)
+        rag_status: "success" | "timeout" | "error"
     """
     _t = time.time()
     print(f"[DocumentAgent] _retrieve_context | query='{query[:50]}', top_k={top_k}, reranker={use_reranker}, threshold={score_threshold}")
     search_results = []
     context = []
+    rag_status = "success"
     try:
         import asyncio
         from ai.rag.qdrant_pipeline import get_qdrant_pipeline
@@ -117,13 +119,15 @@ async def _retrieve_context(query: str, user_id: int = None, user_team: str = No
         print(f"[DocumentAgent] _retrieve_context 완료 ({time.time()-_t:.2f}s): {len(context)}개 문서")
     except asyncio.TimeoutError:
         print(f"[DocumentAgent] !!! _retrieve_context 타임아웃 (30초 초과)")
+        rag_status = "timeout"
     except Exception as e:
         print(f"[DocumentAgent] !!! _retrieve_context 실패: {e}")
         import traceback
         traceback.print_exc()
+        rag_status = "error"
 
     sources = _build_sources(search_results)
-    return search_results, context, sources
+    return search_results, context, sources, rag_status
 
 
 def _build_sources(search_results: list) -> list:
