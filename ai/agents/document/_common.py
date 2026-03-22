@@ -216,7 +216,6 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
         temperature = 0.15 if task == "generate" else 0.1
     _t_llm = time.time()
     mode = os.getenv("DOC_AGENT_MODE", "api")
-    sllm_tasks = os.getenv("DOC_SLLM_TASKS", "generate").split(",")
     logger.info("_call_llm | mode=%s, task=%s, temperature=%s, json_mode=%s", mode, task, temperature, json_mode)
     try:
         # task="extract": 커스텀 템플릿 2단계 — LoRA 없이 base 모델 또는 API

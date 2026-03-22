@@ -6,32 +6,6 @@ from typing import Any, Dict, List
 from ai.agents.document._common import _retrieve_context
 
 
-def _detect_search_intent(query: str) -> str:
-    """사용자 질문에서 검색 의도 감지
-
-    Args:
-        query: 사용자 질문
-
-    Returns:
-        "summarize" | "find" | "explain"
-    """
-    query_lower = query.lower()
-
-    # 요약 키워드 (최우선) — 동사어미 확인으로 오탐 방지
-    # "정리된 자료 찾아줘" → find, "정리해줘" → summarize
-    if re.search(r"(요약|정리|핵심|간추리|간추려|줄여)\s*(해|해줘|해주세요|부탁|하자|할래|줘|주세요)", query_lower):
-        return "summarize"
-    if re.search(r"간단히|짧게", query_lower):
-        return "summarize"
-
-    # 찾기 키워드
-    if re.search(r"찾아|검색|문서|어디|목록", query_lower):
-        return "find"
-
-    # 기본값: 설명
-    return "explain"
-
-
 def _is_pure_search(query: str) -> bool:
     """순수 검색 요청인지 판별 (찾아/검색/목록 키워드 있고, 설명/요약 요청 없음)
 
@@ -44,10 +18,10 @@ def _is_pure_search(query: str) -> bool:
     return has_search and not has_explain
 
 
-async def _handle_doc_search(query: str, context: List[str], user_id: int = None, user_team: str = None, stream_mode: bool = False) -> Dict[str, Any]:
-    """문서 검색 — RAG 결과를 카드형으로 반환 (LLM 호출 없음)"""
+async def _handle_doc_search(query: str, context: List[str], user_id: int = None, user_team: str = None, **_kwargs) -> Dict[str, Any]:
+    """문서 검색 — RAG 결과를 카드형으로 반환 (LLM 호출 없음, 스트리밍 불필요)"""
     _t = time.time()
-    print(f"[DocumentAgent] _handle_doc_search | query='{query[:50]}', stream_mode={stream_mode}")
+    print(f"[DocumentAgent] _handle_doc_search | query='{query[:50]}'")
 
     # 1. 공통 RAG 검색 (reranker 비활성화 — EC2 메모리 부족)
     search_results, context, sources, rag_status = await _retrieve_context(

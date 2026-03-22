@@ -20,6 +20,24 @@ async def _get_document(document_id: int):
         return result.scalar_one_or_none()
 
 
+def _format_cached_summary(doc) -> dict | None:
+    """DB에 저장된 요약이 있으면 응답 dict 반환, 없으면 None"""
+    if not (doc and doc.summary and doc.tags):
+        return None
+    tags = doc.tags or []
+    tags_str = " ".join(f"#{t}" for t in tags)
+    answer = f"태그: {tags_str}\n요약: {doc.summary}"
+    return {
+        "type": "doc_retrieve",
+        "sub_type": "summary",
+        "answer": answer,
+        "message": answer,
+        "tags": tags,
+        "summary": doc.summary,
+        "document_id": doc.id,
+    }
+
+
 async def _update_document_summary(document_id: int, summary: str, tags: list):
     """DB에 요약 결과 업데이트"""
     async with _AsyncSessionLocal() as db:
@@ -139,21 +157,10 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
                         document_content = doc.content
                         document_id = matched_id
                         print(f"[DocumentAgent] DB content 확보: {len(document_content)}자")
-                        # 이미 요약이 있으면 바로 반환 (세션 추가 생성 방지)
-                        if doc.summary and doc.tags:
-                            tags = doc.tags or []
-                            tags_str = " ".join(f"#{t}" for t in tags)
-                            answer = f"태그: {tags_str}\n요약: {doc.summary}"
+                        cached = _format_cached_summary(doc)
+                        if cached:
                             print(f"[DocumentAgent] DB 요약 사용 (document_id={document_id}, {time.time()-_t:.2f}s)")
-                            return {
-                                "type": "doc_retrieve",
-                                "sub_type": "summary",
-                                "answer": answer,
-                                "message": answer,
-                                "tags": tags,
-                                "summary": doc.summary,
-                                "document_id": document_id,
-                            }
+                            return cached
                 except Exception as e:
                     print(f"[DocumentAgent] DB content 조회 실패: {e}")
 
@@ -186,20 +193,10 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
     if document_id:
         try:
             doc = await _get_document(document_id)
-            if doc and doc.summary and doc.tags:
-                tags = doc.tags or []
-                tags_str = " ".join(f"#{t}" for t in tags)
-                answer = f"태그: {tags_str}\n요약: {doc.summary}"
+            cached = _format_cached_summary(doc)
+            if cached:
                 print(f"[DocumentAgent] DB 요약 사용 (document_id={document_id}, {time.time()-_t:.2f}s)")
-                return {
-                    "type": "doc_retrieve",
-                    "sub_type": "summary",
-                    "answer": answer,
-                    "message": answer,
-                    "tags": tags,
-                    "summary": doc.summary,
-                    "document_id": document_id,
-                }
+                return cached
             elif doc and doc.summary and not doc.tags:
                 print(f"[DocumentAgent] 구 형식 요약 감지 (tags 없음) → sLLM 재호출")
         except Exception as e:
@@ -227,7 +224,7 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
             },
             "post_stream": {
                 "update_summary_db": document_id,
-                "check_regulation": True,
+                "check_regulation": False,  # 비활성화 (2026-03-22) — OOM/지연 유발
                 "filter_sources": False,
             },
             "answer": "",
