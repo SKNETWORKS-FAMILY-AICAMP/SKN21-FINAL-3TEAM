@@ -351,8 +351,17 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             }
 
                             try:
-                                sub_result = await graph.ainvoke(sub_state)
+                                import asyncio as _aio
+                                sub_result = await _aio.wait_for(
+                                    graph.ainvoke(sub_state), timeout=60,
+                                )
                                 sub_response = sub_result.get("agent_response", {})
+                            except _aio.TimeoutError:
+                                logger.error("[Chat] compound sub_query 타임아웃 (60초): %s", sq_query[:50])
+                                sub_response = {
+                                    "type": sq_hint,
+                                    "message": "처리 시간이 초과되었습니다. 개별적으로 다시 질문해주세요.",
+                                }
                             except Exception as sub_err:
                                 logger.error("[Chat] compound sub_query 처리 실패: %s", sub_err)
                                 sub_response = {
@@ -704,8 +713,22 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                 stream=True,
                             )
 
+                            import asyncio as _aio_doc
                             full_doc_response = ""
-                            async for chunk in doc_stream:
+                            stream_iter = doc_stream.__aiter__()
+                            while True:
+                                try:
+                                    chunk = await _aio_doc.wait_for(
+                                        stream_iter.__anext__(), timeout=30,
+                                    )
+                                except StopAsyncIteration:
+                                    break
+                                except _aio_doc.TimeoutError:
+                                    logger.warning("[Chat] document_agent 스트리밍 chunk 타임아웃 (30초)")
+                                    if not full_doc_response:
+                                        full_doc_response = "응답 생성 중 시간이 초과되었습니다."
+                                        yield f"data: {json.dumps({'type': 'token', 'value': full_doc_response}, ensure_ascii=False)}\n\n"
+                                    break
                                 if chunk.choices[0].delta.content:
                                     token = chunk.choices[0].delta.content
                                     full_doc_response += token
@@ -790,6 +813,15 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
             try:
                 intent = final_state.get("intent", "general")
                 agent_response = final_state.get("agent_response", {})
+
+                # DB 저장용: sources 내 content를 200자로 잘라 저장 크기 절감
+                save_response = agent_response.copy()
+                if "sources" in save_response:
+                    save_response["sources"] = [
+                        {**s, "content": s.get("content", "")[:200]}
+                        for s in save_response["sources"]
+                    ]
+
                 log = ChatLog(
                     session_id=session_id,
                     user_id=user.id,
@@ -797,7 +829,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                     intent=intent,
                     intent_confidence=final_state.get("confidence", 0.0),
                     agent_type=_get_agent_type(intent),
-                    agent_response=json.dumps(agent_response, ensure_ascii=False, default=str),
+                    agent_response=json.dumps(save_response, ensure_ascii=False, default=str),
                     response_time_ms=response_time_ms,
                 )
                 db.add(log)

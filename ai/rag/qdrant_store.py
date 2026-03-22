@@ -220,12 +220,13 @@ class QdrantVectorStore:
             "metadatas": metadatas,
         }
 
-    def list_documents_by_source(self, source: str, user_id: int = None) -> list[dict]:
-        """source 필터로 Qdrant에 저장된 고유 문서 목록 전체 반환 (title + document_id)
+    def list_documents_by_source(self, source: str, user_id: int = None, max_docs: int = 50) -> list[dict]:
+        """source 필터로 Qdrant에 저장된 고유 문서 목록 반환 (title + document_id)
 
         Args:
             source: 메타데이터 source 값 (예: "documents")
             user_id: 사용자 ID — company 문서 + 해당 유저의 personal 문서 포함
+            max_docs: 반환할 최대 문서 수 (기본 50, 0이면 무제한)
         Returns:
             [{"document_id": int, "title": str}, ...]  (document_id 기준 중복 제거)
         """
@@ -265,6 +266,8 @@ class QdrantVectorStore:
                 if doc_id and doc_id not in seen_ids:
                     seen_ids.add(doc_id)
                     result.append({"document_id": doc_id, "title": title})
+                    if max_docs and len(result) >= max_docs:
+                        return result
 
             if next_offset is None:
                 break
