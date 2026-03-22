@@ -24,7 +24,7 @@
 - **목적**: 회의록/보고서/제안서 3종 — 검증된 고정 양식
 - **필드**: 영어 키 (`title`, `date`, `attendees`, `content`, ...)
 - **DOCX 생성**: 전용 빌더 스크립트 (`create_meeting_minutes.py`, `create_report.py`, `create_proposal.py`)
-- **사용 흐름**: 프론트 폼 입력 → `/generate` API → sLLM 생성 → 전용 빌더 → DOCX
+- **사용 흐름**: 프론트 폼 입력(DynamicForm) → `/generate` API → fields_data 있으므로 sLLM 생략 → 전용 빌더 → DOCX
 
 ### 커스텀 템플릿 (Custom Template)
 
@@ -40,7 +40,7 @@
 | 양식 | 우리가 만든 고정 양식 | 사용자가 업로드한 아무 DOCX |
 | 필드 키 | 영어 (`title`, `date`) | 한글 (`제출처`, `제안배경`) |
 | 필드 추출 | DB seed (고정) | `template_extractor.py` (자동) |
-| sLLM 호출 | `/generate`에서 1회 | `/fill-fields`에서 1회 → `/generate`에서 생략 |
+| sLLM 호출 | 사용자가 폼 입력 → `/generate`는 DOCX 빌드만 | `/fill-fields`에서 1회 → `/generate`는 DOCX 빌드만 |
 | DOCX 빌더 | 전용 스크립트 (3종) | 범용 `create_generic_document()` |
 | 프론트 UI | DynamicForm (폼 입력) | freeText → AI 채움 → 전체 필드 편집 |
 
@@ -48,7 +48,7 @@
 
 ## 3. 실제 흐름 (Pipeline)
 
-### 커스텀 템플릿 파이프라인
+### 커스텀 템플릿 파이프라인 (경로 1)
 
 ```
 사용자 → 자연어 입력 → [AI 문서 작성] 클릭
@@ -68,26 +68,43 @@
                 ↓
          [문서 생성] 클릭
                 ↓
-      generate API (sLLM 재호출 없이 데이터 직접 사용)
+      generate API — fields_data 있으므로 sLLM 재호출 없음
                 ↓
       범용 DOCX 빌더 → 다운로드
+```
+
+### 챗봇/기본 템플릿 파이프라인 (경로 2)
+
+```
+챗봇 대화 → "제안서 써줘" → generate API
+                ↓
+      fields_data 없음 → sLLM 호출 (필드 생성)
+                ↓
+      DOCX 빌더 → 다운로드
 ```
 
 ### Flowchart
 
 ```mermaid
 flowchart TD
-    A[사용자: 자연어 입력] --> B[fill-fields API]
-    B --> C[sLLM - LoRA v3_generate]
-    C --> D[후처리: hallucination 보정]
-    D --> E[병합: sLLM > Phase 0 > null]
-    E --> F[프론트: 결과 표시 + 편집]
-    F --> G[generate API]
-    G --> H{fields_data에 body 있음?}
-    H -->|Yes| I[sLLM 생략 → DOCX 빌드]
-    H -->|No| J[sLLM 호출 → DOCX 빌드]
+    A[사용자 입력] --> B{경로 분기}
+
+    B -->|경로 1: 커스텀 템플릿| C[fill-fields API]
+    C --> D[sLLM - LoRA v3_generate]
+    D --> E[후처리: hallucination 보정]
+    E --> F[병합: sLLM > Phase 0 > null]
+    F --> G[프론트: 결과 표시 + 편집]
+    G --> H[generate API]
+    H --> I[DOCX 빌드 — sLLM 재호출 없음]
     I --> K[DOCX 다운로드]
-    J --> K
+
+    B -->|경로 2: 기본 템플릿| M[DynamicForm 폼 입력]
+    M --> N[generate API — fields_data 있음]
+    N --> I
+
+    B -->|경로 3: 챗봇| J[generate API — fields_data 없음]
+    J --> L[sLLM 호출]
+    L --> I
 ```
 
 ---
@@ -99,6 +116,7 @@ flowchart LR
     subgraph Frontend
         UI[문서 생성 페이지]
         FORM[자연어 입력 + 필드 편집]
+        CHAT[챗봇]
     end
 
     subgraph Backend
@@ -119,6 +137,7 @@ flowchart LR
         FILE[generated_docs/]
     end
 
+    %% 경로 1: 커스텀 템플릿 (fill-fields → generate)
     UI --> FILL
     FILL --> SLLM
     SLLM --> PP
@@ -126,6 +145,11 @@ flowchart LR
     P0 --> UI
     UI --> GEN
     GEN --> FILE
+
+    %% 경로 2: 챗봇 (generate에서 sLLM 직접 호출)
+    CHAT --> GEN
+    GEN -.->|fields_data 없을 때| SLLM
+
     EXT --> DB
     SLLM --> VLLM
 ```
@@ -147,7 +171,7 @@ flowchart LR
 - [x] 구어체/불릿/형식체 모두 지원 (정규화 불필요)
 - [x] Phase 0 fallback (날짜→today, 담당자→user.name, 부서→user.team)
 - [x] hallucination 후처리 (날짜 연도 보정, 빈 담당자 보충)
-- [x] fill-fields → generate sLLM 이중 호출 제거
+- [x] fill-fields → generate 경로 분리 (fields_data 있으면 DOCX만, 없으면 sLLM 호출)
 - [x] 한글 키 DOCX 매칭 (`_find_data_key` — 추출기 정규화 재사용)
 - [x] 배열 데이터 테이블 행 주입 (`_inject_array_to_table`)
 - [x] 범용 DOCX 레이아웃 빌더 (`create_generic_document`)
