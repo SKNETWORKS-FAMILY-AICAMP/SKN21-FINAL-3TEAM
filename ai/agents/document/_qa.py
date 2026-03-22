@@ -139,7 +139,7 @@ async def _handle_doc_qa(
                 "sys_prompt": DOC_QA_STREAMING_PROMPT,
                 "user_prompt": user_prompt,
                 "temperature": 0.1,
-                "max_tokens": 1024,
+                "max_tokens": 2048,
                 "task": "qa",
             },
             "post_stream": {
