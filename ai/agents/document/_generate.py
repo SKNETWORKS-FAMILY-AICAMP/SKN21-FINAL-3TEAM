@@ -24,6 +24,25 @@ DOC_TYPE_NAMES = {
 # ── 정규화 공통 키 ──
 _ASSIGNEE_KEYS = ("assignee", "person", "담당자", "owner", "assigned_to")
 
+# 대화형 안내 메시지 (채팅에서 내용 부족 시 안내)
+_GENERATE_GUIDE = {
+    "meeting_minutes": {
+        "title": "회의록",
+        "fields": "회의 날짜, 참석자, 회의 내용 (논의사항, 결정사항 등)",
+        "example": "3월 23일 팀 회의, 김팀장·이대리 참석, API 설계 논의, REST 채택 결정",
+    },
+    "report": {
+        "title": "업무보고서",
+        "fields": "보고 제목, 작성자, 주요 업무 내용, 진행 현황, 향후 계획",
+        "example": "3월 주간보고, 프론트엔드 리팩토링 80% 완료, 다음주 테스트 예정",
+    },
+    "proposal": {
+        "title": "제안서",
+        "fields": "제안 제목, 목적, 배경, 제안 내용, 기대 효과, 일정, 예산",
+        "example": "사내 AI 챗봇 도입 제안, 업무 자동화로 월 40시간 절감 기대",
+    },
+}
+
 
 def _first_val(d: dict, keys) -> str:
     """dict에서 keys 순서대로 탐색해 첫 번째 non-empty 값을 반환."""
@@ -338,22 +357,42 @@ async def generate_document(
     return result
 
 
-async def _handle_doc_generate(user_input: str, template_type: str, document_content: str = None, template_id: int = None) -> Dict[str, Any]:
-    """문서 생성 처리 (보고서/회의록/JD/제안서 + 커스텀 양식)"""
+async def _handle_doc_generate(user_input: str, template_type: str, document_content: str = None, template_id: int = None, stream_mode: bool = False) -> Dict[str, Any]:
+    """문서 생성 처리 (보고서/회의록/JD/제안서 + 커스텀 양식)
+
+    stream_mode=True: chat.py에서 단계별 상태 표시용 generate_config 반환
+    stream_mode=False: 블로킹으로 바로 생성 (문서생성 페이지 등)
+    """
     _t = time.time()
-    print(f"[DocumentAgent] _handle_doc_generate | template_type={template_type}, template_id={template_id}")
+    print(f"[DocumentAgent] _handle_doc_generate | template_type={template_type}, template_id={template_id}, stream_mode={stream_mode}")
 
     if document_content:
         user_input = f"{user_input}\n\n[첨부 문서 내용]\n{document_content}"
 
-    if len(user_input.strip()) < 20:
+    # 내용 부족 시 대화형 안내 (template_id 있으면 스킵 — template_pick 선택 후 재전송)
+    if len(user_input.strip()) < 20 and not template_id:
+        guide = _GENERATE_GUIDE.get(template_type, _GENERATE_GUIDE["report"])
         return {
             "type": "clarify",
-            "message": "문서 생성을 위한 내용이 부족합니다.\n화면의 **[📎 첨부 버튼]**을 눌러 기준 문서를 업로드하시거나, 작성할 내용을 좀 더 자세히 입력해주세요."
+            "message": (
+                f"{guide['title']}을 작성할게요. 아래 내용을 알려주세요:\n\n"
+                f"• {guide['fields']}\n\n"
+                f"예시: \"{guide['example']}\""
+            ),
         }
 
     # 커스텀 양식 (DB에 등록된 template_id)이 있으면 동적 필드로 생성
     if template_id:
+        if stream_mode:
+            return {
+                "type": "doc_generate",
+                "stream_pending": True,
+                "generate_config": {
+                    "user_input": user_input,
+                    "template_type": template_type,
+                    "template_id": template_id,
+                },
+            }
         return await _generate_with_custom_template(user_input, template_id, template_type)
 
     # 챗봇 요청: 해당 카테고리에 커스텀 템플릿이 있으면 선택지 제공
@@ -381,9 +420,29 @@ async def _handle_doc_generate(user_input: str, template_type: str, document_con
             }
 
         # 1개(기본만)면 바로 생성 — system_tpl_id 전달
+        if stream_mode:
+            return {
+                "type": "doc_generate",
+                "stream_pending": True,
+                "generate_config": {
+                    "user_input": user_input,
+                    "template_type": template_type,
+                    "template_id": system_tpl_id,
+                },
+            }
         return await generate_document(category=template_type, user_input=user_input, template_id=system_tpl_id)
 
     # 지원되지 않는 카테고리 fallback
+    if stream_mode:
+        return {
+            "type": "doc_generate",
+            "stream_pending": True,
+            "generate_config": {
+                "user_input": user_input,
+                "template_type": template_type or "report",
+                "template_id": None,
+            },
+        }
     return await generate_document(category=template_type or "report", user_input=user_input)
 
 
