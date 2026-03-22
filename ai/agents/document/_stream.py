@@ -132,6 +132,16 @@ async def execute_doc_stream(
         agent_response["sources"] = _filter_sources(
             agent_response.get("sources", []), full_response
         )
+        # 스트리밍 QA: sources → citations 변환 (프론트 QA 카드 인용 표시용)
+        if not agent_response.get("citations") and agent_response.get("sources"):
+            agent_response["citations"] = [
+                {
+                    "source": s.get("title", ""),
+                    "content": s.get("content", "")[:200],
+                    "relevance": "높음" if s.get("score", 0) >= 0.7 else "중간" if s.get("score", 0) >= 0.4 else "낮음",
+                }
+                for s in agent_response["sources"][:3]  # 상위 3개만
+            ]
 
     # cleanup
     for k in ("stream_pending", "llm_config", "post_stream"):
