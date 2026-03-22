@@ -24,7 +24,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-# ── document_agent 스트리밍 헬퍼 ──────────────────────────────────
+# ── vLLM 스트리밍 헬퍼 (judgment_agent에서 사용) ──────────────────
+# NOTE: 문서 Agent 스트리밍은 ai/agents/document/_stream.py로 이동 완료
 
 
 def _get_vllm_client(task: str) -> tuple:
@@ -712,67 +713,22 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                 yield f"data: {json.dumps({'type': 'token', 'value': msg}, ensure_ascii=False)}\n\n"
 
                         if agent_response.get("stream_pending"):
-                            # ── StreamRequest 프로토콜: agent가 준비한 설정대로 vLLM 스트리밍 ──
+                            # ── StreamRequest 프로토콜: _stream.py로 위임 ──
+                            from ai.agents.document._stream import execute_doc_stream
+
                             cfg = agent_response.get("llm_config", {})
                             post = agent_response.get("post_stream", {})
+                            logger.info("[Chat] document_agent 스트리밍 위임: task=%s", cfg.get("task"))
 
-                            doc_client, _stream_model = _get_vllm_client(cfg.get("task", "qa"))
-                            logger.info("[Chat] document_agent 스트리밍: model=%s, task=%s", _stream_model, cfg.get("task"))
+                            async for token in execute_doc_stream(cfg, post, db, user.id, agent_response):
+                                yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
 
-                            doc_stream = await doc_client.chat.completions.create(
-                                model=_stream_model,
-                                messages=[
-                                    {"role": "system", "content": cfg["sys_prompt"]},
-                                    {"role": "user", "content": cfg["user_prompt"]},
-                                ],
-                                temperature=cfg.get("temperature", 0.1),
-                                max_tokens=cfg.get("max_tokens", 1024),
-                                stream=True,
-                            )
+                            # regulation 후처리 결과가 있으면 추가 전송
+                            if agent_response.get("regulation_check"):
+                                reg_summary = agent_response["regulation_check"].get("summary", "")
+                                if reg_summary:
+                                    yield f"data: {json.dumps({'type': 'token', 'value': reg_summary}, ensure_ascii=False)}\n\n"
 
-                            import asyncio as _aio_doc
-                            full_doc_response = ""
-                            stream_iter = doc_stream.__aiter__()
-                            while True:
-                                try:
-                                    chunk = await _aio_doc.wait_for(
-                                        stream_iter.__anext__(), timeout=30,
-                                    )
-                                except StopAsyncIteration:
-                                    break
-                                except _aio_doc.TimeoutError:
-                                    logger.warning("[Chat] document_agent 스트리밍 chunk 타임아웃 (30초)")
-                                    if not full_doc_response:
-                                        full_doc_response = "응답 생성 중 시간이 초과되었습니다."
-                                        yield f"data: {json.dumps({'type': 'token', 'value': full_doc_response}, ensure_ascii=False)}\n\n"
-                                    break
-                                if chunk.choices[0].delta.content:
-                                    token = chunk.choices[0].delta.content
-                                    full_doc_response += token
-                                    yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
-
-                            # 응답 채우기
-                            agent_response["message"] = full_doc_response
-                            agent_response["answer"] = full_doc_response
-                            agent_response["model_name"] = _stream_model
-
-                            # post_stream 처리
-                            if post.get("update_summary_db"):
-                                await _update_summary_db(db, post["update_summary_db"], full_doc_response)
-                            if post.get("check_regulation") and full_doc_response and len(full_doc_response) > 50:
-                                yield f"data: {json.dumps({'type': 'status', 'value': '규정 연관성 확인 중...'}, ensure_ascii=False)}\n\n"
-                                reg = await _stream_regulation(full_doc_response, user.id)
-                                if reg:
-                                    agent_response["regulation_check"] = reg
-                                    yield f"data: {json.dumps({'type': 'token', 'value': reg['summary']}, ensure_ascii=False)}\n\n"
-                                    agent_response["message"] = full_doc_response + reg["summary"]
-                                    agent_response["answer"] = full_doc_response + reg["summary"]
-                            if post.get("filter_sources"):
-                                agent_response["sources"] = _filter_sources(agent_response.get("sources", []), full_doc_response)
-
-                            # cleanup
-                            for k in ("stream_pending", "llm_config", "post_stream"):
-                                agent_response.pop(k, None)
                             final_state["agent_response"] = agent_response
                         elif agent_response.get("type") in ("doc_pick", "template_pick"):
                             # 선택지 응답 → final_state에 저장하여 format_response에서 전달

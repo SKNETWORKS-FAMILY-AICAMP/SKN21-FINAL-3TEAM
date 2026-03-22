@@ -64,6 +64,12 @@ def parse_summary_output(text: str) -> dict:
         summary_part = text.split("요약:", 1)[1].strip()
         summary = summary_part
 
+    # 폴백: 파싱 실패 시 전체 텍스트를 요약으로 사용
+    if not summary and text.strip():
+        summary = text.strip()
+        if not tags:
+            tags = ["자동요약"]
+
     return {"category": category, "tags": tags, "summary": summary, "raw": text}
 
 
@@ -84,6 +90,23 @@ async def summarize_document(text: str) -> dict:
 
     answer = await _call_llm(DOC_SUMMARY_SLLM_PROMPT, user_prompt, task="summary")
     return parse_summary_output(answer)
+
+
+async def summarize_and_save(document_id: int, text: str) -> dict:
+    """문서 요약 + DB 저장 통합 함수 (업로드/채팅/스트리밍 후처리 공통)
+
+    Returns:
+        parse_summary_output 결과 dict
+    """
+    parsed = await summarize_document(text)
+    if document_id and parsed["tags"]:
+        try:
+            ok = await _update_document_summary(document_id, parsed["summary"], parsed["tags"])
+            if ok:
+                print(f"[DocumentAgent] summarize_and_save | DB 업데이트 완료 (document_id={document_id})")
+        except Exception as e:
+            print(f"[DocumentAgent] summarize_and_save | DB 업데이트 실패: {e}")
+    return parsed
 
 
 async def _handle_doc_summary(user_input: str, document_content: str = None, document_id: int = None, user_id: int = None, user_team: str = None, stream_mode: bool = False, chat_history: list = None) -> Dict[str, Any]:
@@ -211,18 +234,17 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
             "message": "",
         }
 
-    # 비스트리밍: sLLM 직접 호출
+    # 비스트리밍: sLLM 직접 호출 + DB 저장 통합
     print("[DocumentAgent] stream_mode=False → sLLM 직접 호출 (doc_summary)")
     answer = await _call_llm(sys_prompt, user_prompt, task="summary")
     parsed = parse_summary_output(answer)
     print(f"[DocumentAgent] sLLM 응답 | tags={parsed['tags']}, summary_len={len(parsed['summary'])}자")
 
-    # DB에 요약 결과 업데이트 (구 형식 갱신 또는 신규 저장)
+    # DB에 요약 결과 업데이트
     if document_id and parsed["tags"]:
         try:
-            ok = await _update_document_summary(document_id, parsed["summary"], parsed["tags"])
-            if ok:
-                print(f"[DocumentAgent] DB 요약 업데이트 완료 (document_id={document_id})")
+            await _update_document_summary(document_id, parsed["summary"], parsed["tags"])
+            print(f"[DocumentAgent] DB 요약 업데이트 완료 (document_id={document_id})")
         except Exception as e:
             print(f"[DocumentAgent] DB 요약 업데이트 실패: {e}")
 

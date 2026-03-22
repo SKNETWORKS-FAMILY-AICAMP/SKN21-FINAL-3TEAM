@@ -12,7 +12,7 @@ from ai.agents.document._generate import (
 from ai.agents.document._search import _handle_doc_search, _is_pure_search
 from ai.agents.document._qa import _handle_doc_qa
 from ai.agents.document._summary import _handle_doc_summary
-from ai.agents.document._risk import _handle_risk_detect
+# from ai.agents.document._risk import _handle_risk_detect  # 비활성화 (2026-03-22)
 
 
 async def document_agent(state: AgentState) -> AgentState:
@@ -105,11 +105,6 @@ async def document_agent(state: AgentState) -> AgentState:
                         document_content=document_content,
                     )
 
-        elif intent == "doc_search":
-            # 레거시 호환: BERT가 doc_search로 분류한 경우
-            print("[DocumentAgent] → _handle_doc_search 호출 (legacy)")
-            response_data = await _handle_doc_search(user_input, context, user_id, user_team=user_team, stream_mode=stream_mode)
-
         elif intent == "doc_generate":
             # template_type 결정: ① state에서 프론트가 보낸 값 ② LLM 판단 ③ 키워드 fallback
             document_content = state.get("document_content") or state.get("extracted_text")
@@ -118,24 +113,13 @@ async def document_agent(state: AgentState) -> AgentState:
             print(f"[DocumentAgent] → _handle_doc_generate 호출 | template={template_type}, template_id={template_id}")
             response_data = await _handle_doc_generate(user_input, template_type, document_content, template_id=template_id)
 
-        elif intent == "doc_summary":
-            # 레거시 호환: BERT가 doc_summary로 분류한 경우
-            print("[DocumentAgent] → _handle_doc_summary 호출 (legacy)")
-            document_content = state.get("document_content") or state.get("extracted_text")
-            document_id = state.get("document_id")
-            response_data = await _handle_doc_summary(
-                user_input,
-                document_content=document_content,
-                document_id=document_id,
-                user_id=user_id,
-                user_team=user_team,
-                stream_mode=stream_mode,
-                chat_history=chat_history,
-            )
-
         elif intent == "risk_detect":
-             print("[DocumentAgent] → _handle_risk_detect 호출")
-             response_data = _handle_risk_detect(user_input)
+            # NOTE: 비활성화 (2026-03-22) — 핸들러 미완성, 향후 별도 구현 예정
+            print("[DocumentAgent] risk_detect 요청 → 현재 비활성화")
+            response_data = {
+                "type": "doc_retrieve",
+                "message": "규정 위험 분석 기능은 현재 준비 중입니다.",
+            }
 
         else:
             print(f"[DocumentAgent] !!! 지원하지 않는 intent: {intent}")
@@ -153,6 +137,17 @@ async def document_agent(state: AgentState) -> AgentState:
     _hint = locals().get("_sub_type_hint") or response_data.get("sub_type")
     if _hint:
         response_data["_status_hint"] = _hint
+
+    # 검색↔QA 전환 힌트 (프론트에서 액션 버튼으로 표시)
+    sub_type = response_data.get("sub_type")
+    if sub_type == "search" and not response_data.get("error"):
+        response_data.setdefault("follow_up_actions", [
+            {"label": "이 문서에 대해 질문하기", "force_sub_type": "qa"},
+        ])
+    elif sub_type == "qa" and not response_data.get("error"):
+        response_data.setdefault("follow_up_actions", [
+            {"label": "관련 문서 더 찾기", "force_sub_type": "search"},
+        ])
 
     # NOTE: 규정 검증 비활성화 (2026-03-22) — RAG+LLM 추가 호출로 응답 지연/OOM 유발
     # TODO: 문서 생성 시 1회만 체크하는 경량 방식으로 재설계

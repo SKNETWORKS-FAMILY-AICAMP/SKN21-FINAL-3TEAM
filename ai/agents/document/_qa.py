@@ -34,8 +34,8 @@ def _parse_qa_json(text: str) -> dict:
     except json.JSONDecodeError:
         pass
 
-    # 3) fallback
-    return {"answer": text, "citations": [], "confidence": 0.5}
+    # 3) fallback — confidence는 호출측에서 RAG 점수 기반으로 재계산
+    return {"answer": text, "citations": [], "confidence": None}
 
 
 async def _handle_doc_qa(
@@ -65,11 +65,13 @@ async def _handle_doc_qa(
           f"stream_mode={stream_mode}")
 
     sources = []
+    rag_top_score = 0.0  # RAG 최고 점수 (confidence 계산용)
 
     # ── 1. context 확보 (RAG 중복 호출 방지) ──
     if document_content:
         # 특정 문서가 선택된 경우 → 해당 문서만 context로 사용
         context = [f"[선택된 문서]\n{truncate_by_paragraph(document_content, max_chars=8000)}"]
+        rag_top_score = 1.0  # 사용자가 직접 선택 → 최대 신뢰도
         print("[DocumentAgent] document_content 사용 (RAG 스킵)")
     elif context:
         # 이미 context가 있으면 그대로 사용
@@ -82,6 +84,8 @@ async def _handle_doc_qa(
         )
         context = rag_context
         sources = rag_sources
+        if search_results:
+            rag_top_score = max(r.get("score", 0) for r in search_results)
 
     # ── 2. context 없으면 실패 ──
     if not context:
@@ -96,7 +100,9 @@ async def _handle_doc_qa(
             "confidence": 0.0,
         }
 
-    # ── 3. user_prompt 구성 ──
+    # ── 3. user_prompt 구성 (컨텍스트 크기 가드) ──
+    MAX_CONTEXT_CHARS = 12000  # 토큰 초과 방지
+
     parts = []
 
     # 이전 대화 컨텍스트
@@ -104,10 +110,15 @@ async def _handle_doc_qa(
     if chat_ctx:
         parts.append(chat_ctx)
 
-    # 참고 문서
+    # 참고 문서 — 크기 제한 적용 (높은 점수 chunk 우선)
     parts.append("[참고 문서]")
+    total_ctx_len = 0
     for c in context:
+        if total_ctx_len + len(c) > MAX_CONTEXT_CHARS:
+            print(f"[DocumentAgent] QA context 상한 도달 ({total_ctx_len}자), 이후 chunk 생략")
+            break
         parts.append(c)
+        total_ctx_len += len(c)
 
     # 질문
     parts.append(f"\n[질문]\n{query}")
@@ -155,12 +166,21 @@ async def _handle_doc_qa(
           f"answer_len={len(qa_result.get('answer', ''))}, "
           f"citations={len(qa_result.get('citations', []))}")
 
+    # confidence: LLM 자체 confidence와 RAG 점수를 혼합
+    llm_confidence = qa_result.get("confidence")
+    if llm_confidence is not None and rag_top_score > 0:
+        final_confidence = (llm_confidence + rag_top_score) / 2
+    elif rag_top_score > 0:
+        final_confidence = rag_top_score
+    else:
+        final_confidence = 0.5
+
     return {
         "type": "doc_retrieve",
         "sub_type": "qa",
         "answer": qa_result.get("answer", ""),
         "message": qa_result.get("answer", ""),
         "citations": qa_result.get("citations", []),
-        "confidence": qa_result.get("confidence", 0.5),
+        "confidence": round(min(final_confidence, 1.0), 2),
         "sources": sources,
     }
