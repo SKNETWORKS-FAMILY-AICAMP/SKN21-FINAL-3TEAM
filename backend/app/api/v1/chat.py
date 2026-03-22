@@ -430,7 +430,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             else:
                                 yield f"data: {json.dumps({'type': 'token', 'value': msg}, ensure_ascii=False)}\n\n"
 
-                        if agent_response.get("stream_pending"):
+                        elif agent_response.get("stream_pending"):
                             # ── StreamRequest 프로토콜: _stream.py로 위임 ──
                             from ai.agents.document._stream import execute_doc_stream
 

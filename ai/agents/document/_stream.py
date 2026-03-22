@@ -96,7 +96,7 @@ async def execute_doc_stream(
                 full_response = "응답 생성 중 시간이 초과되었습니다."
                 yield full_response
             break
-        if chunk.choices[0].delta.content:
+        if chunk.choices and chunk.choices[0].delta.content:
             token = chunk.choices[0].delta.content
             full_response += token
             yield token
