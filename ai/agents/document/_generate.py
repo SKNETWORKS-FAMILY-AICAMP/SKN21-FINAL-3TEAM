@@ -311,6 +311,10 @@ async def generate_document(
         template_id: 커스텀 템플릿 ID (None이면 시스템 기본)
         user_input: 자연어 텍스트 (챗봇 fallback용, fields_data가 없을 때 사용)
     """
+    # 입력 검증: fields_data도 user_input도 없으면 에러
+    if not fields_data and not content and not user_input:
+        raise ValueError("문서 생성을 위한 입력이 없습니다. 폼 데이터 또는 텍스트를 전달해주세요.")
+
     # 제안서: 프론트에서 date로 오면 submit_date로 통일 (LoRA 학습 키)
     if fields_data and category == "proposal":
         if "date" in fields_data and "submit_date" not in fields_data:

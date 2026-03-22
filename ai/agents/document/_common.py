@@ -1,11 +1,20 @@
 """공유 유틸리티 — LLM 호출, RAG, 소스, 텍스트 유틸"""
 import contextvars
 import json
+import logging
 import os
 import time
 from pathlib import Path
 
+logger = logging.getLogger("document_agent")
+
 GENERATED_DOCS_DIR = Path(__file__).resolve().parents[3] / "backend" / "generated_docs"
+
+# task별 LoRA 어댑터 이름 매핑 (vLLM 스트리밍/비스트리밍 공통)
+LORA_ADAPTER_NAMES = {
+    "generate": "v3_generate",
+    "summary": "v3_summary",
+}
 
 # ── 모델명 getter/setter (요청별 격리) ──
 _last_model_name: contextvars.ContextVar[str] = contextvars.ContextVar(
@@ -19,6 +28,44 @@ def get_last_model_name() -> str:
 
 def set_last_model_name(name: str) -> None:
     _last_model_name.set(name)
+
+
+# ── 토큰 카운팅 ──
+
+def count_tokens(text: str, model: str = "gpt-4o-mini") -> int:
+    """tiktoken 기반 토큰 수 계산 (한국어 ~1.5-2 tokens/char)"""
+    try:
+        import tiktoken
+        enc = tiktoken.encoding_for_model(model)
+        return len(enc.encode(text))
+    except Exception:
+        # tiktoken 미설치 시 대략 추정 (한국어 기준)
+        return int(len(text) * 1.5)
+
+
+def truncate_by_tokens(text: str, max_tokens: int = 4000, model: str = "gpt-4o-mini") -> str:
+    """토큰 기준으로 텍스트를 자른다. 문단 경계를 존중."""
+    if count_tokens(text, model) <= max_tokens:
+        return text
+    paragraphs = text.split('\n\n')
+    truncated = ""
+    for p in paragraphs:
+        candidate = truncated + p + "\n\n" if truncated else p + "\n\n"
+        if count_tokens(candidate, model) > max_tokens:
+            break
+        truncated = candidate
+    truncated = truncated.rstrip()
+    if not truncated:
+        # 단일 문단이 max_tokens 초과 시 글자 단위 잘라내기
+        try:
+            import tiktoken
+            enc = tiktoken.encoding_for_model(model)
+            tokens = enc.encode(text)[:max_tokens]
+            truncated = enc.decode(tokens)
+        except Exception:
+            char_limit = int(max_tokens / 1.5)
+            truncated = text[:char_limit]
+    return truncated
 
 
 # ── 텍스트 유틸 ──
@@ -94,7 +141,7 @@ async def _retrieve_context(query: str, user_id: int = None, user_team: str = No
         rag_status: "success" | "timeout" | "error"
     """
     _t = time.time()
-    print(f"[DocumentAgent] _retrieve_context | query='{query[:50]}', top_k={top_k}, reranker={use_reranker}, threshold={score_threshold}")
+    logger.info("_retrieve_context | query='%s', top_k=%d, reranker=%s, threshold=%s", query[:50], top_k, use_reranker, score_threshold)
     search_results = []
     context = []
     rag_status = "success"
@@ -116,12 +163,12 @@ async def _retrieve_context(query: str, user_id: int = None, user_team: str = No
             timeout=30,
         )
         context = [f"[문서 제목: {doc.get('title', '')}]\n{doc['content']}" for doc in search_results]
-        print(f"[DocumentAgent] _retrieve_context 완료 ({time.time()-_t:.2f}s): {len(context)}개 문서")
+        logger.info("_retrieve_context 완료 (%.2fs): %d개 문서", time.time()-_t, len(context))
     except asyncio.TimeoutError:
-        print(f"[DocumentAgent] !!! _retrieve_context 타임아웃 (30초 초과)")
+        logger.warning("_retrieve_context 타임아웃 (30초 초과)")
         rag_status = "timeout"
     except Exception as e:
-        print(f"[DocumentAgent] !!! _retrieve_context 실패: {e}")
+        logger.error("_retrieve_context 실패: %s", e)
         import traceback
         traceback.print_exc()
         rag_status = "error"
@@ -170,7 +217,7 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
     _t_llm = time.time()
     mode = os.getenv("DOC_AGENT_MODE", "api")
     sllm_tasks = os.getenv("DOC_SLLM_TASKS", "generate").split(",")
-    print(f"[DocumentAgent] _call_llm 호출 | mode={mode}, task={task}, temperature={temperature}, json_mode={json_mode}")
+    logger.info("_call_llm | mode=%s, task=%s, temperature=%s, json_mode=%s", mode, task, temperature, json_mode)
     try:
         # task="extract": 커스텀 템플릿 2단계 — LoRA 없이 base 모델 또는 API
         if task == "extract" and mode == "sllm":
@@ -178,7 +225,7 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
                 from ai.serving.vllm_client import VLLMProvider
                 llm = VLLMProvider()  # LoRA 안 태움
                 set_last_model_name(os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (base, extract)")
-                print(f"[DocumentAgent] _call_llm | sLLM base (extract, no LoRA)")
+                logger.info("_call_llm | sLLM base (extract, no LoRA)")
                 response = await llm.generate(
                     prompt=user_prompt,
                     system_prompt=sys_prompt,
@@ -186,54 +233,50 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
                     json_mode=json_mode,
                 )
                 result = response.content
-                print(f"[DocumentAgent] _call_llm | extract 응답 ({time.time()-_t_llm:.2f}s) 길이: {len(result)}자")
+                logger.info("_call_llm | extract 응답 (%.2fs) 길이: %d자", time.time()-_t_llm, len(result))
                 return result
             except Exception as e:
-                print(f"[DocumentAgent] _call_llm | extract sLLM 실패, API fallback: {e}")
+                logger.warning("_call_llm | extract sLLM 실패, API fallback: %s", e)
                 set_last_model_name(os.getenv("OPENAI_MODEL", "gpt-4o-mini") + " (fallback)")
                 from ai.llm import get_llm
                 llm = get_llm()
 
         elif mode == "sllm" and task:
             # sLLM 모드: vLLM — LoRA 적용 태스크만 어댑터 사용, 나머지는 base
-            try:
-                from ai.serving.vllm_client import VLLMProvider
-                lora_tasks = set(os.getenv("DOC_LORA_TASKS", "generate").split(","))
-                use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
-                # task별 LoRA 어댑터 이름 매핑
-                LORA_ADAPTER_NAMES = {
-                    "generate": "v3_generate",
-                    "summary": "v3_summary",
-                }
-                if use_lora and task in lora_tasks:
-                    adapter_name = LORA_ADAPTER_NAMES.get(task, f"v3_{task}")
+            from ai.serving.vllm_client import VLLMProvider
+            lora_tasks = set(os.getenv("DOC_LORA_TASKS", "generate").split(","))
+            use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
+
+            if use_lora and task in lora_tasks:
+                adapter_name = LORA_ADAPTER_NAMES.get(task, f"v3_{task}")
+                try:
                     llm = VLLMProvider().with_lora(adapter_name)
                     set_last_model_name(os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + f" (LoRA {adapter_name})")
-                    print(f"[DocumentAgent] _call_llm | sLLM: {adapter_name} LoRA 어댑터")
-                else:
+                    logger.info("_call_llm | sLLM: %s LoRA 어댑터", adapter_name)
+                    response = await llm.generate(
+                        prompt=user_prompt,
+                        system_prompt=sys_prompt,
+                        temperature=temperature,
+                        json_mode=json_mode,
+                    )
+                    result = response.content
+                    logger.info("_call_llm | sLLM LoRA 응답 (%.2fs) 길이: %d자", time.time()-_t_llm, len(result))
+                    return result
+                except Exception as e:
+                    # LoRA 실패 → base 모델로 폴백
+                    logger.warning("_call_llm | LoRA(%s) 실패, base 폴백: %s", adapter_name, e)
                     llm = VLLMProvider()
-                    set_last_model_name(os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (base)")
-                    print(f"[DocumentAgent] _call_llm | sLLM: base model (task={task})")
-                response = await llm.generate(
-                    prompt=user_prompt,
-                    system_prompt=sys_prompt,
-                    temperature=temperature,
-                    json_mode=json_mode,
-                )
-                result = response.content
-                print(f"[DocumentAgent] _call_llm | sLLM 응답 ({time.time()-_t_llm:.2f}s) 길이: {len(result)}자")
-                return result
-            except Exception as e:
-                print(f"[DocumentAgent] _call_llm | sLLM 실패, API fallback: {e}")
-                set_last_model_name(os.getenv("OPENAI_MODEL", "gpt-4o-mini") + " (fallback)")
-                from ai.llm import get_llm
-                llm = get_llm()
+                    set_last_model_name(os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (base, LoRA fallback)")
+            else:
+                llm = VLLMProvider()
+                set_last_model_name(os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (base)")
+                logger.info("_call_llm | sLLM: base model (task=%s)", task)
         else:
             # API 모드: 기존 LLM Factory (GPT/Claude)
             from ai.llm import get_llm
             llm = get_llm()
             set_last_model_name(os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
-            print(f"[DocumentAgent] _call_llm | API: {llm.__class__.__name__}")
+            logger.info("_call_llm | API: %s", llm.__class__.__name__)
 
         response = await llm.generate(
             prompt=user_prompt,
@@ -243,14 +286,17 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, 
         )
 
         result = response.content
-        print(f"[DocumentAgent] _call_llm | 응답 ({time.time()-_t_llm:.2f}s) 길이: {len(result)}자")
+        logger.info("_call_llm | 응답 (%.2fs) 길이: %d자", time.time()-_t_llm, len(result))
         return result
 
     except Exception as e:
-        print(f"[DocumentAgent] _call_llm | !!! 에러: {e}")
+        logger.error("_call_llm | 에러: %s", e)
         import traceback
         traceback.print_exc()
-        return _get_mock_response(user_prompt, json_mode)
+        # mock 모드에서만 가짜 응답 반환, 그 외엔 에러 전파
+        if os.getenv("DOC_AGENT_MODE", "api") == "mock":
+            return _get_mock_response(user_prompt, json_mode)
+        raise
 
 def _get_mock_response(user_prompt: str, json_mode: bool) -> str:
     """API 키 없을 때 나가는 Mock 응답"""

@@ -1,15 +1,17 @@
 """
 Intent Classification 모델 (팀원 A 담당)
 
-카테고리 (6개):
+카테고리 (8개):
   - judgment: 규정 기반 판단
   - doc_retrieve: 문서 검색/조회/요약/QA (RAG 파이프라인 → agent 내부에서 세부 분류)
   - doc_generate: 문서 생성 (보고서/회의록/JD/제안서)
   - schedule_add: 일정 추가
   - schedule_view: 일정 조회
   - general: 일반 질문
+  - pipeline_create: 파이프라인 생성
+  - approval_create: 결재 요청
 
-모델: klue/roberta-large (Fine-tuned, 6-label multi-seed ensemble)
+모델: klue/roberta-large (Fine-tuned, 8-label multi-seed ensemble)
 """
 
 import json
