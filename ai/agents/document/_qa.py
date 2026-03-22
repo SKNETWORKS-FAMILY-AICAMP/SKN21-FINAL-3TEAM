@@ -8,6 +8,7 @@ from ai.agents.document._common import (
     _call_llm,
     _retrieve_context,
     _format_chat_context,
+    truncate_by_paragraph,
 )
 
 
@@ -68,7 +69,7 @@ async def _handle_doc_qa(
     # ── 1. context 확보 (RAG 중복 호출 방지) ──
     if document_content:
         # 특정 문서가 선택된 경우 → 해당 문서만 context로 사용
-        context = [f"[선택된 문서]\n{document_content[:8000]}"]
+        context = [f"[선택된 문서]\n{truncate_by_paragraph(document_content, max_chars=8000)}"]
         print("[DocumentAgent] document_content 사용 (RAG 스킵)")
     elif context:
         # 이미 context가 있으면 그대로 사용

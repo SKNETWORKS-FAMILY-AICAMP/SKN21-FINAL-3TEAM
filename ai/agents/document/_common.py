@@ -1,4 +1,5 @@
 """공유 유틸리티 — LLM 호출, RAG, 소스, 텍스트 유틸"""
+import contextvars
 import json
 import os
 import time
@@ -6,17 +7,18 @@ from pathlib import Path
 
 GENERATED_DOCS_DIR = Path(__file__).resolve().parents[3] / "backend" / "generated_docs"
 
-# ── 모델명 getter/setter ──
-_last_model_name = "unknown"
+# ── 모델명 getter/setter (요청별 격리) ──
+_last_model_name: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "_last_model_name", default="unknown",
+)
 
 
 def get_last_model_name() -> str:
-    return _last_model_name
+    return _last_model_name.get()
 
 
 def set_last_model_name(name: str) -> None:
-    global _last_model_name
-    _last_model_name = name
+    _last_model_name.set(name)
 
 
 # ── 텍스트 유틸 ──
@@ -100,7 +102,7 @@ async def _retrieve_context(query: str, user_id: int = None, user_team: str = No
 
         pipeline = get_qdrant_pipeline()
         search_results = await asyncio.wait_for(
-            asyncio.get_event_loop().run_in_executor(
+            asyncio.get_running_loop().run_in_executor(
                 None,
                 lambda: pipeline.retrieve(
                     query, user_id=user_id, user_team=user_team,

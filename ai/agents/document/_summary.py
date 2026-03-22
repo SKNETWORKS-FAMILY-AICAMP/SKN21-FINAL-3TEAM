@@ -2,11 +2,35 @@
 import time
 from typing import Any, Dict
 
+from sqlalchemy import select as sa_select
+from app.db.session import async_session as _AsyncSessionLocal
+from app.models.document import Document as _Document
+
 from ai.agents.document._common import (
     _call_llm,
     _retrieve_context,
     truncate_by_paragraph,
 )
+
+
+async def _get_document(document_id: int):
+    """DB에서 Document 조회 (단일 세션)"""
+    async with _AsyncSessionLocal() as db:
+        result = await db.execute(sa_select(_Document).where(_Document.id == document_id))
+        return result.scalar_one_or_none()
+
+
+async def _update_document_summary(document_id: int, summary: str, tags: list):
+    """DB에 요약 결과 업데이트"""
+    async with _AsyncSessionLocal() as db:
+        result = await db.execute(sa_select(_Document).where(_Document.id == document_id))
+        doc = result.scalar_one_or_none()
+        if doc:
+            doc.summary = summary
+            doc.tags = tags
+            await db.commit()
+            return True
+    return False
 
 
 def parse_summary_output(text: str) -> dict:
@@ -87,17 +111,26 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
                 matched_id = unique_docs[0]["document_id"]
                 print(f"[DocumentAgent] RAG 1개 매칭 → document_id={matched_id} 전체 content 조회")
                 try:
-                    from sqlalchemy import select
-                    from app.db.session import async_session as AsyncSessionLocal
-                    from app.models.document import Document
-
-                    async with AsyncSessionLocal() as db:
-                        result = await db.execute(select(Document).where(Document.id == matched_id))
-                        doc = result.scalar_one_or_none()
-                        if doc and doc.content:
-                            document_content = doc.content
-                            document_id = matched_id
-                            print(f"[DocumentAgent] DB content 확보: {len(document_content)}자")
+                    doc = await _get_document(matched_id)
+                    if doc and doc.content:
+                        document_content = doc.content
+                        document_id = matched_id
+                        print(f"[DocumentAgent] DB content 확보: {len(document_content)}자")
+                        # 이미 요약이 있으면 바로 반환 (세션 추가 생성 방지)
+                        if doc.summary and doc.tags:
+                            tags = doc.tags or []
+                            tags_str = " ".join(f"#{t}" for t in tags)
+                            answer = f"태그: {tags_str}\n요약: {doc.summary}"
+                            print(f"[DocumentAgent] DB 요약 사용 (document_id={document_id}, {time.time()-_t:.2f}s)")
+                            return {
+                                "type": "doc_retrieve",
+                                "sub_type": "summary",
+                                "answer": answer,
+                                "message": answer,
+                                "tags": tags,
+                                "summary": doc.summary,
+                                "document_id": document_id,
+                            }
                 except Exception as e:
                     print(f"[DocumentAgent] DB content 조회 실패: {e}")
 
@@ -129,31 +162,23 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
     # ── DB에 이미 요약이 있으면 바로 반환 (sLLM 호출 스킵) ──
     if document_id:
         try:
-            from sqlalchemy import select
-            from app.db.session import async_session as AsyncSessionLocal
-            from app.models.document import Document
-
-            async with AsyncSessionLocal() as db:
-                result = await db.execute(select(Document).where(Document.id == document_id))
-                doc = result.scalar_one_or_none()
-                if doc and doc.summary and doc.tags:
-                    # 새 형식 체크: tags가 있으면 새 형식으로 간주
-                    tags = doc.tags or []
-                    tags_str = " ".join(f"#{t}" for t in tags)
-                    answer = f"태그: {tags_str}\n요약: {doc.summary}"
-                    print(f"[DocumentAgent] DB 요약 사용 (document_id={document_id}, {time.time()-_t:.2f}s)")
-                    return {
-                        "type": "doc_retrieve",
-                        "sub_type": "summary",
-                        "answer": answer,
-                        "message": answer,
-                        "tags": tags,
-                        "summary": doc.summary,
-                        "document_id": document_id,
-                    }
-                elif doc and doc.summary and not doc.tags:
-                    # 구 형식: summary만 있고 tags 없음 → sLLM 재호출로 넘어감
-                    print(f"[DocumentAgent] 구 형식 요약 감지 (tags 없음) → sLLM 재호출")
+            doc = await _get_document(document_id)
+            if doc and doc.summary and doc.tags:
+                tags = doc.tags or []
+                tags_str = " ".join(f"#{t}" for t in tags)
+                answer = f"태그: {tags_str}\n요약: {doc.summary}"
+                print(f"[DocumentAgent] DB 요약 사용 (document_id={document_id}, {time.time()-_t:.2f}s)")
+                return {
+                    "type": "doc_retrieve",
+                    "sub_type": "summary",
+                    "answer": answer,
+                    "message": answer,
+                    "tags": tags,
+                    "summary": doc.summary,
+                    "document_id": document_id,
+                }
+            elif doc and doc.summary and not doc.tags:
+                print(f"[DocumentAgent] 구 형식 요약 감지 (tags 없음) → sLLM 재호출")
         except Exception as e:
             print(f"[DocumentAgent] DB 요약 조회 실패, sLLM fallback: {e}")
 
@@ -195,18 +220,9 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
     # DB에 요약 결과 업데이트 (구 형식 갱신 또는 신규 저장)
     if document_id and parsed["tags"]:
         try:
-            from sqlalchemy import select
-            from app.db.session import async_session as AsyncSessionLocal
-            from app.models.document import Document
-
-            async with AsyncSessionLocal() as db:
-                result = await db.execute(select(Document).where(Document.id == document_id))
-                doc = result.scalar_one_or_none()
-                if doc:
-                    doc.summary = parsed["summary"]
-                    doc.tags = parsed["tags"]
-                    await db.commit()
-                    print(f"[DocumentAgent] DB 요약 업데이트 완료 (document_id={document_id})")
+            ok = await _update_document_summary(document_id, parsed["summary"], parsed["tags"])
+            if ok:
+                print(f"[DocumentAgent] DB 요약 업데이트 완료 (document_id={document_id})")
         except Exception as e:
             print(f"[DocumentAgent] DB 요약 업데이트 실패: {e}")
 
