@@ -148,7 +148,9 @@ async def document_agent(state: AgentState) -> AgentState:
     # ── 규정 검증 파이프라인 (Document + Judgment Agent 결합) ──
     # doc_generate: 생성된 문서를 판단 agent가 규정 검증
     # doc_retrieve (비스트리밍): 검색/요약 결과에 규정 연결
-    if response_data.get("type") == "doc_generate" and response_data.get("data"):
+    # NOTE: 규정 검증 비활성화 (2026-03-22) — RAG+LLM 추가 호출로 응답 지연/OOM 유발
+    # TODO: 문서 생성 시 1회만 체크하는 경량 방식으로 재설계
+    if False and response_data.get("type") == "doc_generate" and response_data.get("data"):
         try:
             from ai.agents.regulation_validator import (
                 validate_document_regulations,
@@ -192,12 +194,13 @@ async def document_agent(state: AgentState) -> AgentState:
             import traceback
             traceback.print_exc()
 
-    elif (
+    elif False and (
         response_data.get("type") == "doc_retrieve"
         and response_data.get("sub_type") in ("qa", "summary")
         and not stream_mode
     ):
         # 비스트리밍 doc_retrieve: 검색/요약 결과에 규정 연결
+        # NOTE: 규정 검증 비활성화 (2026-03-22) — 응답 지연/OOM 유발
         answer_text = response_data.get("answer", "") or response_data.get("message", "")
         if answer_text and len(answer_text) > 50:
             try:
