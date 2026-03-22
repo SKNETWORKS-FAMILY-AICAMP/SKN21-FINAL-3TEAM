@@ -35,6 +35,7 @@ async def document_agent(state: AgentState) -> AgentState:
     print(f"[DocumentAgent] 진입 | intent={intent}, user_input='{user_input[:50]}...', user_id={user_id}, user_team={user_team}")
 
     response_data = {}
+    _sub_type_hint = None
 
     stream_mode = state.get("stream_mode", False)
     print(f"[DocumentAgent] stream_mode={stream_mode}, context 길이={len(context)}")
@@ -134,20 +135,12 @@ async def document_agent(state: AgentState) -> AgentState:
     print(f"[DocumentAgent] 완료 ({time.time()-_t_agent:.2f}s) | response type={response_data.get('type')}, keys={list(response_data.keys())}")
 
     # sub_type 힌트 (chat.py에서 조기 상태 메시지 전송용)
-    _hint = locals().get("_sub_type_hint") or response_data.get("sub_type")
+    _hint = _sub_type_hint or response_data.get("sub_type")
     if _hint:
         response_data["_status_hint"] = _hint
 
-    # 검색↔QA 전환 힌트 (프론트에서 액션 버튼으로 표시)
-    sub_type = response_data.get("sub_type")
-    if sub_type == "search" and not response_data.get("error"):
-        response_data.setdefault("follow_up_actions", [
-            {"label": "이 문서에 대해 질문하기", "force_sub_type": "qa"},
-        ])
-    elif sub_type == "qa" and not response_data.get("error"):
-        response_data.setdefault("follow_up_actions", [
-            {"label": "관련 문서 더 찾기", "force_sub_type": "search"},
-        ])
+    # NOTE: follow_up_actions는 프론트엔드(ChatPage.jsx)에서 하드코딩으로 구현 완료
+    # 백엔드에서 중복 전송하지 않음
 
     # NOTE: 규정 검증 비활성화 (2026-03-22) — RAG+LLM 추가 호출로 응답 지연/OOM 유발
     # TODO: 문서 생성 시 1회만 체크하는 경량 방식으로 재설계

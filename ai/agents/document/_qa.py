@@ -143,7 +143,7 @@ async def _handle_doc_qa(
             },
             "post_stream": {
                 "update_summary_db": None,
-                "check_regulation": True,
+                "check_regulation": False,  # 비활성화 (2026-03-22) — OOM/지연 유발
                 "filter_sources": True,
             },
             "answer": "",
