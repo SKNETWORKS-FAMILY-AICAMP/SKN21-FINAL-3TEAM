@@ -498,9 +498,28 @@ def classify_intent(state: AgentState) -> AgentState:
     멀티라벨 결과로 compound 여부도 판단:
       - is_compound=True → sub_queries 생성 → decompose_query로
       - is_compound=False → 단일 intent → route_by_intent로
+
+    force_intent가 있으면 BERT 분류를 건너뛰고 직접 라우팅:
+      - "doc_retrieve" → intent=doc_retrieve
+      - "doc_retrieve:qa" → intent=doc_retrieve, force_sub_type=qa
     """
     _t = time.time()
     user_input = state["user_input"]
+
+    # ── force_intent: 후속 액션 버튼에서 intent 강제 지정 ──
+    force_intent = state.get("force_intent")
+    if force_intent:
+        parts = force_intent.split(":", 1)
+        state["intent"] = parts[0]
+        state["confidence"] = 1.0
+        state["intent_candidates"] = [{"intent": parts[0], "confidence": 1.0}]
+        state["_is_compound"] = False
+        if len(parts) > 1:
+            state["force_sub_type"] = parts[1]  # "qa" | "summary" | "search"
+        logger.info("[Orchestrator] force_intent 적용 (BERT 스킵) | intent=%s, sub_type=%s (%.2fs)",
+                    parts[0], parts[1] if len(parts) > 1 else "none", time.time()-_t)
+        return state
+
     logger.info("[Orchestrator] classify_intent 시작 | input='%s'", user_input)
 
     classifier = get_classifier()

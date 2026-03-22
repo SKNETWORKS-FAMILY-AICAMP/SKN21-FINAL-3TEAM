@@ -29,6 +29,8 @@ async def document_agent(state: AgentState) -> AgentState:
     user_id = state.get("user_id")
     user_team = state.get("user_team")
 
+    chat_history = state.get("chat_history", [])
+
     _t_agent = time.time()
     print(f"[DocumentAgent] 진입 | intent={intent}, user_input='{user_input[:50]}...', user_id={user_id}, user_team={user_team}")
 
@@ -43,32 +45,61 @@ async def document_agent(state: AgentState) -> AgentState:
             document_content = state.get("document_content") or state.get("extracted_text")
             document_id = state.get("document_id")
 
-            # 1) 요약 판별: 문서 내용/ID 있거나, 요약 키워드 + 동사어미
-            _is_summary = bool(
-                document_content
-                or document_id
-                or re.search(r"(요약|정리|핵심|간추리|간추려|줄여).{0,6}(해|해줘|해주세요|부탁|하자|할래|줘|주세요)", user_input)
-                or re.search(r"(요약|정리|핵심|간추리|간추려|줄여)\s*$", user_input)
-            )
+            # force_sub_type: 후속 액션 버튼에서 강제 지정 → regex 스킵
+            force_sub_type = state.get("force_sub_type")
 
-            if _is_summary:
-                print("[DocumentAgent] doc_retrieve → summary 경로")
-                response_data = await _handle_doc_summary(
-                    user_input,
-                    document_content=document_content,
-                    document_id=document_id,
-                    user_id=user_id,
-                    user_team=user_team,
-                    stream_mode=stream_mode,
-                )
-            elif _is_pure_search(user_input):
-                # 2) 명시적 검색: 찾아/검색/목록 키워드 + 설명/요약 요청 없음
-                print("[DocumentAgent] doc_retrieve → search 경로")
-                response_data = await _handle_doc_search(user_input, context, user_id, user_team=user_team, stream_mode=stream_mode)
+            if force_sub_type:
+                print(f"[DocumentAgent] force_sub_type={force_sub_type} → regex 스킵")
+                if force_sub_type == "summary":
+                    response_data = await _handle_doc_summary(
+                        user_input, document_content=document_content,
+                        document_id=document_id, user_id=user_id,
+                        user_team=user_team, stream_mode=stream_mode,
+                        chat_history=chat_history,
+                    )
+                elif force_sub_type == "search":
+                    response_data = await _handle_doc_search(user_input, context, user_id, user_team=user_team, stream_mode=stream_mode)
+                else:  # "qa" 또는 기타
+                    response_data = await _handle_doc_qa(
+                        user_input, context, user_id=user_id,
+                        user_team=user_team, stream_mode=stream_mode,
+                        chat_history=chat_history,
+                        document_content=document_content,
+                    )
             else:
-                # 3) fallback → QA (질문형 + 기타 전부)
-                print("[DocumentAgent] doc_retrieve → QA 경로")
-                response_data = await _handle_doc_qa(user_input, context, user_id=user_id, user_team=user_team, stream_mode=stream_mode)
+                # 기존 regex 기반 라우팅
+                # 1) 요약 판별: 문서 내용/ID 있거나, 요약 키워드 + 동사어미
+                _is_summary = bool(
+                    document_content
+                    or document_id
+                    or re.search(r"(요약|정리|핵심|간추리|간추려|줄여).{0,6}(해|해줘|해주세요|부탁|하자|할래|줘|주세요)", user_input)
+                    or re.search(r"(요약|정리|핵심|간추리|간추려|줄여)\s*$", user_input)
+                )
+
+                if _is_summary:
+                    print("[DocumentAgent] doc_retrieve → summary 경로")
+                    response_data = await _handle_doc_summary(
+                        user_input,
+                        document_content=document_content,
+                        document_id=document_id,
+                        user_id=user_id,
+                        user_team=user_team,
+                        stream_mode=stream_mode,
+                        chat_history=chat_history,
+                    )
+                elif _is_pure_search(user_input):
+                    # 2) 명시적 검색: 찾아/검색/목록 키워드 + 설명/요약 요청 없음
+                    print("[DocumentAgent] doc_retrieve → search 경로")
+                    response_data = await _handle_doc_search(user_input, context, user_id, user_team=user_team, stream_mode=stream_mode)
+                else:
+                    # 3) fallback → QA (질문형 + 기타 전부)
+                    print("[DocumentAgent] doc_retrieve → QA 경로")
+                    response_data = await _handle_doc_qa(
+                        user_input, context, user_id=user_id,
+                        user_team=user_team, stream_mode=stream_mode,
+                        chat_history=chat_history,
+                        document_content=document_content,
+                    )
 
         elif intent == "doc_search":
             # 레거시 호환: BERT가 doc_search로 분류한 경우
@@ -95,6 +126,7 @@ async def document_agent(state: AgentState) -> AgentState:
                 user_id=user_id,
                 user_team=user_team,
                 stream_mode=stream_mode,
+                chat_history=chat_history,
             )
 
         elif intent == "risk_detect":

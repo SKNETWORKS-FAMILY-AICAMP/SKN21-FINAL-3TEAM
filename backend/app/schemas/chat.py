@@ -28,6 +28,7 @@ class ChatRequest(BaseModel):
     template_id: Optional[int] = None       # 문서/회의록 페이지에서 템플릿 지정 시
     template_type: Optional[str] = None     # 시스템 템플릿 타입 직접 지정 시
     document_id: Optional[int] = None       # 문서 요약/QA 시 대상 문서 ID
+    force_intent: Optional[str] = None      # 후속 액션 버튼 클릭 시 intent 강제 지정 (예: "doc_retrieve:qa")
 
 
 # ── Agent별 Result 데이터 모델 ──

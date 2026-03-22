@@ -24,6 +24,87 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+# ── document_agent 스트리밍 헬퍼 ──────────────────────────────────
+
+
+def _get_vllm_client(task: str) -> tuple:
+    """vLLM 클라이언트 + task별 모델명(LoRA) 반환
+
+    Returns: (AsyncOpenAI client, model_name str)
+    - task="summary" → v3_summary (LoRA)
+    - task="qa" → base model (LoRA 없음)
+    - task="generate" → v3_generate (LoRA)
+    - 기타 → base model
+    """
+    import os
+    import httpx
+    from openai import AsyncOpenAI
+
+    vllm_base = os.getenv("VLLM_BASE_URL", "http://localhost:8000/v1")
+    vllm_api_key = os.getenv("VLLM_API_KEY", "EMPTY")
+    vllm_model = os.getenv("VLLM_MODEL", "kakaocorp/kanana-1.5-8b-instruct-2505")
+    use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
+
+    LORA_MAP = {"summary": "v3_summary", "generate": "v3_generate"}
+    model = LORA_MAP.get(task, vllm_model) if use_lora else vllm_model
+
+    client = AsyncOpenAI(
+        api_key=vllm_api_key, base_url=vllm_base,
+        timeout=httpx.Timeout(60.0, connect=15.0), max_retries=0,
+    )
+    return client, model
+
+
+async def _update_summary_db(db, document_id: int, response_text: str):
+    """요약 결과 파싱 → DB 업데이트"""
+    try:
+        from ai.agents.document._summary import parse_summary_output
+        from app.models.document import Document
+
+        parsed = parse_summary_output(response_text)
+        if not parsed["tags"]:
+            return
+        result = await db.execute(select(Document).where(Document.id == document_id))
+        doc = result.scalar_one_or_none()
+        if doc:
+            doc.summary = parsed["summary"]
+            doc.tags = parsed["tags"]
+            await db.commit()
+            logger.info("[Chat] doc_summary DB 업데이트 완료: document_id=%s", document_id)
+    except Exception as e:
+        logger.warning("[Chat] doc_summary DB 업데이트 실패: %s", e)
+
+
+async def _stream_regulation(text: str, user_id: int) -> dict | None:
+    """규정 연결 → 결과 반환 (있으면)"""
+    try:
+        from ai.agents.regulation_validator import check_content_regulations
+        result = await check_content_regulations(text, user_id=user_id)
+        return result if result.get("notes") else None
+    except Exception as e:
+        logger.warning("[Chat] 규정 연결 실패 (비차단): %s", e)
+        return None
+
+
+def _filter_sources(sources: list, response_text: str) -> list:
+    """LLM 답변에 실제 언급된 소스만 필터링"""
+    if not sources or not response_text:
+        return sources
+    # "관련 문서 없음" 판단
+    if "찾지 못했습니다" in response_text or "관련 문서가 없" in response_text:
+        return []
+    filtered = []
+    for src in sources:
+        title = src.get("title", "")
+        keywords = [w for w in title.replace("_", " ").split() if len(w) >= 3]
+        if not keywords:
+            continue
+        match = sum(1 for kw in keywords if kw in response_text)
+        if match >= max(len(keywords) // 2, 1):
+            filtered.append(src)
+    return filtered if filtered else sources  # 전부 필터되면 원본 유지
+
+
 def _build_initial_state(request: ChatRequest, user, stream_mode: bool = False) -> dict:
     """AgentState 필드 초기화"""
     return {
@@ -49,6 +130,7 @@ def _build_initial_state(request: ChatRequest, user, stream_mode: bool = False) 
         "intent_candidates": None,
         "sub_queries": None,
         "sub_responses": None,
+        "force_intent": request.force_intent,
     }
 
 
@@ -604,87 +686,23 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             yield f"data: {json.dumps({'type': 'token', 'value': msg}, ensure_ascii=False)}\n\n"
 
                         if agent_response.get("stream_pending"):
-                            # RAG 검색은 완료, LLM 답변만 스트리밍
-                            import os as _os2
-                            from openai import AsyncOpenAI as _AsyncOpenAI2
+                            # ── StreamRequest 프로토콜: agent가 준비한 설정대로 vLLM 스트리밍 ──
+                            cfg = agent_response.get("llm_config", {})
+                            post = agent_response.get("post_stream", {})
 
-                            # sLLM 모드 판별
-                            _doc_mode = _os2.getenv("DOC_AGENT_MODE", "api")
-                            _doc_sllm_tasks = _os2.getenv("DOC_SLLM_TASKS", "generate").split(",")
-                            _doc_resp_type = agent_response.get("type", "")
-                            _doc_sub_type = agent_response.get("sub_type", "")
-                            # doc_retrieve 통합 타입: sub_type으로 태스크 결정
-                            if _doc_sub_type:
-                                _doc_task = _doc_sub_type  # "summary" | "qa" | "search"
-                            elif _doc_resp_type == "doc_summary":
-                                _doc_task = "summary"
-                            elif _doc_resp_type == "doc_search":
-                                _doc_task = "search"
-                            else:
-                                _doc_task = "qa"
-                            _use_sllm = _doc_mode == "sllm" and _doc_task in _doc_sllm_tasks
+                            doc_client, _stream_model = _get_vllm_client(cfg.get("task", "qa"))
+                            logger.info("[Chat] document_agent 스트리밍: model=%s, task=%s", _stream_model, cfg.get("task"))
 
-                            import httpx as _httpx_d
-
-                            if _use_sllm:
-                                # sLLM: vLLM OpenAI 호환 서버로 스트리밍
-                                vllm_base = _os2.getenv("VLLM_BASE_URL", "http://localhost:8000/v1")
-                                vllm_api_key = _os2.getenv("VLLM_API_KEY", "EMPTY")
-                                vllm_model = _os2.getenv("VLLM_MODEL", "kakaocorp/kanana-1.5-8b-instruct-2505")
-                                _use_lora = _os2.getenv("VLLM_USE_LORA", "false").lower() == "true"
-                                if _use_lora:
-                                    vllm_model = f"v2_{_doc_task}"
-                                doc_client = _AsyncOpenAI2(
-                                    api_key=vllm_api_key,
-                                    base_url=vllm_base,
-                                    timeout=_httpx_d.Timeout(60.0, connect=15.0),
-                                )
-                                _stream_model = vllm_model
-                                logger.info("[Chat] document_agent sLLM 스트리밍: model=%s, base_url=%s", vllm_model, vllm_base)
-                            else:
-                                # API 모드: 기존 OpenAI
-                                openai_key = _os2.getenv("OPENAI_API_KEY")
-                                if not openai_key:
-                                    yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
-                                    continue
-                                openai_base = _os2.getenv("LLM_BASE_URL") or None
-                                doc_client = _AsyncOpenAI2(api_key=openai_key, base_url=openai_base) if openai_base else _AsyncOpenAI2(api_key=openai_key)
-                                _stream_model = _os2.getenv("OPENAI_MODEL", "gpt-4o-mini")
-
-                            # sLLM 호출 시도 → 실패하면 API fallback
-                            try:
-                                doc_stream = await doc_client.chat.completions.create(
-                                    model=_stream_model,
-                                    messages=[
-                                        {"role": "system", "content": agent_response["sys_prompt"]},
-                                        {"role": "user", "content": agent_response["user_prompt"]},
-                                    ],
-                                    temperature=0.1,
-                                    max_tokens=1024,
-                                    stream=True,
-                                )
-                            except Exception as _doc_sllm_err:
-                                if _use_sllm:
-                                    logger.warning("[Chat] document_agent sLLM 실패, API fallback: %s", _doc_sllm_err)
-                                    openai_key = _os2.getenv("OPENAI_API_KEY")
-                                    if not openai_key:
-                                        yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
-                                        continue
-                                    openai_base = _os2.getenv("LLM_BASE_URL") or None
-                                    doc_client = _AsyncOpenAI2(api_key=openai_key, base_url=openai_base) if openai_base else _AsyncOpenAI2(api_key=openai_key)
-                                    _stream_model = _os2.getenv("OPENAI_MODEL", "gpt-4o-mini") + " (fallback)"
-                                    doc_stream = await doc_client.chat.completions.create(
-                                        model=_os2.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-                                        messages=[
-                                            {"role": "system", "content": agent_response["sys_prompt"]},
-                                            {"role": "user", "content": agent_response["user_prompt"]},
-                                        ],
-                                        temperature=0.1,
-                                        max_tokens=1024,
-                                        stream=True,
-                                    )
-                                else:
-                                    raise
+                            doc_stream = await doc_client.chat.completions.create(
+                                model=_stream_model,
+                                messages=[
+                                    {"role": "system", "content": cfg["sys_prompt"]},
+                                    {"role": "user", "content": cfg["user_prompt"]},
+                                ],
+                                temperature=cfg.get("temperature", 0.1),
+                                max_tokens=cfg.get("max_tokens", 1024),
+                                stream=True,
+                            )
 
                             full_doc_response = ""
                             async for chunk in doc_stream:
@@ -693,76 +711,28 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                     full_doc_response += token
                                     yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
 
-                            # 최종 응답 업데이트
+                            # 응답 채우기
                             agent_response["message"] = full_doc_response
                             agent_response["answer"] = full_doc_response
                             agent_response["model_name"] = _stream_model
-                            # LLM이 "관련 문서 없음"으로 판단하면 출처도 비우기
-                            if "찾지 못했습니다" in full_doc_response or "관련 문서가 없" in full_doc_response:
-                                agent_response["sources"] = []
-                            elif agent_response.get("sources"):
-                                # LLM 답변에 실제 언급된 출처만 남기기
-                                # 출처 제목의 고유 키워드(3글자 이상)가 답변에 포함되는지 확인
-                                filtered_sources = []
-                                for src in agent_response["sources"]:
-                                    title = src.get("title", "")
-                                    # 3글자 이상 키워드만 추출 (공통 단어 배제)
-                                    title_keywords = [w for w in title.replace("_", " ").split() if len(w) >= 3]
-                                    if not title_keywords:
-                                        continue
-                                    match_count = sum(1 for kw in title_keywords if kw in full_doc_response)
-                                    # 키워드 절반 이상 매칭
-                                    if match_count >= max(len(title_keywords) // 2, 1):
-                                        filtered_sources.append(src)
-                                if filtered_sources:
-                                    agent_response["sources"] = filtered_sources
-                            # doc_summary 스트리밍 완료 후 DB 업데이트
-                            _doc_id_for_update = agent_response.get("document_id")
-                            if agent_response.get("sub_type") == "summary" and _doc_id_for_update and "태그:" in full_doc_response:
-                                try:
-                                    from ai.agents.document_agent import parse_summary_output
-                                    from app.models.document import Document as _DocModel
-                                    _parsed = parse_summary_output(full_doc_response)
-                                    if _parsed["tags"]:
-                                        _doc_result = await db.execute(select(_DocModel).where(_DocModel.id == _doc_id_for_update))
-                                        _doc_obj = _doc_result.scalar_one_or_none()
-                                        if _doc_obj:
-                                            _doc_obj.summary = _parsed["summary"]
-                                            _doc_obj.tags = _parsed["tags"]
-                                            await db.commit()
-                                            logger.info("[Chat] doc_summary DB 업데이트 완료: document_id=%s", _doc_id_for_update)
-                                except Exception as _db_err:
-                                    logger.warning("[Chat] doc_summary DB 업데이트 실패: %s", _db_err)
 
-                            # ── 스트리밍 doc_retrieve(QA/summary) 규정 연결 ──
-                            _doc_sub_type_reg = agent_response.get("sub_type", "")
-                            if (
-                                _doc_sub_type_reg in ("qa", "summary")
-                                and full_doc_response
-                                and len(full_doc_response) > 50
-                            ):
-                                try:
-                                    from ai.agents.regulation_validator import check_content_regulations
-                                    yield f"data: {json.dumps({'type': 'status', 'value': '규정 연관성 확인 중...'}, ensure_ascii=False)}\n\n"
+                            # post_stream 처리
+                            if post.get("update_summary_db"):
+                                await _update_summary_db(db, post["update_summary_db"], full_doc_response)
+                            if post.get("check_regulation") and full_doc_response and len(full_doc_response) > 50:
+                                yield f"data: {json.dumps({'type': 'status', 'value': '규정 연관성 확인 중...'}, ensure_ascii=False)}\n\n"
+                                reg = await _stream_regulation(full_doc_response, user.id)
+                                if reg:
+                                    agent_response["regulation_check"] = reg
+                                    yield f"data: {json.dumps({'type': 'token', 'value': reg['summary']}, ensure_ascii=False)}\n\n"
+                                    agent_response["message"] = full_doc_response + reg["summary"]
+                                    agent_response["answer"] = full_doc_response + reg["summary"]
+                            if post.get("filter_sources"):
+                                agent_response["sources"] = _filter_sources(agent_response.get("sources", []), full_doc_response)
 
-                                    _reg_result = await check_content_regulations(
-                                        full_doc_response, user_id=user.id
-                                    )
-                                    if _reg_result.get("notes"):
-                                        _reg_summary = _reg_result["summary"]
-                                        # 규정 노트를 토큰으로 스트리밍
-                                        yield f"data: {json.dumps({'type': 'token', 'value': _reg_summary}, ensure_ascii=False)}\n\n"
-                                        agent_response["regulation_check"] = _reg_result
-                                        agent_response["message"] = full_doc_response + _reg_summary
-                                        agent_response["answer"] = full_doc_response + _reg_summary
-                                        logger.info("[Chat] doc_retrieve 규정 연결: %d건", len(_reg_result["notes"]))
-                                except Exception as _reg_err:
-                                    logger.warning("[Chat] doc_retrieve 규정 연결 실패 (비차단): %s", _reg_err)
-
-                            agent_response.pop("stream_pending", None)
-                            agent_response.pop("sys_prompt", None)
-                            agent_response.pop("user_prompt", None)
-                            agent_response.pop("document_id", None)
+                            # cleanup
+                            for k in ("stream_pending", "llm_config", "post_stream"):
+                                agent_response.pop(k, None)
                             final_state["agent_response"] = agent_response
                         elif agent_response.get("type") in ("doc_pick", "template_pick"):
                             # 선택지 응답 → final_state에 저장하여 format_response에서 전달

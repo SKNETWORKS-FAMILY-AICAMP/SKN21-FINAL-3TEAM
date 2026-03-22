@@ -49,8 +49,11 @@ async def _handle_doc_search(query: str, context: List[str], user_id: int = None
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_search | query='{query[:50]}', stream_mode={stream_mode}")
 
-    # 1. 공통 RAG 검색
-    search_results, context, sources = await _retrieve_context(query, user_id, user_team, top_k=7)
+    # 1. 공통 RAG 검색 (reranker + score_threshold 적용)
+    search_results, context, sources = await _retrieve_context(
+        query, user_id, user_team,
+        top_k=10, use_reranker=True, score_threshold=0.1,
+    )
 
     # 2. 검색 실패
     if not sources:

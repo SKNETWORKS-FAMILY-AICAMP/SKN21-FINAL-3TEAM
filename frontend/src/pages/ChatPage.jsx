@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
-import { MessageSquarePlus, Menu, CheckCircle, XCircle, AlertTriangle, HelpCircle, ShieldCheck, FileText } from 'lucide-react';
+import { MessageSquarePlus, Menu, CheckCircle, XCircle, AlertTriangle, HelpCircle, ShieldCheck, FileText, Search, MessageCircle } from 'lucide-react';
 import ChatWindow from '../components/chat/ChatWindow';
 import MessageBubble from '../components/chat/MessageBubble';
 import StreamingMessage from '../components/chat/StreamingMessage';
@@ -67,7 +67,7 @@ const RESULT_BADGE = {
   no_regulation: { icon: HelpCircle, bg: 'bg-surface-sub', border: 'border-neutral-border', text: 'text-neutral-sub', iconColor: 'text-neutral-muted' },
 };
 
-function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], index = -1) {
+function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], index = -1, isLastAndStreaming = false) {
   const { resultIntent, agentResponse, content } = msg;
   const data = agentResponse || {};
 
@@ -123,6 +123,8 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
 
       // sub_type=summary → 요약 카드
       if (subType === 'summary' || tags.length > 0) {
+        // 태그 중 첫 번째를 문맥 키워드로 활용
+        const topicHint = tags[0] || '';
         return (
           <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
             <div className="px-4 py-3 border-b border-neutral-divider flex items-center gap-2 font-bold text-sm text-primary-700">
@@ -147,6 +149,23 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                 </div>
               )}
             </div>
+            {/* 후속 액션 버튼 (스트리밍 중 숨김) */}
+            {!isLastAndStreaming && (
+              <div className="px-4 py-2.5 border-t border-neutral-divider flex flex-wrap gap-2">
+                <button
+                  onClick={() => onSelectClarify?.(topicHint ? `${topicHint} 관련해서 질문할게` : '이 문서 내용에 대해 질문할게', { forceIntent: 'doc_retrieve:qa', documentId: data.document_id })}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 transition"
+                >
+                  <MessageCircle size={12} /> 이 문서에 질문하기
+                </button>
+                <button
+                  onClick={() => onSelectClarify?.(topicHint ? `${topicHint} 관련 문서 더 찾아줘` : '관련 문서 더 찾아줘', { forceIntent: 'doc_retrieve:search' })}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border border-neutral-border bg-surface-hover text-neutral-sub hover:bg-neutral-100 transition"
+                >
+                  <Search size={12} /> 관련 문서 더 찾기
+                </button>
+              </div>
+            )}
           </div>
         );
       }
@@ -154,6 +173,8 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       // sub_type=qa → QA 카드 (citations + confidence)
       if (subType === 'qa' || citations.length > 0 || qaConfidence !== null) {
         const confColor = qaConfidence >= 0.7 ? { bar: 'bg-green-500', text: 'text-green-600' } : qaConfidence >= 0.4 ? { bar: 'bg-yellow-500', text: 'text-yellow-600' } : { bar: 'bg-red-500', text: 'text-red-600' };
+        // 첫 번째 출처 문서 제목 (후속 액션 문맥용)
+        const firstSourceTitle = sources[0]?.title || '';
         return (
           <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
             <div className="px-4 py-3 border-b border-neutral-divider flex items-center justify-between">
@@ -197,29 +218,71 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                 </div>
               )}
             </div>
+            {/* 후속 액션 버튼 (스트리밍 중 숨김) */}
+            {!isLastAndStreaming && (
+              <div className="px-4 py-2.5 border-t border-neutral-divider flex flex-wrap gap-2">
+                {firstSourceTitle && (
+                  <button
+                    onClick={() => onSelectClarify?.(`${firstSourceTitle} 요약해줘`, { forceIntent: 'doc_retrieve:summary', documentId: sources[0]?.document_id })}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 transition"
+                  >
+                    <FileText size={12} /> 출처 문서 요약
+                  </button>
+                )}
+                <button
+                  onClick={() => onSelectClarify?.('관련 문서 더 찾아줘', { forceIntent: 'doc_retrieve:search' })}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border border-neutral-border bg-surface-hover text-neutral-sub hover:bg-neutral-100 transition"
+                >
+                  <Search size={12} /> 관련 문서 더 찾기
+                </button>
+              </div>
+            )}
           </div>
         );
       }
 
       // 기본: 검색 카드
-      return (
-        <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
-          <div className="px-4 py-3 border-b border-neutral-divider flex items-center gap-2 font-bold text-sm text-primary-700">
-            문서 검색 결과
-          </div>
-          <div className="p-4">
-            {content && <div className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5"><MarkdownText>{content}</MarkdownText></div>}
-            {sources.length > 0 && (
-              <div>
-                <div className="text-xs font-semibold text-neutral-sub mb-2">출처 ({sources.length}건)</div>
-                {sources.map((s, idx) => (
-                  <SourceItem key={idx} source={s} index={idx} onSelect={onSelectDoc} />
-                ))}
+      {
+        const firstSourceTitle = sources[0]?.title || '';
+        return (
+          <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
+            <div className="px-4 py-3 border-b border-neutral-divider flex items-center gap-2 font-bold text-sm text-primary-700">
+              <Search size={16} />
+              문서 검색 결과
+            </div>
+            <div className="p-4">
+              {content && <div className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5"><MarkdownText>{content}</MarkdownText></div>}
+              {sources.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-neutral-sub mb-2">출처 ({sources.length}건)</div>
+                  {sources.map((s, idx) => (
+                    <SourceItem key={idx} source={s} index={idx} onSelect={onSelectDoc} />
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* 후속 액션 버튼 (스트리밍 중 숨김) */}
+            {sources.length > 0 && !isLastAndStreaming && (
+              <div className="px-4 py-2.5 border-t border-neutral-divider flex flex-wrap gap-2">
+                {firstSourceTitle && (
+                  <button
+                    onClick={() => onSelectClarify?.(`${firstSourceTitle} 요약해줘`, { forceIntent: 'doc_retrieve:summary', documentId: sources[0]?.document_id })}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 transition"
+                  >
+                    <FileText size={12} /> 요약해줘
+                  </button>
+                )}
+                <button
+                  onClick={() => onSelectClarify?.(firstSourceTitle ? `${firstSourceTitle} 내용 자세히 알려줘` : '검색 결과에 대해 자세히 알려줘', { forceIntent: 'doc_retrieve:qa', documentId: sources[0]?.document_id })}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 transition"
+                >
+                  <MessageCircle size={12} /> 질문하기
+                </button>
               </div>
             )}
           </div>
-        </div>
-      );
+        );
+      }
     }
 
     case 'doc_generate': {
@@ -487,13 +550,23 @@ export default function ChatPage() {
       .catch((err) => console.warn('[ChatPage] 문서 로드 실패:', err));
   }, [docPickerOpen]);
 
-  const handleSend = async (text, files = []) => {
+  const handleSend = async (text, filesOrOptions = []) => {
     const storeState = useChatStore.getState();
     if (storeState.isStreaming) return; // 전송/업로드 중복 방지
 
     setLastError(null);
     setLastInput(text);
 
+    // 후속 액션 버튼에서 options 객체로 호출된 경우
+    // { forceIntent: "doc_retrieve:qa", documentId: 42, documentName: "출장비 규정" }
+    if (filesOrOptions && !Array.isArray(filesOrOptions) && typeof filesOrOptions === 'object') {
+      const options = filesOrOptions;
+      sendMessage(text, options);
+      return;
+    }
+
+    // 파일 업로드 처리
+    const files = filesOrOptions;
     if (files && files.length > 0) {
       const storeState = useChatStore.getState();
       storeState.setStreaming(true);
@@ -718,7 +791,7 @@ export default function ChatPage() {
               if (msg.agentResponse && msg.resultIntent) {
                 return (
                   <MessageBubble key={i} type="bot" intent={msg.resultIntent || msg.intent} modelName={msg.agentResponse?.model_name}>
-                    {renderCardMessage(msg, handleSend, setDocViewDoc, messages, i)}
+                    {renderCardMessage(msg, handleSend, setDocViewDoc, messages, i, isStreaming && i === messages.length - 1)}
                   </MessageBubble>
                 );
               }
