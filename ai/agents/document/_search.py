@@ -49,10 +49,10 @@ async def _handle_doc_search(query: str, context: List[str], user_id: int = None
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_search | query='{query[:50]}', stream_mode={stream_mode}")
 
-    # 1. 공통 RAG 검색 (reranker + score_threshold 적용)
+    # 1. 공통 RAG 검색 (reranker 비활성화 — EC2 메모리 부족)
     search_results, context, sources = await _retrieve_context(
         query, user_id, user_team,
-        top_k=10, use_reranker=True, score_threshold=0.1,
+        top_k=10, use_reranker=False, score_threshold=0.1,
     )
 
     # 2. 검색 실패
