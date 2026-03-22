@@ -588,18 +588,21 @@ export default function ChatPage() {
 
   const handleSend = async (text, filesOrOptions = []) => {
     const storeState = useChatStore.getState();
-    if (storeState.isStreaming) return; // 전송/업로드 중복 방지
 
-    setLastError(null);
-    setLastInput(text);
-
-    // 후속 액션 버튼에서 options 객체로 호출된 경우
-    // { forceIntent: "doc_retrieve:qa", documentId: 42, documentName: "출장비 규정" }
+    // 후속 액션 버튼에서 options 객체로 호출된 경우 (forceIntent 포함)
+    // isStreaming 체크를 건너뜀 — doc_pick, 액션 버튼은 스트리밍 중에도 허용
     if (filesOrOptions && !Array.isArray(filesOrOptions) && typeof filesOrOptions === 'object') {
       const options = filesOrOptions;
+      setLastError(null);
+      setLastInput(text);
       sendMessage(text, options);
       return;
     }
+
+    if (storeState.isStreaming) return; // 일반 전송 중복 방지
+
+    setLastError(null);
+    setLastInput(text);
 
     // 파일 업로드 처리
     const files = filesOrOptions;
