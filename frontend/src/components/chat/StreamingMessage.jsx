@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react';
 import { Wand2, Scale, FileSearch, CalendarDays, MessageCircle } from 'lucide-react';
 
 const INTENT_CONFIG = {
@@ -13,13 +14,29 @@ export default function StreamingMessage({ text, status, intent = 'general', isI
   const config = INTENT_CONFIG[intent] || { icon: Wand2, color: 'bg-primary-600' };
   const Icon = config.icon;
   const trimmedText = (text || '').trimEnd();
+  const containerRef = useRef(null);
+
+  // 새 토큰이 추가될 때 스크롤 유지
+  useEffect(() => {
+    if (containerRef.current) {
+      const el = containerRef.current;
+      const parent = el.closest('[data-testid="chat-messages"]') || el.parentElement?.parentElement?.parentElement;
+      if (parent) {
+        parent.scrollTop = parent.scrollHeight;
+      }
+    }
+  }, [trimmedText]);
 
   const content = (
     <>
       {trimmedText ? (
-        <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main shadow-sm relative leading-relaxed whitespace-pre-wrap">
-          {trimmedText}
-          <span className="inline-block w-1.5 h-3.5 bg-primary-400 ml-1.5 animate-pulse rounded-full align-middle" />
+        <div
+          ref={containerRef}
+          className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main shadow-sm relative leading-relaxed"
+          style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}
+        >
+          <span className="streaming-text">{trimmedText}</span>
+          <span className="inline-block w-1.5 h-3.5 bg-primary-400 ml-0.5 animate-pulse rounded-full align-middle" />
         </div>
       ) : (
         <div className="flex items-center gap-3 py-3.5 px-4 bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm">
@@ -34,7 +51,6 @@ export default function StreamingMessage({ text, status, intent = 'general', isI
     </>
   );
 
-  // MessageBubble 안에 렌더링될 때는 아이콘 없이 콘텐츠만 반환
   if (isInsideBubble) {
     return <div className="max-w-full">{content}</div>;
   }

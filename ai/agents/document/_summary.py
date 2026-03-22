@@ -222,7 +222,7 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
                 "sys_prompt": sys_prompt,
                 "user_prompt": user_prompt,
                 "temperature": 0.1,
-                "max_tokens": 1024,
+                "max_tokens": 2048,
                 "task": "summary",
             },
             "post_stream": {
