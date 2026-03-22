@@ -202,12 +202,15 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
 
       // sub_type=qa → QA 카드
       if (subType === 'qa' || citations.length > 0 || qaConfidence !== null) {
-        const confColor = qaConfidence >= 0.7 ? { bar: 'bg-green-500', text: 'text-green-600', label: '높음' } : qaConfidence >= 0.4 ? { bar: 'bg-yellow-500', text: 'text-yellow-600', label: '보통' } : { bar: 'bg-red-500', text: 'text-red-600', label: '낮음' };
+        const confColor = qaConfidence >= 0.7 ? { bar: 'bg-green-500', text: 'text-green-600', label: '높음', hint: '문서 기반 답변입니다' } : qaConfidence >= 0.4 ? { bar: 'bg-yellow-500', text: 'text-yellow-600', label: '보통', hint: '관련 문서를 참고했지만 정확하지 않을 수 있습니다' } : { bar: 'bg-red-500', text: 'text-red-600', label: '낮음', hint: '관련도가 낮은 문서를 참고했습니다. 다시 질문해보세요' };
         const firstSourceTitle = sources[0]?.title || '';
         return (
           <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
             <div className="px-4 py-3 border-b border-neutral-divider flex items-center justify-between">
-              <div className="flex items-center gap-2 font-bold text-sm text-primary-700">문서 Q&A</div>
+              <div className="flex items-center gap-2 font-bold text-sm text-primary-700">
+                <MessageCircle size={16} />
+                문서 Q&A
+              </div>
               <div className="flex items-center gap-2">
                 {qaConfidence !== null && (
                   <div className="flex items-center gap-1.5" title={`문서 기반 신뢰도 (${confColor.label})`}>
@@ -224,6 +227,9 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
               </div>
             </div>
             <div className="p-4">
+              {/* 개선6: 신뢰도 문장형 안내 + 개선2: 검색→QA 맥락 연결 */}
+              {sources.length > 0 && <p className="text-[0.6875rem] text-neutral-muted mb-1">검색된 문서를 바탕으로 답변합니다.</p>}
+              {qaConfidence !== null && <p className={`text-[0.6875rem] ${confColor.text} mb-2`}>{confColor.hint}</p>}
               {(content || data.answer) && <div className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5"><MarkdownText>{content || data.answer}</MarkdownText></div>}
               {citations.length > 0 && (
                 <div className="mb-3">
@@ -281,24 +287,31 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
               )}
             </div>
             <div className="p-4">
+              {/* 개선1: 검색 모드 안내 */}
+              <p className="text-[0.6875rem] text-neutral-muted mb-2">문서 목록을 검색했습니다. 내용이 궁금하면 아래에서 질문하기를 눌러보세요.</p>
               {(content || data.answer || data.message) && <div className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5"><MarkdownText>{content || data.answer || data.message}</MarkdownText></div>}
+              {/* 개선5: 개별 문서 액션 버튼 */}
               {sources.length > 0 && (
                 <div>
                   <div className="text-xs font-semibold text-neutral-sub mb-2">출처 ({sources.length}건)</div>
                   {sources.map((s, idx) => (
-                    <SourceItem key={idx} source={s} index={idx} onSelect={onSelectDoc} />
+                    <div key={idx} className="mb-2">
+                      <SourceItem source={s} index={idx} onSelect={onSelectDoc} />
+                      {!isLastAndStreaming && (
+                        <div className="flex gap-1.5 mt-1 ml-4">
+                          <button onClick={() => onSelectClarify?.(`${s.title || '문서'} 요약해줘`, { forceIntent: 'doc_retrieve:summary', documentId: s.document_id })}
+                            className="text-[0.625rem] px-2 py-0.5 rounded-full border border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 transition">요약</button>
+                          <button onClick={() => onSelectClarify?.(`${s.title || '문서'} 내용 자세히 알려줘`, { forceIntent: 'doc_retrieve:qa', documentId: s.document_id })}
+                            className="text-[0.625rem] px-2 py-0.5 rounded-full border border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 transition">질문하기</button>
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
             </div>
             {!isLastAndStreaming && (
               <div className="px-4 py-2.5 border-t border-neutral-divider flex flex-wrap gap-2">
-                {firstSourceTitle && (
-                  <ActionBtn icon={FileText} label="요약해줘" primary
-                    onClick={() => onSelectClarify?.(`${firstSourceTitle} 요약해줘`, { forceIntent: 'doc_retrieve:summary', documentId: sources[0]?.document_id })} />
-                )}
-                <ActionBtn icon={MessageCircle} label="질문하기" primary
-                  onClick={() => onSelectClarify?.(firstSourceTitle ? `${firstSourceTitle} 내용 자세히 알려줘` : '검색 결과에 대해 자세히 알려줘', { forceIntent: 'doc_retrieve:qa', documentId: sources[0]?.document_id })} />
                 <ActionBtn icon={PenTool} label="보고서 작성"
                   onClick={() => onSelectClarify?.(`${firstSourceTitle || '검색 결과'} 기반으로 보고서 작성해줘`, { forceIntent: 'doc_generate' })} />
               </div>

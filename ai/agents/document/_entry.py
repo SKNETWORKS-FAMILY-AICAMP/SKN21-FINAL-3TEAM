@@ -9,7 +9,7 @@ from ai.agents.document._generate import (
     _handle_doc_generate,
     _llm_detect_template_type,
 )
-from ai.agents.document._search import _handle_doc_search, _is_pure_search
+from ai.agents.document._search import _handle_doc_search, _needs_llm_answer
 from ai.agents.document._qa import _handle_doc_qa
 from ai.agents.document._summary import _handle_doc_summary
 # from ai.agents.document._risk import _handle_risk_detect  # 비활성화 (2026-03-22)
@@ -71,7 +71,7 @@ async def document_agent(state: AgentState) -> AgentState:
                         document_content=document_content,
                     )
             else:
-                # 기존 regex 기반 라우팅
+                # ── regex + RAG 점수 혼합 라우팅 ──
                 # 1) 요약 판별: 문서 내용/ID 있거나, 요약 키워드 + 동사어미
                 _is_summary = bool(
                     document_content
@@ -92,19 +92,37 @@ async def document_agent(state: AgentState) -> AgentState:
                         stream_mode=stream_mode,
                         chat_history=chat_history,
                     )
-                elif _is_pure_search(user_input):
-                    _sub_type_hint = "search"
-                    print("[DocumentAgent] doc_retrieve → search 경로")
-                    response_data = await _handle_doc_search(user_input, context, user_id, user_team=user_team, stream_mode=stream_mode)
                 else:
-                    _sub_type_hint = "qa"
-                    print("[DocumentAgent] doc_retrieve → QA 경로")
-                    response_data = await _handle_doc_qa(
-                        user_input, context, user_id=user_id,
-                        user_team=user_team, stream_mode=stream_mode,
-                        chat_history=chat_history,
-                        document_content=document_content,
+                    # 2) 항상 RAG 검색 먼저 (search/QA 공통)
+                    from ai.agents.document._common import _retrieve_context
+                    search_results, rag_context, sources, rag_status = await _retrieve_context(
+                        user_input, user_id, user_team,
+                        top_k=10, use_reranker=False, score_threshold=0.1,
                     )
+                    top_score = max((r.get("score", 0) for r in search_results), default=0) if search_results else 0
+                    print(f"[DocumentAgent] RAG 선검색 완료: {len(sources)}건, top_score={top_score:.2f}")
+
+                    # 3) QA 판별: 의문형 패턴 + RAG 점수 충분할 때만 QA
+                    if _needs_llm_answer(user_input) and top_score > 0.5:
+                        _sub_type_hint = "qa"
+                        print(f"[DocumentAgent] doc_retrieve → QA 경로 (의문형 + score={top_score:.2f})")
+                        response_data = await _handle_doc_qa(
+                            user_input, rag_context, user_id=user_id,
+                            user_team=user_team, stream_mode=stream_mode,
+                            chat_history=chat_history,
+                            document_content=document_content,
+                            pre_sources=sources,
+                            pre_top_score=top_score,
+                        )
+                    else:
+                        # 4) 기본값: search (빠른 검색 카드 반환)
+                        _sub_type_hint = "search"
+                        reason = "기본값" if not _needs_llm_answer(user_input) else f"score 부족({top_score:.2f})"
+                        print(f"[DocumentAgent] doc_retrieve → search 경로 ({reason})")
+                        response_data = await _handle_doc_search(
+                            user_input, rag_context, user_id, user_team=user_team,
+                            pre_fetched=(search_results, rag_context, sources, rag_status),
+                        )
 
         elif intent == "doc_generate":
             # template_type 결정: ① state에서 프론트가 보낸 값 ② LLM 판단 ③ 키워드 fallback
@@ -130,7 +148,11 @@ async def document_agent(state: AgentState) -> AgentState:
         print(f"[DocumentAgent] !!! 에러 발생: {e}")
         import traceback
         traceback.print_exc()
-        response_data = {"error": str(e)}
+        response_data = {
+            "type": "doc_retrieve",
+            "message": "문서 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+            "error": str(e),
+        }
 
     print(f"[DocumentAgent] 완료 ({time.time()-_t_agent:.2f}s) | response type={response_data.get('type')}, keys={list(response_data.keys())}")
 
