@@ -1,11 +1,10 @@
 """문서 생성 파이프라인"""
 import json
-import os
 import re
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from ai.agents.document._common import (
     GENERATED_DOCS_DIR,
@@ -19,6 +18,13 @@ DOC_TYPE_NAMES = {
     "meeting_minutes": "회의록",
     "report": "보고서",
     "proposal": "제안서",
+}
+
+# ── 시스템 양식 필드 라벨 (template_pick 카드 UI용) ──
+_SYSTEM_FIELD_LABELS = {
+    "meeting_minutes": ["제목", "날짜", "참석자", "내용"],
+    "report": ["제목", "날짜", "작성자", "업무내용", "향후계획"],
+    "proposal": ["제목", "목적", "배경", "제안내용", "기대효과"],
 }
 
 # ── 정규화 공통 키 ──
@@ -140,11 +146,14 @@ async def _query_custom_templates(category: str) -> list:
         items = []
         for t in templates:
             field_count = 0
+            field_labels = []
             if t.parsed_structure:
                 try:
                     ps = json.loads(t.parsed_structure)
                     fields = ps.get("fields", ps) if isinstance(ps, dict) else ps
-                    field_count = len(fields) if isinstance(fields, list) else 0
+                    if isinstance(fields, list):
+                        field_count = len(fields)
+                        field_labels = [f.get("label", f.get("key", "")) for f in fields[:8]]
                 except Exception:
                     pass
             items.append({
@@ -152,6 +161,8 @@ async def _query_custom_templates(category: str) -> list:
                 "name": t.name,
                 "is_system": False,
                 "field_count": field_count,
+                "field_labels": field_labels,
+                "description": t.description or "",
             })
         return items
     except Exception as e:
@@ -178,6 +189,33 @@ async def _get_system_template_id(category: str) -> int | None:
         return row
     except Exception as e:
         print(f"[DocumentAgent] 시스템 템플릿 ID 조회 실패: {e}")
+        return None
+
+
+async def _get_template_info(template_id: int) -> dict | None:
+    """DB에서 template의 이름 + 필드 라벨 목록 조회 (동적 clarify용)"""
+    try:
+        from sqlalchemy import select
+        from app.db.session import async_session
+        from app.models.document_template import DocumentTemplate
+
+        async with async_session() as session:
+            result = await session.execute(
+                select(DocumentTemplate).where(DocumentTemplate.id == template_id)
+            )
+            tpl = result.scalar_one_or_none()
+        if not tpl:
+            return None
+        fields = []
+        if tpl.parsed_structure:
+            ps = json.loads(tpl.parsed_structure)
+            fields = ps.get("fields", ps) if isinstance(ps, dict) else ps
+        return {
+            "name": tpl.name,
+            "is_system": tpl.is_system,
+            "field_labels": [f.get("label", f.get("key", "")) for f in (fields if isinstance(fields, list) else [])[:8]],
+        }
+    except Exception:
         return None
 
 
@@ -369,8 +407,48 @@ async def _handle_doc_generate(user_input: str, template_type: str, document_con
     if document_content:
         user_input = f"{user_input}\n\n[첨부 문서 내용]\n{document_content}"
 
-    # 내용 부족 시 대화형 안내 (template_id 있으면 스킵 — template_pick 선택 후 재전송)
-    if len(user_input.strip()) < 20 and not template_id:
+    # ── 1단계: template_pick (template_id 없고 커스텀 양식 있으면 선택지 먼저) ──
+    if not template_id and template_type in ("meeting_minutes", "report", "proposal"):
+        custom_templates = await _query_custom_templates(template_type)
+        if custom_templates:
+            type_label = DOC_TYPE_NAMES.get(template_type, template_type)
+            system_tpl_id = await _get_system_template_id(template_type)
+            system_field_counts = {"meeting_minutes": 4, "report": 5, "proposal": 5}
+            all_templates = [{
+                "template_id": system_tpl_id,
+                "name": f"기본 {type_label}",
+                "is_system": True,
+                "recommended": True,
+                "field_count": system_field_counts.get(template_type, 4),
+                "field_labels": _SYSTEM_FIELD_LABELS.get(template_type, []),
+                "description": "시스템 기본 양식",
+            }]
+            all_templates.extend(custom_templates)
+
+            return {
+                "type": "template_pick",
+                "message": f"{type_label} 양식을 선택해주세요:",
+                "templates": all_templates,
+                "template_type": template_type,
+            }
+
+    # ── 2단계: clarify (내용 부족 시 안내) ──
+    if len(user_input.strip()) < 20:
+        if template_id:
+            # template_id가 있으면 시스템/커스텀 구분하여 안내
+            tpl_info = await _get_template_info(template_id)
+            if tpl_info and not tpl_info["is_system"] and tpl_info["field_labels"]:
+                # 커스텀 양식: DB 필드로 동적 안내
+                fields_desc = ", ".join(tpl_info["field_labels"])
+                return {
+                    "type": "clarify",
+                    "message": (
+                        f"{tpl_info['name']}을 작성할게요. 아래 내용을 알려주세요:\n\n"
+                        f"- {fields_desc}\n\n"
+                        f"내용을 자유롭게 입력해주세요."
+                    ),
+                }
+        # 시스템 양식 또는 fallback
         guide = _GENERATE_GUIDE.get(template_type, _GENERATE_GUIDE["report"])
         return {
             "type": "clarify",
@@ -381,7 +459,7 @@ async def _handle_doc_generate(user_input: str, template_type: str, document_con
             ),
         }
 
-    # 커스텀 양식 (DB에 등록된 template_id)이 있으면 동적 필드로 생성
+    # ── 3단계: 생성 실행 ──
     if template_id:
         if stream_mode:
             return {
@@ -395,32 +473,9 @@ async def _handle_doc_generate(user_input: str, template_type: str, document_con
             }
         return await _generate_with_custom_template(user_input, template_id, template_type)
 
-    # 챗봇 요청: 커스텀 양식이 활성화되어 있으면 선택지 제공
-    # TODO: 커스텀 템플릿 기능 완성 시 아래 조건 제거
+    # template_id 없고 커스텀도 없으면 시스템 기본으로 바로 생성
     if template_type in ("meeting_minutes", "report", "proposal"):
-        custom_templates = await _query_custom_templates(template_type) if os.getenv("ENABLE_CUSTOM_TEMPLATES", "false") == "true" else []
-        type_label = DOC_TYPE_NAMES.get(template_type, template_type)
-
-        # 시스템 기본 템플릿 DB ID 조회
         system_tpl_id = await _get_system_template_id(template_type)
-        system_field_counts = {"meeting_minutes": 4, "report": 5, "proposal": 5}
-        all_templates = [{"template_id": system_tpl_id, "name": f"기본 {type_label}", "is_system": True, "field_count": system_field_counts.get(template_type, 4)}]
-        all_templates.extend(custom_templates)
-
-        if len(all_templates) >= 2:
-            # 2개 이상이면 선택지 제공
-            lines = [f"{type_label} 양식을 선택해주세요:"]
-            for i, tpl in enumerate(all_templates, 1):
-                suffix = " (시스템)" if tpl.get("is_system") else f" ({tpl.get('field_count', '?')}개 필드)"
-                lines.append(f"{i}. {tpl['name']}{suffix}")
-            return {
-                "type": "template_pick",
-                "message": "\n".join(lines),
-                "templates": all_templates,
-                "template_type": template_type,
-            }
-
-        # 1개(기본만)면 바로 생성 — system_tpl_id 전달
         if stream_mode:
             return {
                 "type": "doc_generate",
@@ -676,8 +731,7 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
             if val not in (None, "", []):
                 data[key] = val
 
-    # DOCX 생성: 시스템 빌더 → 범용 레이아웃 순으로 분기
-    # 커스텀 템플릿은 범용 레이아웃 사용 (원본 양식 레이아웃 보존이 불완전하므로)
+    # DOCX 생성: 시스템 빌더 → 범용 레이아웃 분기
     try:
         from ai.skills.create_from_template import create_generic_document
 

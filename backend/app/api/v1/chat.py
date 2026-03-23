@@ -733,10 +733,12 @@ async def get_session_messages(
         except json.JSONDecodeError:
             agent_response = {}
         content = agent_response.get("message") or agent_response.get("answer") or ""
+        # agent_response.type이 있으면 우선 사용 (template_pick, doc_pick, clarify 등)
+        result_intent = agent_response.get("type") or log.intent
         messages.append({
             "role": "assistant",
             "content": content,
-            "resultIntent": log.intent,
+            "resultIntent": result_intent,
             "agentResponse": agent_response,
         })
 

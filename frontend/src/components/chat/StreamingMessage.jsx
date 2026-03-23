@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Wand2, Scale, FileSearch, CalendarDays, MessageCircle } from 'lucide-react';
 import MarkdownText from './MarkdownText';
 
@@ -11,22 +11,24 @@ const INTENT_CONFIG = {
   general: { icon: MessageCircle, color: 'bg-neutral-500' },
 };
 
-export default function StreamingMessage({ text, status, intent = 'general', isInsideBubble = false }) {
+export default function StreamingMessage({ text, status, intent = 'general', isInsideBubble = false, isStreaming = true }) {
   const config = INTENT_CONFIG[intent] || { icon: Wand2, color: 'bg-primary-600' };
   const Icon = config.icon;
   const trimmedText = (text || '').trimEnd();
   const containerRef = useRef(null);
+  const [minHeight, setMinHeight] = useState(0);
+  const prevStreamingRef = useRef(isStreaming);
 
-  // 새 토큰이 추가될 때 스크롤 유지
+  // 스트리밍 → 완료 전환 시 min-height 고정하여 레이아웃 점프 방지
   useEffect(() => {
-    if (containerRef.current) {
-      const el = containerRef.current;
-      const parent = el.closest('[data-testid="chat-messages"]') || el.parentElement?.parentElement?.parentElement;
-      if (parent) {
-        parent.scrollTop = parent.scrollHeight;
-      }
+    if (prevStreamingRef.current && !isStreaming && containerRef.current) {
+      setMinHeight(containerRef.current.offsetHeight);
+      // 마크다운 렌더링 후 min-height 해제 (전환 완료)
+      const timer = setTimeout(() => setMinHeight(0), 300);
+      return () => clearTimeout(timer);
     }
-  }, [trimmedText]);
+    prevStreamingRef.current = isStreaming;
+  }, [isStreaming]);
 
   const content = (
     <>
@@ -34,10 +36,18 @@ export default function StreamingMessage({ text, status, intent = 'general', isI
         <div
           ref={containerRef}
           className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main shadow-sm relative leading-relaxed"
-          style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}
+          style={{ wordBreak: 'keep-all', overflowWrap: 'break-word', minHeight: minHeight || undefined }}
         >
-          <MarkdownText>{trimmedText}</MarkdownText>
-          <span className="inline-block w-1.5 h-3.5 bg-primary-400 ml-0.5 animate-pulse rounded-full align-middle" />
+          <div className={isStreaming ? '' : 'transition-opacity duration-150'}>
+            {isStreaming ? (
+              <div className="whitespace-pre-wrap">{trimmedText}</div>
+            ) : (
+              <MarkdownText>{trimmedText}</MarkdownText>
+            )}
+          </div>
+          {isStreaming && (
+            <span className="inline-block w-1.5 h-3.5 bg-primary-400 ml-0.5 animate-pulse rounded-full align-middle" />
+          )}
         </div>
       ) : (
         <div className="flex items-center gap-3 py-3.5 px-4 bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm">

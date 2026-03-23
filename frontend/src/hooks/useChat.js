@@ -35,9 +35,8 @@ export default function useChat() {
     addMessage({ role: 'user', content: displayText })
     addMessage({ role: 'assistant', content: '' })
 
-    // 전송 후 선택 상태 자동 해제
+    // 전송 후 선택 상태 자동 해제 (template은 useSSE에서 result 수신 시 해제 — clarify면 유지)
     useChatStore.getState().clearSelectedDocument()
-    useChatStore.getState().clearSelectedTemplate()
 
     try {
       await startStream(text, activeSessionId, selectedDocumentId, selectedTemplateId, selectedTemplateType, forceIntent)
