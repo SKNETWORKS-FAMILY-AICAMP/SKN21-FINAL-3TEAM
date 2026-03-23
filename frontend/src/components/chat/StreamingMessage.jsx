@@ -51,7 +51,7 @@ export default function StreamingMessage({ text, status, intent = 'general', isI
         </div>
       ) : (
         <div className="flex items-center gap-3 py-3.5 px-4 bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm">
-          <span className="text-xs text-neutral-muted">답변을 생성하고 있어요</span>
+          <span className="text-xs text-neutral-muted">{status || '답변을 생성하고 있어요'}</span>
           <div className="flex gap-1.5">
             {[0, 1, 2].map((i) => (
               <span key={i} className="w-2 h-2 bg-primary-500 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
