@@ -352,7 +352,8 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         chat_history = final_state.get("chat_history", [])
 
                         from datetime import date as _date
-                        _gen_sys = f"당신은 사내 업무 지원 AI 어시스턴트 '듀듀'입니다. Kakao의 Kanana 모델 기반으로 동작합니다. GPT가 아닙니다.\n한국어로 친절하게 답변하세요. 규정 판단, 문서 검색/생성, 일정 관리를 지원합니다.\n오늘 날짜: {_date.today().isoformat()}"
+                        from ai.llm.prompts import GENERAL_SYSTEM_PROMPT
+                        _gen_sys = f"{GENERAL_SYSTEM_PROMPT}\n오늘 날짜: {_date.today().isoformat()}"
                         _chat_summary = final_state.get("chat_summary")
                         if _chat_summary:
                             _gen_sys += f"\n\n[이전 대화 요약]\n{_chat_summary}"

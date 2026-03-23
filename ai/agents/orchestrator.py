@@ -67,7 +67,8 @@ async def general_response_node(state: AgentState) -> AgentState:
         import os as _os
         from datetime import date as _date
 
-        sys_prompt = f"당신은 사내 업무 지원 AI 어시스턴트 '듀듀'입니다. Kakao의 Kanana 모델 기반으로 동작합니다. GPT가 아닙니다.\n한국어로 친절하게 답변하세요. 규정 판단, 문서 검색/생성, 일정 관리를 지원합니다.\n오늘 날짜: {_date.today().isoformat()}"
+        from ai.llm.prompts import GENERAL_SYSTEM_PROMPT
+        sys_prompt = f"{GENERAL_SYSTEM_PROMPT}\n오늘 날짜: {_date.today().isoformat()}"
         chat_summary = state.get("chat_summary")
         if chat_summary:
             sys_prompt += f"\n\n[이전 대화 요약]\n{chat_summary}"
