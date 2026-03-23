@@ -333,8 +333,12 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         agent_type = _get_agent_type(intent)
                         logger.info("[Chat] intent=%s confidence=%.4f", intent, confidence)
 
-                        yield f"data: {json.dumps({'type': 'intent', 'intent': intent, 'confidence': confidence, 'agent_type': agent_type}, ensure_ascii=False)}\n\n"
-                        yield f"data: {json.dumps({'type': 'status', 'value': f'{agent_type} 처리 중...'}, ensure_ascii=False)}\n\n"
+                        # confidence 낮으면 확정 intent 대신 "분석 중" 표시 (배지 깜빡임 방지)
+                        if confidence >= 0.7:
+                            yield f"data: {json.dumps({'type': 'intent', 'intent': intent, 'confidence': confidence, 'agent_type': agent_type}, ensure_ascii=False)}\n\n"
+                            yield f"data: {json.dumps({'type': 'status', 'value': f'{agent_type} 처리 중...'}, ensure_ascii=False)}\n\n"
+                        else:
+                            yield f"data: {json.dumps({'type': 'status', 'value': '질문 분석 중...'}, ensure_ascii=False)}\n\n"
 
                     elif node_name == "clarify_with_candidates":
                         # top-3 후보 제시
