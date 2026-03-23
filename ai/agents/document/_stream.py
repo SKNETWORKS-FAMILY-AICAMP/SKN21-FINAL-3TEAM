@@ -156,6 +156,8 @@ async def execute_doc_stream(
             agent_response["answer"] = full_response + reg["summary"]
 
     if post_stream.get("filter_sources"):
+        # 원본 sources 보존 (최종 보장용)
+        agent_response["_original_sources"] = list(agent_response.get("sources", []))
         # sLLM이 답변 끝에 [참고: 문서제목] 형식으로 실제 참고 문서를 표기
         ref_titles = list(dict.fromkeys(re.findall(r"\[참고[:\s]*([^\]]+)\]", full_response)))  # 중복 제거, 순서 유지
         # 답변 텍스트에서 [참고: ...] 줄 제거 (프론트에 깔끔하게 전달)
@@ -184,6 +186,13 @@ async def execute_doc_stream(
                 logger.info("[DocStream] 키워드 매칭 0건 → 상위 1건 유지: %s", filtered[0].get("title", ""))
             agent_response["sources"] = filtered
 
+        # 최종 보장: 어떤 경로든 sources 0건이면 원본 상위 1건 유지
+        if not agent_response.get("sources"):
+            _orig = agent_response.get("_original_sources", [])
+            if _orig:
+                agent_response["sources"] = _orig[:1]
+                logger.info("[DocStream] sources 최종 보장: %s", _orig[0].get("title", ""))
+
         # citations 생성 (filtered sources 기반)
         if agent_response.get("sources"):
             agent_response["citations"] = [
@@ -196,7 +205,7 @@ async def execute_doc_stream(
             ]
 
     # cleanup
-    for k in ("stream_pending", "llm_config", "post_stream"):
+    for k in ("stream_pending", "llm_config", "post_stream", "_original_sources"):
         agent_response.pop(k, None)
 
 
