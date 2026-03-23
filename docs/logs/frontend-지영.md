@@ -3852,8 +3852,21 @@ Pod 꺼져도 유지되는 네트워크 볼륨(`/workspace/`, 2.3PB)에 저장:
   - `data/training/v7_planner/` — train/eval/augment 데이터
 - RunPod RTX 3090에서 v7 학습 실행 중
 
+#### 3) Planner 4-step / 5-step 테스트셋 생성
+
+- 멘토님 요청: 3step까지만 학습한 모델이 4step, 5step도 제대로 계획하는지 일반화 테스트
+- 생성 파일:
+  - `data/evaluation/planner_test_4step.json` — 4step 테스트 30건
+  - `data/evaluation/planner_test_5step.json` — 5step 테스트 30건 (note: `--max-steps 5` 옵션 필요)
+- 다양한 의존성 토폴로지 포함: 직렬(1→2→3→4), 병렬 시작(1,2→3→4), 다이아몬드형 등
+- intent 조합: doc_retrieve, judgment, doc_generate, schedule_view, schedule_add 골고루 배치
+- **schedule_add 날짜 누락 수정 (31건)**: 모든 schedule_add에 날짜/시간 컨텍스트 추가
+  - 명시적 날짜 추가 (22건): "다음 주 월요일에", "이번 주 금요일에" 등
+  - schedule_view 결과 연결 (9건): "빈 시간에", "빈 날에" 등
+
 ### 다음 할 일
 
 - [ ] v7 학습 결과 확인 및 rule 제거 후 성능 비교
+- [ ] 4step/5step 테스트셋으로 Planner eval 실행
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 - [ ] 챗봇 UI 추가 개선사항 검토
