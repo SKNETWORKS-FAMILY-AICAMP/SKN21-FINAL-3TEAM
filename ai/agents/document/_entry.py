@@ -127,9 +127,10 @@ async def document_agent(state: AgentState) -> AgentState:
 
         elif intent == "doc_generate":
             _sub_type_hint = "generate"
-            # template_type 결정: ① state에서 프론트가 보낸 값 ② LLM 판단 ③ 키워드 fallback
+            # template_type 결정: ① state에서 프론트 전달 ② regex 키워드 ③ sLLM 판단
             document_content = state.get("document_content") or state.get("extracted_text")
-            template_type = state.get("template_type") or await _llm_detect_template_type(user_input)
+            from ai.agents.document._generate import _detect_template_type
+            template_type = state.get("template_type") or _detect_template_type(user_input)
             template_id = state.get("template_id")  # 커스텀 양식 ID (DB)
             print(f"[DocumentAgent] → _handle_doc_generate 호출 | template={template_type}, template_id={template_id}, stream_mode={stream_mode}")
             response_data = await _handle_doc_generate(user_input, template_type, document_content, template_id=template_id, stream_mode=stream_mode)

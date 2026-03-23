@@ -26,14 +26,17 @@ export default function useChat() {
       await useChatStore.getState().createSession()
     }
 
-    const { activeSessionId, selectedDocumentId, selectedTemplateId, selectedTemplateType } = useChatStore.getState()
+    const { activeSessionId, selectedDocumentId, selectedDocumentName, selectedTemplateId, selectedTemplateType } = useChatStore.getState()
 
-    addMessage({ role: 'user', content: text })
+    // 문서 선택 상태에서 "이 문서", "요약해줘" 등 입력 시 → 문서명 포함 표시
+    const displayText = selectedDocumentName
+      ? text.replace(/이\s*문서/g, `"${selectedDocumentName}"`).replace(/^요약해줘$/, `"${selectedDocumentName}" 요약해줘`)
+      : text
+    addMessage({ role: 'user', content: displayText })
     addMessage({ role: 'assistant', content: '' })
 
-    // 전송 후 선택 상태 자동 해제
+    // 전송 후 선택 상태 자동 해제 (template은 useSSE에서 result 수신 시 해제 — clarify면 유지)
     useChatStore.getState().clearSelectedDocument()
-    useChatStore.getState().clearSelectedTemplate()
 
     try {
       await startStream(text, activeSessionId, selectedDocumentId, selectedTemplateId, selectedTemplateType, forceIntent)

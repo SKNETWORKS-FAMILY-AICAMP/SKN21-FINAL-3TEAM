@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import os
+import re
 from typing import AsyncGenerator
 
 from ai.agents.document._common import LORA_ADAPTER_NAMES
@@ -155,22 +156,56 @@ async def execute_doc_stream(
             agent_response["answer"] = full_response + reg["summary"]
 
     if post_stream.get("filter_sources"):
-        agent_response["sources"] = _filter_sources(
-            agent_response.get("sources", []), full_response
-        )
-        # 스트리밍 QA: sources → citations 변환 (프론트 QA 카드 인용 표시용)
-        if not agent_response.get("citations") and agent_response.get("sources"):
+        # 원본 sources 보존 (최종 보장용)
+        agent_response["_original_sources"] = list(agent_response.get("sources", []))
+        # sLLM이 답변 끝에 [참고: 문서제목] 형식으로 실제 참고 문서를 표기
+        ref_titles = list(dict.fromkeys(re.findall(r"\[참고[:\s]*([^\]]+)\]", full_response)))  # 중복 제거, 순서 유지
+        # 답변 텍스트에서 [참고: ...] 줄 제거 (프론트에 깔끔하게 전달)
+        clean_response = re.sub(r"\n*\[참고[:\s]*[^\]]+\]\n*", "", full_response).rstrip()
+        if clean_response:
+            full_response = clean_response
+            agent_response["answer"] = clean_response
+            agent_response["message"] = clean_response
+
+        if ref_titles:
+            # A방식: sLLM이 명시한 문서만 sources에 남김
+            logger.info("[DocStream] sLLM 참고 문서: %s", ref_titles)
+            ref_set = {t.strip() for t in ref_titles}
+            agent_response["sources"] = [
+                s for s in agent_response.get("sources", [])
+                if s.get("title", "") in ref_set
+            ]
+        else:
+            # fallback: sLLM이 [참고:] 태그 안 붙인 경우 → 기존 키워드 매칭
+            logger.info("[DocStream] [참고] 태그 없음 → 키워드 매칭 fallback")
+            original_sources = agent_response.get("sources", [])
+            filtered = _filter_sources(original_sources, full_response)
+            # 필터 결과 0건이면 상위 1건은 남김 (RAG에서 찾아서 답변한 건 확실하므로)
+            if not filtered and original_sources:
+                filtered = original_sources[:1]
+                logger.info("[DocStream] 키워드 매칭 0건 → 상위 1건 유지: %s", filtered[0].get("title", ""))
+            agent_response["sources"] = filtered
+
+        # 최종 보장: 어떤 경로든 sources 0건이면 원본 상위 1건 유지
+        if not agent_response.get("sources"):
+            _orig = agent_response.get("_original_sources", [])
+            if _orig:
+                agent_response["sources"] = _orig[:1]
+                logger.info("[DocStream] sources 최종 보장: %s", _orig[0].get("title", ""))
+
+        # citations 생성 (filtered sources 기반)
+        if agent_response.get("sources"):
             agent_response["citations"] = [
                 {
                     "source": s.get("title", ""),
                     "content": s.get("content", "")[:200],
                     "relevance": "높음" if s.get("score", 0) >= 0.7 else "중간" if s.get("score", 0) >= 0.4 else "낮음",
                 }
-                for s in agent_response["sources"][:3]  # 상위 3개만
+                for s in agent_response["sources"][:3]
             ]
 
     # cleanup
-    for k in ("stream_pending", "llm_config", "post_stream"):
+    for k in ("stream_pending", "llm_config", "post_stream", "_original_sources"):
         agent_response.pop(k, None)
 
 
