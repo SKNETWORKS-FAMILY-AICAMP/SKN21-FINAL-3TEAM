@@ -220,7 +220,8 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
     async def event_generator():
         try:
             _t_total = time.time()
-            logger.info("[Chat] 요청 수신 | user_id=%s", user.id)
+            logger.info("[Chat] 요청 수신 | user_id=%s, template_id=%s, template_type=%s, force_intent=%s, msg=%s",
+                        user.id, request.template_id, request.template_type, request.force_intent, request.message[:30])
 
             # lazy import (AI 의존성 없을 때 서버 기동 안 깨지게)
             from ai.agents.orchestrator import get_graph

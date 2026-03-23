@@ -382,7 +382,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                   key={idx}
                   onClick={() => {
                     useChatStore.getState().setSelectedTemplate(tpl.template_id, tpl.name, data.template_type);
-                    onSelectClarify?.(originalQuery);
+                    onSelectClarify?.(originalQuery, { silent: true });
                   }}
                   className="p-3 bg-surface-card border border-neutral-border rounded-xl hover:bg-primary-50 hover:border-primary-300 transition text-left"
                 >
