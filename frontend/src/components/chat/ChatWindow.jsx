@@ -106,8 +106,8 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
     const scrollTop = e.target.scrollTop;
     lastScrollTopRef.current = scrollTop;
 
-    // 스크롤이 100px 이상 내려가면 헤더 숨김
-    if (onScrollChange) {
+    // 메시지가 없으면 헤더 상태 변경하지 않음
+    if (onScrollChange && messages && messages.length > 0) {
       onScrollChange(scrollTop > 100);
     }
   };

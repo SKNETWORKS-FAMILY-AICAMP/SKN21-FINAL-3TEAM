@@ -1,15 +1,17 @@
 """
 Intent Classification 모델 (팀원 A 담당)
 
-카테고리 (6개):
+카테고리 (8개):
   - judgment: 규정 기반 판단
   - doc_retrieve: 문서 검색/조회/요약/QA (RAG 파이프라인 → agent 내부에서 세부 분류)
   - doc_generate: 문서 생성 (보고서/회의록/JD/제안서)
   - schedule_add: 일정 추가
   - schedule_view: 일정 조회
   - general: 일반 질문
+  - pipeline_create: 파이프라인 생성
+  - approval_create: 결재 요청
 
-모델: klue/roberta-large (Fine-tuned, 6-label multi-seed ensemble)
+모델: klue/roberta-large (Fine-tuned, 8-label multi-seed ensemble)
 """
 
 import json
@@ -750,6 +752,10 @@ KNOWN_OVERRIDES = {
     # doc_retrieve 패턴 (문서 내용 질의 포함): "문서에 뭐라고 써있어?", "결정사항이 뭐야?"
     r"(문서에|보고서에|회의록에).*(뭐라고|어떻게|뭐야|뭐가)": "doc_retrieve",
     r"(결정사항|합의|결론|핵심 이슈).*(뭐야|뭐였|알려|있어)": "doc_retrieve",
+    # doc_retrieve 패턴 (검색): "문서 찾아줘", "보고서 검색", "규정 목록"
+    r"(문서|보고서|회의록|규정|자료).*(찾아|검색|목록|조회|보여)": "doc_retrieve",
+    r"(찾아|검색|목록|조회).*(문서|보고서|회의록|규정|자료)": "doc_retrieve",
+    r".*(관련|관한)\s*(문서|자료|보고서|규정).*(찾아|검색|있어|보여|알려)": "doc_retrieve",
     # pipeline_create 패턴: "태스크 만들어줘", "파이프라인에 추가해줘", "프로젝트 추가해줘"
     r"(태스크|task|파이프라인|pipeline|칸반|보드|프로젝트).*(만들|생성|추가|등록)": "pipeline_create",
     r"(만들|생성|추가|등록).*(태스크|task|파이프라인|pipeline|칸반|프로젝트)": "pipeline_create",

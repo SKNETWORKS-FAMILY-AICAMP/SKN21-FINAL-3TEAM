@@ -20,12 +20,12 @@ export default function useSSE() {
   const timerRef = useRef(null)
   const currentIntentRef = useRef(null)
   const {
-    setStreaming, setCurrentIntent, setCurrentStatus, appendToken, saveCurrentSession,
+    setStreaming, setCurrentIntent, setCurrentStatus, setCurrentSubType, appendToken, saveCurrentSession,
     setLastAssistantResult, setLastAssistantError, setLastAssistantIntent,
   } = useChatStore()
 
   // 실제 SSE 스트리밍
-  const startStream = useCallback(async (message, sessionId, documentId, templateId, templateType) => {
+  const startStream = useCallback(async (message, sessionId, documentId, templateId, templateType, forceIntent) => {
     setStreaming(true)
     currentIntentRef.current = null
     const token = localStorage.getItem('access_token')
@@ -38,6 +38,7 @@ export default function useSSE() {
       if (documentId) body.document_id = documentId
       if (templateId) body.template_id = templateId
       if (templateType) body.template_type = templateType
+      if (forceIntent) body.force_intent = forceIntent
 
       const res = await fetch('/api/v1/chat/stream', {
         method: 'POST',
@@ -126,6 +127,11 @@ export default function useSSE() {
                 console.error('[SSE] 서버 에러:', event.message || event.value)
                 setLastAssistantError(event.message || event.value || '서버 오류가 발생했습니다')
                 break
+              case 'doc_sub_type':
+                // 문서 Agent sub_type 조기 알림 (검색/QA/요약)
+                setCurrentSubType(event.value)
+                setCurrentStatus(event.value === 'search' ? '문서 검색 중...' : event.value === 'qa' ? '문서 질의응답 준비 중...' : event.value === 'summary' ? '문서 요약 준비 중...' : event.value === 'generate' ? '문서 생성 준비 중...' : `${event.value} 처리 중...`)
+                break
               case 'compound_start':
                 setCurrentStatus(`복합 질문 감지: ${event.total || ''}개 하위 질문 처리 중...`)
                 break
@@ -154,6 +160,7 @@ export default function useSSE() {
       setStreaming(false)
       setCurrentIntent(null)
       setCurrentStatus(null)
+      setCurrentSubType(null)
       saveCurrentSession()
     } catch (err) {
       if (err.name === 'AbortError') return // 사용자가 중단
@@ -168,7 +175,7 @@ export default function useSSE() {
       // 에러를 메시지에 기록 → UI에 표시
       setLastAssistantError(err.message || '서버 연결에 실패했습니다')
     }
-  }, [setStreaming, setCurrentIntent, setCurrentStatus, appendToken, setLastAssistantResult, setLastAssistantError, setLastAssistantIntent])
+  }, [setStreaming, setCurrentIntent, setCurrentStatus, setCurrentSubType, appendToken, setLastAssistantResult, setLastAssistantError, setLastAssistantIntent])
 
   // 스트리밍 중단
   const stopStream = useCallback(() => {
@@ -192,7 +199,8 @@ export default function useSSE() {
     setStreaming(false)
     setCurrentIntent(null)
     setCurrentStatus(null)
-  }, [setStreaming, setCurrentIntent, setCurrentStatus])
+    setCurrentSubType(null)
+  }, [setStreaming, setCurrentIntent, setCurrentStatus, setCurrentSubType])
 
   return { startStream, stopStream }
 }

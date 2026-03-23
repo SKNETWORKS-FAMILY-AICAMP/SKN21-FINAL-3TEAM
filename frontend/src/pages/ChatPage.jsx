@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
-import { MessageSquarePlus, Menu, CheckCircle, XCircle, AlertTriangle, HelpCircle, ShieldCheck, FileText } from 'lucide-react';
+import { MessageSquarePlus, Menu, CheckCircle, XCircle, AlertTriangle, HelpCircle, ShieldCheck, FileText, Search, MessageCircle, Copy } from 'lucide-react';
 import ChatWindow from '../components/chat/ChatWindow';
 import MessageBubble from '../components/chat/MessageBubble';
 import StreamingMessage from '../components/chat/StreamingMessage';
@@ -67,7 +67,7 @@ const RESULT_BADGE = {
   no_regulation: { icon: HelpCircle, bg: 'bg-surface-sub', border: 'border-neutral-border', text: 'text-neutral-sub', iconColor: 'text-neutral-muted' },
 };
 
-function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], index = -1) {
+function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], index = -1, isLastAndStreaming = false) {
   const { resultIntent, agentResponse, content } = msg;
   const data = agentResponse || {};
 
@@ -120,14 +120,26 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       const summaryText = data.summary || content || data.answer || data.message;
       const citations = data.citations || [];
       const qaConfidence = typeof data.confidence === 'number' ? data.confidence : null;
+      const ragStatus = data.rag_status;
+
+      // 카드 복사 헬퍼
+      const copyCardText = (text) => {
+        navigator.clipboard.writeText(text).catch(() => {});
+      };
 
       // sub_type=summary → 요약 카드
       if (subType === 'summary' || tags.length > 0) {
+        const topicHint = tags[0] || '';
         return (
           <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
-            <div className="px-4 py-3 border-b border-neutral-divider flex items-center gap-2 font-bold text-sm text-primary-700">
-              <FileText size={16} />
-              문서 요약
+            <div className="px-4 py-3 border-b border-neutral-divider flex items-center justify-between">
+              <div className="flex items-center gap-2 font-bold text-sm text-primary-700">
+                <FileText size={16} />
+                문서 요약
+              </div>
+              <button onClick={() => copyCardText(summaryText)} className="text-neutral-muted hover:text-neutral-main transition" title="복사">
+                <Copy size={14} />
+              </button>
             </div>
             <div className="p-4 space-y-2">
               {tags.length > 0 && (
@@ -146,30 +158,48 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                   <p className="text-[0.8125rem] text-neutral-main leading-[1.7] mt-1">{summaryText}</p>
                 </div>
               )}
+              {/* 출처 문서 표시 */}
+              {data.document_id && (
+                <div className="text-[0.6875rem] text-neutral-muted mt-2">
+                  출처: 문서 #{data.document_id}
+                </div>
+              )}
             </div>
           </div>
         );
       }
 
-      // sub_type=qa → QA 카드 (citations + confidence)
+      // sub_type=qa → QA 카드
       if (subType === 'qa' || citations.length > 0 || qaConfidence !== null) {
-        const confColor = qaConfidence >= 0.7 ? { bar: 'bg-green-500', text: 'text-green-600' } : qaConfidence >= 0.4 ? { bar: 'bg-yellow-500', text: 'text-yellow-600' } : { bar: 'bg-red-500', text: 'text-red-600' };
+        const confColor = qaConfidence >= 0.7 ? { bar: 'bg-green-500', text: 'text-green-600', label: '높음', hint: '문서 기반 답변입니다' } : qaConfidence >= 0.4 ? { bar: 'bg-yellow-500', text: 'text-yellow-600', label: '보통', hint: '관련 문서를 참고했지만 정확하지 않을 수 있습니다' } : { bar: 'bg-red-500', text: 'text-red-600', label: '낮음', hint: '관련도가 낮은 문서를 참고했습니다. 다시 질문해보세요' };
+        const firstSourceTitle = sources[0]?.title || '';
         return (
           <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
             <div className="px-4 py-3 border-b border-neutral-divider flex items-center justify-between">
-              <div className="flex items-center gap-2 font-bold text-sm text-primary-700">문서 Q&A</div>
-              {qaConfidence !== null && (
-                <div className="flex items-center gap-1.5">
-                  <ShieldCheck size={14} className={confColor.text} />
-                  <div className="w-16 h-2 bg-neutral-100 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${confColor.bar}`} style={{ width: `${Math.round(qaConfidence * 100)}%` }} />
+              <div className="flex items-center gap-2 font-bold text-sm text-primary-700">
+                <MessageCircle size={16} />
+                문서 Q&A
+              </div>
+              <div className="flex items-center gap-2">
+                {qaConfidence !== null && (
+                  <div className="flex items-center gap-1.5" title={`문서 기반 신뢰도 (${confColor.label})`}>
+                    <ShieldCheck size={14} className={confColor.text} />
+                    <div className="w-16 h-2 bg-neutral-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${confColor.bar}`} style={{ width: `${Math.round(qaConfidence * 100)}%` }} />
+                    </div>
+                    <span className={`text-xs font-bold ${confColor.text}`}>{Math.round(qaConfidence * 100)}%</span>
                   </div>
-                  <span className={`text-xs font-bold ${confColor.text}`}>{Math.round(qaConfidence * 100)}%</span>
-                </div>
-              )}
+                )}
+                <button onClick={() => copyCardText(content || data.answer || '')} className="text-neutral-muted hover:text-neutral-main transition" title="복사">
+                  <Copy size={14} />
+                </button>
+              </div>
             </div>
             <div className="p-4">
-              {content && <div className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5"><MarkdownText>{content}</MarkdownText></div>}
+              {/* 개선6: 신뢰도 문장형 안내 + 개선2: 검색→QA 맥락 연결 */}
+              {sources.length > 0 && <p className="text-[0.6875rem] text-neutral-muted mb-1">검색된 문서를 바탕으로 답변합니다.</p>}
+              {qaConfidence !== null && <p className={`text-[0.6875rem] ${confColor.text} mb-2`}>{confColor.hint}</p>}
+              {(content || data.answer) && <div className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5"><MarkdownText>{content || data.answer}</MarkdownText></div>}
               {citations.length > 0 && (
                 <div className="mb-3">
                   <div className="text-xs font-semibold text-neutral-sub mb-2">인용 ({citations.length}건)</div>
@@ -202,24 +232,36 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       }
 
       // 기본: 검색 카드
-      return (
-        <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
-          <div className="px-4 py-3 border-b border-neutral-divider flex items-center gap-2 font-bold text-sm text-primary-700">
-            문서 검색 결과
-          </div>
-          <div className="p-4">
-            {content && <div className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5"><MarkdownText>{content}</MarkdownText></div>}
-            {sources.length > 0 && (
-              <div>
-                <div className="text-xs font-semibold text-neutral-sub mb-2">출처 ({sources.length}건)</div>
-                {sources.map((s, idx) => (
-                  <SourceItem key={idx} source={s} index={idx} onSelect={onSelectDoc} />
-                ))}
+      {
+        const firstSourceTitle = sources[0]?.title || '';
+        return (
+          <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
+            <div className="px-4 py-3 border-b border-neutral-divider flex items-center justify-between">
+              <div className="flex items-center gap-2 font-bold text-sm text-primary-700">
+                <Search size={16} />
+                문서 검색 결과{data.total_found ? ` (${data.total_found}건)` : ''}
               </div>
-            )}
+              {ragStatus === 'timeout' && (
+                <span className="text-[0.625rem] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">시간 초과</span>
+              )}
+            </div>
+            <div className="p-4">
+              {/* 개선1: 검색 모드 안내 */}
+              <p className="text-[0.6875rem] text-neutral-muted mb-2">문서 목록을 검색했습니다. 내용이 궁금하면 아래에서 질문하기를 눌러보세요.</p>
+              {(content || data.answer || data.message) && <div className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5"><MarkdownText>{content || data.answer || data.message}</MarkdownText></div>}
+              {/* 개선5: 개별 문서 액션 버튼 */}
+              {sources.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-neutral-sub mb-2">출처 ({sources.length}건)</div>
+                  {sources.map((s, idx) => (
+                    <SourceItem key={idx} source={s} index={idx} onSelect={onSelectDoc} />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      );
+        );
+      }
     }
 
     case 'doc_generate': {
@@ -377,7 +419,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                   key={idx}
                   onClick={() => {
                     useChatStore.getState().setSelectedDocument(doc.document_id, doc.title);
-                    onSelectClarify?.(originalQuery);
+                    onSelectClarify?.(`${doc.title} 요약해줘`, { forceIntent: 'doc_retrieve:summary', documentId: doc.document_id });
                   }}
                   className="flex items-center gap-2 px-4 py-2.5 text-sm bg-surface-card border border-neutral-border rounded-xl hover:bg-primary-50 hover:border-primary-300 text-neutral-main hover:text-primary-700 transition text-left"
                 >
@@ -487,13 +529,26 @@ export default function ChatPage() {
       .catch((err) => console.warn('[ChatPage] 문서 로드 실패:', err));
   }, [docPickerOpen]);
 
-  const handleSend = async (text, files = []) => {
+  const handleSend = async (text, filesOrOptions = []) => {
     const storeState = useChatStore.getState();
-    if (storeState.isStreaming) return; // 전송/업로드 중복 방지
+
+    // 후속 액션 버튼에서 options 객체로 호출된 경우 (forceIntent 포함)
+    // isStreaming 체크를 건너뜀 — doc_pick, 액션 버튼은 스트리밍 중에도 허용
+    if (filesOrOptions && !Array.isArray(filesOrOptions) && typeof filesOrOptions === 'object') {
+      const options = filesOrOptions;
+      setLastError(null);
+      setLastInput(text);
+      sendMessage(text, options);
+      return;
+    }
+
+    if (storeState.isStreaming) return; // 일반 전송 중복 방지
 
     setLastError(null);
     setLastInput(text);
 
+    // 파일 업로드 처리
+    const files = filesOrOptions;
     if (files && files.length > 0) {
       const storeState = useChatStore.getState();
       storeState.setStreaming(true);
@@ -578,15 +633,13 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-full bg-surface-main">
-      <header className={`z-20 bg-surface-main transition-all duration-300 ${isHeaderHidden ? 'fixed top-0 left-0 right-0' : 'relative border-b border-neutral-border'}`}>
-        <div className={`flex justify-between items-center pl-8 pr-8 transition-all duration-300 ${isHeaderHidden ? 'py-2' : 'py-6'}`}>
+      <header className="z-20 bg-surface-main relative border-b border-neutral-border shrink-0">
+        <div className="flex justify-between items-center pl-8 pr-8 py-4">
           <div>
-            <h1 className={`font-bold transition-all duration-300 ${isHeaderHidden ? 'text-lg' : 'text-2xl'}`}>나에게 물어봐</h1>
-            {!isHeaderHidden && (
-              <p className="text-neutral-sub text-sm mt-0.5 transition-all duration-300">규정 판단, 문서 분석, 일정 관리를 도와드립니다</p>
-            )}
+            <h1 className="font-bold text-xl">나에게 물어봐</h1>
+            <p className="text-neutral-sub text-sm mt-0.5">규정 판단, 문서 분석, 일정 관리를 도와드립니다</p>
           </div>
-          <div className={`flex items-center gap-2 transition-all duration-300 ${isHeaderHidden ? 'scale-90' : 'scale-100'}`}>
+          <div className="flex items-center gap-2">
             <button
               onClick={() => exportChat(messages)}
               disabled={messages.length === 0}
@@ -667,7 +720,7 @@ export default function ChatPage() {
               <Menu size={20} />
             </button>
             <button
-              onClick={() => { startNewSession(); setSessionSidebarOpen(true); }}
+              onClick={() => { startNewSession(); setSessionSidebarOpen(false); setIsHeaderHidden(false); }}
               title="새 대화"
               className="w-11 h-11 flex items-center justify-center rounded-full bg-surface-card text-neutral-sub border border-neutral-border shadow-sm transition hover:shadow-md hover:text-neutral-main"
             >
@@ -678,7 +731,7 @@ export default function ChatPage() {
         </div>
 
         {/* 챗 영역 */}
-        <div className={`flex-1 min-w-0 transition-all duration-300 ${isHeaderHidden ? 'pt-2' : 'pt-0'}`}>
+        <div className="flex-1 min-w-0">
           <ChatWindow onSend={handleSend} messages={messages} selectedDocumentName={selectedDocumentName} onClearDocument={clearSelectedDocument} activeIntent={currentIntent || messages.filter(m => m.role === 'assistant').at(-1)?.resultIntent || messages.filter(m => m.role === 'assistant').at(-1)?.intent} isStreaming={isStreaming} panelOpen={panelOpen || !!docViewDoc} onScrollChange={setIsHeaderHidden}>
             {/* 메시지가 없을 때 — 추천 질문 */}
             {messages.length === 0 && (
@@ -701,14 +754,33 @@ export default function ChatPage() {
                 return <ErrorMessage key={i} message={msg.error} onRetry={handleRetry} />;
               }
 
-              // 스트리밍 중인 AI 응답 (데이터가 미리 왔더라도 텍스트 출력을 우선으로 보여줌)
-              if (isLastAssistant || isWaitingForResponse) {
+              // 스트리밍 중이지만 result가 이미 도착한 경우 → 카드 UI로 바로 전환
+              if ((isLastAssistant || isWaitingForResponse) && !(msg.agentResponse && msg.resultIntent)) {
                 const intent = currentIntent || msg.resultIntent || msg.intent || 'general';
+                const subType = useChatStore.getState().currentSubType;
+
+                // QA: 카드 스켈레톤 안에서 텍스트 스트리밍 (날것 → 카드 전환 방지)
+                if (intent === 'doc_retrieve' && subType === 'qa' && msg.content) {
+                  const partialMsg = {
+                    ...msg,
+                    resultIntent: 'doc_retrieve',
+                    agentResponse: { sub_type: 'qa', confidence: null },
+                  };
+                  return (
+                    <MessageBubble key={i} type="bot" intent={intent}>
+                      {renderCardMessage(partialMsg, handleSend, setDocViewDoc, messages, i, true)}
+                    </MessageBubble>
+                  );
+                }
+
+                // 요약/검색: 로딩만 표시 (메타데이터 노출 방지)
+                // 일반/판단: 실시간 스트리밍 텍스트
+                const hideStreamText = ['doc_retrieve', 'doc_search', 'doc_summary'].includes(intent);
                 return (
                   <MessageBubble key={i} type="bot" intent={intent}>
                     <StreamingMessage
-                      text={intent === 'judgment' ? cleanResultText(msg.content) : msg.content}
-                      status={currentStatus}
+                      text={hideStreamText ? '' : (intent === 'judgment' ? cleanResultText(msg.content) : msg.content)}
+                      status={currentStatus || (hideStreamText && msg.content ? '문서 응답 생성 중...' : null)}
                       intent={intent}
                       isInsideBubble
                     />
@@ -716,11 +788,11 @@ export default function ChatPage() {
                 );
               }
 
-              // AI 완료 — agentResponse 카드 렌더링
+              // AI 완료 또는 result 도착 — agentResponse 카드 렌더링
               if (msg.agentResponse && msg.resultIntent) {
                 return (
                   <MessageBubble key={i} type="bot" intent={msg.resultIntent || msg.intent} modelName={msg.agentResponse?.model_name}>
-                    {renderCardMessage(msg, handleSend, setDocViewDoc, messages, i)}
+                    {renderCardMessage(msg, handleSend, setDocViewDoc, messages, i, isStreaming && i === messages.length - 1)}
                   </MessageBubble>
                 );
               }

@@ -4,6 +4,51 @@
 
 ---
 
+## 2026-03-20 (목)
+
+**세션 1: 커스텀 템플릿 파이프라인 구현 (추출기 v3 + 한글 키 + fill-fields API + 프론트 UI)**
+
+한 일:
+- **추출기 v3 재작성** (`template_extractor.py`): 구조 기반 다열 스캔, 플레이스홀더 감지, 번호 접두사 제거, 미매핑 라벨 커스텀 키 자동 생성
+- **v3 메타데이터 자동 부여**: group(meta/body), type(date/text/textarea/array), fill(extract/generate) 자동 분류
+- **한글 키 전환**: `use_mapping=False` 기본값 → FIELD_MAPPING은 description 제공용으로만 활용, 키는 한글 라벨 그대로 사용
+- **LoRA 한글 키 테스트**: 8필드 100%, 11필드 91%, 13필드 69%, 20필드 0% → 12개 이하 안전 확인
+- **2단계 분기 제거**: trained/untrained 분리 삭제, LoRA 1회로 전체 필드 생성
+- **fill-fields API 추가** (`POST /documents/fill-fields`): DOCX 생성 없이 LoRA로 필드 값만 리턴
+
+**세션 2: fill-fields 파이프라인 재설계 — meta/body 역할 분리** (커밋: `1264cc9`)
+
+발견한 문제:
+- 구어체 입력에서 sLLM이 meta(날짜/담당자) 추출 실패 (body 생성은 정상)
+- 정규화(base모델) 전처리가 오히려 정보 왜곡/누락 → 악화
+- 핵심: **sLLM은 body 생성에 강하고 meta 추출에 약하다**
+
+한 일:
+- **정규화(Phase 1) 완전 제거**: `_NORMALIZE_SYSTEM`, `_normalize_input()` 삭제, 원문 그대로 sLLM에 전달
+- **meta/body 역할 분리**: body 필드만 sLLM에 전달, meta는 사용자 직접 입력 + Phase 0 fallback
+- **FillFieldsRequest에 `meta_values` 추가**: 프론트가 meta 값을 API에 함께 전달
+- **Phase 0 "제안일" 키워드 추가** (기존: 작성일/제출일/보고일만)
+- **`DOC_FILL_GENERATE_PROMPT` 삭제** (미사용)
+- **프론트 UX 재설계**: 커스텀 템플릿 → meta 2열 폼(auto-fill) + body freeText + "AI 문서 작성" 분리
+- **종합 테스트 10케이스**: 회의록/보고서/제안서 × 불릿/구어체/짧음/상세
+- **E2E Playwright**: 로그인→템플릿선택→meta입력→AI작성→body 7/7→DOCX 생성 전체 PASS
+
+테스트 결과:
+- 제안서 body: **7/7 (100%)** — 불릿/구어체/짧은입력 전부
+- 보고서 body: **5/6** — 첨부자료만 빈값 (정상)
+- 구어체 2문장만으로 제안서 7개 body 필드 전부 생성
+- meta_values 전달: 보낸 값 전부 정확 반영
+- 콘솔 에러 (이번 변경 관련): 0개
+
+다음 할 일:
+- 시스템 템플릿 seed에 group 추가 (레거시 템플릿 group 없음 → fill-fields에서 body=0)
+- 레거시 커스텀 템플릿 삭제 후 재업로드 (group 자동 부여)
+- 짧은 입력(3줄) body 0/6 문제 → 프론트 최소 입력 가이드 추가
+- (추후) 챗봇 연동: 짧은 입력 → meta 수집 대화 → fill-fields 호출
+- 상세 로그: `docs/logs/2026-03-20_pipeline_redesign.md` 참고
+
+---
+
 ## 2026-03-19 (수)
 
 **v3_generate 문서 생성 통합 테스트 + 버그 수정**
@@ -1552,6 +1597,45 @@ v2_generate AI Hub 데이터 탈락:
 1. v3_generate 평가 결과를 학습결과 문서 6절에 기입
 2. 커스텀 템플릿 2단계 추출 아키텍처 구현
 3. 프론트엔드 수동 QA
+
+---
+
+## 2026-03-20 (목)
+
+#### 문서 Agent 파이프라인 전체 분석 및 재설계 플랜 수립
+
+**분석한 것:**
+- 문서 Agent 전체 코드 파악: `_entry.py`, `_search.py`, `_summary.py`, `_qa.py`, `_common.py`, `_generate.py`
+- `chat.py` SSE 스트리밍 처리 전체 분석 (170줄 document_agent 블록)
+- 프론트엔드 UI 컨트랙트 파악 (SSE 이벤트 타입, agentResponse 필드 규격)
+- orchestrator 그래프 구조 + AgentState 필드 전체 파악
+
+**발견한 문제 ("빵꾸"):**
+- 스트리밍 시 agent는 RAG만 하고 `stream_pending=True`를 던짐
+- chat.py가 나머지 전부 대신 처리 (LLM 호출, 소스 필터링, DB 업데이트, 규정 체크)
+- QA: RAG 중복 호출, 인라인 프롬프트, chat_history 미지원
+- 검색: reranker 미사용, 대충 구현
+- 요약: DB 업데이트 코드 중복 (agent + chat.py 양쪽)
+- 프롬프트 2벌 (prompts.py vs chat.py 인라인)
+
+**설계 결정사항:**
+- StreamRequest 프로토콜 도입 (`llm_config` + `post_stream`)
+- chat.py document_agent 170줄 → ~40줄로 축소
+- 환경: API 사용 X, vLLM sLLM base 온프레미스
+  - QA: sLLM base (LoRA 없음), Summary: v3_summary LoRA, Search: RAG only
+- 라우팅: 기존 regex 유지
+- Reranker: 항상 켜기
+- 헬퍼 함수: chat.py 안에 배치
+- generate는 별도 CLI 작업 중이므로 건드리지 않음
+
+**산출물:**
+- `docs/plans/DOC_AGENT_REDESIGN_QA_SEARCH_SUMMARY.md` — 전체 재설계 플랜
+- 수정 파일 7개, 구현 순서 확정
+
+**다음 할 일:**
+1. 플랜대로 구현 시작 (`_common.py` → `prompts.py` → `_qa.py` → `_search.py` → `_summary.py` → `_entry.py` → `chat.py`)
+2. generate 쪽 작업 완료 후 합류
+3. 스트리밍/비스트리밍/멀티턴 테스트
 
 ---
 

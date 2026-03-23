@@ -24,6 +24,81 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+async def _load_chat_context(db: AsyncSession, request: ChatRequest, user, initial_state: dict):
+    """chat_history + document_content 로딩 (스트리밍/비스트리밍 공통)"""
+    # 1. 이전 대화 이력 + 세션 요약 로드
+    if request.session_id:
+        try:
+            hist_result = await db.execute(
+                select(ChatLog)
+                .where(ChatLog.session_id == request.session_id, ChatLog.user_id == user.id)
+                .order_by(ChatLog.created_at.desc())
+                .limit(6)  # 최근 3턴
+            )
+            hist_logs = list(reversed(hist_result.scalars().all()))
+            chat_history = []
+            for log in hist_logs:
+                chat_history.append({"role": "user", "content": log.user_message})
+                try:
+                    ar = json.loads(log.agent_response) if log.agent_response else {}
+                except json.JSONDecodeError:
+                    ar = {}
+                chat_history.append({
+                    "role": "assistant",
+                    "content": ar.get("message", ""),
+                    "agentResponse": ar,
+                })
+            initial_state["chat_history"] = chat_history
+
+            # 세션 요약 로드
+            sess_result = await db.execute(
+                select(ChatSession).where(ChatSession.session_id == request.session_id)
+            )
+            session_row = sess_result.scalar_one_or_none()
+            if session_row and session_row.summary:
+                initial_state["chat_summary"] = session_row.summary
+                logger.debug("[Chat] chat_summary 로드 (%d자)", len(session_row.summary))
+
+            logger.debug("[Chat] chat_history 로드: %d개 메시지", len(chat_history))
+        except Exception as hist_err:
+            logger.warning("[Chat] chat_history 로드 실패: %s", hist_err)
+
+    # 2. document_id가 있으면 DB에서 문서 내용 로딩
+    if request.document_id:
+        try:
+            from app.models.document import Document
+            result = await db.execute(select(Document).where(Document.id == request.document_id))
+            doc = result.scalar_one_or_none()
+            if doc:
+                if not doc.content or not doc.content.strip():
+                    logger.warning("[Chat] document_id=%s content 비어있음", request.document_id)
+                # AI 분석 결과를 컨텍스트에 포함
+                doc_context = ""
+                if doc.category or doc.tags or doc.summary:
+                    doc_context += "\n[문서 AI 분석 정보]\n"
+                    if doc.category:
+                        doc_context += f"- 문서 타입: {doc.category}\n"
+                    if doc.tags:
+                        doc_context += f"- 태그: {', '.join(doc.tags)}\n"
+                    if doc.summary:
+                        doc_context += f"- 요약: {doc.summary}\n"
+                    doc_context += "\n[문서 본문]\n"
+                initial_state["document_content"] = doc_context + (doc.content or "")
+            else:
+                try:
+                    from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+                    pipeline = get_qdrant_pipeline()
+                    content = pipeline.get_document_content(request.document_id)
+                    if content:
+                        initial_state["document_content"] = content
+                    else:
+                        logger.warning("[Chat] Qdrant fallback: content 없음")
+                except Exception as qdrant_err:
+                    logger.warning("[Chat] Qdrant fallback 실패: %s", qdrant_err)
+        except Exception as doc_err:
+            logger.warning("[Chat] document_id 로딩 실패: %s", doc_err)
+
+
 def _build_initial_state(request: ChatRequest, user, stream_mode: bool = False) -> dict:
     """AgentState 필드 초기화"""
     return {
@@ -49,6 +124,7 @@ def _build_initial_state(request: ChatRequest, user, stream_mode: bool = False) 
         "intent_candidates": None,
         "sub_queries": None,
         "sub_responses": None,
+        "force_intent": request.force_intent,
     }
 
 
@@ -151,79 +227,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
 
             graph = get_graph()
             initial_state = _build_initial_state(request, user, stream_mode=True)
-
-            # session_id로 이전 대화 이력 + 요약 로드
-            if request.session_id:
-                try:
-                    # 최근 3턴 메시지 로드
-                    hist_result = await db.execute(
-                        select(ChatLog)
-                        .where(ChatLog.session_id == request.session_id, ChatLog.user_id == user.id)
-                        .order_by(ChatLog.created_at.desc())
-                        .limit(6)  # 최근 3턴
-                    )
-                    hist_logs = list(reversed(hist_result.scalars().all()))
-                    chat_history = []
-                    for log in hist_logs:
-                        chat_history.append({"role": "user", "content": log.user_message})
-                        try:
-                            ar = json.loads(log.agent_response) if log.agent_response else {}
-                        except json.JSONDecodeError:
-                            ar = {}
-                        chat_history.append({
-                            "role": "assistant",
-                            "content": ar.get("message", ""),
-                            "agentResponse": ar,
-                        })
-                    initial_state["chat_history"] = chat_history
-
-                    # 세션 요약 로드
-                    sess_result = await db.execute(
-                        select(ChatSession).where(ChatSession.session_id == request.session_id)
-                    )
-                    session_row = sess_result.scalar_one_or_none()
-                    if session_row and session_row.summary:
-                        initial_state["chat_summary"] = session_row.summary
-                        logger.debug("[Chat] chat_summary 로드 (%d자)", len(session_row.summary))
-
-                    logger.debug("[Chat] chat_history 로드: %d개 메시지", len(chat_history))
-                except Exception as hist_err:
-                    logger.warning("[Chat] chat_history 로드 실패: %s", hist_err)
-
-            # document_id가 있으면 DB에서 문서 내용 로딩
-            if request.document_id:
-                try:
-                    from app.models.document import Document
-                    result = await db.execute(select(Document).where(Document.id == request.document_id))
-                    doc = result.scalar_one_or_none()
-                    if doc:
-                        if not doc.content or not doc.content.strip():
-                            logger.warning("[Chat] document_id=%s content 비어있음", request.document_id)
-                        # AI 분석 결과를 컨텍스트에 포함
-                        doc_context = ""
-                        if doc.category or doc.tags or doc.summary:
-                            doc_context += f"\n[문서 AI 분석 정보]\n"
-                            if doc.category:
-                                doc_context += f"- 문서 타입: {doc.category}\n"
-                            if doc.tags:
-                                doc_context += f"- 태그: {', '.join(doc.tags)}\n"
-                            if doc.summary:
-                                doc_context += f"- 요약: {doc.summary}\n"
-                            doc_context += "\n[문서 본문]\n"
-                        initial_state["document_content"] = doc_context + (doc.content or "")
-                    else:
-                        try:
-                            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
-                            pipeline = get_qdrant_pipeline()
-                            content = pipeline.get_document_content(request.document_id)
-                            if content:
-                                initial_state["document_content"] = content
-                            else:
-                                logger.warning("[Chat] Qdrant fallback: content 없음")
-                        except Exception as qdrant_err:
-                            logger.warning("[Chat] Qdrant fallback 실패: %s", qdrant_err)
-                except Exception as doc_err:
-                    logger.warning("[Chat] document_id 로딩 실패: %s", doc_err)
+            await _load_chat_context(db, request, user, initial_state)
 
             # astream으로 노드별 실시간 이벤트 전송
             final_state = {}
@@ -269,8 +273,17 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             }
 
                             try:
-                                sub_result = await graph.ainvoke(sub_state)
+                                import asyncio as _aio
+                                sub_result = await _aio.wait_for(
+                                    graph.ainvoke(sub_state), timeout=60,
+                                )
                                 sub_response = sub_result.get("agent_response", {})
+                            except _aio.TimeoutError:
+                                logger.error("[Chat] compound sub_query 타임아웃 (60초): %s", sq_query[:50])
+                                sub_response = {
+                                    "type": sq_hint,
+                                    "message": "처리 시간이 초과되었습니다. 개별적으로 다시 질문해주세요.",
+                                }
                             except Exception as sub_err:
                                 logger.error("[Chat] compound sub_query 처리 실패: %s", sub_err)
                                 sub_response = {
@@ -378,218 +391,15 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         }
 
                     elif node_name == "judgment_agent":
-                        # 2-4. 판단 Agent 2단계 sLLM (1: JSON 추출, 2: 자연어 설명 스트리밍)
+                        # 2-4. 판단 Agent 스트리밍 → judgment_stream.py로 위임
                         agent_response = node_output.get("agent_response", {})
                         if agent_response.get("stream_pending"):
-                            import os as _os_j
-                            from openai import AsyncOpenAI as _AsyncOpenAI_j
-                            import httpx as _httpx_j
+                            from ai.agents.judgment_stream import execute_judgment_stream
 
-                            # sLLM 모드 판별
-                            _j_mode = _os_j.getenv("JUDGMENT_AGENT_MODE", "api")
-                            _j_use_sllm = _j_mode == "sllm"
-                            _j_stream_model = None
-                            j_client = None
-                            full_response = ""
+                            logger.info("[Chat] judgment_agent 스트리밍 위임")
+                            async for token in execute_judgment_stream(agent_response, final_state.get("user_input", "")):
+                                yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
 
-                            if _j_use_sllm:
-                                # === sLLM 2단계 호출 ===
-                                vllm_base = _os_j.getenv("VLLM_BASE_URL", "http://localhost:8000/v1")
-                                vllm_api_key = _os_j.getenv("VLLM_API_KEY", "EMPTY")
-                                vllm_model = _os_j.getenv("VLLM_MODEL", "kakaocorp/kanana-1.5-8b-instruct-2505")
-                                _j_use_lora = _os_j.getenv("VLLM_USE_LORA", "false").lower() == "true"
-                                lora_model = "v1_judgment" if _j_use_lora else vllm_model
-                                j_client = _AsyncOpenAI_j(
-                                    api_key=vllm_api_key,
-                                    base_url=vllm_base,
-                                    timeout=_httpx_j.Timeout(60.0, connect=15.0),
-                                    max_retries=0,
-                                )
-                                _j_stream_model = lora_model
-                                logger.info("[Chat] judgment sLLM 2단계: model=%s", lora_model)
-
-                                # ── 1단계: LoRA로 JSON 추출 (비스트리밍) ──
-                                from ai.llm.prompts import JUDGMENT_SYSTEM_PROMPT as _J_SYS
-                                try:
-                                    _j_resp = await j_client.chat.completions.create(
-                                        model=lora_model,
-                                        messages=[
-                                            {"role": "system", "content": _J_SYS},
-                                            {"role": "user", "content": agent_response["user_prompt"]},
-                                        ],
-                                        temperature=0.1,
-                                        max_tokens=2048,
-                                    )
-                                    full_response = _j_resp.choices[0].message.content or ""
-                                    logger.info("[Chat] judgment 1단계 JSON 수신 (%d자)", len(full_response))
-                                except Exception as _sllm_err:
-                                    logger.warning("[Chat] judgment 1단계 실패, API fallback: %s", _sllm_err)
-                                    _j_use_sllm = False
-                                    full_response = ""
-
-                                # ── 2단계: base 모델로 자연어 설명 스트리밍 ──
-                                if _j_use_sllm and full_response:
-                                    from ai.agents.judgment_agent import _parse_llm_response as _plr
-                                    _j_parsed_check = _plr(full_response)
-
-                                    if _j_parsed_check.get("confidence", 0) > 0:
-                                        _user_q = agent_response["user_prompt"].split("## 사용자 질문")[-1].strip() if "## 사용자 질문" in agent_response["user_prompt"] else agent_response["user_prompt"].split("\n")[-1]
-                                        _reasoning = _j_parsed_check.get("reasoning", "")
-                                        _result = _j_parsed_check.get("result", "")
-                                        _conditions = _j_parsed_check.get("conditions", "")
-                                        _regs = _j_parsed_check.get("regulations", [])
-                                        _reg_info = ", ".join(f"{r.get('article', '')} ({r.get('content', '')})" for r in _regs[:3]) if _regs else ""
-
-                                        # RAG 규정 원문 상위 2개 포함
-                                        _rag_ctx = agent_response.get("_rag_context", [])
-                                        _rag_text = ""
-                                        for _rc in _rag_ctx[:2]:
-                                            _rc_content = _rc.get("content", "") if isinstance(_rc, dict) else str(_rc)
-                                            if _rc_content:
-                                                _rag_text += f"\n- {_rc_content[:200]}"
-
-                                        _result_kr = {"yes": "가능", "no": "불가", "conditional": "조건부 가능", "no_regulation": "관련 규정 없음"}.get(_result, _result)
-
-                                        _explain_sys = """당신은 사내 규정 안내 전문가입니다.
-아래 판단 데이터를 바탕으로 사용자에게 친절하고 구체적으로 답변하세요.
-
-규칙:
-- 반드시 제공된 판단 근거(reasoning) 안에서만 답변하세요. 없는 내용을 지어내지 마세요.
-- 관련 규정 조항을 자연스럽게 언급하세요 (예: "제8조에 따르면...")
-- 조건부(conditional)이면 필요한 조건을 구체적으로 안내하세요
-- 불가(no)이면 왜 안 되는지 명확히 설명하세요
-- 3~5문장으로 간결하게 답변하세요
-- "1부", "2부", "##" 같은 섹션 헤더 없이 바로 설명을 시작하세요"""
-
-                                        _explain_user = f"""사용자 질문: {_user_q}
-
-판단 결과: {_result_kr}
-판단 근거: {_reasoning}
-{f'조건: {_conditions}' if _conditions else ''}
-관련 규정: {_reg_info}
-{f'규정 원문 참고:{_rag_text}' if _rag_text else ''}"""
-
-                                        try:
-                                            _explain_stream = await j_client.chat.completions.create(
-                                                model=vllm_model,  # base 모델 (LoRA 없이)
-                                                messages=[
-                                                    {"role": "system", "content": _explain_sys},
-                                                    {"role": "user", "content": _explain_user},
-                                                ],
-                                                temperature=0.4,
-                                                max_tokens=512,
-                                                stream=True,
-                                            )
-                                            async for chunk in _explain_stream:
-                                                if chunk.choices[0].delta.content:
-                                                    yield f"data: {json.dumps({'type': 'token', 'value': chunk.choices[0].delta.content}, ensure_ascii=False)}\n\n"
-                                            logger.info("[Chat] judgment 2단계 자연어 스트리밍 완료")
-                                        except Exception as _exp_err:
-                                            logger.warning("[Chat] judgment 2단계 실패: %s", _exp_err)
-                                            yield f"data: {json.dumps({'type': 'token', 'value': _reasoning}, ensure_ascii=False)}\n\n"
-                                    else:
-                                        logger.warning("[Chat] judgment 1단계 JSON 파싱 실패, API fallback")
-                                        _j_use_sllm = False
-                                        full_response = ""
-
-                            if not _j_use_sllm:
-                                # API 모드: OpenAI 스트리밍 (자연어 + JSON)
-                                openai_key = _os_j.getenv("OPENAI_API_KEY")
-                                if not openai_key:
-                                    yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
-                                    continue
-                                openai_base = _os_j.getenv("LLM_BASE_URL") or None
-                                j_client = _AsyncOpenAI_j(api_key=openai_key, base_url=openai_base) if openai_base else _AsyncOpenAI_j(api_key=openai_key)
-                                _j_stream_model = _os_j.getenv("OPENAI_MODEL", "gpt-4o-mini") + (" (fallback)" if _j_mode == "sllm" else "")
-
-                                j_stream = await j_client.chat.completions.create(
-                                    model=_os_j.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-                                    messages=[
-                                        {"role": "system", "content": agent_response["sys_prompt"]},
-                                        {"role": "user", "content": agent_response["user_prompt"]},
-                                    ],
-                                    temperature=0.1,
-                                    max_tokens=2048,
-                                    stream=True,
-                                )
-
-                                full_response = ""
-                                _JSON_PREFIXES = ("`", "``", "```", "```j", "```js", "```jso", "```json")
-                                in_json_block = False
-                                pending_tokens = []
-
-                                async for chunk in j_stream:
-                                    delta = chunk.choices[0].delta
-                                    if delta.content:
-                                        token = delta.content
-                                        full_response += token
-                                        if in_json_block:
-                                            continue
-                                        if "```json" in full_response:
-                                            in_json_block = True
-                                            pending_tokens.clear()
-                                        elif full_response.rstrip().endswith(_JSON_PREFIXES):
-                                            pending_tokens.append(token)
-                                        else:
-                                            for pt in pending_tokens:
-                                                yield f"data: {json.dumps({'type': 'token', 'value': pt}, ensure_ascii=False)}\n\n"
-                                            pending_tokens.clear()
-                                            yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
-
-                            # JSON 파싱 + 3중 검증
-                            from ai.agents.judgment_agent import (
-                                _parse_llm_response,
-                                _validate_result_category,
-                                _check_keyword_match,
-                                _validate_article_exists,
-                                _calibrate_confidence,
-                                _check_consistency,
-                                _group_regulations,
-                            )
-
-                            parsed = _parse_llm_response(full_response)
-
-                            parsed["type"] = "judgment"
-                            parsed = _validate_result_category(parsed)
-
-                            rag_context = agent_response.get("_rag_context", [])
-                            keyword_match = _check_keyword_match(parsed, rag_context)
-                            article_validations = _validate_article_exists(parsed, rag_context)
-
-                            calibrated, confidence_breakdown = _calibrate_confidence(
-                                parsed, rag_context,
-                                keyword_match=keyword_match,
-                                article_validations=article_validations,
-                            )
-                            parsed["confidence"] = calibrated
-                            parsed["confidence_breakdown"] = confidence_breakdown
-                            parsed.setdefault("cross_references", [])
-
-                            groups = _group_regulations(rag_context)
-                            parsed["regulation_groups"] = list(groups.keys())
-
-                            if article_validations:
-                                parsed["article_validations"] = article_validations
-                                hallucinated = [v["article"] for v in article_validations if not v["exists"]]
-                                if hallucinated:
-                                    parsed.setdefault("warnings", []).append(
-                                        f"환각 의심 조항: {', '.join(hallucinated)} (RAG 검색 결과에 미존재)"
-                                    )
-
-                            inconsistency = _check_consistency(final_state.get("user_input", ""), parsed)
-                            if inconsistency:
-                                parsed["consistency_flag"] = inconsistency
-
-                            # message: 2단계 스트리밍에서는 reasoning 사용
-                            parsed["message"] = parsed.get("reasoning", "")
-
-                            # agent_response 업데이트
-                            agent_response.pop("stream_pending", None)
-                            agent_response.pop("sys_prompt", None)
-                            agent_response.pop("user_prompt", None)
-                            agent_response.pop("_rag_context", None)
-                            agent_response.update(parsed)
-                            agent_response["model_name"] = _j_stream_model
                             final_state["agent_response"] = agent_response
                         else:
                             yield f"data: {json.dumps({'type': 'status', 'value': 'judgment_agent 처리 완료'}, ensure_ascii=False)}\n\n"
@@ -598,171 +408,73 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         # 2-2. 문서 Agent 스트리밍
                         agent_response = node_output.get("agent_response", {})
 
-                        # 관련 문서 없음 등 stream_pending 없이 바로 응답하는 경우 → token으로 메시지 전송
+                        # sub_type 조기 알림 → 프론트에서 "문서 검색 중..." 등 표시
+                        _status_hint = agent_response.pop("_status_hint", None)
+                        _SUB_TYPE_LABELS = {
+                            "search": "문서 검색 중...",
+                            "qa": "문서 질의응답 준비 중...",
+                            "summary": "문서 요약 준비 중...",
+                            "generate": "문서 생성 준비 중...",
+                        }
+                        if _status_hint and _status_hint in _SUB_TYPE_LABELS:
+                            yield f"data: {json.dumps({'type': 'status', 'value': _SUB_TYPE_LABELS[_status_hint]}, ensure_ascii=False)}\n\n"
+                            yield f"data: {json.dumps({'type': 'doc_sub_type', 'value': _status_hint}, ensure_ascii=False)}\n\n"
+
+                        # 관련 문서 없음 등 stream_pending 없이 바로 응답하는 경우
                         if not agent_response.get("stream_pending") and agent_response.get("message"):
                             msg = agent_response["message"]
-                            yield f"data: {json.dumps({'type': 'token', 'value': msg}, ensure_ascii=False)}\n\n"
-
-                        if agent_response.get("stream_pending"):
-                            # RAG 검색은 완료, LLM 답변만 스트리밍
-                            import os as _os2
-                            from openai import AsyncOpenAI as _AsyncOpenAI2
-
-                            # sLLM 모드 판별
-                            _doc_mode = _os2.getenv("DOC_AGENT_MODE", "api")
-                            _doc_sllm_tasks = _os2.getenv("DOC_SLLM_TASKS", "generate").split(",")
-                            _doc_resp_type = agent_response.get("type", "")
-                            _doc_sub_type = agent_response.get("sub_type", "")
-                            # doc_retrieve 통합 타입: sub_type으로 태스크 결정
-                            if _doc_sub_type:
-                                _doc_task = _doc_sub_type  # "summary" | "qa" | "search"
-                            elif _doc_resp_type == "doc_summary":
-                                _doc_task = "summary"
-                            elif _doc_resp_type == "doc_search":
-                                _doc_task = "search"
+                            # 검색 결과는 청크 단위로 스트리밍 (자연스러운 UX)
+                            if agent_response.get("sub_type") == "search" and len(msg) > 100:
+                                lines = msg.split("\n")
+                                for line in lines:
+                                    yield f"data: {json.dumps({'type': 'token', 'value': line + chr(10)}, ensure_ascii=False)}\n\n"
                             else:
-                                _doc_task = "qa"
-                            _use_sllm = _doc_mode == "sllm" and _doc_task in _doc_sllm_tasks
+                                yield f"data: {json.dumps({'type': 'token', 'value': msg}, ensure_ascii=False)}\n\n"
 
-                            import httpx as _httpx_d
+                        elif agent_response.get("stream_pending") and agent_response.get("generate_config"):
+                            # ── 문서 생성 단계별 실행 (토큰 스트리밍 아님, 블로킹 + 상태 표시) ──
+                            gen_cfg = agent_response["generate_config"]
+                            t_type = gen_cfg.get("template_type", "report")
+                            type_label = {"meeting_minutes": "회의록", "report": "보고서", "proposal": "제안서"}.get(t_type, "문서")
 
-                            if _use_sllm:
-                                # sLLM: vLLM OpenAI 호환 서버로 스트리밍
-                                vllm_base = _os2.getenv("VLLM_BASE_URL", "http://localhost:8000/v1")
-                                vllm_api_key = _os2.getenv("VLLM_API_KEY", "EMPTY")
-                                vllm_model = _os2.getenv("VLLM_MODEL", "kakaocorp/kanana-1.5-8b-instruct-2505")
-                                _use_lora = _os2.getenv("VLLM_USE_LORA", "false").lower() == "true"
-                                if _use_lora:
-                                    vllm_model = f"v2_{_doc_task}"
-                                doc_client = _AsyncOpenAI2(
-                                    api_key=vllm_api_key,
-                                    base_url=vllm_base,
-                                    timeout=_httpx_d.Timeout(60.0, connect=15.0),
-                                )
-                                _stream_model = vllm_model
-                                logger.info("[Chat] document_agent sLLM 스트리밍: model=%s, base_url=%s", vllm_model, vllm_base)
-                            else:
-                                # API 모드: 기존 OpenAI
-                                openai_key = _os2.getenv("OPENAI_API_KEY")
-                                if not openai_key:
-                                    yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
-                                    continue
-                                openai_base = _os2.getenv("LLM_BASE_URL") or None
-                                doc_client = _AsyncOpenAI2(api_key=openai_key, base_url=openai_base) if openai_base else _AsyncOpenAI2(api_key=openai_key)
-                                _stream_model = _os2.getenv("OPENAI_MODEL", "gpt-4o-mini")
+                            yield f"data: {json.dumps({'type': 'status', 'value': f'{type_label} 생성 중... (내용 분석)'}, ensure_ascii=False)}\n\n"
 
-                            # sLLM 호출 시도 → 실패하면 API fallback
                             try:
-                                doc_stream = await doc_client.chat.completions.create(
-                                    model=_stream_model,
-                                    messages=[
-                                        {"role": "system", "content": agent_response["sys_prompt"]},
-                                        {"role": "user", "content": agent_response["user_prompt"]},
-                                    ],
-                                    temperature=0.1,
-                                    max_tokens=1024,
-                                    stream=True,
+                                from ai.agents.document._generate import generate_document
+                                result = await generate_document(
+                                    category=gen_cfg["template_type"],
+                                    user_input=gen_cfg["user_input"],
+                                    template_id=gen_cfg.get("template_id"),
                                 )
-                            except Exception as _doc_sllm_err:
-                                if _use_sllm:
-                                    logger.warning("[Chat] document_agent sLLM 실패, API fallback: %s", _doc_sllm_err)
-                                    openai_key = _os2.getenv("OPENAI_API_KEY")
-                                    if not openai_key:
-                                        yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
-                                        continue
-                                    openai_base = _os2.getenv("LLM_BASE_URL") or None
-                                    doc_client = _AsyncOpenAI2(api_key=openai_key, base_url=openai_base) if openai_base else _AsyncOpenAI2(api_key=openai_key)
-                                    _stream_model = _os2.getenv("OPENAI_MODEL", "gpt-4o-mini") + " (fallback)"
-                                    doc_stream = await doc_client.chat.completions.create(
-                                        model=_os2.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-                                        messages=[
-                                            {"role": "system", "content": agent_response["sys_prompt"]},
-                                            {"role": "user", "content": agent_response["user_prompt"]},
-                                        ],
-                                        temperature=0.1,
-                                        max_tokens=1024,
-                                        stream=True,
-                                    )
-                                else:
-                                    raise
+                                yield f"data: {json.dumps({'type': 'status', 'value': 'DOCX 생성 완료'}, ensure_ascii=False)}\n\n"
 
-                            full_doc_response = ""
-                            async for chunk in doc_stream:
-                                if chunk.choices[0].delta.content:
-                                    token = chunk.choices[0].delta.content
-                                    full_doc_response += token
-                                    yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
-
-                            # 최종 응답 업데이트
-                            agent_response["message"] = full_doc_response
-                            agent_response["answer"] = full_doc_response
-                            agent_response["model_name"] = _stream_model
-                            # LLM이 "관련 문서 없음"으로 판단하면 출처도 비우기
-                            if "찾지 못했습니다" in full_doc_response or "관련 문서가 없" in full_doc_response:
-                                agent_response["sources"] = []
-                            elif agent_response.get("sources"):
-                                # LLM 답변에 실제 언급된 출처만 남기기
-                                # 출처 제목의 고유 키워드(3글자 이상)가 답변에 포함되는지 확인
-                                filtered_sources = []
-                                for src in agent_response["sources"]:
-                                    title = src.get("title", "")
-                                    # 3글자 이상 키워드만 추출 (공통 단어 배제)
-                                    title_keywords = [w for w in title.replace("_", " ").split() if len(w) >= 3]
-                                    if not title_keywords:
-                                        continue
-                                    match_count = sum(1 for kw in title_keywords if kw in full_doc_response)
-                                    # 키워드 절반 이상 매칭
-                                    if match_count >= max(len(title_keywords) // 2, 1):
-                                        filtered_sources.append(src)
-                                if filtered_sources:
-                                    agent_response["sources"] = filtered_sources
-                            # doc_summary 스트리밍 완료 후 DB 업데이트
-                            _doc_id_for_update = agent_response.get("document_id")
-                            if agent_response.get("sub_type") == "summary" and _doc_id_for_update and "태그:" in full_doc_response:
-                                try:
-                                    from ai.agents.document_agent import parse_summary_output
-                                    from app.models.document import Document as _DocModel
-                                    _parsed = parse_summary_output(full_doc_response)
-                                    if _parsed["tags"]:
-                                        _doc_result = await db.execute(select(_DocModel).where(_DocModel.id == _doc_id_for_update))
-                                        _doc_obj = _doc_result.scalar_one_or_none()
-                                        if _doc_obj:
-                                            _doc_obj.summary = _parsed["summary"]
-                                            _doc_obj.tags = _parsed["tags"]
-                                            await db.commit()
-                                            logger.info("[Chat] doc_summary DB 업데이트 완료: document_id=%s", _doc_id_for_update)
-                                except Exception as _db_err:
-                                    logger.warning("[Chat] doc_summary DB 업데이트 실패: %s", _db_err)
-
-                            # ── 스트리밍 doc_retrieve(QA/summary) 규정 연결 ──
-                            _doc_sub_type_reg = agent_response.get("sub_type", "")
-                            if (
-                                _doc_sub_type_reg in ("qa", "summary")
-                                and full_doc_response
-                                and len(full_doc_response) > 50
-                            ):
-                                try:
-                                    from ai.agents.regulation_validator import check_content_regulations
-                                    yield f"data: {json.dumps({'type': 'status', 'value': '규정 연관성 확인 중...'}, ensure_ascii=False)}\n\n"
-
-                                    _reg_result = await check_content_regulations(
-                                        full_doc_response, user_id=user.id
-                                    )
-                                    if _reg_result.get("notes"):
-                                        _reg_summary = _reg_result["summary"]
-                                        # 규정 노트를 토큰으로 스트리밍
-                                        yield f"data: {json.dumps({'type': 'token', 'value': _reg_summary}, ensure_ascii=False)}\n\n"
-                                        agent_response["regulation_check"] = _reg_result
-                                        agent_response["message"] = full_doc_response + _reg_summary
-                                        agent_response["answer"] = full_doc_response + _reg_summary
-                                        logger.info("[Chat] doc_retrieve 규정 연결: %d건", len(_reg_result["notes"]))
-                                except Exception as _reg_err:
-                                    logger.warning("[Chat] doc_retrieve 규정 연결 실패 (비차단): %s", _reg_err)
+                                agent_response.update(result)
+                            except Exception as e:
+                                logger.error("[Chat] 문서 생성 실패: %s", e)
+                                agent_response["message"] = f"문서 생성 중 오류가 발생했습니다: {e}"
+                                agent_response["type"] = "doc_generate"
 
                             agent_response.pop("stream_pending", None)
-                            agent_response.pop("sys_prompt", None)
-                            agent_response.pop("user_prompt", None)
-                            agent_response.pop("document_id", None)
+                            agent_response.pop("generate_config", None)
+                            final_state["agent_response"] = agent_response
+
+                        elif agent_response.get("stream_pending"):
+                            # ── StreamRequest 프로토콜: QA/summary 토큰 스트리밍 ──
+                            from ai.agents.document._stream import execute_doc_stream
+
+                            cfg = agent_response.get("llm_config", {})
+                            post = agent_response.get("post_stream", {})
+                            logger.info("[Chat] document_agent 스트리밍 위임: task=%s", cfg.get("task"))
+
+                            async for token in execute_doc_stream(cfg, post, db, user.id, agent_response):
+                                yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
+
+                            # regulation 후처리 결과가 있으면 추가 전송
+                            if agent_response.get("regulation_check"):
+                                reg_summary = agent_response["regulation_check"].get("summary", "")
+                                if reg_summary:
+                                    yield f"data: {json.dumps({'type': 'token', 'value': reg_summary}, ensure_ascii=False)}\n\n"
+
                             final_state["agent_response"] = agent_response
                         elif agent_response.get("type") in ("doc_pick", "template_pick"):
                             # 선택지 응답 → final_state에 저장하여 format_response에서 전달
@@ -820,6 +532,15 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
             try:
                 intent = final_state.get("intent", "general")
                 agent_response = final_state.get("agent_response", {})
+
+                # DB 저장용: sources 내 content를 200자로 잘라 저장 크기 절감
+                save_response = agent_response.copy()
+                if "sources" in save_response:
+                    save_response["sources"] = [
+                        {**s, "content": s.get("content", "")[:200]}
+                        for s in save_response["sources"]
+                    ]
+
                 log = ChatLog(
                     session_id=session_id,
                     user_id=user.id,
@@ -827,7 +548,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                     intent=intent,
                     intent_confidence=final_state.get("confidence", 0.0),
                     agent_type=_get_agent_type(intent),
-                    agent_response=json.dumps(agent_response, ensure_ascii=False, default=str),
+                    agent_response=json.dumps(save_response, ensure_ascii=False, default=str),
                     response_time_ms=response_time_ms,
                 )
                 db.add(log)
@@ -883,44 +604,7 @@ async def chat(request: ChatRequest, user=Depends(get_current_user), db: AsyncSe
 
         graph = get_graph()
         initial_state = _build_initial_state(request, user)
-
-        # session_id로 이전 대화 이력 로드
-        if request.session_id:
-            try:
-                hist_result = await db.execute(
-                    select(ChatLog)
-                    .where(ChatLog.session_id == request.session_id, ChatLog.user_id == user.id)
-                    .order_by(ChatLog.created_at.desc())
-                    .limit(6)
-                )
-                hist_logs = list(reversed(hist_result.scalars().all()))
-                chat_history = []
-                for log in hist_logs:
-                    chat_history.append({"role": "user", "content": log.user_message})
-                    try:
-                        ar = json.loads(log.agent_response) if log.agent_response else {}
-                    except json.JSONDecodeError:
-                        ar = {}
-                    chat_history.append({
-                        "role": "assistant",
-                        "content": ar.get("message", ""),
-                        "agentResponse": ar,
-                    })
-                initial_state["chat_history"] = chat_history
-            except Exception as hist_err:
-                logger.warning("chat_history 로드 실패: %s", hist_err)
-
-        # document_id가 있으면 DB에서 문서 내용 로딩
-        if request.document_id:
-            try:
-                from sqlalchemy import select
-                from app.models.document import Document
-                result_doc = await db.execute(select(Document).where(Document.id == request.document_id))
-                doc = result_doc.scalar_one_or_none()
-                if doc:
-                    initial_state["document_content"] = doc.content
-            except Exception as doc_err:
-                logger.warning("document_id 로딩 실패: %s", doc_err)
+        await _load_chat_context(db, request, user, initial_state)
 
         result = await graph.ainvoke(initial_state)
 

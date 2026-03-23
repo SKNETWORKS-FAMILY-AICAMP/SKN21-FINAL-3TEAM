@@ -43,6 +43,9 @@ export const reindexAllDocuments = () =>
 export const generateDocument = (data) =>
   client.post('/documents/generate', data, { timeout: 180000 })
 
+export const fillFields = (data) =>
+  client.post('/documents/fill-fields', data, { timeout: 180000 })
+
 export const downloadDocument = (id, format = 'docx') =>
   client.get(`/documents/${id}/download`, {
     params: { format },

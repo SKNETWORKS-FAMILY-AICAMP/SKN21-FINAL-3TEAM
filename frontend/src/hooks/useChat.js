@@ -8,8 +8,18 @@ export default function useChat() {
   const { messages, isStreaming, currentIntent, currentStatus, addMessage } = useChatStore()
   const { startStream, stopStream } = useSSE()
 
-  const sendMessage = async (text) => {
-    if (!text.trim() || useChatStore.getState().isStreaming) return
+  const sendMessage = async (text, options = {}) => {
+    if (!text.trim()) return
+    // 후속 액션(doc_pick, 버튼 클릭)은 isStreaming 중에도 허용
+    if (useChatStore.getState().isStreaming && !options.forceIntent) return
+
+    // 후속 액션 옵션: { forceIntent, documentId, documentName }
+    const { forceIntent, documentId, documentName } = options
+
+    // 후속 액션에서 document 컨텍스트 설정
+    if (documentId) {
+      useChatStore.getState().setSelectedDocument(documentId, documentName || '')
+    }
 
     // 활성 세션이 없으면 먼저 생성
     if (!useChatStore.getState().activeSessionId) {
@@ -26,7 +36,7 @@ export default function useChat() {
     useChatStore.getState().clearSelectedTemplate()
 
     try {
-      await startStream(text, activeSessionId, selectedDocumentId, selectedTemplateId, selectedTemplateType)
+      await startStream(text, activeSessionId, selectedDocumentId, selectedTemplateId, selectedTemplateType, forceIntent)
     } catch (err) {
       // 에러는 상위에서 처리
     }

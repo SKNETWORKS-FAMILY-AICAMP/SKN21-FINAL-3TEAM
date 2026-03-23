@@ -6,7 +6,7 @@ import TemplateSelector from '../components/documents/TemplateSelector';
 import TemplateUploadDialog from '../components/documents/TemplateUploadDialog';
 import DocumentPreview from '../components/documents/DocumentPreview';
 import MeetingPreview from '../components/meetings/MeetingPreview';
-import { generateDocument, downloadDocument, uploadTemplate, listTemplates, getTemplate } from '../api/documents';
+import { generateDocument, downloadDocument, uploadTemplate, listTemplates, getTemplate, fillFields } from '../api/documents';
 import DatePicker from '../components/common/DatePicker';
 import { toast } from '../store/toastStore';
 
@@ -235,7 +235,33 @@ function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendee
 const FORM_KEYS = {
   meeting_minutes: ['title', 'date', 'attendees', 'team', 'content'],
   report: ['title', 'date', 'author', 'department', 'report_to', 'content'],
-  proposal: ['title', 'submit_date', 'company', 'manager', 'submit_to', 'content'],
+  proposal: ['title', 'date', 'company', 'manager', 'submit_to', 'content'],
+};
+
+// 기본 템플릿 필드 정의 (DB에 layout/type 정보가 없을 때 fallback)
+const DEFAULT_TEMPLATE_FIELDS = {
+  meeting_minutes: [
+    { key: 'title', label: '회의 제목', type: 'text', layout: 'half', form: true, required: true },
+    { key: 'date', label: '날짜', type: 'date', layout: 'half', form: true },
+    { key: '_team_attendee', label: '팀/참석자', type: 'team_attendee', form: true },
+    { key: 'content', label: '회의 내용', type: 'textarea', form: true },
+  ],
+  report: [
+    { key: 'title', label: '보고서 제목', type: 'text', layout: 'half', form: true, required: true },
+    { key: 'date', label: '날짜', type: 'date', layout: 'half', form: true },
+    { key: 'department', label: '팀', type: 'team_dropdown', layout: 'half', form: true },
+    { key: 'author', label: '작성자', type: 'text', layout: 'half', form: true },
+    { key: 'report_to', label: '보고 대상', type: 'text', form: true },
+    { key: 'content', label: '보고 내용', type: 'textarea', form: true },
+  ],
+  proposal: [
+    { key: 'title', label: '제안서 제목', type: 'text', layout: 'half', form: true, required: true },
+    { key: 'date', label: '제출일', type: 'date', layout: 'half', form: true },
+    { key: 'company', label: '회사명', type: 'text', layout: 'half', form: true },
+    { key: 'manager', label: '담당자', type: 'text', layout: 'half', form: true },
+    { key: 'submit_to', label: '제출처', type: 'text', form: true },
+    { key: 'content', label: '제안 내용', type: 'textarea', form: true },
+  ],
 };
 
 /**
@@ -243,7 +269,7 @@ const FORM_KEYS = {
  * attendees/team 필드는 회의록일 때 TeamAttendeePicker로 대체되므로 스킵
  * form: false 필드는 LLM이 생성하므로 UI에 표시하지 않음
  */
-function DynamicForm({ fields, formData, onChange, skipKeys = [], category }) {
+function DynamicForm({ fields, formData, onChange, skipKeys = [], category, user, selectedTeam, onTeamChange, selectedAttendees, onAttendeesChange }) {
   if (!fields || fields.length === 0) return null;
 
   const inputClass = 'w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500';
@@ -251,86 +277,138 @@ function DynamicForm({ fields, formData, onChange, skipKeys = [], category }) {
   const filteredFields = fields
     .filter(f => !skipKeys.includes(f.key))
     .filter(f => {
-      // form 플래그가 명시적이면 그대로 사용
       if (f.form === false) return false;
       if (f.form === true) return true;
-      // form 없으면 (커스텀 템플릿) → FORM_KEYS로 판단
       const formKeys = FORM_KEYS[category] || ['title', 'date', 'content'];
       return formKeys.includes(f.key);
     });
   if (filteredFields.length === 0) return null;
 
+  // layout: 'half' 필드들을 2열 그리드로 묶기
+  const rows = [];
+  let i = 0;
+  while (i < filteredFields.length) {
+    const field = filteredFields[i];
+    if (field.layout === 'half' && i + 1 < filteredFields.length && filteredFields[i + 1].layout === 'half') {
+      rows.push([field, filteredFields[i + 1]]);
+      i += 2;
+    } else {
+      rows.push([field]);
+      i += 1;
+    }
+  }
+
+  const renderField = (field) => {
+    const value = formData[field.key] || '';
+
+    // DatePicker
+    if (field.type === 'date') {
+      return (
+        <div key={field.key}>
+          <label className="block text-[0.8125rem] font-semibold mb-1.5">
+            {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <DatePicker
+            value={value}
+            onChange={(v) => onChange(field.key, v)}
+            placeholder="날짜 선택"
+          />
+        </div>
+      );
+    }
+
+    // 팀 드롭다운
+    if (field.type === 'team_dropdown') {
+      return (
+        <TeamDropdown
+          key={field.key}
+          user={user}
+          value={value}
+          onChange={(v) => onChange(field.key, v)}
+        />
+      );
+    }
+
+    // 팀 + 참석자 (회의록 전용)
+    if (field.type === 'team_attendee') {
+      return (
+        <TeamAttendeePicker
+          key={field.key}
+          user={user}
+          selectedTeam={selectedTeam}
+          onTeamChange={onTeamChange}
+          selectedAttendees={selectedAttendees}
+          onAttendeesChange={onAttendeesChange}
+        />
+      );
+    }
+
+    // textarea
+    if (field.type === 'textarea') {
+      return (
+        <div key={field.key}>
+          <label className="block text-[0.8125rem] font-semibold mb-1.5">
+            {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <textarea
+            value={value}
+            onChange={(e) => onChange(field.key, e.target.value)}
+            placeholder={`${field.label}을(를) 입력하세요`}
+            rows={10}
+            onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 400) + 'px'; }}
+            className={`${inputClass} resize-none overflow-y-auto max-h-[400px]`}
+          />
+        </div>
+      );
+    }
+
+    // list
+    if (field.type === 'list') {
+      return (
+        <div key={field.key}>
+          <label className="block text-[0.8125rem] font-semibold mb-1.5">
+            {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <input
+            value={value}
+            onChange={(e) => onChange(field.key, e.target.value)}
+            placeholder={`${field.label} (쉼표로 구분)`}
+            className={inputClass}
+          />
+        </div>
+      );
+    }
+
+    // default: text
+    return (
+      <div key={field.key}>
+        <label className="block text-[0.8125rem] font-semibold mb-1.5">
+          {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+        <input
+          value={value}
+          onChange={(e) => onChange(field.key, e.target.value)}
+          placeholder={`${field.label}을(를) 입력하세요`}
+          className={inputClass}
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
-      {filteredFields.map((field) => {
-        const value = formData[field.key] || '';
-
-        if (field.type === 'textarea') {
-          return (
-            <div key={field.key}>
-              <label className="block text-[0.8125rem] font-semibold mb-1.5">
-                {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
-              </label>
-              <textarea
-                value={value}
-                onChange={(e) => onChange(field.key, e.target.value)}
-                placeholder={`${field.label}을(를) 입력하세요`}
-                rows={4}
-                onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px'; }}
-                className={`${inputClass} resize-none overflow-y-auto max-h-[200px]`}
-              />
-            </div>
-          );
-        }
-
-        if (field.type === 'date') {
-          return (
-            <div key={field.key} className="w-1/2">
-              <label className="block text-[0.8125rem] font-semibold mb-1.5">
-                {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
-              </label>
-              <input
-                type="date"
-                value={value}
-                onChange={(e) => onChange(field.key, e.target.value)}
-                onClick={(e) => e.target.showPicker?.()}
-                className={`${inputClass} cursor-pointer`}
-              />
-            </div>
-          );
-        }
-
-        if (field.type === 'list') {
-          return (
-            <div key={field.key}>
-              <label className="block text-[0.8125rem] font-semibold mb-1.5">
-                {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
-              </label>
-              <input
-                value={value}
-                onChange={(e) => onChange(field.key, e.target.value)}
-                placeholder={`${field.label} (쉼표로 구분)`}
-                className={inputClass}
-              />
-            </div>
-          );
-        }
-
-        // default: text
-        return (
-          <div key={field.key}>
-            <label className="block text-[0.8125rem] font-semibold mb-1.5">
-              {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
-            </label>
-            <input
-              value={value}
-              onChange={(e) => onChange(field.key, e.target.value)}
-              placeholder={`${field.label}을(를) 입력하세요`}
-              className={inputClass}
-            />
+      {rows.map((row, idx) =>
+        row.length === 2 ? (
+          <div key={idx} className="grid grid-cols-2 gap-3">
+            {renderField(row[0])}
+            {renderField(row[1])}
           </div>
-        );
-      })}
+        ) : row[0].type === 'team_attendee' ? (
+          renderField(row[0])
+        ) : (
+          <div key={idx}>{renderField(row[0])}</div>
+        )
+      )}
     </div>
   );
 }
@@ -353,6 +431,12 @@ export default function DocumentGeneratePage() {
   // 회의록 전용: 팀 + 참석자
   const [selectedTeam, setSelectedTeam] = useState(user?.team || '');
   const [selectedAttendees, setSelectedAttendees] = useState([]);
+
+  // 커스텀 템플릿: 자연어 입력 → AI가 전체 필드 채움
+  const [freeText, setFreeText] = useState('');
+  const [filling, setFilling] = useState(false);
+  const [filled, setFilled] = useState(false);
+  const isCustom = !!selectedCustomTemplate;
 
   const fetchCustomTemplates = () => {
     listTemplates()
@@ -379,6 +463,8 @@ export default function DocumentGeneratePage() {
     requestAnimationFrame(() => window.scrollTo(0, scrollY));
     setSelectedTeam(user?.team || '');
     setSelectedAttendees([]);
+    setFreeText('');
+    setFilled(false);
 
     const templateId = customTpl?.id;
     setSelectedTemplateId(templateId || null);
@@ -404,15 +490,24 @@ export default function DocumentGeneratePage() {
           setTemplateFields(Array.isArray(fields) ? fields : []);
 
           const defaults = { date: new Date().toISOString().split('T')[0] };
-          const formKeys = FORM_KEYS[template] || ['title', 'date', 'content'];
-          for (const f of (Array.isArray(fields) ? fields : [])) {
-            // form: false 필드는 폼 초기값에서 제외 (LLM이 생성)
-            if (f.form === false) continue;
-            if (f.form !== true && !formKeys.includes(f.key)) continue;
-            if (f.key === 'date' || f.key === 'submit_date') defaults[f.key] = new Date().toISOString().split('T')[0];
-            else if (f.key === 'author' || f.key === 'manager') defaults[f.key] = user?.name || '';
-            else if (f.key === 'department') defaults[f.key] = user?.team || '';
-            else defaults[f.key] = '';
+          const fieldArr = Array.isArray(fields) ? fields : [];
+
+          if (customTpl) {
+            // 커스텀 템플릿: 전체 필드 빈값 초기화 (AI가 채울 예정)
+            for (const f of fieldArr) {
+              defaults[f.key] = '';
+            }
+          } else {
+            // 시스템 템플릿: 기존 로직
+            const formKeys = FORM_KEYS[template] || ['title', 'date', 'content'];
+            for (const f of fieldArr) {
+              if (f.form === false) continue;
+              if (f.form !== true && !formKeys.includes(f.key)) continue;
+              if (f.key === 'date' || f.key === 'submit_date') defaults[f.key] = new Date().toISOString().split('T')[0];
+              else if (f.key === 'author' || f.key === 'manager') defaults[f.key] = user?.name || '';
+              else if (f.key === 'department') defaults[f.key] = user?.team || '';
+              else defaults[f.key] = '';
+            }
           }
           setFormData(defaults);
         }
@@ -426,12 +521,44 @@ export default function DocumentGeneratePage() {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
 
+  /** 커스텀 템플릿: AI가 전체 필드 채우기 */
+  const handleFillFields = async () => {
+    if (!selectedTemplateId || !freeText.trim()) return;
+    setFilling(true);
+    try {
+      const response = await fillFields({
+        template_id: selectedTemplateId,
+        content: freeText,
+      });
+      const apiData = response.data;
+      const data = apiData.data || {};
+
+      // AI 결과를 전부 formData에 반영
+      setFormData(prev => {
+        const next = { ...prev };
+        for (const [key, val] of Object.entries(data)) {
+          if (val !== undefined) next[key] = val;
+        }
+        return next;
+      });
+
+      if (apiData.fields) setTemplateFields(apiData.fields);
+
+      setFilled(true);
+      const filledCount = Object.values(data).filter(v => v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0)).length;
+      toast.success(`AI가 ${filledCount}/${templateFields.length}개 필드를 채웠습니다. 확인 후 수정하세요.`);
+    } catch (err) {
+      toast.error('AI 작성 실패: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setFilling(false);
+    }
+  };
+
   /** 통합 생성 핸들러 */
   const handleGenerate = async () => {
     if (!selectedTemplate) return;
     setLoading(true);
     try {
-      // 폼 데이터를 fields_data JSON으로 전달 (서버에서 서술형 변환)
       const fieldsData = { ...formData };
       if (isMeeting) {
         fieldsData.attendees = selectedAttendees;
@@ -532,8 +659,17 @@ export default function DocumentGeneratePage() {
     proposal: '제안서',
   };
 
-  // 회의록일 때 DynamicForm에서 제외할 키 (TeamAttendeePicker가 대신 렌더링)
-  const meetingSkipKeys = isMeeting ? ['attendees', 'team'] : [];
+  // 기본 필드 + DB 추가 필드 머지
+  const mergedFields = useMemo(() => {
+    const defaults = DEFAULT_TEMPLATE_FIELDS[selectedTemplate];
+    if (!defaults) return templateFields; // 커스텀 템플릿은 DB 필드 그대로
+
+    const defaultKeys = new Set(defaults.map(f => f.key));
+    // 기본 필드와 중복되는 DB 필드 제외 (예: submit_date는 date로 대체됨)
+    const skipExtras = new Set([...defaultKeys, 'submit_date']);
+    const extras = templateFields.filter(f => !skipExtras.has(f.key) && f.form !== false);
+    return [...defaults, ...extras];
+  }, [selectedTemplate, templateFields]);
 
   return (
     <div>
@@ -568,175 +704,150 @@ export default function DocumentGeneratePage() {
           }}
         />
 
-        {/* 통합 입력 폼 */}
-        {selectedTemplate && (isMeeting || templateFields.length > 0) && (
+        {/* 커스텀 템플릿: 내용 입력 → AI가 전체 필드 채움 → 사용자 수정 */}
+        {isCustom && selectedTemplate && templateFields.length > 0 && (() => {
+          const skipLabels = ['첨부', '첨부자료', '첨부 자료'];
+          const editableFields = templateFields.filter(f => {
+            const label = (f.label || '').trim();
+            return !skipLabels.includes(label) && !label.includes('첨부');
+          });
+
+          const formatValue = (v) => {
+            if (typeof v === 'object' && v !== null && !Array.isArray(v)) return Object.values(v).filter(Boolean).join(' / ');
+            return String(v);
+          };
+          const getDisplayValue = (value) => {
+            if (value === null || value === undefined) return '';
+            if (Array.isArray(value)) return value.map((v, i) => `${i + 1}. ${formatValue(v)}`).join('\n');
+            if (typeof value === 'object') return formatValue(value);
+            return String(value);
+          };
+          const isEmpty = (value) => value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0);
+
+          const renderField = (field) => {
+            const raw = formData[field.key];
+            const value = getDisplayValue(raw);
+            const aiFilled = filled && !isEmpty(raw);
+            const needInput = filled && isEmpty(raw);
+            const isLong = field.type === 'textarea' || field.type === 'array'
+              || (field.description || '').includes('배열') || (field.description || '').includes('목록')
+              || (field.description || '').includes('문장') || value.length > 80;
+
+            const borderClass = needInput ? 'border-amber-400 bg-amber-50/30'
+              : aiFilled ? 'border-primary-200 bg-primary-50/30'
+              : 'border-neutral-border';
+
+            return (
+              <div key={field.key} className={isLong ? 'col-span-2' : ''}>
+                <label className="block text-[0.8125rem] font-semibold mb-1">
+                  {field.label || field.key}
+                  {aiFilled && <span className="ml-1.5 text-[0.6875rem] font-normal text-primary-600">AI</span>}
+                  {needInput && <span className="ml-1.5 text-[0.6875rem] font-normal text-amber-500">입력 필요</span>}
+                </label>
+                {isLong ? (
+                  <textarea
+                    value={value}
+                    onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                    rows={3}
+                    onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px'; }}
+                    placeholder={field.description || `${field.label || field.key}을(를) 입력하세요`}
+                    className={`w-full px-3.5 py-2.5 border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[200px] ${borderClass}`}
+                  />
+                ) : (
+                  <input
+                    type={field.type === 'date' ? 'date' : 'text'}
+                    value={value}
+                    onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                    placeholder={field.description || `${field.label || field.key}을(를) 입력하세요`}
+                    className={`w-full px-3.5 py-2.5 border rounded-md text-sm outline-none focus:border-primary-500 ${borderClass}`}
+                  />
+                )}
+              </div>
+            );
+          };
+
+          const aiCount = filled ? editableFields.filter(f => !isEmpty(formData[f.key])).length : 0;
+
+          return (
+            <div className="card">
+              <div className="card-header">
+                <div className="card-title">
+                  {selectedCustomTemplate?.name || '커스텀 문서'} 작성
+                </div>
+              </div>
+              <div className="card-body space-y-5">
+                {/* 핵심 내용 입력 + AI 작성 버튼 */}
+                <div>
+                  <h3 className="text-[0.8125rem] font-semibold text-neutral-500 mb-2">핵심 내용을 입력하세요</h3>
+                  <textarea
+                    value={freeText}
+                    onChange={(e) => setFreeText(e.target.value)}
+                    placeholder="문서에 담을 내용을 자유롭게 입력하세요 (불릿 포인트로 입력하면 더 정확합니다)"
+                    rows={5}
+                    onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 300) + 'px'; }}
+                    className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[300px]"
+                  />
+                  <div className="flex justify-end mt-2">
+                    <button
+                      onClick={handleFillFields}
+                      disabled={filling || !freeText.trim()}
+                      className="btn-primary text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {filling ? 'AI 작성 중...' : 'AI 문서 작성'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* AI 작성 결과 카운트 */}
+                {filled && (
+                  <div className="flex items-center gap-3 text-xs">
+                    <div className="flex-1 border-t border-neutral-divider" />
+                    <span className="text-primary-600 font-medium">AI가 {aiCount}/{editableFields.length}개 필드를 채웠습니다 — 확인 후 수정하세요</span>
+                    <div className="flex-1 border-t border-neutral-divider" />
+                  </div>
+                )}
+
+                {/* 전체 필드 — 2열 그리드 (긴 필드는 col-span-2) */}
+                <div className="grid grid-cols-2 gap-3">
+                  {editableFields.map(f => renderField(f))}
+                </div>
+
+                {/* 문서 생성 버튼 */}
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleGenerate}
+                    disabled={loading}
+                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'AI 생성 중...' : '문서 생성 (DOCX)'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* 시스템 템플릿: 기존 입력 폼 */}
+        {!isCustom && selectedTemplate && (isMeeting || templateFields.length > 0) && (
           <div className="card">
             <div className="card-header">
               <div className="card-title">
-                {selectedCustomTemplate?.name || categoryLabel[selectedTemplate] || '문서'} 내용 입력
+                {categoryLabel[selectedTemplate] || '문서'} 내용 입력
               </div>
             </div>
             <div className="card-body space-y-4">
-              {isMeeting ? (
-                <>
-                  {/* 회의록: 제목+날짜 한 줄 */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">회의 제목<span className="text-red-500 ml-0.5">*</span></label>
-                      <input
-                        value={formData.title || ''}
-                        onChange={(e) => handleFieldChange('title', e.target.value)}
-                        placeholder="회의 제목을 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">날짜</label>
-                      <DatePicker
-                        value={formData.date || ''}
-                        onChange={(v) => handleFieldChange('date', v)}
-                        placeholder="날짜 선택"
-                      />
-                    </div>
-                  </div>
-                  {/* 팀+참석자 한 줄 (1:1) */}
-                  <TeamAttendeePicker
-                    user={user}
-                    selectedTeam={selectedTeam}
-                    onTeamChange={setSelectedTeam}
-                    selectedAttendees={selectedAttendees}
-                    onAttendeesChange={setSelectedAttendees}
-                  />
-                  {/* 회의 내용 */}
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">회의 내용</label>
-                    <textarea
-                      value={formData.content || ''}
-                      onChange={(e) => handleFieldChange('content', e.target.value)}
-                      placeholder="회의 내용을 입력하세요"
-                      rows={10}
-                      onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 400) + 'px'; }}
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[400px]"
-                    />
-                  </div>
-                </>
-              ) : selectedTemplate === 'report' ? (
-                <>
-                  {/* 보고서: 제목+날짜 한 줄 */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">보고서 제목<span className="text-red-500 ml-0.5">*</span></label>
-                      <input
-                        value={formData.title || ''}
-                        onChange={(e) => handleFieldChange('title', e.target.value)}
-                        placeholder="보고서 제목을 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">날짜</label>
-                      <DatePicker
-                        value={formData.date || ''}
-                        onChange={(v) => handleFieldChange('date', v)}
-                        placeholder="날짜 선택"
-                      />
-                    </div>
-                  </div>
-                  {/* 팀(드롭다운)+작성자 한 줄 */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <TeamDropdown
-                      user={user}
-                      value={formData.department || ''}
-                      onChange={(v) => handleFieldChange('department', v)}
-                    />
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">작성자</label>
-                      <input
-                        value={formData.author || ''}
-                        onChange={(e) => handleFieldChange('author', e.target.value)}
-                        placeholder="작성자를 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
-                      />
-                    </div>
-                  </div>
-                  {/* 내용 */}
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">보고 내용</label>
-                    <textarea
-                      value={formData.content || ''}
-                      onChange={(e) => handleFieldChange('content', e.target.value)}
-                      placeholder="보고 내용을 입력하세요"
-                      rows={10}
-                      onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 400) + 'px'; }}
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[400px]"
-                    />
-                  </div>
-                </>
-              ) : selectedTemplate === 'proposal' ? (
-                <>
-                  {/* 제안서: 제목+날짜 한 줄 */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">제안서 제목<span className="text-red-500 ml-0.5">*</span></label>
-                      <input
-                        value={formData.title || ''}
-                        onChange={(e) => handleFieldChange('title', e.target.value)}
-                        placeholder="제안서 제목을 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">날짜</label>
-                      <DatePicker
-                        value={formData.date || ''}
-                        onChange={(v) => handleFieldChange('date', v)}
-                        placeholder="날짜 선택"
-                      />
-                    </div>
-                  </div>
-                  {/* 회사명+담당자 한 줄 */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">회사명</label>
-                      <input
-                        value={formData.company || ''}
-                        onChange={(e) => handleFieldChange('company', e.target.value)}
-                        placeholder="회사명을 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[0.8125rem] font-semibold mb-1.5">담당자</label>
-                      <input
-                        value={formData.manager || ''}
-                        onChange={(e) => handleFieldChange('manager', e.target.value)}
-                        placeholder="담당자를 입력하세요"
-                        className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500"
-                      />
-                    </div>
-                  </div>
-                  {/* 내용 */}
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">제안 내용</label>
-                    <textarea
-                      value={formData.content || ''}
-                      onChange={(e) => handleFieldChange('content', e.target.value)}
-                      placeholder="제안 내용을 입력하세요"
-                      rows={10}
-                      onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 400) + 'px'; }}
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[400px]"
-                    />
-                  </div>
-                </>
-              ) : (
-                <DynamicForm
-                  fields={templateFields}
-                  formData={formData}
-                  onChange={handleFieldChange}
-                  skipKeys={meetingSkipKeys}
-                  category={selectedTemplate}
-                />
-              )}
+              <DynamicForm
+                fields={mergedFields}
+                formData={formData}
+                onChange={handleFieldChange}
+                skipKeys={[]}
+                category={selectedTemplate}
+                user={user}
+                selectedTeam={selectedTeam}
+                onTeamChange={setSelectedTeam}
+                selectedAttendees={selectedAttendees}
+                onAttendeesChange={setSelectedAttendees}
+              />
 
               <div className="flex justify-end">
                 <button
