@@ -302,10 +302,8 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                     yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
 
                             sub_intent = sq_hint
-                            try:
+                            if sub_result and isinstance(sub_result, dict):
                                 sub_intent = sub_result.get("intent", sq_hint)
-                            except NameError:
-                                pass
 
                             all_sub_responses.append({
                                 "query": sq_query,
