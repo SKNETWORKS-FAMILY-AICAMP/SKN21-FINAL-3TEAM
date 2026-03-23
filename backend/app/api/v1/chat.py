@@ -343,51 +343,59 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         yield f"data: {json.dumps({'type': 'clarify_candidates', 'data': {'candidates': candidates, 'message': agent_response.get('message', '')}}, ensure_ascii=False)}\n\n"
 
                     elif node_name == "general_response":
-                        # 2-1. 일반 응답 스트리밍 (GPT API)
+                        # 2-1. 일반 응답 스트리밍 (vLLM 우선, API fallback)
                         import os as _os
                         from openai import AsyncOpenAI
-
-                        openai_key = _os.getenv("OPENAI_API_KEY")
-
-                        if not openai_key:
-                            yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
-                            continue
-
-                        client = AsyncOpenAI(api_key=openai_key)
+                        import httpx
 
                         user_input = final_state.get("user_input", "")
                         chat_history = final_state.get("chat_history", [])
 
-                        # 대화 요약이 있으면 시스템 프롬프트에 포함
                         from datetime import date as _date
                         _gen_sys = f"당신은 업무 도우미 '듀듀'입니다. 한국어로 친절하게 답변하세요.\n오늘 날짜: {_date.today().isoformat()}"
                         _chat_summary = final_state.get("chat_summary")
                         if _chat_summary:
                             _gen_sys += f"\n\n[이전 대화 요약]\n{_chat_summary}"
 
+                        _messages = [
+                            {"role": "system", "content": _gen_sys},
+                            *chat_history,
+                            {"role": "user", "content": user_input},
+                        ]
+
+                        # vLLM 우선 → API fallback
+                        _vllm_base = _os.getenv("VLLM_BASE_URL")
+                        _vllm_key = _os.getenv("VLLM_API_KEY", "EMPTY")
+                        _vllm_model = _os.getenv("VLLM_MODEL", "kakaocorp/kanana-1.5-8b-instruct-2505")
+
+                        if _vllm_base:
+                            client = AsyncOpenAI(api_key=_vllm_key, base_url=_vllm_base, timeout=httpx.Timeout(90.0, connect=15.0))
+                            _model = _vllm_model
+                        else:
+                            _api_key = _os.getenv("OPENAI_API_KEY")
+                            if not _api_key:
+                                yield f"data: {json.dumps({'type': 'error', 'message': 'LLM API 키가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
+                                continue
+                            client = AsyncOpenAI(api_key=_api_key)
+                            _model = _os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
                         stream = await client.chat.completions.create(
-                            model="gpt-4o-mini",
-                            messages=[
-                                {"role": "system", "content": _gen_sys},
-                                *chat_history,
-                                {"role": "user", "content": user_input},
-                            ],
-                            temperature=0.7,
-                            max_tokens=1024,
-                            stream=True,
+                            model=_model, messages=_messages,
+                            temperature=0.7, max_tokens=1024, stream=True,
                         )
 
                         full_response = ""
                         async for chunk in stream:
-                            if chunk.choices[0].delta.content:
+                            if chunk.choices and chunk.choices[0].delta.content:
                                 token = chunk.choices[0].delta.content
                                 full_response += token
                                 yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
 
+                        _model_label = _model.split("/")[-1] if "/" in _model else _model
                         final_state["agent_response"] = {
                             "type": "general",
                             "message": full_response,
-                            "model_name": "gpt-4o-mini",
+                            "model_name": _model_label,
                         }
 
                     elif node_name == "judgment_agent":

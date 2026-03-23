@@ -62,45 +62,48 @@ async def general_response_node(state: AgentState) -> AgentState:
         }
         return state
 
-    # 비스트리밍 모드 (POST /chat/) — 기존대로 전체 응답 생성
+    # 비스트리밍 모드 (POST /chat/) — vLLM 또는 API fallback
     try:
-        from openai import AsyncOpenAI
-
-        settings = _get_settings()
-
-        if not settings.OPENAI_API_KEY:
-            state["agent_response"] = {
-                "type": "general",
-                "message": "LLM API 키가 설정되지 않았습니다. .env 파일에 OPENAI_API_KEY를 추가해주세요.",
-            }
-            return state
-
-        client = AsyncOpenAI(
-            api_key=settings.OPENAI_API_KEY,
-            base_url=settings.LLM_BASE_URL,  # None이면 기본 OpenAI URL 사용
-        )
-
-        # 대화 요약이 있으면 시스템 프롬프트에 포함
+        import os as _os
         from datetime import date as _date
+
         sys_prompt = f"당신은 업무 도우미 '듀듀'입니다. 한국어로 친절하게 답변하세요.\n오늘 날짜: {_date.today().isoformat()}"
         chat_summary = state.get("chat_summary")
         if chat_summary:
             sys_prompt += f"\n\n[이전 대화 요약]\n{chat_summary}"
 
-        response = await client.chat.completions.create(
-            model=settings.OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": sys_prompt},
-                *state.get("chat_history", []),
-                {"role": "user", "content": state["user_input"]},
-            ],
-            temperature=0.7,
-            max_tokens=1024,
-        )
+        messages = [
+            {"role": "system", "content": sys_prompt},
+            *state.get("chat_history", []),
+            {"role": "user", "content": state["user_input"]},
+        ]
+
+        # sLLM 우선 → API fallback
+        vllm_base = _os.getenv("VLLM_BASE_URL")
+        vllm_key = _os.getenv("VLLM_API_KEY", "EMPTY")
+        vllm_model = _os.getenv("VLLM_MODEL", "kakaocorp/kanana-1.5-8b-instruct-2505")
+
+        if vllm_base:
+            from openai import AsyncOpenAI
+            import httpx
+            client = AsyncOpenAI(api_key=vllm_key, base_url=vllm_base, timeout=httpx.Timeout(60.0, connect=15.0))
+            response = await client.chat.completions.create(
+                model=vllm_model, messages=messages, temperature=0.7, max_tokens=1024,
+            )
+            model_name = vllm_model.split("/")[-1]
+        else:
+            settings = _get_settings()
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            response = await client.chat.completions.create(
+                model=settings.OPENAI_MODEL, messages=messages, temperature=0.7, max_tokens=1024,
+            )
+            model_name = settings.OPENAI_MODEL
 
         state["agent_response"] = {
             "type": "general",
             "message": response.choices[0].message.content,
+            "model_name": model_name,
         }
     except Exception as e:
         logger.error("General response error: %s", e)
