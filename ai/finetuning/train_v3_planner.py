@@ -206,6 +206,7 @@ def train(config: dict):
         output_dir=checkpoint_dir,
         num_train_epochs=train_cfg["num_epochs"],
         per_device_train_batch_size=train_cfg["batch_size"],
+        per_device_eval_batch_size=1,
         gradient_accumulation_steps=train_cfg["gradient_accumulation_steps"],
         learning_rate=float(train_cfg["learning_rate"]),
         lr_scheduler_type="cosine",
@@ -218,6 +219,7 @@ def train(config: dict):
         fp16=not use_bf16,
         gradient_checkpointing=True,
         optim="paged_adamw_8bit",
+        eval_accumulation_steps=4,
         report_to="none",
     )
 
