@@ -232,7 +232,8 @@ def train(config: dict):
         data_collator=DataCollatorForLanguageModeling(tokenizer, mlm=False),
     )
 
-    trainer.train()
+    resume_ckpt = config.get("_resume_from_checkpoint")
+    trainer.train(resume_from_checkpoint=resume_ckpt)
 
     print("\n[4/4] 어댑터 저장 중...")
     final_path = output_base / "final"
@@ -456,6 +457,8 @@ def main():
                         help="YAML 설정 파일 경로")
     parser.add_argument("--adapter_path", default=None,
                         help="eval 시 어댑터 경로 (미지정 시 output_dir/final)")
+    parser.add_argument("--resume", default=None,
+                        help="체크포인트에서 이어서 학습 (경로 지정)")
     args = parser.parse_args()
 
     config = load_config(Path(args.config))
@@ -471,6 +474,9 @@ def main():
           f"batch={config['training']['batch_size']}, "
           f"lr={config['training']['learning_rate']}")
     print(f"  output: {output_base}")
+
+    if args.resume:
+        config["_resume_from_checkpoint"] = args.resume
 
     if args.mode in ("train", "all"):
         train(config)

@@ -3889,9 +3889,56 @@ Pod 꺼져도 유지되는 네트워크 볼륨(`/workspace/`, 2.3PB)에 저장:
   - 복합 질문 번호별 분리 안내 확인
   - 날짜 인식 + 추가 정보 요청 확인
 
+#### 6) Planner v7 학습 실행 및 평가 (RunPod A40)
+
+- RunPod A40 48GB에서 v7 학습 실행 (이전 RTX 4090/3090에서 끊김 발생)
+- 문제 해결:
+  - `No space left on device` → HF 캐시를 `/workspace/hf_cache`로 변경
+  - 학습 중 progress bar 멈춤 → 로그 버퍼링 문제, 실제로는 정상 진행
+  - step 242에서 hang → checkpoint-279에서 resume 기능 추가(`train_v3_planner.py`에 `--resume` 옵션)
+- 학습 결과: train_loss=0.0227, eval_loss=0.0970, 약 30분 소요
+- 어댑터 저장: `outputs/v7_planner/final`
+
+#### 7) Planner v7 Holdout 평가 결과
+
+- **Perfect Match: 84/100 (84.0%)** — v5 대비 -3%p 하락
+- Weighted Score: 97.0%, Intent Recall: 97.9%, Intent Precision: 98.0%
+- Step별: 1-step 93.6%, 2-step 90.9%, 3-step 50.0%, 4-step 50.0%
+- **Rule 14(시간표현+문서생성) 혼동: 완전 해결** — "이번 달 보고서 만들어줘" 등 전부 정답
+- 하락 원인: 3-step 분해 정확도 66.7% → 50.0% (-16.7%p)
+
+#### 8) 추가 Rule Guide(17~21) 실험 → 실패, 롤백
+
+- 멀티스텝 분해 오류 보정을 위한 Rule 5개 추가 시도
+  - Rule 17: step 축소 방지 (찾아서+분석+만들어줘 = 3step)
+  - Rule 18: 찾아서+요약 = 2step
+  - Rule 19: "A랑 B 차이" = 1step
+  - Rule 20: 단일 주제 긴 문장 = 1step
+  - Rule 21: 확인하고+빈 날+등록 = 3step
+- 결과: **84% → 77%로 대폭 하락** (7건 깨뜨림, 0건 수정)
+- 부작용: Rule 20이 병렬 요청("확인해주고 ... 도 찾아줘")까지 1step으로 합쳐버림
+- **전부 롤백**, 기존 Rule(1~16)만 유지
+
+#### 9) 오답 16건 상세 분석
+
+- **Intent 자체 오분류: 0건** — 모든 오답에서 intent 종류는 정확
+- Step 개수 차이: 10건 (축소 6건 + 과다 4건)
+- 의존성(depends_on)만 차이: 6건
+- 결론: 모델 성능(intent 분류)은 98%로 충분, 문제는 멀티스텝 구조 분해
+
+#### 10) 실험 리포트 HTML 업데이트
+
+- `260317 intent, planner model 최종 선정.html` 업데이트
+- 추가 내용:
+  - 실험 추이: J(v7 보강 84%), K(v7+Rule 77%) 행 추가
+  - 성능 바 차트: v7 보강, v7+Rule 빨간 바 추가
+  - Step별 v5 vs v7 비교 테이블
+  - v7 실험 분석 섹션 (Rule 14 해결, 트레이드오프, 인사이트)
+  - 오답 16건 상세 분류 + 펼침 상세 테이블
+  - 교훈 추가 (데이터 보강 한계, 멀티스텝 분해 한계)
+
 ### 다음 할 일
 
-- [ ] v7 학습 결과 확인 및 rule 제거 후 성능 비교
 - [ ] 4step/5step 테스트셋으로 Planner eval 실행
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 - [ ] chat.py 인라인 프롬프트를 GENERAL_SYSTEM_PROMPT import로 통일 검토
