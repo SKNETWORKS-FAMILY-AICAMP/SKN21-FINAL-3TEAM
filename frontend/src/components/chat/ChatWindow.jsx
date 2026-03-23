@@ -243,11 +243,16 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
 
       {/* 헤더는 ChatPage에서 별도로 렌더링됨 */}
 
-      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto py-4 px-4 scroll-smooth custom-scrollbar" data-main-scroll="" onScroll={handleScroll}>{children}<div ref={bottomRef} /></div>
+      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto py-4 scroll-smooth custom-scrollbar" data-main-scroll="" onScroll={handleScroll}>
+        <div className="max-w-4xl mx-auto w-full px-6">
+          {children}
+          <div ref={bottomRef} />
+        </div>
+      </div>
 
       {/* 선택 문서 칩 & 파일 칩 & 에러 */}
       {(selectedDocumentName || files.length > 0 || fileError) && (
-        <div className="px-4 pb-2 flex flex-wrap gap-1.5">
+        <div className="max-w-4xl mx-auto w-full px-6 pb-2 flex flex-wrap gap-1.5">
           {selectedDocumentName && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent-50 text-accent-700 text-xs rounded-full border border-accent-300/40">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -272,7 +277,8 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       )}
 
       {/* 입력 영역 */}
-      <div className={`flex gap-2.5 pt-4 pb-4 pl-4 border-t border-neutral-divider flex-shrink-0 ${panelOpen ? 'pr-[3px]' : 'pr-4'}`}>
+      <div className={`border-t border-neutral-divider flex-shrink-0 ${panelOpen ? 'pr-[3px]' : ''}`}>
+      <div className={`max-w-4xl mx-auto w-full flex gap-2.5 pt-4 pb-4 px-6`}>
         <div className="flex-1 flex items-center bg-surface-card rounded-md border border-neutral-border px-4 py-3 transition focus-within:border-primary-300">
           {/* 파일 첨부 버튼 */}
           <button
@@ -320,6 +326,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
         <button onClick={handleSend} className="w-11 h-11 rounded-md bg-primary-700 flex-shrink-0 flex items-center justify-center transition hover:bg-primary-900">
           <svg width="18" height="18" viewBox="0 0 18 18"><path d="M2 9L16 2L12 16L9 10L2 9Z" fill="white" /></svg>
         </button>
+      </div>
       </div>
     </div>
   );

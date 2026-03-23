@@ -3818,3 +3818,42 @@ Pod 꺼져도 유지되는 네트워크 볼륨(`/workspace/`, 2.3PB)에 저장:
 
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
 - [ ] 챗봇 UI 추가 개선사항 검토
+
+---
+
+## 2026-03-23 (월)
+
+### 한 일
+
+#### 1) 챗봇 대화 영역 중앙 정렬 레이아웃 개선 (ChatWindow.jsx)
+
+- GPT/Gemini 스타일로 대화 영역을 화면 중앙에 배치, 좌우에 자연스러운 공백 추가
+- 메시지 스크롤 영역: 내부에 `max-w-4xl mx-auto` 래퍼 추가하여 최대 896px로 제한
+- 파일 칩 영역: 동일한 `max-w-4xl mx-auto` 적용
+- 입력 영역: border-t를 외부 래퍼로 분리하고, 내부 입력 폼에 `max-w-4xl mx-auto` 적용
+- 좌우 패딩 `px-4` → `px-6`으로 조정하여 여유감 추가
+
+#### 2) Planner v7 Rule-Target 학습 데이터 보강
+
+- 모델이 후처리 rule에 의존하는 오류 패턴을 학습 데이터로 직접 생성 (GPT 불필요, 확정 라벨)
+- 보강 내역 (총 90건):
+  - Rule 14: 시간표현+문서생성 → doc_generate (30건) — "이번 달 보고서 만들어줘" 패턴
+  - Rule 3: 영어혼용+문서생성 (10건) — "minutes 작성해줘" 패턴
+  - Rule 4: 모호한 도움 요청 → general (10건) — "도와줘" 단독
+  - Rule 6,8: 취소/변경/수정 → schedule_add (15건) — "회의 취소해줘" 패턴
+  - Rule 9: 멀티스텝 마지막 doc_generate (10건)
+  - Rule 16: 병렬 검색 2-step (10건) — "A랑 B 둘 다 찾아줘" 패턴
+  - Rule 2: 초단문 → general (5건)
+- v5 train(1471) + 보강(90) = v7 train(1483) + eval(78)
+- 생성 파일:
+  - `ai/finetuning/scripts/augment_v7_rule_targets.py` — 보강 스크립트
+  - `ai/finetuning/configs/v7_planner.yaml` — v7 학습 config
+  - `ai/finetuning/runpod_planner_v7.sh` — RunPod 실행 스크립트
+  - `data/training/v7_planner/` — train/eval/augment 데이터
+- RunPod RTX 3090에서 v7 학습 실행 중
+
+### 다음 할 일
+
+- [ ] v7 학습 결과 확인 및 rule 제거 후 성능 비교
+- [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
+- [ ] 챗봇 UI 추가 개선사항 검토
