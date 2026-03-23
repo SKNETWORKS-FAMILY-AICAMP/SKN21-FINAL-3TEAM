@@ -159,7 +159,7 @@ async def _handle_doc_qa(
             "answer": "",
             "message": "",
             "sources": sources,
-            "confidence": round(min(rag_top_score, 1.0), 2),  # RAG 점수 기반
+            "confidence": round(min(rag_top_score, 0.85), 2),  # RAG 점수 기반 (0.85 캡 — 답변 정확도와 문서 매칭은 다름)
         }
 
     # ── 5. 비스트리밍: sLLM 직접 호출 (JSON mode) ──
