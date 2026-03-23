@@ -213,6 +213,7 @@ async def _get_template_info(template_id: int) -> dict | None:
         return {
             "name": tpl.name,
             "is_system": tpl.is_system,
+            "category": tpl.category,
             "field_labels": [f.get("label", f.get("key", "")) for f in (fields if isinstance(fields, list) else [])[:8]],
         }
     except Exception:
