@@ -176,9 +176,13 @@ async def execute_doc_stream(
         else:
             # fallback: sLLM이 [참고:] 태그 안 붙인 경우 → 기존 키워드 매칭
             logger.info("[DocStream] [참고] 태그 없음 → 키워드 매칭 fallback")
-            agent_response["sources"] = _filter_sources(
-                agent_response.get("sources", []), full_response
-            )
+            original_sources = agent_response.get("sources", [])
+            filtered = _filter_sources(original_sources, full_response)
+            # 필터 결과 0건이면 상위 1건은 남김 (RAG에서 찾아서 답변한 건 확실하므로)
+            if not filtered and original_sources:
+                filtered = original_sources[:1]
+                logger.info("[DocStream] 키워드 매칭 0건 → 상위 1건 유지: %s", filtered[0].get("title", ""))
+            agent_response["sources"] = filtered
 
         # citations 생성 (filtered sources 기반)
         if agent_response.get("sources"):
