@@ -395,9 +395,10 @@ async def _handle_doc_generate(user_input: str, template_type: str, document_con
             }
         return await _generate_with_custom_template(user_input, template_id, template_type)
 
-    # 챗봇 요청: 해당 카테고리에 커스텀 템플릿이 있으면 선택지 제공
+    # 챗봇 요청: 커스텀 양식이 활성화되어 있으면 선택지 제공
+    # TODO: 커스텀 템플릿 기능 완성 시 아래 조건 제거
     if template_type in ("meeting_minutes", "report", "proposal"):
-        custom_templates = await _query_custom_templates(template_type)
+        custom_templates = await _query_custom_templates(template_type) if os.getenv("ENABLE_CUSTOM_TEMPLATES", "false") == "true" else []
         type_label = DOC_TYPE_NAMES.get(template_type, template_type)
 
         # 시스템 기본 템플릿 DB ID 조회
