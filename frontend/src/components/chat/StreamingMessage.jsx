@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { Wand2, Scale, FileSearch, CalendarDays, MessageCircle } from 'lucide-react';
+import MarkdownText from './MarkdownText';
 
 const INTENT_CONFIG = {
   judgment: { icon: Scale, color: 'bg-primary-500' },
@@ -35,7 +36,7 @@ export default function StreamingMessage({ text, status, intent = 'general', isI
           className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main shadow-sm relative leading-relaxed"
           style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}
         >
-          <span className="streaming-text">{trimmedText}</span>
+          <MarkdownText>{trimmedText}</MarkdownText>
           <span className="inline-block w-1.5 h-3.5 bg-primary-400 ml-0.5 animate-pulse rounded-full align-middle" />
         </div>
       ) : (
