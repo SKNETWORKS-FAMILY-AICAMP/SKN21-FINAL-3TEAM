@@ -1,16 +1,20 @@
-import { Scale, Search, FileText, FileSearch, HelpCircle, CalendarPlus, CalendarDays, MessageCircle, Layers } from 'lucide-react';
+import { Scale, Search, FileText, FileSearch, CalendarPlus, CalendarDays, MessageCircle, Layers } from 'lucide-react';
 import MarkdownText from './MarkdownText';
+import ScheduleConfirmCard from './ScheduleConfirmCard';
 
 const SUB_CONFIG = {
-  judgment:      { icon: Scale,        label: '규정 판단',  border: 'border-l-primary-500', badge: 'bg-primary-50 text-primary-700' },
+  judgment:      { icon: Scale,        label: '규정 판단',    border: 'border-l-primary-500', badge: 'bg-primary-50 text-primary-700' },
   doc_retrieve:  { icon: Search,       label: '문서 검색/조회', border: 'border-l-accent-500',   badge: 'bg-accent-50 text-accent-700' },
   doc_search:    { icon: Search,       label: '문서 검색/조회', border: 'border-l-accent-500',   badge: 'bg-accent-50 text-accent-700' },
-  doc_generate:  { icon: FileText,     label: '문서 생성',  border: 'border-l-accent-500',   badge: 'bg-accent-50 text-accent-700' },
-  doc_summary:   { icon: FileSearch,   label: '문서 요약',  border: 'border-l-accent-500',   badge: 'bg-accent-50 text-accent-700' },
-  schedule_add:  { icon: CalendarPlus, label: '일정 추가',  border: 'border-l-success',      badge: 'bg-success-bg text-success' },
-  schedule_view: { icon: CalendarDays, label: '일정 조회',  border: 'border-l-success',      badge: 'bg-success-bg text-success' },
-  general:       { icon: MessageCircle, label: '일반 질문', border: 'border-l-neutral-border', badge: 'bg-surface-hover text-neutral-sub' },
+  doc_generate:  { icon: FileText,     label: '문서 생성',    border: 'border-l-accent-500',   badge: 'bg-accent-50 text-accent-700' },
+  doc_summary:   { icon: FileSearch,   label: '문서 요약',    border: 'border-l-accent-500',   badge: 'bg-accent-50 text-accent-700' },
+  schedule_add:  { icon: CalendarPlus, label: '일정 추가',    border: 'border-l-success',      badge: 'bg-success-bg text-success' },
+  schedule_view: { icon: CalendarDays, label: '일정 조회',    border: 'border-l-success',      badge: 'bg-success-bg text-success' },
+  general:       { icon: MessageCircle, label: '일반 질문',   border: 'border-l-neutral-border', badge: 'bg-surface-hover text-neutral-sub' },
 };
+
+// schedule_add 관련 응답 타입 (ScheduleConfirmCard로 렌더링)
+const SCHEDULE_FORM_TYPES = new Set(['schedule_add', 'schedule_confirm', 'schedule_clarify']);
 
 export default function CompoundCard({ data }) {
   const subResponses = data?.sub_responses || [];
@@ -26,9 +30,14 @@ export default function CompoundCard({ data }) {
 
       {subResponses.map((sub, i) => {
         const intent = sub.intent || sub.response?.type || 'general';
+        const respType = sub.response?.type || '';
         const config = SUB_CONFIG[intent] || SUB_CONFIG.general;
         const Icon = config.icon;
         const message = sub.response?.message || '';
+
+        // schedule_add: 일정 등록 폼(ScheduleConfirmCard) 렌더링
+        const isScheduleForm = intent === 'schedule_add' || SCHEDULE_FORM_TYPES.has(respType);
+        const scheduleData = sub.response?.schedule;
 
         return (
           <div
@@ -45,9 +54,13 @@ export default function CompoundCard({ data }) {
               </span>
             </div>
 
-            <div className="text-sm leading-relaxed text-neutral-main">
-              <MarkdownText content={message} />
-            </div>
+            {isScheduleForm ? (
+              <ScheduleConfirmCard initialData={scheduleData || {}} />
+            ) : message ? (
+              <div className="text-sm leading-relaxed text-neutral-main">
+                <MarkdownText>{message}</MarkdownText>
+              </div>
+            ) : null}
           </div>
         );
       })}

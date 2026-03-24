@@ -1077,19 +1077,7 @@
 
 ### 한 일
 
-#### 1) 다크모드 하드코딩 색상 전체 점검 및 수정 (8개 파일)
-
-> `bg-white`, `text-gray-*`, `bg-gray-*`, `border-gray-*`, `dark:bg-gray-*` 등 Tailwind 고정 클래스를 프로젝트 CSS 변수 기반 토큰으로 전면 교체
-
-**수정 원칙**
-- `bg-white` / `dark:bg-gray-700` → `bg-surface-card` (라이트=#FFF, 다크=#2F2F34 자동 전환)
-- `text-gray-900` / `dark:text-white` → `text-neutral-main`
-- `text-gray-500` / `dark:text-gray-400` → `text-neutral-sub` / `text-neutral-muted`
-- `border-gray-*` / `dark:border-gray-*` → `border-neutral-border` / `border-neutral-divider`
-- `bg-neutral-50` / `dark:bg-gray-800` → `bg-surface-sub`
-- `bg-neutral-900 dark:bg-white text-white dark:text-neutral-900` (제출 버튼) → `bg-primary-700 text-white`
-
-#### 2) ScheduleTimelineWidget 멀티데이 일정 UI 개선 (`ScheduleTimelineWidget.jsx`, `DashboardPage.jsx`)
+#### 1) ScheduleTimelineWidget 멀티데이 일정 UI 개선 (`ScheduleTimelineWidget.jsx`, `DashboardPage.jsx`)
 
 **멀티데이 일정 정렬 순서 변경**
 - 기존: `isAllDay` 블록이 `startH = dayStart`로 설정되어 row 정렬 시 가장 앞에 배치 → 상단에 위치
@@ -1108,7 +1096,7 @@
   - 추가된 멀티데이 일정은 `isAllDay: true`로 매핑
   - `ScheduleTimelineWidget`에 `timelineMeetings` 전달
 
-#### 3) CalendarView 멀티데이 일정 스트라이프 row 고정 (`CalendarView.jsx`)
+#### 2) CalendarView 멀티데이 일정 스트라이프 row 고정 (`CalendarView.jsx`)
 
 **문제**
 - 멀티데이 이벤트 스트라이프의 위치가 셀마다 달라지는 버그
@@ -1122,11 +1110,11 @@
 - 스트라이프 `bottom` 계산: 배열 인덱스 `si` → `multiDayRowMap`에서 가져온 고정 `row` 값으로 교체
 - 셀 `paddingBottom`: 배열 길이 기준 → 해당 셀의 **최대 row 번호** 기준으로 교체
 
-#### 4) 대시보드 로딩 스켈레톤 추가
+#### 3) 대시보드 로딩 스켈레톤 추가
 
 - 새로고침 시 로딩 중 스켈레톤 표시 → 완료 후 실제 데이터 또는 "없음" 메시지로 전환
 
-#### 5) 대시보드 '오늘 일정' 멀티데이 일정 디자인 통일 (`TodaySchedule.jsx`, `DashboardPage.jsx`)
+#### 4) 대시보드 '오늘 일정' 멀티데이 일정 디자인 통일 (`TodaySchedule.jsx`, `DashboardPage.jsx`)
 
 **문제**
 - 오늘 시작하는 멀티데이 일정 → 상단에 '종일' 카드로 표시
@@ -1138,20 +1126,20 @@
 - `TodaySchedule.jsx` 하단 별도 섹션 제거, `inProgressMeetings` prop 제거, 미사용 `TYPE_COLORS` 상수 제거
 - 모든 멀티데이 일정이 동일한 '종일' 카드 디자인으로 통일
 
-#### 6) 대시보드 위젯 로딩 UX 개선 (`DashboardPage.jsx`, `WhatsOnWidget.jsx`, `CalendarWidget.jsx`, `ApprovalQueueWidget.jsx`)
+#### 5) 대시보드 위젯 로딩 UX 개선 (`DashboardPage.jsx`, `WhatsOnWidget.jsx`, `CalendarWidget.jsx`, `ApprovalQueueWidget.jsx`)
 
 - 각 위젯 개별 "불러오는 중..." 텍스트 대신 대시보드 전체 단일 스피너로 통일
 - `loading` true 시 위젯 그리드 전체를 중앙 스피너(`animate-spin`)로 대체
 - 로딩 완료 후 0.4초 fade-in으로 위젯 자연스럽게 등장 (framer-motion)
 - `ApprovalQueueWidget`: `loading` 완료 전 "모든 항목을 처리했습니다!" 빈 상태 노출 방지(`!loading` 조건 추가)
 
-#### 7) 상단바 계정 프로필 비밀번호 변경 제거 (`Topbar.jsx`)
+#### 6) 상단바 계정 프로필 비밀번호 변경 제거 (`Topbar.jsx`)
 
 - 계정 드롭다운에서 '비밀번호 변경' 버튼 제거 → 마이페이지 내에서만 접근 가능하도록 변경
 - 관련 state(`pwModal`, `pwForm`, `pwError`, `pwSaving`), 함수(`openPwModal`, `handleChangePassword`), 모달 전체 제거
 - 미사용 import(`KeyRound`, `changePassword`) 정리
 
-#### 8) 복합 질문(Multi-Intent) 처리 Phase 1 구현 — 규칙 기반 파이프라인
+#### 7) 복합 질문(Multi-Intent) 처리 Phase 1 구현 — 규칙 기반 파이프라인
 
 > 단일 intent만 처리 가능했던 챗봇에 복합 질문(예: "규정 찾아줘 그리고 판단해줘") 감지 및 분리 처리 파이프라인 구현
 
@@ -4003,7 +3991,90 @@ Pod 꺼져도 유지되는 네트워크 볼륨(`/workspace/`, 2.3PB)에 저장:
 - v5 어댑터 기반 4-step/5-step 평가 자동화 스크립트
 - sanity check + 4step(기본/하이브리드) + 5step(기본/하이브리드) + 결과 요약
 
+#### 6) AgentState 복합질문 라우팅 버그 수정 (`ai/agents/state.py`)
+
+- `_is_compound`, `_compound_intents` 필드가 AgentState(TypedDict)에 누락되어 있었음
+- LangGraph는 TypedDict에 정의된 필드만 노드 간 전달 → classify_intent에서 설정한 값이 route_by_intent에서 사라지는 버그
+- 두 필드 추가하여 복합질문 감지 → decompose_query 라우팅 정상 동작 확인
+
+#### 7) sub-query 분해 로컬 테스트 스크립트 (`test_subquery.py`)
+
+- 규칙 기반 sub-query 분해가 정상 동작하는지 확인하는 테스트 스크립트
+- 복합 질문 8개 + 단일 질문 4개 = 12개 테스트 케이스
+- 2-step 복합: 5/6 정상 분해 확인
+- 3-step 복합: 규칙 기반 한계로 2개까지만 분해됨 (Planner LoRA 필요)
+- 단일 질문: 4/4 정상 (compound=False)
+
+#### 8) Planner 프롬프트 최대 분해 단계 조정 (`ai/agents/orchestrator.py`)
+
+- 최대 4단계 → 3단계로 수정 (학습 데이터 기준에 맞춤)
+
+#### 9) 실험 리포트 knowledge_query 매핑 상세 설명 추가 (`docs/intent_planner/model_test_report.html`)
+
+- Planner(분해기) + ONNX(분류기) 역할 분담 다이어그램 추가
+- 클릭 시 펼침 상세 설명
+
+#### 10) Planner LoRA 챗봇 적용 — 환경변수 설정
+
+- `.env`에 `PLANNER_MODE=sllm` 추가
+- 기존: 복합 질문 시 규칙 기반 텍스트 분리 → 변경: vLLM Planner LoRA가 실행 계획(JSON) 생성 → ONNX intent 검증 → 규칙 기반 fallback
+- vLLM 서버(RunPod) 모델 목록 확인 — `planner` LoRA 어댑터 정상 로드 확인 (`/runpod-volume/models/planner-v5-lora`)
+
+#### 11) compound sub-query force_intent 적용 (`backend/app/api/v1/chat.py`)
+
+**배경**: 복합 질문 "내일 회의 일정 잡아주고 회의록도 작성해줘"가 플래너에 의해 `schedule_add` + `doc_generate`로 올바르게 분해되었지만, 각 sub-query를 독립 그래프(`graph.ainvoke`)로 실행할 때 ONNX가 다시 분류하여 엉뚱한 intent(general 등)로 라우팅되는 버그 발견.
+
+**수정**: compound sub-query 실행 시 `force_intent: sq_hint` 전달 → classify_intent 노드가 ONNX 재분류를 건너뛰고 플래너가 결정한 intent로 직접 agent 라우팅.
+
+```python
+# before
+sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, ...}
+
+# after
+sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "force_intent": sq_hint, ...}
+```
+
+#### 12) CompoundCard 메시지 렌더링 버그 수정 (`frontend/src/components/chat/CompoundCard.jsx`)
+
+**배경**: 복합 질문 결과에서 각 sub-query의 에이전트 응답 메시지(시간 입력 요청, 문서 생성 안내 등)가 전혀 표시되지 않아 "아무런 후속 조치가 없다"고 보이는 문제.
+
+**원인**: `<MarkdownText content={message} />` — MarkdownText 컴포넌트는 `children` prop만 읽는데 `content`로 전달하여 메시지가 아예 렌더링되지 않았음.
+
+**수정**: `<MarkdownText>{message}</MarkdownText>`로 변경.
+
+#### 13) CompoundCard에 ScheduleConfirmCard 통합 (`frontend/src/components/chat/CompoundCard.jsx`)
+
+- 복합 질문 중 `schedule_add` intent인 sub-query에 대해 텍스트 메시지 대신 **일정 등록 폼(ScheduleConfirmCard)** 렌더링
+- 에이전트가 파싱한 제목/날짜가 폼에 미리 채워지고, 사용자가 시간 선택 후 바로 등록 가능
+- `schedule_confirm`, `schedule_clarify` 등 스케줄 관련 응답 타입도 ScheduleConfirmCard로 통합 렌더링
+
+#### 14) 일반 응답 반복 생성 억제 (`backend/app/api/v1/chat.py`)
+
+- general_response 스트리밍에 `frequency_penalty=0.3` 추가
+- vLLM(Kanana-1.5-8B) 소형 모델의 동일 텍스트 반복 생성 문제 완화
+
+#### 15) 반응형 Topbar/Layout 패딩 수정 (`Topbar.jsx`, `Layout.jsx`)
+
+**배경**: 브라우저 창을 절반 크기로 줄이면 상단에 ~100px 빈 공간이 생기는 문제.
+
+**원인**: Topbar의 스케줄 타임라인이 `hidden md:flex`로 768px 미만에서 숨겨지지만, Topbar 높이(`h-[160px]`)와 main 패딩(`pt-[180px]`)은 고정값이어서 빈 공간 발생.
+
+**수정**:
+- Topbar: `h-[80px]` (모바일) → `md:h-[160px]` (데스크톱)
+- main 패딩: `pt-[96px]` (모바일) → `md:pt-[180px]` (데스크톱)
+
+#### 16) compound 토큰 스트리밍 플래시 제거 (`useSSE.js`, `chat.py`)
+
+**배경**: 복합 질문 입력 시 sub-query 메시지가 StreamingMessage로 ~1초 플래시 표시된 후 CompoundCard로 전환되는 문제.
+
+**원인**: 백엔드가 각 sub-query 메시지를 `token` 이벤트로 스트리밍 → `msg.content`에 쌓여 StreamingMessage로 렌더링 → `result` 이벤트 도착 후 CompoundCard로 교체.
+
+**수정**:
+- **프론트엔드** (`useSSE.js`): `compoundRef` 플래그 추가. `compound_start` 이벤트 수신 시 `true`로 설정, 이후 `token` 이벤트 무시 → 상태 메시지("처리 중...")만 표시
+- **백엔드** (`chat.py`): compound sub-query 메시지의 토큰 스트리밍 코드 제거 (CompoundCard가 직접 렌더링하므로 불필요)
+
 ### 다음 할 일
 
 - [ ] 멘토님 발표 준비 (model_test_report.html + planner_architecture.html)
-- [ ] chat.py 인라인 프롬프트를 GENERAL_SYSTEM_PROMPT import로 통일 검토
+- [ ] compound 결과에서 doc_generate sub-query도 인터랙티브 UI 적용 검토
+- [ ] 복합 질문 follow-up 시나리오 E2E 테스트
