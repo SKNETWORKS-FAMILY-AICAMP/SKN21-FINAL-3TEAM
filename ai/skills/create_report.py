@@ -190,8 +190,16 @@ def create_report(output_path: str = "tests/업무보고서_생성.docx", data: 
 
     doc.add_paragraph()
 
-    # ── 표3: 진행 현황 (6행 6열) ──
-    t3 = doc.add_table(rows=6, cols=6)
+    # ── 표3: 진행 현황 (동적 행: 섹션헤더 + 컬럼헤더 + 데이터 N행) ──
+    tasks_raw = data.get("tasks", []) if data else []
+    if isinstance(tasks_raw, dict):
+        _tasks_list = list(tasks_raw.values())
+    elif isinstance(tasks_raw, list):
+        _tasks_list = tasks_raw
+    else:
+        _tasks_list = []
+    _task_data_rows = max(len(_tasks_list), 3)
+    t3 = doc.add_table(rows=2 + 1, cols=6)  # 헤더2행 + 첫 데이터행
     t3.style = "Table Grid"
 
     for i in range(1, 6):
@@ -201,7 +209,11 @@ def create_report(output_path: str = "tests/업무보고서_생성.docx", data: 
     for i, h in enumerate(["No.", "업무 항목", "담당자", "진행률", "시작일", "완료 예정일"]):
         style_label_cell(t3.rows[1].cells[i], h)
 
-    for r in range(2, 6):
+    # 필요한 만큼 데이터 행 추가
+    for _ in range(_task_data_rows - 1):
+        t3.add_row()
+
+    for r in range(2, 2 + _task_data_rows):
         row_bg = _BLUE_ALT if r % 2 == 0 else "FFFFFF"
         for c in range(6):
             _set_shading(t3.rows[r].cells[c], row_bg)
@@ -268,14 +280,8 @@ def create_report(output_path: str = "tests/업무보고서_생성.docx", data: 
         _inject(t1.rows[1].cells[0], data.get("overview", ""))
         _inject(t2.rows[1].cells[0], data.get("main_content", ""))
 
-        tasks_raw = data.get("tasks", [])
-        if isinstance(tasks_raw, dict):
-            tasks = list(tasks_raw.values())
-        elif isinstance(tasks_raw, list):
-            tasks = tasks_raw
-        else:
-            tasks = []
-        for r in range(2, 6):
+        tasks = _tasks_list
+        for r in range(2, 2 + _task_data_rows):
             task = tasks[r - 2] if r - 2 < len(tasks) else {}
             if not isinstance(task, dict):
                 task = {}

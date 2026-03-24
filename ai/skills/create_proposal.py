@@ -249,8 +249,16 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
 
     doc.add_paragraph()
 
-    # ── 표5: 4. 추진 일정 (6행 6열) ──
-    t5 = doc.add_table(rows=6, cols=6)
+    # ── 표5: 4. 추진 일정 (동적 행: 섹션헤더 + 컬럼헤더 + 데이터 N행) ──
+    schedule_raw = data.get("schedule", []) if data else []
+    if isinstance(schedule_raw, dict):
+        _sched_list = list(schedule_raw.values())
+    elif isinstance(schedule_raw, list):
+        _sched_list = schedule_raw
+    else:
+        _sched_list = []
+    _sched_data_rows = max(len(_sched_list), 3)
+    t5 = doc.add_table(rows=2 + 1, cols=6)  # 헤더2행 + 첫 데이터행
     t5.style = "Table Grid"
 
     for i in range(1, 6):
@@ -260,7 +268,11 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
     for i, h in enumerate(["No.", "추진 항목", "1단계", "2단계", "3단계", "4단계"]):
         style_label_cell(t5.rows[1].cells[i], h)
 
-    for r in range(2, 6):
+    # 필요한 만큼 데이터 행 추가
+    for _ in range(_sched_data_rows - 1):
+        t5.add_row()
+
+    for r in range(2, 2 + _sched_data_rows):
         row_bg = _BLUE_ALT if r % 2 == 0 else "FFFFFF"
         for c in range(6):
             _set_shading(t5.rows[r].cells[c], row_bg)
@@ -271,8 +283,16 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
 
     doc.add_paragraph()
 
-    # ── 표6: 5. 소요 예산 (6행 5열) ──
-    t6 = doc.add_table(rows=6, cols=5)
+    # ── 표6: 5. 소요 예산 (동적 행: 섹션헤더 + 컬럼헤더 + 데이터 N행 + 합계행) ──
+    budget_raw = data.get("budget", []) if data else []
+    if isinstance(budget_raw, dict):
+        _budget_list = list(budget_raw.values())
+    elif isinstance(budget_raw, list):
+        _budget_list = budget_raw
+    else:
+        _budget_list = []
+    _budget_data_rows = max(len(_budget_list), 3)
+    t6 = doc.add_table(rows=2 + 1, cols=5)  # 헤더2행 + 첫 데이터행
     t6.style = "Table Grid"
 
     for i in range(1, 5):
@@ -282,7 +302,11 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
     for i, h in enumerate(["No.", "항목", "수량", "단가", "금액"]):
         style_label_cell(t6.rows[1].cells[i], h)
 
-    for r in range(2, 5):
+    # 필요한 만큼 데이터 행 추가
+    for _ in range(_budget_data_rows - 1):
+        t6.add_row()
+
+    for r in range(2, 2 + _budget_data_rows):
         row_bg = _BLUE_ALT if r % 2 == 0 else "FFFFFF"
         for c in range(5):
             _set_shading(t6.rows[r].cells[c], row_bg)
@@ -291,10 +315,12 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
             style_value_cell(t6.rows[r].cells[c])
         set_row_height(t6.rows[r], 1.0)
 
-    # 합계 행
-    t6.rows[5].cells[0].merge(t6.rows[5].cells[3])
-    style_label_cell(t6.rows[5].cells[0], "합계")
-    style_value_cell(t6.rows[5].cells[4])
+    # 합계 행 추가
+    t6.add_row()
+    _total_idx = 2 + _budget_data_rows
+    t6.rows[_total_idx].cells[0].merge(t6.rows[_total_idx].cells[3])
+    style_label_cell(t6.rows[_total_idx].cells[0], "합계")
+    style_value_cell(t6.rows[_total_idx].cells[4])
 
     doc.add_paragraph()
 
@@ -352,15 +378,9 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
         _inject(t3.rows[1].cells[0], data.get("current_situation", "") or data.get("analysis", ""))
         _inject(t4.rows[1].cells[0], data.get("content", ""))
 
-        # 추진 일정 (LLM이 list 또는 dict로 반환할 수 있으므로 정규화)
-        schedule_raw = data.get("schedule", [])
-        if isinstance(schedule_raw, dict):
-            schedule = list(schedule_raw.values())
-        elif isinstance(schedule_raw, list):
-            schedule = schedule_raw
-        else:
-            schedule = []
-        for r in range(2, 6):
+        # 추진 일정
+        schedule = _sched_list
+        for r in range(2, 2 + _sched_data_rows):
             item = schedule[r - 2] if r - 2 < len(schedule) else {}
             if not isinstance(item, dict):
                 item = {}
@@ -370,15 +390,9 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
             _inject(t5.rows[r].cells[4], item.get("phase3", ""))
             _inject(t5.rows[r].cells[5], item.get("phase4", ""))
 
-        # 소요 예산 (동일하게 정규화)
-        budget_raw = data.get("budget", [])
-        if isinstance(budget_raw, dict):
-            budget = list(budget_raw.values())
-        elif isinstance(budget_raw, list):
-            budget = budget_raw
-        else:
-            budget = []
-        for r in range(2, 5):
+        # 소요 예산
+        budget = _budget_list
+        for r in range(2, 2 + _budget_data_rows):
             item = budget[r - 2] if r - 2 < len(budget) else {}
             if not isinstance(item, dict):
                 item = {}
@@ -386,7 +400,7 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
             _inject(t6.rows[r].cells[2], item.get("quantity", ""))
             _inject(t6.rows[r].cells[3], item.get("unit_price", ""))
             _inject(t6.rows[r].cells[4], item.get("amount", ""))
-        _inject(t6.rows[5].cells[4], data.get("budget_total", ""))
+        _inject(t6.rows[_total_idx].cells[4], data.get("budget_total", ""))
 
         # 기대 효과 / 첨부 / 비고
         _inject(t7.rows[1].cells[0], data.get("expected_effect", ""))

@@ -5,10 +5,24 @@ sLLM 매핑 보조 DOCX 채우기
 sLLM에게 "어느 셀에 어떤 data key를 넣을지" 매핑만 판단시킨 후,
 값은 원본 data dict에서 직접 주입. 원본 레이아웃 100% 보존.
 """
+import copy
 import json
 import re
 from docx import Document
 from docx.shared import Pt
+
+
+def _clone_row(table, source_row_idx: int):
+    """테이블의 source_row를 복제하여 끝에 추가. 텍스트는 비움."""
+    source_tr = table.rows[source_row_idx]._tr
+    new_tr = copy.deepcopy(source_tr)
+    # 복제한 행의 텍스트 비우기 (서식만 유지)
+    for tc in new_tr.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tc'):
+        for p in tc.findall('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p'):
+            for r in p.findall('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}r'):
+                for t in r.findall('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t'):
+                    t.text = ''
+    table._tbl.append(new_tr)
 
 
 def _is_placeholder(text: str) -> bool:
@@ -520,19 +534,44 @@ async def fill_docx_with_llm(template_path: str, output_path: str, data: dict, f
                     field_mapping, _ENGLISH_TO_KOREAN, ci,
                 )
 
-                # ── 3) 행 분배: 병합/합계 행 스킵 ──
-                table_row_count = len(doc.tables[ti].rows)
+                # ── 3) 행 분배: 행 부족 시 복제 추가 ──
+                table_obj = doc.tables[ti]
+                table_row_count = len(table_obj.rows)
+                # 첫 번째 데이터 행 인덱스 (복제 원본으로 사용)
+                clone_source_ri = data_start_ri if data_start_ri < table_row_count else table_row_count - 1
                 for idx, item in enumerate(raw_val):
                     row_idx = data_start_ri + idx
-                    if row_idx >= table_row_count:
-                        break
-                    # 병합 행 감지 → 스킵 (합계 등)
-                    row_cells_check = [c for c in cells
-                                       if c["table"] == ti and c["row"] == row_idx]
-                    merged_count = sum(1 for c in row_cells_check if c.get("is_merged_dup"))
-                    if merged_count > len(row_cells_check) // 2:
-                        print(f"[fill_with_llm] T{ti}R{row_idx} 병합행 스킵")
-                        break
+                    # 병합 행 감지 → 그 앞까지만 채움
+                    if row_idx < len(table_obj.rows):
+                        row_cells_check = [c for c in cells
+                                           if c["table"] == ti and c["row"] == row_idx]
+                        merged_count = sum(1 for c in row_cells_check if c.get("is_merged_dup"))
+                        if merged_count > len(row_cells_check) // 2:
+                            # 병합 행(합계 등) 앞에 새 행 삽입
+                            _clone_row(table_obj, clone_source_ri)
+                            # 삽입된 행은 끝에 추가되므로 병합 행 앞으로 이동
+                            tbl = table_obj._tbl
+                            new_tr = tbl[-1]
+                            merged_tr = table_obj.rows[row_idx]._tr
+                            tbl.remove(new_tr)
+                            merged_tr.addprevious(new_tr)
+                            print(f"[fill_with_llm] T{ti}R{row_idx} 병합행 앞에 행 삽입")
+                    elif row_idx >= len(table_obj.rows):
+                        # 행 부족 → 복제 추가
+                        _clone_row(table_obj, clone_source_ri)
+                        print(f"[fill_with_llm] T{ti} 행 추가 (row_idx={row_idx})")
+
+                    # No. 컬럼 자동 번호 부여
+                    no_col = None
+                    for hc, ht in header_cols.items():
+                        if ht.lower().strip('.') in ('no', '번호', '#'):
+                            no_col = hc
+                            break
+                    if no_col is not None:
+                        try:
+                            _inject_to_cell(doc, ti, row_idx, no_col, str(idx + 1))
+                        except (IndexError, AttributeError):
+                            pass
 
                     for sk, sv_raw in item.items():
                         sv = str(sv_raw) if sv_raw else ""
@@ -685,17 +724,38 @@ async def fill_docx_with_llm(template_path: str, output_path: str, data: dict, f
                     field_mapping, _ENGLISH_TO_KOREAN, matched_cell["col"] + 1,
                 )
 
-                table_row_count = len(doc.tables[ti_m].rows)
+                fb_table_obj = doc.tables[ti_m]
+                fb_clone_source = data_start_row if data_start_row < len(fb_table_obj.rows) else len(fb_table_obj.rows) - 1
                 for idx, item in enumerate(val):
                     row_idx = data_start_row + idx
-                    if row_idx >= table_row_count:
-                        break
-                    # 병합 행 스킵 (합계 등)
-                    row_cells_chk = [c for c in cells if c["table"] == ti_m and c["row"] == row_idx]
-                    merged_cnt = sum(1 for c in row_cells_chk if c.get("is_merged_dup"))
-                    if merged_cnt > len(row_cells_chk) // 2:
-                        print(f"[fill_with_llm] (fallback) T{ti_m}R{row_idx} 병합행 스킵")
-                        break
+                    # 병합 행 감지 → 앞에 삽입
+                    if row_idx < len(fb_table_obj.rows):
+                        row_cells_chk = [c for c in cells if c["table"] == ti_m and c["row"] == row_idx]
+                        merged_cnt = sum(1 for c in row_cells_chk if c.get("is_merged_dup"))
+                        if merged_cnt > len(row_cells_chk) // 2:
+                            _clone_row(fb_table_obj, fb_clone_source)
+                            tbl = fb_table_obj._tbl
+                            new_tr = tbl[-1]
+                            merged_tr = fb_table_obj.rows[row_idx]._tr
+                            tbl.remove(new_tr)
+                            merged_tr.addprevious(new_tr)
+                            print(f"[fill_with_llm] (fallback) T{ti_m}R{row_idx} 병합행 앞에 행 삽입")
+                    elif row_idx >= len(fb_table_obj.rows):
+                        _clone_row(fb_table_obj, fb_clone_source)
+                        print(f"[fill_with_llm] (fallback) T{ti_m} 행 추가 (row_idx={row_idx})")
+
+                    # No. 컬럼 자동 번호
+                    no_col_fb = None
+                    for hc, ht in fb_header_cols.items():
+                        if ht.lower().strip('.') in ('no', '번호', '#'):
+                            no_col_fb = hc
+                            break
+                    if no_col_fb is not None:
+                        try:
+                            _inject_to_cell(doc, ti_m, row_idx, no_col_fb, str(idx + 1))
+                        except (IndexError, AttributeError):
+                            pass
+
                     for sk, sv_raw in item.items():
                         sv = str(sv_raw) if sv_raw else ""
                         if not sv:
@@ -817,10 +877,13 @@ async def fill_docx_with_llm(template_path: str, output_path: str, data: dict, f
             )
             data_start = final_header_ri + 1
 
+            sup_table_obj = doc.tables[matched_ti]
+            sup_clone_src = data_start if data_start < len(sup_table_obj.rows) else len(sup_table_obj.rows) - 1
             for idx, item in enumerate(val):
                 row_idx = data_start + idx
-                if row_idx >= t_rows:
-                    break
+                if row_idx >= len(sup_table_obj.rows):
+                    _clone_row(sup_table_obj, sup_clone_src)
+                    print(f"[fill_with_llm] (보충) T{matched_ti} 행 추가 (row_idx={row_idx})")
                 for sk, sv_raw in item.items():
                     sv = str(sv_raw) if sv_raw else ""
                     if not sv:

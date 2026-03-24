@@ -177,8 +177,10 @@ def create_meeting_minutes(output_path: str = "회의록_test.docx", data: dict 
 
     doc.add_paragraph()
 
-    # ── 표4: Action Item (5행 5열: 섹션헤더 + 컬럼헤더 + 데이터3행) ──
-    t3 = doc.add_table(rows=5, cols=5)
+    # ── 표4: Action Item (동적 행: 섹션헤더 + 컬럼헤더 + 데이터 N행) ──
+    action_items = data.get("action_items", []) if data else []
+    _ai_data_rows = max(len(action_items), 3)
+    t3 = doc.add_table(rows=2 + 1, cols=5)  # 헤더2행 + 첫 데이터행
     t3.style = "Table Grid"
 
     # 첫 행: 섹션 헤더 (5열 병합)
@@ -190,8 +192,12 @@ def create_meeting_minutes(output_path: str = "회의록_test.docx", data: dict 
     for i, h in enumerate(["No.", "Action Item", "담당자", "기한", "상태"]):
         style_label_cell(t3.rows[1].cells[i], h)
 
-    # 데이터 행 3행 (교대 색상)
-    for r in range(2, 5):
+    # 필요한 만큼 데이터 행 추가
+    for _ in range(_ai_data_rows - 1):
+        t3.add_row()
+
+    # 데이터 행 스타일링 (교대 색상)
+    for r in range(2, 2 + _ai_data_rows):
         row_bg = _BLUE_ALT if r % 2 == 0 else "FFFFFF"
         for c in range(5):
             _set_shading(t3.rows[r].cells[c], row_bg)
@@ -242,7 +248,7 @@ def create_meeting_minutes(output_path: str = "회의록_test.docx", data: dict 
         _inject_cell_text(t2.rows[1].cells[0], decisions_text)
 
         action_items = data.get("action_items", [])
-        for r in range(2, 5):
+        for r in range(2, 2 + _ai_data_rows):
             ai_item = action_items[r - 2] if r - 2 < len(action_items) else {}
             _inject_cell_text(t3.rows[r].cells[1], ai_item.get("task", "") or ai_item.get("content", ""))
             _inject_cell_text(t3.rows[r].cells[2], ai_item.get("assignee", ""))
