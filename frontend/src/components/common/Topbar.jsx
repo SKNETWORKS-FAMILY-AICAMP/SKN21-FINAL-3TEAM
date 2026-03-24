@@ -538,7 +538,7 @@ export default function Topbar({ isScrolled = false }) {
 
   return (
     <>
-      <header className={`absolute top-0 inset-x-0 z-40 transition-all duration-300 ease-in-out flex flex-col ${isScrolled ? 'pt-5 h-[60px] bg-transparent pointer-events-none' : (topbarScheduleHidden ? 'pt-1 h-[80px] bg-transparent' : 'pt-5 h-[160px] bg-transparent')}`}>
+      <header className={`absolute top-0 inset-x-0 z-40 transition-all duration-300 ease-in-out flex flex-col ${isScrolled ? 'pt-5 h-[60px] bg-transparent pointer-events-none' : (topbarScheduleHidden ? 'pt-1 h-[80px] bg-transparent' : 'pt-1 h-[80px] md:pt-5 md:h-[160px] bg-transparent')}`}>
 
         {/* === Row 1: Schedule Timeline (Top) === */}
         {!topbarScheduleHidden && (

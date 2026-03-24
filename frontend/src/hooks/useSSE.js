@@ -26,6 +26,7 @@ export default function useSSE() {
   // rAF 토큰 버퍼링 refs
   const tokenBufferRef = useRef('')
   const rafRef = useRef(null)
+  const compoundRef = useRef(false)  // compound 처리 중 토큰 무시용
 
   const {
     setStreaming, setCurrentIntent, setCurrentStatus, setCurrentSubType, appendToken, saveCurrentSession,
@@ -57,6 +58,7 @@ export default function useSSE() {
     setStreaming(true)
     currentIntentRef.current = null
     tokenBufferRef.current = ''
+    compoundRef.current = false
     const token = localStorage.getItem('access_token')
     const controller = new AbortController()
     abortRef.current = controller
@@ -120,6 +122,7 @@ export default function useSSE() {
                 setCurrentStatus(event.value)
                 break
               case 'token':
+                if (compoundRef.current) break  // compound 처리 중 토큰 무시 (CompoundCard가 렌더링)
                 setCurrentStatus(null)
                 bufferToken(event.value)
                 break
@@ -174,11 +177,11 @@ export default function useSSE() {
                 setCurrentStatus(event.value === 'search' ? '문서 검색 중...' : event.value === 'qa' ? '문서 질의응답 준비 중...' : event.value === 'summary' ? '문서 요약 준비 중...' : event.value === 'generate' ? '문서 생성 준비 중...' : `${event.value} 처리 중...`)
                 break
               case 'compound_start':
+                compoundRef.current = true
                 setCurrentStatus(`복합 질문 감지: ${event.total || ''}개 하위 질문 처리 중...`)
                 break
               case 'compound_sub':
                 setCurrentStatus(`[${(event.index || 0) + 1}/${event.total || ''}] ${event.query || ''} 처리 중...`)
-                if (event.index > 0) bufferToken('\n\n---\n\n')
                 break
               case 'compound_sub_done':
                 break
