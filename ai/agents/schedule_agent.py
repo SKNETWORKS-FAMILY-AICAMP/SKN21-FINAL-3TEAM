@@ -121,6 +121,34 @@ async def schedule_agent(state: AgentState) -> AgentState:
             "error": str(e),
         }
 
+    # 규정 검증: 일정/태스크/결재 추가 시 규정 위반 여부 체크
+    _reg_types = ("schedule_add", "schedule_confirm", "pipeline_create", "approval_create")
+    if response_data.get("type") in _reg_types:
+        try:
+            from ai.agents.regulation_checker import regulation_check
+            resp_type = response_data["type"]
+            if resp_type in ("schedule_add", "schedule_confirm"):
+                sched = response_data.get("schedule", {})
+                query = f"'{sched.get('title', '')}' 일정 등록이 내부 규정에 부합하는지 확인: {sched.get('description', '')} (일시: {sched.get('start_time', '')}~{sched.get('end_time', '')})"
+            elif resp_type == "pipeline_create":
+                task = response_data.get("task", {})
+                query = f"'{task.get('title', '')}' 태스크가 내부 규정에 부합하는지 확인: {task.get('description', '')}"
+            else:  # approval_create
+                approval = response_data.get("approval", {})
+                query = f"'{approval.get('title', '')}' 결재 요청이 내부 규정 절차에 부합하는지 확인: {approval.get('detail', '')}"
+            reg_result = await regulation_check(query, user_id=user_id)
+            if reg_result.get("checked") and reg_result.get("result") != "no_regulation":
+                response_data["regulation_check"] = reg_result
+                warnings = []
+                if reg_result["result"] == "no":
+                    warnings.append(f"규정 위반: {reg_result.get('reason', '')}")
+                elif reg_result["result"] == "conditional":
+                    warnings.append(f"조건부 허용: {reg_result.get('reason', '')}")
+                if warnings:
+                    response_data["warnings"] = warnings
+        except Exception as e:
+            logger.warning("[ScheduleAgent] 규정 체크 실패 (비차단): %s", e)
+
     logger.info("[ScheduleAgent] 완료 (%.2fs)", time.time() - _t_agent)
     state["agent_response"] = response_data
 

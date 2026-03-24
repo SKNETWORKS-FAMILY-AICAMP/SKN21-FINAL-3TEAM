@@ -1,7 +1,11 @@
 import { useNavigate } from 'react-router-dom';
+import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
 
-export default function ScheduleCard({ title, date, time, synced, meetLink, emailSent, emailCount }) {
+export default function ScheduleCard({ title, date, time, synced, meetLink, emailSent, emailCount, warnings, regulationCheck }) {
   const navigate = useNavigate();
+
+  const hasWarnings = Array.isArray(warnings) && warnings.length > 0;
+  const regResult = regulationCheck?.result;
 
   return (
     <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
@@ -44,6 +48,61 @@ export default function ScheduleCard({ title, date, time, synced, meetLink, emai
             일정 페이지에서 확인 →
           </div>
         </div>
+
+        {/* 규정 검증 결과 */}
+        {regulationCheck && regResult && regResult !== 'no_regulation' && (
+          <div className={`mt-3 rounded-md p-3 border ${
+            regResult === 'no' ? 'bg-red-50 border-red-200' :
+            regResult === 'conditional' ? 'bg-yellow-50 border-yellow-200' :
+            'bg-green-50 border-green-200'
+          }`}>
+            <div className="flex items-center gap-1.5 mb-1">
+              {regResult === 'no' ? (
+                <AlertTriangle size={14} className="text-red-500" />
+              ) : regResult === 'conditional' ? (
+                <Info size={14} className="text-yellow-600" />
+              ) : (
+                <CheckCircle size={14} className="text-green-600" />
+              )}
+              <span className={`text-xs font-semibold ${
+                regResult === 'no' ? 'text-red-700' :
+                regResult === 'conditional' ? 'text-yellow-700' :
+                'text-green-700'
+              }`}>
+                {regResult === 'no' ? '규정 위반' : regResult === 'conditional' ? '조건부 허용' : '규정 부합'}
+              </span>
+              {regulationCheck.confidence != null && (
+                <span className="text-[0.625rem] text-neutral-sub ml-auto">
+                  신뢰도 {Math.round(regulationCheck.confidence * 100)}%
+                </span>
+              )}
+            </div>
+            {regulationCheck.reason && (
+              <p className={`text-xs ${
+                regResult === 'no' ? 'text-red-600' :
+                regResult === 'conditional' ? 'text-yellow-600' :
+                'text-green-600'
+              }`}>{regulationCheck.reason}</p>
+            )}
+            {regulationCheck.regulation && (
+              <p className="text-[0.625rem] text-neutral-sub mt-1 italic">
+                근거: {regulationCheck.regulation}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* 경고 목록 */}
+        {hasWarnings && !regulationCheck && (
+          <div className="mt-3 space-y-1">
+            {warnings.map((w, i) => (
+              <div key={i} className="flex items-start gap-1.5 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-md px-3 py-2">
+                <AlertTriangle size={13} className="text-yellow-500 mt-0.5 shrink-0" />
+                <span>{w}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

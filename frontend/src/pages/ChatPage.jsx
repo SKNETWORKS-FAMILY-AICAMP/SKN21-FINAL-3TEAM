@@ -164,6 +164,35 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                   출처: 문서 #{data.document_id}
                 </div>
               )}
+              {/* 규정 경고 */}
+              {data.regulation_check?.notes?.length > 0 && (
+                <div className="mt-3 space-y-1.5">
+                  {data.regulation_check.notes.map((n, i) => (
+                    <div key={i} className={`flex items-start gap-1.5 p-2.5 rounded-lg border text-xs ${
+                      n.result === 'no' ? 'bg-red-50 border-red-200 text-red-700' :
+                      n.result === 'conditional' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
+                      'bg-green-50 border-green-200 text-green-700'
+                    }`}>
+                      <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-semibold">{n.result === 'no' ? '[위반]' : n.result === 'conditional' ? '[조건부]' : '[부합]'} {n.topic}</span>
+                        <p className="text-[0.6875rem] mt-0.5">{n.reason}</p>
+                        {n.regulation && <p className="text-[0.625rem] mt-0.5 italic opacity-75">근거: {n.regulation}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {Array.isArray(data.warnings) && data.warnings.length > 0 && !data.regulation_check?.notes?.length && (
+                <div className="mt-3 space-y-1">
+                  {data.warnings.map((w, i) => (
+                    <div key={i} className="flex items-start gap-1.5 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+                      <AlertTriangle size={13} className="text-yellow-500 mt-0.5 shrink-0" />
+                      <span>{w}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -223,6 +252,25 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                   <div className="text-xs font-semibold text-neutral-sub mb-2">검색 출처 ({sources.length}건)</div>
                   {sources.map((s, idx) => (
                     <SourceItem key={idx} source={s} index={idx} onSelect={onSelectDoc} />
+                  ))}
+                </div>
+              )}
+              {/* 규정 경고 (QA) */}
+              {data.regulation_check?.notes?.length > 0 && (
+                <div className="mt-3 space-y-1.5">
+                  {data.regulation_check.notes.map((n, i) => (
+                    <div key={i} className={`flex items-start gap-1.5 p-2.5 rounded-lg border text-xs ${
+                      n.result === 'no' ? 'bg-red-50 border-red-200 text-red-700' :
+                      n.result === 'conditional' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
+                      'bg-green-50 border-green-200 text-green-700'
+                    }`}>
+                      <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-semibold">{n.result === 'no' ? '[위반]' : n.result === 'conditional' ? '[조건부]' : '[부합]'} {n.topic}</span>
+                        <p className="text-[0.6875rem] mt-0.5">{n.reason}</p>
+                        {n.regulation && <p className="text-[0.625rem] mt-0.5 italic opacity-75">근거: {n.regulation}</p>}
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
@@ -314,6 +362,8 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
           actionItems={actionItems}
           onDownload={handleDocDownload}
           modelName={data.model_name || ''}
+          regulationCheck={data.regulation_check}
+          warnings={data.warnings}
         />
       );
     }
@@ -350,6 +400,8 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
             meetLink={gs.meet_link || null}
             emailSent={gs.email_sent || false}
             emailCount={gs.email_count || 0}
+            warnings={data.warnings}
+            regulationCheck={data.regulation_check}
           />
           {content && (
             <div className="mt-2 bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">
@@ -477,8 +529,37 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
 
     default:
       return (
-        <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
-          <MarkdownText>{content}</MarkdownText>
+        <div>
+          <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
+            <MarkdownText>{content}</MarkdownText>
+          </div>
+          {/* 규정 경고 (pipeline_create, approval_create 등) */}
+          {data.regulation_check && data.regulation_check.result && data.regulation_check.result !== 'no_regulation' && (
+            <div className={`mt-2 rounded-lg p-3 border text-xs ${
+              data.regulation_check.result === 'no' ? 'bg-red-50 border-red-200 text-red-700' :
+              data.regulation_check.result === 'conditional' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
+              'bg-green-50 border-green-200 text-green-700'
+            }`}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <AlertTriangle size={13} />
+                <span className="font-semibold">
+                  {data.regulation_check.result === 'no' ? '규정 위반' : data.regulation_check.result === 'conditional' ? '조건부 허용' : '규정 부합'}
+                </span>
+              </div>
+              {data.regulation_check.reason && <p>{data.regulation_check.reason}</p>}
+              {data.regulation_check.regulation && <p className="mt-0.5 italic opacity-75">근거: {data.regulation_check.regulation}</p>}
+            </div>
+          )}
+          {Array.isArray(data.warnings) && data.warnings.length > 0 && !data.regulation_check?.result && (
+            <div className="mt-2 space-y-1">
+              {data.warnings.map((w, i) => (
+                <div key={i} className="flex items-start gap-1.5 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+                  <AlertTriangle size={13} className="text-yellow-500 mt-0.5 shrink-0" />
+                  <span>{w}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       );
   }
