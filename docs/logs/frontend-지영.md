@@ -4014,6 +4014,12 @@ Pod 꺼져도 유지되는 네트워크 볼륨(`/workspace/`, 2.3PB)에 저장:
 - Planner(분해기) + ONNX(분류기) 역할 분담 다이어그램 추가
 - 클릭 시 펼침 상세 설명
 
+#### 10) 챗봇 헤더 버튼 클릭 불가 버그 수정 (`Topbar.jsx`)
+
+- **문제**: 스크롤로 상단바가 축소된 상태에서 챗봇 헤더의 '내보내기', '초기화', '문서 선택' 버튼이 클릭 안 됨 (규정 패널만 동작)
+- **원인**: Topbar 스케줄 타임라인 row의 외부 wrapper(`w-full`)에 `pointer-events-auto`가 걸려 있어, 실제 콘텐츠(580px)보다 넓은 전체 너비가 클릭을 가로챔 (Topbar `z-40` > ChatPage 헤더 `z-20`)
+- **수정**: 외부 wrapper를 `pointer-events-none`으로 변경, 내부 콘텐츠 div(`w-[580px]`)에만 `pointer-events-auto` 적용 → 빈 공간 클릭이 아래 ChatPage 헤더로 통과
+
 #### 10) Planner LoRA 챗봇 적용 — 환경변수 설정
 
 - `.env`에 `PLANNER_MODE=sllm` 추가
