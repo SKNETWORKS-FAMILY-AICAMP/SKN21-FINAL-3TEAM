@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>듀듀 AI 모델 실험 리포트</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        pri: { 900:'#3D5164', 700:'#56728A', 500:'#6E87A0', 300:'#8FA3B4', 100:'#C8D5E2', 50:'#E8EEF3' },
+        acc: { 700:'#8B7D6E', 500:'#A89580', 300:'#C4B49A', 100:'#EDE5D0', 50:'#F7F3EB' },
+        sfc: { main:'#F4F5F7', sub:'#EBEDF0', card:'#FFFFFF', hover:'#F9FAFB' },
+        good: { bg:'#EFF5EE', text:'#4A7A4A', bar:'#6B9E6B' },
+        bad: { bg:'#F5EEEE', text:'#9E5555', bar:'#C07070' },
+        warn: { bg:'#F5F2EE', text:'#8B7D6E', bar:'#C4B49A' },
+      }
+    }
+  }
+}
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+  body { font-family: 'Noto Sans KR', sans-serif; }
+  .tab-btn.active { border-color: #3D5164; color: #3D5164; background: #E8EEF3; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .bar { transition: width 0.8s ease; }
+  td, th { white-space: nowrap; }
+  @media (max-width: 640px) { td, th { font-size: 0.72rem; padding: 0.3rem 0.4rem; } }
+  .metric-card { border-left: 3px solid; }
+  .metric-tip { position: relative; cursor: pointer; border-bottom: 1px dashed currentColor; }
+  .metric-tip .tip-box { display: none; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); z-index: 20; width: 300px; margin-top: 6px; padding: 10px 12px; background: #fff; border: 1px solid #C8D5E2; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: left; font-weight: 400; font-size: 0.72rem; line-height: 1.5; color: #3D5164; white-space: normal; word-break: break-all; }
+  .metric-tip .tip-box code { font-size: 0.68rem; background: #F4F5F7; padding: 1px 4px; border-radius: 3px; word-break: break-all; }
+  .metric-tip:hover .tip-box, .metric-tip:focus .tip-box { display: block; }
+  .metric-tip .tip-box::before { content: ''; position: absolute; top: -6px; left: 50%; transform: translateX(-50%); border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 6px solid #C8D5E2; }
+</style>
+</head>
+<body class="bg-sfc-main text-pri-900">
+
+<!-- Hero -->
+<header class="bg-pri-900 text-white py-10 px-4 text-center">
+  <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">듀듀 AI 모델 실험 리포트</h1>
+  <p class="mt-2 text-pri-300 text-sm">WorkFlow Agent — Intent 분류 + Task Planner</p>
+  <p class="mt-1 text-pri-500 text-xs">SKN21-FINAL-3TEAM</p>
+</header>
+
+<!-- Tabs -->
+<nav class="sticky top-0 z-10 bg-sfc-card border-b border-pri-100 flex justify-center gap-2 p-3">
+  <button onclick="switchTab('intent')" id="tab-intent" class="tab-btn active px-5 py-2 rounded-full border-2 font-bold text-sm transition">Intent 분류</button>
+  <button onclick="switchTab('planner')" id="tab-planner" class="tab-btn px-5 py-2 rounded-full border-2 border-pri-100 text-pri-300 font-bold text-sm transition">Task Planner</button>
+</nav>
+
+<main class="max-w-4xl mx-auto px-4 py-6 space-y-5">
+
+<!-- ==================== INTENT ==================== -->
+<div id="content-intent" class="tab-content active space-y-5">
+
+  <!-- 최종 스펙 -->
+  <div class="bg-sfc-card rounded-xl shadow-sm border border-pri-100 p-5">
+    <h2 class="text-base font-bold text-pri-900 mb-3">최종 모델 스펙</h2>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+      <div class="bg-pri-50 rounded-lg p-3 text-center border border-pri-100">
+        <div class="text-2xl font-black text-pri-700">91.0%</div>
+        <div class="text-xs text-pri-500 mt-1">Held-out (100건)</div>
+      </div>
+      <div class="bg-pri-50 rounded-lg p-3 text-center border border-pri-100">
+        <div class="text-2xl font-black text-pri-700">338M</div>
+        <div class="text-xs text-pri-500 mt-1">roberta-large</div>
+      </div>
+      <div class="bg-pri-50 rounded-lg p-3 text-center border border-pri-100">
+        <div class="text-2xl font-black text-pri-700">5-Seed</div>
+        <div class="text-xs text-pri-500 mt-1">앙상블</div>
+      </div>
+      <div class="bg-sfc-main rounded-lg p-3 text-center">
+        <div class="text-lg font-bold text-pri-700">19ms</div>
+        <div class="text-xs text-pri-500">추론 시간</div>
+      </div>
+      <div class="bg-sfc-main rounded-lg p-3 text-center">
+        <div class="text-lg font-bold text-pri-700">3,954건</div>
+        <div class="text-xs text-pri-500">학습 데이터</div>
+      </div>
+      <div class="bg-sfc-main rounded-lg p-3 text-center">
+        <div class="text-lg font-bold text-pri-700">6개</div>
+        <div class="text-xs text-pri-500">라벨</div>
+      </div>
+    </div>
+    <div class="mt-3 text-xs text-pri-500">
+      Focal Loss(γ=2.0) + FGM(ε=1.0) + Label Weights | KNOWN_OVERRIDES 15개 + 멀티라벨 Rule 2개
+    </div>
+  </div>
+
+  <!-- 평가 지표 설명 -->
+  <div class="bg-sfc-card rounded-xl shadow-sm border border-pri-100 p-5">
+    <h2 class="text-base font-bold text-pri-900 mb-3">평가 지표 설명</h2>
+    <div class="space-y-3 text-sm">
+      <div class="metric-card border-pri-700 bg-pri-50 rounded-r-lg p-3">
+        <div class="font-bold text-pri-900">Held-out 정확도</div>
+        <div class="text-pri-500 text-xs mt-1">학습에 전혀 사용하지 않은 별도 테스트셋(100건)으로 측정한 정확도. Dev(개발) 점수와 달리 <b>실제 일반화 성능</b>을 반영.</div>
+      </div>
+      <div class="metric-card border-acc-500 bg-acc-50 rounded-r-lg p-3">
+        <div class="font-bold text-pri-900">과적합 gap (Dev - Held-out)</div>
+        <div class="text-pri-500 text-xs mt-1">Dev 점수와 Held-out 점수의 차이. gap이 클수록 모델이 학습 데이터에만 맞춰져 <b>새로운 입력에 약함</b>. ±5%p 이내가 이상적.</div>
+      </div>
+      <div class="metric-card border-good-text bg-good-bg rounded-r-lg p-3">
+        <div class="font-bold text-pri-900">앙상블 (Ensemble)</div>
+        <div class="text-pri-500 text-xs mt-1">동일 모델을 서로 다른 seed(초기값)로 5번 학습 → 5개 모델이 투표해서 최종 답을 결정. <b>개별 모델의 실수를 서로 보정</b>.</div>
+      </div>
+      <div class="metric-card border-pri-500 bg-sfc-main rounded-r-lg p-3">
+        <div class="font-bold text-pri-900">GPT Knowledge Distillation (KD)</div>
+        <div class="text-pri-500 text-xs mt-1">GPT-4가 생성한 고품질 학습 데이터로 작은 모델을 학습시키는 기법. <b>큰 모델의 지식을 작은 모델에 전달</b>.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 실험 추이 -->
+  <div class="bg-sfc-card rounded-xl shadow-sm border border-pri-100 p-5 overflow-x-auto">
+    <h2 class="text-base font-bold text-pri-900 mb-3">실험 추이</h2>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-pri-50 text-left text-pri-700">
+          <th class="p-2 rounded-tl-lg">#</th>
+          <th class="p-2">단계</th>
+          <th class="p-2">모델</th>
+          <th class="p-2">Held-out</th>
+          <th class="p-2 rounded-tr-lg">핵심 변화</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-sfc-sub">
+        <tr><td class="p-2">1</td><td>규칙 기반</td><td>-</td><td>41.7%</td><td class="text-pri-500">baseline</td></tr>
+        <tr><td class="p-2">2</td><td>v1 BERT</td><td>koelectra 112M</td><td>50.0%</td><td class="text-pri-500">첫 BERT</td></tr>
+        <tr><td class="p-2">3</td><td>v2</td><td>koelectra</td><td>63.3%</td><td class="text-pri-500">데이터 확대</td></tr>
+        <tr><td class="p-2">4</td><td>v3</td><td>koelectra</td><td>75.0%</td><td class="text-pri-500">오답 분석</td></tr>
+        <tr><td class="p-2">5</td><td>v3+후처리</td><td>koelectra</td><td>81.7%</td><td class="text-pri-500">키워드 후처리</td></tr>
+        <tr class="bg-bad-bg"><td class="p-2">6</td><td>v4</td><td>koelectra</td><td><span class="text-bad-text font-bold">76.7%</span></td><td class="text-bad-text">과적합 발견 (Dev 90%)</td></tr>
+        <tr class="bg-good-bg"><td class="p-2">7</td><td class="font-bold">모델 교체</td><td class="font-bold">roberta-large 338M</td><td>76.7%</td><td class="text-good-text">과적합 해소 (gap -3.3%p)</td></tr>
+        <tr><td class="p-2">8</td><td>v5 확대</td><td>roberta-large</td><td>78.3%</td><td class="text-pri-500">템플릿 20% 확대</td></tr>
+        <tr><td class="p-2">9</td><td>v6 GPT KD</td><td>roberta-large</td><td>80.0%</td><td class="text-pri-500">Knowledge Distillation</td></tr>
+        <tr><td class="p-2">10</td><td>v7 KD R2</td><td>roberta-large</td><td>86.7%</td><td class="text-pri-500">오답 타겟 보강</td></tr>
+        <tr><td class="p-2">11</td><td>v8 KD R3</td><td>roberta-large</td><td>88.3%</td><td class="text-pri-500">doc_summary 경계</td></tr>
+        <tr><td class="p-2">12</td><td>+Focal+FGM</td><td>roberta-large</td><td>88.3%</td><td class="text-pri-500">고급 학습 기법</td></tr>
+        <tr class="bg-good-bg"><td class="p-2">13</td><td class="font-bold">앙상블</td><td>roberta ×5</td><td class="font-bold text-good-text">93.3% <span class="text-xs">(60건)</span></td><td class="text-good-text">5-Seed 앙상블 +5%p</td></tr>
+        <tr class="bg-bad-bg"><td class="p-2">14</td><td>100건 확장</td><td>roberta ×5</td><td class="text-bad-text font-bold">80.0%</td><td class="text-bad-text">60→100건 과적합 드러남</td></tr>
+        <tr class="bg-pri-50 font-bold"><td class="p-2">15</td><td>+보강+Rule</td><td>roberta ×5</td><td class="text-pri-700 text-lg">91.0%</td><td class="text-pri-700">+35건 보강 + Rule Guide</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 성능 바 -->
+  <div class="bg-sfc-card rounded-xl shadow-sm border border-pri-100 p-5">
+    <h2 class="text-base font-bold text-pri-900 mb-3">성능 변화</h2>
+    <div class="space-y-2.5 text-sm">
+      <div class="flex items-center gap-2"><span class="w-20 text-xs text-right text-pri-500">규칙</span><div class="flex-1 bg-sfc-sub rounded-full h-5"><div class="bar bg-pri-300 h-5 rounded-full flex items-center justify-end pr-2 text-xs text-white font-bold" style="width:41.7%">41.7%</div></div></div>
+      <div class="flex items-center gap-2"><span class="w-20 text-xs text-right text-pri-500">v3+후처리</span><div class="flex-1 bg-sfc-sub rounded-full h-5"><div class="bar bg-acc-500 h-5 rounded-full flex items-center justify-end pr-2 text-xs text-white font-bold" style="width:81.7%">81.7%</div></div></div>
+      <div class="flex items-center gap-2"><span class="w-20 text-xs text-right text-pri-500">v8 KD R3</span><div class="flex-1 bg-sfc-sub rounded-full h-5"><div class="bar bg-pri-500 h-5 rounded-full flex items-center justify-end pr-2 text-xs text-white font-bold" style="width:88.3%">88.3%</div></div></div>
+      <div class="flex items-center gap-2"><span class="w-20 text-xs text-right font-bold text-pri-900">최종</span><div class="flex-1 bg-sfc-sub rounded-full h-5"><div class="bar bg-pri-900 h-5 rounded-full flex items-center justify-end pr-2 text-xs text-white font-bold" style="width:91%">91.0%</div></div></div>
+    </div>
+  </div>
+
+  <!-- 후보 모델 비교 -->
+  <div class="bg-sfc-card rounded-xl shadow-sm border border-pri-100 p-5 overflow-x-auto">
+    <h2 class="text-base font-bold text-pri-900 mb-3">후보 모델 비교</h2>
+    <table class="w-full text-sm">
+      <thead><tr class="bg-pri-50 text-pri-700"><th class="p-2 text-left">모델</th><th class="p-2">파라미터</th><th class="p-2">단일</th><th class="p-2">앙상블</th><th class="p-2">과적합</th><th class="p-2">안정성</th></tr></thead>
+      <tbody class="divide-y divide-sfc-sub">
+        <tr><td class="p-2">koelectra-base</td><td class="text-center">112M</td><td class="text-center">76.7%</td><td class="text-center text-pri-300">-</td><td class="text-center text-bad-text">-13.3%p</td><td class="text-center">안정</td></tr>
+        <tr><td class="p-2">KcBERT-large</td><td class="text-center">335M</td><td class="text-center">85.0%</td><td class="text-center">88.3%</td><td class="text-center text-good-text">-3.3%p</td><td class="text-center">5/5</td></tr>
+        <tr><td class="p-2">xlm-roberta-large</td><td class="text-center">550M</td><td class="text-center">85.0%</td><td class="text-center text-bad-text">불가</td><td class="text-center text-bad-text">-10.0%p</td><td class="text-center text-bad-text">붕괴</td></tr>
+        <tr><td class="p-2">DeBERTa-v3-large</td><td class="text-center">304M</td><td class="text-center text-bad-text">실패</td><td class="text-center text-pri-300">-</td><td class="text-center text-pri-300">-</td><td class="text-center text-bad-text">실패</td></tr>
+        <tr class="bg-pri-50 font-bold"><td class="p-2 text-pri-700">klue/roberta-large</td><td class="text-center">338M</td><td class="text-center">88.3%</td><td class="text-center text-pri-700">93.3%</td><td class="text-center text-good-text">-3.3%p</td><td class="text-center text-good-text">5/5</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 교훈 -->
+  <div class="bg-sfc-card rounded-xl shadow-sm border border-pri-100 p-5">
+    <h2 class="text-base font-bold text-pri-900 mb-3">핵심 교훈</h2>
+    <div class="space-y-2 text-sm text-pri-700">
+      <div class="flex gap-2"><span class="text-pri-900 font-bold shrink-0">1.</span><span>Dev 점수를 믿으면 안 됨 → <b class="text-pri-900">Held-out으로 검증해야 진짜 성능</b></span></div>
+      <div class="flex gap-2"><span class="text-pri-900 font-bold shrink-0">2.</span><span>Held-out 60건은 낙관적 → <b class="text-pri-900">100건이 현실적</b></span></div>
+      <div class="flex gap-2"><span class="text-pri-900 font-bold shrink-0">3.</span><span>모델 크기가 크다고 좋은 게 아님 → <b class="text-pri-900">xlm-r(550M)보다 roberta(338M)이 우수</b></span></div>
+      <div class="flex gap-2"><span class="text-pri-900 font-bold shrink-0">4.</span><span>가장 큰 성능 점프: <b class="text-pri-900">앙상블(+5%p) > 타겟 보강(+11%p) > GPT KD(+8.3%p)</b></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PLANNER ==================== -->
+<div id="content-planner" class="tab-content space-y-5">
+
+  <!-- 최종 스펙 -->
+  <div class="bg-sfc-card rounded-xl shadow-sm border border-pri-100 p-5">
+    <h2 class="text-base font-bold text-pri-900 mb-3">최종 모델 스펙</h2>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+      <div class="bg-acc-50 rounded-lg p-3 text-center border border-acc-100">
+        <div class="text-2xl font-black text-acc-700">87.0%</div>
+        <div class="text-xs text-pri-500 mt-1">Perfect Match (100건)</div>
+      </div>
+      <div class="bg-acc-50 rounded-lg p-3 text-center border border-acc-100">
+        <div class="text-2xl font-black text-acc-700">8B</div>
+        <div class="text-xs text-pri-500 mt-1">Kanana-1.5</div>
+      </div>
+      <div class="bg-acc-50 rounded-lg p-3 text-center border border-acc-100">
+        <div class="text-2xl font-black text-acc-700">Hybrid</div>
+        <div class="text-xs text-pri-500 mt-1">프롬프트 전략</div>
+      </div>
+      <div class="bg-sfc-main rounded-lg p-3 text-center">
+        <div class="text-lg font-bold text-pri-700">~1.5s</div>
+        <div class="text-xs text-pri-500">추론 시간</div>
+      </div>
+      <div class="bg-sfc-main rounded-lg p-3 text-center">
+        <div class="text-lg font-bold text-pri-700">1,471건</div>
+        <div class="text-xs text-pri-500">학습 데이터</div>
+      </div>
+      <div class="bg-sfc-main rounded-lg p-3 text-center">
+        <div class="text-lg font-bold text-pri-700">QLoRA</div>
+        <div class="text-xs text-pri-500">r=16, 4bit</div>
+      </div>
+    </div>
+    <div class="mt-3 text-xs text-pri-500">
+      Hybrid 프롬프트 + knowledge_query 매핑 + Rule Guide 9개
+    </div>
+  </div>
+
+  <!-- 평가 지표 설명 -->
+  <div class="bg-sfc-card rounded-xl shadow-sm border border-pri-100 p-5">
+    <h2 class="text-base font-bold text-pri-900 mb-3">평가 지표 설명</h2>
+    <div class="space-y-3 text-sm">
+      <div class="metric-card border-acc-700 bg-acc-50 rounded-r-lg p-3">
+        <div class="font-bold text-pri-900">Perfect Match (PM)</div>
+        <div class="text-pri-500 text-xs mt-1">모델이 출력한 plan이 정답과 <b>완전히 일치</b>하는 비율. intent 종류, 순서, 의존성(depends_on)이 모두 맞아야 정답.</div>
+      </div>
+      <div class="metric-card border-pri-700 bg-pri-50 rounded-r-lg p-3">
+        <div class="font-bold text-pri-900">Weighted Score</div>
+        <div class="text-pri-500 text-xs mt-1">5가지 세부 지표의 가중 합산 (0~1). Intent Recall(30%) + Order(25%) + Precision(20%) + Dep Correctness(15%) + Efficiency(10%).</div>
+      </div>
+      <div class="metric-card border-acc-500 bg-sfc-main rounded-r-lg p-3">
+        <div class="font-bold text-pri-900">Step Collapse Rate</div>
+        <div class="text-pri-500 text-xs mt-1">3-step을 2-step으로 축소하는 등 <b>단계를 줄여버리는 오류</b> 비율. 낮을수록 좋음.</div>
+      </div>
+      <div class="metric-card border-good-text bg-good-bg rounded-r-lg p-3">
+        <div class="font-bold text-pri-900">후처리 매핑 (knowledge_query)</div>
+        <div class="text-pri-500 text-xs mt-1">모델이 judgment/doc_retrieve를 혼동하는 문제 해결. 두 intent를 <b>하나의 knowledge_query로 통합</b>하여 구분 자체를 제거.</div>
+      </div>
+      <div class="metric-card border-pri-500 bg-pri-50 rounded-r-lg p-3">
+        <div class="font-bold text-pri-900">Hybrid 프롬프트</div>
+        <div class="text-pri-500 text-xs mt-1">단순 입력은 기본 프롬프트(single 100%), 복합 입력은 Few-shot 프롬프트(3-step 66.7%)를 <b>자동 선택</b>. 접속사/동사 개수로 판단.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hybrid 설명 -->
+  <div class="bg-sfc-card rounded-xl shadow-sm border border-pri-100 p-5">
+    <h2 class="text-base font-bold text-pri-900 mb-3">Hybrid 프롬프트</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+      <div class="border border-pri-100 rounded-lg p-3">
+        <div class="font-bold text-pri-700 mb-1">단순 입력 → 기본 프롬프트</div>
+        <div class="text-xs text-pri-500 mb-2">"보고서 만들어줘", "규정 알려줘"</div>
+        <div class="text-good-text font-bold">single_step 100%</div>
+      </div>
+      <div class="border border-acc-300 rounded-lg p-3 bg-acc-50 cursor-pointer" onclick="document.getElementById('hybrid-detail').classList.toggle('hidden')">
+        <div class="font-bold text-acc-700 mb-1">복합 입력 → Few-shot 프롬프트</div>
+        <div class="text-xs text-pri-500 mb-2">"규정 찾아서 확인하고 보고서 만들어줘"</div>
+        <div class="text-acc-700 font-bold">3-step 66.7%</div>
+      </div>
+    </div>
+    <div class="mt-3 text-xs text-pri-500">접속사/동사 개수로 복잡도 자동 판단 → 프롬프트 자동 선택</div>
+
+    <!-- 클릭 시 펼쳐지는 상세 설명 -->
+    <div id="hybrid-detail" class="hidden mt-4 border-t border-pri-100 pt-4">
+      <div class="text-sm font-bold text-pri-700 mb-3">기본 vs Few-shot 프롬프트란?</div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        <div class="border border-pri-100 rounded-lg p-3 bg-sfc-main">
+          <div class="font-bold text-pri-700 text-sm mb-2">기본 프롬프트</div>
+          <div class="text-xs text-pri-500">규칙만 알려주고, 예시는 없음</div>
+          <div class="mt-2 bg-white rounded p-2 text-xs text-pri-700 border border-pri-100 font-mono">
+            "사용 가능한 intent 6개: ...<br>
+            출력 형식: JSON ...<br>
+            작성 규칙: ..."
+          </div>
+        </div>
+        <div class="border border-acc-300 rounded-lg p-3 bg-acc-50">
+          <div class="font-bold text-acc-700 text-sm mb-2">Few-shot 프롬프트</div>
+          <div class="text-xs text-pri-500">규칙 + <b>정답 예시 3개</b>를 미리 보여줌</div>
+          <div class="mt-2 bg-white rounded p-2 text-xs text-pri-700 border border-acc-300 font-mono">
+            "사용 가능한 intent 6개: ...<br>
+            출력 형식: JSON ...<br>
+            <b class="text-acc-700">3-step 예시:</b><br>
+            예시 1: ... → [3단계 plan]<br>
+            예시 2: ... → [3단계 plan]<br>
+            예시 3: ... → [3단계 plan]<br>
+            작성 규칙: ..."
+          </div>
+        </div>
+      </div>
+
+      <div class="text-sm font-bold text-pri-700 mb-2">Few-shot에 포함된 3-step 예시</div>
+      <div class="space-y-2 mb-4">
+        <div class="bg-sfc-main rounded-lg p-3 border border-pri-100">
+          <div class="text-xs text-pri-700 mb-1"><b>예시 1</b> — 직렬 의존성</div>
+          <div class="text-xs text-pri-500">"출장 규정 문서 <b>찾아서</b> 해외출장 가능한지 <b>확인하고</b> 출장 보고서 <b>만들어줘</b>"</div>
+          <div class="text-xs text-acc-700 mt-1 font-mono">→ doc_retrieve → judgment → doc_generate (1→2→3)</div>
+        </div>
+        <div class="bg-sfc-main rounded-lg p-3 border border-pri-100">
+          <div class="text-xs text-pri-700 mb-1"><b>예시 2</b> — 병렬 → 합류</div>
+          <div class="text-xs text-pri-500">"연차 규정 <b>확인하고</b> 팀 일정 <b>보고</b> 비는 날에 휴가 <b>등록해줘</b>"</div>
+          <div class="text-xs text-acc-700 mt-1 font-mono">→ judgment + schedule_view(병렬) → schedule_add (1,2→3)</div>
+        </div>
+        <div class="bg-sfc-main rounded-lg p-3 border border-pri-100">
+          <div class="text-xs text-pri-700 mb-1"><b>예시 3</b> — 병렬 검색 → 생성</div>
+          <div class="text-xs text-pri-500">"마케팅 보고서 <b>찾고</b> 경쟁사 자료도 <b>검색해서</b> 비교 제안서 <b>만들어줘</b>"</div>
+          <div class="text-xs text-acc-700 mt-1 font-mono">→ doc_retrieve + doc_retrieve(병렬) → doc_generate (1,2→3)</div>
+        </div>
+      </div>
+
+      <div class="bg-pri-50 rounded-lg p-3 border border-pri-100 text-sm text-pri-700">
+        <b>왜 효과가 있나?</b> — 모델이 예시를 보고 "이렇게 쪼개는 거구나"를 이해합니다.
+        학습 데이터를 추가하지 않고 <b>프롬프트만으로 성능을 올리는 기법</b>이에요.
+        4-step 테스트에서 기본(3.3%) → 하이브리드(16.7%)로 <b>+13.4%p 개선</b>된 이유가 이것입니다.
+      </div>
+    </div>
+  </div>
+
+  <!-- 실험 추이 -->
+  <div class="bg-sfc-card rounded-xl shadow-sm border border-pri-100 p-5 overflow-x-auto">
+    <h2 class="text-base font-bold text-pri-900 mb-3">실험 추이</h2>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-pri-50 text-left text-pri-700">
+          <th class="p-2">#</th>
+          <th class="p-2">실험</th>
+          <th class="p-2">구성</th>
+          <th class="p-2">PM</th>
+          <th class="p-2">핵심</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-sfc-sub">
+        <tr><td class="p-2">A</td><td>baseline</td><td class="text-xs">v5 + 기본</td><td>71.0%</td><td class="text-pri-500 text-xs">매핑 없이</td></tr>
+        <tr><td class="p-2">B</td><td>Few-shot</td><td class="text-xs">v5 + Few-shot</td><td>75.0%</td><td class="text-good-text text-xs">complex 개선</td></tr>
+        <tr class="bg-bad-bg"><td class="p-2">D-1</td><td>v6 재학습</td><td class="text-xs">v6 + 기본</td><td class="text-bad-text font-bold">64.0%</td><td class="text-bad-text text-xs">대실패</td></tr>
+        <tr><td class="p-2">D-2</td><td>v6 Few-shot</td><td class="text-xs">v6 + Few-shot</td><td>74.0%</td><td class="text-pri-500 text-xs">Few-shot이 보정</td></tr>
+        <tr><td class="p-2">E</td><td>OVERRIDES</td><td class="text-xs">v5 + OVERRIDES</td><td>76.0%</td><td class="text-pri-500 text-xs">single 100%</td></tr>
+        <tr><td class="p-2">F</td><td>Few+OVR</td><td class="text-xs">v5 + Few + OVR</td><td>77.0%</td><td class="text-warn-text text-xs">OVERRIDES 천장</td></tr>
+        <tr><td class="p-2">G</td><td>매핑</td><td class="text-xs">v5 + 매핑</td><td>79.0%</td><td class="text-good-text text-xs">매핑 효과</td></tr>
+        <tr><td class="p-2">H</td><td>Few+매핑</td><td class="text-xs">v5 + Few + 매핑</td><td>82.0%</td><td class="text-good-text text-xs">3-step 66.7%</td></tr>
+        <tr><td class="p-2">H2</td><td>+Rule</td><td class="text-xs">v5 + Few + 매핑 + Rule</td><td>84.0%</td><td class="text-good-text text-xs">Rule 14,16</td></tr>
+        <tr class="bg-acc-50 font-bold"><td class="p-2">I</td><td class="text-acc-700">Hybrid</td><td class="text-xs">v5 + Hybrid + 매핑 + Rule</td><td class="text-acc-700 text-lg">87.0%</td><td class="text-acc-700 text-xs">최고 성능</td></tr>
+        <tr class="border-t-2 border-pri-300"><td colspan="5" class="p-2 text-xs text-pri-500 bg-sfc-sub font-bold">추가 실험 (Rule 14 혼동 해결 시도)</td></tr>
+        <tr class="bg-bad-bg"><td class="p-2">J</td><td>v7 데이터 보강</td><td class="text-xs">v7(+90건) + Hybrid + 매핑 + Rule</td><td class="text-bad-text font-bold">84.0%</td><td class="text-bad-text text-xs">Rule 14 해결, 3-step 하락</td></tr>
+        <tr class="bg-bad-bg"><td class="p-2">K</td><td>v7 + Rule 추가</td><td class="text-xs">v7 + Hybrid + Rule 17~21 추가</td><td class="text-bad-text font-bold">77.0%</td><td class="text-bad-text text-xs">7건 깨뜨림, 0건 수정</td></tr>
+      </tbody>
+    </table>
+    <div class="mt-3 p-3 bg-warn-bg rounded-lg text-xs text-warn-text">
+      <b>결론:</b> v7 데이터 보강(+90건)으로 Rule 14(시간표현+문서생성) 혼동은 해결했으나, 3-step 분해 정확도 하락으로 전체 PM 84%로 하락. 추가 Rule(17~21)은 부작용이 심해 77%까지 하락 → 롤백. <b>v5 + Hybrid + Rule Guide = 87%가 최종 최선.</b>
+    </div>
+  </div>
+
+  <!-- 성능 바 -->
+  <div class="bg-sfc-card rounded-xl shadow-sm border border-pri-100 p-5">
+    <h2 class="text-base font-bold text-pri-900 mb-3">성능 변화</h2>
+    <div class="space-y-2.5 text-sm">
+      <div class="flex items-center gap-2"><span class="w-20 text-xs text-right text-pri-500">baseline</span><div class="flex-1 bg-sfc-sub rounded-full h-5"><div class="bar bg-pri-300 h-5 rounded-full flex items-center justify-end pr-2 text-xs text-white font-bold" style="width:71%">71.0%</div></div></div>
+      <div class="flex items-center gap-2"><span class="w-20 text-xs text-right text-pri-500">OVR 천장</span><div class="flex-1 bg-sfc-sub rounded-full h-5"><div class="bar bg-acc-300 h-5 rounded-full flex items-center justify-end pr-2 text-xs text-white font-bold" style="width:77%">77.0%</div></div></div>
+      <div class="flex items-center gap-2"><span class="w-20 text-xs text-right text-pri-500">매핑</span><div class="flex-1 bg-sfc-sub rounded-full h-5"><div class="bar bg-acc-500 h-5 rounded-full flex items-center justify-end pr-2 text-xs text-white font-bold" style="width:82%">82.0%</div></div></div>
+      <div class="flex items-center gap-2"><span class="w-20 text-xs text-right font-bold text-pri-900">최종(v5)</span><div class="flex-1 bg-sfc-sub rounded-full h-5"><div class="bar bg-pri-900 h-5 rounded-full flex items-center justify-end pr-2 text-xs text-white font-bold" style="width:87%">87.0%</div></div></div>
+      <div class="flex items-center gap-2"><span class="w-20 text-xs text-right text-pri-500">v7 보강</span><div class="flex-1 bg-sfc-sub rounded-full h-5"><div class="bar bg-pri-500 h-5 rounded-full flex items-center justify-end pr-2 text-xs text-white font-bold" style="width:84%">84.0%</div></div></div>
+      <div class="flex items-center gap-2"><span class="w-20 text-xs text-right text-pri-500">v7+Rule</span><div class="flex-1 bg-sfc-sub rounded-full h-5"><div class="bar bg-pri-300 h-5 rounded-full flex items-center justify-end pr-2 text-xs text-white font-bold" style="width:77%">77.0%</div></div></div>
+    </div>
+  </div>
+
+  <!-- 카테고리별 -->
+  <div class="bg-sfc-card rounded-xl shadow-sm border border-pri-100 p-5">
+    <h2 class="text-base font-bold text-pri-900 mb-3">Step별 성능 비교</h2>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-pri-50 text-pri-700">
+          <th class="p-2 text-left">Step</th>
+          <th class="p-2">건수</th>
+          <th class="p-2">v5 (최종)</th>
+          <th class="p-2">v7 보강</th>
+          <th class="p-2">변화</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-sfc-sub">
+        <tr><td class="p-2">1-step</td><td class="text-center">47</td><td class="text-center font-bold text-good-text">100%</td><td class="text-center">93.6%</td><td class="text-center text-bad-text">-6.4%p</td></tr>
+        <tr><td class="p-2">2-step</td><td class="text-center">33</td><td class="text-center font-bold text-good-text">90.9%</td><td class="text-center">90.9%</td><td class="text-center">0</td></tr>
+        <tr><td class="p-2">3-step</td><td class="text-center">18</td><td class="text-center text-warn-text">66.7%</td><td class="text-center text-bad-text">50.0%</td><td class="text-center text-bad-text">-16.7%p</td></tr>
+        <tr><td class="p-2">4-step</td><td class="text-center">2</td><td class="text-center">50.0%</td><td class="text-center">50.0%</td><td class="text-center">0</td></tr>
+        <tr class="bg-pri-50 font-bold"><td class="p-2">전체 PM</td><td class="text-center">100</td><td class="text-center text-acc-700">87.0%</td><td class="text-center text-bad-text">84.0%</td><td class="text-center text-bad-text">-3.0%p</td></tr>
+      </tbody>
+    </table>
+    <div class="mt-3 text-xs text-pri-500">v7 보강: Rule 14(시간표현+문서생성) 해결 성공, but 1-step/3-step 정확도 하락으로 전체 PM 하락</div>
+  </div>
+
+  <!-- v7 실험 분석 -->
+  <div class="bg-sfc-card rounded-xl shadow-sm border border-pri-100 p-5">
+    <h2 class="text-base font-bold text-pri-900 mb-3">v7 실험 분석: Rule 14 해결과 성능 트레이드오프</h2>
+
+    <!-- 문제 제기 -->
+    <div class="mb-4">
+      <div class="text-sm font-bold text-pri-700 mb-2">문제</div>
+      <div class="bg-bad-bg rounded-lg p-3 text-sm text-bad-text">
+        Rule Guide 14번에서 <b>"이번 달 보고서 만들어줘"</b>를 <b>schedule_view</b>로 오분류하는 현상
+      </div>
+    </div>
+
+    <!-- 실험 -->
+    <div class="mb-4">
+      <div class="text-sm font-bold text-pri-700 mb-2">실험: 데이터 보강으로 해결 시도</div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+        <div class="border border-good-text rounded-lg p-3 bg-good-bg">
+          <div class="font-bold text-good-text mb-1">Rule 14 패턴 → 해결</div>
+          <div class="text-xs text-pri-700">시간표현+문서생성 30건 보강 학습 → <b>관련 테스트케이스 전부 정답</b></div>
+          <div class="text-xs text-pri-500 mt-1">"이번 달 보고서 만들어줘" → doc_generate (정답)</div>
+          <div class="text-xs text-pri-500">"금주 기획서 써줘" → doc_generate (정답)</div>
+          <div class="text-xs text-pri-500">"분기 실적 보고서 작성해" → doc_generate (정답)</div>
+        </div>
+        <div class="border border-bad-text rounded-lg p-3 bg-bad-bg">
+          <div class="font-bold text-bad-text mb-1">전체 PM → 하락</div>
+          <div class="text-xs text-pri-700">Rule 14는 해결했지만 <b>3-step 분해 정확도 하락</b></div>
+          <div class="text-xs text-pri-500 mt-1">3-step: 66.7% → 50.0% (-16.7%p)</div>
+          <div class="text-xs text-pri-500">1-step: 100% → 93.6% (-6.4%p)</div>
+          <div class="text-xs text-pri-500">전체: 87% → 84% (-3%p)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 핵심 인사이트 -->
+    <div class="mb-4">
+      <div class="text-sm font-bold text-pri-700 mb-2">핵심 인사이트</div>
+      <div class="bg-pri-50 rounded-lg p-4 border border-pri-100">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center mb-3">
+          <div>
+            <div class="text-2xl font-black text-good-text">98%</div>
+            <div class="text-xs text-pri-500">Intent 분류 정확도</div>
+          </div>
+          <div>
+            <div class="text-2xl font-black text-pri-700">84%</div>
+            <div class="text-xs text-pri-500">Perfect Match</div>
+          </div>
+          <div>
+            <div class="text-2xl font-black text-warn-text">50%</div>
+            <div class="text-xs text-pri-500">3-step 정확도</div>
+          </div>
+          <div>
+            <div class="text-2xl font-black text-bad-text">16건</div>
+            <div class="text-xs text-pri-500">오답 중 intent 오류 0건</div>
+          </div>
+        </div>
+        <div class="text-sm text-pri-700">
+          <b>모델의 intent 분류 능력은 98%로 충분히 높습니다.</b> 틀리는 16건의 원인은 intent 오분류가 아니라 <b>step 수 차이</b>(3step을 2step으로 축소)와 <b>의존성(depends_on) 차이</b>입니다. 이는 8B 모델의 구조적 추론 한계로, 소량 데이터 보강이나 Rule 추가로는 해결이 어렵습니다.
+        </div>
+      </div>
+    </div>
+
+    <!-- 오답 패턴 분류 -->
+    <div class="mb-4">
+      <div class="text-sm font-bold text-pri-700 mb-2">v7 오답 16건 분류 — Intent 오분류 0건</div>
+      <table class="w-full text-sm">
+        <thead><tr class="bg-pri-50 text-pri-700"><th class="p-2 text-left">유형</th><th class="p-2">건수</th><th class="p-2 text-left">설명</th><th class="p-2 text-left">예시</th></tr></thead>
+        <tbody class="divide-y divide-sfc-sub">
+          <tr class="bg-good-bg"><td class="p-2 font-bold text-good-text">Intent 오분류</td><td class="text-center font-bold text-good-text">0</td><td class="p-2 text-xs text-good-text">intent 종류 자체를 틀린 경우 없음</td><td class="p-2 text-xs text-good-text">-</td></tr>
+          <tr><td class="p-2">step 축소</td><td class="text-center font-bold">6</td><td class="p-2 text-xs">knowledge_query 2개를 1개로 합침</td><td class="p-2 text-xs text-pri-500">"찾아서 분석하고 만들어줘" → 3step인데 2step</td></tr>
+          <tr><td class="p-2">step 과다</td><td class="text-center font-bold">4</td><td class="p-2 text-xs">1step 질문을 불필요하게 분리</td><td class="p-2 text-xs text-pri-500">"연차 규정이랑 병가 규정 차이" → 1step인데 3step</td></tr>
+          <tr><td class="p-2">의존성만 차이</td><td class="text-center font-bold">6</td><td class="p-2 text-xs">intent 종류·순서 정답, depends_on만 다름</td><td class="p-2 text-xs text-pri-500">"일정 확인하고 회의록 만들어줘" → intent 정답</td></tr>
+        </tbody>
+      </table>
+      <div class="mt-3 text-xs text-pri-500">16건 모두 intent 종류는 정확하게 분류함. 틀리는 원인은 step 개수 또는 의존성(depends_on) 차이뿐.</div>
+    </div>
+
+    <!-- 오답 상세 목록 -->
+    <div class="mb-4">
+      <details class="text-sm">
+        <summary class="font-bold text-pri-700 cursor-pointer mb-2">오답 16건 상세 보기</summary>
+        <table class="w-full text-xs mt-2">
+          <thead><tr class="bg-pri-50 text-pri-700"><th class="p-1.5 text-left">ID</th><th class="p-1.5 text-left">입력</th><th class="p-1.5 text-left">정답</th><th class="p-1.5 text-left">모델 출력</th><th class="p-1.5">유형</th></tr></thead>
+          <tbody class="divide-y divide-sfc-sub">
+            <tr><td class="p-1.5">SEQ-003</td><td class="p-1.5">미팅 일정 확인하고 회의록 양식 만들어줘</td><td class="p-1.5">sv, dg</td><td class="p-1.5">sv, dg</td><td class="p-1.5 text-center text-pri-500">dep</td></tr>
+            <tr><td class="p-1.5">SEQ-005</td><td class="p-1.5">기획서 찾아서 요약해줘</td><td class="p-1.5">kq, kq</td><td class="p-1.5 text-bad-text">kq</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">PAR-004</td><td class="p-1.5">출장 규정이랑 재택근무 규정 둘 다 확인해줘</td><td class="p-1.5">kq, kq</td><td class="p-1.5 text-bad-text">kq, kq, kq</td><td class="p-1.5 text-center text-bad-text">과다</td></tr>
+            <tr><td class="p-1.5">C-002</td><td class="p-1.5">회의 일정 확인해서, 자료 찾고, 회의록 만들어줘</td><td class="p-1.5">sv, kq, dg</td><td class="p-1.5">sv, kq, dg</td><td class="p-1.5 text-center text-pri-500">dep</td></tr>
+            <tr><td class="p-1.5">C-004</td><td class="p-1.5">요구사항 문서 찾아서 분석하고 제안서 만들어줘</td><td class="p-1.5">kq, kq, dg</td><td class="p-1.5 text-bad-text">kq, dg</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">C-005</td><td class="p-1.5">회의록 검색해서 후속 과제 정리하고 미팅 일정 잡아줘</td><td class="p-1.5">kq, dg, sa</td><td class="p-1.5">kq, dg, sa</td><td class="p-1.5 text-center text-pri-500">dep</td></tr>
+            <tr><td class="p-1.5">C-006</td><td class="p-1.5">법인카드 규정 찾아서 확인하고 보고서 만들어줘</td><td class="p-1.5">kq, kq, dg</td><td class="p-1.5">kq, kq, dg</td><td class="p-1.5 text-center text-pri-500">dep</td></tr>
+            <tr><td class="p-1.5">C-007</td><td class="p-1.5">일정 확인하고 빈 날 찾아서 워크숍 등록해줘</td><td class="p-1.5">sv, sv, sa</td><td class="p-1.5">sv, sv, sa</td><td class="p-1.5 text-center text-pri-500">dep</td></tr>
+            <tr><td class="p-1.5">C-010</td><td class="p-1.5">보안 정책 확인해서 판단하고 보고서 작성해줘</td><td class="p-1.5">kq, kq, dg</td><td class="p-1.5 text-bad-text">kq, dg</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">C-014</td><td class="p-1.5">보고서 찾아서 요약하고 제안서 만들고 일정 잡아줘</td><td class="p-1.5">kq, kq, dg, sa</td><td class="p-1.5 text-bad-text">kq, dg, sa</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">E-006</td><td class="p-1.5">재택근무 정책 주 몇 회... 근태 관리...</td><td class="p-1.5">kq</td><td class="p-1.5 text-bad-text">kq, kq</td><td class="p-1.5 text-center text-bad-text">과다</td></tr>
+            <tr><td class="p-1.5">E-010</td><td class="p-1.5">출장 규정 확인... 숙박비 상한액...</td><td class="p-1.5">kq</td><td class="p-1.5 text-bad-text">kq, kq</td><td class="p-1.5 text-center text-bad-text">과다</td></tr>
+            <tr><td class="p-1.5">E-014</td><td class="p-1.5">연차 규정이랑 병가 규정 차이가 뭐야?</td><td class="p-1.5">kq</td><td class="p-1.5 text-bad-text">kq, kq, kq</td><td class="p-1.5 text-center text-bad-text">과다</td></tr>
+            <tr><td class="p-1.5">E-017</td><td class="p-1.5">규정 확인 문서 찾기 일정 등록</td><td class="p-1.5">kq, kq, sa</td><td class="p-1.5 text-bad-text">kq, sa</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">C-017</td><td class="p-1.5">예산 문서 검색해서 분석하고 보고서 만들어줘</td><td class="p-1.5">kq, kq, dg</td><td class="p-1.5 text-bad-text">kq, dg</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">C-018</td><td class="p-1.5">미팅 일정 확인하고 빈 날 찾아서 미팅 잡아줘</td><td class="p-1.5">sv, sv, sa</td><td class="p-1.5">sv, sv, sa</td><td class="p-1.5 text-center text-pri-500">dep</td></tr>
+          </tbody>
+        </table>
+        <div class="mt-2 text-xs text-pri-500">kq=knowledge_query, dg=doc_generate, sv=schedule_view, sa=schedule_add, dep=의존성만 차이</div>
+      </details>
+    </div>
+
+    <!-- 결론 -->
+    <div class="bg-acc-50 rounded-lg p-4 border border-acc-300">
+      <div class="text-sm font-bold text-acc-700 mb-2">결론</div>
+      <div class="space-y-1.5 text-sm text-pri-700">
+        <div class="flex gap-2"><span class="font-bold text-acc-700">1.</span> Rule 14 오분류는 <b>모델 성능 부족이 아닌 학습 데이터 부재</b> — 30건 보강으로 완전 해결</div>
+        <div class="flex gap-2"><span class="font-bold text-acc-700">2.</span> Intent 분류 정확도 <b>98%</b> — 모델이 intent를 틀리는 경우는 거의 없음</div>
+        <div class="flex gap-2"><span class="font-bold text-acc-700">3.</span> PM 하락 원인은 <b>멀티스텝 구조 분해</b> 문제 — intent과는 별개 영역</div>
+        <div class="flex gap-2"><span class="font-bold text-acc-700">4.</span> v5 + Hybrid + Rule Guide = <b>87%가 현재 최적</b> — 추가 보강/Rule은 역효과</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 베이스 모델 비교 -->
+  <div class="bg-sfc-card rounded-xl shadow-sm border border-pri-100 p-5 overflow-x-auto">
+    <h2 class="text-base font-bold text-pri-900 mb-3">베이스 모델 비교</h2>
+    <table class="w-full text-sm">
+      <thead><tr class="bg-pri-50 text-pri-700"><th class="p-2 text-left">항목</th><th class="p-2">Kanana-1.5-8B</th><th class="p-2">Qwen3-8B</th></tr></thead>
+      <tbody class="divide-y divide-sfc-sub">
+        <tr><td class="p-2">유효 응답률</td><td class="text-center font-bold text-good-text">94.7%</td><td class="text-center text-bad-text">68.4%</td></tr>
+        <tr><td class="p-2">추론 속도</td><td class="text-center font-bold text-good-text">2.3s</td><td class="text-center text-bad-text">11.8s</td></tr>
+        <tr><td class="p-2">complex 15건</td><td class="text-center font-bold text-good-text">15건 전부</td><td class="text-center text-bad-text">5건만</td></tr>
+        <tr><td class="p-2">LoRA 가능성</td><td class="text-center text-good-text">학습 가능</td><td class="text-center text-bad-text">아키텍처 한계</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 교훈 -->
+  <div class="bg-sfc-card rounded-xl shadow-sm border border-pri-100 p-5">
+    <h2 class="text-base font-bold text-pri-900 mb-3">핵심 교훈</h2>
+    <div class="space-y-2 text-sm text-pri-700">
+      <div class="flex gap-2"><span class="text-acc-700 font-bold shrink-0">1.</span><span>KNOWN_OVERRIDES 한계 77% → <b class="text-pri-900">후처리 매핑이 정답</b></span></div>
+      <div class="flex gap-2"><span class="text-acc-700 font-bold shrink-0">2.</span><span>Hybrid 프롬프트가 핵심 → <b class="text-pri-900">단순/복합 자동 분기</b></span></div>
+      <div class="flex gap-2"><span class="text-acc-700 font-bold shrink-0">3.</span><span>Few-shot > LoRA 보강 → <b class="text-pri-900">예시 3개가 57건 재학습보다 효과적</b></span></div>
+      <div class="flex gap-2"><span class="text-acc-700 font-bold shrink-0">4.</span><span>v6 재학습은 실패 → <b class="text-pri-900">데이터/파라미터 늘린다고 항상 좋아지진 않음</b></span></div>
+      <div class="flex gap-2"><span class="text-acc-700 font-bold shrink-0">5.</span><span>Rule은 양날의 검 → <b class="text-pri-900">Rule 15가 1건 수정에 5건 파손, Rule 17~21도 7건 파손</b></span></div>
+      <div class="flex gap-2"><span class="text-acc-700 font-bold shrink-0">6.</span><span>데이터 보강 ≠ 성능 향상 → <b class="text-pri-900">v7(+90건) 오히려 -3%p 하락, 소량 보강은 step 분해에 비효과적</b></span></div>
+      <div class="flex gap-2"><span class="text-acc-700 font-bold shrink-0">7.</span><span>멀티스텝 분해는 가장 어려운 과제 → <b class="text-pri-900">3-step 정확도 50~66%가 현재 한계</b></span></div>
+    </div>
+  </div>
+
+  <!-- ========== 4-step / 5-step 일반화 테스트 ========== -->
+  <div class="bg-sfc-card rounded-xl shadow-sm border border-pri-100 p-5">
+    <h2 class="text-base font-bold text-pri-900 mb-1">4-step / 5-step 일반화 테스트</h2>
+    <div class="text-xs text-pri-500 mb-4">"3-step까지만 학습한 모델이 4-step, 5-step도 잘 분류하는지 확인"</div>
+
+    <!-- 배경 -->
+    <div class="mb-4">
+      <div class="text-sm font-bold text-pri-700 mb-2">실험 배경</div>
+      <div class="bg-pri-50 rounded-lg p-3 text-sm text-pri-700 border border-pri-100">
+        최종 Planner 모델(v5)은 <b>최대 3-step</b>까지의 데이터(1,471건)로 학습되었습니다.
+        학습에 없던 <b>4-step(30건)</b>과 <b>5-step(30건)</b> 테스트셋을 별도 제작하여 일반화 능력을 검증했습니다.
+      </div>
+    </div>
+
+    <!-- 테스트 설계 -->
+    <div class="mb-4">
+      <div class="text-sm font-bold text-pri-700 mb-2">테스트 설계</div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+        <div class="border border-pri-100 rounded-lg p-3 cursor-pointer" onclick="document.getElementById('detail-4step-topo').classList.toggle('hidden'); this.classList.toggle('ring-2'); this.classList.toggle('ring-pri-500')">
+          <div class="font-bold text-pri-700 mb-1">4-step 테스트 (30건) <span class="text-xs font-normal text-pri-300">(클릭)</span></div>
+          <div class="text-xs text-pri-500">시스템 프롬프트: "최대 <b>4</b>단계" (기본값)</div>
+          <div class="text-xs text-pri-500 mt-1">토폴로지: 직렬, 병렬 시작, 다이아몬드형</div>
+          <div class="text-xs text-pri-500">예: "출장 규정 <b>찾아서</b> 해외출장 <b>확인하고</b>, 보고서 <b>만들어서</b> 일정 <b>등록해줘</b>"</div>
+        </div>
+        <div class="border border-acc-300 rounded-lg p-3 bg-acc-50 cursor-pointer" onclick="document.getElementById('detail-5step-topo').classList.toggle('hidden'); this.classList.toggle('ring-2'); this.classList.toggle('ring-acc-500')">
+          <div class="font-bold text-acc-700 mb-1">5-step 테스트 (30건) <span class="text-xs font-normal text-pri-300">(클릭)</span></div>
+          <div class="text-xs text-pri-500">시스템 프롬프트: "최대 <b>5</b>단계" (--max-steps 5)</div>
+          <div class="text-xs text-pri-500 mt-1">토폴로지: 직렬 5단, 병렬+합류, 다이아몬드+분기 등</div>
+          <div class="text-xs text-pri-500">예: "보고서랑 분석자료 <b>찾아서</b> 비교 <b>분석하고</b>, 제안서 <b>만들어서</b> 발표 일정 <b>잡아줘</b>"</div>
+        </div>
+      </div>
+
+      <!-- 4-step 토폴로지 상세 -->
+      <div id="detail-4step-topo" class="hidden mt-3 bg-white rounded-lg p-4 border border-pri-100 text-sm text-pri-700">
+        <div class="font-bold text-pri-700 mb-3">4-step 토폴로지 패턴</div>
+        <div class="space-y-3">
+          <div class="bg-sfc-main rounded-lg p-3 border border-pri-100">
+            <div class="text-xs font-bold text-pri-700 mb-1">직렬 — 앞이 끝나야 다음 시작</div>
+            <div class="text-xs text-acc-700 font-mono mb-1">1 → 2 → 3 → 4</div>
+            <div class="text-xs text-pri-500">"규정 <b>찾아서</b> → 가능한지 <b>확인하고</b> → 보고서 <b>만들어서</b> → 일정 <b>등록해줘</b>"</div>
+          </div>
+          <div class="bg-sfc-main rounded-lg p-3 border border-pri-100">
+            <div class="text-xs font-bold text-pri-700 mb-1">병렬 시작 — 두 작업을 동시에 하고 합류</div>
+            <div class="text-xs text-acc-700 font-mono mb-1">1, 2 (동시) → 3 → 4</div>
+            <div class="text-xs text-pri-500">"보고서랑 분석자료 <b>둘 다 찾아서</b> → 비교 판단하고 → 제안서 만들어줘"</div>
+          </div>
+          <div class="bg-sfc-main rounded-lg p-3 border border-pri-100">
+            <div class="text-xs font-bold text-pri-700 mb-1">다이아몬드 — 갈라졌다 합류</div>
+            <div class="text-xs text-acc-700 font-mono mb-1">1 → 2, 3 (동시) → 4</div>
+            <div class="text-xs text-pri-500">"규정 <b>확인하고</b> → 일정도 <b>보고</b> + 문서도 <b>찾아서</b> → 종합 문서 <b>만들어줘</b>"</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5-step 토폴로지 상세 -->
+      <div id="detail-5step-topo" class="hidden mt-3 bg-white rounded-lg p-4 border border-acc-300 text-sm text-pri-700">
+        <div class="font-bold text-acc-700 mb-3">5-step 토폴로지 패턴</div>
+        <div class="space-y-3">
+          <div class="bg-sfc-main rounded-lg p-3 border border-pri-100">
+            <div class="text-xs font-bold text-pri-700 mb-1">직렬 5단 — 순차적으로 5단계</div>
+            <div class="text-xs text-acc-700 font-mono mb-1">1 → 2 → 3 → 4 → 5</div>
+            <div class="text-xs text-pri-500">"규정 <b>찾아서</b> → <b>확인하고</b> → 일정 <b>봐서</b> → 보고서 <b>만들고</b> → 일정 <b>등록해줘</b>"</div>
+          </div>
+          <div class="bg-sfc-main rounded-lg p-3 border border-pri-100">
+            <div class="text-xs font-bold text-pri-700 mb-1">병렬+합류 — 처음에 동시 진행 후 합류</div>
+            <div class="text-xs text-acc-700 font-mono mb-1">1, 2 (동시) → 3 → 4 → 5</div>
+            <div class="text-xs text-pri-500">"보고서랑 분석자료 <b>찾아서</b> → 비교 <b>분석하고</b> → 제안서 <b>만들어서</b> → 일정 <b>잡아줘</b>"</div>
+          </div>
+          <div class="bg-sfc-main rounded-lg p-3 border border-pri-100">
+            <div class="text-xs font-bold text-pri-700 mb-1">다이아몬드+분기 — 갈라지고 합류 후 다시 분기</div>
+            <div class="text-xs text-acc-700 font-mono mb-1">1, 2, 3 (동시) → 4 → 5</div>
+            <div class="text-xs text-pri-500">"규정 <b>확인하고</b> + 일정 <b>확인하고</b> + 문서도 <b>찾아서</b> → 종합 문서 <b>만들고</b> → 연차 <b>등록해줘</b>"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 주요 결과 테이블 -->
+    <div class="mb-4">
+      <div class="text-sm font-bold text-pri-700 mb-2">결과 요약</div>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-pri-50 text-pri-700">
+            <th class="p-2 text-left">테스트</th>
+            <th class="p-2"><span class="metric-tip" tabindex="0">PM<span class="tip-box"><b>Perfect Match</b><br>모델 출력이 정답과 <b>완전히 일치</b>하는 비율. intent 종류, 순서, 의존성이 모두 맞아야 정답. 가장 엄격한 지표.</span></span></th>
+            <th class="p-2"><span class="metric-tip" tabindex="0">WS<span class="tip-box"><b>Weighted Score</b><br>5가지 세부 지표의 가중 합산 (0~100%). IR(30%) + Order(25%) + IP(20%) + Dep(15%) + Efficiency(10%). PM보다 관대한 부분 점수.</span></span></th>
+            <th class="p-2"><span class="metric-tip" tabindex="0">IR<span class="tip-box"><b>Intent Recall</b><br>정답에 있는 intent를 모델이 <b>얼마나 빠뜨리지 않고 찾았는가</b>. 예: 정답이 3개인데 2개만 출력하면 66.7%.</span></span></th>
+            <th class="p-2"><span class="metric-tip" tabindex="0">IP<span class="tip-box"><b>Intent Precision</b><br>모델이 출력한 intent 중 <b>실제로 맞는 비율</b>. 100%면 잘못된 intent를 하나도 만들어내지 않았다는 뜻 (환각 없음).</span></span></th>
+            <th class="p-2"><span class="metric-tip" tabindex="0">Dep<span class="tip-box"><b>의존성 정확도 (Dep Correctness)</b><br>각 step의 depends_on(선행 조건)이 정답과 <b>얼마나 일치</b>하는지. 예: step 3이 [1,2]에 의존해야 하는데 [1]만 적으면 감점.</span></span></th>
+            <th class="p-2"><span class="metric-tip" tabindex="0">SCR<span class="tip-box"><b>Step Collapse Rate</b><br>정답보다 <b>step 수를 줄여버리는</b> 오류 비율. 예: 4step이 정답인데 3step으로 축소. 낮을수록 좋음.</span></span></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-sfc-sub">
+          <tr class="bg-pri-50"><td class="p-2 font-bold"><span class="metric-tip" tabindex="0">Holdout (100건, 기준)<span class="tip-box"><b>Holdout 테스트셋</b><br>학습에 전혀 사용하지 않은 별도 100건. 진짜 일반화 성능 측정용.<br><br><b>파일:</b><br><code class="text-xs">data/evaluation/planner_test_cases.json</code></span></span></td><td class="text-center font-bold text-pri-700">78.0%</td><td class="text-center">95.8%</td><td class="text-center">96.2%</td><td class="text-center">97.5%</td><td class="text-center">91.3%</td><td class="text-center">13.2%</td></tr>
+          <tr><td class="p-2"><span class="metric-tip" tabindex="0">4-step 기본 (30건)<span class="tip-box"><b>4-step 테스트셋</b><br>학습에 없던 4단계 복합 요청 30건. 기본 프롬프트(예시 없음)로 평가.<br><br><b>파일:</b><br><code class="text-xs">data/evaluation/planner_test_4step.json</code></span></span></td><td class="text-center font-bold text-bad-text">3.3%</td><td class="text-center">86.5%</td><td class="text-center">86.7%</td><td class="text-center text-good-text">100%</td><td class="text-center text-bad-text">67.5%</td><td class="text-center text-bad-text">40.0%</td></tr>
+          <tr class="bg-acc-50"><td class="p-2 font-bold"><span class="metric-tip" tabindex="0">4-step 하이브리드 (30건)<span class="tip-box"><b>4-step 테스트셋</b><br>동일한 4단계 30건을 하이브리드 프롬프트(Few-shot 예시 포함)로 평가.<br><br><b>파일:</b><br><code class="text-xs">data/evaluation/planner_test_4step.json</code></span></span></td><td class="text-center font-bold text-warn-text">16.7%</td><td class="text-center">86.0%</td><td class="text-center">85.0%</td><td class="text-center text-good-text">100%</td><td class="text-center">71.7%</td><td class="text-center text-bad-text">46.7%</td></tr>
+          <tr><td class="p-2"><span class="metric-tip" tabindex="0">5-step 기본 (30건)<span class="tip-box"><b>5-step 테스트셋</b><br>학습에 없던 5단계 복합 요청 30건. 기본 프롬프트(예시 없음)로 평가.<br><br><b>파일:</b><br><code class="text-xs">data/evaluation/planner_test_5step.json</code></span></span></td><td class="text-center font-bold text-bad-text">3.3%</td><td class="text-center">89.4%</td><td class="text-center">92.0%</td><td class="text-center">99.3%</td><td class="text-center text-bad-text">64.0%</td><td class="text-center">20.0%</td></tr>
+          <tr class="bg-acc-50"><td class="p-2 font-bold"><span class="metric-tip" tabindex="0">5-step 하이브리드 (30건)<span class="tip-box"><b>5-step 테스트셋</b><br>동일한 5단계 30건을 하이브리드 프롬프트(Few-shot 예시 포함)로 평가.<br><br><b>파일:</b><br><code class="text-xs">data/evaluation/planner_test_5step.json</code></span></span></td><td class="text-center font-bold text-bad-text">6.7%</td><td class="text-center">86.6%</td><td class="text-center">88.0%</td><td class="text-center text-good-text">100%</td><td class="text-center text-bad-text">64.0%</td><td class="text-center text-bad-text">43.3%</td></tr>
+        </tbody>
+      </table>
+      <div class="mt-2 text-xs text-pri-500">PM=Perfect Match, WS=Weighted Score, IR=Intent Recall, IP=Intent Precision, Dep=의존성 정확도, SCR=Step Collapse Rate</div>
+    </div>
+
+    <!-- Holdout Step별 재현 -->
+    <div class="mb-4">
+      <div class="text-sm font-bold text-pri-700 mb-2">Holdout Step별 분석 (sanity check)</div>
+      <div class="grid grid-cols-4 gap-2 text-center text-sm">
+        <div class="bg-good-bg rounded-lg p-2 border border-good-text">
+          <div class="text-lg font-black text-good-text">91.5%</div>
+          <div class="text-xs text-pri-500">1-step (43/47)</div>
+        </div>
+        <div class="bg-good-bg rounded-lg p-2 border border-good-text">
+          <div class="text-lg font-black text-good-text">84.9%</div>
+          <div class="text-xs text-pri-500">2-step (28/33)</div>
+        </div>
+        <div class="bg-warn-bg rounded-lg p-2 border border-warn-bar">
+          <div class="text-lg font-black text-warn-text">33.3%</div>
+          <div class="text-xs text-pri-500">3-step (6/18)</div>
+        </div>
+        <div class="bg-warn-bg rounded-lg p-2 border border-warn-bar">
+          <div class="text-lg font-black text-warn-text">50.0%</div>
+          <div class="text-xs text-pri-500">4-step (1/2)</div>
+        </div>
+      </div>
+      <div class="mt-2 text-xs text-pri-500">
+        ※ Holdout 78%는 이전 88%보다 낮음 — PyTorch 2.6 + transformers 5.3 업그레이드 영향으로 추정. 동일 어댑터·동일 테스트셋이나 라이브러리 버전 차이로 추론 결과가 달라질 수 있음.
+      </div>
+    </div>
+
+    <!-- 오답 유형 비교 -->
+    <div class="mb-4">
+      <details class="text-sm">
+        <summary class="font-bold text-pri-700 cursor-pointer mb-2">4-step / 5-step 오답 상세 보기</summary>
+
+        <!-- 오답 유형 요약 -->
+        <table class="w-full text-sm mt-2">
+          <thead>
+            <tr class="bg-pri-50 text-pri-700">
+              <th class="p-2 text-left">테스트</th>
+              <th class="p-2">총 오답</th>
+              <th class="p-2">Step Collapse</th>
+              <th class="p-2">Deps Only</th>
+              <th class="p-2">Intent Diff</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-sfc-sub">
+            <tr><td class="p-2">4-step 기본</td><td class="text-center font-bold">29</td><td class="text-center text-bad-text font-bold">13</td><td class="text-center">16</td><td class="text-center text-good-text">0</td></tr>
+            <tr><td class="p-2">4-step 하이브리드</td><td class="text-center font-bold">25</td><td class="text-center text-bad-text font-bold">15</td><td class="text-center">10</td><td class="text-center text-good-text">0</td></tr>
+            <tr><td class="p-2">5-step 기본</td><td class="text-center font-bold">29</td><td class="text-center text-bad-text font-bold">7</td><td class="text-center">21</td><td class="text-center">1</td></tr>
+            <tr><td class="p-2">5-step 하이브리드</td><td class="text-center font-bold">28</td><td class="text-center text-bad-text font-bold">14</td><td class="text-center">14</td><td class="text-center text-good-text">0</td></tr>
+          </tbody>
+        </table>
+
+        <!-- 4-step 기본 오답 -->
+        <div class="mt-4 text-xs font-bold text-pri-700 mb-1">4-step 기본 — 오답 29건</div>
+        <table class="w-full text-xs">
+          <thead><tr class="bg-pri-50 text-pri-700"><th class="p-1.5 text-left">ID</th><th class="p-1.5 text-left">입력</th><th class="p-1.5 text-left">정답</th><th class="p-1.5 text-left">모델 출력</th><th class="p-1.5">유형</th></tr></thead>
+          <tbody class="divide-y divide-sfc-sub">
+            <tr><td class="p-1.5">C4-001</td><td class="p-1.5">출장 규정 찾아서 확인하고, 보고서 만들어서 일정 등록해줘</td><td class="p-1.5">kq, kq, dg, sa</td><td class="p-1.5">kq, kq, dg, sa</td><td class="p-1.5 text-center text-pri-500">dep</td></tr>
+            <tr><td class="p-1.5">C4-004</td><td class="p-1.5">마케팅 보고서랑 경쟁사 자료 찾아서 비교 판단하고 제안서 만들어줘</td><td class="p-1.5">kq, kq, kq, dg</td><td class="p-1.5 text-bad-text">kq, kq, dg</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">C4-010</td><td class="p-1.5">거래처 계약서 찾아서 조건 검토하고, 제안서 만들어서 일정 잡아줘</td><td class="p-1.5">kq, kq, dg, sa</td><td class="p-1.5 text-bad-text">sa</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">C4-011</td><td class="p-1.5">인사 규정이랑 채용 공고 찾아서 채용 기준 정리하고 JD 작성해줘</td><td class="p-1.5">kq, kq, kq, dg</td><td class="p-1.5 text-bad-text">kq, kq, dg</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">C4-015</td><td class="p-1.5">분기 실적 보고서 찾아서 요약하고, 발표 자료 만들어줘</td><td class="p-1.5">kq, kq, dg, dg</td><td class="p-1.5 text-bad-text">kq, dg</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">C4-016</td><td class="p-1.5">재택근무 규정 확인하고 겸직 규정도 확인해서, 종합 판단해줘</td><td class="p-1.5">kq, kq, kq, dg</td><td class="p-1.5 text-bad-text">kq, kq, kq</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">C4-023</td><td class="p-1.5">일정 확인하고 워크숍 등록하고 안건 문서 만들어줘</td><td class="p-1.5">sv, sa, dg, dg</td><td class="p-1.5 text-bad-text">sv, sa, dg</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">C4-025</td><td class="p-1.5">매출 데이터랑 전월 실적 보고서 찾아서 비교해서 월간 보고서 만들어줘</td><td class="p-1.5">kq, kq, kq, dg</td><td class="p-1.5 text-bad-text">kq, kq, dg</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">C4-005</td><td class="p-1.5">일정 확인하고 기획서 찾아서, 안건 문서 만들고 미팅 잡아줘</td><td class="p-1.5">sv, kq, dg, sa</td><td class="p-1.5">sv, kq, dg, sa</td><td class="p-1.5 text-center text-pri-500">dep</td></tr>
+            <tr><td class="p-1.5">C4-009</td><td class="p-1.5">일정 확인하고 법인카드 규정 봐서, 기획서 만들고 빈 날에 등록해줘</td><td class="p-1.5">sv, kq, dg, sa</td><td class="p-1.5">sv, kq, dg, sa</td><td class="p-1.5 text-center text-pri-500">dep</td></tr>
+            <tr><td class="p-1.5">C4-029</td><td class="p-1.5">채용 규정 확인해서 판단하고, JD 작성해서 면접 일정 잡아줘</td><td class="p-1.5">kq, kq, dg, sa</td><td class="p-1.5">kq, kq, dg, sa</td><td class="p-1.5 text-center text-pri-500">dep</td></tr>
+          </tbody>
+        </table>
+        <div class="mt-1 text-xs text-pri-500">축소 13건 + dep 16건. 대표 11건 표시. kq=knowledge_query, dg=doc_generate, sv=schedule_view, sa=schedule_add, dep=의존성만 차이</div>
+
+        <!-- 5-step 기본 오답 -->
+        <div class="mt-4 text-xs font-bold text-pri-700 mb-1">5-step 기본 — 오답 29건</div>
+        <table class="w-full text-xs">
+          <thead><tr class="bg-pri-50 text-pri-700"><th class="p-1.5 text-left">ID</th><th class="p-1.5 text-left">입력</th><th class="p-1.5 text-left">정답</th><th class="p-1.5 text-left">모델 출력</th><th class="p-1.5">유형</th></tr></thead>
+          <tbody class="divide-y divide-sfc-sub">
+            <tr><td class="p-1.5">C5-001</td><td class="p-1.5">보고서랑 분석 자료 찾아서 비교 분석하고, 제안서 만들어서 일정 잡아줘</td><td class="p-1.5">kq, kq, kq, dg, sa</td><td class="p-1.5 text-bad-text">kq, kq, dg, dg, sa</td><td class="p-1.5 text-center text-bad-text">intent</td></tr>
+            <tr><td class="p-1.5">C5-004</td><td class="p-1.5">인사 규정 찾아서 채용 기준 확인하고 JD 자료도 검색해서, JD 작성해줘</td><td class="p-1.5">kq, kq, kq, dg, sa</td><td class="p-1.5 text-bad-text">kq, kq, dg, sa</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">C5-006</td><td class="p-1.5">기획서 찾아서 요약하고, 제안서 만들면서 일정 확인해서 등록해줘</td><td class="p-1.5">kq, kq, dg, sv, sa</td><td class="p-1.5 text-bad-text">kq, kq, sv</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">C5-008</td><td class="p-1.5">법인카드 규정 확인하고 예산 계획서 찾아서, 지출 판단하고 문서 만들어줘</td><td class="p-1.5">kq, kq, kq, dg, sa</td><td class="p-1.5 text-bad-text">kq, kq, dg, sa</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">C5-010</td><td class="p-1.5">거래처 계약서 찾아서 검토하고, 수정 계약서 만들어서 일정 잡아줘</td><td class="p-1.5">kq, kq, dg, sa, dg</td><td class="p-1.5 text-bad-text">sa</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">C5-016</td><td class="p-1.5">일정 확인하고 회의록 찾아서 요약하고, 후속 조치 만들어서 잡아줘</td><td class="p-1.5">sv, kq, kq, dg, sa</td><td class="p-1.5 text-bad-text">sv, kq, dg, sa</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">C5-021</td><td class="p-1.5">겸직 규정 확인하고 판례 찾아서 적용 판단하고 문서 만들어줘</td><td class="p-1.5">kq, kq, kq, dg, dg</td><td class="p-1.5 text-bad-text">kq, kq, kq, dg</td><td class="p-1.5 text-center text-bad-text">축소</td></tr>
+            <tr><td class="p-1.5">C5-002</td><td class="p-1.5">출장 규정 찾아서 확인하고, 일정 봐서 보고서 만들어서 등록해줘</td><td class="p-1.5">kq, kq, sv, dg, sa</td><td class="p-1.5">kq, kq, sv, dg, sa</td><td class="p-1.5 text-center text-pri-500">dep</td></tr>
+            <tr><td class="p-1.5">C5-014</td><td class="p-1.5">매출 데이터랑 고객 만족도 찾아서 분석하고, 보고서 만들어서 잡아줘</td><td class="p-1.5">kq, kq, kq, dg, sa</td><td class="p-1.5">kq, kq, kq, dg, sa</td><td class="p-1.5 text-center text-pri-500">dep</td></tr>
+            <tr><td class="p-1.5">C5-020</td><td class="p-1.5">일정 확인하고 기획서랑 예산 찾아서, 킥오프 문서 만들어서 잡아줘</td><td class="p-1.5">sv, kq, kq, dg, sa</td><td class="p-1.5">sv, kq, kq, dg, sa</td><td class="p-1.5 text-center text-pri-500">dep</td></tr>
+          </tbody>
+        </table>
+        <div class="mt-1 text-xs text-pri-500">축소 7건 + dep 21건 + intent 1건. 대표 10건 표시. kq=knowledge_query, dg=doc_generate, sv=schedule_view, sa=schedule_add, dep=의존성만 차이</div>
+
+      </details>
+    </div>
+
+    <!-- 핵심 그래프 - PM 비교 바 -->
+    <div class="mb-4">
+      <div class="text-sm font-bold text-pri-700 mb-2">Perfect Match 비교</div>
+      <div class="space-y-2 text-sm">
+        <div class="flex items-center gap-2"><span class="w-28 text-xs text-right text-pri-500">Holdout 1~3step</span><div class="flex-1 bg-sfc-sub rounded-full h-5"><div class="bar bg-acc-700 h-5 rounded-full flex items-center justify-end pr-2 text-xs text-white font-bold" style="width:78%">78.0%</div></div></div>
+        <div class="flex items-center gap-2"><span class="w-28 text-xs text-right text-pri-500">4step 하이브리드</span><div class="flex-1 bg-sfc-sub rounded-full h-5"><div class="bar bg-acc-500 h-5 rounded-full flex items-center justify-end pr-2 text-xs text-white font-bold" style="width:16.7%">16.7%</div></div></div>
+        <div class="flex items-center gap-2"><span class="w-28 text-xs text-right text-pri-500">5step 하이브리드</span><div class="flex-1 bg-sfc-sub rounded-full h-5"><div class="bar bg-pri-300 h-5 rounded-full flex items-center pl-2 text-xs text-white font-bold" style="width:6.7%">6.7%</div></div></div>
+      </div>
+    </div>
+
+    <!-- 긍정적 발견 -->
+    <div class="mb-4">
+      <div class="text-sm font-bold text-pri-700 mb-2">긍정적 발견: Intent는 맞춘다</div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+        <div class="bg-good-bg rounded-lg p-3 border border-good-text cursor-pointer" onclick="document.getElementById('detail-ip').classList.toggle('hidden'); this.classList.toggle('ring-2'); this.classList.toggle('ring-good-text')">
+          <div class="text-xl font-black text-good-text">100%</div>
+          <div class="text-xs text-pri-500">Intent Precision</div>
+          <div class="text-xs text-pri-500">(4step 기본/하이브리드)</div>
+        </div>
+        <div class="bg-good-bg rounded-lg p-3 border border-good-text cursor-pointer" onclick="document.getElementById('detail-ir').classList.toggle('hidden'); this.classList.toggle('ring-2'); this.classList.toggle('ring-good-text')">
+          <div class="text-xl font-black text-good-text">86~92%</div>
+          <div class="text-xs text-pri-500">Intent Recall</div>
+          <div class="text-xs text-pri-500">(전체 평균)</div>
+        </div>
+        <div class="bg-good-bg rounded-lg p-3 border border-good-text cursor-pointer" onclick="document.getElementById('detail-halluc').classList.toggle('hidden'); this.classList.toggle('ring-2'); this.classList.toggle('ring-good-text')">
+          <div class="text-xl font-black text-good-text">0건</div>
+          <div class="text-xs text-pri-500">Intent 환각</div>
+          <div class="text-xs text-pri-500">(없는 intent 생성)</div>
+        </div>
+        <div class="bg-good-bg rounded-lg p-3 border border-good-text cursor-pointer" onclick="document.getElementById('detail-ws').classList.toggle('hidden'); this.classList.toggle('ring-2'); this.classList.toggle('ring-good-text')">
+          <div class="text-xl font-black text-good-text">86~89%</div>
+          <div class="text-xs text-pri-500">Weighted Score</div>
+          <div class="text-xs text-pri-500">(부분 점수 높음)</div>
+        </div>
+      </div>
+
+      <!-- IP & IR 비교 설명 -->
+      <div id="detail-ip" class="hidden mt-3 bg-white rounded-lg p-4 border border-good-text text-sm text-pri-700">
+        <div class="font-bold text-good-text mb-2">Intent Precision 100% — "모델이 출력한 것 중 틀린 게 없다"</div>
+        <div class="text-xs text-pri-700 mb-3">
+          Precision은 <b>모델이 출력한 것 → 정답</b> 방향으로 검증합니다. "모델이 엉뚱한 걸 추가하지 않았는가?"를 측정합니다.
+        </div>
+        <div class="bg-sfc-main rounded p-3 text-xs mb-2 font-mono">
+          <div class="mb-1"><b>입력:</b> "출장 규정 <b>찾아서</b> 해외출장 <b>확인하고</b>, 보고서 <b>만들어서</b> 일정 <b>등록해줘</b>"</div>
+          <div class="text-pri-500">정답: doc_retrieve → judgment → doc_generate → schedule_add <span class="text-acc-700">(4개)</span></div>
+          <div class="text-bad-text">모델: doc_retrieve → judgment → schedule_add <span class="text-bad-text">(3개)</span></div>
+        </div>
+        <div class="text-xs text-pri-700">
+          모델이 출력한 <b>3개 중 3개</b>가 정답에 있음 → Precision = <b>3/3 = 100%</b><br>
+          빠뜨린 건 있지만(doc_generate 누락), <b>엉뚱한 intent를 추가하지는 않았다</b>는 뜻입니다.
+        </div>
+      </div>
+
+      <div id="detail-ir" class="hidden mt-3 bg-white rounded-lg p-4 border border-good-text text-sm text-pri-700">
+        <div class="font-bold text-good-text mb-2">Intent Recall 86~92% — "정답 중 대부분을 찾았지만 일부 누락"</div>
+        <div class="text-xs text-pri-700 mb-3">
+          Recall은 <b>정답 → 모델이 출력한 것</b> 방향으로 검증합니다. "정답에 있는 걸 빠뜨리지 않았는가?"를 측정합니다.
+        </div>
+        <div class="bg-sfc-main rounded p-3 text-xs mb-2 font-mono">
+          <div class="mb-1"><b>같은 예시:</b></div>
+          <div class="text-pri-500">정답: doc_retrieve → judgment → doc_generate → schedule_add <span class="text-acc-700">(4개)</span></div>
+          <div class="text-bad-text">모델: doc_retrieve → judgment → schedule_add <span class="text-bad-text">(3개 — doc_generate 누락)</span></div>
+        </div>
+        <div class="text-xs text-pri-700">
+          정답 <b>4개 중 3개</b>를 모델이 찾음 → Recall = <b>3/4 = 75%</b><br>
+          step을 합쳐버려서 일부를 <b>빠뜨리는 것</b>이지, intent 종류를 틀리는 게 아닙니다.
+        </div>
+
+        <div class="mt-3 bg-pri-50 rounded p-3 text-xs border border-pri-100">
+          <div class="font-bold text-pri-700 mb-1">Precision vs Recall 요약</div>
+          <div class="grid grid-cols-2 gap-2">
+            <div><b>Precision</b> = 모델 출력 중 맞는 비율<br><span class="text-pri-500">엉뚱한 걸 <b>추가</b>했는가? → 안 함 (100%)</span></div>
+            <div><b>Recall</b> = 정답 중 찾은 비율<br><span class="text-pri-500">있어야 할 걸 <b>누락</b>했는가? → 일부 누락 (86~92%)</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 환각 상세 -->
+      <div id="detail-halluc" class="hidden mt-3 bg-white rounded-lg p-4 border border-good-text text-sm text-pri-700">
+        <div class="font-bold text-good-text mb-2">Intent 환각 0건 — "없는 intent를 만들어내지 않았다"</div>
+        <div class="bg-sfc-main rounded p-3 text-xs mb-2 font-mono">
+          <div class="text-pri-500">사용 가능한 intent: doc_retrieve, judgment, doc_generate, schedule_add, schedule_view, general</div>
+          <div class="mt-1 text-good-text">모델이 이 6개 외의 intent(예: "doc_compare", "schedule_delete" 등)를 지어낸 적이 <b>단 한 건도 없음</b></div>
+        </div>
+        <div class="text-xs text-pri-700">
+          4-step, 5-step처럼 학습에 없던 복잡한 요청에서도 <b>존재하는 intent만 정확하게 사용</b>했습니다.<br>
+          모델이 혼란스러울 때 엉뚱한 라벨을 만들어내는 "환각" 현상이 전혀 없다는 뜻입니다.
+        </div>
+      </div>
+
+      <!-- WS 상세 -->
+      <div id="detail-ws" class="hidden mt-3 bg-white rounded-lg p-4 border border-good-text text-sm text-pri-700">
+        <div class="font-bold text-good-text mb-2">Weighted Score 86~89% — "완전히 틀린 게 아니라 거의 맞춘다"</div>
+        <div class="bg-sfc-main rounded p-3 text-xs mb-2">
+          <div class="mb-1"><b>PM(Perfect Match)</b>은 하나라도 틀리면 0점인 엄격한 지표입니다.</div>
+          <div><b>WS(Weighted Score)</b>는 부분 점수를 줍니다:</div>
+          <div class="mt-1 text-pri-500">Intent Recall(30%) + 순서(25%) + Precision(20%) + 의존성(15%) + 효율성(10%)</div>
+        </div>
+        <div class="text-xs text-pri-700">
+          PM이 3~17%로 낮아 보이지만, WS가 86~89%라는 것은 <b>대부분의 intent와 순서를 맞추고 있다</b>는 뜻입니다.<br>
+          step 개수나 의존성에서 살짝 어긋나서 PM에서 탈락하는 거지, 완전히 엉뚱한 답을 내는 건 아닙니다.
+        </div>
+      </div>
+    </div>
+
+    <!-- 결론 -->
+    <div class="bg-acc-50 rounded-lg p-4 border border-acc-300">
+      <div class="text-sm font-bold text-acc-700 mb-2">결론</div>
+      <div class="space-y-2 text-sm text-pri-700">
+        <div class="flex gap-2"><span class="font-bold text-acc-700">1.</span> 3-step 학습 모델은 4-5step으로 <b>구조적 일반화가 안 됨</b> — PM 3~17%</div>
+        <div class="flex gap-2"><span class="font-bold text-acc-700">2.</span> 하지만 <b>intent 분류 자체는 정확</b> — IP 100%, 환각 0건, 오답 원인은 step 개수와 의존성</div>
+        <div class="flex gap-2"><span class="font-bold text-acc-700">3.</span> 하이브리드 프롬프트가 4-step에서 <b>3.3% → 16.7%</b>로 개선 효과 있음</div>
+        <div class="flex gap-2"><span class="font-bold text-acc-700">4.</span> 실서비스에서 4-5step 요청은 극히 드묾</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 교훈 (기존) -->
+  <div class="bg-sfc-card rounded-xl shadow-sm border border-pri-100 p-5">
+    <h2 class="text-base font-bold text-pri-900 mb-3">핵심 교훈</h2>
+    <div class="space-y-2 text-sm text-pri-700">
+      <div class="flex gap-2"><span class="text-acc-700 font-bold shrink-0">1.</span><span>KNOWN_OVERRIDES 한계 77% → <b class="text-pri-900">후처리 매핑이 정답</b></span></div>
+      <div class="flex gap-2"><span class="text-acc-700 font-bold shrink-0">2.</span><span>Hybrid 프롬프트가 핵심 → <b class="text-pri-900">단순/복합 자동 분기</b></span></div>
+      <div class="flex gap-2"><span class="text-acc-700 font-bold shrink-0">3.</span><span>Few-shot > LoRA 보강 → <b class="text-pri-900">예시 3개가 57건 재학습보다 효과적</b></span></div>
+      <div class="flex gap-2"><span class="text-acc-700 font-bold shrink-0">4.</span><span>v6 재학습은 실패 → <b class="text-pri-900">데이터/파라미터 늘린다고 항상 좋아지진 않음</b></span></div>
+      <div class="flex gap-2"><span class="text-acc-700 font-bold shrink-0">5.</span><span>Rule은 양날의 검 → <b class="text-pri-900">Rule 15가 1건 수정에 5건 파손, Rule 17~21도 7건 파손</b></span></div>
+      <div class="flex gap-2"><span class="text-acc-700 font-bold shrink-0">6.</span><span>데이터 보강 ≠ 성능 향상 → <b class="text-pri-900">v7(+90건) 오히려 -3%p 하락, 소량 보강은 step 분해에 비효과적</b></span></div>
+      <div class="flex gap-2"><span class="text-acc-700 font-bold shrink-0">7.</span><span>멀티스텝 분해는 가장 어려운 과제 → <b class="text-pri-900">3-step 정확도 50~66%가 현재 한계</b></span></div>
+      <div class="flex gap-2"><span class="text-acc-700 font-bold shrink-0">8.</span><span>4-5step 일반화 불가 → <b class="text-pri-900">intent는 맞추나 구조 분해 실패, 실서비스에서는 1~3step이 대부분</b></span></div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- Footer -->
+<footer class="text-center py-6 text-xs text-pri-500 border-t border-pri-100 mt-8">
+  <p>WorkFlow Agent (듀듀) — SKN21-FINAL-3TEAM</p>
+  <p class="mt-1">문지영 (Frontend + AI 파인튜닝)</p>
+</footer>
+
+<script>
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('border-pri-100','text-pri-300'); });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  const btn = document.getElementById('tab-' + tab);
+  btn.classList.add('active');
+  btn.classList.remove('border-pri-100','text-pri-300');
+  document.getElementById('content-' + tab).classList.add('active');
+}
+</script>
+</body>
+</html>

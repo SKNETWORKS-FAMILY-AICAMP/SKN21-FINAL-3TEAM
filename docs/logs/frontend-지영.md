@@ -3939,6 +3939,71 @@ Pod 꺼져도 유지되는 네트워크 볼륨(`/workspace/`, 2.3PB)에 저장:
 
 ### 다음 할 일
 
-- [ ] 4step/5step 테스트셋으로 Planner eval 실행
+- [x] 4step/5step 테스트셋으로 Planner eval 실행
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
+
+---
+
+## 2026-03-24 (화)
+
+### 한 일
+
+#### 1) Planner v5 — 4-step / 5-step 일반화 테스트 (RunPod A4500)
+
+- 3-step까지만 학습한 최종 모델(v5)이 4-step, 5-step도 분류하는지 검증
+- RunPod RTX A4500 20GB에서 실행 (PyTorch 2.6 + transformers 5.3)
+- 테스트셋: 4-step 30건, 5-step 30건 (기본 + 하이브리드 프롬프트, 총 4회 평가)
+- **결과:**
+
+| 테스트 | PM | WS | IP | SCR |
+|--------|:--:|:--:|:--:|:---:|
+| Holdout sanity (100건) | 78.0% | 95.8% | 97.5% | 13.2% |
+| 4-step 기본 (30건) | 3.3% | 86.5% | 100% | 40.0% |
+| 4-step 하이브리드 (30건) | 16.7% | 86.0% | 100% | 46.7% |
+| 5-step 기본 (30건) | 3.3% | 89.4% | 99.3% | 20.0% |
+| 5-step 하이브리드 (30건) | 6.7% | 86.6% | 100% | 43.3% |
+
+- **핵심 발견:**
+  - Intent Precision 100% — 모델이 엉뚱한 intent를 만들어내지 않음
+  - 오답 원인은 Step Collapse(축소)와 의존성 차이, intent 자체 오류는 거의 0건
+  - 하이브리드 프롬프트가 4-step에서 3.3%→16.7%로 개선 효과
+  - 3-step 학습 모델은 4-5step 구조 분해로 일반화 안 됨
+- Holdout 78% (기존 88% 대비 -10%p): PyTorch/transformers 메이저 버전 업그레이드 영향 추정
+- 결과 JSON 로컬 저장: `outputs/v5_planner/step_test_results/`
+
+#### 2) 실험 리포트 HTML 업데이트 (`docs/intent_planner/model_test_report.html`)
+
+- **4-step / 5-step 일반화 테스트 섹션 추가:**
+  - 실험 배경, 테스트 설계 (토폴로지 패턴 클릭 설명 포함)
+  - 결과 요약 테이블 (지표 헤더 호버 시 설명 툴팁)
+  - 테스트 이름 호버 시 테스트셋 파일 경로 표시
+  - Holdout Step별 sanity check
+  - Perfect Match 비교 바 차트
+  - 긍정적 발견 카드 4개 (Precision/Recall/환각/WS 클릭 시 예시 기반 상세 설명)
+  - 오답 상세 보기 (4-step/5-step 대표 오답 테이블, v7 오답과 동일 형식)
+  - 결론 4가지
+- **기존 섹션 개선:**
+  - Hybrid 프롬프트: 클릭 시 기본 vs Few-shot 비교 + 3-step 예시 3개 펼침
+  - 성능 변화 바: v6 제거, 최종 87% `pri-900` 강조, 나머지 다양한 색상
+  - 교훈 8번 추가 (4-5step 일반화 관련)
+
+#### 3) RunPod 환경 이슈 해결
+
+- 기존 pod PyTorch 버전 낮아 `set_submodule` 에러 → torch 2.6 + transformers 5.3 업그레이드로 해결
+- v5 어댑터 위치: `/workspace/models/planner-v5-lora/` (네트워크 볼륨)
+- 결과 JSON SSH 다운로드: ANSI escape 문제 → base64 인코딩 방식으로 해결
+
+#### 4) 로컬 어댑터 경로 정리
+
+- `outputs/v7_planner/final/final/` → `outputs/v7_planner/final/`로 중첩 해제
+- 원인: RunPod 다운로드 시 폴더 안에 폴더를 넣어서 이중 중첩
+
+#### 5) RunPod 평가 스크립트 작성 (`ai/finetuning/runpod_eval_4step_5step.sh`)
+
+- v5 어댑터 기반 4-step/5-step 평가 자동화 스크립트
+- sanity check + 4step(기본/하이브리드) + 5step(기본/하이브리드) + 결과 요약
+
+### 다음 할 일
+
+- [ ] 멘토님 발표 준비 (model_test_report.html + planner_architecture.html)
 - [ ] chat.py 인라인 프롬프트를 GENERAL_SYSTEM_PROMPT import로 통일 검토
