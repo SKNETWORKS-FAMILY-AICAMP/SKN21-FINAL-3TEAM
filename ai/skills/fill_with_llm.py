@@ -61,7 +61,9 @@ def _extract_cell_structure(doc: Document) -> list[dict]:
 _SUB_KEY_ALIASES = {
     # 공통
     "item": ["항목", "추진항목", "업무", "내용", "구분"],
-    "task": ["할일", "업무", "내용", "항목"],
+    "task": ["할일", "업무", "내용", "항목", "ActionItem", "Action Item"],
+    "ActionItem": ["ActionItem", "Action Item", "할일", "업무", "내용"],
+    "action_item": ["ActionItem", "Action Item", "할일", "업무"],
     "name": ["이름", "명칭", "항목"],
     # 일정
     "phase1": ["1단계", "1차", "phase1"],
@@ -472,19 +474,45 @@ async def fill_docx_with_llm(template_path: str, output_path: str, data: dict, f
                 # dict 배열 (schedule, budget 등) → 테이블 헤더 기반 행 분배
                 data_sub_keys = list(raw_val[0].keys())
 
-                # ── 1) 테이블 헤더행에서 컬럼 매핑 구축 ──
-                # 매핑 대상 셀의 바로 위 행들에서 헤더(라벨) 행 찾기
+                # ── 1) 테이블 컬럼 헤더행 탐색 (위/아래 모두) ──
                 header_cols = {}  # col_index → header_text
-                for check_ri in range(ri - 1, max(ri - 3, -1), -1):
-                    row_cells_h = [c for c in cells
-                                   if c["table"] == ti and c["row"] == check_ri
-                                   and not c.get("is_merged_dup")]
-                    label_count = sum(1 for c in row_cells_h if c["text"] and not c["is_empty"])
-                    if label_count >= 2:
-                        for c in row_cells_h:
+                header_ri = None
+                table_total_rows = len(doc.tables[ti].rows)
+
+                def _find_column_header(search_rows):
+                    """라벨이 2개 이상인 행을 컬럼 헤더로 판별"""
+                    for check_ri in search_rows:
+                        if check_ri < 0 or check_ri >= table_total_rows:
+                            continue
+                        row_cells_h = [c for c in cells
+                                       if c["table"] == ti and c["row"] == check_ri
+                                       and not c.get("is_merged_dup")]
+                        lbl_count = sum(1 for c in row_cells_h if c["text"] and not c["is_empty"])
+                        if lbl_count >= 3:  # No. + 항목 + 담당자 등 최소 3개
+                            return check_ri, row_cells_h
+                        if lbl_count >= 2 and len(row_cells_h) >= 3:
+                            return check_ri, row_cells_h
+                    return None, []
+
+                # ri 자체 → ri 위 → ri 아래 순으로 탐색
+                for search in [
+                    [ri],
+                    list(range(ri - 1, max(ri - 3, -1), -1)),
+                    list(range(ri + 1, min(ri + 4, table_total_rows))),
+                ]:
+                    found_ri, found_cells = _find_column_header(search)
+                    if found_ri is not None:
+                        header_ri = found_ri
+                        for c in found_cells:
                             if c["text"] and not c["is_empty"]:
                                 header_cols[c["col"]] = re.sub(r'\s+', '', c["text"])
                         break
+
+                # 데이터 시작 행: 헤더 바로 다음 행
+                data_start_ri = (header_ri + 1) if header_ri is not None else ri
+                # ri가 데이터 행보다 뒤에 있으면 ri 사용 (이미 데이터 행에 매핑된 경우)
+                if data_start_ri <= ri and header_ri != ri:
+                    data_start_ri = ri
 
                 # ── 2) data key → 컬럼 인덱스 매핑 (이름 기반) ──
                 sk_to_col = _match_sub_keys_to_columns(
@@ -495,7 +523,7 @@ async def fill_docx_with_llm(template_path: str, output_path: str, data: dict, f
                 # ── 3) 행 분배: 병합/합계 행 스킵 ──
                 table_row_count = len(doc.tables[ti].rows)
                 for idx, item in enumerate(raw_val):
-                    row_idx = ri + idx
+                    row_idx = data_start_ri + idx
                     if row_idx >= table_row_count:
                         break
                     # 병합 행 감지 → 스킵 (합계 등)
@@ -534,12 +562,50 @@ async def fill_docx_with_llm(template_path: str, output_path: str, data: dict, f
                 else:
                     continue
 
-        # 라벨 셀인지 체크 → 라벨이면 보존 모드
+        # 라벨 셀인지 체크 → 라벨이면 옆/아래 빈칸으로 리다이렉트
         target_cell = next((c for c in cells if c["pos"] == pos), None)
         is_label_cell = target_cell and target_cell["text"] and not target_cell["is_empty"]
-        _inject_to_cell(doc, ti, ri, ci, value, preserve_label=is_label_cell)
-        filled += 1
-        print(f"[fill_with_llm] {pos} ← {key_path}[{key_occurrence.get(key_path, 1)-1}] = {value[:40]}")
+
+        if is_label_cell:
+            redirect = None
+            # 병합 행인지 체크 (섹션 헤더: "3. 진행 현황" 등)
+            ri_merged = sum(1 for c in cells if c["table"] == ti and c["row"] == ri and c.get("is_merged_dup"))
+            is_section_header = ri_merged >= 2  # 대부분 셀이 병합됨
+
+            if is_section_header:
+                # 섹션 헤더 → 아래 행에서 빈 셀 탐색 (컬럼 헤더 스킵)
+                for search_ri in range(ri + 1, ri + 5):
+                    row_cells_s = [c for c in cells if c["table"] == ti and c["row"] == search_ri and not c.get("is_merged_dup")]
+                    empty_s = [c for c in row_cells_s if c["is_empty"]]
+                    label_s = [c for c in row_cells_s if c["text"] and not c["is_empty"]]
+                    # 빈 셀이 절반 이상이고 라벨이 적으면 → 데이터 행
+                    if empty_s and len(empty_s) >= len(row_cells_s) // 2 and len(label_s) <= 2:
+                        redirect = empty_s[0]
+                        break
+            else:
+                # 일반 라벨 → 옆 빈칸 (같은 행, col+1)
+                redirect = next(
+                    (c for c in cells if c["table"] == ti and c["row"] == ri
+                     and c["col"] == ci + 1 and c["is_empty"] and not c.get("is_merged_dup")), None)
+                # 아래 빈칸 (다음 행, 같은 col)
+                if not redirect:
+                    redirect = next(
+                        (c for c in cells if c["table"] == ti and c["row"] == ri + 1
+                         and c["col"] == ci and c["is_empty"] and not c.get("is_merged_dup")), None)
+
+            if redirect:
+                _inject_to_cell(doc, ti, redirect["row"], redirect["col"], value)
+                filled += 1
+                print(f"[fill_with_llm] {pos}→{redirect['pos']} (리다이렉트) ← {key_path} = {value[:40]}")
+            else:
+                # 빈칸 못 찾으면 라벨에 붙이기 (최후 수단)
+                _inject_to_cell(doc, ti, ri, ci, value, preserve_label=True)
+                filled += 1
+                print(f"[fill_with_llm] {pos} (preserve) ← {key_path} = {value[:40]}")
+        else:
+            _inject_to_cell(doc, ti, ri, ci, value)
+            filled += 1
+            print(f"[fill_with_llm] {pos} ← {key_path} = {value[:40]}")
 
     # ── 규칙 기반 fallback: sLLM이 매핑 못 한 필드를 라벨 매칭으로 보충 ──
     # 실제 주입된 셀 위치 + 주입된 key(영어→한글 역매핑 포함) 추적
@@ -672,6 +738,72 @@ async def fill_docx_with_llm(template_path: str, output_path: str, data: dict, f
                 _inject_to_cell(doc, matched_cell["table"], matched_cell["row"], matched_cell["col"], value_str, preserve_label=True)
                 filled += 1
                 print(f"[fill_with_llm] (fallback+preserve) {matched_cell['pos']} ← {key} = {value_str[:40]}")
+
+    # ── 최종 보충: dict 배열 sub-key 누락값 채우기 ──
+    # sLLM이 일부 sub-key만 매핑한 경우 (예: assignee, due_date는 있지만 task 없음)
+    if field_mapping:
+        for f in field_mapping:
+            key = f.get("key", "")
+            val = data.get(key)
+            if not isinstance(val, list) or not val or not isinstance(val[0], dict):
+                continue
+
+            data_sub_keys_final = list(val[0].keys())
+            label_norm = re.sub(r'\s+', '', f.get("label", ""))
+
+            # 이 배열이 속한 테이블 찾기 (라벨 매칭)
+            matched_ti = None
+            for c in cells:
+                cn = re.sub(r'\s+', '', c.get("text", ""))
+                if cn and (label_norm in cn or cn in label_norm) and not c.get("is_merged_dup"):
+                    matched_ti = c["table"]
+                    break
+
+            if matched_ti is None:
+                continue
+
+            # 해당 테이블에서 컬럼 헤더 찾기
+            final_header_cols = {}
+            final_header_ri = None
+            t_rows = len(doc.tables[matched_ti].rows)
+            for check_ri in range(t_rows):
+                row_cells_h = [c for c in cells
+                               if c["table"] == matched_ti and c["row"] == check_ri
+                               and not c.get("is_merged_dup")]
+                lbl_cnt = sum(1 for c in row_cells_h if c["text"] and not c["is_empty"])
+                if lbl_cnt >= 3:
+                    final_header_ri = check_ri
+                    for c in row_cells_h:
+                        if c["text"] and not c["is_empty"]:
+                            final_header_cols[c["col"]] = re.sub(r'\s+', '', c["text"])
+                    break
+
+            if not final_header_cols or final_header_ri is None:
+                continue
+
+            final_sk_to_col = _match_sub_keys_to_columns(
+                data_sub_keys_final, final_header_cols, key,
+                field_mapping, _ENGLISH_TO_KOREAN, 1,
+            )
+            data_start = final_header_ri + 1
+
+            for idx, item in enumerate(val):
+                row_idx = data_start + idx
+                if row_idx >= t_rows:
+                    break
+                for sk, sv_raw in item.items():
+                    sv = str(sv_raw) if sv_raw else ""
+                    if not sv:
+                        continue
+                    col_idx = final_sk_to_col.get(sk)
+                    if col_idx is None:
+                        continue
+                    # 셀이 아직 비어있을 때만 보충
+                    cell_text = doc.tables[matched_ti].rows[row_idx].cells[col_idx].text.strip()
+                    if not cell_text:
+                        _inject_to_cell(doc, matched_ti, row_idx, col_idx, sv)
+                        filled += 1
+                        print(f"[fill_with_llm] (보충) T{matched_ti}R{row_idx}C{col_idx} ← {key}[{idx}].{sk} = {sv[:30]}")
 
     doc.save(output_path)
     print(f"[fill_with_llm] 완료: {filled}개 셀 채움 → {output_path}")
