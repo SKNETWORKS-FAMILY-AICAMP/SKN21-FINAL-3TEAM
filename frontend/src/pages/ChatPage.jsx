@@ -484,12 +484,28 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       );
     }
 
-    default:
+    default: {
+      const isFirstAssistantCard = messages.findIndex(m => m.role === 'assistant') === index;
+      // 짧은 일반 응답에서 문장 사이 빈 줄(\n\n) 제거 → 줄바꿈만 유지
+      const cleanContent = content ? content.replace(/\n{2,}/g, '  \n') : content;
       return (
         <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
-          <MarkdownText>{content}</MarkdownText>
+          <MarkdownText>{cleanContent}</MarkdownText>
+          {isFirstAssistantCard && (
+            <>
+              <p className="mt-2 text-neutral-sub text-sm">사용법이 궁금하시면 아래 <strong>사용법</strong> 버튼을 눌러주세요.</p>
+              <button
+                onClick={() => useChatStore.getState().addMessage({ role: 'assistant', content: USAGE_GUIDE_TEXT })}
+                className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-primary-300 bg-primary-50 text-primary-700 text-xs font-semibold hover:bg-primary-100 transition"
+              >
+                <HelpCircle size={14} />
+                사용법
+              </button>
+            </>
+          )}
         </div>
       );
+    }
   }
 }
 
