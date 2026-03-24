@@ -795,6 +795,24 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                                                 {s.reason && (
                                                                     <p className="text-[9px] text-neutral-muted line-clamp-2 leading-relaxed">{s.reason}</p>
                                                                 )}
+                                                                {s.regulation_warning && (
+                                                                    <div className={`w-full flex items-start gap-1.5 p-2 rounded-lg mt-1 ${
+                                                                        s.regulation_warning.level === 'danger'
+                                                                            ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                                                                            : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
+                                                                    }`}>
+                                                                        <ShieldCheck size={11} className={s.regulation_warning.level === 'danger' ? 'text-red-500 shrink-0 mt-0.5' : 'text-amber-500 shrink-0 mt-0.5'} />
+                                                                        <div className="text-left">
+                                                                            <p className={`text-[9px] font-bold ${s.regulation_warning.level === 'danger' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                                                                {s.regulation_warning.level === 'danger' ? '규정 위반' : '규정 확인 필요'}
+                                                                            </p>
+                                                                            <p className="text-[8px] text-neutral-sub leading-relaxed">{s.regulation_warning.message}</p>
+                                                                            {s.regulation_warning.regulation && s.regulation_warning.regulation !== 'no_regulation' && (
+                                                                                <p className="text-[8px] text-neutral-muted mt-0.5">근거: {s.regulation_warning.regulation}</p>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                                 <Plus size={12} className="text-neutral-muted group-hover:text-primary-500 transition-colors mt-0.5" />
                                                             </div>
                                                         </motion.div>
@@ -870,6 +888,24 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                                                 <span className="text-[9px] text-neutral-muted block mb-2">
                                                                     {s.suggested_day === 'today' ? '오늘' : s.suggested_day === 'tomorrow' ? '내일' : s.suggested_day === 'this_week' ? '이번 주' : s.suggested_day}
                                                                 </span>
+                                                            )}
+                                                            {s.regulation_warning && (
+                                                                <div className={`flex items-start gap-1.5 p-2 rounded-lg mb-2 ${
+                                                                    s.regulation_warning.level === 'danger'
+                                                                        ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                                                                        : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
+                                                                }`}>
+                                                                    <ShieldCheck size={12} className={s.regulation_warning.level === 'danger' ? 'text-red-500 shrink-0 mt-0.5' : 'text-amber-500 shrink-0 mt-0.5'} />
+                                                                    <div>
+                                                                        <p className={`text-[9px] font-bold ${s.regulation_warning.level === 'danger' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                                                            {s.regulation_warning.level === 'danger' ? '규정 위반' : '규정 확인 필요'}
+                                                                        </p>
+                                                                        <p className="text-[8px] text-neutral-sub leading-relaxed">{s.regulation_warning.message}</p>
+                                                                        {s.regulation_warning.regulation && s.regulation_warning.regulation !== 'no_regulation' && (
+                                                                            <p className="text-[8px] text-neutral-muted mt-0.5">근거: {s.regulation_warning.regulation}</p>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
                                                             )}
                                                             <button
                                                                 onClick={() => openSchedulePicker(s, idx)}

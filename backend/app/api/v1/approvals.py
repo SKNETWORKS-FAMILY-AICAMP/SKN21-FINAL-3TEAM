@@ -34,9 +34,6 @@ logger = logging.getLogger(__name__)
 async def _check_regulations_for_items(items: list, item_type: str = "suggestion") -> list:
     """추천 항목들에 대해 규정 검증을 수행하고 경고 태그를 붙인다.
 
-    NOTE: 목록 조회마다 아이템 N개 × RAG 호출 → OOM 원인으로 비활성화 (2026-03-22)
-    TODO: 생성 시 1회만 체크하고 결과를 DB에 저장하는 방식으로 재설계
-
     Args:
         items: 추천 항목 리스트 (각 항목은 dict)
         item_type: "schedule" | "approval" | "task"
@@ -44,8 +41,7 @@ async def _check_regulations_for_items(items: list, item_type: str = "suggestion
     Returns:
         규정 검증 결과가 추가된 items
     """
-    # OOM 방지: 비활성화 — 아이템마다 RAG 호출하면 메모리 폭증
-    return items
+    from ai.agents.regulation_checker import regulation_check
 
     for item in items:
         try:
