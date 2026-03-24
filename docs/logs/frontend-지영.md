@@ -3852,8 +3852,158 @@ Pod 꺼져도 유지되는 네트워크 볼륨(`/workspace/`, 2.3PB)에 저장:
   - `data/training/v7_planner/` — train/eval/augment 데이터
 - RunPod RTX 3090에서 v7 학습 실행 중
 
+#### 3) Planner 4-step / 5-step 테스트셋 생성
+
+- 멘토님 요청: 3step까지만 학습한 모델이 4step, 5step도 제대로 계획하는지 일반화 테스트
+- 생성 파일:
+  - `data/evaluation/planner_test_4step.json` — 4step 테스트 30건
+  - `data/evaluation/planner_test_5step.json` — 5step 테스트 30건 (note: `--max-steps 5` 옵션 필요)
+- 다양한 의존성 토폴로지 포함: 직렬(1→2→3→4), 병렬 시작(1,2→3→4), 다이아몬드형 등
+- intent 조합: doc_retrieve, judgment, doc_generate, schedule_view, schedule_add 골고루 배치
+- **schedule_add 날짜 누락 수정 (31건)**: 모든 schedule_add에 날짜/시간 컨텍스트 추가
+  - 명시적 날짜 추가 (22건): "다음 주 월요일에", "이번 주 금요일에" 등
+  - schedule_view 결과 연결 (9건): "빈 시간에", "빈 날에" 등
+
+#### 4) GENERAL_SYSTEM_PROMPT 강화 (`ai/llm/prompts.py`)
+
+- 기존 프롬프트 (4줄 규칙)를 구조화된 프롬프트로 전면 개편
+- 추가/수정된 섹션:
+  - **[대화 톤]**: 한국어 필수 답변, 존댓말 + 비즈니스 톤 명시
+  - **[답변 규칙]**: 업무 외 질문은 1문장으로 제한 (과잉 응대 방지)
+  - **[날짜 인식]**: 상대 날짜 해석 지침 + 애매하면 되묻기
+  - **[복합 질문 처리]**: 여러 요청 시 나누어 순서대로 안내
+  - **[대화 맥락]**: 이전 대화 참고 + 모호한 표현 되묻기
+  - **[할루시네이션 방지]**: 사내 규정 추측 금지, 규정 판단 기능으로 유도
+  - **[민감 정보 보호]**: 주민번호/비밀번호 등 입력 시 경고 안내
+  - **[에러/장애 안내]**: 오류 시 재시도 안내 문구
+
+#### 5) Before/After 비교 평가 스크립트 작성
+
+- 파일: `ai/llm/eval_general_prompt.py`
+- 17개 테스트 케이스: 인사, 정체성, 사용법, 할루시네이션 유도, 지원 불가, 모호한 질문, 맥락 이어가기, 영어 질문, 날짜 인식, 복합 질문, 민감 정보, 에러 유도
+- 결과: `data/evaluation/general_prompt_comparison_20260323_165246.json`
+- 주요 개선 확인:
+  - 할루시네이션 방지 (연차 일수 지어내기 → 규정 판단 유도)
+  - 모호한 질문에 자연스럽게 되묻기 ("지원하지 않습니다" → "구체적으로 말씀해주세요")
+  - 민감 정보 경고 동작 확인
+  - 복합 질문 번호별 분리 안내 확인
+  - 날짜 인식 + 추가 정보 요청 확인
+
+#### 6) Planner v7 학습 실행 및 평가 (RunPod A40)
+
+- RunPod A40 48GB에서 v7 학습 실행 (이전 RTX 4090/3090에서 끊김 발생)
+- 문제 해결:
+  - `No space left on device` → HF 캐시를 `/workspace/hf_cache`로 변경
+  - 학습 중 progress bar 멈춤 → 로그 버퍼링 문제, 실제로는 정상 진행
+  - step 242에서 hang → checkpoint-279에서 resume 기능 추가(`train_v3_planner.py`에 `--resume` 옵션)
+- 학습 결과: train_loss=0.0227, eval_loss=0.0970, 약 30분 소요
+- 어댑터 저장: `outputs/v7_planner/final`
+
+#### 7) Planner v7 Holdout 평가 결과
+
+- **Perfect Match: 84/100 (84.0%)** — v5 대비 -3%p 하락
+- Weighted Score: 97.0%, Intent Recall: 97.9%, Intent Precision: 98.0%
+- Step별: 1-step 93.6%, 2-step 90.9%, 3-step 50.0%, 4-step 50.0%
+- **Rule 14(시간표현+문서생성) 혼동: 완전 해결** — "이번 달 보고서 만들어줘" 등 전부 정답
+- 하락 원인: 3-step 분해 정확도 66.7% → 50.0% (-16.7%p)
+
+#### 8) 추가 Rule Guide(17~21) 실험 → 실패, 롤백
+
+- 멀티스텝 분해 오류 보정을 위한 Rule 5개 추가 시도
+  - Rule 17: step 축소 방지 (찾아서+분석+만들어줘 = 3step)
+  - Rule 18: 찾아서+요약 = 2step
+  - Rule 19: "A랑 B 차이" = 1step
+  - Rule 20: 단일 주제 긴 문장 = 1step
+  - Rule 21: 확인하고+빈 날+등록 = 3step
+- 결과: **84% → 77%로 대폭 하락** (7건 깨뜨림, 0건 수정)
+- 부작용: Rule 20이 병렬 요청("확인해주고 ... 도 찾아줘")까지 1step으로 합쳐버림
+- **전부 롤백**, 기존 Rule(1~16)만 유지
+
+#### 9) 오답 16건 상세 분석
+
+- **Intent 자체 오분류: 0건** — 모든 오답에서 intent 종류는 정확
+- Step 개수 차이: 10건 (축소 6건 + 과다 4건)
+- 의존성(depends_on)만 차이: 6건
+- 결론: 모델 성능(intent 분류)은 98%로 충분, 문제는 멀티스텝 구조 분해
+
+#### 10) 실험 리포트 HTML 업데이트
+
+- `260317 intent, planner model 최종 선정.html` 업데이트
+- 추가 내용:
+  - 실험 추이: J(v7 보강 84%), K(v7+Rule 77%) 행 추가
+  - 성능 바 차트: v7 보강, v7+Rule 빨간 바 추가
+  - Step별 v5 vs v7 비교 테이블
+  - v7 실험 분석 섹션 (Rule 14 해결, 트레이드오프, 인사이트)
+  - 오답 16건 상세 분류 + 펼침 상세 테이블
+  - 교훈 추가 (데이터 보강 한계, 멀티스텝 분해 한계)
+
 ### 다음 할 일
 
-- [ ] v7 학습 결과 확인 및 rule 제거 후 성능 비교
+- [x] 4step/5step 테스트셋으로 Planner eval 실행
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
-- [ ] 챗봇 UI 추가 개선사항 검토
+
+---
+
+## 2026-03-24 (화)
+
+### 한 일
+
+#### 1) Planner v5 — 4-step / 5-step 일반화 테스트 (RunPod A4500)
+
+- 3-step까지만 학습한 최종 모델(v5)이 4-step, 5-step도 분류하는지 검증
+- RunPod RTX A4500 20GB에서 실행 (PyTorch 2.6 + transformers 5.3)
+- 테스트셋: 4-step 30건, 5-step 30건 (기본 + 하이브리드 프롬프트, 총 4회 평가)
+- **결과:**
+
+| 테스트 | PM | WS | IP | SCR |
+|--------|:--:|:--:|:--:|:---:|
+| Holdout sanity (100건) | 78.0% | 95.8% | 97.5% | 13.2% |
+| 4-step 기본 (30건) | 3.3% | 86.5% | 100% | 40.0% |
+| 4-step 하이브리드 (30건) | 16.7% | 86.0% | 100% | 46.7% |
+| 5-step 기본 (30건) | 3.3% | 89.4% | 99.3% | 20.0% |
+| 5-step 하이브리드 (30건) | 6.7% | 86.6% | 100% | 43.3% |
+
+- **핵심 발견:**
+  - Intent Precision 100% — 모델이 엉뚱한 intent를 만들어내지 않음
+  - 오답 원인은 Step Collapse(축소)와 의존성 차이, intent 자체 오류는 거의 0건
+  - 하이브리드 프롬프트가 4-step에서 3.3%→16.7%로 개선 효과
+  - 3-step 학습 모델은 4-5step 구조 분해로 일반화 안 됨
+- Holdout 78% (기존 88% 대비 -10%p): PyTorch/transformers 메이저 버전 업그레이드 영향 추정
+- 결과 JSON 로컬 저장: `outputs/v5_planner/step_test_results/`
+
+#### 2) 실험 리포트 HTML 업데이트 (`docs/intent_planner/model_test_report.html`)
+
+- **4-step / 5-step 일반화 테스트 섹션 추가:**
+  - 실험 배경, 테스트 설계 (토폴로지 패턴 클릭 설명 포함)
+  - 결과 요약 테이블 (지표 헤더 호버 시 설명 툴팁)
+  - 테스트 이름 호버 시 테스트셋 파일 경로 표시
+  - Holdout Step별 sanity check
+  - Perfect Match 비교 바 차트
+  - 긍정적 발견 카드 4개 (Precision/Recall/환각/WS 클릭 시 예시 기반 상세 설명)
+  - 오답 상세 보기 (4-step/5-step 대표 오답 테이블, v7 오답과 동일 형식)
+  - 결론 4가지
+- **기존 섹션 개선:**
+  - Hybrid 프롬프트: 클릭 시 기본 vs Few-shot 비교 + 3-step 예시 3개 펼침
+  - 성능 변화 바: v6 제거, 최종 87% `pri-900` 강조, 나머지 다양한 색상
+  - 교훈 8번 추가 (4-5step 일반화 관련)
+
+#### 3) RunPod 환경 이슈 해결
+
+- 기존 pod PyTorch 버전 낮아 `set_submodule` 에러 → torch 2.6 + transformers 5.3 업그레이드로 해결
+- v5 어댑터 위치: `/workspace/models/planner-v5-lora/` (네트워크 볼륨)
+- 결과 JSON SSH 다운로드: ANSI escape 문제 → base64 인코딩 방식으로 해결
+
+#### 4) 로컬 어댑터 경로 정리
+
+- `outputs/v7_planner/final/final/` → `outputs/v7_planner/final/`로 중첩 해제
+- 원인: RunPod 다운로드 시 폴더 안에 폴더를 넣어서 이중 중첩
+
+#### 5) RunPod 평가 스크립트 작성 (`ai/finetuning/runpod_eval_4step_5step.sh`)
+
+- v5 어댑터 기반 4-step/5-step 평가 자동화 스크립트
+- sanity check + 4step(기본/하이브리드) + 5step(기본/하이브리드) + 결과 요약
+
+### 다음 할 일
+
+- [ ] 멘토님 발표 준비 (model_test_report.html + planner_architecture.html)
+- [ ] chat.py 인라인 프롬프트를 GENERAL_SYSTEM_PROMPT import로 통일 검토
