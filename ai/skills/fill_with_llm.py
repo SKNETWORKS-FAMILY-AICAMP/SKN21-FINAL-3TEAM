@@ -598,10 +598,8 @@ async def fill_docx_with_llm(template_path: str, output_path: str, data: dict, f
                 filled += 1
                 print(f"[fill_with_llm] {pos}→{redirect['pos']} (리다이렉트) ← {key_path} = {value[:40]}")
             else:
-                # 빈칸 못 찾으면 라벨에 붙이기 (최후 수단)
-                _inject_to_cell(doc, ti, ri, ci, value, preserve_label=True)
-                filled += 1
-                print(f"[fill_with_llm] {pos} (preserve) ← {key_path} = {value[:40]}")
+                # 빈칸 못 찾으면 스킵 — 보충 패스에서 올바른 위치에 배치
+                print(f"[fill_with_llm] {pos} 라벨셀 스킵 (보충 대기) ← {key_path} = {value[:40]}")
         else:
             _inject_to_cell(doc, ti, ri, ci, value)
             filled += 1
@@ -739,13 +737,45 @@ async def fill_docx_with_llm(template_path: str, output_path: str, data: dict, f
                 filled += 1
                 print(f"[fill_with_llm] (fallback+preserve) {matched_cell['pos']} ← {key} = {value_str[:40]}")
 
-    # ── 최종 보충: dict 배열 sub-key 누락값 채우기 ──
-    # sLLM이 일부 sub-key만 매핑한 경우 (예: assignee, due_date는 있지만 task 없음)
+    # ── 최종 보충: 라벨 옆 셀이 비어있으면 값 채우기 ──
+    # sLLM이 잘못된 셀에 매핑한 경우를 보완 (참석자→작성자 셀 등)
     if field_mapping:
+        label_cells_final = {}
+        for c in cells:
+            if c["text"] and not c["is_empty"] and not c.get("is_merged_dup"):
+                norm = re.sub(r'\s+', '', c["text"])
+                if norm and norm not in label_cells_final:
+                    label_cells_final[norm] = c
+
         for f in field_mapping:
             key = f.get("key", "")
             val = data.get(key)
-            if not isinstance(val, list) or not val or not isinstance(val[0], dict):
+            if not val:
+                continue
+            label_norm = re.sub(r'\s+', '', f.get("label", ""))
+            if not label_norm:
+                continue
+
+            # dict 배열이 아닌 단순 값: 라벨 옆 빈 셀이면 보충
+            if not (isinstance(val, list) and val and isinstance(val[0], dict)):
+                mc = label_cells_final.get(label_norm)
+                if not mc:
+                    continue
+                # 옆 셀 (col+1) 확인
+                adj = next((c for c in cells if c["table"] == mc["table"] and c["row"] == mc["row"]
+                            and c["col"] == mc["col"] + 1 and not c.get("is_merged_dup")), None)
+                if not adj:
+                    # 아래 셀
+                    adj = next((c for c in cells if c["table"] == mc["table"] and c["row"] == mc["row"] + 1
+                                and c["col"] == mc["col"] and not c.get("is_merged_dup")), None)
+                if adj:
+                    cell_text = doc.tables[adj["table"]].rows[adj["row"]].cells[adj["col"]].text.strip()
+                    value_str = _format_value(val)
+                    # 비어있거나, 현재 값이 기대 값과 다르면 올바른 값으로 덮어쓰기
+                    if not cell_text or cell_text != value_str.strip():
+                        _inject_to_cell(doc, adj["table"], adj["row"], adj["col"], value_str)
+                        filled += 1
+                        print(f"[fill_with_llm] (보충) {adj['pos']} ← {key} = {value_str[:30]}")
                 continue
 
             data_sub_keys_final = list(val[0].keys())
