@@ -220,7 +220,8 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
     async def event_generator():
         try:
             _t_total = time.time()
-            logger.info("[Chat] 요청 수신 | user_id=%s", user.id)
+            logger.info("[Chat] 요청 수신 | user_id=%s, template_id=%s, template_type=%s, force_intent=%s, msg=%s",
+                        user.id, request.template_id, request.template_type, request.force_intent, request.message[:30])
 
             # lazy import (AI 의존성 없을 때 서버 기동 안 깨지게)
             from ai.agents.orchestrator import get_graph
@@ -301,10 +302,8 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                     yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
 
                             sub_intent = sq_hint
-                            try:
+                            if sub_result and isinstance(sub_result, dict):
                                 sub_intent = sub_result.get("intent", sq_hint)
-                            except NameError:
-                                pass
 
                             all_sub_responses.append({
                                 "query": sq_query,
@@ -333,8 +332,13 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         agent_type = _get_agent_type(intent)
                         logger.info("[Chat] intent=%s confidence=%.4f", intent, confidence)
 
-                        yield f"data: {json.dumps({'type': 'intent', 'intent': intent, 'confidence': confidence, 'agent_type': agent_type}, ensure_ascii=False)}\n\n"
-                        yield f"data: {json.dumps({'type': 'status', 'value': f'{agent_type} 처리 중...'}, ensure_ascii=False)}\n\n"
+                        # confidence가 라우팅 threshold 미만이면 확정 intent 대신 "분석 중" 표시 (배지 깜빡임 방지)
+                        from ai.agents.config import INTENT_CONFIDENCE_THRESHOLD as _ICT
+                        if confidence >= _ICT:  # config.py INTENT_CONFIDENCE_THRESHOLD (0.85)
+                            yield f"data: {json.dumps({'type': 'intent', 'intent': intent, 'confidence': confidence, 'agent_type': agent_type}, ensure_ascii=False)}\n\n"
+                            yield f"data: {json.dumps({'type': 'status', 'value': f'{agent_type} 처리 중...'}, ensure_ascii=False)}\n\n"
+                        else:
+                            yield f"data: {json.dumps({'type': 'status', 'value': '질문 분석 중...'}, ensure_ascii=False)}\n\n"
 
                     elif node_name == "clarify_with_candidates":
                         # top-3 후보 제시
@@ -343,51 +347,60 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         yield f"data: {json.dumps({'type': 'clarify_candidates', 'data': {'candidates': candidates, 'message': agent_response.get('message', '')}}, ensure_ascii=False)}\n\n"
 
                     elif node_name == "general_response":
-                        # 2-1. 일반 응답 스트리밍 (GPT API)
+                        # 2-1. 일반 응답 스트리밍 (vLLM 우선, API fallback)
                         import os as _os
                         from openai import AsyncOpenAI
-
-                        openai_key = _os.getenv("OPENAI_API_KEY")
-
-                        if not openai_key:
-                            yield f"data: {json.dumps({'type': 'error', 'message': 'OPENAI_API_KEY가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
-                            continue
-
-                        client = AsyncOpenAI(api_key=openai_key)
+                        import httpx
 
                         user_input = final_state.get("user_input", "")
                         chat_history = final_state.get("chat_history", [])
 
-                        # 대화 요약이 있으면 시스템 프롬프트에 포함
                         from datetime import date as _date
-                        _gen_sys = f"당신은 업무 도우미 '듀듀'입니다. 한국어로 친절하게 답변하세요.\n오늘 날짜: {_date.today().isoformat()}"
+                        from ai.llm.prompts import GENERAL_SYSTEM_PROMPT
+                        _gen_sys = f"{GENERAL_SYSTEM_PROMPT}\n오늘 날짜: {_date.today().isoformat()}"
                         _chat_summary = final_state.get("chat_summary")
                         if _chat_summary:
                             _gen_sys += f"\n\n[이전 대화 요약]\n{_chat_summary}"
 
+                        _messages = [
+                            {"role": "system", "content": _gen_sys},
+                            *chat_history,
+                            {"role": "user", "content": user_input},
+                        ]
+
+                        # vLLM 우선 → API fallback
+                        _vllm_base = _os.getenv("VLLM_BASE_URL")
+                        _vllm_key = _os.getenv("VLLM_API_KEY", "EMPTY")
+                        _vllm_model = _os.getenv("VLLM_MODEL", "kakaocorp/kanana-1.5-8b-instruct-2505")
+
+                        if _vllm_base:
+                            client = AsyncOpenAI(api_key=_vllm_key, base_url=_vllm_base, timeout=httpx.Timeout(90.0, connect=15.0))
+                            _model = _vllm_model
+                        else:
+                            _api_key = _os.getenv("OPENAI_API_KEY")
+                            if not _api_key:
+                                yield f"data: {json.dumps({'type': 'error', 'message': 'LLM API 키가 설정되지 않았습니다.'}, ensure_ascii=False)}\n\n"
+                                continue
+                            client = AsyncOpenAI(api_key=_api_key)
+                            _model = _os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
                         stream = await client.chat.completions.create(
-                            model="gpt-4o-mini",
-                            messages=[
-                                {"role": "system", "content": _gen_sys},
-                                *chat_history,
-                                {"role": "user", "content": user_input},
-                            ],
-                            temperature=0.7,
-                            max_tokens=1024,
-                            stream=True,
+                            model=_model, messages=_messages,
+                            temperature=0.7, max_tokens=1024, stream=True,
                         )
 
                         full_response = ""
                         async for chunk in stream:
-                            if chunk.choices[0].delta.content:
+                            if chunk.choices and chunk.choices[0].delta.content:
                                 token = chunk.choices[0].delta.content
                                 full_response += token
                                 yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
 
+                        _model_label = _model.split("/")[-1] if "/" in _model else _model
                         final_state["agent_response"] = {
                             "type": "general",
                             "message": full_response,
-                            "model_name": "gpt-4o-mini",
+                            "model_name": _model_label,
                         }
 
                     elif node_name == "judgment_agent":
@@ -719,10 +732,12 @@ async def get_session_messages(
         except json.JSONDecodeError:
             agent_response = {}
         content = agent_response.get("message") or agent_response.get("answer") or ""
+        # agent_response.type이 있으면 우선 사용 (template_pick, doc_pick, clarify 등)
+        result_intent = agent_response.get("type") or log.intent
         messages.append({
             "role": "assistant",
             "content": content,
-            "resultIntent": log.intent,
+            "resultIntent": result_intent,
             "agentResponse": agent_response,
         })
 

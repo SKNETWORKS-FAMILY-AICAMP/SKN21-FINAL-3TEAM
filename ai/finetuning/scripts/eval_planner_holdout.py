@@ -410,7 +410,8 @@ def _is_complex_input(user_input: str) -> bool:
 
 
 def generate(model, tokenizer, user_input: str,
-             use_fewshot: bool = False) -> tuple[str, float]:
+             use_fewshot: bool = False,
+             max_steps: int = 4) -> tuple[str, float]:
     """추론 실행"""
     if use_fewshot == "hybrid":
         # 하이브리드: 복합 요청이면 Few-shot, 단순 요청이면 기본 프롬프트
@@ -419,6 +420,9 @@ def generate(model, tokenizer, user_input: str,
         sys_prompt = PLANNER_SYSTEM_PROMPT_FEWSHOT
     else:
         sys_prompt = PLANNER_SYSTEM_PROMPT
+    # 최대 단계 수 동적 교체 (5-step 테스트 등)
+    if max_steps != 4:
+        sys_prompt = sys_prompt.replace("최대 4단계", f"최대 {max_steps}단계")
     messages = [
         {"role": "system", "content": sys_prompt},
         {"role": "user", "content": user_input},
@@ -461,6 +465,8 @@ def main():
                         help="Few-shot 프롬프트 사용 (3-step 예시 포함)")
     parser.add_argument("--hybrid", action="store_true",
                         help="하이브리드 프롬프트 (단순→기본, 복합→Few-shot)")
+    parser.add_argument("--max-steps", type=int, default=4,
+                        help="시스템 프롬프트의 최대 단계 수 (기본 4, 5-step 테스트 시 5)")
     args = parser.parse_args()
 
     # 프로젝트 루트
@@ -514,7 +520,8 @@ def main():
     results = []
     for i, tc in enumerate(test_cases, 1):
         pred_text, latency = generate(model, tokenizer, tc["input"],
-                                       use_fewshot=use_fewshot)
+                                       use_fewshot=use_fewshot,
+                                       max_steps=args.max_steps)
         result = evaluate_single(tc, pred_text, latency)
         results.append(result)
 

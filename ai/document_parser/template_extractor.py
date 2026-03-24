@@ -293,6 +293,55 @@ def extract_template_fields(file_path: str, use_mapping: bool = False) -> list[d
             if len(text_cells) >= num_cols * 0.6:
                 header_row_idx = 0
 
+        # 1-b2. 배열 테이블 감지: 첫 열에 같은 텍스트 반복 + 컬럼 헤더
+        #       (예: 결정사항|내용|진행일정 → sub_keys=["내용","진행일정"])
+        _array_table_handled = False
+        if len(rows) >= 3 and num_cols >= 2:
+            first_col_texts = [re.sub(r'\s+', '', rows[ri].cells[0].text.strip()) for ri in range(len(rows))]
+            # 첫 열에서 가장 많이 반복되는 텍스트 찾기
+            from collections import Counter
+            col0_counts = Counter(t for t in first_col_texts if t)
+            if col0_counts:
+                most_common_label, count = col0_counts.most_common(1)[0]
+                # 3행 이상 반복되면 배열 테이블
+                if count >= 3 and most_common_label:
+                    # 원본 라벨 (공백 포함)
+                    original_label = None
+                    for ri in range(len(rows)):
+                        t = rows[ri].cells[0].text.strip()
+                        if re.sub(r'\s+', '', t) == most_common_label:
+                            original_label = t
+                            break
+
+                    # 컬럼 헤더 추출: 반복 라벨이 있는 첫 행의 다른 열
+                    header_row = None
+                    for ri in range(len(rows)):
+                        if re.sub(r'\s+', '', rows[ri].cells[0].text.strip()) == most_common_label:
+                            header_row = ri
+                            break
+
+                    sub_keys = []
+                    if header_row is not None:
+                        for ci in range(1, num_cols):
+                            col_header = re.sub(r'\s+', ' ', rows[header_row].cells[ci].text.strip()).strip()
+                            # 배열 테이블 컬럼 헤더는 "내용", "비고" 등도 허용 (_NON_LABEL_WORDS 무시)
+                            if col_header and len(col_header) <= 20 and re.search(r'[가-힣a-zA-Z]', col_header):
+                                sub_keys.append(col_header)
+
+                    if original_label and _is_valid_label(original_label):
+                        field = _match_field(original_label, use_mapping=use_mapping)
+                        if field and field["key"] not in seen_keys:
+                            # sub_keys가 있으면 description에 포함
+                            if sub_keys:
+                                field["description"] = f"각 항목은 {', '.join(sub_keys)} 필드를 가진 객체 배열"
+                                field["sub_keys"] = sub_keys
+                            else:
+                                field["description"] = f"{field.get('label', '')} 목록 (배열)"
+                            seen_keys.add(field["key"])
+                            fields.append(field)
+                            _array_table_handled = True
+                            logger.info("배열 테이블 감지: %s → sub_keys=%s", original_label, sub_keys)
+
         for ri, row in enumerate(rows):
             cells = [c.text.strip() for c in row.cells]
 
@@ -304,6 +353,12 @@ def extract_template_fields(file_path: str, use_mapping: bool = False) -> list[d
             # 열 헤더 행이면 스킵
             if ri == header_row_idx:
                 continue
+
+            # 배열 테이블로 이미 처리된 경우 해당 테이블의 반복 라벨 스킵
+            if _array_table_handled:
+                cell0_normalized = re.sub(r'\s+', '', cells[0]) if cells[0] else ''
+                if cell0_normalized and col0_counts.get(cell0_normalized, 0) >= 3:
+                    continue
 
             # 1-d. 다열 테이블: 모든 열 스캔
             #      [라벨 | 빈칸] 또는 [라벨 | 플레이스홀더] 패턴
@@ -368,14 +423,18 @@ def _infer_field_meta(field: dict) -> dict:
     desc = field.get("description", "")
     normalized = _normalize_label(label)
 
+    # sub_keys가 이미 있으면 배열 확정
+    if field.get("sub_keys"):
+        return {**field, "group": "body", "type": "array", "fill": "generate"}
+
     # ── type 추론 ──
     desc_lower = desc.lower()
     label_and_desc = f"{normalized} {desc_lower}"
 
     # date: description/라벨에 날짜 관련 키워드
     _date_kw = ("날짜", "일자", "일시", "yyyy", "yy-mm", "date")
-    # array: 배열/목록/각 항목은
-    _array_kw = ("배열", "목록", "각 항목은")
+    # array: 배열/목록/각 항목은/객체 배열
+    _array_kw = ("배열", "목록", "각 항목은", "객체 배열")
     # textarea: 서술형 필드
     _textarea_kw = ("문장", "구체적으로", "상세하게", "항목별", "기술")
 

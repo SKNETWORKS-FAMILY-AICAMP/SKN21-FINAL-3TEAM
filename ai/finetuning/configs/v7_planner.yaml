@@ -1,0 +1,42 @@
+# LoRA v7: Task Planner — Rule Guide 의존 패턴 학습 데이터 보강
+# v5 대비 변경:
+#   - v6 설정 유지 (lr 1e-4, epoch 4, MLP target_modules)
+#   - Rule 타겟 보강 +90건 (시간표현+문서생성, 취소/변경, 병렬 검색 등)
+#   - 목표: 후처리 rule 의존도 감소
+model:
+  base_model: "kakaocorp/kanana-1.5-8b-instruct-2505"
+  quantization: "4bit"  # QLoRA
+
+lora:
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  target_modules: ["q_proj", "v_proj", "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+
+training:
+  num_epochs: 4
+  batch_size: 4
+  gradient_accumulation_steps: 4
+  learning_rate: 1e-4
+  warmup_ratio: 0.1
+  max_length: 1024
+  early_stopping_patience: 3
+
+data:
+  train_path: "data/training/v7_planner/train.jsonl"
+  eval_path: "data/training/v7_planner/eval.jsonl"
+  total_target: 1561
+
+  # v7 보강 포인트 (Rule Guide 타겟)
+  augmentation:
+    rule14_time_docgen: 30       # "이번 달 보고서 만들어줘" = doc_generate
+    rule3_english_doc: 10        # "minutes 작성해줘" = doc_generate
+    rule4_ambiguous_help: 10     # "도와줘" 단독 = general
+    rule6_8_schedule_modify: 15  # "회의 취소해줘" = schedule_add
+    rule9_multistep_docgen: 10   # 멀티스텝 마지막 = doc_generate
+    rule16_parallel_retrieve: 10 # "A랑 B 둘 다" = 2-step parallel
+    rule2_ultra_short: 5         # 초단문 = general
+
+output:
+  output_dir: "outputs/v7_planner"
+  save_steps: 100

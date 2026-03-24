@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
-import { MessageSquarePlus, Menu, CheckCircle, XCircle, AlertTriangle, HelpCircle, ShieldCheck, FileText, Search, MessageCircle, Copy } from 'lucide-react';
+import { MessageSquarePlus, Menu, CheckCircle, XCircle, AlertTriangle, HelpCircle, ShieldCheck, FileText, Search, MessageCircle, Copy, Star } from 'lucide-react';
 import ChatWindow from '../components/chat/ChatWindow';
 import MessageBubble from '../components/chat/MessageBubble';
 import StreamingMessage from '../components/chat/StreamingMessage';
@@ -382,14 +382,32 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                   key={idx}
                   onClick={() => {
                     useChatStore.getState().setSelectedTemplate(tpl.template_id, tpl.name, data.template_type);
-                    onSelectClarify?.(originalQuery);
+                    onSelectClarify?.(originalQuery, { silent: true });
                   }}
-                  className="flex items-center gap-2 px-4 py-2.5 text-sm bg-surface-card border border-neutral-border rounded-xl hover:bg-primary-50 hover:border-primary-300 text-neutral-main hover:text-primary-700 transition text-left"
+                  className="p-3 bg-surface-card border border-neutral-border rounded-xl hover:bg-primary-50 hover:border-primary-300 transition text-left"
                 >
-                  <FileText size={14} className="flex-shrink-0 text-neutral-muted" />
-                  <span className="truncate">{tpl.name}</span>
-                  {tpl.field_count && (
-                    <span className="ml-auto text-xs text-neutral-muted">{tpl.field_count}개 필드</span>
+                  <div className="flex items-center gap-2 mb-1">
+                    {tpl.is_system ? (
+                      <Star size={14} className="text-amber-500 fill-amber-500" />
+                    ) : (
+                      <FileText size={14} className="text-primary-500" />
+                    )}
+                    <span className="font-medium text-sm text-neutral-main">{tpl.name}</span>
+                    {tpl.recommended && (
+                      <span className="px-1.5 py-0.5 text-[10px] bg-amber-100 text-amber-700 rounded font-medium">추천</span>
+                    )}
+                    <span className="ml-auto text-xs text-neutral-muted">
+                      {tpl.is_system ? '시스템' : '업로드'}
+                    </span>
+                  </div>
+                  {tpl.field_labels?.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {tpl.field_labels.map((label, i) => (
+                        <span key={i} className="px-1.5 py-0.5 text-xs bg-neutral-100 text-neutral-600 rounded">
+                          {label}
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </button>
               ))}
@@ -783,6 +801,7 @@ export default function ChatPage() {
                       status={currentStatus || (hideStreamText && msg.content ? '문서 응답 생성 중...' : null)}
                       intent={intent}
                       isInsideBubble
+                      isStreaming={isLastAssistant || isWaitingForResponse}
                     />
                   </MessageBubble>
                 );

@@ -1,0 +1,457 @@
+{
+  "description": "Planner 5-step 일반화 테스트 (30건) - 학습에 없던 패턴, 일반화 능력 평가",
+  "version": "v2",
+  "note": "평가 시 --max-steps 5 옵션 필요 (시스템 프롬프트의 '최대 4단계' → '최대 5단계'로 변경)",
+  "test_cases": [
+    {
+      "id": "C5-001",
+      "category": "complex_5step",
+      "input": "마케팅 보고서랑 경쟁사 분석 자료 찾아서 비교 분석하고, 분석 기반으로 제안서 만들어서 다음 주 금요일에 발표 일정 잡아줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 3, "intent": "judgment", "depends_on": [1, 2]},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-002",
+      "category": "complex_5step",
+      "input": "출장 규정 문서 찾아서 해외출장 가능한지 확인하고, 이번 주 일정 봐서 빈 날에 출장 계획서 만들고 출장 등록해줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "judgment", "depends_on": [1]},
+          {"step_id": 3, "intent": "schedule_view", "depends_on": []},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [2, 3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-003",
+      "category": "complex_5step",
+      "input": "연차 규정 확인하고 다음 주 팀 일정 확인하고 인수인계 문서도 찾아서, 종합 정리 문서 만들고 연차 등록해줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "judgment", "depends_on": []},
+          {"step_id": 2, "intent": "schedule_view", "depends_on": []},
+          {"step_id": 3, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [1, 2, 3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [1, 4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-004",
+      "category": "complex_5step",
+      "input": "인사 규정 문서 찾아서 채용 기준 확인하고 기존 JD 자료도 검색해서, 새 JD 작성하고 다음 주에 면접 일정 잡아줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "judgment", "depends_on": [1]},
+          {"step_id": 3, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [2, 3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-005",
+      "category": "complex_5step",
+      "input": "복리후생 규정이랑 교육비 지원 규정 둘 다 확인하고, 비교 분석 문서 만들어서 직원 안내문도 작성하고 다음 주 화요일에 설명회 일정 잡아줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "judgment", "depends_on": []},
+          {"step_id": 2, "intent": "judgment", "depends_on": []},
+          {"step_id": 3, "intent": "doc_generate", "depends_on": [1, 2]},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-006",
+      "category": "complex_5step",
+      "input": "프로젝트 기획서 찾아서 핵심 내용 요약하고, 요약 기반으로 제안서 만들면서 이번 주 팀 일정 확인해서 빈 시간에 발표 잡아줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": [1]},
+          {"step_id": 3, "intent": "doc_generate", "depends_on": [2]},
+          {"step_id": 4, "intent": "schedule_view", "depends_on": []},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [3, 4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-007",
+      "category": "complex_5step",
+      "input": "보안 정책 문서 찾아서 위반 사항 확인하고, 시정 계획서 작성하고 다음 주 월요일에 보안 점검 일정 잡고 결과 보고서도 만들어줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "judgment", "depends_on": [1]},
+          {"step_id": 3, "intent": "doc_generate", "depends_on": [2]},
+          {"step_id": 4, "intent": "schedule_add", "depends_on": [3]},
+          {"step_id": 5, "intent": "doc_generate", "depends_on": [2, 3]}
+        ]
+      }
+    },
+    {
+      "id": "C5-008",
+      "category": "complex_5step",
+      "input": "법인카드 규정 확인하고 예산 계획서 찾아서, 지출 가능 여부 판단하고 결의서 만들어서 이번 주 금요일에 결재 미팅 잡아줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "judgment", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 3, "intent": "judgment", "depends_on": [1, 2]},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-009",
+      "category": "complex_5step",
+      "input": "이번 달 일정 확인하고 감사 보고서 찾고 내부 통제 규정도 확인해서, 감사 준비 문서 만들고 감사 일정 등록해줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "schedule_view", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 3, "intent": "judgment", "depends_on": []},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [1, 2, 3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [1, 4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-010",
+      "category": "complex_5step",
+      "input": "거래처 계약서 찾아서 조건 검토하고, 수정 계약서 만들어서 다음 주 화요일에 거래처 미팅 잡고 미팅 결과 보고서도 써줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "judgment", "depends_on": [1]},
+          {"step_id": 3, "intent": "doc_generate", "depends_on": [2]},
+          {"step_id": 4, "intent": "schedule_add", "depends_on": [3]},
+          {"step_id": 5, "intent": "doc_generate", "depends_on": [4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-011",
+      "category": "complex_5step",
+      "input": "재택근무 규정 확인하고 이번 주 일정 봐서, 재택 가능한지 판단하고 재택 신청서 만들어서 재택 일정 등록해줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "judgment", "depends_on": []},
+          {"step_id": 2, "intent": "schedule_view", "depends_on": []},
+          {"step_id": 3, "intent": "judgment", "depends_on": [1, 2]},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [3, 4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-012",
+      "category": "complex_5step",
+      "input": "경조사 휴가 규정 확인하고 다음 주 일정 봐서, 휴가 신청서 만들고 인수인계 문서도 작성해서 휴가 등록해줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "judgment", "depends_on": []},
+          {"step_id": 2, "intent": "schedule_view", "depends_on": []},
+          {"step_id": 3, "intent": "doc_generate", "depends_on": [1, 2]},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [1]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [1, 2, 3]}
+        ]
+      }
+    },
+    {
+      "id": "C5-013",
+      "category": "complex_5step",
+      "input": "퇴직금 산정 기준 문서 찾아서 내 근속 연수에 해당하는지 확인하고, 다음 주 일정 봐서 인사팀 면담 잡고 퇴직금 시뮬레이션 문서 만들어줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "judgment", "depends_on": [1]},
+          {"step_id": 3, "intent": "schedule_view", "depends_on": []},
+          {"step_id": 4, "intent": "schedule_add", "depends_on": [3]},
+          {"step_id": 5, "intent": "doc_generate", "depends_on": [2, 4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-014",
+      "category": "complex_5step",
+      "input": "매출 데이터랑 고객 만족도 조사 찾아서 상관관계 분석하고, 분석 보고서 만들어서 이번 주 목요일에 전략 회의 잡아줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 3, "intent": "judgment", "depends_on": [1, 2]},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [1, 2, 3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-015",
+      "category": "complex_5step",
+      "input": "성과급 지급 기준 확인하고 우리 팀 분기 실적 찾아서 성과급 해당하는지 판단하고, 결과 문서 만들어서 다음 주에 팀장 면담 잡아줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "judgment", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 3, "intent": "judgment", "depends_on": [1, 2]},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-016",
+      "category": "complex_5step",
+      "input": "이번 주 일정 확인하고 회의록 찾아서 요약하고, 요약 바탕으로 후속 조치 문서 만들어서 후속 미팅 잡아줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "schedule_view", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 3, "intent": "doc_retrieve", "depends_on": [2]},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [1, 4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-017",
+      "category": "complex_5step",
+      "input": "야근 수당 규정이랑 시간외근무 규정 둘 다 확인하고 비교 정리해서, 인사팀 제안서 만들고 이번 주 수요일에 인사팀 미팅 잡아줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "judgment", "depends_on": []},
+          {"step_id": 2, "intent": "judgment", "depends_on": []},
+          {"step_id": 3, "intent": "judgment", "depends_on": [1, 2]},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-018",
+      "category": "complex_5step",
+      "input": "교육비 지원 규정 확인하고 외부 교육 과정 자료 찾아서, 교육 신청서 만들고 다음 달 첫째 주에 교육 일정 등록하고 팀장 보고 문서도 써줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "judgment", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 3, "intent": "doc_generate", "depends_on": [1, 2]},
+          {"step_id": 4, "intent": "schedule_add", "depends_on": [3]},
+          {"step_id": 5, "intent": "doc_generate", "depends_on": [3, 4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-019",
+      "category": "complex_5step",
+      "input": "BOM 문서 찾아서 단가 적정한지 판단하고, 발주서 작성하고 이번 주 금요일에 구매팀 미팅 잡고 검수 체크리스트도 만들어줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "judgment", "depends_on": [1]},
+          {"step_id": 3, "intent": "doc_generate", "depends_on": [1, 2]},
+          {"step_id": 4, "intent": "schedule_add", "depends_on": [3]},
+          {"step_id": 5, "intent": "doc_generate", "depends_on": [1, 2]}
+        ]
+      }
+    },
+    {
+      "id": "C5-020",
+      "category": "complex_5step",
+      "input": "다음 주 일정 확인하고 프로젝트 기획서랑 예산 계획서 찾아서, 킥오프 회의 안건 만들고 킥오프 미팅 잡아줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "schedule_view", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 3, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [2, 3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [1, 4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-021",
+      "category": "complex_5step",
+      "input": "겸직 규정 확인하고 관련 판례 문서 찾아서 내 상황에 적용 가능한지 판단하고, 겸직 신청서 작성해줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "judgment", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": [1]},
+          {"step_id": 3, "intent": "judgment", "depends_on": [1, 2]},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [3]},
+          {"step_id": 5, "intent": "doc_generate", "depends_on": [3, 4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-022",
+      "category": "complex_5step",
+      "input": "감사 보고서 찾아서 지적 사항 확인하고, 시정 계획서 만들면서 이번 달 일정 봐서 후속 감사 일정 등록해줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "judgment", "depends_on": [1]},
+          {"step_id": 3, "intent": "doc_generate", "depends_on": [2]},
+          {"step_id": 4, "intent": "schedule_view", "depends_on": []},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [3, 4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-023",
+      "category": "complex_5step",
+      "input": "직원 핸드북이랑 보안 정책 문서 찾아서 신입 교육 자료 만들고, 다음 주 월요일에 교육 일정 잡고 참석 안내문도 작성해줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 3, "intent": "doc_generate", "depends_on": [1, 2]},
+          {"step_id": 4, "intent": "schedule_add", "depends_on": [3]},
+          {"step_id": 5, "intent": "doc_generate", "depends_on": [3, 4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-024",
+      "category": "complex_5step",
+      "input": "채용 규정 확인하고 채용 공고 자료 검색해서 신규 채용 적합한지 판단하고, 공고문 작성해서 다음 주에 면접 일정 잡아줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "judgment", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 3, "intent": "judgment", "depends_on": [1, 2]},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [2, 3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-025",
+      "category": "complex_5step",
+      "input": "이번 주 팀 일정 확인하고 시장 조사 보고서 찾아서 분석하고, 분석 결과로 전략 문서 만들고 전략 회의 잡아줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "schedule_view", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 3, "intent": "judgment", "depends_on": [2]},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [1, 4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-026",
+      "category": "complex_5step",
+      "input": "예산 계획서랑 지난 분기 결산 자료 찾아서 예산 초과 여부 판단하고, 조정안 문서 작성해서 이번 주 목요일에 재무팀 미팅 잡아줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 3, "intent": "judgment", "depends_on": [1, 2]},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [1, 2, 3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-027",
+      "category": "complex_5step",
+      "input": "복장 규정 확인하고 관련 내부 공지 문서 찾아서, 개정안 만들고 다음 주 수요일에 의견 수렴 일정 잡고 설문 양식도 만들어줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "judgment", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": [1]},
+          {"step_id": 3, "intent": "doc_generate", "depends_on": [1, 2]},
+          {"step_id": 4, "intent": "schedule_add", "depends_on": [3]},
+          {"step_id": 5, "intent": "doc_generate", "depends_on": [3]}
+        ]
+      }
+    },
+    {
+      "id": "C5-028",
+      "category": "complex_5step",
+      "input": "고객사 요구사항이랑 제품 스펙 문서 찾아서 충족 여부 판단하고, 갭 분석 보고서 만들어서 이번 주 금요일에 기술 미팅 잡아줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 3, "intent": "judgment", "depends_on": [1, 2]},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [1, 2, 3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-029",
+      "category": "complex_5step",
+      "input": "인수인계서 찾아서 내용 확인하고, 보완할 부분 정리해서 인수인계 보완 문서 만들고 다음 주에 후임자 미팅 잡아줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": [1]},
+          {"step_id": 3, "intent": "judgment", "depends_on": [2]},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [2, 3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [4]}
+        ]
+      }
+    },
+    {
+      "id": "C5-030",
+      "category": "complex_5step",
+      "input": "이번 달 일정 확인하고 업무 분장표 찾아서 담당자 확인하고, 업무 재배분 문서 만들어서 팀 회의 잡아줘",
+      "expected": {
+        "num_steps": 5,
+        "plan": [
+          {"step_id": 1, "intent": "schedule_view", "depends_on": []},
+          {"step_id": 2, "intent": "doc_retrieve", "depends_on": []},
+          {"step_id": 3, "intent": "judgment", "depends_on": [1, 2]},
+          {"step_id": 4, "intent": "doc_generate", "depends_on": [2, 3]},
+          {"step_id": 5, "intent": "schedule_add", "depends_on": [1, 4]}
+        ]
+      }
+    }
+  ]
+}
