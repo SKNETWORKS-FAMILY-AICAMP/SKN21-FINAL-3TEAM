@@ -827,19 +827,23 @@ export default function ChatPage() {
               }
 
               // AI 완료 — 기본 텍스트 버블
-              const hasUsageGuideHint = msg.content && /사용법.*버튼/.test(msg.content);
+              // 첫 번째 assistant 메시지에 사용법 버튼 표시 (LLM 응답에 의존하지 않음)
+              const isFirstAssistant = messages.findIndex(m => m.role === 'assistant') === i;
               return (
                 <MessageBubble key={i} type="bot" intent={msg.intent} modelName={msg.agentResponse?.model_name}>
                   <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
                     <MarkdownText>{msg.content}</MarkdownText>
-                    {hasUsageGuideHint && (
-                      <button
-                        onClick={() => addMessage({ role: 'assistant', content: USAGE_GUIDE_TEXT })}
-                        className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-primary-300 bg-primary-50 text-primary-700 text-xs font-semibold hover:bg-primary-100 transition"
-                      >
-                        <HelpCircle size={14} />
-                        사용법
-                      </button>
+                    {isFirstAssistant && (
+                      <>
+                        <p className="mt-2 text-neutral-sub text-sm">사용법이 궁금하시면 아래 <strong>사용법</strong> 버튼을 눌러주세요.</p>
+                        <button
+                          onClick={() => addMessage({ role: 'assistant', content: USAGE_GUIDE_TEXT })}
+                          className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-primary-300 bg-primary-50 text-primary-700 text-xs font-semibold hover:bg-primary-100 transition"
+                        >
+                          <HelpCircle size={14} />
+                          사용법
+                        </button>
+                      </>
                     )}
                   </div>
                 </MessageBubble>
