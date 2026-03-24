@@ -49,6 +49,8 @@ class AgentState(TypedDict):
     google_services_result: Optional[dict]  # schedule_add 시 Google 서비스 결과
 
     # ── 복합 질문 (지영) ──
+    _is_compound: Optional[bool]            # 복합 질문 여부 (classify_intent에서 설정)
+    _compound_intents: Optional[list]       # 복합 감지된 intent 목록 [{"intent": str, "confidence": float}]
     sub_queries: Optional[list]             # 복합 질문 분해 결과 [{"query": str, "intent": str}, ...]
     sub_responses: Optional[list]           # 각 sub_query의 agent_response 결과
 
