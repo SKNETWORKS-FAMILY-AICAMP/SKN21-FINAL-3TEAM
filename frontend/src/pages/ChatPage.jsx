@@ -50,6 +50,14 @@ function exportChat(messages) {
   URL.revokeObjectURL(url);
 }
 
+const USAGE_GUIDE_TEXT = `1. 질문 입력: 업무와 관련된 궁금한 점이나 요청사항을 질문창에 입력하세요.
+2. 즉시 답변: 듀드가 최대한 빠르게 정확한 답변을 제공합니다.
+3. 다양한 업무: 문서 작성, 일정 관리, 규정 판단 등 다양한 업무에 활용할 수 있습니다.
+4. 예시:
+   - 규정 판단: "출장비 사용 가능한가요?"
+   - 문서: "계약서 검색해줘", "회의록 요약해줘", "보고서 작성해줘"
+   - 일정: "내일 오후 2시 회의 등록해줘", "이번주 일정 보여줘"`;
+
 const RESULT_MAP = { yes: '가능', no: '불가', conditional: '조건부 가능', no_regulation: '규정 없음' };
 
 // LLM 응답 텍스트에서 raw enum 값을 한국어로 치환
@@ -498,6 +506,7 @@ export default function ChatPage() {
   const selectedDocumentName = useChatStore((s) => s.selectedDocumentName);
   const setSelectedDocument = useChatStore((s) => s.setSelectedDocument);
   const clearSelectedDocument = useChatStore((s) => s.clearSelectedDocument);
+  const addMessage = useChatStore((s) => s.addMessage);
   const [panelOpen, setPanelOpen] = useState(false);
   const [docViewDoc, setDocViewDoc] = useState(null);
   const [sessionSidebarOpen, setSessionSidebarOpen] = useState(false);
@@ -818,10 +827,20 @@ export default function ChatPage() {
               }
 
               // AI 완료 — 기본 텍스트 버블
+              const hasUsageGuideHint = msg.content && /사용법.*버튼/.test(msg.content);
               return (
                 <MessageBubble key={i} type="bot" intent={msg.intent} modelName={msg.agentResponse?.model_name}>
                   <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
                     <MarkdownText>{msg.content}</MarkdownText>
+                    {hasUsageGuideHint && (
+                      <button
+                        onClick={() => addMessage({ role: 'assistant', content: USAGE_GUIDE_TEXT })}
+                        className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-primary-300 bg-primary-50 text-primary-700 text-xs font-semibold hover:bg-primary-100 transition"
+                      >
+                        <HelpCircle size={14} />
+                        사용법
+                      </button>
+                    )}
                   </div>
                 </MessageBubble>
               );
