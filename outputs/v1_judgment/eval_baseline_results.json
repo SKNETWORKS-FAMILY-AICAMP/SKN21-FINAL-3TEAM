@@ -1,0 +1,28 @@
+{
+  "type": "baseline",
+  "model": "kakaocorp/kanana-1.5-8b-instruct-2505",
+  "device": "cuda",
+  "total": 328,
+  "json_valid": 231,
+  "json_valid_rate": 0.7043,
+  "result_accuracy": 0.372,
+  "category_stats": {
+    "no": {
+      "correct": 29,
+      "total": 61
+    },
+    "no_regulation": {
+      "correct": 4,
+      "total": 67
+    },
+    "yes": {
+      "correct": 42,
+      "total": 100
+    },
+    "conditional": {
+      "correct": 47,
+      "total": 100
+    }
+  },
+  "elapsed_minutes": 101.0
+}
