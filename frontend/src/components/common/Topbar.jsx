@@ -538,12 +538,12 @@ export default function Topbar({ isScrolled = false }) {
 
   return (
     <>
-      <header className={`absolute top-0 inset-x-0 z-40 transition-all duration-300 ease-in-out flex flex-col ${isScrolled ? 'pt-5 h-[60px] bg-transparent pointer-events-none' : (topbarScheduleHidden ? 'pt-1 h-[80px] bg-transparent' : 'pt-5 h-[160px] bg-transparent')}`}>
+      <header className={`absolute top-0 inset-x-0 z-40 transition-all duration-300 ease-in-out flex flex-col ${isScrolled ? 'pt-5 h-[60px] bg-transparent pointer-events-none' : (topbarScheduleHidden ? 'pt-1 h-[80px] bg-transparent' : 'pt-1 h-[80px] md:pt-5 md:h-[160px] bg-transparent')}`}>
 
         {/* === Row 1: Schedule Timeline (Top) === */}
         {!topbarScheduleHidden && (
-          <div className={`flex justify-center w-full px-4 md:px-10 transition-all duration-300 ease-in-out transform origin-top ${isScrolled ? 'hidden md:flex opacity-100 scale-[0.9] pointer-events-auto h-[56px] mb-0 mt-1' : 'opacity-100 scale-100 h-[56px] mb-4'}`}>
-            <div className="hidden md:flex justify-center w-[580px] xl:w-[720px]">
+          <div className={`flex justify-center w-full px-4 md:px-10 transition-all duration-300 ease-in-out transform origin-top ${isScrolled ? 'hidden md:flex opacity-100 scale-[0.9] pointer-events-none h-[56px] mb-0 mt-1' : 'opacity-100 scale-100 h-[56px] mb-4'}`}>
+            <div className="hidden md:flex justify-center w-[580px] xl:w-[720px] pointer-events-auto">
               <div className={`border text-primary-800 dark:text-neutral-100 rounded-[32px] flex items-center p-1.5 w-full transition-all duration-300 ${isScrolled ? 'bg-white/40 dark:bg-[#111317]/40 backdrop-blur-lg border-neutral-200/50 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.08)]' : 'bg-white/10 dark:bg-black/10 border-neutral-200/20 dark:border-white/5 shadow-sm'}`}>
 
                 {/* 왼쪽 Label section */}

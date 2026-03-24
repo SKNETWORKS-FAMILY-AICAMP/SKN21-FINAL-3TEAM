@@ -265,12 +265,14 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             yield f"data: {json.dumps({'type': 'compound_sub', 'index': i, 'total': len(sub_queries), 'query': sq_query, 'hint': sq_hint}, ensure_ascii=False)}\n\n"
 
                             # sub_query를 독립 state로 graph 실행 (비스트리밍)
+                            # force_intent: 플래너가 결정한 intent를 강제 적용 (ONNX 재분류 방지)
                             sub_state = {
                                 **initial_state,
                                 "user_input": sq_query,
                                 "stream_mode": False,
                                 "sub_queries": None,  # 재귀 방지
                                 "sub_responses": None,
+                                "force_intent": sq_hint,
                             }
 
                             try:
@@ -292,20 +294,9 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                     "message": f"처리 중 오류: {sub_err}",
                                 }
 
-                            # sub_response 메시지를 토큰 단위로 스트리밍
-                            sub_message = sub_response.get("message", "")
-                            if sub_message:
-                                # 적당한 크기로 잘라서 스트리밍 (자연스러운 UX)
-                                chunk_size = 10
-                                for j in range(0, len(sub_message), chunk_size):
-                                    token = sub_message[j:j + chunk_size]
-                                    yield f"data: {json.dumps({'type': 'token', 'value': token}, ensure_ascii=False)}\n\n"
-
                             sub_intent = sq_hint
-                            try:
+                            if sub_result and isinstance(sub_result, dict):
                                 sub_intent = sub_result.get("intent", sq_hint)
-                            except NameError:
-                                pass
 
                             all_sub_responses.append({
                                 "query": sq_query,
@@ -389,6 +380,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         stream = await client.chat.completions.create(
                             model=_model, messages=_messages,
                             temperature=0.7, max_tokens=1024, stream=True,
+                            frequency_penalty=0.3,
                         )
 
                         full_response = ""

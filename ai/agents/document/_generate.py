@@ -11,6 +11,7 @@ from ai.agents.document._common import (
     _call_llm,
     _to_readable_str,
     get_last_model_name,
+    set_last_model_name,
 )
 
 # ── 문서 유형 한글명 (여러 곳에서 재사용) ──
@@ -540,19 +541,23 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
     _PROMPT_TYPE_NAMES = {**DOC_TYPE_NAMES, "report": "업무보고서"}
     doc_type_name = _PROMPT_TYPE_NAMES.get(template_type, template_name)
 
-    # ── 경로 분기: fill-fields 데이터 있으면 DOCX 빌드만, 없으면 sLLM 호출 ──
-    if fields_data:
-        # 경로 1: fill-fields에서 이미 sLLM으로 채운 데이터 → 그대로 사용
+    # ── 경로 분기 ──
+    # 시스템 기본템플릿: fields_data가 있어도 항상 sLLM 호출 (폼 입력을 확장·구조화)
+    # 커스텀 템플릿: fill-fields에서 이미 sLLM으로 채운 데이터 → 그대로 사용
+    is_system = getattr(template, "is_system", False) if template else False
+
+    if fields_data and not is_system:
+        # 경로 1: 커스텀 템플릿 fill-fields 데이터 → sLLM 생략
         filled_count = sum(1 for v in fields_data.values() if v not in (None, "", []))
         print(f"[DocumentAgent] fill-fields 데이터 사용 (sLLM 생략) | {filled_count}/{len(fields)}개 채워짐")
+        set_last_model_name("사용자 입력 (폼)")
         data = dict(fields_data)
         for f in fields:
             if f["key"] not in data:
                 desc = f.get("description", "")
                 data[f["key"]] = [] if ("배열" in desc or "목록" in desc) else ""
     else:
-        # 경로 2: fill-fields를 거치지 않은 경우 (챗봇 등) → sLLM 호출
-        is_system = getattr(template, "is_system", False) if template else False
+        # 경로 2: 시스템 기본템플릿 또는 챗봇 → sLLM 호출
         fields_for_llm = _select_fields_for_llm(fields, template_type, user_input, is_system)
 
         from ai.document_parser.template_extractor import fields_to_prompt
@@ -599,9 +604,18 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
         for str_field in ("title", "summary"):
             data[str_field] = _to_readable_str(data.get(str_field, ""))
 
-        _TASK_KEYS = ("task", "content", "item", "action", "할일", "내용", "업무", "name")
+        _TASK_KEYS = ("task", "content", "item", "action", "할일", "내용", "업무", "name",
+                      "ActionItem", "Action Item", "action_item", "실행항목", "후속조치")
         _DUE_KEYS  = ("due_date", "deadline", "기한", "due", "end_date", "완료일")
-        raw_ai = data.get("action_items", [])
+        # 커스텀 템플릿에서 action_items 키가 다를 수 있음 (ActionItem, 실행항목 등)
+        _AI_KEYS = ("action_items", "ActionItem", "actionItem", "action_item", "실행항목", "후속조치")
+        raw_ai = None
+        for aik in _AI_KEYS:
+            if aik in data and data[aik]:
+                raw_ai = data[aik]
+                break
+        if raw_ai is None:
+            raw_ai = []
         if isinstance(raw_ai, dict):
             raw_ai = list(raw_ai.values())
         normalized_ai = []
@@ -726,17 +740,18 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
     GENERATED_DOCS_DIR.mkdir(parents=True, exist_ok=True)
     output_path = str(GENERATED_DOCS_DIR / f"{doc_uuid}.docx")
 
-    # fields_data가 있으면 사용자 수정값 반영 (fill-fields 결과를 이미 data로 쓴 경우 중복이지만 안전)
+    # fields_data가 있으면 사용자 수정값 반영
+    # 시스템 템플릿: sLLM이 content를 구조화했으므로 content는 override 제외 (메타 필드만)
     if fields_data:
+        skip_override = {"content"} if is_system else set()
         for key, val in fields_data.items():
+            if key in skip_override:
+                continue
             if val not in (None, "", []):
                 data[key] = val
 
-    # DOCX 생성: 시스템 빌더 → 범용 레이아웃 분기
+    # DOCX 생성: 시스템 빌더 → sLLM 매핑 (원본 보존) → 범용 빌더 fallback
     try:
-        from ai.skills.create_from_template import create_generic_document
-
-        is_system = getattr(template, "is_system", False) if template else False
         if is_system and template_type == "meeting_minutes":
             from ai.skills.create_meeting_minutes import create_meeting_minutes
             docx_data = {
@@ -763,9 +778,27 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
             print(f"[DocumentAgent] 시스템 제안서 빌더로 DOCX 생성")
             create_proposal(output_path, data)
         else:
-            # 커스텀 템플릿 → 범용 레이아웃 (깔끔한 새 DOCX)
-            print(f"[DocumentAgent] 범용 레이아웃으로 DOCX 생성")
-            create_generic_document(output_path, data, fields, DOC_TYPE_NAMES.get(template_type, template_name))
+            # 커스텀 템플릿 → sLLM 매핑으로 원본 양식에 데이터 주입
+            template_file_path = getattr(template, "file_path", None) if template else None
+            # DB 경로가 backend 기준 상대경로일 수 있으므로 보정
+            if template_file_path and not Path(template_file_path).exists():
+                alt = Path("backend") / template_file_path
+                if alt.exists():
+                    template_file_path = str(alt)
+            if template_file_path and Path(template_file_path).exists():
+                from ai.skills.fill_with_llm import fill_docx_with_llm
+                print(f"[DocumentAgent] sLLM 매핑으로 원본 양식 채우기: {template_file_path}")
+                fill_result = await fill_docx_with_llm(template_file_path, output_path, data, field_mapping=fields)
+                if not fill_result.get("success") or fill_result.get("filled_count", 0) == 0:
+                    # fill 실패 시 범용 빌더 fallback
+                    print(f"[DocumentAgent] sLLM 매핑 실패 → 범용 빌더 fallback")
+                    from ai.skills.create_from_template import create_generic_document
+                    create_generic_document(output_path, data, fields, DOC_TYPE_NAMES.get(template_type, template_name))
+            else:
+                # 원본 양식 파일 없음 → 범용 빌더
+                print(f"[DocumentAgent] 원본 양식 파일 없음 → 범용 빌더")
+                from ai.skills.create_from_template import create_generic_document
+                create_generic_document(output_path, data, fields, DOC_TYPE_NAMES.get(template_type, template_name))
         print(f"[DocumentAgent] 커스텀 DOCX 생성 완료: {output_path}")
     except Exception as e:
         print(f"[DocumentAgent] !!! 커스텀 DOCX 생성 실패: {e}")

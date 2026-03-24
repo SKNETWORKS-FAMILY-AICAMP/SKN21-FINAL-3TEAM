@@ -286,7 +286,7 @@ _PLANNER_BASE_PROMPT = """당신은 업무 자동화 시스템의 Task Planner�
 1. depends_on: 이 단계가 실행되기 전에 완료되어야 하는 step_id 목록
 2. depends_on이 비어있으면 즉시 실행 가능
 3. 단순 요청은 1단계로 처리
-4. 최대 4단계까지만 분해
+4. 최대 3단계까지만 분해
 5. JSON만 출력하고 다른 설명은 하지 마세요"""
 
 _PLANNER_FEWSHOT_PROMPT = _PLANNER_BASE_PROMPT + """

@@ -591,13 +591,69 @@ export default function DocumentGeneratePage() {
           model_name: apiData.model_name || '',
         });
       } else {
+        // 공통 필드 한글 라벨 (DB label 없을 때 fallback)
+        const FIELD_LABELS = {
+          // 제안서
+          purpose: '목적', background: '배경', current_situation: '현황 분석',
+          schedule: '추진 일정', budget: '예산', budget_total: '합계',
+          expected_effect: '기대 효과', company: '제안사', manager: '담당자',
+          submit_to: '제출처', submit_date: '제출일', contact: '연락처',
+          content: '내용',
+          // 보고서
+          overview: '개요', main_content: '세부 내용', tasks: '진행 업무',
+          issues: '이슈 및 건의사항', next_plan: '향후 계획',
+          report_type: '보고 유형', report_to: '보고 대상',
+          department: '부서', position: '직급',
+          // 회의록
+          summary: '요약', decisions: '결정사항', action_items: '후속 조치',
+          meeting_type: '회의 유형', location: '회의 장소',
+          notes: '비고', attendees: '참석자',
+          // 공통
+          title: '제목', date: '날짜', author: '작성자',
+        };
+
+        // templateFields에서 key→label 매핑 생성 (DB label → fallback 순)
+        const keyToLabel = { ...FIELD_LABELS };
+        const fieldOrder = [];
+        (templateFields || []).forEach(f => {
+          if (f.label) keyToLabel[f.key] = f.label;
+          fieldOrder.push(f.key);
+        });
+
+        // sLLM이 구조화 필드(purpose, background 등)를 생성했으면 content(원문) 숨김
+        const structuredKeys = ['purpose', 'background', 'current_situation', 'overview', 'main_content', 'summary'];
+        const hasStructured = structuredKeys.some(k => data[k] && String(data[k]).trim());
+        const skipKeys = ['title', 'date', 'submit_date', 'document_id'];
+        if (hasStructured) skipKeys.push('content');
+
+        // 배열 내부 속성 한글 라벨
+        const SUB_LABELS = {
+          item: '항목', task: '할 일', assignee: '담당자', due_date: '기한',
+          progress: '진행률', start_date: '시작일', end_date: '종료일',
+          quantity: '수량', unit_price: '단가', amount: '금액',
+          phase1: '1단계', phase2: '2단계', phase3: '3단계', phase4: '4단계',
+        };
+
+        // 배열 객체를 읽기 좋은 텍스트로 변환
+        const formatArrayValue = (arr) => arr.map(item => {
+          if (typeof item !== 'object') return String(item);
+          const vals = Object.entries(item)
+            .filter(([, v]) => v)
+            .map(([k, v]) => `${SUB_LABELS[k] || k}: ${v}`);
+          return vals.join(' | ');
+        }).join('\n');
+
         const displayFields = Object.entries(data)
-          .filter(([k]) => !['title', 'date', 'document_id'].includes(k))
-          .filter(([, v]) => v && (typeof v === 'string' ? v.trim() : true))
-          .slice(0, 5)
+          .filter(([k]) => !skipKeys.includes(k))
+          .filter(([, v]) => v && (typeof v === 'string' ? v.trim() : (Array.isArray(v) ? v.length > 0 : true)))
+          .sort((a, b) => {
+            const ai = fieldOrder.indexOf(a[0]);
+            const bi = fieldOrder.indexOf(b[0]);
+            return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+          })
           .map(([k, v]) => ({
-            label: k,
-            value: Array.isArray(v) ? v.map(i => typeof i === 'object' ? JSON.stringify(i) : i).join('\n') : String(v),
+            label: keyToLabel[k] || k,
+            value: Array.isArray(v) ? formatArrayValue(v) : String(v),
           }));
 
         setResult({

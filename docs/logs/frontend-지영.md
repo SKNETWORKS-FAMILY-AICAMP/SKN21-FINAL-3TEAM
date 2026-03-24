@@ -1077,19 +1077,7 @@
 
 ### 한 일
 
-#### 1) 다크모드 하드코딩 색상 전체 점검 및 수정 (8개 파일)
-
-> `bg-white`, `text-gray-*`, `bg-gray-*`, `border-gray-*`, `dark:bg-gray-*` 등 Tailwind 고정 클래스를 프로젝트 CSS 변수 기반 토큰으로 전면 교체
-
-**수정 원칙**
-- `bg-white` / `dark:bg-gray-700` → `bg-surface-card` (라이트=#FFF, 다크=#2F2F34 자동 전환)
-- `text-gray-900` / `dark:text-white` → `text-neutral-main`
-- `text-gray-500` / `dark:text-gray-400` → `text-neutral-sub` / `text-neutral-muted`
-- `border-gray-*` / `dark:border-gray-*` → `border-neutral-border` / `border-neutral-divider`
-- `bg-neutral-50` / `dark:bg-gray-800` → `bg-surface-sub`
-- `bg-neutral-900 dark:bg-white text-white dark:text-neutral-900` (제출 버튼) → `bg-primary-700 text-white`
-
-#### 2) ScheduleTimelineWidget 멀티데이 일정 UI 개선 (`ScheduleTimelineWidget.jsx`, `DashboardPage.jsx`)
+#### 1) ScheduleTimelineWidget 멀티데이 일정 UI 개선 (`ScheduleTimelineWidget.jsx`, `DashboardPage.jsx`)
 
 **멀티데이 일정 정렬 순서 변경**
 - 기존: `isAllDay` 블록이 `startH = dayStart`로 설정되어 row 정렬 시 가장 앞에 배치 → 상단에 위치
@@ -1108,7 +1096,7 @@
   - 추가된 멀티데이 일정은 `isAllDay: true`로 매핑
   - `ScheduleTimelineWidget`에 `timelineMeetings` 전달
 
-#### 3) CalendarView 멀티데이 일정 스트라이프 row 고정 (`CalendarView.jsx`)
+#### 2) CalendarView 멀티데이 일정 스트라이프 row 고정 (`CalendarView.jsx`)
 
 **문제**
 - 멀티데이 이벤트 스트라이프의 위치가 셀마다 달라지는 버그
@@ -1122,11 +1110,11 @@
 - 스트라이프 `bottom` 계산: 배열 인덱스 `si` → `multiDayRowMap`에서 가져온 고정 `row` 값으로 교체
 - 셀 `paddingBottom`: 배열 길이 기준 → 해당 셀의 **최대 row 번호** 기준으로 교체
 
-#### 4) 대시보드 로딩 스켈레톤 추가
+#### 3) 대시보드 로딩 스켈레톤 추가
 
 - 새로고침 시 로딩 중 스켈레톤 표시 → 완료 후 실제 데이터 또는 "없음" 메시지로 전환
 
-#### 5) 대시보드 '오늘 일정' 멀티데이 일정 디자인 통일 (`TodaySchedule.jsx`, `DashboardPage.jsx`)
+#### 4) 대시보드 '오늘 일정' 멀티데이 일정 디자인 통일 (`TodaySchedule.jsx`, `DashboardPage.jsx`)
 
 **문제**
 - 오늘 시작하는 멀티데이 일정 → 상단에 '종일' 카드로 표시
@@ -1138,20 +1126,20 @@
 - `TodaySchedule.jsx` 하단 별도 섹션 제거, `inProgressMeetings` prop 제거, 미사용 `TYPE_COLORS` 상수 제거
 - 모든 멀티데이 일정이 동일한 '종일' 카드 디자인으로 통일
 
-#### 6) 대시보드 위젯 로딩 UX 개선 (`DashboardPage.jsx`, `WhatsOnWidget.jsx`, `CalendarWidget.jsx`, `ApprovalQueueWidget.jsx`)
+#### 5) 대시보드 위젯 로딩 UX 개선 (`DashboardPage.jsx`, `WhatsOnWidget.jsx`, `CalendarWidget.jsx`, `ApprovalQueueWidget.jsx`)
 
 - 각 위젯 개별 "불러오는 중..." 텍스트 대신 대시보드 전체 단일 스피너로 통일
 - `loading` true 시 위젯 그리드 전체를 중앙 스피너(`animate-spin`)로 대체
 - 로딩 완료 후 0.4초 fade-in으로 위젯 자연스럽게 등장 (framer-motion)
 - `ApprovalQueueWidget`: `loading` 완료 전 "모든 항목을 처리했습니다!" 빈 상태 노출 방지(`!loading` 조건 추가)
 
-#### 7) 상단바 계정 프로필 비밀번호 변경 제거 (`Topbar.jsx`)
+#### 6) 상단바 계정 프로필 비밀번호 변경 제거 (`Topbar.jsx`)
 
 - 계정 드롭다운에서 '비밀번호 변경' 버튼 제거 → 마이페이지 내에서만 접근 가능하도록 변경
 - 관련 state(`pwModal`, `pwForm`, `pwError`, `pwSaving`), 함수(`openPwModal`, `handleChangePassword`), 모달 전체 제거
 - 미사용 import(`KeyRound`, `changePassword`) 정리
 
-#### 8) 복합 질문(Multi-Intent) 처리 Phase 1 구현 — 규칙 기반 파이프라인
+#### 7) 복합 질문(Multi-Intent) 처리 Phase 1 구현 — 규칙 기반 파이프라인
 
 > 단일 intent만 처리 가능했던 챗봇에 복합 질문(예: "규정 찾아줘 그리고 판단해줘") 감지 및 분리 처리 파이프라인 구현
 
@@ -3864,9 +3852,249 @@ Pod 꺼져도 유지되는 네트워크 볼륨(`/workspace/`, 2.3PB)에 저장:
   - 명시적 날짜 추가 (22건): "다음 주 월요일에", "이번 주 금요일에" 등
   - schedule_view 결과 연결 (9건): "빈 시간에", "빈 날에" 등
 
+#### 4) GENERAL_SYSTEM_PROMPT 강화 (`ai/llm/prompts.py`)
+
+- 기존 프롬프트 (4줄 규칙)를 구조화된 프롬프트로 전면 개편
+- 추가/수정된 섹션:
+  - **[대화 톤]**: 한국어 필수 답변, 존댓말 + 비즈니스 톤 명시
+  - **[답변 규칙]**: 업무 외 질문은 1문장으로 제한 (과잉 응대 방지)
+  - **[날짜 인식]**: 상대 날짜 해석 지침 + 애매하면 되묻기
+  - **[복합 질문 처리]**: 여러 요청 시 나누어 순서대로 안내
+  - **[대화 맥락]**: 이전 대화 참고 + 모호한 표현 되묻기
+  - **[할루시네이션 방지]**: 사내 규정 추측 금지, 규정 판단 기능으로 유도
+  - **[민감 정보 보호]**: 주민번호/비밀번호 등 입력 시 경고 안내
+  - **[에러/장애 안내]**: 오류 시 재시도 안내 문구
+
+#### 5) Before/After 비교 평가 스크립트 작성
+
+- 파일: `ai/llm/eval_general_prompt.py`
+- 17개 테스트 케이스: 인사, 정체성, 사용법, 할루시네이션 유도, 지원 불가, 모호한 질문, 맥락 이어가기, 영어 질문, 날짜 인식, 복합 질문, 민감 정보, 에러 유도
+- 결과: `data/evaluation/general_prompt_comparison_20260323_165246.json`
+- 주요 개선 확인:
+  - 할루시네이션 방지 (연차 일수 지어내기 → 규정 판단 유도)
+  - 모호한 질문에 자연스럽게 되묻기 ("지원하지 않습니다" → "구체적으로 말씀해주세요")
+  - 민감 정보 경고 동작 확인
+  - 복합 질문 번호별 분리 안내 확인
+  - 날짜 인식 + 추가 정보 요청 확인
+
+#### 6) Planner v7 학습 실행 및 평가 (RunPod A40)
+
+- RunPod A40 48GB에서 v7 학습 실행 (이전 RTX 4090/3090에서 끊김 발생)
+- 문제 해결:
+  - `No space left on device` → HF 캐시를 `/workspace/hf_cache`로 변경
+  - 학습 중 progress bar 멈춤 → 로그 버퍼링 문제, 실제로는 정상 진행
+  - step 242에서 hang → checkpoint-279에서 resume 기능 추가(`train_v3_planner.py`에 `--resume` 옵션)
+- 학습 결과: train_loss=0.0227, eval_loss=0.0970, 약 30분 소요
+- 어댑터 저장: `outputs/v7_planner/final`
+
+#### 7) Planner v7 Holdout 평가 결과
+
+- **Perfect Match: 84/100 (84.0%)** — v5 대비 -3%p 하락
+- Weighted Score: 97.0%, Intent Recall: 97.9%, Intent Precision: 98.0%
+- Step별: 1-step 93.6%, 2-step 90.9%, 3-step 50.0%, 4-step 50.0%
+- **Rule 14(시간표현+문서생성) 혼동: 완전 해결** — "이번 달 보고서 만들어줘" 등 전부 정답
+- 하락 원인: 3-step 분해 정확도 66.7% → 50.0% (-16.7%p)
+
+#### 8) 추가 Rule Guide(17~21) 실험 → 실패, 롤백
+
+- 멀티스텝 분해 오류 보정을 위한 Rule 5개 추가 시도
+  - Rule 17: step 축소 방지 (찾아서+분석+만들어줘 = 3step)
+  - Rule 18: 찾아서+요약 = 2step
+  - Rule 19: "A랑 B 차이" = 1step
+  - Rule 20: 단일 주제 긴 문장 = 1step
+  - Rule 21: 확인하고+빈 날+등록 = 3step
+- 결과: **84% → 77%로 대폭 하락** (7건 깨뜨림, 0건 수정)
+- 부작용: Rule 20이 병렬 요청("확인해주고 ... 도 찾아줘")까지 1step으로 합쳐버림
+- **전부 롤백**, 기존 Rule(1~16)만 유지
+
+#### 9) 오답 16건 상세 분석
+
+- **Intent 자체 오분류: 0건** — 모든 오답에서 intent 종류는 정확
+- Step 개수 차이: 10건 (축소 6건 + 과다 4건)
+- 의존성(depends_on)만 차이: 6건
+- 결론: 모델 성능(intent 분류)은 98%로 충분, 문제는 멀티스텝 구조 분해
+
+#### 10) 실험 리포트 HTML 업데이트
+
+- `260317 intent, planner model 최종 선정.html` 업데이트
+- 추가 내용:
+  - 실험 추이: J(v7 보강 84%), K(v7+Rule 77%) 행 추가
+  - 성능 바 차트: v7 보강, v7+Rule 빨간 바 추가
+  - Step별 v5 vs v7 비교 테이블
+  - v7 실험 분석 섹션 (Rule 14 해결, 트레이드오프, 인사이트)
+  - 오답 16건 상세 분류 + 펼침 상세 테이블
+  - 교훈 추가 (데이터 보강 한계, 멀티스텝 분해 한계)
+
 ### 다음 할 일
 
-- [ ] v7 학습 결과 확인 및 rule 제거 후 성능 비교
-- [ ] 4step/5step 테스트셋으로 Planner eval 실행
+- [x] 4step/5step 테스트셋으로 Planner eval 실행
 - [ ] 프론트엔드 ↔ 백엔드 실제 연동 작업 재개
-- [ ] 챗봇 UI 추가 개선사항 검토
+
+---
+
+## 2026-03-24 (화)
+
+### 한 일
+
+#### 1) Planner v5 — 4-step / 5-step 일반화 테스트 (RunPod A4500)
+
+- 3-step까지만 학습한 최종 모델(v5)이 4-step, 5-step도 분류하는지 검증
+- RunPod RTX A4500 20GB에서 실행 (PyTorch 2.6 + transformers 5.3)
+- 테스트셋: 4-step 30건, 5-step 30건 (기본 + 하이브리드 프롬프트, 총 4회 평가)
+- **결과:**
+
+| 테스트 | PM | WS | IP | SCR |
+|--------|:--:|:--:|:--:|:---:|
+| Holdout sanity (100건) | 78.0% | 95.8% | 97.5% | 13.2% |
+| 4-step 기본 (30건) | 3.3% | 86.5% | 100% | 40.0% |
+| 4-step 하이브리드 (30건) | 16.7% | 86.0% | 100% | 46.7% |
+| 5-step 기본 (30건) | 3.3% | 89.4% | 99.3% | 20.0% |
+| 5-step 하이브리드 (30건) | 6.7% | 86.6% | 100% | 43.3% |
+
+- **핵심 발견:**
+  - Intent Precision 100% — 모델이 엉뚱한 intent를 만들어내지 않음
+  - 오답 원인은 Step Collapse(축소)와 의존성 차이, intent 자체 오류는 거의 0건
+  - 하이브리드 프롬프트가 4-step에서 3.3%→16.7%로 개선 효과
+  - 3-step 학습 모델은 4-5step 구조 분해로 일반화 안 됨
+- Holdout 78% (기존 88% 대비 -10%p): PyTorch/transformers 메이저 버전 업그레이드 영향 추정
+- 결과 JSON 로컬 저장: `outputs/v5_planner/step_test_results/`
+
+#### 2) 실험 리포트 HTML 업데이트 (`docs/intent_planner/model_test_report.html`)
+
+- **4-step / 5-step 일반화 테스트 섹션 추가:**
+  - 실험 배경, 테스트 설계 (토폴로지 패턴 클릭 설명 포함)
+  - 결과 요약 테이블 (지표 헤더 호버 시 설명 툴팁)
+  - 테스트 이름 호버 시 테스트셋 파일 경로 표시
+  - Holdout Step별 sanity check
+  - Perfect Match 비교 바 차트
+  - 긍정적 발견 카드 4개 (Precision/Recall/환각/WS 클릭 시 예시 기반 상세 설명)
+  - 오답 상세 보기 (4-step/5-step 대표 오답 테이블, v7 오답과 동일 형식)
+  - 결론 4가지
+- **기존 섹션 개선:**
+  - Hybrid 프롬프트: 클릭 시 기본 vs Few-shot 비교 + 3-step 예시 3개 펼침
+  - 성능 변화 바: v6 제거, 최종 87% `pri-900` 강조, 나머지 다양한 색상
+  - 교훈 8번 추가 (4-5step 일반화 관련)
+
+#### 3) RunPod 환경 이슈 해결
+
+- 기존 pod PyTorch 버전 낮아 `set_submodule` 에러 → torch 2.6 + transformers 5.3 업그레이드로 해결
+- v5 어댑터 위치: `/workspace/models/planner-v5-lora/` (네트워크 볼륨)
+- 결과 JSON SSH 다운로드: ANSI escape 문제 → base64 인코딩 방식으로 해결
+
+#### 4) 로컬 어댑터 경로 정리
+
+- `outputs/v7_planner/final/final/` → `outputs/v7_planner/final/`로 중첩 해제
+- 원인: RunPod 다운로드 시 폴더 안에 폴더를 넣어서 이중 중첩
+
+#### 5) RunPod 평가 스크립트 작성 (`ai/finetuning/runpod_eval_4step_5step.sh`)
+
+- v5 어댑터 기반 4-step/5-step 평가 자동화 스크립트
+- sanity check + 4step(기본/하이브리드) + 5step(기본/하이브리드) + 결과 요약
+
+#### 6) AgentState 복합질문 라우팅 버그 수정 (`ai/agents/state.py`)
+
+- `_is_compound`, `_compound_intents` 필드가 AgentState(TypedDict)에 누락되어 있었음
+- LangGraph는 TypedDict에 정의된 필드만 노드 간 전달 → classify_intent에서 설정한 값이 route_by_intent에서 사라지는 버그
+- 두 필드 추가하여 복합질문 감지 → decompose_query 라우팅 정상 동작 확인
+
+#### 7) sub-query 분해 로컬 테스트 스크립트 (`test_subquery.py`)
+
+- 규칙 기반 sub-query 분해가 정상 동작하는지 확인하는 테스트 스크립트
+- 복합 질문 8개 + 단일 질문 4개 = 12개 테스트 케이스
+- 2-step 복합: 5/6 정상 분해 확인
+- 3-step 복합: 규칙 기반 한계로 2개까지만 분해됨 (Planner LoRA 필요)
+- 단일 질문: 4/4 정상 (compound=False)
+
+#### 8) Planner 프롬프트 최대 분해 단계 조정 (`ai/agents/orchestrator.py`)
+
+- 최대 4단계 → 3단계로 수정 (학습 데이터 기준에 맞춤)
+
+#### 9) 실험 리포트 knowledge_query 매핑 상세 설명 추가 (`docs/intent_planner/model_test_report.html`)
+
+- Planner(분해기) + ONNX(분류기) 역할 분담 다이어그램 추가
+- 클릭 시 펼침 상세 설명
+
+#### 10) 챗봇 헤더 버튼 클릭 불가 버그 수정 (`Topbar.jsx`)
+
+- **문제**: 스크롤로 상단바가 축소된 상태에서 챗봇 헤더의 '내보내기', '초기화', '문서 선택' 버튼이 클릭 안 됨 (규정 패널만 동작)
+- **원인**: Topbar 스케줄 타임라인 row의 외부 wrapper(`w-full`)에 `pointer-events-auto`가 걸려 있어, 실제 콘텐츠(580px)보다 넓은 전체 너비가 클릭을 가로챔 (Topbar `z-40` > ChatPage 헤더 `z-20`)
+- **수정**: 외부 wrapper를 `pointer-events-none`으로 변경, 내부 콘텐츠 div(`w-[580px]`)에만 `pointer-events-auto` 적용 → 빈 공간 클릭이 아래 ChatPage 헤더로 통과
+
+#### 10) Planner LoRA 챗봇 적용 — 환경변수 설정
+
+- `.env`에 `PLANNER_MODE=sllm` 추가
+- 기존: 복합 질문 시 규칙 기반 텍스트 분리 → 변경: vLLM Planner LoRA가 실행 계획(JSON) 생성 → ONNX intent 검증 → 규칙 기반 fallback
+- vLLM 서버(RunPod) 모델 목록 확인 — `planner` LoRA 어댑터 정상 로드 확인 (`/runpod-volume/models/planner-v5-lora`)
+
+#### 11) compound sub-query force_intent 적용 (`backend/app/api/v1/chat.py`)
+
+**배경**: 복합 질문 "내일 회의 일정 잡아주고 회의록도 작성해줘"가 플래너에 의해 `schedule_add` + `doc_generate`로 올바르게 분해되었지만, 각 sub-query를 독립 그래프(`graph.ainvoke`)로 실행할 때 ONNX가 다시 분류하여 엉뚱한 intent(general 등)로 라우팅되는 버그 발견.
+
+**수정**: compound sub-query 실행 시 `force_intent: sq_hint` 전달 → classify_intent 노드가 ONNX 재분류를 건너뛰고 플래너가 결정한 intent로 직접 agent 라우팅.
+
+```python
+# before
+sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, ...}
+
+# after
+sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "force_intent": sq_hint, ...}
+```
+
+#### 12) CompoundCard 메시지 렌더링 버그 수정 (`frontend/src/components/chat/CompoundCard.jsx`)
+
+**배경**: 복합 질문 결과에서 각 sub-query의 에이전트 응답 메시지(시간 입력 요청, 문서 생성 안내 등)가 전혀 표시되지 않아 "아무런 후속 조치가 없다"고 보이는 문제.
+
+**원인**: `<MarkdownText content={message} />` — MarkdownText 컴포넌트는 `children` prop만 읽는데 `content`로 전달하여 메시지가 아예 렌더링되지 않았음.
+
+**수정**: `<MarkdownText>{message}</MarkdownText>`로 변경.
+
+#### 13) CompoundCard에 ScheduleConfirmCard 통합 (`frontend/src/components/chat/CompoundCard.jsx`)
+
+- 복합 질문 중 `schedule_add` intent인 sub-query에 대해 텍스트 메시지 대신 **일정 등록 폼(ScheduleConfirmCard)** 렌더링
+- 에이전트가 파싱한 제목/날짜가 폼에 미리 채워지고, 사용자가 시간 선택 후 바로 등록 가능
+- `schedule_confirm`, `schedule_clarify` 등 스케줄 관련 응답 타입도 ScheduleConfirmCard로 통합 렌더링
+
+#### 14) 일반 응답 반복 생성 억제 (`backend/app/api/v1/chat.py`)
+
+- general_response 스트리밍에 `frequency_penalty=0.3` 추가
+- vLLM(Kanana-1.5-8B) 소형 모델의 동일 텍스트 반복 생성 문제 완화
+
+#### 15) 반응형 Topbar/Layout 패딩 수정 (`Topbar.jsx`, `Layout.jsx`)
+
+**배경**: 브라우저 창을 절반 크기로 줄이면 상단에 ~100px 빈 공간이 생기는 문제.
+
+**원인**: Topbar의 스케줄 타임라인이 `hidden md:flex`로 768px 미만에서 숨겨지지만, Topbar 높이(`h-[160px]`)와 main 패딩(`pt-[180px]`)은 고정값이어서 빈 공간 발생.
+
+**수정**:
+- Topbar: `h-[80px]` (모바일) → `md:h-[160px]` (데스크톱)
+- main 패딩: `pt-[96px]` (모바일) → `md:pt-[180px]` (데스크톱)
+
+#### 16) compound 토큰 스트리밍 플래시 제거 (`useSSE.js`, `chat.py`)
+
+**배경**: 복합 질문 입력 시 sub-query 메시지가 StreamingMessage로 ~1초 플래시 표시된 후 CompoundCard로 전환되는 문제.
+
+**원인**: 백엔드가 각 sub-query 메시지를 `token` 이벤트로 스트리밍 → `msg.content`에 쌓여 StreamingMessage로 렌더링 → `result` 이벤트 도착 후 CompoundCard로 교체.
+
+**수정**:
+- **프론트엔드** (`useSSE.js`): `compoundRef` 플래그 추가. `compound_start` 이벤트 수신 시 `true`로 설정, 이후 `token` 이벤트 무시 → 상태 메시지("처리 중...")만 표시
+- **백엔드** (`chat.py`): compound sub-query 메시지의 토큰 스트리밍 코드 제거 (CompoundCard가 직접 렌더링하므로 불필요)
+
+#### 17) CompoundCard에 TemplatePicker 통합 (`CompoundCard.jsx`, `ChatPage.jsx`)
+
+**배경**: 복합 질문에서 `doc_generate` sub-query가 `template_pick` 응답을 반환하면 "회의록 양식을 선택해주세요:" 텍스트만 표시되고, 단일 질문처럼 양식 선택 버튼이 나타나지 않는 문제.
+
+**수정**:
+- CompoundCard에 `TemplatePicker` 컴포넌트 추가 — `template_pick` 응답 감지 시 단일 질문과 동일한 양식 선택 버튼 렌더링
+- ChatPage에서 `onSend` 콜백을 CompoundCard에 전달 — 양식 선택 시 해당 sub-query 재실행
+
+#### 18) 단일 질문 schedule_clarify → ScheduleConfirmCard 적용 (`ChatPage.jsx`)
+
+**배경**: 단일 질문 "일정 잡아줘"에서 시간 누락 시 `schedule_clarify` 응답이 텍스트 메시지로만 표시되고, 복합 질문에서처럼 일정 등록 폼(ScheduleConfirmCard)이 나타나지 않는 문제.
+
+**수정**: `renderCardMessage` switch문에 `schedule_clarify` 케이스를 `schedule_confirm`과 동일하게 처리 — 제목/날짜/시간 입력 폼 + "일정 등록" 버튼이 바로 표시됨.
+
+### 다음 할 일
+
+- [ ] EC2 백엔드 배포 (develop push 완료, EC2 pull & 재시작 필요)
+- [ ] 멘토님 발표 준비 (model_test_report.html + planner_architecture.html)
+- [ ] 복합 질문 follow-up 시나리오 E2E 테스트
