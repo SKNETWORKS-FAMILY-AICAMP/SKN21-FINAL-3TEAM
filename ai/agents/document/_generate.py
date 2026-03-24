@@ -604,9 +604,18 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
         for str_field in ("title", "summary"):
             data[str_field] = _to_readable_str(data.get(str_field, ""))
 
-        _TASK_KEYS = ("task", "content", "item", "action", "할일", "내용", "업무", "name")
+        _TASK_KEYS = ("task", "content", "item", "action", "할일", "내용", "업무", "name",
+                      "ActionItem", "Action Item", "action_item", "실행항목", "후속조치")
         _DUE_KEYS  = ("due_date", "deadline", "기한", "due", "end_date", "완료일")
-        raw_ai = data.get("action_items", [])
+        # 커스텀 템플릿에서 action_items 키가 다를 수 있음 (ActionItem, 실행항목 등)
+        _AI_KEYS = ("action_items", "ActionItem", "actionItem", "action_item", "실행항목", "후속조치")
+        raw_ai = None
+        for aik in _AI_KEYS:
+            if aik in data and data[aik]:
+                raw_ai = data[aik]
+                break
+        if raw_ai is None:
+            raw_ai = []
         if isinstance(raw_ai, dict):
             raw_ai = list(raw_ai.values())
         normalized_ai = []
@@ -771,6 +780,11 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
         else:
             # 커스텀 템플릿 → sLLM 매핑으로 원본 양식에 데이터 주입
             template_file_path = getattr(template, "file_path", None) if template else None
+            # DB 경로가 backend 기준 상대경로일 수 있으므로 보정
+            if template_file_path and not Path(template_file_path).exists():
+                alt = Path("backend") / template_file_path
+                if alt.exists():
+                    template_file_path = str(alt)
             if template_file_path and Path(template_file_path).exists():
                 from ai.skills.fill_with_llm import fill_docx_with_llm
                 print(f"[DocumentAgent] sLLM 매핑으로 원본 양식 채우기: {template_file_path}")

@@ -144,7 +144,7 @@ def create_meeting_minutes(output_path: str = "회의록_test.docx", data: dict 
     style_label_cell(t0.rows[2].cells[0], "회의 장소")
     style_value_cell(t0.rows[2].cells[1])
     style_label_cell(t0.rows[2].cells[2], "회의 유형")
-    style_value_cell(t0.rows[2].cells[3], "☐ 정기  ☐ 비정기  ☐ 긴급")
+    style_value_cell(t0.rows[2].cells[3])
 
     # Row 3: 참석자 (값 셀 3개 병합)
     t0.rows[3].cells[1].merge(t0.rows[3].cells[3])
@@ -199,7 +199,7 @@ def create_meeting_minutes(output_path: str = "회의록_test.docx", data: dict 
         style_value_cell(t3.rows[r].cells[1])
         style_value_cell(t3.rows[r].cells[2])
         style_value_cell(t3.rows[r].cells[3])
-        style_value_cell(t3.rows[r].cells[4], "☐ 진행중  ☐ 완료")
+        style_value_cell(t3.rows[r].cells[4])
         set_row_height(t3.rows[r], 1.0)
 
     doc.add_paragraph()
@@ -219,12 +219,7 @@ def create_meeting_minutes(output_path: str = "회의록_test.docx", data: dict 
         _inject_cell_text(t0.rows[2].cells[1], data.get("location", ""))
 
         meeting_type = data.get("meeting_type", "")
-        type_map = {
-            "정기":   "☑ 정기  ☐ 비정기  ☐ 긴급",
-            "비정기": "☐ 정기  ☑ 비정기  ☐ 긴급",
-            "긴급":   "☐ 정기  ☐ 비정기  ☑ 긴급",
-        }
-        _inject_cell_text(t0.rows[2].cells[3], type_map.get(meeting_type, "☐ 정기  ☐ 비정기  ☐ 긴급"))
+        _inject_cell_text(t0.rows[2].cells[3], meeting_type)
 
         attendees = data.get("attendees", [])
         attendees_text = ", ".join(attendees) if isinstance(attendees, list) else str(attendees)
@@ -252,7 +247,7 @@ def create_meeting_minutes(output_path: str = "회의록_test.docx", data: dict 
             _inject_cell_text(t3.rows[r].cells[1], ai_item.get("task", "") or ai_item.get("content", ""))
             _inject_cell_text(t3.rows[r].cells[2], ai_item.get("assignee", ""))
             _inject_cell_text(t3.rows[r].cells[3], ai_item.get("due_date", ""))
-            status = ai_item.get("status", "☐ 진행중  ☐ 완료") if ai_item else "☐ 진행중  ☐ 완료"
+            status = ai_item.get("status", "") if ai_item else ""
             _inject_cell_text(t3.rows[r].cells[4], status)
 
         _inject_cell_text(t4.rows[1].cells[0], data.get("notes", ""))

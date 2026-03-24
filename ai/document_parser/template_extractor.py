@@ -192,7 +192,10 @@ def _match_field(label: str, use_mapping: bool = False) -> dict | None:
     if not normalized:
         return None
 
-    clean_label = label.strip()
+    # 라벨 내부 공백 정규화
+    # 한글 사이 공백은 제거 ("참  석  인  원" → "참석인원"), 한글-영문 사이는 유지
+    clean_label = re.sub(r'(?<=[가-힣])\s+(?=[가-힣])', '', label.strip()).strip()
+    clean_label = re.sub(r'\s+', ' ', clean_label).strip()
 
     # 명시적 제외 항목 체크 (use_mapping 여부와 무관)
     if normalized in FIELD_MAPPING and FIELD_MAPPING[normalized] is None:
@@ -260,15 +263,34 @@ def extract_template_fields(file_path: str, use_mapping: bool = False) -> list[d
     doc = Document(file_path)
     fields = []
     seen_keys = set()
+    seen_semantic_keys = set()  # FIELD_MAPPING 영어 key 기준 의미 중복 방지
 
     def _add_field(label: str):
-        """라벨 유효성 검사 → 매핑 → 중복 체크 → 추가"""
+        """라벨 유효성 검사 → 매핑 → 중복 체크 (키 + 의미) → 추가"""
         if not _is_valid_label(label):
             return
         field = _match_field(label, use_mapping=use_mapping)
-        if field and field["key"] not in seen_keys:
-            seen_keys.add(field["key"])
-            fields.append(field)
+        if not field or field["key"] in seen_keys:
+            return
+        # 의미 중복 체크: FIELD_MAPPING에서 같은 영어 key로 매핑되는 필드 방지
+        normalized = _normalize_label(label)
+        semantic_key = None
+        if normalized in FIELD_MAPPING and FIELD_MAPPING[normalized]:
+            semantic_key = FIELD_MAPPING[normalized]["key"]
+        else:
+            for map_key in _SORTED_MAPPING_KEYS:
+                mapping = FIELD_MAPPING[map_key]
+                if mapping is None:
+                    continue
+                if map_key in normalized.lower() or normalized.lower() in map_key:
+                    semantic_key = mapping["key"]
+                    break
+        if semantic_key and semantic_key in seen_semantic_keys:
+            return  # 의미 중복 — 스킵
+        if semantic_key:
+            seen_semantic_keys.add(semantic_key)
+        seen_keys.add(field["key"])
+        fields.append(field)
 
     # ── 1. 테이블에서 필드 추출 ──
     for table in doc.tables:
@@ -285,53 +307,71 @@ def extract_template_fields(file_path: str, use_mapping: bool = False) -> list[d
                 _add_field(first_cells[0])
 
         # 1-b. 열 헤더 행 탐지: 첫 행의 거의 모든 셀에 짧은 텍스트
-        #      (예: ['구분', '내용', '비고'] → 스킵하고 데이터 행에서 추출)
+        #      (예: ['구분', '내용', '비고'] → 컬럼 헤더를 필드로 추출)
         header_row_idx = -1
         if len(rows) >= 2 and num_cols >= 2:
             first_cells = [c.text.strip() for c in rows[0].cells]
             text_cells = [c for c in first_cells if c and len(c) <= 10]
             if len(text_cells) >= num_cols * 0.6:
                 header_row_idx = 0
+                # 컬럼 헤더 추출은 배열 테이블 감지 후에 처리 (1-b3에서)
 
-        # 1-b2. 배열 테이블 감지: 첫 열에 같은 텍스트 반복 + 컬럼 헤더
-        #       (예: 결정사항|내용|진행일정 → sub_keys=["내용","진행일정"])
+        # 1-b2. 배열 테이블 감지
+        #   패턴 A: 첫 열에 같은 텍스트 반복 (결정사항|내용|진행일정)
+        #   패턴 B: 병합 헤더 + No. 번호열 + 컬럼 헤더 (4.추진일정|No.|항목|1단계|...)
         _array_table_handled = False
         if len(rows) >= 3 and num_cols >= 2:
             first_col_texts = [re.sub(r'\s+', '', rows[ri].cells[0].text.strip()) for ri in range(len(rows))]
-            # 첫 열에서 가장 많이 반복되는 텍스트 찾기
             from collections import Counter
             col0_counts = Counter(t for t in first_col_texts if t)
+
+            # 패턴 A: 첫 열에 같은 텍스트 3행 이상 반복
+            array_label = None
+            array_header_row = None
             if col0_counts:
                 most_common_label, count = col0_counts.most_common(1)[0]
-                # 3행 이상 반복되면 배열 테이블
                 if count >= 3 and most_common_label:
-                    # 원본 라벨 (공백 포함)
-                    original_label = None
                     for ri in range(len(rows)):
                         t = rows[ri].cells[0].text.strip()
                         if re.sub(r'\s+', '', t) == most_common_label:
-                            original_label = t
+                            array_label = t
+                            array_header_row = ri
                             break
 
-                    # 컬럼 헤더 추출: 반복 라벨이 있는 첫 행의 다른 열
-                    header_row = None
-                    for ri in range(len(rows)):
-                        if re.sub(r'\s+', '', rows[ri].cells[0].text.strip()) == most_common_label:
-                            header_row = ri
-                            break
+            # 패턴 B: 병합 헤더(R0) + No./번호 열(R1) + 데이터 행(R2+)
+            if not array_label and len(rows) >= 4:
+                r0_cells = [c.text.strip() for c in rows[0].cells]
+                r1_cells = [c.text.strip() for c in rows[1].cells]
+                r0_unique = set(r0_cells)
+                r1_c0 = re.sub(r'\s+', '', r1_cells[0]).lower() if r1_cells else ""
+                # R0: 병합 헤더 (모든 셀 같은 텍스트) + R1C0: "No." 또는 번호
+                if len(r0_unique) == 1 and r0_cells[0] and r1_c0 in ("no", "no.", "번호"):
+                    array_label = r0_cells[0]
+                    array_header_row = 1  # 컬럼 헤더는 R1
 
-                    sub_keys = []
-                    if header_row is not None:
-                        for ci in range(1, num_cols):
-                            col_header = re.sub(r'\s+', ' ', rows[header_row].cells[ci].text.strip()).strip()
-                            # 배열 테이블 컬럼 헤더는 "내용", "비고" 등도 허용 (_NON_LABEL_WORDS 무시)
-                            if col_header and len(col_header) <= 20 and re.search(r'[가-힣a-zA-Z]', col_header):
-                                sub_keys.append(col_header)
+            if array_label:
+                # 컬럼 헤더 추출
+                sub_keys = []
+                if array_header_row is not None:
+                    for ci in range(1, num_cols):
+                        col_header = re.sub(r'\s+', ' ', rows[array_header_row].cells[ci].text.strip()).strip()
+                        if col_header and len(col_header) <= 20 and re.search(r'[가-힣a-zA-Z]', col_header):
+                            sub_keys.append(col_header)
 
-                    if original_label and _is_valid_label(original_label):
-                        field = _match_field(original_label, use_mapping=use_mapping)
-                        if field and field["key"] not in seen_keys:
-                            # sub_keys가 있으면 description에 포함
+                if _is_valid_label(array_label):
+                    field = _match_field(array_label, use_mapping=use_mapping)
+                    if field:
+                        if field["key"] in seen_keys:
+                            # 이미 추출된 필드 → sub_keys만 업데이트
+                            if sub_keys:
+                                for existing in fields:
+                                    if existing["key"] == field["key"]:
+                                        existing["sub_keys"] = sub_keys
+                                        existing["description"] = f"각 항목은 {', '.join(sub_keys)} 필드를 가진 객체 배열"
+                                        break
+                                _array_table_handled = True
+                                logger.info("배열 테이블 감지 (기존 필드 업데이트): %s → sub_keys=%s", array_label, sub_keys)
+                        else:
                             if sub_keys:
                                 field["description"] = f"각 항목은 {', '.join(sub_keys)} 필드를 가진 객체 배열"
                                 field["sub_keys"] = sub_keys
@@ -340,7 +380,14 @@ def extract_template_fields(file_path: str, use_mapping: bool = False) -> list[d
                             seen_keys.add(field["key"])
                             fields.append(field)
                             _array_table_handled = True
-                            logger.info("배열 테이블 감지: %s → sub_keys=%s", original_label, sub_keys)
+                            logger.info("배열 테이블 감지: %s → sub_keys=%s", array_label, sub_keys)
+
+        # 1-b3. 배열 테이블이 아닌 header_row의 컬럼 헤더를 필드로 추출
+        if header_row_idx >= 0 and not _array_table_handled:
+            first_cells = [c.text.strip() for c in rows[header_row_idx].cells]
+            for cell_text in first_cells:
+                if cell_text:
+                    _add_field(cell_text)
 
         for ri, row in enumerate(rows):
             cells = [c.text.strip() for c in row.cells]
@@ -349,6 +396,13 @@ def extract_template_fields(file_path: str, use_mapping: bool = False) -> list[d
             if num_cols == 1 and ri == 0 and cells[0]:
                 _add_field(cells[0])
                 continue
+
+            # 1-c2. 다열 행에서 모든 셀이 같은 텍스트 = 병합 라벨 (예: "특이사항/건의 사항")
+            if num_cols >= 2 and ri > 0:
+                unique_texts = set(c for c in cells if c)
+                if len(unique_texts) == 1:
+                    _add_field(unique_texts.pop())
+                    continue
 
             # 열 헤더 행이면 스킵
             if ri == header_row_idx:
