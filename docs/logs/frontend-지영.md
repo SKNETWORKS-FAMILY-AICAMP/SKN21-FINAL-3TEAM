@@ -4073,8 +4073,22 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 - **프론트엔드** (`useSSE.js`): `compoundRef` 플래그 추가. `compound_start` 이벤트 수신 시 `true`로 설정, 이후 `token` 이벤트 무시 → 상태 메시지("처리 중...")만 표시
 - **백엔드** (`chat.py`): compound sub-query 메시지의 토큰 스트리밍 코드 제거 (CompoundCard가 직접 렌더링하므로 불필요)
 
+#### 17) CompoundCard에 TemplatePicker 통합 (`CompoundCard.jsx`, `ChatPage.jsx`)
+
+**배경**: 복합 질문에서 `doc_generate` sub-query가 `template_pick` 응답을 반환하면 "회의록 양식을 선택해주세요:" 텍스트만 표시되고, 단일 질문처럼 양식 선택 버튼이 나타나지 않는 문제.
+
+**수정**:
+- CompoundCard에 `TemplatePicker` 컴포넌트 추가 — `template_pick` 응답 감지 시 단일 질문과 동일한 양식 선택 버튼 렌더링
+- ChatPage에서 `onSend` 콜백을 CompoundCard에 전달 — 양식 선택 시 해당 sub-query 재실행
+
+#### 18) 단일 질문 schedule_clarify → ScheduleConfirmCard 적용 (`ChatPage.jsx`)
+
+**배경**: 단일 질문 "일정 잡아줘"에서 시간 누락 시 `schedule_clarify` 응답이 텍스트 메시지로만 표시되고, 복합 질문에서처럼 일정 등록 폼(ScheduleConfirmCard)이 나타나지 않는 문제.
+
+**수정**: `renderCardMessage` switch문에 `schedule_clarify` 케이스를 `schedule_confirm`과 동일하게 처리 — 제목/날짜/시간 입력 폼 + "일정 등록" 버튼이 바로 표시됨.
+
 ### 다음 할 일
 
+- [ ] EC2 백엔드 배포 (develop push 완료, EC2 pull & 재시작 필요)
 - [ ] 멘토님 발표 준비 (model_test_report.html + planner_architecture.html)
-- [ ] compound 결과에서 doc_generate sub-query도 인터랙티브 UI 적용 검토
 - [ ] 복합 질문 follow-up 시나리오 E2E 테스트

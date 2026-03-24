@@ -318,7 +318,8 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       );
     }
 
-    case 'schedule_confirm': {
+    case 'schedule_confirm':
+    case 'schedule_clarify': {
       const sched = data.schedule || {};
       return (
         <ScheduleConfirmCard
@@ -418,7 +419,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
     }
 
     case 'compound': {
-      return <CompoundCard data={data} />;
+      return <CompoundCard data={data} onSend={onSelectClarify} />;
     }
 
     case 'doc_pick': {

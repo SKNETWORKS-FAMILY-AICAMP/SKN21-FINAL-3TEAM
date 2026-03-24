@@ -1,6 +1,7 @@
-import { Scale, Search, FileText, FileSearch, CalendarPlus, CalendarDays, MessageCircle, Layers } from 'lucide-react';
+import { Scale, Search, FileText, FileSearch, CalendarPlus, CalendarDays, MessageCircle, Layers, Star } from 'lucide-react';
 import MarkdownText from './MarkdownText';
 import ScheduleConfirmCard from './ScheduleConfirmCard';
+import useChatStore from '../../store/chatStore';
 
 const SUB_CONFIG = {
   judgment:      { icon: Scale,        label: '규정 판단',    border: 'border-l-primary-500', badge: 'bg-primary-50 text-primary-700' },
@@ -16,7 +17,48 @@ const SUB_CONFIG = {
 // schedule_add 관련 응답 타입 (ScheduleConfirmCard로 렌더링)
 const SCHEDULE_FORM_TYPES = new Set(['schedule_add', 'schedule_confirm', 'schedule_clarify']);
 
-export default function CompoundCard({ data }) {
+function TemplatePicker({ templates, templateType, query, onSend }) {
+  return (
+    <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
+      {templates.map((tpl, idx) => (
+        <button
+          key={idx}
+          onClick={() => {
+            useChatStore.getState().setSelectedTemplate(tpl.template_id, tpl.name, templateType);
+            onSend?.(query, { silent: true });
+          }}
+          className="p-3 bg-surface-card border border-neutral-border rounded-xl hover:bg-primary-50 hover:border-primary-300 transition text-left"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            {tpl.is_system ? (
+              <Star size={14} className="text-amber-500 fill-amber-500" />
+            ) : (
+              <FileText size={14} className="text-primary-500" />
+            )}
+            <span className="font-medium text-sm text-neutral-main">{tpl.name}</span>
+            {tpl.recommended && (
+              <span className="px-1.5 py-0.5 text-[10px] bg-amber-100 text-amber-700 rounded font-medium">추천</span>
+            )}
+            <span className="ml-auto text-xs text-neutral-muted">
+              {tpl.is_system ? '시스템' : '업로드'}
+            </span>
+          </div>
+          {tpl.field_labels?.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {tpl.field_labels.map((label, i) => (
+                <span key={i} className="px-1.5 py-0.5 text-xs bg-neutral-100 text-neutral-600 rounded">
+                  {label}
+                </span>
+              ))}
+            </div>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export default function CompoundCard({ data, onSend }) {
   const subResponses = data?.sub_responses || [];
 
   if (!subResponses.length) return null;
@@ -39,6 +81,10 @@ export default function CompoundCard({ data }) {
         const isScheduleForm = intent === 'schedule_add' || SCHEDULE_FORM_TYPES.has(respType);
         const scheduleData = sub.response?.schedule;
 
+        // template_pick: 양식 선택 버튼 렌더링
+        const isTemplatePick = respType === 'template_pick';
+        const templates = sub.response?.templates || [];
+
         return (
           <div
             key={i}
@@ -56,6 +102,18 @@ export default function CompoundCard({ data }) {
 
             {isScheduleForm ? (
               <ScheduleConfirmCard initialData={scheduleData || {}} />
+            ) : isTemplatePick ? (
+              <div className="space-y-2">
+                {message && (
+                  <div className="text-sm text-neutral-main">{message}</div>
+                )}
+                <TemplatePicker
+                  templates={templates}
+                  templateType={sub.response?.template_type}
+                  query={sub.query}
+                  onSend={onSend}
+                />
+              </div>
             ) : message ? (
               <div className="text-sm leading-relaxed text-neutral-main">
                 <MarkdownText>{message}</MarkdownText>
