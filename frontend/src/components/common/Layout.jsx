@@ -87,20 +87,12 @@ export default function Layout() {
 
     let newVal;
     if (isChat) {
-      // 챗봇: 방향 기반 (스크롤 다운 → 줄어듦, 스크롤 업 → 커짐)
-      const { scrollHeight, clientHeight } = e.target;
-      const scrollableRange = scrollHeight - clientHeight;
-      const delta = scrollTop - prevScrollTopRef.current;
-      prevScrollTopRef.current = scrollTop; // 블록 중에도 항상 갱신
-      if (navBlockRef.current) return;
-      // scrollTop이 0이 됐는데 헤더가 숨겨진 경우 → resizing 중에도 항상 복원
-      // (topbar 축소로 컨테이너가 커져 브라우저가 scrollTop을 0으로 자동 조정할 때)
-      if (scrollTop === 0 && isScrolledRef.current) newVal = false;
-      // 스크롤 가능 범위가 충분해야만 줄어듦 (topbar 44px + 여유 20px = 64px)
-      else if (resizingRef.current) return;
-      else if (delta > 5 && scrollableRange > 64) newVal = true;
-      else if (delta < -5) newVal = false;
-      else return;
+      // 챗봇 페이지: 스크롤 이벤트로 isScrolled(topbar/padding)를 변경하지 않음.
+      // padding이 180px→0으로 변하면 컨테이너가 커져 scrollTop이 0으로 강제되고
+      // 다시 padding이 복원되는 피드백 루프가 발생하여 스크롤 바운스 버그를 유발함.
+      // 챗봇 스크롤 위치만 추적하고 Layout의 isScrolled에는 영향 없음.
+      prevScrollTopRef.current = scrollTop;
+      return;
     } else {
       // 일반 페이지: 위치 기반
       // 챗봇 페이지에서 main 엘리먼트 잔여 스크롤 이벤트(이전 페이지 scrollTop)를 무시
