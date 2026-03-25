@@ -33,7 +33,7 @@ async def _load_chat_context(db: AsyncSession, request: ChatRequest, user, initi
                 select(ChatLog)
                 .where(ChatLog.session_id == request.session_id, ChatLog.user_id == user.id)
                 .order_by(ChatLog.created_at.desc())
-                .limit(6)  # 최근 3턴
+                .limit(10)  # 최근 5턴
             )
             hist_logs = list(reversed(hist_result.scalars().all()))
             chat_history = []
@@ -144,7 +144,7 @@ def _get_agent_type(intent: str) -> str:
 async def _maybe_update_summary(db: AsyncSession, session_id: str, user_id: int):
     """대화가 3턴을 초과하면 sLLM으로 요약을 갱신한다.
 
-    최근 3턴(6메시지)은 chat_history로 직접 전달되므로,
+    최근 5턴(10메시지)은 chat_history로 직접 전달되므로,
     그보다 오래된 메시지만 요약에 포함시킨다.
     """
     from sqlalchemy import func as sa_func
@@ -173,7 +173,7 @@ async def _maybe_update_summary(db: AsyncSession, session_id: str, user_id: int)
         return
 
     # 최근 3턴을 제외한 나머지(요약 대상) 로드
-    recent_skip = SUMMARY_TRIGGER_TURNS  # 최근 3턴은 제외
+    recent_skip = SUMMARY_TRIGGER_TURNS  # 최근 5턴은 제외
     older_result = await db.execute(
         select(ChatLog)
         .where(ChatLog.session_id == session_id, ChatLog.user_id == user_id)

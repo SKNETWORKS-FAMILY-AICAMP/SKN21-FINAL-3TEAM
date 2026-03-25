@@ -19,7 +19,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # 요약 트리거 기준: 이 턴 수를 초과하면 요약 생성
-SUMMARY_TRIGGER_TURNS = 3  # 3턴(6메시지) 초과 시
+SUMMARY_TRIGGER_TURNS = 5  # 5턴(10메시지) 초과 시
 
 CHAT_SUMMARY_SYSTEM_PROMPT = """\
 당신은 대화 요약 전문가입니다.
