@@ -1083,10 +1083,16 @@ async def suggest_for_project(
     _proj_llm_args = dict(prompt=context, system_prompt=PROJECT_SUGGEST_SYSTEM_PROMPT, json_mode=True, temperature=0.4, max_tokens=2000)
     _proj_context = {"project_name": project_name, "total_tasks": total_tasks, "stage_counts": stage_counts, "done_pct": done_pct, "upcoming_events": len(schedule_summary), "members": project_members}
 
-    def _build_proj_result(result, model_info):
-        for a in result.get("approvals", []):
+    async def _build_proj_result(result, model_info):
+        approvals = result.get("approvals", [])
+        schedules = result.get("schedules", [])
+        if not approvals and not schedules:
+            return None  # LLM이 빈 결과 → fallback으로
+        for a in approvals:
             a["related_project"] = project_name
-        return {"approvals": result.get("approvals", []), "schedules": result.get("schedules", []), "context": _proj_context, "model_info": model_info}
+        approvals = await _check_regulations_for_items(approvals, item_type="approval")
+        schedules = await _check_regulations_for_items(schedules, item_type="schedule")
+        return {"approvals": approvals, "schedules": schedules, "context": _proj_context, "model_info": model_info}
 
     # 5-1. sLLM 시도
     try:
@@ -1094,7 +1100,10 @@ async def suggest_for_project(
         logger.info(f"[프로젝트추천] sLLM 호출: model={getattr(llm, 'model', '?')}")
         response = await llm.generate(**_proj_llm_args)
         result = json.loads(response.content)
-        return _build_proj_result(result, {"provider": "sllm", "model": getattr(response, 'model', getattr(llm, 'model', 'unknown')), "provider_class": "VLLMProvider"})
+        built = await _build_proj_result(result, {"provider": "sllm", "model": getattr(response, 'model', getattr(llm, 'model', 'unknown')), "provider_class": "VLLMProvider"})
+        if built:
+            return built
+        logger.info("[프로젝트추천] sLLM 빈 결과 → fallback")
     except Exception as e:
         logger.warning(f"[프로젝트추천] sLLM 실패, OpenAI fallback: {e}")
 
@@ -1104,7 +1113,10 @@ async def suggest_for_project(
         logger.info(f"[프로젝트추천] OpenAI fallback: model={getattr(llm, 'model', '?')}")
         response = await llm.generate(**_proj_llm_args)
         result = json.loads(response.content)
-        return _build_proj_result(result, {"provider": "api", "model": getattr(response, 'model', getattr(llm, 'model', 'unknown')) + " (fallback)", "provider_class": "OpenAIProvider"})
+        built = await _build_proj_result(result, {"provider": "api", "model": getattr(response, 'model', getattr(llm, 'model', 'unknown')) + " (fallback)", "provider_class": "OpenAIProvider"})
+        if built:
+            return built
+        logger.info("[프로젝트추천] OpenAI 빈 결과 → fallback")
     except Exception as e:
         logger.error(f"[프로젝트추천] OpenAI fallback도 실패: {e}", exc_info=True)
 
