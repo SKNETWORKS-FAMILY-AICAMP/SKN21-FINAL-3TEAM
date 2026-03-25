@@ -1240,6 +1240,24 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                                                     <h4 className="text-sm font-bold text-neutral-main leading-snug mb-1">{item.title}</h4>
                                                     <p className="text-[11px] text-neutral-sub leading-relaxed mb-2">{item.detail}</p>
                                                     <p className="text-[10px] text-violet-500 dark:text-violet-400 font-medium">{item.reason}</p>
+                                                    {item.regulation_warning && (
+                                                        <div className={`mt-2 flex items-start gap-1.5 p-2 rounded-lg border ${
+                                                            item.regulation_warning.level === 'danger'
+                                                                ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
+                                                                : 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800'
+                                                        }`}>
+                                                            <AlertTriangle size={11} className={item.regulation_warning.level === 'danger' ? 'text-red-500 shrink-0 mt-0.5' : 'text-amber-500 shrink-0 mt-0.5'} />
+                                                            <div>
+                                                                <p className={`text-[9px] font-bold ${item.regulation_warning.level === 'danger' ? 'text-red-600' : 'text-amber-600'}`}>
+                                                                    {item.regulation_warning.level === 'danger' ? '규정 위반' : '규정 확인 필요'}
+                                                                </p>
+                                                                <p className="text-[8px] text-neutral-sub leading-relaxed">{item.regulation_warning.message}</p>
+                                                                {item.regulation_warning.regulation && (
+                                                                    <p className="text-[8px] text-neutral-muted mt-0.5">근거: {item.regulation_warning.regulation}</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="mt-2 pt-2 border-t border-neutral-100 dark:border-neutral-700">
@@ -1286,6 +1304,24 @@ export default function KanbanBoard({ onReady, externalActions, filterProject, p
                                                     </span>
                                                 )}
                                             </div>
+                                            {item.regulation_warning && (
+                                                <div className={`mb-2 flex items-start gap-1.5 p-2 rounded-lg border ${
+                                                    item.regulation_warning.level === 'danger'
+                                                        ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
+                                                        : 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800'
+                                                }`}>
+                                                    <AlertTriangle size={11} className={item.regulation_warning.level === 'danger' ? 'text-red-500 shrink-0 mt-0.5' : 'text-amber-500 shrink-0 mt-0.5'} />
+                                                    <div>
+                                                        <p className={`text-[9px] font-bold ${item.regulation_warning.level === 'danger' ? 'text-red-600' : 'text-amber-600'}`}>
+                                                            {item.regulation_warning.level === 'danger' ? '규정 위반' : '규정 확인 필요'}
+                                                        </p>
+                                                        <p className="text-[8px] text-neutral-sub leading-relaxed">{item.regulation_warning.message}</p>
+                                                        {item.regulation_warning.regulation && (
+                                                            <p className="text-[8px] text-neutral-muted mt-0.5">근거: {item.regulation_warning.regulation}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
                                             <button
                                                 onClick={() => openSchedulePicker(item, idx)}
                                                 className="w-full mt-1 px-3 py-1.5 text-[11px] font-bold rounded-lg bg-violet-500 text-white hover:bg-violet-600 active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm"
