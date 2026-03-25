@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { listApprovals, createApproval, approveRequest, rejectRequest, deleteApproval, updateApproval, suggestApprovals, downloadApprovalFile, getApprovalFileBlobUrl } from '../../api/approvals';
 import { createSchedule } from '../../api/schedules';
-import { listPipelineTasks } from '../../api/tasks';
+import { listPipelineTasks, listProjects } from '../../api/tasks';
 import { getAllMembers } from '../../api/auth';
 import client from '../../api/client';
 import useAuthStore from '../../store/authStore';
@@ -119,6 +119,8 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
     const [pickerShareScope, setPickerShareScope] = useState('project'); // 'team' | 'project'
     const [pickerGoogleMeet, setPickerGoogleMeet] = useState(false);
     const [pickerAttendees, setPickerAttendees] = useState('');  // comma-separated emails
+    const [pickerProjects, setPickerProjects] = useState([]);
+    const [pickerProjectName, setPickerProjectName] = useState('');
 
     // Schedule result modal (success / failure)
     const [scheduleResult, setScheduleResult] = useState(null); // { success: bool, title: string, message: string }
@@ -129,6 +131,21 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
     // LLM model info for debugging
     const [suggestModelInfo, setSuggestModelInfo] = useState(null);
     const [schedModelInfo, setSchedModelInfo] = useState(null);
+
+    // 프로젝트 목록 로딩 (일정 추가 모달에서 프로젝트 선택용)
+    useEffect(() => {
+        listProjects().then((res) => {
+            const list = res.data || [];
+            const seen = new Set();
+            const unique = list.filter((p) => {
+                if (seen.has(p.name)) return false;
+                seen.add(p.name);
+                return true;
+            });
+            setPickerProjects(unique);
+            if (unique.length > 0) setPickerProjectName(unique[0].name);
+        }).catch(() => setPickerProjects([]));
+    }, []);
 
     const loadAll = async () => {
         setLoading(true);
@@ -423,6 +440,7 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                 priority: s.priority || 'medium',
                 create_meet: pickerGoogleMeet,
                 share_scope: pickerShareScope,
+                project_name: pickerShareScope === 'project' ? pickerProjectName || null : null,
                 attendees: attendeeList.length > 0 ? attendeeList : undefined,
             });
 
@@ -1360,8 +1378,8 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                             </div>
 
                             {/* 공유 범위 */}
-                            <div>
-                                <div className="flex gap-2">
+                            <div className="space-y-2">
+                                <div className="flex gap-2 justify-center">
                                     <button
                                         onClick={() => setPickerShareScope('team')}
                                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${
@@ -1383,6 +1401,17 @@ export default function ApprovalPanel({ onReady, externalActions, onScheduleAdde
                                         프로젝트 공유
                                     </button>
                                 </div>
+                                {pickerShareScope === 'project' && pickerProjects.length > 0 && (
+                                    <select
+                                        value={pickerProjectName}
+                                        onChange={(e) => setPickerProjectName(e.target.value)}
+                                        className="w-full px-3 py-2 border border-neutral-border rounded-lg text-sm bg-white dark:bg-black/20 outline-none focus:border-primary-500 transition"
+                                    >
+                                        {pickerProjects.map((p) => (
+                                            <option key={p.id} value={p.name}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                )}
                             </div>
 
                             {/* 날짜 */}
