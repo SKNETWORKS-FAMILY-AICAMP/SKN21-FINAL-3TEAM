@@ -137,7 +137,7 @@ def _get_agent_type(intent: str) -> str:
     elif intent.startswith("schedule_"):
         return "schedule_agent"
     elif intent in ("pipeline_create", "approval_create"):
-        return "action_agent"
+        return "schedule_agent"
     return "general"
 
 
