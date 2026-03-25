@@ -4173,6 +4173,12 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 - 수정: `messages.some(m => m.content === USAGE_GUIDE_TEXT)`로 이미 사용법 메시지가 존재하면 버튼 숨김
 - `renderCardMessage` 내부와 직접 렌더 경로 모두 적용
 
+#### 11) 문서 검색 결과 UI 개선 (`_search.py`, `ChatPage.jsx`, `SourceList.jsx`)
+
+- **백엔드** (`ai/agents/document/_search.py`): 검색 결과 번호 리스트 제거 → `N건의 관련 문서를 찾았습니다.` 한 줄로 변경 + 상위 5건만 반환
+- **프론트엔드** (`frontend/src/pages/ChatPage.jsx`): 검색 카드 내 불필요한 안내 문구 제거
+- **`SourceList.jsx` 신규**: 관련 문서 목록 접기/펼치기 컴포넌트 — 기본 펼침, `▶ 관련 문서 (N건)` 클릭으로 토글
+
 ### 다음 할 일
 
 - [ ] E2E 멀티스텝 테스트 3-step / 4-step / 5-step 진행
