@@ -171,24 +171,56 @@ async def startup_preload():
 
     async def _background_preload():
         import time
-        await asyncio.sleep(3)  # 서버가 먼저 요청을 받을 수 있도록 대기
-        print("[Background] RAG 파이프라인 pre-loading 시작...")
+        import concurrent.futures
+        print("[Background] 모델 pre-loading 시작 (RAG + Reranker + Intent Classifier)...")
         _t = time.time()
+        loop = asyncio.get_event_loop()
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
+
+        def _load_rag():
+            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+            get_qdrant_pipeline()
+            return "RAG"
+
+        def _load_reranker():
+            from ai.rag.reranker import Reranker
+            Reranker().load_model()
+            return "Reranker"
+
+        def _load_classifier():
+            try:
+                from ai.agents.orchestrator import get_classifier
+                get_classifier()
+                return "Classifier"
+            except Exception as e:
+                print(f"[Background] Intent Classifier 로드 실패 (비차단): {e}")
+                return "Classifier (실패)"
 
         try:
-            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
-            await asyncio.wait_for(
-                asyncio.get_event_loop().run_in_executor(None, get_qdrant_pipeline),
-                timeout=180
+            results = await asyncio.wait_for(
+                asyncio.gather(
+                    loop.run_in_executor(executor, _load_rag),
+                    loop.run_in_executor(executor, _load_reranker),
+                    loop.run_in_executor(executor, _load_classifier),
+                    return_exceptions=True,
+                ),
+                timeout=180,
             )
-            print(f"[Background] RAG 파이프라인 로드 완료 — 임베딩+Qdrant+BM25+Reranker ({time.time()-_t:.2f}s)")
+            for r in results:
+                if isinstance(r, Exception):
+                    print(f"[Background] 로드 실패 (비차단): {r}")
+                else:
+                    print(f"[Background] {r} 로드 완료")
+            print(f"[Background] 전체 pre-loading 완료 ({time.time()-_t:.2f}s)")
         except asyncio.TimeoutError:
-            print("[Background] RAG 파이프라인 로드 타임아웃 (180초 초과, 건너뜀)")
+            print("[Background] pre-loading 타임아웃 (180초 초과, 건너뜀)")
         except Exception as e:
-            print(f"[Background] RAG 파이프라인 로드 실패 (서비스는 계속 가능): {e}")
+            print(f"[Background] pre-loading 실패 (서비스는 계속 가능): {e}")
+        finally:
+            executor.shutdown(wait=False)
 
     asyncio.create_task(_background_preload())
-    print("[Startup] RAG pre-loading 백그라운드 등록 완료 (서버 즉시 가동)")
+    print("[Startup] 모델 pre-loading 백그라운드 등록 완료 (서버 즉시 가동)")
 
 @app.on_event("shutdown")
 async def shutdown_dispose_engine():
