@@ -44,7 +44,9 @@ def _extract_prev_agent_context(chat_history: list[dict]) -> dict | None:
 
         if ar_type == "doc_retrieve":
             sources = ar.get("sources", [])
-            best = next((s for s in sources if s.get("document_id")), sources[0] if sources else {})
+            if not sources:
+                continue
+            best = next((s for s in sources if s.get("document_id")), sources[0])
             base["agent_type"] = "document"
             base["document"] = {
                 "title": best.get("title", ""),
