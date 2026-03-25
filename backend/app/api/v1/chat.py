@@ -24,6 +24,60 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _extract_prev_agent_context(chat_history: list[dict]) -> dict | None:
+    """chat_history에서 가장 최근 Agent 결과를 cross-agent 맥락용으로 압축 추출"""
+    for i, msg in enumerate(reversed(chat_history)):
+        if msg.get("role") != "assistant":
+            continue
+        ar = msg.get("agentResponse")
+        if not ar or not isinstance(ar, dict):
+            continue
+
+        ar_type = ar.get("type", "")
+        turn_ago = (i // 2) + 1
+
+        # 3턴 이상 전 결과는 무시
+        if turn_ago > 3:
+            return None
+
+        base = {"intent": ar_type, "turn_ago": turn_ago}
+
+        if ar_type == "doc_retrieve":
+            sources = ar.get("sources", [])
+            best = next((s for s in sources if s.get("document_id")), sources[0] if sources else {})
+            base["agent_type"] = "document"
+            base["document"] = {
+                "title": best.get("title", ""),
+                "document_id": best.get("document_id"),
+                "summary": ar.get("message", "")[:300],
+                "sources_count": len(sources),
+            }
+            return base
+
+        elif ar_type == "judgment":
+            base["agent_type"] = "judgment"
+            base["judgment"] = {
+                "result": ar.get("result", ""),
+                "confidence": ar.get("confidence", 0),
+                "reasoning": ar.get("reasoning", "")[:300],
+                "cited_regulations": [c.get("article", "") for c in ar.get("citations", [])[:3]],
+            }
+            return base
+
+        elif ar_type in ("schedule_add", "schedule_followup"):
+            sched = ar.get("schedule", {})
+            base["agent_type"] = "schedule"
+            base["schedule"] = {
+                "title": sched.get("title", ""),
+                "date": sched.get("date", ""),
+                "time": sched.get("time", ""),
+                "event_id": ar.get("event_id", ""),
+            }
+            return base
+
+    return None
+
+
 async def _load_chat_context(db: AsyncSession, request: ChatRequest, user, initial_state: dict):
     """chat_history + document_content 로딩 (스트리밍/비스트리밍 공통)"""
     # 1. 이전 대화 이력 + 세션 요약 로드
@@ -49,6 +103,13 @@ async def _load_chat_context(db: AsyncSession, request: ChatRequest, user, initi
                     "agentResponse": ar,
                 })
             initial_state["chat_history"] = chat_history
+
+            # cross-agent 맥락 추출
+            prev_ctx = _extract_prev_agent_context(chat_history)
+            if prev_ctx:
+                initial_state["prev_agent_context"] = prev_ctx
+                logger.debug("[Chat] prev_agent_context: type=%s, turn_ago=%d",
+                             prev_ctx.get("agent_type"), prev_ctx.get("turn_ago", 0))
 
             # 세션 요약 로드
             sess_result = await db.execute(
@@ -125,6 +186,7 @@ def _build_initial_state(request: ChatRequest, user, stream_mode: bool = False) 
         "sub_queries": None,
         "sub_responses": None,
         "force_intent": request.force_intent,
+        "prev_agent_context": None,
     }
 
 

@@ -120,6 +120,21 @@ async def document_agent(state: AgentState) -> AgentState:
                     user_input = f"{prev_title} {user_input}"
                     print(f"[DocumentAgent] follow-up → 쿼리 보강: '{user_input[:60]}'")
 
+            # ── cross-agent 맥락: schedule/judgment → document 쿼리 보강 ──
+            prev_ctx = state.get("prev_agent_context")
+            if prev_ctx and prev_ctx.get("agent_type") != "document" and prev_ctx.get("turn_ago", 99) <= 2:
+                if not document_content and not is_followup:
+                    cross_title = ""
+                    if prev_ctx.get("agent_type") == "schedule":
+                        cross_title = prev_ctx.get("schedule", {}).get("title", "")
+                    elif prev_ctx.get("agent_type") == "judgment":
+                        # judgment의 cited_regulations에서 키워드 추출
+                        regs = prev_ctx.get("judgment", {}).get("cited_regulations", [])
+                        cross_title = " ".join(regs[:2]) if regs else ""
+                    if cross_title and re.search(r"(관련|첨부|연결|참고|문서|자료|회의록|규정)", user_input):
+                        user_input = f"{cross_title} {user_input}"
+                        print(f"[DocumentAgent] cross-agent 쿼리 보강: '{user_input[:60]}'")
+
             # ── 라우팅 ──
             _is_summary = bool(document_content or document_id or _has_summary_keyword)
 
