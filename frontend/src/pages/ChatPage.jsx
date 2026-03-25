@@ -16,6 +16,7 @@ import ScheduleConfirmCard from '../components/chat/ScheduleConfirmCard';
 import GenerateCard from '../components/chat/GenerateCard';
 import MarkdownText from '../components/chat/MarkdownText';
 import SourceItem from '../components/chat/SourceItem';
+import SourceList from '../components/chat/SourceList';
 import CompoundCard from '../components/chat/CompoundCard';
 import useChat from '../hooks/useChat';
 import useChatStore from '../store/chatStore';
@@ -272,14 +273,8 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
             </div>
             <div className="p-4">
               {(content || data.answer || data.message) && <div className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3"><MarkdownText>{content || data.answer || data.message}</MarkdownText></div>}
-              {/* 개선5: 개별 문서 액션 버튼 */}
               {sources.length > 0 && (
-                <div>
-                  <div className="text-xs font-semibold text-neutral-sub mb-2">출처 ({sources.length}건)</div>
-                  {sources.map((s, idx) => (
-                    <SourceItem key={idx} source={s} index={idx} onSelect={onSelectDoc} />
-                  ))}
-                </div>
+                <SourceList sources={sources} onSelect={onSelectDoc} />
               )}
             </div>
           </div>

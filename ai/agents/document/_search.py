@@ -89,7 +89,8 @@ async def _handle_doc_search(
             seen_titles.add(title)
         unique_sources.append(s)
 
-    # 4. LLM 없이 검색 결과 메시지 구성
+    # 4. 상위 5건만 반환
+    unique_sources = unique_sources[:5]
     n = len(unique_sources)
     message = f"**{n}건**의 관련 문서를 찾았습니다."
 
