@@ -92,7 +92,39 @@ async def document_agent(state: AgentState) -> AgentState:
             # ── follow-up 감지: 이전 대화의 문서 맥락 연결 ──
             prev_doc = _extract_doc_from_history(chat_history)
             is_followup = bool(prev_doc and _FOLLOWUP_RE.search(user_input))
+            _rewrite_applied = False  # sLLM 리라이팅 적용 여부 (이중 보강 방지)
 
+            # ── sLLM fallback: regex 미감지 + 이전 결과 있음 + 구체적 문서명 없음 ──
+            if prev_doc and not is_followup and not document_content and not document_id:
+                # 구체적 문서명이 이미 쿼리에 있으면 sLLM 불필요
+                _has_explicit = bool(re.search(r"[가-힣]{4,}.{0,6}(검색|찾아|알려|요약|정리|내용|자세히)", user_input))
+                if not _has_explicit:
+                    try:
+                        from ai.agents.document._rewrite import rewrite_followup_query
+                        from ai.agents.document._common import _format_chat_context
+                        chat_ctx = _format_chat_context(chat_history, max_turns=2)
+                        rw = await rewrite_followup_query(
+                            user_input=user_input,
+                            prev_sources=prev_doc.get("sources", []),
+                            chat_context=chat_ctx,
+                        )
+                        if rw.is_followup and rw.matched_source_idx is not None:
+                            # title 매칭 성공 → follow-up 확정 + 소스 보정
+                            is_followup = True
+                            _rewrite_applied = True
+                            matched_src = prev_doc["sources"][rw.matched_source_idx]
+                            prev_doc["document_id"] = matched_src.get("document_id")
+                            prev_doc["title"] = matched_src.get("title")
+                            print(f"[DocumentAgent] sLLM rewrite → follow-up: idx={rw.matched_source_idx}, title='{prev_doc['title']}'")
+                        elif rw.rewritten_query != user_input:
+                            # 매칭 실패 → 쿼리만 교체, 일반 RAG 경로
+                            user_input = rw.rewritten_query
+                            _rewrite_applied = True
+                            print(f"[DocumentAgent] sLLM rewrite → 쿼리 교체: '{user_input[:60]}'")
+                    except Exception as e:
+                        print(f"[DocumentAgent] sLLM rewrite 실패 (graceful): {e}")
+
+            # ── regex/sLLM follow-up 확정 → document_content 직접 확보 ──
             if is_followup and prev_doc and not document_content and not document_id:
                 prev_doc_id = prev_doc["document_id"]
                 prev_title = prev_doc["title"] or ""
@@ -115,8 +147,8 @@ async def document_agent(state: AgentState) -> AgentState:
                     except Exception as e:
                         print(f"[DocumentAgent] follow-up document 로드 실패: {e}")
 
-                # Search follow-up → 제목을 쿼리에 연결
-                if not document_content and prev_title:
+                # Search follow-up → 제목을 쿼리에 연결 (sLLM 리라이팅 미적용 시에만)
+                if not document_content and prev_title and not _rewrite_applied:
                     user_input = f"{prev_title} {user_input}"
                     print(f"[DocumentAgent] follow-up → 쿼리 보강: '{user_input[:60]}'")
 
