@@ -7,6 +7,7 @@ Query Refinement:
   Vector 검색에는 원본 쿼리(시멘틱 의미 보존)를 사용한다.
 """
 import logging
+import os
 
 from rank_bm25 import BM25Okapi
 
@@ -75,8 +76,15 @@ class HybridSearcher:
         self._corpus_ids = []
         self._corpus_metadatas = []
 
+    # BM25 인덱스 캐시 경로
+    _BM25_CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "cache")
+    _BM25_CACHE_FILE = os.path.join(_BM25_CACHE_DIR, "bm25_index.pkl")
+
     def build_bm25_index(self):
-        """VectorStore에서 전체 문서를 가져와 BM25 인덱스를 구축한다."""
+        """VectorStore에서 전체 문서를 가져와 BM25 인덱스를 구축한다.
+
+        캐시 전략: pickle로 인덱스 저장 → 문서 수 변경 시에만 재빌드
+        """
         all_docs = self.vector_store.get_all_documents()
 
         self._corpus_docs = all_docs["documents"]
@@ -87,8 +95,49 @@ class HybridSearcher:
             self.bm25 = None
             return
 
+        doc_count = len(self._corpus_docs)
+
+        # 캐시 로드 시도
+        if self._load_bm25_cache(doc_count):
+            return
+
+        # 캐시 없거나 문서 수 변경 → 재빌드
+        import time
+        _t = time.time()
         tokenized_corpus = [tokenize(doc) for doc in self._corpus_docs]
         self.bm25 = BM25Okapi(tokenized_corpus)
+        logger.info("[BM25] 인덱스 빌드 완료 (%d개, %.2fs) → 캐시 저장", doc_count, time.time() - _t)
+
+        self._save_bm25_cache(doc_count, tokenized_corpus)
+
+    def _load_bm25_cache(self, expected_count: int) -> bool:
+        """pickle 캐시에서 BM25 인덱스 로드. 문서 수 불일치 시 False 반환."""
+        import pickle
+        try:
+            if not os.path.exists(self._BM25_CACHE_FILE):
+                return False
+            with open(self._BM25_CACHE_FILE, "rb") as f:
+                cache = pickle.load(f)
+            if cache.get("doc_count") != expected_count:
+                logger.info("[BM25] 캐시 문서 수 불일치 (%d → %d) → 재빌드", cache.get("doc_count", 0), expected_count)
+                return False
+            self.bm25 = cache["bm25"]
+            logger.info("[BM25] 캐시 로드 성공 (%d개)", expected_count)
+            return True
+        except Exception as e:
+            logger.warning("[BM25] 캐시 로드 실패: %s → 재빌드", e)
+            return False
+
+    def _save_bm25_cache(self, doc_count: int, tokenized_corpus: list):
+        """BM25 인덱스를 pickle로 캐시 저장."""
+        import pickle
+        try:
+            os.makedirs(self._BM25_CACHE_DIR, exist_ok=True)
+            with open(self._BM25_CACHE_FILE, "wb") as f:
+                pickle.dump({"doc_count": doc_count, "bm25": self.bm25}, f)
+            logger.info("[BM25] 캐시 저장 완료: %s", self._BM25_CACHE_FILE)
+        except Exception as e:
+            logger.warning("[BM25] 캐시 저장 실패 (비차단): %s", e)
 
     def _bm25_search(
         self, query: str, user_id: int | None = None, user_team: str | None = None,
