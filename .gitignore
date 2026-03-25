@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# BM25 index cache
+data/cache/
+
 # Python
 __pycache__/
 *.py[cod]
