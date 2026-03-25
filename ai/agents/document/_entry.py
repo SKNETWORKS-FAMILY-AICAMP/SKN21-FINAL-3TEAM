@@ -109,13 +109,14 @@ async def document_agent(state: AgentState) -> AgentState:
                             chat_context=chat_ctx,
                         )
                         if rw.is_followup and rw.matched_source_idx is not None:
-                            # title 매칭 성공 → follow-up 확정 + 소스 보정
+                            # title 매칭 성공 → follow-up 확정 + 소스 보정 + 쿼리 교체
                             is_followup = True
                             _rewrite_applied = True
+                            user_input = rw.rewritten_query  # QA/Summary에 리라이팅된 쿼리 전달
                             matched_src = prev_doc["sources"][rw.matched_source_idx]
                             prev_doc["document_id"] = matched_src.get("document_id")
                             prev_doc["title"] = matched_src.get("title")
-                            print(f"[DocumentAgent] sLLM rewrite → follow-up: idx={rw.matched_source_idx}, title='{prev_doc['title']}'")
+                            print(f"[DocumentAgent] sLLM rewrite → follow-up: idx={rw.matched_source_idx}, title='{prev_doc['title']}', query='{user_input[:60]}'")
                         elif rw.rewritten_query != user_input:
                             # 매칭 실패 → 쿼리만 교체, 일반 RAG 경로
                             user_input = rw.rewritten_query
