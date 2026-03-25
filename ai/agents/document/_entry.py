@@ -20,7 +20,8 @@ from ai.agents.document._summary import _handle_doc_summary
 # ── follow-up 감지 패턴 ──
 _FOLLOWUP_RE = re.compile(
     r"(위\s*문서|이\s*문서|그\s*문서|해당\s*문서|아까\s*문서|아까\s*검색|방금\s*검색"
-    r"|그거|그\s*내용|위에서|거기서|방금\s*찾은|아까\s*찾은|위\s*내용|그\s*자료)"
+    r"|그거|이거|저거|그\s*내용|위에서|거기서|방금\s*찾은|아까\s*찾은|위\s*내용|그\s*자료"
+    r"|방금\s*본|아까\s*본|위에\s*나온)"
 )
 
 
@@ -37,11 +38,13 @@ def _extract_doc_from_history(chat_history: list) -> dict | None:
             sources = ar.get("sources", [])
             if not sources:
                 continue
+            # document_id가 있는 source를 우선 선택
+            best = next((s for s in sources if s.get("document_id")), sources[0])
             return {
                 "sub_type": ar.get("sub_type"),
                 "sources": sources,
-                "document_id": sources[0].get("document_id"),
-                "title": sources[0].get("title"),
+                "document_id": best.get("document_id"),
+                "title": best.get("title"),
             }
     return None
 
@@ -80,6 +83,12 @@ async def document_agent(state: AgentState) -> AgentState:
             # sub_type 힌트를 state에 저장 → chat.py에서 조기 상태 알림용
             _sub_type_hint = None
 
+            # ── 요약 키워드 판별 (쿼리 보강 전 원본 user_input으로 판별) ──
+            _has_summary_keyword = bool(
+                re.search(r"(요약|정리|핵심|간추리|간추려|줄여).{0,6}(해|해줘|해주세요|부탁|하자|할래|줘|주세요)", user_input)
+                or re.search(r"(요약|정리|핵심|간추리|간추려|줄여)\s*$", user_input)
+            )
+
             # ── follow-up 감지: 이전 대화의 문서 맥락 연결 ──
             prev_doc = _extract_doc_from_history(chat_history)
             is_followup = bool(prev_doc and _FOLLOWUP_RE.search(user_input))
@@ -93,7 +102,7 @@ async def document_agent(state: AgentState) -> AgentState:
                 is_qa_or_summary = (
                     _needs_llm_answer(user_input)
                     or re.search(r"(내용|자세히|자세하게|상세|알려|설명).{0,6}(줘|해|주세요|해줘)", user_input)
-                    or re.search(r"(요약|정리|핵심|간추리|간추려|줄여)", user_input)
+                    or _has_summary_keyword
                 )
                 if is_qa_or_summary and prev_doc_id:
                     try:
@@ -111,12 +120,7 @@ async def document_agent(state: AgentState) -> AgentState:
                     user_input = f"{prev_title} {user_input}"
                     print(f"[DocumentAgent] follow-up → 쿼리 보강: '{user_input[:60]}'")
 
-            # ── regex + RAG 점수 혼합 라우팅 ──
-            # 1) 요약 판별: 문서 내용/ID 있거나, 요약 키워드 + 동사어미
-            _has_summary_keyword = bool(
-                re.search(r"(요약|정리|핵심|간추리|간추려|줄여).{0,6}(해|해줘|해주세요|부탁|하자|할래|줘|주세요)", user_input)
-                or re.search(r"(요약|정리|핵심|간추리|간추려|줄여)\s*$", user_input)
-            )
+            # ── 라우팅 ──
             _is_summary = bool(document_content or document_id or _has_summary_keyword)
 
             # follow-up으로 document_content 확보 + QA 질문 → 바로 QA (RAG 스킵)
