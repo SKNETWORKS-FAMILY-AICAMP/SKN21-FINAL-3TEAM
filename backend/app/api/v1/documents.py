@@ -530,6 +530,40 @@ class UpdateAnalysisRequest(BaseModel):
     summary: str | None = None
 
 
+@router.get("/{document_id}/download")
+async def download_document(
+    document_id: str,
+    format: str = Query("docx", regex="^(docx|pdf)$"),
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """
+    생성된 문서 다운로드 - DOCX (FR-DOC-008)
+    document_id: AI 생성 문서의 UUID
+    """
+    file_path = GENERATED_DOCS_DIR / f"{document_id}.docx"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
+    return FileResponse(
+        path=str(file_path),
+        filename="회의록.docx",
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+
+
+@router.get("/{document_id}/parsing-status")
+async def get_parsing_status(
+    document_id: int,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """
+    문서 파싱 상태 조회 (NF-PRF-002)
+    프론트에서 폴링: "파싱 중..." → "파싱 완료"
+    """
+    return await parsing_service.get_parsing_status(db, document_id)
+
+
 @router.patch("/{document_id}/analysis")
 async def update_analysis(
     document_id: int,
@@ -639,37 +673,3 @@ async def delete_document(
 ):
     """문서 삭제"""
     return await document_service.delete_document(db, document_id, user.id)
-
-
-@router.get("/{document_id}/download")
-async def download_document(
-    document_id: str,
-    format: str = Query("docx", regex="^(docx|pdf)$"),
-    user=Depends(get_current_user),
-    db=Depends(get_db),
-):
-    """
-    생성된 문서 다운로드 - DOCX (FR-DOC-008)
-    document_id: AI 생성 문서의 UUID
-    """
-    file_path = GENERATED_DOCS_DIR / f"{document_id}.docx"
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
-    return FileResponse(
-        path=str(file_path),
-        filename="회의록.docx",
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    )
-
-
-@router.get("/{document_id}/parsing-status")
-async def get_parsing_status(
-    document_id: int,
-    user=Depends(get_current_user),
-    db=Depends(get_db),
-):
-    """
-    문서 파싱 상태 조회 (NF-PRF-002)
-    프론트에서 폴링: "파싱 중..." → "파싱 완료"
-    """
-    return await parsing_service.get_parsing_status(db, document_id)
