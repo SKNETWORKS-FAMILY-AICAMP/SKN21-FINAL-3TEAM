@@ -170,9 +170,9 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       }
 
       // sub_type=qa → QA 카드
-      if (subType === 'qa' || citations.length > 0 || qaConfidence !== null) {
-        const confColor = qaConfidence >= 0.7 ? { bar: 'bg-green-500', text: 'text-green-600', label: '높음', hint: '문서 기반 답변입니다' } : qaConfidence >= 0.4 ? { bar: 'bg-yellow-500', text: 'text-yellow-600', label: '보통', hint: '관련 문서를 참고했지만 정확하지 않을 수 있습니다' } : { bar: 'bg-red-500', text: 'text-red-600', label: '낮음', hint: '관련도가 낮은 문서를 참고했습니다. 다시 질문해보세요' };
-        const firstSourceTitle = sources[0]?.title || '';
+      if (subType === 'qa' || qaConfidence !== null) {
+        const topScore = sources[0]?.score ?? qaConfidence ?? 0;
+        const hintInfo = topScore >= 0.7 ? { text: 'text-green-600', hint: '관련도가 높은 문서를 기반으로 답변했습니다' } : topScore >= 0.4 ? { text: 'text-yellow-600', hint: '관련 문서를 참고했지만 정확하지 않을 수 있습니다' } : { text: 'text-red-600', hint: '관련도가 낮은 문서를 참고했습니다. 다시 질문해보세요' };
         return (
           <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
             <div className="px-4 py-3 border-b border-neutral-divider flex items-center justify-between">
@@ -180,52 +180,21 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                 <MessageCircle size={16} />
                 문서 Q&A
               </div>
-              <div className="flex items-center gap-2">
-                {qaConfidence !== null && (
-                  <div className="flex items-center gap-1.5" title={`문서 기반 신뢰도 (${confColor.label})`}>
-                    <ShieldCheck size={14} className={confColor.text} />
-                    <div className="w-16 h-2 bg-neutral-100 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${confColor.bar}`} style={{ width: `${Math.round(qaConfidence * 100)}%` }} />
-                    </div>
-                    <span className={`text-xs font-bold ${confColor.text}`}>{Math.round(qaConfidence * 100)}%</span>
-                  </div>
-                )}
-                <button onClick={() => copyCardText(content || data.answer || '')} className="text-neutral-muted hover:text-neutral-main transition" title="복사">
-                  <Copy size={14} />
-                </button>
-              </div>
+              <button onClick={() => copyCardText(content || data.answer || '')} className="text-neutral-muted hover:text-neutral-main transition" title="복사">
+                <Copy size={14} />
+              </button>
             </div>
             <div className="p-4">
-              {/* 개선6: 신뢰도 문장형 안내 + 개선2: 검색→QA 맥락 연결 */}
-              {sources.length > 0 && <p className="text-[0.6875rem] text-neutral-muted mb-1">검색된 문서를 바탕으로 답변합니다.</p>}
-              {qaConfidence !== null && <p className={`text-[0.6875rem] ${confColor.text} mb-2`}>{confColor.hint}</p>}
               {(content || data.answer) && <div className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5"><MarkdownText>{content || data.answer}</MarkdownText></div>}
-              {citations.length > 0 && (
-                <div className="mb-3">
-                  <div className="text-xs font-semibold text-neutral-sub mb-2">인용 ({citations.length}건)</div>
-                  {citations.map((c, idx) => {
-                    const rel = c.relevance || '';
-                    const relColor = rel === '높음' ? 'bg-green-100 text-green-700' : rel === '중간' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700';
-                    return (
-                      <div key={idx} className="px-3 py-2 bg-surface-hover rounded-lg mb-1.5 border-l-[3px] border-l-primary-300">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-semibold text-neutral-main truncate">{c.source || `인용 ${idx + 1}`}</span>
-                          {rel && <span className={`text-[0.625rem] font-semibold px-1.5 py-0.5 rounded-full ${relColor}`}>{rel}</span>}
-                        </div>
-                        {c.content && <div className="text-[0.6875rem] text-neutral-sub mt-0.5">{c.content}</div>}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
               {sources.length > 0 && (
-                <div>
-                  <div className="text-xs font-semibold text-neutral-sub mb-2">검색 출처 ({sources.length}건)</div>
+                <div className="mb-3">
+                  <div className="text-xs font-semibold text-neutral-sub mb-2">📎 참고 문서 ({sources.length}건)</div>
                   {sources.map((s, idx) => (
                     <SourceItem key={idx} source={s} index={idx} onSelect={onSelectDoc} />
                   ))}
                 </div>
               )}
+              <p className={`text-[0.6875rem] ${hintInfo.text}`}>{hintInfo.hint}</p>
             </div>
           </div>
         );

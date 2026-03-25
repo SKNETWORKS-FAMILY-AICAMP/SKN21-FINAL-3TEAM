@@ -157,15 +157,13 @@ async def execute_doc_stream(
 
     if post_stream.get("filter_sources"):
         from ai.agents.document._common import filter_and_build_citations
-        clean_response, filtered_sources, citations = filter_and_build_citations(
+        clean_response, filtered_sources, _ = filter_and_build_citations(
             agent_response.get("sources", []), full_response,
         )
         if clean_response != full_response:
             agent_response["answer"] = clean_response
             agent_response["message"] = clean_response
         agent_response["sources"] = filtered_sources
-        if citations:
-            agent_response["citations"] = citations
 
     # cleanup
     for k in ("stream_pending", "llm_config", "post_stream", "_original_sources"):

@@ -132,7 +132,7 @@ async def _handle_doc_qa(
             "answer": "",
             "message": "",
             "sources": sources,
-            "confidence": round(min(rag_top_score, 0.85), 2),  # RAG 점수 기반 (0.85 캡 — 답변 정확도와 문서 매칭은 다름)
+            "confidence": round(rag_top_score, 2),
         }
 
     # ── 5. 비스트리밍: sLLM 직접 호출 (스트리밍과 동일 프롬프트) ──
@@ -144,22 +144,19 @@ async def _handle_doc_qa(
         task="qa",
     )
 
-    # 스트리밍과 동일한 후처리: [참고:] 파싱 + sources 필터링 + citations 생성
-    clean_answer, filtered_sources, citations = filter_and_build_citations(sources, answer_text)
+    # [참고:] 파싱 + sources 필터링
+    clean_answer, filtered_sources, _ = filter_and_build_citations(sources, answer_text)
 
-    # confidence: 스트리밍과 동일 (RAG 점수 기반, 0.85 캡)
-    confidence = round(min(rag_top_score, 0.85), 2)
+    confidence = round(rag_top_score, 2)
 
     print(f"[DocumentAgent] QA 완료 ({time.time()-_t:.2f}s) | "
-          f"answer_len={len(clean_answer)}, "
-          f"citations={len(citations)}")
+          f"answer_len={len(clean_answer)}, sources={len(filtered_sources)}")
 
     return {
         "type": "doc_retrieve",
         "sub_type": "qa",
         "answer": clean_answer,
         "message": clean_answer,
-        "citations": citations,
         "confidence": confidence,
         "sources": filtered_sources,
     }
