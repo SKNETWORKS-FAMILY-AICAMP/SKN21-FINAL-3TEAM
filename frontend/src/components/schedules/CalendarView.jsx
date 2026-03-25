@@ -332,22 +332,26 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
 
   const goToPrev = () => {
     if (view === 'year') { setCurrentYear(currentYear - 1); return; }
+    setSelectedDay(null);
     if (currentMonth === 1) { setCurrentYear(currentYear - 1); setCurrentMonth(12); }
     else setCurrentMonth(currentMonth - 1);
   };
   const goToNext = () => {
     if (view === 'year') { setCurrentYear(currentYear + 1); return; }
+    setSelectedDay(null);
     if (currentMonth === 12) { setCurrentYear(currentYear + 1); setCurrentMonth(1); }
     else setCurrentMonth(currentMonth + 1);
   };
-  const goToToday = () => { setCurrentYear(todayYear); setCurrentMonth(todayMonth); };
+  const goToToday = () => { setSelectedDay(null); setCurrentYear(todayYear); setCurrentMonth(todayMonth); };
 
   const days = [];
-  for (let i = firstDay - 1; i >= 0; i--) days.push({ day: prevDays - i, other: true });
-  for (let i = 1; i <= daysInMonth; i++) days.push({ day: i, other: false });
+  const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+  const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
+  for (let i = firstDay - 1; i >= 0; i--) days.push({ day: prevDays - i, other: true, month: prevMonth });
+  for (let i = 1; i <= daysInMonth; i++) days.push({ day: i, other: false, month: currentMonth });
   const remaining = 7 - (days.length % 7);
   if (remaining < 7) {
-    for (let i = 1; i <= remaining; i++) days.push({ day: i, other: true });
+    for (let i = 1; i <= remaining; i++) days.push({ day: i, other: true, month: nextMonth });
   }
 
   const getWeekDays = () => {
@@ -388,9 +392,11 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
     multiDayRowMap.set(key, row);
   });
 
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+
   const handleDayClick = (d) => {
-    if (d.other) return;
     setSelectedDay(d.day);
+    setSelectedMonth(d.month);
   };
 
   const handleYearMonthClick = (month) => {
@@ -399,7 +405,7 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
   };
 
   const selectedEvents = selectedDay
-    ? mergedEvents.filter((e) => e.day === selectedDay && e.month === currentMonth)
+    ? mergedEvents.filter((e) => e.day === selectedDay && e.month === selectedMonth)
     : [];
 
   const VIEW_BTNS = [
@@ -477,14 +483,15 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
               <div key={d} className={`text-[0.6875rem] font-semibold py-2 text-center ${idx === 0 ? 'text-red-500' : idx === 6 ? 'text-blue-500' : 'text-neutral-muted'}`}>{d}</div>
             ))}
             {displayDays.map((d, i) => {
-              const dayEvents = singleDayEvents.filter(e => e.day === d.day && e.month === currentMonth && !d.other);
+              const dayEvents = singleDayEvents.filter(e => e.day === d.day && e.month === d.month);
               const isToday = !d.other && d.day === todayDate && currentYear === todayYear && currentMonth === todayMonth;
               const isHoliday = dayEvents.some(e => e.type === 'holiday');
 
               // 이 셀에 걸친 multi-day 이벤트 스트라이프
-              const dayStripes = d.other ? [] : multiDayEvents.filter(event => {
+              const cellYear = d.month < currentMonth && currentMonth === 12 ? currentYear + 1 : d.month > currentMonth && currentMonth === 1 ? currentYear - 1 : currentYear;
+              const dayStripes = multiDayEvents.filter(event => {
                 if (!event.startDate || !event.endDate) return false;
-                const cellDate = new Date(currentYear, currentMonth - 1, d.day);
+                const cellDate = new Date(cellYear, d.month - 1, d.day);
                 return cellDate >= new Date(event.startDate + 'T00:00:00') && cellDate <= new Date(event.endDate + 'T00:00:00');
               });
 
@@ -492,7 +499,7 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
                 <div
                   key={i}
                   onClick={() => handleDayClick(d)}
-                  className={`relative ${view === 'week' ? 'min-h-[300px]' : 'min-h-[120px]'} bg-surface-card border border-neutral-divider rounded-sm p-1.5 text-xs transition hover:border-primary-300 cursor-pointer ${isToday ? 'border-primary-700 border-2' : ''} ${selectedDay === d.day && !d.other ? 'ring-2 ring-primary-500' : ''}`}
+                  className={`relative ${view === 'week' ? 'min-h-[300px]' : 'min-h-[120px]'} bg-surface-card border border-neutral-divider rounded-sm p-1.5 text-xs transition hover:border-primary-300 cursor-pointer ${isToday ? 'border-primary-700 border-2' : ''} ${selectedDay === d.day && selectedMonth === d.month ? 'ring-2 ring-primary-500' : ''}`}
                   style={(() => {
                     if (dayStripes.length === 0) return {};
                     const maxRow = Math.max(...dayStripes.map(e => multiDayRowMap.get(e.scheduleId || e.id) ?? 0));
