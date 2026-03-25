@@ -4,6 +4,68 @@
 
 ---
 
+## 2026-03-26 (수)
+
+**세션: 문서 Agent 아키텍처 리뷰 + QA/Judgment 리팩토링 + 성능 최적화**
+
+### 한 일
+
+**1. DOCX 스타일 공통 모듈 분리 (C-1 해결)**
+- `ai/skills/_docx_styles.py` 신설: 3개 빌더(회의록/보고서/제안서)의 공통 스타일 함수 8개 통합
+- `create_meeting_minutes.py`, `create_report.py`, `create_proposal.py` → import로 교체
+- `create_from_template.py` → `_docx_styles` 직접 import (create_meeting_minutes 의존 제거)
+
+**2. QA 스트리밍/비스트리밍 통합**
+- 비스트리밍 경로를 스트리밍과 동일하게 통합 (프롬프트, confidence, citations)
+- `DOC_QA_SYSTEM_PROMPT` (JSON) 삭제 → `DOC_QA_STREAMING_PROMPT` (자연어)로 통일
+- confidence: LLM+RAG 혼합 → RAG 점수 기준으로 통일
+- `_parse_qa_json` 삭제
+- `filter_and_build_citations()` 공유 함수 추가 (`_common.py`)
+- `_stream.py` 인라인 로직 → 공유 함수 호출로 교체
+
+**3. QA 카드 UI 통합**
+- 인용(citations) + 검색 출처(sources) → "참고 문서" 단일 섹션으로 통합
+- confidence 0.85 캡 제거 → RAG 점수 그대로 전달
+- confidence 퍼센트 바 헤더에서 제거
+- 안내 문구 2줄 → 등급별 1줄 (하단)
+- 백엔드에서 citations 필드 제거 (sources로 통합)
+
+**4. 죽은 코드 정리**
+- `force_sub_type` 분기 블록 제거 (`_entry.py`, `orchestrator.py`, `state.py`)
+- `fill_with_llm` fallback + 범용 빌더 fallback 주석 처리 (`_generate.py`)
+
+**5. Judgment Agent 스트리밍 RAG 파라미터 통일**
+- `prepare_judgment_stream()` 공개 함수 추가 (`judgment_agent.py`)
+- 오케스트레이터 스트리밍 블록 30줄 → 5줄 (위임 패턴)
+- RAG 파라미터 통일: `use_reranker=True`, `score_threshold=0.0`, `use_hyde=True`, `top_k=5`
+- `judgment_stream.py`: `_check_consistency` warnings 메시지 추가 누락 수정
+
+**6. 서버 startup preload 개선**
+- `asyncio.sleep(3)` 제거
+- RAG → Reranker → Classifier 순차 로딩 (병렬 시 import lock deadlock 해결)
+- BM25 인덱스 pickle 캐싱: 서버 재시작 시 42초 → 1.7초
+- 전체 startup: 75초 → 21초
+
+**7. 기타**
+- health check 타임아웃 3초 → 10초 (AI 처리 중 "API 끊김" 오탐 방지)
+- `_retrieve_context` 타임아웃 120초 → 60초 + 로그 메시지 일치
+- chat_context assistant 절삭 200자 → 400자
+
+### 리뷰 문서
+- `dev/active/doc-agent-architecture/` — 문서 Agent 전체 아키텍처 리뷰
+- `dev/active/doc-qa-review/` — QA 파이프라인 리뷰
+- `dev/active/qa-unify-stream/` — QA 통합 플랜 + 검토 + 사후 리뷰
+- `dev/active/qa-ui-redesign/` — QA UI 재설계 검토
+- `dev/active/judgment-fix/` — Judgment 수정 플랜 + 검토
+- `dev/active/startup-preload-review/` — startup preload 리뷰
+
+### 다음 할 일
+- E2E 테스트 Playwright 셀렉터 수정 (Tailwind 커스텀 클래스 매칭)
+- 문서 타입 레지스트리 패턴 검토 (문서 타입 추가 시 수정 포인트 축소, 현재 3종 고정이라 급하지 않음)
+- `ai/templates/` 죽은 코드(BaseTemplate 클래스) 정리
+
+---
+
 ## 2026-03-20 (목)
 
 **세션 1: 커스텀 템플릿 파이프라인 구현 (추출기 v3 + 한글 키 + fill-fields API + 프론트 UI)**
