@@ -49,84 +49,62 @@ async def document_agent(state: AgentState) -> AgentState:
             document_content = state.get("document_content") or state.get("extracted_text")
             document_id = state.get("document_id")
 
-            # force_sub_type: 후속 액션 버튼에서 강제 지정 → regex 스킵
-            force_sub_type = state.get("force_sub_type")
-
             # sub_type 힌트를 state에 저장 → chat.py에서 조기 상태 알림용
-            _sub_type_hint = force_sub_type or None
+            _sub_type_hint = None
 
-            if force_sub_type:
-                print(f"[DocumentAgent] force_sub_type={force_sub_type} → regex 스킵")
-                if force_sub_type == "summary":
-                    response_data = await _handle_doc_summary(
-                        user_input, document_content=document_content,
-                        document_id=document_id, user_id=user_id,
-                        user_team=user_team, stream_mode=stream_mode,
-                        chat_history=chat_history,
-                    )
-                elif force_sub_type == "search":
-                    response_data = await _handle_doc_search(user_input, context, user_id, user_team=user_team, stream_mode=stream_mode)
-                else:  # "qa" 또는 기타
-                    response_data = await _handle_doc_qa(
-                        user_input, context, user_id=user_id,
-                        user_team=user_team, stream_mode=stream_mode,
-                        chat_history=chat_history,
-                        document_content=document_content,
-                    )
-            else:
-                # ── regex + RAG 점수 혼합 라우팅 ──
-                # 1) 요약 판별: 문서 내용/ID 있거나, 요약 키워드 + 동사어미
-                _is_summary = bool(
-                    document_content
-                    or document_id
-                    or re.search(r"(요약|정리|핵심|간추리|간추려|줄여).{0,6}(해|해줘|해주세요|부탁|하자|할래|줘|주세요)", user_input)
-                    or re.search(r"(요약|정리|핵심|간추리|간추려|줄여)\s*$", user_input)
+            # ── regex + RAG 점수 혼합 라우팅 ──
+            # 1) 요약 판별: 문서 내용/ID 있거나, 요약 키워드 + 동사어미
+            _is_summary = bool(
+                document_content
+                or document_id
+                or re.search(r"(요약|정리|핵심|간추리|간추려|줄여).{0,6}(해|해줘|해주세요|부탁|하자|할래|줘|주세요)", user_input)
+                or re.search(r"(요약|정리|핵심|간추리|간추려|줄여)\s*$", user_input)
+            )
+
+            if _is_summary:
+                _sub_type_hint = "summary"
+                print("[DocumentAgent] doc_retrieve → summary 경로")
+                response_data = await _handle_doc_summary(
+                    user_input,
+                    document_content=document_content,
+                    document_id=document_id,
+                    user_id=user_id,
+                    user_team=user_team,
+                    stream_mode=stream_mode,
+                    chat_history=chat_history,
                 )
+            else:
+                # 2) 항상 RAG 검색 먼저 (search/QA 공통)
+                from ai.agents.document._common import _retrieve_context
+                search_results, rag_context, sources, rag_status = await _retrieve_context(
+                    user_input, user_id, user_team,
+                    top_k=10, use_reranker=True, score_threshold=0.1,
+                )
+                top_score = max((r.get("score", 0) for r in search_results), default=0) if search_results else 0
+                print(f"[DocumentAgent] RAG 선검색 완료: {len(sources)}건, top_score={top_score:.2f}")
 
-                if _is_summary:
-                    _sub_type_hint = "summary"
-                    print("[DocumentAgent] doc_retrieve → summary 경로")
-                    response_data = await _handle_doc_summary(
-                        user_input,
-                        document_content=document_content,
-                        document_id=document_id,
-                        user_id=user_id,
-                        user_team=user_team,
-                        stream_mode=stream_mode,
+                # 3) QA 판별: 의문형 패턴 + RAG 점수 충분할 때만 QA
+                is_qa_query = _needs_llm_answer(user_input)
+                if is_qa_query and top_score > 0.5:
+                    _sub_type_hint = "qa"
+                    print(f"[DocumentAgent] doc_retrieve → QA 경로 (의문형 + score={top_score:.2f})")
+                    response_data = await _handle_doc_qa(
+                        user_input, rag_context, user_id=user_id,
+                        user_team=user_team, stream_mode=stream_mode,
                         chat_history=chat_history,
+                        document_content=document_content,
+                        pre_sources=sources,
+                        pre_top_score=top_score,
                     )
                 else:
-                    # 2) 항상 RAG 검색 먼저 (search/QA 공통)
-                    from ai.agents.document._common import _retrieve_context
-                    search_results, rag_context, sources, rag_status = await _retrieve_context(
-                        user_input, user_id, user_team,
-                        top_k=10, use_reranker=True, score_threshold=0.1,
+                    # 4) 기본값: search (빠른 검색 카드 반환)
+                    _sub_type_hint = "search"
+                    reason = "기본값" if not is_qa_query else f"score 부족({top_score:.2f})"
+                    print(f"[DocumentAgent] doc_retrieve → search 경로 ({reason})")
+                    response_data = await _handle_doc_search(
+                        user_input, rag_context, user_id, user_team=user_team,
+                        pre_fetched=(search_results, rag_context, sources, rag_status),
                     )
-                    top_score = max((r.get("score", 0) for r in search_results), default=0) if search_results else 0
-                    print(f"[DocumentAgent] RAG 선검색 완료: {len(sources)}건, top_score={top_score:.2f}")
-
-                    # 3) QA 판별: 의문형 패턴 + RAG 점수 충분할 때만 QA
-                    is_qa_query = _needs_llm_answer(user_input)
-                    if is_qa_query and top_score > 0.5:
-                        _sub_type_hint = "qa"
-                        print(f"[DocumentAgent] doc_retrieve → QA 경로 (의문형 + score={top_score:.2f})")
-                        response_data = await _handle_doc_qa(
-                            user_input, rag_context, user_id=user_id,
-                            user_team=user_team, stream_mode=stream_mode,
-                            chat_history=chat_history,
-                            document_content=document_content,
-                            pre_sources=sources,
-                            pre_top_score=top_score,
-                        )
-                    else:
-                        # 4) 기본값: search (빠른 검색 카드 반환)
-                        _sub_type_hint = "search"
-                        reason = "기본값" if not is_qa_query else f"score 부족({top_score:.2f})"
-                        print(f"[DocumentAgent] doc_retrieve → search 경로 ({reason})")
-                        response_data = await _handle_doc_search(
-                            user_input, rag_context, user_id, user_team=user_team,
-                            pre_fetched=(search_results, rag_context, sources, rag_status),
-                        )
 
         elif intent == "doc_generate":
             _sub_type_hint = "generate"
