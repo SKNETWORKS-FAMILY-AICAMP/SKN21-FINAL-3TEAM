@@ -171,46 +171,38 @@ async def startup_preload():
 
     async def _background_preload():
         import time
-        import concurrent.futures
-        print("[Background] 모델 pre-loading 시작 (RAG + Reranker + Intent Classifier)...")
+        print("[Background] 모델 pre-loading 시작 (RAG → Reranker → Classifier)...")
         _t = time.time()
         loop = asyncio.get_event_loop()
-        executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
-
-        def _load_rag():
-            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
-            get_qdrant_pipeline()
-            return "RAG"
-
-        def _load_reranker():
-            from ai.rag.reranker import Reranker
-            Reranker().load_model()
-            return "Reranker"
-
-        def _load_classifier():
-            try:
-                from ai.agents.orchestrator import get_classifier
-                get_classifier()
-                return "Classifier"
-            except Exception as e:
-                print(f"[Background] Intent Classifier 로드 실패 (비차단): {e}")
-                return "Classifier (실패)"
 
         try:
-            results = await asyncio.wait_for(
-                asyncio.gather(
-                    loop.run_in_executor(executor, _load_rag),
-                    loop.run_in_executor(executor, _load_reranker),
-                    loop.run_in_executor(executor, _load_classifier),
-                    return_exceptions=True,
-                ),
-                timeout=180,
+            # 1. RAG 파이프라인 (임베딩 + Qdrant + BM25) — 먼저 로드
+            _t1 = time.time()
+            await asyncio.wait_for(
+                loop.run_in_executor(None, lambda: __import__('ai.rag.qdrant_pipeline', fromlist=['get_qdrant_pipeline']).get_qdrant_pipeline()),
+                timeout=120,
             )
-            for r in results:
-                if isinstance(r, Exception):
-                    print(f"[Background] 로드 실패 (비차단): {r}")
-                else:
-                    print(f"[Background] {r} 로드 완료")
+            print(f"[Background] RAG 로드 완료 ({time.time()-_t1:.2f}s)")
+
+            # 2. Reranker — RAG 완료 후 로드 (import lock 충돌 방지)
+            _t2 = time.time()
+            await asyncio.wait_for(
+                loop.run_in_executor(None, lambda: __import__('ai.rag.reranker', fromlist=['Reranker']).Reranker().load_model()),
+                timeout=60,
+            )
+            print(f"[Background] Reranker 로드 완료 ({time.time()-_t2:.2f}s)")
+
+            # 3. Intent Classifier — 독립 모듈이라 병렬 가능하지만 순차로 안전하게
+            _t3 = time.time()
+            try:
+                await asyncio.wait_for(
+                    loop.run_in_executor(None, lambda: __import__('ai.agents.orchestrator', fromlist=['get_classifier']).get_classifier()),
+                    timeout=60,
+                )
+                print(f"[Background] Classifier 로드 완료 ({time.time()-_t3:.2f}s)")
+            except Exception as e:
+                print(f"[Background] Classifier 로드 실패 (비차단): {e}")
+
             print(f"[Background] 전체 pre-loading 완료 ({time.time()-_t:.2f}s)")
             set_server_ready()
         except asyncio.TimeoutError:
