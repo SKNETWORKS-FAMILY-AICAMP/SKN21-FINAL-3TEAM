@@ -130,6 +130,7 @@ def _parse_and_validate(
 
     # title 매칭 검증
     idx, doc_id = _validate_rewrite(rewritten, prev_sources)
+    print(f"[Rewrite] 매칭 검증: rewritten='{rewritten[:60]}', idx={idx}, doc_id={doc_id}")
 
     if idx is not None:
         logger.info("[Rewrite] 매칭 성공: idx=%d, doc_id=%s, query='%s'", idx, doc_id, rewritten[:80])
@@ -153,18 +154,26 @@ def _parse_and_validate(
 def _validate_rewrite(rewritten: str, prev_sources: list) -> tuple:
     """리라이팅된 쿼리에 이전 소스의 title 키워드가 포함되는지 검증
 
+    sLLM이 밑줄(_)을 공백으로 변환하거나 제거할 수 있으므로,
+    양쪽 모두 normalize하여 비교한다.
+
     Returns:
         (matched_index, document_id) or (None, None)
     """
     best_idx = None
     best_score = 0
 
+    # rewritten을 normalize (밑줄/특수문자 제거)
+    rw_norm = rewritten.replace("_", " ").replace("-", " ")
+
     for i, src in enumerate(prev_sources):
         title = src.get("title", "")
-        keywords = [w for w in title.replace("_", " ").split() if len(w) >= 2]
+        # title에서 키워드 추출 (밑줄→공백, 2글자 이상)
+        keywords = [w for w in title.replace("_", " ").replace("-", " ").split() if len(w) >= 2]
         if not keywords:
             continue
-        match_count = sum(1 for kw in keywords if kw in rewritten)
+        # 키워드가 normalize된 rewritten에 포함되는지 비교
+        match_count = sum(1 for kw in keywords if kw in rw_norm)
         threshold = max(len(keywords) // 2, 1)
         if match_count >= threshold and match_count > best_score:
             best_score = match_count
