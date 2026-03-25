@@ -180,7 +180,7 @@ def _build_context_prompt(context: list[dict], max_docs: int = 3) -> str:
 def _extract_judgment_history(chat_history: list[dict]) -> list[dict]:
     """대화 이력에서 이전 판단 결과를 추출한다.
 
-    assistant 메시지 중 judgment 타입 JSON을 포함한 응답을 찾아 반환.
+    agentResponse dict에서 직접 접근 (Document/Schedule Agent와 동일 패턴).
     """
     history = []
     if not chat_history:
@@ -189,17 +189,11 @@ def _extract_judgment_history(chat_history: list[dict]) -> list[dict]:
     for msg in chat_history:
         if msg.get("role") != "assistant":
             continue
-        content = msg.get("content", "")
-        # JSON 블록 추출 시도
-        match = re.search(r"\{.*?\"type\"\s*:\s*\"judgment\".*?\}", content, re.DOTALL)
-        if not match:
+        ar = msg.get("agentResponse") or msg.get("agent_response")
+        if not ar or not isinstance(ar, dict):
             continue
-        try:
-            parsed = json.loads(match.group(0))
-            if parsed.get("type") == "judgment":
-                history.append(parsed)
-        except json.JSONDecodeError:
-            continue
+        if ar.get("type") == "judgment":
+            history.append(ar)
 
     return history
 
