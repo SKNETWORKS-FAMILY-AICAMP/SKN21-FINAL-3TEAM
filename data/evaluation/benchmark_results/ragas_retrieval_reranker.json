@@ -1,0 +1,263 @@
+{
+  "config": {
+    "max_cases": 30,
+    "top_k": 10,
+    "use_reranker": true,
+    "use_hyde": false,
+    "threshold": -2.0,
+    "model": "gpt-4o-mini"
+  },
+  "retrieval_metrics": {
+    "hit_rate": 0.9333333333333333,
+    "mrr": 0.8375,
+    "avg_rank": 1.5357142857142858,
+    "total": 30,
+    "hits": 28
+  },
+  "ragas_scores": {
+    "context_precision": 0.889149986456991,
+    "context_recall": 0.9438095238095239
+  },
+  "per_sample": [
+    {
+      "test_id": "BENCH-001",
+      "question": "박지훈(부장, QA팀)이 채용 면접 시 코딩테스트를 포함한 기술면접을 진행하려 합니다. 가능한가요?",
+      "article": "제4조(채용)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-002",
+      "question": "윤채원(신입사원, 경영지원팀)이 기본 근무시간(10시~19시)에 맞춰 출근하려 합니다. 문제없나요?",
+      "article": "제7조(근로시간)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-003",
+      "question": "윤채원(과장, 보안팀)이 월간 장애 보고서를 작성하여 경영진에 보고하려 합니다. 필수인가요?",
+      "article": "제22조(성능 및 장애관리)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-004",
+      "question": "최유진(대리, 경영지원팀)과 1년 6개월 기간제 근로계약을 체결하려 합니다. 가능한가요?",
+      "article": "제5조(근로계약)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-005",
+      "question": "나은정(과장, 경영지원팀)이 고객 개인정보 데이터를 '극비' 등급으로 분류하려 합니다. 적절한가요?",
+      "article": "제15조(정보자산 분류 및 관리)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-006",
+      "question": "곽하영(부장, 디자인팀)이 회사 규정과 지침을 성실히 준수하려 합니다. 의무인가요?",
+      "article": "제10조(복무의무)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-007",
+      "question": "박지훈(대리, 개발팀)이 5년 근속하여 리프레시 휴가 5일을 신청하려 합니다. 가능한가요?",
+      "article": "제8조(휴일 및 휴가)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-008",
+      "question": "장동혁(부장, 경영지원팀)이 올해 DR 훈련을 실시하지 않으려 합니다. 가능한가요?",
+      "article": "제23조(백업 및 복구관리)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-009",
+      "question": "배수지(부장, 디자인팀)이 CISO를 비임원급 팀장으로 지정하려 합니다. 가능한가요?",
+      "article": "제14조(정보보호 조직 및 책임)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-010",
+      "question": "서준호(과장, 인사팀)이 회사 승인 없이 주말에 프리랜서 개발 일을 하려 합니다. 가능한가요?",
+      "article": "제12조(겸업 금지)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-011",
+      "question": "임재현(팀장, 기획팀)이 정보보호 정책을 3년간 검토하지 않고 유지하려 합니다. 가능한가요?",
+      "article": "제13조(정보보호 정책)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-012",
+      "question": "곽하영(팀장, 개발팀)의 근로계약서에 정보보호 의무 조항 없이 계약을 체결하려 합니다. 되나요?",
+      "article": "제5조(근로계약)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-013",
+      "question": "오태영(대리, 인사팀)의 수습 기간을 6개월로 설정하려 합니다. 가능한가요?",
+      "article": "제6조(수습기간)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-014",
+      "question": "곽하영(대리, 디자인팀)이 팀원들과 공용 서버 계정을 공유하여 사용하려 합니다. 가능한가요?",
+      "article": "제17조(정보시스템 접근통제)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-015",
+      "question": "장동혁(팀장, 인사팀)이 테스트 서버의 백업 주기를 월 1회로 설정하려 합니다. 적절한가요?",
+      "article": "제23조(백업 및 복구관리)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-016",
+      "question": "서준호(신입사원, 데이터팀)이 피싱 의심 이메일을 받았는데, 확실하지 않아 보고를 망설이고 있습니다. 보고해",
+      "article": "제28조(보안사고 예방 및 대응)",
+      "hit": false,
+      "hit_rank": -1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-017",
+      "question": "한소희(과장, 보안팀)이 경조사 휴가를 신청하려 합니다. 가능한가요?",
+      "article": "제8조(휴일 및 휴가)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-018",
+      "question": "나은정(대리, 인사팀)이 해외 출장 중 호텔에서 VPN으로 업무를 처리하려 합니다. 가능한가요?",
+      "article": "제9조(원격근무)",
+      "hit": true,
+      "hit_rank": 8,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-019",
+      "question": "이서연(신입사원, 데이터팀)이 오픈소스 커뮤니티에서 개인 시간에 활동하려 합니다. 가능한가요?",
+      "article": "제12조(겸업 금지)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-020",
+      "question": "송미래(대리, 경영지원팀)이 긴급 보안 패치를 바로 운영에 배포하려 합니다. 가능한가요?",
+      "article": "제25조(소프트웨어 개발 보안)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-021",
+      "question": "서준호(과장, 데이터팀)이 배포 자동화를 위해 공용 서비스 계정을 생성하려 합니다. 가능한가요?",
+      "article": "제17조(정보시스템 접근통제)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-022",
+      "question": "경력직 채용인데 코딩테스트를 생략해도 되나요?",
+      "article": "제4조 (채용)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-023",
+      "question": "규정에 보면 GPL 라이선스 라이브러리를 쓰고 싶은데 가능한가요?",
+      "article": "제27조 (오픈소스 사용 및 기여 정책)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-024",
+      "question": "커밋 메시지 형식이 정해져 있나요?",
+      "article": "제26조 (소스코드 관리)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-025",
+      "question": "이번에 처음 알았는데, 신입인데 이 규정이 저한테도 적용되는 건가요?",
+      "article": "제1조 (목적)",
+      "hit": true,
+      "hit_rank": 2,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-026",
+      "question": "급한 건은 아닌데, 오픈소스 기여라는 게 정확히 뭔가요?",
+      "article": "제3조 (용어의 정의)",
+      "hit": true,
+      "hit_rank": 6,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-027",
+      "question": "규정에 보면 PR 없이 main 브랜치에 직접 푸시해도 되나요?",
+      "article": "제26조 (소스코드 관리)",
+      "hit": false,
+      "hit_rank": -1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-028",
+      "question": "코드 리뷰어는 최소 몇 명이 필요한가요?",
+      "article": "제26조 (소스코드 관리)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-029",
+      "question": "대리인데 궁금한 게 있어요. 경력직도 수습기간이 있나요?",
+      "article": "제6조 (수습기간)",
+      "hit": true,
+      "hit_rank": 1,
+      "doc_count": 10
+    },
+    {
+      "test_id": "BENCH-030",
+      "question": "급한 건은 아닌데, 제가 만든 기술 문서의 보안 등급은 어떻게 정해지나요?",
+      "article": "제15조 (정보자산 분류 및 관리)",
+      "hit": true,
+      "hit_rank": 3,
+      "doc_count": 10
+    }
+  ]
+}

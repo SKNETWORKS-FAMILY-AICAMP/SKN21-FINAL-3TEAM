@@ -87,12 +87,14 @@ export default function Layout() {
 
     let newVal;
     if (isChat) {
-      // 챗봇 페이지: 스크롤 이벤트로 isScrolled(topbar/padding)를 변경하지 않음.
-      // padding이 180px→0으로 변하면 컨테이너가 커져 scrollTop이 0으로 강제되고
-      // 다시 padding이 복원되는 피드백 루프가 발생하여 스크롤 바운스 버그를 유발함.
-      // 챗봇 스크롤 위치만 추적하고 Layout의 isScrolled에는 영향 없음.
+      // 챗봇: 스크롤 다운 → topbar 숨김, 최상단(scrollTop=0) → topbar 복원
+      const delta = scrollTop - prevScrollTopRef.current;
       prevScrollTopRef.current = scrollTop;
-      return;
+      if (navBlockRef.current || resizingRef.current) return;
+      if (scrollTop === 0 && isScrolledRef.current) newVal = false;
+      else if (isScrolledRef.current) return; // 숨긴 상태에서 중간 스크롤은 무시 (바운스 방지)
+      else if (delta > 5) newVal = true;
+      else return;
     } else {
       // 일반 페이지: 위치 기반
       // 챗봇 페이지에서 main 엘리먼트 잔여 스크롤 이벤트(이전 페이지 scrollTop)를 무시
@@ -101,12 +103,13 @@ export default function Layout() {
     }
 
     if (newVal !== isScrolledRef.current) {
-      // isScrolled 변경 시 topbar+페이지 헤더 높이 변화로 인한 scroll 이벤트를 150ms 차단
+      // isScrolled 변경 시 topbar+페이지 헤더 높이 변화로 인한 scroll 이벤트를 차단
+      // padding transition(300ms)을 충분히 커버
       resizingRef.current = true;
       clearTimeout(resizeTimerRef.current);
       resizeTimerRef.current = setTimeout(() => {
         resizingRef.current = false;
-      }, 150);
+      }, 400);
       isScrolledRef.current = newVal;
     }
     setIsScrolled(newVal);

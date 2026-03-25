@@ -133,6 +133,10 @@ async def update_schedule(
         priority=s.priority,
         google_event_id=s.google_event_id,
         google_meet_link=s.google_meet_link,
+        is_team_visible=s.is_team_visible,
+        team_name=s.team_name,
+        project_name=s.project_name,
+        user_id=s.user_id,
         created_at=s.created_at,
     )
 

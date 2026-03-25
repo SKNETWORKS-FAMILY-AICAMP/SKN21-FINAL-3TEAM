@@ -323,6 +323,7 @@ export default function SchedulesPage() {
         end_time: endStr,
         schedule_type: data.type || 'meeting',
         is_team_visible: data.is_team_visible || false,
+        project_name: data.project_name || null,
       });
     } catch (error) {
       console.error('일정 수정 실패:', error);

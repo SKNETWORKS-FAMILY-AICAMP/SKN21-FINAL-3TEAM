@@ -232,6 +232,7 @@ async def update_schedule(
     if "end_time" in update_fields and "priority" not in update_fields:
         schedule.priority = calculate_priority(schedule.end_time)
 
+    await db.flush()
     return schedule
 
 

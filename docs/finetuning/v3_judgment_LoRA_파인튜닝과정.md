@@ -1,4 +1,4 @@
-# Judgment LoRA 파인튜닝 과정 — 발표용 정리
+# Judgment LoRA 파인튜닝 과정 — 정리
 
 > 윤경은 (AI Engineer) | Kanana-1.5-8B + LoRA | RunPod A100 80GB
 

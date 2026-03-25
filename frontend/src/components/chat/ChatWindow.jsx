@@ -248,7 +248,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       {/* 헤더는 ChatPage에서 별도로 렌더링됨 */}
 
       <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto py-4 scroll-smooth custom-scrollbar" data-main-scroll="" onScroll={handleScroll}>
-        <div className="max-w-4xl mx-auto w-full px-6">
+        <div className="max-w-4xl mx-auto w-full px-6 min-h-[calc(100%+1px)]">
           {children}
           <div ref={bottomRef} />
         </div>
