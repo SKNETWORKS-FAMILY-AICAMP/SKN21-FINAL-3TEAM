@@ -168,6 +168,10 @@ async def execute_judgment_stream(
     inconsistency = _check_consistency(user_input, parsed)
     if inconsistency:
         parsed["consistency_flag"] = inconsistency
+        parsed.setdefault("warnings", []).append(
+            f"일관성 경고: 동일 질문에 이전과 다른 결과 "
+            f"({inconsistency['previous_result']} → {inconsistency['current_result']})"
+        )
 
     parsed["message"] = parsed.get("reasoning", "")
 
