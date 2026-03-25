@@ -125,44 +125,13 @@ async def safe_judgment_agent(state: AgentState) -> AgentState:
     _t = time.time()
     logger.info("[Orchestrator] safe_judgment_agent 진입 | stream_mode=%s", state.get('stream_mode'))
     try:
-        # 스트리밍 모드: RAG 검색 + 프롬프트 빌드 → chat.py에서 직접 스트리밍
+        # 스트리밍 모드: judgment_agent에 RAG+프롬프트 위임 → chat.py에서 스트리밍
         if state.get("stream_mode"):
-            from ai.agents.judgment_agent import (
-                _build_context_prompt,
-                _build_user_prompt,
-                _extract_judgment_history,
-            )
-            from ai.llm.prompts import JUDGMENT_STREAMING_SYSTEM_PROMPT
-            from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+            from ai.agents.judgment_agent import prepare_judgment_stream
 
-            user_input = state["user_input"]
-            user_id = state.get("user_id")
-            chat_history = state.get("chat_history", [])
-
-            # RAG 검색
-            _t_rag = time.time()
-            logger.debug("[Orchestrator] judgment 스트리밍: RAG 검색 시작 (top_k=10)...")
-            pipeline = get_qdrant_pipeline()
-            context = pipeline.retrieve(query=user_input, user_id=user_id, top_k=10, filter={"source": "regulations"})
-            logger.debug("[Orchestrator] judgment RAG 완료 (%.2fs) | %d개 문서", time.time()-_t_rag, len(context))
-
-            # 프롬프트 빌드
-            judgment_history = _extract_judgment_history(chat_history)
-            context_text = _build_context_prompt(context)
-            user_prompt = _build_user_prompt(
-                user_input, context_text, chat_history, judgment_history,
-                prev_agent_context=state.get("prev_agent_context"),
-            )
-
-            state["context"] = context
-            state["agent_response"] = {
-                "type": "judgment",
-                "message": "",
-                "stream_pending": True,
-                "sys_prompt": JUDGMENT_STREAMING_SYSTEM_PROMPT,
-                "user_prompt": user_prompt,
-                "_rag_context": context,
-            }
+            result = await prepare_judgment_stream(state)
+            state["context"] = result["context"]
+            state["agent_response"] = result["agent_response"]
             logger.debug("[Orchestrator] judgment stream_pending 반환 (%.2fs)", time.time()-_t)
             return state
 

@@ -633,6 +633,58 @@ def _calibrate_confidence(
     return final, breakdown
 
 
+# ── 스트리밍 준비 함수 (orchestrator에서 호출) ──
+
+
+async def prepare_judgment_stream(state: dict) -> dict:
+    """스트리밍 모드용 RAG 검색 + 프롬프트 빌드
+
+    judgment_agent과 동일한 RAG 파라미터(reranker, HyDE, score_threshold)를 사용하여
+    오케스트레이터와의 파라미터 불일치를 방지한다.
+
+    Returns:
+        {"context": list, "agent_response": dict(stream_pending=True, ...)}
+    """
+    from ai.llm.prompts import JUDGMENT_STREAMING_SYSTEM_PROMPT
+
+    user_input = state["user_input"]
+    user_id = state.get("user_id")
+    chat_history = state.get("chat_history", [])
+
+    # RAG 검색 (judgment_agent과 동일 파라미터)
+    _t_rag = time.time()
+    logger.info("[JudgmentAgent] 스트리밍 RAG 검색 시작 (top_k=5, reranker=True, hyde=True)...")
+    pipeline = get_qdrant_pipeline()
+    context = pipeline.retrieve(
+        query=user_input, user_id=user_id, top_k=5,
+        filter={"source": "regulations"},
+        use_reranker=True,
+        score_threshold=0.0,
+        use_hyde=True,
+    )
+    logger.info("[JudgmentAgent] 스트리밍 RAG 완료 (%.2fs) | %d개 문서", time.time() - _t_rag, len(context))
+
+    # 프롬프트 빌드
+    judgment_history = _extract_judgment_history(chat_history)
+    context_text = _build_context_prompt(context)
+    user_prompt = _build_user_prompt(
+        user_input, context_text, chat_history, judgment_history,
+        prev_agent_context=state.get("prev_agent_context"),
+    )
+
+    return {
+        "context": context,
+        "agent_response": {
+            "type": "judgment",
+            "message": "",
+            "stream_pending": True,
+            "sys_prompt": JUDGMENT_STREAMING_SYSTEM_PROMPT,
+            "user_prompt": user_prompt,
+            "_rag_context": context,
+        },
+    }
+
+
 # ── 메인 Agent 함수 ──
 
 
