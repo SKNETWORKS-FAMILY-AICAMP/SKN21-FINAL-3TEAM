@@ -179,11 +179,11 @@ async def startup_preload():
             from ai.rag.qdrant_pipeline import get_qdrant_pipeline
             await asyncio.wait_for(
                 asyncio.get_event_loop().run_in_executor(None, get_qdrant_pipeline),
-                timeout=60
+                timeout=180
             )
-            print(f"[Background] RAG 파이프라인 로드 완료 — 임베딩+Qdrant+BM25 ({time.time()-_t:.2f}s)")
+            print(f"[Background] RAG 파이프라인 로드 완료 — 임베딩+Qdrant+BM25+Reranker ({time.time()-_t:.2f}s)")
         except asyncio.TimeoutError:
-            print("[Background] RAG 파이프라인 로드 타임아웃 (60초 초과, 건너뜀)")
+            print("[Background] RAG 파이프라인 로드 타임아웃 (180초 초과, 건너뜀)")
         except Exception as e:
             print(f"[Background] RAG 파이프라인 로드 실패 (서비스는 계속 가능): {e}")
 

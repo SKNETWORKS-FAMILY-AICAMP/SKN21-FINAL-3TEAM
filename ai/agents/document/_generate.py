@@ -780,13 +780,23 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
         else:
             # 커스텀 템플릿 → placeholder 방식 우선, fill_with_llm fallback
             template_file_path = getattr(template, "file_path", None) if template else None
-            # DB 경로가 backend 기준 상대경로일 수 있으므로 보정
+            # DB 경로 보정: 백슬래시→슬래시 + 여러 상대경로 후보 탐색
+            if template_file_path:
+                template_file_path = template_file_path.replace("\\", "/")
             if template_file_path and not Path(template_file_path).exists():
-                alt = Path("backend") / template_file_path
-                if alt.exists():
-                    template_file_path = str(alt)
+                candidates = [
+                    Path("backend") / template_file_path,
+                    Path("..") / template_file_path,
+                    Path("..") / "backend" / template_file_path,
+                    GENERATED_DOCS_DIR.parent / template_file_path,
+                ]
+                for alt in candidates:
+                    if alt.exists():
+                        template_file_path = str(alt)
+                        break
 
             placeholder_success = False
+            print(f"[DocumentAgent] template_file_path={template_file_path}, exists={Path(template_file_path).exists() if template_file_path else 'N/A'}")
             if template_file_path and Path(template_file_path).exists():
                 # ── 1순위: placeholder 방식 (docxtpl, sLLM 불필요) ──
                 try:
@@ -794,30 +804,25 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
                     from ai.skills.fill_with_placeholder import fill_docx_with_placeholder
 
                     tpl_path = str(Path(template_file_path).with_suffix('')) + '_tpl.docx'
+                    print(f"[DocumentAgent] placeholder inject: {template_file_path} → {tpl_path}")
                     inject_placeholders(template_file_path, tpl_path, fields)
+                    print(f"[DocumentAgent] placeholder fill: {tpl_path} → {output_path}")
                     fill_result = fill_docx_with_placeholder(tpl_path, output_path, data, fields)
+                    print(f"[DocumentAgent] placeholder fill_result: {fill_result}")
                     if fill_result.get("success") and fill_result.get("filled_count", 0) > 0:
                         placeholder_success = True
                         set_last_model_name(get_last_model_name() + " (placeholder)")
                         print(f"[DocumentAgent] placeholder 방식 성공: {fill_result['filled_count']}개 필드")
                 except Exception as e:
                     print(f"[DocumentAgent] placeholder 실패: {e}")
+                    import traceback
+                    traceback.print_exc()
 
-                # ── 2순위: fill_with_llm fallback (현재 미사용) ──
-                # if not placeholder_success:
-                #     from ai.skills.fill_with_llm import fill_docx_with_llm
-                #     print(f"[DocumentAgent] fill_with_llm fallback: {template_file_path}")
-                #     fill_result = await fill_docx_with_llm(template_file_path, output_path, data, field_mapping=fields)
-                #     if not fill_result.get("success") or fill_result.get("filled_count", 0) == 0:
-                #         print(f"[DocumentAgent] fill_with_llm도 실패 → 범용 빌더")
-                #         from ai.skills.create_from_template import create_generic_document
-                #         create_generic_document(output_path, data, fields, DOC_TYPE_NAMES.get(template_type, template_name))
-            else:
-                # 원본 양식 파일 없음 → 범용 빌더 (현재 미사용)
-                # print(f"[DocumentAgent] 원본 양식 파일 없음 → 범용 빌더")
-                # from ai.skills.create_from_template import create_generic_document
-                # create_generic_document(output_path, data, fields, DOC_TYPE_NAMES.get(template_type, template_name))
-                pass
+            # ── fallback: placeholder 실패 또는 원본 파일 없음 → 범용 빌더 ──
+            if not placeholder_success:
+                print(f"[DocumentAgent] placeholder 미성공 → 범용 빌더 fallback")
+                from ai.skills.create_from_template import create_generic_document
+                create_generic_document(output_path, data, fields, DOC_TYPE_NAMES.get(template_type, template_name))
         print(f"[DocumentAgent] 커스텀 DOCX 생성 완료: {output_path}")
     except Exception as e:
         print(f"[DocumentAgent] !!! 커스텀 DOCX 생성 실패: {e}")
