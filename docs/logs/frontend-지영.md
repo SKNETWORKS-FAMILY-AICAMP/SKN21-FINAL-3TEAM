@@ -4093,8 +4093,36 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 
 **수정**: `renderCardMessage` switch문에 `schedule_clarify` 케이스를 `schedule_confirm`과 동일하게 처리 — 제목/날짜/시간 입력 폼 + "일정 등록" 버튼이 바로 표시됨.
 
+#### 19) 챗봇 일반 대화 프롬프트 개선 + 사용법 버튼 구현 (`prompts.py`, `ChatPage.jsx`)
+
+**프롬프트 수정 (`ai/llm/prompts.py`)**:
+- `[인사/첫 대화]` 섹션 추가 — 인사 응답 마지막에 "사용법이 궁금하시면 아래 **사용법** 버튼을 눌러주세요." 문구 포함하도록 지시
+- `[사용법 안내]` 섹션 확장 — 기존 3줄 → 번호 매긴 구체적 안내(질문 입력, 즉시 답변, 다양한 업무, 예시)로 변경하여 LLM이 임의로 내용 생성하지 않도록 고정
+
+**프론트엔드 수정 (`ChatPage.jsx`)**:
+- `USAGE_GUIDE_TEXT` 상수 추가 — 사용법 안내 텍스트 프론트에서 관리
+- AI 텍스트 버블에서 "사용법.*버튼" 패턴 감지 시 사용법 버튼 렌더링 (HelpCircle 아이콘 + primary 스타일 pill 버튼)
+- 버튼 클릭 → `addMessage`로 사용법 안내를 assistant 메시지로 즉시 추가 (서버 호출 없음)
+
+#### 20) 한글 입력 시 마지막 글자만 전송되는 버그 수정 (`ChatWindow.jsx`)
+
+- **문제**: "안녕하세요" 입력 후 Enter → "요" 한 글자만 전송됨. 새 브라우저에서 특히 자주 발생
+- **원인**: `onKeyDown`에서 `e.key === 'Enter'`만 체크하고 한글 IME 조합 상태를 확인하지 않음. 한글 조합 중 Enter 시 IME가 마지막 글자를 확정하면서 발생하는 Enter를 전송으로 처리
+- **수정**: `!e.nativeEvent.isComposing` 조건 추가 → IME 조합 중에는 Enter 무시, 조합 완료 후 다음 Enter에서만 전송
+
+#### 21) 스크롤 튕김 버그 수정 (`ChatWindow.jsx`)
+
+- **문제**: 짧은 답변 수신 후 사용자가 위로 스크롤하면 하단으로 튕겨 올라감
+- **원인**: `messages`/`isStreaming` 변경 시 사용자 스크롤 위치 무시하고 무조건 `scrollTop = scrollHeight` 실행
+- **수정**: `isNearBottom` 체크 추가 (하단 150px 이내일 때만 자동 스크롤)
+
+#### 22) 사용법 버튼 — LLM 의존 제거, 프론트 확정 렌더링 (`ChatPage.jsx`, `prompts.py`)
+
+- **문제**: 프롬프트에 "사용법 버튼을 눌러주세요" 문구 포함 지시했으나 LLM이 따르지 않음
+- **수정**: LLM 응답 텍스트 감지(`/사용법.*버튼/`) 방식 제거 → 첫 번째 assistant 메시지에 항상 "사용법이 궁금하시면 아래 **사용법** 버튼을 눌러주세요." 텍스트 + 사용법 버튼 렌더링
+- 프롬프트의 `[인사/첫 대화]` 섹션 제거 (프론트에서 처리하므로 불필요)
+
 ### 다음 할 일
 
-- [ ] EC2 백엔드 배포 (develop push 완료, EC2 pull & 재시작 필요)
 - [ ] 멘토님 발표 준비 (model_test_report.html + planner_architecture.html)
 - [ ] 복합 질문 follow-up 시나리오 E2E 테스트

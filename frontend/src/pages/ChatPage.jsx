@@ -50,6 +50,14 @@ function exportChat(messages) {
   URL.revokeObjectURL(url);
 }
 
+const USAGE_GUIDE_TEXT = `1. 질문 입력: 업무와 관련된 궁금한 점이나 요청사항을 질문창에 입력하세요.
+2. 즉시 답변: 듀드가 최대한 빠르게 정확한 답변을 제공합니다.
+3. 다양한 업무: 문서 작성, 일정 관리, 규정 판단 등 다양한 업무에 활용할 수 있습니다.
+4. 예시:
+   - 규정 판단: "출장비 사용 가능한가요?"
+   - 문서: "계약서 검색해줘", "회의록 요약해줘", "보고서 작성해줘"
+   - 일정: "내일 오후 2시 회의 등록해줘", "이번주 일정 보여줘"`;
+
 const RESULT_MAP = { yes: '가능', no: '불가', conditional: '조건부 가능', no_regulation: '규정 없음' };
 
 // LLM 응답 텍스트에서 raw enum 값을 한국어로 치환
@@ -164,15 +172,44 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                   출처: 문서 #{data.document_id}
                 </div>
               )}
+              {/* 규정 경고 */}
+              {data.regulation_check?.notes?.length > 0 && (
+                <div className="mt-3 space-y-1.5">
+                  {data.regulation_check.notes.map((n, i) => (
+                    <div key={i} className={`flex items-start gap-1.5 p-2.5 rounded-lg border text-xs ${
+                      n.result === 'no' ? 'bg-red-50 border-red-200 text-red-700' :
+                      n.result === 'conditional' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
+                      'bg-green-50 border-green-200 text-green-700'
+                    }`}>
+                      <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-semibold">{n.result === 'no' ? '[위반]' : n.result === 'conditional' ? '[조건부]' : '[부합]'} {n.topic}</span>
+                        <p className="text-[0.6875rem] mt-0.5">{n.reason}</p>
+                        {n.regulation && <p className="text-[0.625rem] mt-0.5 italic opacity-75">근거: {n.regulation}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {Array.isArray(data.warnings) && data.warnings.length > 0 && !data.regulation_check?.notes?.length && (
+                <div className="mt-3 space-y-1">
+                  {data.warnings.map((w, i) => (
+                    <div key={i} className="flex items-start gap-1.5 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+                      <AlertTriangle size={13} className="text-yellow-500 mt-0.5 shrink-0" />
+                      <span>{w}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         );
       }
 
       // sub_type=qa → QA 카드
-      if (subType === 'qa' || citations.length > 0 || qaConfidence !== null) {
-        const confColor = qaConfidence >= 0.7 ? { bar: 'bg-green-500', text: 'text-green-600', label: '높음', hint: '문서 기반 답변입니다' } : qaConfidence >= 0.4 ? { bar: 'bg-yellow-500', text: 'text-yellow-600', label: '보통', hint: '관련 문서를 참고했지만 정확하지 않을 수 있습니다' } : { bar: 'bg-red-500', text: 'text-red-600', label: '낮음', hint: '관련도가 낮은 문서를 참고했습니다. 다시 질문해보세요' };
-        const firstSourceTitle = sources[0]?.title || '';
+      if (subType === 'qa' || qaConfidence !== null) {
+        const topScore = sources[0]?.score ?? qaConfidence ?? 0;
+        const hintInfo = topScore >= 0.7 ? { text: 'text-green-600', hint: '관련도가 높은 문서를 기반으로 답변했습니다' } : topScore >= 0.4 ? { text: 'text-yellow-600', hint: '관련 문서를 참고했지만 정확하지 않을 수 있습니다' } : { text: 'text-red-600', hint: '관련도가 낮은 문서를 참고했습니다. 다시 질문해보세요' };
         return (
           <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
             <div className="px-4 py-3 border-b border-neutral-divider flex items-center justify-between">
@@ -180,52 +217,40 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                 <MessageCircle size={16} />
                 문서 Q&A
               </div>
-              <div className="flex items-center gap-2">
-                {qaConfidence !== null && (
-                  <div className="flex items-center gap-1.5" title={`문서 기반 신뢰도 (${confColor.label})`}>
-                    <ShieldCheck size={14} className={confColor.text} />
-                    <div className="w-16 h-2 bg-neutral-100 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${confColor.bar}`} style={{ width: `${Math.round(qaConfidence * 100)}%` }} />
-                    </div>
-                    <span className={`text-xs font-bold ${confColor.text}`}>{Math.round(qaConfidence * 100)}%</span>
-                  </div>
-                )}
-                <button onClick={() => copyCardText(content || data.answer || '')} className="text-neutral-muted hover:text-neutral-main transition" title="복사">
-                  <Copy size={14} />
-                </button>
-              </div>
+              <button onClick={() => copyCardText(content || data.answer || '')} className="text-neutral-muted hover:text-neutral-main transition" title="복사">
+                <Copy size={14} />
+              </button>
             </div>
             <div className="p-4">
-              {/* 개선6: 신뢰도 문장형 안내 + 개선2: 검색→QA 맥락 연결 */}
-              {sources.length > 0 && <p className="text-[0.6875rem] text-neutral-muted mb-1">검색된 문서를 바탕으로 답변합니다.</p>}
-              {qaConfidence !== null && <p className={`text-[0.6875rem] ${confColor.text} mb-2`}>{confColor.hint}</p>}
               {(content || data.answer) && <div className="text-[0.8125rem] text-neutral-main leading-[1.7] mb-3.5"><MarkdownText>{content || data.answer}</MarkdownText></div>}
-              {citations.length > 0 && (
-                <div className="mb-3">
-                  <div className="text-xs font-semibold text-neutral-sub mb-2">인용 ({citations.length}건)</div>
-                  {citations.map((c, idx) => {
-                    const rel = c.relevance || '';
-                    const relColor = rel === '높음' ? 'bg-green-100 text-green-700' : rel === '중간' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700';
-                    return (
-                      <div key={idx} className="px-3 py-2 bg-surface-hover rounded-lg mb-1.5 border-l-[3px] border-l-primary-300">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-semibold text-neutral-main truncate">{c.source || `인용 ${idx + 1}`}</span>
-                          {rel && <span className={`text-[0.625rem] font-semibold px-1.5 py-0.5 rounded-full ${relColor}`}>{rel}</span>}
-                        </div>
-                        {c.content && <div className="text-[0.6875rem] text-neutral-sub mt-0.5">{c.content}</div>}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
               {sources.length > 0 && (
-                <div>
-                  <div className="text-xs font-semibold text-neutral-sub mb-2">검색 출처 ({sources.length}건)</div>
+                <div className="mb-3">
+                  <div className="text-xs font-semibold text-neutral-sub mb-2">📎 참고 문서 ({sources.length}건)</div>
                   {sources.map((s, idx) => (
                     <SourceItem key={idx} source={s} index={idx} onSelect={onSelectDoc} />
                   ))}
                 </div>
               )}
+              {/* 규정 경고 (QA) */}
+              {data.regulation_check?.notes?.length > 0 && (
+                <div className="mt-3 space-y-1.5">
+                  {data.regulation_check.notes.map((n, i) => (
+                    <div key={i} className={`flex items-start gap-1.5 p-2.5 rounded-lg border text-xs ${
+                      n.result === 'no' ? 'bg-red-50 border-red-200 text-red-700' :
+                      n.result === 'conditional' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
+                      'bg-green-50 border-green-200 text-green-700'
+                    }`}>
+                      <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-semibold">{n.result === 'no' ? '[위반]' : n.result === 'conditional' ? '[조건부]' : '[부합]'} {n.topic}</span>
+                        <p className="text-[0.6875rem] mt-0.5">{n.reason}</p>
+                        {n.regulation && <p className="text-[0.625rem] mt-0.5 italic opacity-75">근거: {n.regulation}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className={`text-[0.6875rem] ${hintInfo.text}`}>{hintInfo.hint}</p>
             </div>
           </div>
         );
@@ -314,6 +339,8 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
           actionItems={actionItems}
           onDownload={handleDocDownload}
           modelName={data.model_name || ''}
+          regulationCheck={data.regulation_check}
+          warnings={data.warnings}
         />
       );
     }
@@ -351,6 +378,8 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
             meetLink={gs.meet_link || null}
             emailSent={gs.email_sent || false}
             emailCount={gs.email_count || 0}
+            warnings={data.warnings}
+            regulationCheck={data.regulation_check}
           />
           {content && (
             <div className="mt-2 bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">
@@ -476,12 +505,57 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       );
     }
 
-    default:
+    default: {
+      const isFirstAssistantCard = messages.findIndex(m => m.role === 'assistant') === index;
+      // 짧은 일반 응답에서 문장 사이 빈 줄(\n\n) 제거 → 줄바꿈만 유지
+      const cleanContent = content ? content.replace(/\n{2,}/g, '  \n') : content;
       return (
-        <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
-          <MarkdownText>{content}</MarkdownText>
+        <div>
+          <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
+            <MarkdownText>{cleanContent}</MarkdownText>
+            {isFirstAssistantCard && (
+              <>
+                <p className="mt-2 text-neutral-sub text-sm">사용법이 궁금하시면 아래 <strong>사용법</strong> 버튼을 눌러주세요.</p>
+                <button
+                  onClick={() => useChatStore.getState().addMessage({ role: 'assistant', content: USAGE_GUIDE_TEXT })}
+                  className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-primary-300 bg-primary-50 text-primary-700 text-xs font-semibold hover:bg-primary-100 transition"
+                >
+                  <HelpCircle size={14} />
+                  사용법
+                </button>
+              </>
+            )}
+          </div>
+          {/* 규정 경고 (pipeline_create, approval_create 등) */}
+          {data.regulation_check && data.regulation_check.result && data.regulation_check.result !== 'no_regulation' && (
+            <div className={`mt-2 rounded-lg p-3 border text-xs ${
+              data.regulation_check.result === 'no' ? 'bg-red-50 border-red-200 text-red-700' :
+              data.regulation_check.result === 'conditional' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' :
+              'bg-green-50 border-green-200 text-green-700'
+            }`}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <AlertTriangle size={13} />
+                <span className="font-semibold">
+                  {data.regulation_check.result === 'no' ? '규정 위반' : data.regulation_check.result === 'conditional' ? '조건부 허용' : '규정 부합'}
+                </span>
+              </div>
+              {data.regulation_check.reason && <p>{data.regulation_check.reason}</p>}
+              {data.regulation_check.regulation && <p className="mt-0.5 italic opacity-75">근거: {data.regulation_check.regulation}</p>}
+            </div>
+          )}
+          {Array.isArray(data.warnings) && data.warnings.length > 0 && !data.regulation_check?.result && (
+            <div className="mt-2 space-y-1">
+              {data.warnings.map((w, i) => (
+                <div key={i} className="flex items-start gap-1.5 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+                  <AlertTriangle size={13} className="text-yellow-500 mt-0.5 shrink-0" />
+                  <span>{w}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       );
+    }
   }
 }
 
@@ -498,6 +572,7 @@ export default function ChatPage() {
   const selectedDocumentName = useChatStore((s) => s.selectedDocumentName);
   const setSelectedDocument = useChatStore((s) => s.setSelectedDocument);
   const clearSelectedDocument = useChatStore((s) => s.clearSelectedDocument);
+  const addMessage = useChatStore((s) => s.addMessage);
   const [panelOpen, setPanelOpen] = useState(false);
   const [docViewDoc, setDocViewDoc] = useState(null);
   const [sessionSidebarOpen, setSessionSidebarOpen] = useState(false);
@@ -818,10 +893,24 @@ export default function ChatPage() {
               }
 
               // AI 완료 — 기본 텍스트 버블
+              // 첫 번째 assistant 메시지에 사용법 버튼 표시 (LLM 응답에 의존하지 않음)
+              const isFirstAssistant = messages.findIndex(m => m.role === 'assistant') === i;
               return (
                 <MessageBubble key={i} type="bot" intent={msg.intent} modelName={msg.agentResponse?.model_name}>
                   <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
                     <MarkdownText>{msg.content}</MarkdownText>
+                    {isFirstAssistant && (
+                      <>
+                        <p className="mt-2 text-neutral-sub text-sm">사용법이 궁금하시면 아래 <strong>사용법</strong> 버튼을 눌러주세요.</p>
+                        <button
+                          onClick={() => addMessage({ role: 'assistant', content: USAGE_GUIDE_TEXT })}
+                          className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-primary-300 bg-primary-50 text-primary-700 text-xs font-semibold hover:bg-primary-100 transition"
+                        >
+                          <HelpCircle size={14} />
+                          사용법
+                        </button>
+                      </>
+                    )}
                   </div>
                 </MessageBubble>
               );

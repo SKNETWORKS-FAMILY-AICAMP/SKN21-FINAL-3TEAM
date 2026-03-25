@@ -88,9 +88,7 @@ token.json
 docker/Dockerfile.backend
 
 # claude setting
-.claude/*
-!.claude/commands/
-!.claude/skills/
+.claude/
 .ruff_cache/
 
 docs/mentoring/2026-02-15-멘토링-대본.md

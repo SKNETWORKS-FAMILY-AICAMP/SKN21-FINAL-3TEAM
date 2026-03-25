@@ -105,7 +105,8 @@ def _format_chat_context(chat_history: list, max_turns: int = 3) -> str:
     lines = []
     for msg in recent:
         role = "사용자" if msg["role"] == "user" else "어시스턴트"
-        content = msg.get("content", "")[:200]
+        max_len = 400 if msg["role"] == "assistant" else 200
+        content = msg.get("content", "")[:max_len]
         if content:
             lines.append(f"{role}: {content}")
     if not lines:
@@ -162,12 +163,12 @@ async def _retrieve_context(query: str, user_id: int = None, user_team: str = No
                     score_threshold=score_threshold,
                 ),
             ),
-            timeout=30,
+            timeout=60,
         )
         context = [f"[문서 제목: {doc.get('title', '')}]\n{doc['content']}" for doc in search_results]
         logger.info("_retrieve_context 완료 (%.2fs): %d개 문서", time.time()-_t, len(context))
     except asyncio.TimeoutError:
-        logger.warning("_retrieve_context 타임아웃 (30초 초과)")
+        logger.warning("_retrieve_context 타임아웃 (60초 초과)")
         rag_status = "timeout"
     except Exception as e:
         logger.error("_retrieve_context 실패: %s", e)
@@ -199,6 +200,72 @@ def _build_sources(search_results: list) -> list:
                 "document_id": doc.get("document_id"),
             })
     return sources
+
+
+# ── Sources/Citations 후처리 ──
+
+def _filter_sources(sources: list, response_text: str) -> list:
+    """LLM 답변에 실제 언급된 소스만 필터링 (키워드 매칭)"""
+    if not sources or not response_text:
+        return sources
+    if "찾지 못했습니다" in response_text or "관련 문서가 없" in response_text:
+        return []
+    filtered = []
+    for src in sources:
+        title = src.get("title", "")
+        keywords = [w for w in title.replace("_", " ").split() if len(w) >= 3]
+        if not keywords:
+            continue
+        match = sum(1 for kw in keywords if kw in response_text)
+        if match >= max(len(keywords) // 2, 1):
+            filtered.append(src)
+    return filtered if filtered else sources
+
+
+def filter_and_build_citations(sources: list, response_text: str) -> tuple:
+    """LLM 응답에서 [참고:] 태그 파싱 + sources 필터링 + citations 생성
+
+    Returns:
+        (clean_response, filtered_sources, citations)
+    """
+    import re
+
+    clean_response = response_text
+    filtered_sources = list(sources) if sources else []
+
+    if not response_text:
+        return clean_response, filtered_sources, []
+
+    # 1. [참고: 문서제목] 태그 파싱
+    ref_titles = list(dict.fromkeys(re.findall(r"\[참고[:\s]*([^\]]+)\]", response_text)))
+
+    # 2. 답변에서 [참고: ...] 줄 제거
+    cleaned = re.sub(r"\n*\[참고[:\s]*[^\]]+\]\n*", "", response_text).rstrip()
+    if cleaned:
+        clean_response = cleaned
+
+    # 3. sources 필터링
+    if ref_titles and sources:
+        ref_set = {t.strip() for t in ref_titles}
+        filtered_sources = [s for s in sources if s.get("title", "") in ref_set]
+    elif sources:
+        filtered_sources = _filter_sources(sources, response_text)
+
+    # 4. 최종 보장: 0건이면 상위 1건 유지
+    if not filtered_sources and sources:
+        filtered_sources = sources[:1]
+
+    # 5. citations 생성 (상위 3건)
+    citations = [
+        {
+            "source": s.get("title", ""),
+            "content": s.get("content", "")[:200],
+            "relevance": "높음" if s.get("score", 0) >= 0.7 else "중간" if s.get("score", 0) >= 0.4 else "낮음",
+        }
+        for s in filtered_sources[:3]
+    ]
+
+    return clean_response, filtered_sources, citations
 
 
 # ── LLM 호출 ──

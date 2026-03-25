@@ -4,97 +4,22 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
-# ── 모던 프리미엄 다크 슬레이트 테마 ──
-_BLUE_HEADER = "1E293B"   # 섹션 헤더 배경 (다크 네이비/슬레이트)
-_BLUE_LIGHT  = "F1F5F9"   # 라벨 셀 배경 (밝고 연한 그레이 블루)
-_BLUE_ALT    = "F8FAFC"   # 테이블 짝수 행 배경 (백색에 가까운 블루)
-_NAVY_RGB    = RGBColor(0x1E, 0x29, 0x3B)   # 메인 폰트 색상
-_WHITE_RGB   = RGBColor(0xFF, 0xFF, 0xFF)   # 섹션 헤더 글자색
+from ai.skills._docx_styles import (
+    BLUE_HEADER, BLUE_LIGHT, BLUE_ALT, NAVY_RGB, WHITE_RGB,
+    set_shading, set_valign, set_row_height,
+    style_section_header, style_label_cell, style_value_cell,
+    inject_cell_text as _inject, add_title_line,
+)
 
-
-def _set_shading(cell, fill_color: str):
-    tc = cell._tc
-    tcPr = tc.get_or_add_tcPr()
-    shd = OxmlElement("w:shd")
-    shd.set(qn("w:val"), "clear")
-    shd.set(qn("w:color"), "auto")
-    shd.set(qn("w:fill"), fill_color)
-    tcPr.append(shd)
-
-
-def _set_valign(cell, align: str = "center"):
-    tc = cell._tc
-    tcPr = tc.get_or_add_tcPr()
-    vAlign = OxmlElement("w:vAlign")
-    vAlign.set(qn("w:val"), align)
-    tcPr.append(vAlign)
-
-
-def set_row_height(row, height_cm: float):
-    tr = row._tr
-    trPr = tr.get_or_add_trPr()
-    trHeight = OxmlElement("w:trHeight")
-    trHeight.set(qn("w:val"), str(int(height_cm * 567)))
-    trHeight.set(qn("w:hRule"), "atLeast")
-    trPr.append(trHeight)
-
-
-def style_section_header(cell, text: str):
-    """섹션 제목 셀: 파란 배경 + 흰 굵은 글씨"""
-    _set_shading(cell, _BLUE_HEADER)
-    _set_valign(cell)
-    para = cell.paragraphs[0]
-    para.clear()
-    run = para.add_run(text)
-    run.font.bold = True
-    run.font.size = Pt(10)
-    run.font.color.rgb = _WHITE_RGB
-    para.alignment = WD_ALIGN_PARAGRAPH.LEFT
-
-
-def style_label_cell(cell, text: str):
-    """라벨 셀: 연한 파란 배경 + 굵은 글씨 + 가운데 정렬"""
-    _set_shading(cell, _BLUE_LIGHT)
-    _set_valign(cell)
-    para = cell.paragraphs[0]
-    para.clear()
-    run = para.add_run(text)
-    run.font.bold = True
-    run.font.size = Pt(10)
-    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-
-def style_value_cell(cell, text: str = ""):
-    """값 셀: 흰 배경 + 기본 글씨"""
-    _set_valign(cell)
-    para = cell.paragraphs[0]
-    para.clear()
-    if text:
-        run = para.add_run(text)
-        run.font.size = Pt(10)
-
-
-def _inject(cell, text: str):
-    """값 셀에 데이터 주입"""
-    cell.text = str(text) if text else ""
-    para = cell.paragraphs[0]
-    if para.runs:
-        para.runs[0].font.size = Pt(10)
-
-
-def _add_title_line(doc):
-    """제목 아래 파란 구분선 문단 추가"""
-    p = doc.add_paragraph()
-    pPr = p._p.get_or_add_pPr()
-    pBdr = OxmlElement("w:pBdr")
-    bottom = OxmlElement("w:bottom")
-    bottom.set(qn("w:val"), "single")
-    bottom.set(qn("w:sz"), "12")
-    bottom.set(qn("w:space"), "1")
-    bottom.set(qn("w:color"), _BLUE_HEADER)
-    pBdr.append(bottom)
-    pPr.append(pBdr)
-    return p
+# 하위 호환 별칭
+_BLUE_HEADER = BLUE_HEADER
+_BLUE_LIGHT = BLUE_LIGHT
+_BLUE_ALT = BLUE_ALT
+_NAVY_RGB = NAVY_RGB
+_WHITE_RGB = WHITE_RGB
+_set_shading = set_shading
+_set_valign = set_valign
+_add_title_line = add_title_line
 
 
 def create_report(output_path: str = "tests/업무보고서_생성.docx", data: dict = None):
@@ -190,8 +115,16 @@ def create_report(output_path: str = "tests/업무보고서_생성.docx", data: 
 
     doc.add_paragraph()
 
-    # ── 표3: 진행 현황 (6행 6열) ──
-    t3 = doc.add_table(rows=6, cols=6)
+    # ── 표3: 진행 현황 (동적 행: 섹션헤더 + 컬럼헤더 + 데이터 N행) ──
+    tasks_raw = data.get("tasks", []) if data else []
+    if isinstance(tasks_raw, dict):
+        _tasks_list = list(tasks_raw.values())
+    elif isinstance(tasks_raw, list):
+        _tasks_list = tasks_raw
+    else:
+        _tasks_list = []
+    _task_data_rows = max(len(_tasks_list), 3)
+    t3 = doc.add_table(rows=2 + 1, cols=6)  # 헤더2행 + 첫 데이터행
     t3.style = "Table Grid"
 
     for i in range(1, 6):
@@ -201,7 +134,11 @@ def create_report(output_path: str = "tests/업무보고서_생성.docx", data: 
     for i, h in enumerate(["No.", "업무 항목", "담당자", "진행률", "시작일", "완료 예정일"]):
         style_label_cell(t3.rows[1].cells[i], h)
 
-    for r in range(2, 6):
+    # 필요한 만큼 데이터 행 추가
+    for _ in range(_task_data_rows - 1):
+        t3.add_row()
+
+    for r in range(2, 2 + _task_data_rows):
         row_bg = _BLUE_ALT if r % 2 == 0 else "FFFFFF"
         for c in range(6):
             _set_shading(t3.rows[r].cells[c], row_bg)
@@ -268,14 +205,8 @@ def create_report(output_path: str = "tests/업무보고서_생성.docx", data: 
         _inject(t1.rows[1].cells[0], data.get("overview", ""))
         _inject(t2.rows[1].cells[0], data.get("main_content", ""))
 
-        tasks_raw = data.get("tasks", [])
-        if isinstance(tasks_raw, dict):
-            tasks = list(tasks_raw.values())
-        elif isinstance(tasks_raw, list):
-            tasks = tasks_raw
-        else:
-            tasks = []
-        for r in range(2, 6):
+        tasks = _tasks_list
+        for r in range(2, 2 + _task_data_rows):
             task = tasks[r - 2] if r - 2 < len(tasks) else {}
             if not isinstance(task, dict):
                 task = {}

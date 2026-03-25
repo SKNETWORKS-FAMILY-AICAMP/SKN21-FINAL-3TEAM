@@ -123,8 +123,12 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
         container.scrollTop = container.scrollHeight;
       }
     } else {
-      markProgrammaticScroll();
-      container.scrollTop = container.scrollHeight;
+      // 사용자가 위로 스크롤한 상태면 자동 스크롤하지 않음
+      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+      if (isNearBottom) {
+        markProgrammaticScroll();
+        container.scrollTop = container.scrollHeight;
+      }
     }
   }, [messages, isStreaming]);
 
@@ -307,7 +311,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
             data-testid="chat-input"
             value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 handleSend();
               }

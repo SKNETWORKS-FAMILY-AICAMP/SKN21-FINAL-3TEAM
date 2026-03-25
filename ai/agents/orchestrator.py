@@ -505,12 +505,11 @@ def classify_intent(state: AgentState) -> AgentState:
 
     force_intent가 있으면 BERT 분류를 건너뛰고 직접 라우팅:
       - "doc_retrieve" → intent=doc_retrieve
-      - "doc_retrieve:qa" → intent=doc_retrieve, force_sub_type=qa
     """
     _t = time.time()
     user_input = state["user_input"]
 
-    # ── force_intent: 후속 액션 버튼에서 intent 강제 지정 ──
+    # ── force_intent: intent 강제 지정 (BERT 스킵) ──
     force_intent = state.get("force_intent")
     if force_intent:
         parts = force_intent.split(":", 1)
@@ -518,10 +517,8 @@ def classify_intent(state: AgentState) -> AgentState:
         state["confidence"] = 1.0
         state["intent_candidates"] = [{"intent": parts[0], "confidence": 1.0}]
         state["_is_compound"] = False
-        if len(parts) > 1:
-            state["force_sub_type"] = parts[1]  # "qa" | "summary" | "search"
-        logger.info("[Orchestrator] force_intent 적용 (BERT 스킵) | intent=%s, sub_type=%s (%.2fs)",
-                    parts[0], parts[1] if len(parts) > 1 else "none", time.time()-_t)
+        logger.info("[Orchestrator] force_intent 적용 (BERT 스킵) | intent=%s (%.2fs)",
+                    parts[0], time.time()-_t)
         return state
 
     logger.info("[Orchestrator] classify_intent 시작 | input='%s'", user_input)

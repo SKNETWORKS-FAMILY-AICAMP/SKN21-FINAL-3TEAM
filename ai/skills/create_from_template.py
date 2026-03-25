@@ -39,9 +39,9 @@ def create_generic_document(output_path: str, data: dict, fields: list[dict], do
     field.group 메타데이터를 활용하여 메타/본문/배열을 자동 분류하고,
     원본 양식의 필드 순서를 유지하며, 빈 필드도 양식으로 표시한다.
     """
-    from ai.skills.create_meeting_minutes import (
+    from ai.skills._docx_styles import (
         style_section_header, style_label_cell, style_value_cell,
-        set_row_height, _set_shading, _BLUE_ALT,
+        set_row_height, set_shading as _set_shading, BLUE_ALT as _BLUE_ALT,
     )
 
     # ── group 메타데이터 보정 (기존 양식은 group이 없을 수 있음) ──
