@@ -1,7 +1,7 @@
 import { useRef, useCallback, useState } from 'react';
 import Badge from '../common/Badge';
 import KeywordHighlight from '../common/KeywordHighlight';
-import { Pencil, Check, X } from 'lucide-react';
+import { Pencil, Check, X, ShieldCheck } from 'lucide-react';
 import { updateDocumentAnalysis, updateDocumentScope } from '../../api/documents';
 
 const CATEGORIES = ['회의록', '계약서', '제안서', '보고서', '정책문서', '인사문서', '기타'];
@@ -212,6 +212,39 @@ export default function DocumentDetail({ doc, documentDetail, searchQuery = '', 
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 규정 검증 경고 */}
+      {isRealDocument && documentDetail?.regulation_check?.notes?.length > 0 && (
+        <div className="mb-4">
+          <div className="text-[0.8125rem] font-bold text-neutral-main mb-2 flex items-center gap-1.5">
+            <ShieldCheck size={14} />
+            규정 검증 결과
+          </div>
+          <div className="space-y-2">
+            {documentDetail.regulation_check.notes.map((note, idx) => (
+              <div
+                key={idx}
+                className={`flex items-start gap-1.5 p-2.5 rounded-lg border ${
+                  note.result === 'no'
+                    ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
+                    : 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800'
+                }`}
+              >
+                <ShieldCheck size={13} className={`shrink-0 mt-0.5 ${note.result === 'no' ? 'text-red-500' : 'text-amber-500'}`} />
+                <div>
+                  <p className={`text-[0.75rem] font-bold ${note.result === 'no' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                    {note.result === 'no' ? '규정 위반' : '규정 확인 필요'} — {note.topic}
+                  </p>
+                  <p className="text-[0.6875rem] text-neutral-sub leading-relaxed mt-0.5">{note.reason}</p>
+                  {note.regulation && note.regulation !== 'no_regulation' && (
+                    <p className="text-[0.6875rem] text-neutral-muted mt-0.5">근거: {note.regulation}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

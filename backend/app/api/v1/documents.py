@@ -89,7 +89,7 @@ async def upload_document(
         db, file=file, scope=scope, user_id=user.id,
         team_name=user.team if scope == "team" else None,
     )
-    return {
+    result = {
         "id": doc.id,
         "title": doc.title,
         "file_type": doc.file_type,
@@ -103,6 +103,11 @@ async def upload_document(
         "summary": doc.summary,
         "duplicate": getattr(doc, "_is_duplicate", False),
     }
+    # 규정 검증 결과가 있으면 응답에 포함
+    reg_check = getattr(doc, "_regulation_check", None)
+    if reg_check:
+        result["regulation_check"] = reg_check
+    return result
 
 
 @router.post("/generate")
@@ -596,7 +601,7 @@ async def get_document(
 ):
     """문서 상세 조회"""
     doc = await document_service.get_document(db, document_id)
-    return {
+    result = {
         "id": doc.id,
         "title": doc.title,
         "file_type": doc.file_type,
@@ -611,6 +616,17 @@ async def get_document(
         "tags": doc.tags,
         "summary": doc.summary,
     }
+    # 규정 검증 (문서 내용이 충분하면 실시간 체크)
+    if doc.content and len(doc.content) > 50:
+        try:
+            from ai.agents.regulation_validator import check_content_regulations
+            reg = await check_content_regulations(doc.content[:5000], user_id=user.id)
+            if reg and reg.get("notes"):
+                result["regulation_check"] = reg
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"[DocDetail] 규정 검증 실패: {e}")
+    return result
 
 
 class UpdateCategoryRequest(BaseModel):
