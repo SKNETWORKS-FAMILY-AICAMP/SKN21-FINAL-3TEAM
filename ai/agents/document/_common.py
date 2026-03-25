@@ -162,7 +162,7 @@ async def _retrieve_context(query: str, user_id: int = None, user_team: str = No
                     score_threshold=score_threshold,
                 ),
             ),
-            timeout=30,
+            timeout=120,
         )
         context = [f"[문서 제목: {doc.get('title', '')}]\n{doc['content']}" for doc in search_results]
         logger.info("_retrieve_context 완료 (%.2fs): %d개 문서", time.time()-_t, len(context))

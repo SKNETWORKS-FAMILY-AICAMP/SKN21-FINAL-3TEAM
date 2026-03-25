@@ -147,6 +147,13 @@ _PLACEHOLDER_RE = re.compile(
 _NON_LABEL_WORDS = {"구분", "내용", "비고", "항목", "합계", "소계", "총계", "no", "no.", "합", "계"}
 
 
+def _build_array_desc(sub_keys: list[str]) -> str:
+    """배열 필드 description 생성 — 파인튜닝 학습 데이터와 동일한 형식"""
+    # {"업무항목": "업무항목", "담당자": "담당자"} 형태
+    pairs = ", ".join(f'"{sk}": "{sk}"' for sk in sub_keys)
+    return f'목록 배열. 각 항목은 {{{pairs}}} 형태'
+
+
 def _normalize_label(text: str) -> str:
     """필드 레이블 정규화: 공백/특수문자/번호 접두사 제거"""
     # "1. 제안 목적 및 필요성" → "제안목적및필요성"
@@ -367,13 +374,13 @@ def extract_template_fields(file_path: str, use_mapping: bool = False) -> list[d
                                 for existing in fields:
                                     if existing["key"] == field["key"]:
                                         existing["sub_keys"] = sub_keys
-                                        existing["description"] = f"각 항목은 {', '.join(sub_keys)} 필드를 가진 객체 배열"
+                                        existing["description"] = _build_array_desc(sub_keys)
                                         break
                                 _array_table_handled = True
                                 logger.info("배열 테이블 감지 (기존 필드 업데이트): %s → sub_keys=%s", array_label, sub_keys)
                         else:
                             if sub_keys:
-                                field["description"] = f"각 항목은 {', '.join(sub_keys)} 필드를 가진 객체 배열"
+                                field["description"] = _build_array_desc(sub_keys)
                                 field["sub_keys"] = sub_keys
                             else:
                                 field["description"] = f"{field.get('label', '')} 목록 (배열)"
