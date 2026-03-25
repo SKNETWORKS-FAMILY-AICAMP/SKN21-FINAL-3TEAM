@@ -4093,36 +4093,90 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 
 **수정**: `renderCardMessage` switch문에 `schedule_clarify` 케이스를 `schedule_confirm`과 동일하게 처리 — 제목/날짜/시간 입력 폼 + "일정 등록" 버튼이 바로 표시됨.
 
-#### 19) 챗봇 일반 대화 프롬프트 개선 + 사용법 버튼 구현 (`prompts.py`, `ChatPage.jsx`)
-
-**프롬프트 수정 (`ai/llm/prompts.py`)**:
-- `[인사/첫 대화]` 섹션 추가 — 인사 응답 마지막에 "사용법이 궁금하시면 아래 **사용법** 버튼을 눌러주세요." 문구 포함하도록 지시
-- `[사용법 안내]` 섹션 확장 — 기존 3줄 → 번호 매긴 구체적 안내(질문 입력, 즉시 답변, 다양한 업무, 예시)로 변경하여 LLM이 임의로 내용 생성하지 않도록 고정
-
-**프론트엔드 수정 (`ChatPage.jsx`)**:
-- `USAGE_GUIDE_TEXT` 상수 추가 — 사용법 안내 텍스트 프론트에서 관리
-- AI 텍스트 버블에서 "사용법.*버튼" 패턴 감지 시 사용법 버튼 렌더링 (HelpCircle 아이콘 + primary 스타일 pill 버튼)
-- 버튼 클릭 → `addMessage`로 사용법 안내를 assistant 메시지로 즉시 추가 (서버 호출 없음)
-
-#### 20) 한글 입력 시 마지막 글자만 전송되는 버그 수정 (`ChatWindow.jsx`)
-
-- **문제**: "안녕하세요" 입력 후 Enter → "요" 한 글자만 전송됨. 새 브라우저에서 특히 자주 발생
-- **원인**: `onKeyDown`에서 `e.key === 'Enter'`만 체크하고 한글 IME 조합 상태를 확인하지 않음. 한글 조합 중 Enter 시 IME가 마지막 글자를 확정하면서 발생하는 Enter를 전송으로 처리
-- **수정**: `!e.nativeEvent.isComposing` 조건 추가 → IME 조합 중에는 Enter 무시, 조합 완료 후 다음 Enter에서만 전송
-
-#### 21) 스크롤 튕김 버그 수정 (`ChatWindow.jsx`)
-
-- **문제**: 짧은 답변 수신 후 사용자가 위로 스크롤하면 하단으로 튕겨 올라감
-- **원인**: `messages`/`isStreaming` 변경 시 사용자 스크롤 위치 무시하고 무조건 `scrollTop = scrollHeight` 실행
-- **수정**: `isNearBottom` 체크 추가 (하단 150px 이내일 때만 자동 스크롤)
-
-#### 22) 사용법 버튼 — LLM 의존 제거, 프론트 확정 렌더링 (`ChatPage.jsx`, `prompts.py`)
-
-- **문제**: 프롬프트에 "사용법 버튼을 눌러주세요" 문구 포함 지시했으나 LLM이 따르지 않음
-- **수정**: LLM 응답 텍스트 감지(`/사용법.*버튼/`) 방식 제거 → 첫 번째 assistant 메시지에 항상 "사용법이 궁금하시면 아래 **사용법** 버튼을 눌러주세요." 텍스트 + 사용법 버튼 렌더링
-- 프롬프트의 `[인사/첫 대화]` 섹션 제거 (프론트에서 처리하므로 불필요)
-
 ### 다음 할 일
 
 - [ ] 멘토님 발표 준비 (model_test_report.html + planner_architecture.html)
 - [ ] 복합 질문 follow-up 시나리오 E2E 테스트
+
+---
+
+## 2026-03-25 (화)
+
+### 한 일
+
+#### 1) 대화 목록 사이드바 키보드 단축키 (`ChatPage.jsx`)
+
+- `Cmd+B` (Mac) / `Ctrl+B` (Windows/Linux) → 대화 목록 사이드바 토글
+- `e.preventDefault()`로 브라우저 기본 동작(볼드체) 차단
+- 기존 햄버거 버튼 클릭 토글도 그대로 유지
+
+#### 2) 챗봇 헤더 버튼 클릭 불가 버그 수정 (`Topbar.jsx`)
+
+- **문제**: 스크롤로 상단바가 축소된 상태에서 챗봇 헤더의 '내보내기', '초기화', '문서 선택' 버튼이 클릭 안 됨
+- **원인**: Topbar 스케줄 타임라인 row 외부 wrapper(`w-full`)에 `pointer-events-auto` → 전체 너비가 클릭 가로챔 (z-40 > z-20)
+- **수정**: 외부 wrapper `pointer-events-none`, 내부 콘텐츠(`w-[580px]`)에만 `pointer-events-auto`
+
+#### 3) 챗봇 프롬프트 사용법 안내 개선 (`prompts.py`)
+
+- `GENERAL_SYSTEM_PROMPT`의 `[사용법 안내]` 섹션을 번호 매긴 구체적 안내로 확장 (질문 입력, 즉시 답변, 다양한 업무, 예시)
+
+#### 4) 사용법 버튼 구현 — LLM 의존 제거, 프론트 확정 렌더링 (`ChatPage.jsx`, `prompts.py`)
+
+- LLM 응답 텍스트 감지 방식 제거 → 첫 번째 assistant 메시지에 항상 "사용법이 궁금하시면 아래 **사용법** 버튼을 눌러주세요." + 사용법 버튼 렌더링
+- 버튼 클릭 → `addMessage`로 사용법 안내를 assistant 메시지로 즉시 추가 (서버 호출 없음)
+- `renderCardMessage` default 케이스(general 응답)에도 동일 적용
+- 프롬프트의 `[인사/첫 대화]` 섹션 제거 (프론트에서 처리)
+
+#### 5) 한글 입력 시 마지막 글자만 전송되는 버그 수정 (`ChatWindow.jsx`)
+
+- **문제**: "안녕하세요" 입력 후 Enter → "요" 한 글자만 전송됨
+- **원인**: `onKeyDown`에서 한글 IME 조합 상태 미체크
+- **수정**: `!e.nativeEvent.isComposing` 조건 추가
+
+#### 6) 스크롤 튕김 버그 수정 (`ChatWindow.jsx`)
+
+- **문제**: 짧은 답변 수신 후 위로 스크롤하면 하단으로 튕김
+- **수정**: `isNearBottom` 체크 추가 (하단 150px 이내일 때만 자동 스크롤)
+
+#### 7) 챗봇 일반 응답 문장 사이 빈 줄 제거 (`ChatPage.jsx`)
+
+- LLM 응답의 `\n\n`(단락 간격)을 `  \n`(줄바꿈만)으로 치환
+
+#### 8) E2E 멀티스텝 테스트 — 2-step (10건 중 9건 완료)
+
+- 테스트셋: `data/evaluation/e2e_multistep_test.json` (30건: 2step 10 + 3step 10 + 4step 5 + 5step 5)
+- 결과 파일: `data/evaluation/e2e_multistep_results.json`
+
+**2-step 결과 (9/10 PASS):**
+
+| ID | 질문 | 결과 | 비고 |
+|---|---|---|---|
+| S2-001 | 출장비 규정 찾아서 내 경우 가능한지 판단해줘 | **FAIL** | 2단계 judgment → approval_create 오분류 |
+| S2-002 | 이번 주 일정 보여주고 비는 날에 회의 잡아줘 | **PASS** | |
+| S2-003 | 연차 규정 확인하고 보고서 작성해줘 | **PASS** | |
+| S2-004 | 마케팅 보고서 찾아서 요약 보고서 만들어줘 | **FAIL** | 문서 리스트 미렌더링 + 2단계 처리 시간 초과 |
+| S2-005 | 내일 회의 일정 확인하고 회의록 작성해줘 | **PASS** | 다운로드 404 (별도 이슈) |
+| S2-006 | 보안 정책 문서 검색해서 위반 여부 판단해줘 | **PASS** | |
+| S2-007 | 다음 주 월요일에 미팅 잡고 일정 보여줘 | **PASS** | |
+| S2-008 | 재택근무 규정 알려주고 신청서 만들어줘 | **PASS** | |
+| S2-009 | 경쟁사 분석 자료 찾아서 제안서 작성해줘 | **PASS** | |
+| S2-010 | 이번 달 일정 보여주고 출장 보고서 만들어줘 | **PASS** | |
+
+#### 9) 챗봇 인사 메시지 빈 줄 제거 — 직접 렌더 경로 누락 수정 (`ChatPage.jsx`)
+
+- `renderCardMessage` 내부에서만 `\n\n` → `  \n` 치환이 적용되고 있었으나, 인사 메시지는 직접 렌더 경로를 타서 빈 줄이 그대로 남아 있었음
+- 직접 렌더 경로에도 동일한 `msg.content.replace(/\n{2,}/g, '  \n')` 적용
+
+#### 10) 사용법 버튼 1회만 표시 (`ChatPage.jsx`)
+
+- 기존: 사용법 버튼을 여러 번 클릭하면 매번 사용법 메시지가 중복 추가됨
+- 수정: `messages.some(m => m.content === USAGE_GUIDE_TEXT)`로 이미 사용법 메시지가 존재하면 버튼 숨김
+- `renderCardMessage` 내부와 직접 렌더 경로 모두 적용
+
+### 다음 할 일
+
+- [ ] E2E 멀티스텝 테스트 3-step / 4-step / 5-step 진행
+- [ ] S2-001 approval_create 오분류 원인 분석
+- [ ] S2-004 compound 문서 리스트 렌더링 이슈 수정
+- [ ] 문서 생성 다운로드 404 이슈 수정
+- [ ] 멘토님 발표 준비 (model_test_report.html + planner_architecture.html)
