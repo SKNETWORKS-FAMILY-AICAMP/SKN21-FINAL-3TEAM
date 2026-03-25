@@ -17,6 +17,34 @@ from ai.agents.document._qa import _handle_doc_qa
 from ai.agents.document._summary import _handle_doc_summary
 # from ai.agents.document._risk import _handle_risk_detect  # 비활성화 (2026-03-22)
 
+# ── follow-up 감지 패턴 ──
+_FOLLOWUP_RE = re.compile(
+    r"(위\s*문서|이\s*문서|그\s*문서|해당\s*문서|아까\s*문서|아까\s*검색|방금\s*검색"
+    r"|그거|그\s*내용|위에서|거기서|방금\s*찾은|아까\s*찾은|위\s*내용|그\s*자료)"
+)
+
+
+def _extract_doc_from_history(chat_history: list) -> dict | None:
+    """대화 이력에서 가장 최근 doc_retrieve 결과를 추출
+
+    Schedule Agent의 _extract_clarify_from_history 패턴과 동일.
+    """
+    for msg in reversed(chat_history):
+        ar = msg.get("agentResponse") or msg.get("agent_response")
+        if not ar or not isinstance(ar, dict):
+            continue
+        if ar.get("type") == "doc_retrieve":
+            sources = ar.get("sources", [])
+            if not sources:
+                continue
+            return {
+                "sub_type": ar.get("sub_type"),
+                "sources": sources,
+                "document_id": sources[0].get("document_id"),
+                "title": sources[0].get("title"),
+            }
+    return None
+
 
 async def document_agent(state: AgentState) -> AgentState:
     """
@@ -51,6 +79,37 @@ async def document_agent(state: AgentState) -> AgentState:
 
             # sub_type 힌트를 state에 저장 → chat.py에서 조기 상태 알림용
             _sub_type_hint = None
+
+            # ── follow-up 감지: 이전 대화의 문서 맥락 연결 ──
+            prev_doc = _extract_doc_from_history(chat_history)
+            is_followup = bool(prev_doc and _FOLLOWUP_RE.search(user_input))
+
+            if is_followup and prev_doc and not document_content and not document_id:
+                prev_doc_id = prev_doc["document_id"]
+                prev_title = prev_doc["title"] or ""
+                print(f"[DocumentAgent] follow-up 감지 | prev_title='{prev_title}', prev_doc_id={prev_doc_id}")
+
+                # QA/Summary follow-up → 이전 문서 content 직접 확보 (RAG 스킵)
+                is_qa_or_summary = (
+                    _needs_llm_answer(user_input)
+                    or re.search(r"(내용|자세히|자세하게|상세|알려|설명).{0,6}(줘|해|주세요|해줘)", user_input)
+                    or re.search(r"(요약|정리|핵심|간추리|간추려|줄여)", user_input)
+                )
+                if is_qa_or_summary and prev_doc_id:
+                    try:
+                        from ai.agents.document._summary import _get_document
+                        doc = await _get_document(prev_doc_id)
+                        if doc and doc.content and doc.content.strip():
+                            document_content = doc.content
+                            document_id = prev_doc_id
+                            print(f"[DocumentAgent] follow-up → document_content 확보 ({len(document_content)}자)")
+                    except Exception as e:
+                        print(f"[DocumentAgent] follow-up document 로드 실패: {e}")
+
+                # Search follow-up → 제목을 쿼리에 연결
+                if not document_content and prev_title:
+                    user_input = f"{prev_title} {user_input}"
+                    print(f"[DocumentAgent] follow-up → 쿼리 보강: '{user_input[:60]}'")
 
             # ── regex + RAG 점수 혼합 라우팅 ──
             # 1) 요약 판별: 문서 내용/ID 있거나, 요약 키워드 + 동사어미
