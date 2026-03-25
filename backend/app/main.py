@@ -212,6 +212,7 @@ async def startup_preload():
                 else:
                     print(f"[Background] {r} 로드 완료")
             print(f"[Background] 전체 pre-loading 완료 ({time.time()-_t:.2f}s)")
+            set_server_ready()
         except asyncio.TimeoutError:
             print("[Background] pre-loading 타임아웃 (180초 초과, 건너뜀)")
         except Exception as e:
@@ -230,6 +231,15 @@ async def shutdown_dispose_engine():
     print("[Shutdown] DB 커넥션 풀 정리 완료")
 
 
+# ── 서버 준비 상태 (pre-loading 완료 여부) ──
+_server_ready = False
+
+
+def set_server_ready():
+    global _server_ready
+    _server_ready = True
+
+
 @app.get("/health")
 async def health_check():
-    return {"status": "ok"}
+    return {"status": "ok", "ready": _server_ready}

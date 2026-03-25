@@ -276,7 +276,7 @@ function MemoPanel() {
 
 /** 백엔드 상태 표시 (dev용 — 제거 시 이 컴포넌트 + 사용처 1줄 삭제) */
 function BackendStatus() {
-  const [status, setStatus] = useState('checking'); // 'ok' | 'down' | 'checking'
+  const [status, setStatus] = useState('checking'); // 'ready' | 'loading' | 'down' | 'checking'
   const checkRef = useRef(null);
 
   useEffect(() => {
@@ -284,23 +284,26 @@ function BackendStatus() {
     const check = async () => {
       try {
         const res = await fetch('/health', { signal: AbortSignal.timeout(3000) });
-        if (mounted) setStatus(res.ok ? 'ok' : 'down');
+        if (!res.ok) { if (mounted) setStatus('down'); return; }
+        const data = await res.json();
+        if (mounted) setStatus(data.ready ? 'ready' : 'loading');
       } catch {
         if (mounted) setStatus('down');
       }
     };
     checkRef.current = check;
     check();
-    const id = setInterval(check, 10_000);
+    const id = setInterval(check, 5_000);
     return () => { mounted = false; clearInterval(id); };
   }, []);
 
   const colors = {
-    ok: 'bg-emerald-400 shadow-[0_0_6px_#34d399]',
+    ready: 'bg-emerald-400 shadow-[0_0_6px_#34d399]',
+    loading: 'bg-amber-400 shadow-[0_0_6px_#fbbf24] animate-pulse',
     down: 'bg-red-400 shadow-[0_0_6px_#f87171] animate-pulse',
     checking: 'bg-yellow-400 shadow-[0_0_6px_#facc15] animate-pulse',
   };
-  const labels = { ok: 'API 연결됨', down: 'API 끊김', checking: '확인 중...' };
+  const labels = { ready: 'AI 준비 완료', loading: 'AI 모델 로딩 중...', down: 'API 끊김', checking: '확인 중...' };
 
   return (
     <div
