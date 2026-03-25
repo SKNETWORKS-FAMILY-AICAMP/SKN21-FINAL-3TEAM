@@ -291,6 +291,21 @@ async def upload_and_parse(
             doc.category = analysis.get("category")
             doc.tags = analysis.get("tags")
 
+        # 규정 검증 (업로드 시점 — 비차단)
+        regulation_check_result = None
+        try:
+            from ai.agents.regulation_validator import check_content_regulations
+            if text and len(text) > 50:
+                reg = await check_content_regulations(text[:5000], user_id=user_id)
+                if reg and reg.get("notes"):
+                    regulation_check_result = reg
+                    logger.info(f"[Upload] 규정 검증 완료: {len(reg['notes'])}건 발견")
+        except Exception as reg_err:
+            logger.warning(f"[Upload] 규정 검증 실패 (비차단): {reg_err}")
+
+        # 규정 검증 결과를 doc 객체에 임시 저장 (API 응답용, DB 저장 X)
+        doc._regulation_check = regulation_check_result
+
         # Qdrant에 인덱싱 (RAG 검색용)
         try:
             from ai.rag.qdrant_pipeline import get_qdrant_pipeline
