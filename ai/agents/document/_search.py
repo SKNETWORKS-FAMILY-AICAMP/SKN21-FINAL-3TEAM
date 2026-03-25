@@ -91,13 +91,7 @@ async def _handle_doc_search(
 
     # 4. LLM 없이 검색 결과 메시지 구성
     n = len(unique_sources)
-    lines = [f"'{query}' 키워드로 문서 제목+내용을 검색한 결과, **{n}건**의 관련 문서를 찾았습니다:\n"]
-    for i, s in enumerate(unique_sources, 1):
-        title = s.get("title", "제목 없음")
-        preview = s.get("content", "")[:80].replace("\n", " ")
-        score = s.get("score", 0)
-        lines.append(f"{i}. **{title}** (관련도 {score:.0%})\n   {preview}...")
-    message = "\n".join(lines)
+    message = f"**{n}건**의 관련 문서를 찾았습니다."
 
     print(f"[DocumentAgent] search 완료 ({time.time()-_t:.2f}s): {n}건 (LLM 미사용)")
     return {
