@@ -113,14 +113,25 @@ async def document_agent(state: AgentState) -> AgentState:
 
             # ── regex + RAG 점수 혼합 라우팅 ──
             # 1) 요약 판별: 문서 내용/ID 있거나, 요약 키워드 + 동사어미
-            _is_summary = bool(
-                document_content
-                or document_id
-                or re.search(r"(요약|정리|핵심|간추리|간추려|줄여).{0,6}(해|해줘|해주세요|부탁|하자|할래|줘|주세요)", user_input)
+            _has_summary_keyword = bool(
+                re.search(r"(요약|정리|핵심|간추리|간추려|줄여).{0,6}(해|해줘|해주세요|부탁|하자|할래|줘|주세요)", user_input)
                 or re.search(r"(요약|정리|핵심|간추리|간추려|줄여)\s*$", user_input)
             )
+            _is_summary = bool(document_content or document_id or _has_summary_keyword)
 
-            if _is_summary:
+            # follow-up으로 document_content 확보 + QA 질문 → 바로 QA (RAG 스킵)
+            if is_followup and document_content and not _has_summary_keyword:
+                _sub_type_hint = "qa"
+                print(f"[DocumentAgent] doc_retrieve → QA 경로 (follow-up, RAG 스킵)")
+                response_data = await _handle_doc_qa(
+                    user_input, context=None, user_id=user_id,
+                    user_team=user_team, stream_mode=stream_mode,
+                    chat_history=chat_history,
+                    document_content=document_content,
+                    pre_sources=prev_doc.get("sources", []) if prev_doc else [],
+                    pre_top_score=1.0,
+                )
+            elif _is_summary:
                 _sub_type_hint = "summary"
                 print("[DocumentAgent] doc_retrieve → summary 경로")
                 response_data = await _handle_doc_summary(
