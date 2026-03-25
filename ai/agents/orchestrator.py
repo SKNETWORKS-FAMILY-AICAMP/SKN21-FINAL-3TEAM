@@ -150,7 +150,8 @@ async def safe_judgment_agent(state: AgentState) -> AgentState:
             judgment_history = _extract_judgment_history(chat_history)
             context_text = _build_context_prompt(context)
             user_prompt = _build_user_prompt(
-                user_input, context_text, chat_history, judgment_history
+                user_input, context_text, chat_history, judgment_history,
+                prev_agent_context=state.get("prev_agent_context"),
             )
 
             state["context"] = context

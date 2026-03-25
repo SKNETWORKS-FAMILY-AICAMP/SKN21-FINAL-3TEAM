@@ -209,9 +209,27 @@ def _build_user_prompt(
     context_text: str,
     chat_history: list[dict] | None = None,
     judgment_history: list[dict] | None = None,
+    prev_agent_context: dict | None = None,
 ) -> str:
     """사용자 질문 + 규정 context + 판단 이력을 합쳐 최종 프롬프트 구성"""
     prompt_parts = []
+
+    # 0. cross-agent 맥락 (이전에 다른 Agent가 처리한 결과)
+    if prev_agent_context and prev_agent_context.get("agent_type") != "judgment":
+        pac = prev_agent_context
+        if pac.get("agent_type") == "document":
+            doc = pac.get("document", {})
+            prompt_parts.append(
+                f"## 이전 대화에서 참조한 문서\n"
+                f"- 제목: {doc.get('title', '')}\n"
+                f"- 내용 요약: {doc.get('summary', '')}\n"
+            )
+        elif pac.get("agent_type") == "schedule":
+            sched = pac.get("schedule", {})
+            prompt_parts.append(
+                f"## 이전 대화에서 언급한 일정\n"
+                f"- 제목: {sched.get('title', '')}, 날짜: {sched.get('date', '')} {sched.get('time', '')}\n"
+            )
 
     # 1. 이전 대화 컨텍스트
     if chat_history:
@@ -680,7 +698,8 @@ async def judgment_agent(state: AgentState) -> AgentState:
         print("[JudgmentAgent] LLM 호출 중...")
         context_text = _build_context_prompt(context)
         user_prompt = _build_user_prompt(
-            user_input, context_text, chat_history, judgment_history
+            user_input, context_text, chat_history, judgment_history,
+            prev_agent_context=state.get("prev_agent_context"),
         )
 
         raw_response = await _call_judgment_llm(JUDGMENT_SYSTEM_PROMPT, user_prompt)
@@ -798,7 +817,8 @@ async def judgment_agent_stream(state: AgentState) -> AsyncGenerator[str, None]:
         # 프롬프트 구성
         context_text = _build_context_prompt(context)
         user_prompt = _build_user_prompt(
-            user_input, context_text, chat_history, judgment_history
+            user_input, context_text, chat_history, judgment_history,
+            prev_agent_context=state.get("prev_agent_context"),
         )
 
         # 스트리밍 호출 (sLLM 모드 지원)

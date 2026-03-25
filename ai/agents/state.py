@@ -61,5 +61,8 @@ class AgentState(TypedDict):
     # ── 스트리밍 제어 ──
     stream_mode: Optional[bool]             # True이면 LLM 호출을 chat.py에서 직접 스트리밍 처리
 
+    # ── cross-agent 맥락 ──
+    prev_agent_context: Optional[dict]      # 이전 Agent 결과 요약 (Agent 간 맥락 전달용)
+
     # ── 후속 액션 강제 라우팅 ──
     force_intent: Optional[str]             # "doc_retrieve" 형식 — BERT 분류 스킵
