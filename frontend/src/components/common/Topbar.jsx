@@ -283,7 +283,7 @@ function BackendStatus() {
     let mounted = true;
     const check = async () => {
       try {
-        const res = await fetch('/health', { signal: AbortSignal.timeout(3000) });
+        const res = await fetch('/health', { signal: AbortSignal.timeout(10000) });
         if (!res.ok) { if (mounted) setStatus('down'); return; }
         const data = await res.json();
         if (mounted) setStatus(data.ready ? 'ready' : 'loading');
