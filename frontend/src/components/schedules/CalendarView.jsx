@@ -347,11 +347,13 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
   const days = [];
   const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
   const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
-  for (let i = firstDay - 1; i >= 0; i--) days.push({ day: prevDays - i, other: true, month: prevMonth });
-  for (let i = 1; i <= daysInMonth; i++) days.push({ day: i, other: false, month: currentMonth });
+  const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+  const nextYear = currentMonth === 12 ? currentYear + 1 : currentYear;
+  for (let i = firstDay - 1; i >= 0; i--) days.push({ day: prevDays - i, other: true, month: prevMonth, year: prevYear });
+  for (let i = 1; i <= daysInMonth; i++) days.push({ day: i, other: false, month: currentMonth, year: currentYear });
   const remaining = 7 - (days.length % 7);
   if (remaining < 7) {
-    for (let i = 1; i <= remaining; i++) days.push({ day: i, other: true, month: nextMonth });
+    for (let i = 1; i <= remaining; i++) days.push({ day: i, other: true, month: nextMonth, year: nextYear });
   }
 
   const getWeekDays = () => {
@@ -393,10 +395,18 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
   });
 
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+
+  // 월 이동 시 동기화
+  useEffect(() => {
+    setSelectedMonth(currentMonth);
+    setSelectedYear(currentYear);
+  }, [currentMonth, currentYear]);
 
   const handleDayClick = (d) => {
     setSelectedDay(d.day);
     setSelectedMonth(d.month);
+    setSelectedYear(d.year || currentYear);
   };
 
   const handleYearMonthClick = (month) => {
@@ -488,10 +498,9 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
               const isHoliday = dayEvents.some(e => e.type === 'holiday');
 
               // 이 셀에 걸친 multi-day 이벤트 스트라이프
-              const cellYear = d.month < currentMonth && currentMonth === 12 ? currentYear + 1 : d.month > currentMonth && currentMonth === 1 ? currentYear - 1 : currentYear;
               const dayStripes = multiDayEvents.filter(event => {
                 if (!event.startDate || !event.endDate) return false;
-                const cellDate = new Date(cellYear, d.month - 1, d.day);
+                const cellDate = new Date(d.year || currentYear, d.month - 1, d.day);
                 return cellDate >= new Date(event.startDate + 'T00:00:00') && cellDate <= new Date(event.endDate + 'T00:00:00');
               });
 
@@ -575,8 +584,8 @@ export default function CalendarView({ events = [], onDeleteEvent, onCanDelete, 
       {selectedDay && (
         <DayDetailPopup
           day={selectedDay}
-          month={currentMonth}
-          year={currentYear}
+          month={selectedMonth}
+          year={selectedYear}
           events={selectedEvents}
           getEventColor={getEventColor}
           typeLabelMap={typeLabelMap}
