@@ -98,7 +98,7 @@ function RangePicker({ startDate, endDate, onChange }) {
   );
 }
 
-export default function ScheduleForm({ onSubmit, onClose, initialData }) {
+export default function ScheduleForm({ onSubmit, onClose, initialData, preloadedProjects }) {
   const isEditMode = !!initialData;
   const { connected, hasScope } = useGoogleServices();
   const { customTypes } = useScheduleTypeStore();
@@ -119,7 +119,7 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
-  const [projects, setProjects] = useState([]);
+  const [projects, setProjects] = useState(preloadedProjects || []);
   const [shareToProject, setShareToProject] = useState(!!initialData?.projectName);
   const [selectedAttendeeIds, setSelectedAttendeeIds] = useState([]);
   const [members, setMembers] = useState([]);
@@ -139,10 +139,11 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
       .catch(() => setMembers([]));
   }, []);
 
+  // preloadedProjects가 없는 경우에만 직접 로딩 (다른 곳에서 사용 시 하위 호환)
   useEffect(() => {
+    if (preloadedProjects) return;
     listProjects().then((res) => {
       const list = res.data || [];
-      // 이름 기준 중복 제거
       const seen = new Set();
       const unique = list.filter((p) => {
         if (seen.has(p.name)) return false;
@@ -151,7 +152,7 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
       });
       setProjects(unique);
     }).catch(() => setProjects([]));
-  }, []);
+  }, [preloadedProjects]);
 
   const canMeet = connected && hasScope('calendar');
 
@@ -227,7 +228,7 @@ export default function ScheduleForm({ onSubmit, onClose, initialData }) {
         {/* 공유 설정 */}
         {(hasTeam || projects.length > 0) && (
           <div className="space-y-2">
-            <div className="flex gap-2">
+            <div className="flex gap-2 justify-center">
               {hasTeam && (
                 <button
                   type="button"

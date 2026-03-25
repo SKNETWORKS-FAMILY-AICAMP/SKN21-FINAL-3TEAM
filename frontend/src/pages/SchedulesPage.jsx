@@ -5,6 +5,7 @@ import useGoogleServices from '../hooks/useGoogleServices';
 import useAuthStore from '../store/authStore';
 import { sendMeetingInvite } from '../api/google';
 import { listSchedules, createSchedule, updateSchedule, deleteSchedule } from '../api/schedules';
+import { listProjects } from '../api/tasks';
 import GoogleServicesConnect from '../components/schedules/GoogleServicesConnect';
 import SlackConnect from '../components/schedules/SlackConnect';
 import CalendarView from '../components/schedules/CalendarView';
@@ -64,6 +65,20 @@ export default function SchedulesPage() {
   const [settingsTab, setSettingsTab] = useState('all'); // 'all' | 'google' | 'slack'
   const [refreshKey, setRefreshKey] = useState(0);
   const [dbSchedulesLoading, setDbSchedulesLoading] = useState(true);
+  const [projects, setProjects] = useState([]);
+
+  // 프로젝트 목록 미리 로딩 (ScheduleForm 모달에서 즉시 표시)
+  useEffect(() => {
+    listProjects().then((res) => {
+      const list = res.data || [];
+      const seen = new Set();
+      setProjects(list.filter((p) => {
+        if (seen.has(p.name)) return false;
+        seen.add(p.name);
+        return true;
+      }));
+    }).catch(() => setProjects([]));
+  }, []);
 
   // Google Calendar 연결 시 이벤트 자동 로드 (백엔드 기본값: ±3개월)
   useEffect(() => {
@@ -563,6 +578,7 @@ export default function SchedulesPage() {
               onSubmit={editingSchedule ? handleUpdateSchedule : handleAddSchedule}
               onClose={() => { setShowForm(false); setEditingSchedule(null); setScheduleError(null); }}
               initialData={editingSchedule}
+              preloadedProjects={projects}
             />
           </motion.div>
         </div>,
