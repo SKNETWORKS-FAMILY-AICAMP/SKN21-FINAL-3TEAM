@@ -36,6 +36,7 @@ class AgentState(TypedDict):
     error: Optional[str]                    # 에러 메시지 (없으면 None)
 
     # ── 템플릿 (PM 지용이 정의, 승언이 사용) ──
+    template_type: Optional[str]            # 템플릿 유형 (meeting_minutes, report, proposal 등)
     template_id: Optional[int]              # DB 템플릿 ID
     source_page: Optional[str]              # 요청 출처: chatbot | meeting_page | document_page
     template_fields: Optional[list[str]]    # 동적 필드 목록 (예: ["title", "summary", "key_points"])
