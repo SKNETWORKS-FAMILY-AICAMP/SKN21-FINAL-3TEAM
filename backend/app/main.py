@@ -209,8 +209,6 @@ async def startup_preload():
             print("[Background] pre-loading 타임아웃 (180초 초과, 건너뜀)")
         except Exception as e:
             print(f"[Background] pre-loading 실패 (서비스는 계속 가능): {e}")
-        finally:
-            executor.shutdown(wait=False)
 
     asyncio.create_task(_background_preload())
     print("[Startup] 모델 pre-loading 백그라운드 등록 완료 (서버 즉시 가동)")
