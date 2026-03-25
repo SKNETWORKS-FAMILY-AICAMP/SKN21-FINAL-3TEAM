@@ -1,6 +1,4 @@
 """문서 QA (질의응답)"""
-import json
-import re
 import time
 from typing import Any, Dict
 
@@ -8,34 +6,9 @@ from ai.agents.document._common import (
     _call_llm,
     _retrieve_context,
     _format_chat_context,
+    filter_and_build_citations,
     truncate_by_paragraph,
 )
-
-
-def _parse_qa_json(text: str) -> dict:
-    """LLM 응답에서 QA JSON을 추출한다.
-
-    시도 순서:
-      1. ```json ... ``` 코드블록 추출
-      2. json.loads 직접 시도
-      3. fallback: 원본 텍스트를 answer로 사용
-    """
-    # 1) 코드블록 추출
-    m = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL)
-    if m:
-        try:
-            return json.loads(m.group(1))
-        except json.JSONDecodeError:
-            pass
-
-    # 2) 직접 파싱
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        pass
-
-    # 3) fallback — confidence는 호출측에서 RAG 점수 기반으로 재계산
-    return {"answer": text, "citations": [], "confidence": None}
 
 
 async def _handle_doc_qa(
@@ -162,40 +135,31 @@ async def _handle_doc_qa(
             "confidence": round(min(rag_top_score, 0.85), 2),  # RAG 점수 기반 (0.85 캡 — 답변 정확도와 문서 매칭은 다름)
         }
 
-    # ── 5. 비스트리밍: sLLM 직접 호출 (JSON mode) ──
-    from ai.llm.prompts import DOC_QA_SYSTEM_PROMPT
+    # ── 5. 비스트리밍: sLLM 직접 호출 (스트리밍과 동일 프롬프트) ──
+    from ai.llm.prompts import DOC_QA_STREAMING_PROMPT
 
-    print("[DocumentAgent] stream_mode=False → sLLM 직접 호출 (doc_qa, json_mode)")
-    answer_json_str = await _call_llm(
-        DOC_QA_SYSTEM_PROMPT, user_prompt,
-        json_mode=True, task="qa",
+    print("[DocumentAgent] stream_mode=False → sLLM 직접 호출 (doc_qa, 자연어)")
+    answer_text = await _call_llm(
+        DOC_QA_STREAMING_PROMPT, user_prompt,
+        task="qa",
     )
 
-    qa_result = _parse_qa_json(answer_json_str)
+    # 스트리밍과 동일한 후처리: [참고:] 파싱 + sources 필터링 + citations 생성
+    clean_answer, filtered_sources, citations = filter_and_build_citations(sources, answer_text)
+
+    # confidence: 스트리밍과 동일 (RAG 점수 기반, 0.85 캡)
+    confidence = round(min(rag_top_score, 0.85), 2)
 
     print(f"[DocumentAgent] QA 완료 ({time.time()-_t:.2f}s) | "
-          f"answer_len={len(qa_result.get('answer', ''))}, "
-          f"citations={len(qa_result.get('citations', []))}")
-
-    # confidence: LLM 자체 confidence와 RAG 점수를 혼합
-    raw_confidence = qa_result.get("confidence")
-    try:
-        llm_confidence = float(raw_confidence) if raw_confidence is not None else None
-    except (TypeError, ValueError):
-        llm_confidence = None
-    if llm_confidence is not None and rag_top_score > 0:
-        final_confidence = (llm_confidence + rag_top_score) / 2
-    elif rag_top_score > 0:
-        final_confidence = rag_top_score
-    else:
-        final_confidence = 0.5
+          f"answer_len={len(clean_answer)}, "
+          f"citations={len(citations)}")
 
     return {
         "type": "doc_retrieve",
         "sub_type": "qa",
-        "answer": qa_result.get("answer", ""),
-        "message": qa_result.get("answer", ""),
-        "citations": qa_result.get("citations", []),
-        "confidence": round(min(final_confidence, 1.0), 2),
-        "sources": sources,
+        "answer": clean_answer,
+        "message": clean_answer,
+        "citations": citations,
+        "confidence": confidence,
+        "sources": filtered_sources,
     }

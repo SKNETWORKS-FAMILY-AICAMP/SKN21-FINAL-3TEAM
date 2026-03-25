@@ -59,5 +59,4 @@ class AgentState(TypedDict):
     stream_mode: Optional[bool]             # True이면 LLM 호출을 chat.py에서 직접 스트리밍 처리
 
     # ── 후속 액션 강제 라우팅 ──
-    force_intent: Optional[str]             # "doc_retrieve:qa" 형식 — BERT 분류 스킵
-    force_sub_type: Optional[str]           # "qa" | "summary" | "search" — _entry.py regex 스킵
+    force_intent: Optional[str]             # "doc_retrieve" 형식 — BERT 분류 스킵
