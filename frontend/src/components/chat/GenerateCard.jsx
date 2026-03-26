@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, CalendarPlus, Check, CheckCircle, Info, Loader2 } from 'lucide-react';
+import { AlertTriangle, CalendarPlus, Check, CheckCircle, Info, Loader2, Pencil } from 'lucide-react';
 import { createSchedule } from '../../api/schedules';
 import { toast } from '../../store/toastStore';
 import Badge from '../common/Badge';
@@ -119,16 +119,22 @@ export default function GenerateCard({ title, templateType, fields = [], actionI
 
 /* ── 일정 제안 서브 컴포넌트 ── */
 
-const PRIORITY_STYLES = {
-  high: 'bg-red-100 text-red-700',
-  medium: 'bg-yellow-100 text-yellow-700',
-  low: 'bg-green-100 text-green-700',
-};
-const PRIORITY_LABELS = { high: '높음', medium: '보통', low: '낮음' };
-
 function ScheduleSuggestSection({ items }) {
+  // description에서 담당자만 추출 ("담당: 한대리 | 출처: ..." → "한대리")
+  const parseAssignee = (desc) => {
+    if (!desc) return '';
+    const m = desc.match(/담당:\s*([^|]+)/);
+    return m ? m[1].trim() : '';
+  };
+
   const [editItems, setEditItems] = useState(() =>
-    items.map((item, i) => ({ ...item, checked: true, registered: false, _key: i })),
+    items.map((item, i) => ({
+      ...item,
+      checked: true,
+      registered: false,
+      _key: i,
+      _assignee: parseAssignee(item.description),
+    })),
   );
   const [loading, setLoading] = useState(false);
 
@@ -182,44 +188,48 @@ function ScheduleSuggestSection({ items }) {
 
   return (
     <div className="mb-4 p-3 rounded-lg border border-blue-200 bg-blue-50/50">
-      <div className="text-[0.8125rem] font-semibold text-blue-700 mb-2 flex items-center gap-1.5">
-        <CalendarPlus size={14} />
-        일정 등록 제안 ({items.length}건)
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[0.8125rem] font-semibold text-blue-700 flex items-center gap-1.5">
+          <CalendarPlus size={14} />
+          일정 등록 제안 ({items.length}건)
+        </div>
+        <span className="text-[0.625rem] text-neutral-400 flex items-center gap-0.5">
+          <Pencil size={9} /> 제목, 날짜 수정 가능
+        </span>
       </div>
 
       <div className="space-y-2">
         {editItems.map((item, idx) => (
           <div
             key={item._key}
-            className={`flex items-start gap-2 p-2 rounded border text-xs transition-colors ${
+            className={`flex items-start gap-2 p-2.5 rounded-lg border text-xs transition-colors ${
               item.registered
-                ? 'bg-green-50 border-green-200 opacity-75'
+                ? 'bg-green-50 border-green-200'
                 : item.checked
                   ? 'bg-white border-blue-200'
                   : 'bg-neutral-50 border-neutral-200 opacity-60'
             }`}
           >
-            {/* 체크박스 */}
             <input
               type="checkbox"
               checked={item.checked}
               disabled={item.registered}
               onChange={() => toggleCheck(idx)}
-              className="mt-1 shrink-0 accent-blue-600"
+              className="mt-0.5 shrink-0 accent-blue-600"
             />
 
-            <div className="flex-1 min-w-0 space-y-1">
-              {/* 제목 (수정 가능) */}
+            <div className="flex-1 min-w-0 space-y-1.5">
+              {/* 제목 (수정 가능, 밑줄 힌트) */}
               <input
                 type="text"
                 value={item.title}
                 disabled={item.registered}
                 onChange={(e) => updateField(idx, 'title', e.target.value)}
-                className="w-full font-medium text-neutral-main bg-transparent border-b border-transparent hover:border-neutral-300 focus:border-blue-400 focus:outline-none px-0 py-0.5 disabled:hover:border-transparent"
+                className="w-full font-medium text-neutral-main bg-transparent border-b border-dashed border-neutral-300 hover:border-blue-400 focus:border-blue-500 focus:outline-none px-0 py-0.5 disabled:border-transparent disabled:hover:border-transparent"
               />
 
+              {/* 날짜 + 담당자 + 상태 */}
               <div className="flex items-center gap-2 flex-wrap">
-                {/* 날짜 (수정 가능) */}
                 <input
                   type="date"
                   value={item.start_time?.slice(0, 10) || ''}
@@ -232,28 +242,23 @@ function ScheduleSuggestSection({ items }) {
                   className="text-[0.6875rem] text-neutral-sub border border-neutral-200 rounded px-1.5 py-0.5 disabled:opacity-50"
                 />
 
-                {/* 우선순위 */}
-                <span className={`inline-block px-1.5 py-0.5 rounded text-[0.625rem] font-medium ${PRIORITY_STYLES[item.priority] || PRIORITY_STYLES.medium}`}>
-                  {PRIORITY_LABELS[item.priority] || '보통'}
-                </span>
-
-                {/* 담당자 표시 */}
-                {item.description && (
-                  <span className="text-[0.6875rem] text-neutral-400 truncate">
-                    {item.description}
-                  </span>
-                )}
-
-                {/* 과거 날짜 경고 */}
+                {/* 과거 날짜 경고 (날짜 바로 옆) */}
                 {isPastDate(item.start_time) && !item.registered && (
-                  <span className="text-[0.625rem] text-orange-500 flex items-center gap-0.5">
-                    <AlertTriangle size={10} /> 과거 날짜
+                  <span className="text-[0.625rem] text-orange-500 flex items-center gap-0.5" title="날짜를 수정해주세요">
+                    <AlertTriangle size={10} /> 지난 날짜입니다
                   </span>
                 )}
 
-                {/* 등록 완료 표시 */}
+                {/* 담당자 */}
+                {item._assignee && (
+                  <span className="text-[0.6875rem] text-neutral-400">
+                    {item._assignee}
+                  </span>
+                )}
+
+                {/* 등록 완료 */}
                 {item.registered && (
-                  <span className="text-[0.625rem] text-green-600 flex items-center gap-0.5">
+                  <span className="text-[0.625rem] text-green-600 flex items-center gap-0.5 font-medium">
                     <Check size={10} /> 등록 완료
                   </span>
                 )}
@@ -263,7 +268,6 @@ function ScheduleSuggestSection({ items }) {
         ))}
       </div>
 
-      {/* 등록 버튼 */}
       {editItems.some((it) => !it.registered) && (
         <button
           onClick={handleRegister}
