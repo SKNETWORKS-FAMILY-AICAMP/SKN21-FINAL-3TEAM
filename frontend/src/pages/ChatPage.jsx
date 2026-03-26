@@ -520,7 +520,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
               </>
             )}
           </div>
-          {/* 규정 경고 (pipeline_create, approval_create 등) */}
+          {/* 규정 경고 (schedule_add 하위 분기: pipeline, approval 등) */}
           {data.regulation_check && data.regulation_check.result && data.regulation_check.result !== 'no_regulation' && (
             <div className={`mt-2 rounded-lg p-3 border text-xs ${
               data.regulation_check.result === 'no' ? 'bg-red-50 border-red-200 text-red-700' :
