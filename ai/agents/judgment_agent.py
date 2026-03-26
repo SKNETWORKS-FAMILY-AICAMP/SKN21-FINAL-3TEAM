@@ -548,8 +548,10 @@ def _calibrate_confidence(
         }
 
     # RAG 점수 기반 보정
+    # reranker 적용 시 Cross-Encoder score는 0~1로 보수적이므로 기준값을 낮춤
     avg_score = sum(d.get("score", 0) for d in context) / len(context)
-    rag_factor = min(avg_score / 0.8, 1.0)  # 0.8 이상이면 1.0
+    rag_threshold = 0.4 if avg_score < 0.7 else 0.8  # reranker score 스케일 대응
+    rag_factor = min(avg_score / rag_threshold, 1.0)
 
     # 규정 커버리지 보정
     groups = _group_regulations(context)

@@ -6,7 +6,7 @@ import MessagePopup from '../messages/MessagePopup';
 
 export default function RightSidebar({ chatOpen, setChatOpen, messageOpen, setMessageOpen }) {
     return (
-        <div className="fixed right-8 bottom-8 z-[60] flex flex-col gap-3 select-none">
+        <div className="fixed right-8 bottom-8 z-[60] flex flex-col gap-3 select-none hidden">
             {/* 쪽지 버튼 */}
             <button
                 onClick={() => {

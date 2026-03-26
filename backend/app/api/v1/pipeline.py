@@ -162,6 +162,8 @@ async def create_pipeline_task(
     )
     db.add(task)
     await db.flush()
+    await db.commit()
+    await db.refresh(task)
     result = {
         "id": task.id,
         "title": task.title,
@@ -197,6 +199,7 @@ async def update_pipeline_task(
         setattr(task, field, value)
 
     await db.flush()
+    await db.commit()
     return {"id": task.id, "title": task.title, "stage": task.stage}
 
 
@@ -216,6 +219,7 @@ async def delete_pipeline_task(
 
     await db.delete(task)
     await db.flush()
+    await db.commit()
     return {"deleted": True, "id": task_id}
 
 
@@ -259,6 +263,7 @@ async def create_from_action_items(
             db.add(Project(name=req.source, team=current_user.team, created_by=current_user.id))
             await db.flush()
 
+    await db.commit()
     return {"created_count": len(created), "items": created}
 
 
@@ -339,6 +344,8 @@ async def create_project(
     )
     db.add(project)
     await db.flush()
+    await db.commit()
+    await db.refresh(project)
     return {"id": project.id, "name": project.name}
 
 
@@ -363,6 +370,7 @@ async def update_project(
         project.description = req.description
 
     await db.flush()
+    await db.commit()
     return {"id": project.id, "name": project.name}
 
 
@@ -382,4 +390,5 @@ async def delete_project(
 
     await db.delete(project)
     await db.flush()
+    await db.commit()
     return {"deleted": True, "id": project_id}
