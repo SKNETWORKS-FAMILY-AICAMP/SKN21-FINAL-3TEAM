@@ -3842,7 +3842,7 @@ Pod 꺼져도 유지되는 네트워크 볼륨(`/workspace/`, 2.3PB)에 저장:
 
 #### 3) Planner 4-step / 5-step 테스트셋 생성
 
-- 멘토님 요청: 3step까지만 학습한 모델이 4step, 5step도 제대로 계획하는지 일반화 테스트
+- 3step까지만 학습한 모델이 4step, 5step도 제대로 계획하는지 일반화 테스트
 - 생성 파일:
   - `data/evaluation/planner_test_4step.json` — 4step 테스트 30건
   - `data/evaluation/planner_test_5step.json` — 5step 테스트 30건 (note: `--max-steps 5` 옵션 필요)
@@ -4178,6 +4178,40 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 - **백엔드** (`ai/agents/document/_search.py`): 검색 결과 번호 리스트 제거 → `N건의 관련 문서를 찾았습니다.` 한 줄로 변경 + 상위 5건만 반환
 - **프론트엔드** (`frontend/src/pages/ChatPage.jsx`): 검색 카드 내 불필요한 안내 문구 제거
 - **`SourceList.jsx` 신규**: 관련 문서 목록 접기/펼치기 컴포넌트 — 기본 펼침, `▶ 관련 문서 (N건)` 클릭으로 토글
+
+---
+
+## 2026-03-26 (수)
+
+### 한 일
+
+#### 1) 프로젝트 아키텍처 이해 — 발표 준비용 정리
+
+- **RDB(PostgreSQL) + VectorDB(Qdrant) 이중 DB 구조** 역할 정리
+  - PostgreSQL: 사용자·문서·규정 메타데이터, 대화 이력, 판단 결과 등 구조화된 운영 데이터
+  - Qdrant: 문서 텍스트 청크의 768차원 임베딩 벡터 저장, 의미 기반 검색(RAG)
+- **Intent 분류 → 오케스트레이터 → Agent 라우팅 흐름** 파악
+  - ONNX 앙상블(roberta-large 5-seed) → confidence ≥ 0.85이면 Agent 직행, 미만이면 clarify 재질문
+  - 복합 질문 감지 시 decompose → 각 sub-query 순차 처리
+- **clarify 재질문 발동 조건** 확인
+  - `ai/agents/config.py`: `INTENT_CONFIDENCE_THRESHOLD = 0.85`
+  - `ai/agents/orchestrator.py:629-690`: confidence < 0.85 + 후보 2개 이상 → `clarify_with_candidates` 노드
+  - GPT-4o-mini fallback 상태(로컬)에서는 LLM이 높은 confidence를 반환해 clarify 발동이 어려움
+  - EC2(ONNX 로드 상태)에서는 모호한 입력 시 general agent가 자체적으로 재질문
+
+#### 2) 발표용 HTML 제작 (`presentation.html`)
+
+- 프로젝트 전체 발표 자료를 단일 HTML로 제작 (Tailwind CDN 사용)
+- 포함 섹션: 문제 정의, 솔루션, 팀 구성, 핵심 효과, 아키텍처, Agent 구조, 데이터, 전처리 파이프라인, 파인튜닝, 기술 스택, 화면 구성, 배포, 성능, 마일스톤
+- 우측 네비게이션 dot + 스크롤 연동, 반응형 대응
+
+#### 3) 사용법 버튼 인사 메시지 전용으로 제한 (`ChatPage.jsx`)
+
+- **문제**: "내일 그거 해줘" 등 일반 질문에서도 사용법 버튼이 표시됨
+- **원인**: `isFirstAssistant` (첫 assistant 메시지)이면 무조건 사용법 버튼을 렌더링
+- **수정**: 바로 앞 user 메시지가 인사(`안녕`, `하이`, `hello`, `hi`)일 때만 표시
+  - `renderCardMessage` 내부 (510행)
+  - 메인 렌더 경로 (909행)
 
 ### 다음 할 일
 

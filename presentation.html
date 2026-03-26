@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorkFlow Agent (DUDE 듀드) - 프로젝트 발표</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config={theme:{extend:{colors:{primary:{50:'#E8EEF3',100:'#C8D5E2',300:'#8FA3B4',500:'#6E87A0',700:'#56728A',900:'#3D5164'},accent:{50:'#F7F3EB',100:'#EDE5D0',300:'#C4B49A',500:'#A89580',700:'#8B7D6E'},surface:{main:'#F4F5F7',sub:'#EBEDF0',card:'#FFFFFF'},neutral:{main:'#2C3340',sub:'#6B7280',muted:'#9CA3AF',border:'#D1D5DB',divider:'#E5E7EB'},success:'#5B9A6F',warning:'#C49A3C',error:'#C06060'},fontFamily:{sans:['Noto Sans KR','sans-serif'],display:['Poppins','sans-serif']}}}}
+</script>
+<style>
+html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-display{font-family:'Poppins',sans-serif}
+.gradient-hero{background:linear-gradient(135deg,#3D5164 0%,#56728A 50%,#6E87A0 100%)}
+.gradient-section{background:linear-gradient(180deg,#E8EEF3 0%,#F4F5F7 100%)}
+.card-hover{transition:all .3s ease}.card-hover:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(61,81,100,.12)}
+.animate-fade{animation:fadeIn .6s ease-out}@keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.tag{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:.75rem;font-weight:500}
+.stat-ring{width:100px;height:100px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+@media(max-width:640px){.stat-ring{width:80px;height:80px}.hero-title{font-size:2rem!important}}
+.toc-link{transition:all .2s}.toc-link:hover{color:#3D5164;transform:translateX(4px)}
+.nav-dot{width:10px;height:10px;border-radius:50%;background:#C8D5E2;transition:all .3s;cursor:pointer;position:relative}
+.nav-dot.active,.nav-dot:hover{background:#3D5164;transform:scale(1.3)}
+.nav-dot .nav-tooltip{position:absolute;right:20px;top:50%;transform:translateY(-50%);background:#3D5164;color:#fff;padding:3px 10px;border-radius:6px;font-size:11px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s}
+.nav-dot:hover .nav-tooltip{opacity:1}
+.bar{border-radius:4px 4px 0 0;transition:height .6s ease}
+.flow-arrow{color:#C8D5E2}
+.pipe-card{border-top:3px solid}
+</style>
+</head>
+<body class="bg-surface-main text-neutral-main">
+
+<!-- Nav Dots -->
+<nav class="hidden lg:flex fixed right-6 top-1/2 -translate-y-1/2 z-50 flex-col gap-2.5" id="navDots">
+  <a href="#hero" class="nav-dot active"><span class="nav-tooltip">Home</span></a>
+  <a href="#toc" class="nav-dot"><span class="nav-tooltip">목차</span></a>
+  <a href="#problem" class="nav-dot"><span class="nav-tooltip">문제 정의</span></a>
+  <a href="#solution" class="nav-dot"><span class="nav-tooltip">솔루션</span></a>
+  <a href="#team" class="nav-dot"><span class="nav-tooltip">팀 구성</span></a>
+  <a href="#effects" class="nav-dot"><span class="nav-tooltip">핵심 효과</span></a>
+  <a href="#architecture" class="nav-dot"><span class="nav-tooltip">아키텍처</span></a>
+  <a href="#agents" class="nav-dot"><span class="nav-tooltip">Agent</span></a>
+  <a href="#data" class="nav-dot"><span class="nav-tooltip">데이터</span></a>
+  <a href="#pipeline" class="nav-dot"><span class="nav-tooltip">전처리</span></a>
+  <a href="#finetuning" class="nav-dot"><span class="nav-tooltip">파인튜닝</span></a>
+  <a href="#tech" class="nav-dot"><span class="nav-tooltip">기술 스택</span></a>
+  <a href="#pages" class="nav-dot"><span class="nav-tooltip">화면 구성</span></a>
+  <a href="#deploy" class="nav-dot"><span class="nav-tooltip">배포</span></a>
+  <a href="#performance" class="nav-dot"><span class="nav-tooltip">성능</span></a>
+  <a href="#roadmap" class="nav-dot"><span class="nav-tooltip">마일스톤</span></a>
+</nav>
+
+<!-- ========== HERO ========== -->
+<section id="hero" class="gradient-hero min-h-screen flex items-center justify-center relative overflow-hidden">
+  <div class="absolute inset-0 opacity-10"><div class="absolute top-20 left-10 w-72 h-72 bg-white rounded-full blur-3xl"></div><div class="absolute bottom-20 right-10 w-96 h-96 bg-accent-300 rounded-full blur-3xl"></div></div>
+  <div class="relative z-10 text-center px-6 max-w-4xl mx-auto animate-fade">
+    <div class="inline-block mb-6 px-4 py-2 bg-white/15 backdrop-blur-sm rounded-full"><span class="text-white/90 text-sm font-medium tracking-wide">SKN21 Final Project &middot; 3TEAM</span></div>
+    <h1 class="hero-title font-display text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">WorkFlow Agent<br><span class="text-accent-100">DUDE (듀드)</span></h1>
+    <p class="text-primary-100 text-lg md:text-xl mb-4 max-w-2xl mx-auto">LangGraph 기반 멀티 에이전트 업무 자동화 시스템</p>
+    <p class="text-primary-300 text-base mb-10">규정 판단 &middot; 문서 생성/분석 &middot; 일정 관리를 AI가 자연어로 처리합니다</p>
+    <a href="#toc" class="inline-flex items-center gap-2 px-8 py-3 bg-white text-primary-900 font-semibold rounded-full shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5">목차 보기 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></a>
+  </div>
+</section>
+
+<!-- ========== TOC ========== -->
+<section id="toc" class="py-16 md:py-24 bg-white">
+  <div class="max-w-3xl mx-auto px-6">
+    <h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 text-center mb-4">목차</h2>
+    <p class="text-neutral-muted text-sm text-center mb-10">Contents</p>
+    <div class="space-y-0 border-l-2 border-primary-100 ml-4">
+      <a href="#problem" class="toc-link flex items-center gap-4 py-3 pl-6 -ml-[1px] border-l-2 border-transparent hover:border-primary-700 group"><span class="text-neutral-muted text-xs font-display w-6 text-right">01</span><span class="text-sm text-neutral-sub group-hover:text-primary-900 font-medium">문제 정의</span></a>
+      <a href="#solution" class="toc-link flex items-center gap-4 py-3 pl-6 -ml-[1px] border-l-2 border-transparent hover:border-primary-700 group"><span class="text-neutral-muted text-xs font-display w-6 text-right">02</span><span class="text-sm text-neutral-sub group-hover:text-primary-900 font-medium">솔루션 &amp; 팀 구성</span></a>
+      <a href="#effects" class="toc-link flex items-center gap-4 py-3 pl-6 -ml-[1px] border-l-2 border-transparent hover:border-primary-700 group"><span class="text-neutral-muted text-xs font-display w-6 text-right">03</span><span class="text-sm text-neutral-sub group-hover:text-primary-900 font-medium">핵심 효과 &amp; 기대 효과</span></a>
+      <a href="#architecture" class="toc-link flex items-center gap-4 py-3 pl-6 -ml-[1px] border-l-2 border-transparent hover:border-primary-700 group"><span class="text-neutral-muted text-xs font-display w-6 text-right">04</span><span class="text-sm text-neutral-sub group-hover:text-primary-900 font-medium">전체 시스템 아키텍처</span></a>
+      <div class="pt-2 pb-1 pl-6"><span class="text-[10px] text-neutral-muted uppercase tracking-widest">Agents</span></div>
+      <a href="#agents" class="toc-link flex items-center gap-4 py-2.5 pl-6 -ml-[1px] border-l-2 border-transparent hover:border-primary-700 group"><span class="text-neutral-muted text-xs font-display w-6 text-right">05</span><span class="text-sm text-neutral-sub group-hover:text-primary-900">문서 / 판단 / 일정 Agent</span></a>
+      <div class="pt-2 pb-1 pl-6"><span class="text-[10px] text-neutral-muted uppercase tracking-widest">AI / Data</span></div>
+      <a href="#data" class="toc-link flex items-center gap-4 py-2.5 pl-6 -ml-[1px] border-l-2 border-transparent hover:border-primary-700 group"><span class="text-neutral-muted text-xs font-display w-6 text-right">06</span><span class="text-sm text-neutral-sub group-hover:text-primary-900">데이터셋 현황</span></a>
+      <a href="#pipeline" class="toc-link flex items-center gap-4 py-2.5 pl-6 -ml-[1px] border-l-2 border-transparent hover:border-primary-700 group"><span class="text-neutral-muted text-xs font-display w-6 text-right">07</span><span class="text-sm text-neutral-sub group-hover:text-primary-900">전처리 파이프라인</span></a>
+      <a href="#finetuning" class="toc-link flex items-center gap-4 py-2.5 pl-6 -ml-[1px] border-l-2 border-transparent hover:border-primary-700 group"><span class="text-neutral-muted text-xs font-display w-6 text-right">08</span><span class="text-sm text-neutral-sub group-hover:text-primary-900">파인튜닝</span></a>
+      <div class="pt-2 pb-1 pl-6"><span class="text-[10px] text-neutral-muted uppercase tracking-widest">Product</span></div>
+      <a href="#tech" class="toc-link flex items-center gap-4 py-2.5 pl-6 -ml-[1px] border-l-2 border-transparent hover:border-primary-700 group"><span class="text-neutral-muted text-xs font-display w-6 text-right">09</span><span class="text-sm text-neutral-sub group-hover:text-primary-900">기술 스택</span></a>
+      <a href="#pages" class="toc-link flex items-center gap-4 py-2.5 pl-6 -ml-[1px] border-l-2 border-transparent hover:border-primary-700 group"><span class="text-neutral-muted text-xs font-display w-6 text-right">10</span><span class="text-sm text-neutral-sub group-hover:text-primary-900">화면 구성</span></a>
+      <a href="#deploy" class="toc-link flex items-center gap-4 py-2.5 pl-6 -ml-[1px] border-l-2 border-transparent hover:border-primary-700 group"><span class="text-neutral-muted text-xs font-display w-6 text-right">11</span><span class="text-sm text-neutral-sub group-hover:text-primary-900">배포 아키텍처</span></a>
+      <a href="#performance" class="toc-link flex items-center gap-4 py-2.5 pl-6 -ml-[1px] border-l-2 border-transparent hover:border-primary-700 group"><span class="text-neutral-muted text-xs font-display w-6 text-right">12</span><span class="text-sm text-neutral-sub group-hover:text-primary-900">성능 지표</span></a>
+      <a href="#roadmap" class="toc-link flex items-center gap-4 py-3 pl-6 -ml-[1px] border-l-2 border-transparent hover:border-primary-700 group"><span class="text-neutral-muted text-xs font-display w-6 text-right">13</span><span class="text-sm text-neutral-sub group-hover:text-primary-900 font-medium">마일스톤</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 01. PROBLEM ========== -->
+<section id="problem" class="py-20 md:py-28 gradient-section">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-16"><span class="tag bg-error/10 text-error mb-4">01</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">왜 필요한가?</h2></div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div class="text-center card-hover bg-white rounded-2xl p-8"><div class="stat-ring mx-auto mb-6 bg-error/10 border-4 border-error/30"><span class="font-display text-2xl font-bold text-error">68%</span></div><h3 class="font-semibold text-lg text-primary-900 mb-2">집중 시간 부족</h3><p class="text-neutral-sub text-sm">핵심 업무에 집중할 시간이 부족</p></div>
+      <div class="text-center card-hover bg-white rounded-2xl p-8"><div class="stat-ring mx-auto mb-6 bg-warning/10 border-4 border-warning/30"><span class="font-display text-2xl font-bold text-warning">62%</span></div><h3 class="font-semibold text-lg text-primary-900 mb-2">정보 검색 낭비</h3><p class="text-neutral-sub text-sm">사내 문서와 규정 검색에 과도한 시간</p></div>
+      <div class="text-center card-hover bg-white rounded-2xl p-8"><div class="stat-ring mx-auto mb-6 bg-primary-500/10 border-4 border-primary-500/30"><span class="font-display text-2xl font-bold text-primary-700">57%</span></div><h3 class="font-semibold text-lg text-primary-900 mb-2">커뮤니케이션 부담</h3><p class="text-neutral-sub text-sm">반복적 소통 업무에 시간 소요</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 02. SOLUTION + TEAM ========== -->
+<section id="solution" class="py-20 md:py-28 bg-white">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-16"><span class="tag bg-success/10 text-success mb-4">02</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">DUDE가 해결합니다</h2><p class="text-neutral-sub mt-4">자연어 한 마디로 규정 확인, 문서 생성, 일정 등록까지</p></div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+      <div class="card-hover bg-surface-main rounded-2xl p-8 border border-neutral-divider">
+        <div class="w-14 h-14 rounded-xl bg-primary-50 flex items-center justify-center mb-6"><svg class="w-7 h-7 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
+        <h3 class="font-semibold text-xl text-primary-900 mb-3">규정 판단</h3>
+        <p class="text-neutral-sub text-sm">RAG 하이브리드 검색 + 3중 검증 + 신뢰도 점수</p>
+      </div>
+      <div class="card-hover bg-surface-main rounded-2xl p-8 border border-neutral-divider">
+        <div class="w-14 h-14 rounded-xl bg-accent-50 flex items-center justify-center mb-6"><svg class="w-7 h-7 text-accent-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+        <h3 class="font-semibold text-xl text-primary-900 mb-3">문서</h3>
+        <p class="text-neutral-sub text-sm">생성/요약/검색/QA + DOCX 출력 + LoRA 파인튜닝</p>
+      </div>
+      <div class="card-hover bg-surface-main rounded-2xl p-8 border border-neutral-divider">
+        <div class="w-14 h-14 rounded-xl bg-success/10 flex items-center justify-center mb-6"><svg class="w-7 h-7 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
+        <h3 class="font-semibold text-xl text-primary-900 mb-3">일정</h3>
+        <p class="text-neutral-sub text-sm">자연어 일정 등록 + Google 5종 연동 + Meet 자동 생성</p>
+      </div>
+    </div>
+    <!-- Team -->
+    <div id="team">
+      <h3 class="font-display font-semibold text-xl text-primary-900 text-center mb-8">팀 구성 <span class="text-neutral-muted font-normal text-sm ml-2">멘토: 최민수</span></h3>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-5 max-w-4xl mx-auto">
+        <div class="bg-surface-main rounded-2xl p-5 text-center"><div class="w-14 h-14 rounded-full bg-primary-700 text-white flex items-center justify-center mx-auto mb-3 text-lg font-bold font-display">PM</div><h4 class="font-semibold text-primary-900 text-sm">신지용</h4><p class="text-[11px] text-neutral-sub mt-1">오케스트레이터 + 문서 Agent</p></div>
+        <div class="bg-surface-main rounded-2xl p-5 text-center"><div class="w-14 h-14 rounded-full bg-accent-700 text-white flex items-center justify-center mx-auto mb-3 text-lg font-bold font-display">AI</div><h4 class="font-semibold text-primary-900 text-sm">윤경은</h4><p class="text-[11px] text-neutral-sub mt-1">판단 Agent + RAG + vLLM</p></div>
+        <div class="bg-surface-main rounded-2xl p-5 text-center"><div class="w-14 h-14 rounded-full bg-warning text-white flex items-center justify-center mx-auto mb-3 text-lg font-bold font-display">BE</div><h4 class="font-semibold text-primary-900 text-sm">안혜빈</h4><p class="text-[11px] text-neutral-sub mt-1">Backend + DB + Google 연동</p></div>
+        <div class="bg-surface-main rounded-2xl p-5 text-center"><div class="w-14 h-14 rounded-full bg-success text-white flex items-center justify-center mx-auto mb-3 text-sm font-bold font-display">FE+AI</div><h4 class="font-semibold text-primary-900 text-sm">문지영</h4><p class="text-[11px] text-neutral-sub mt-1">Frontend + Intent + Planner</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 03. EFFECTS ========== -->
+<section id="effects" class="py-20 md:py-28 gradient-section">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-16"><span class="tag bg-success/10 text-success mb-4">03</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">핵심 효과 &amp; 기대 효과</h2></div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div class="bg-white rounded-2xl p-8 border border-neutral-divider">
+        <h3 class="font-semibold text-lg text-primary-900 mb-6">핵심 효과</h3>
+        <div class="space-y-5">
+          <div class="flex gap-4"><div class="w-2 rounded-full bg-primary-700 shrink-0"></div><div><p class="font-semibold text-primary-900 text-sm">업무 시간 절감</p><p class="text-xs text-neutral-sub mt-1">규정 확인 30분 &rarr; 10초, 문서 작성 2시간 &rarr; 5분</p></div></div>
+          <div class="flex gap-4"><div class="w-2 rounded-full bg-primary-700 shrink-0"></div><div><p class="font-semibold text-primary-900 text-sm">판단 정확도 향상</p><p class="text-xs text-neutral-sub mt-1">RAG 3중 검증 + 신뢰도 점수로 환각 방지</p></div></div>
+          <div class="flex gap-4"><div class="w-2 rounded-full bg-primary-700 shrink-0"></div><div><p class="font-semibold text-primary-900 text-sm">복합 업무 자동 분해</p><p class="text-xs text-neutral-sub mt-1">Task Planner가 복잡한 요청을 단계별 자동 실행</p></div></div>
+          <div class="flex gap-4"><div class="w-2 rounded-full bg-primary-700 shrink-0"></div><div><p class="font-semibold text-primary-900 text-sm">sLLM 독립 운영</p><p class="text-xs text-neutral-sub mt-1">외부 API 없이 Kanana-1.5-8B + LoRA 자체 서빙</p></div></div>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl p-8 border border-neutral-divider">
+        <h3 class="font-semibold text-lg text-primary-900 mb-6">기대 효과</h3>
+        <div class="space-y-5">
+          <div class="flex gap-4"><div class="w-2 rounded-full bg-success shrink-0"></div><div><p class="font-semibold text-primary-900 text-sm">컴플라이언스 리스크 감소</p><p class="text-xs text-neutral-sub mt-1">규정 기반 판단 자동화로 인적 오류 방지</p></div></div>
+          <div class="flex gap-4"><div class="w-2 rounded-full bg-success shrink-0"></div><div><p class="font-semibold text-primary-900 text-sm">조직 지식 자산화</p><p class="text-xs text-neutral-sub mt-1">사내 문서 벡터 DB 축적 &rarr; 지식 유실 방지</p></div></div>
+          <div class="flex gap-4"><div class="w-2 rounded-full bg-success shrink-0"></div><div><p class="font-semibold text-primary-900 text-sm">Google Workspace 통합</p><p class="text-xs text-neutral-sub mt-1">Calendar, Tasks, Gmail, Sheets 단일 OAuth</p></div></div>
+          <div class="flex gap-4"><div class="w-2 rounded-full bg-success shrink-0"></div><div><p class="font-semibold text-primary-900 text-sm">확장 가능한 Agent 아키텍처</p><p class="text-xs text-neutral-sub mt-1">LangGraph 기반 + LoRA 핫스왑</p></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 04. ARCHITECTURE ========== -->
+<section id="architecture" class="py-20 md:py-28 bg-white">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-16"><span class="tag bg-primary-50 text-primary-700 mb-4">04</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">전체 시스템 아키텍처</h2></div>
+    <div class="max-w-4xl mx-auto space-y-4">
+      <div class="bg-success/5 rounded-2xl p-5 border border-success/20"><p class="font-semibold text-success text-sm mb-1">Frontend</p><p class="text-xs text-neutral-sub">React 18 + Zustand + TanStack Query + Tailwind/shadcn + FullCalendar + SSE</p></div>
+      <div class="flex justify-center"><svg class="w-5 h-5 flow-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg></div>
+      <div class="bg-accent-50 rounded-2xl p-5 border border-accent-100"><p class="font-semibold text-accent-700 text-sm mb-1">Backend API</p><p class="text-xs text-neutral-sub">FastAPI + JWT + SSE 스트리밍 + Google OAuth 2.0 (Calendar/Tasks/Gmail/Sheets)</p></div>
+      <div class="flex justify-center"><svg class="w-5 h-5 flow-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg></div>
+      <div class="bg-primary-50 rounded-2xl p-5 border border-primary-100">
+        <p class="font-semibold text-primary-700 text-sm mb-3">AI Core (LangGraph)</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+          <div class="bg-white rounded-lg p-3 text-center border border-primary-100"><p class="text-xs font-semibold text-primary-900">Intent Classifier</p><p class="text-[10px] text-neutral-muted">roberta-large 5-seed</p></div>
+          <div class="bg-white rounded-lg p-3 text-center border border-primary-100"><p class="text-xs font-semibold text-primary-900">Task Planner</p><p class="text-[10px] text-neutral-muted">Kanana-1.5-8B LoRA</p></div>
+          <div class="bg-white rounded-lg p-3 text-center border border-primary-100"><p class="text-xs font-semibold text-primary-900">Orchestrator</p><p class="text-[10px] text-neutral-muted">조건부 라우팅</p></div>
+        </div>
+        <div class="grid grid-cols-4 gap-3">
+          <div class="bg-white rounded-lg p-2 text-center border-2 border-primary-300"><p class="text-xs font-medium text-primary-700">판단</p></div>
+          <div class="bg-white rounded-lg p-2 text-center border-2 border-accent-300"><p class="text-xs font-medium text-accent-700">문서</p></div>
+          <div class="bg-white rounded-lg p-2 text-center border-2 border-success/40"><p class="text-xs font-medium text-success">일정</p></div>
+          <div class="bg-white rounded-lg p-2 text-center border border-neutral-border"><p class="text-xs font-medium text-neutral-sub">일반</p></div>
+        </div>
+      </div>
+      <div class="flex justify-center"><svg class="w-5 h-5 flow-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg></div>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="bg-warning/5 rounded-xl p-4 border border-warning/20 text-center"><p class="text-xs font-semibold text-warning">PostgreSQL (RDS)</p><p class="text-[10px] text-neutral-muted">17 테이블</p></div>
+        <div class="bg-warning/5 rounded-xl p-4 border border-warning/20 text-center"><p class="text-xs font-semibold text-warning">Qdrant Cloud</p><p class="text-[10px] text-neutral-muted">벡터 DB + BM25</p></div>
+        <div class="bg-warning/5 rounded-xl p-4 border border-warning/20 text-center"><p class="text-xs font-semibold text-warning">vLLM (RunPod)</p><p class="text-[10px] text-neutral-muted">Kanana + LoRA 핫스왑</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 05. AGENTS (Canva 스타일 — 한 페이지) ========== -->
+<section id="agents" class="py-20 md:py-28 gradient-section">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-16"><span class="tag bg-primary-50 text-primary-700 mb-4">05</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">Agent 구조</h2></div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <!-- 문서 Agent -->
+      <div class="bg-white rounded-2xl p-6 border border-neutral-divider">
+        <div class="text-center mb-5"><div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-accent-50 flex items-center justify-center"><svg class="w-8 h-8 text-accent-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><h3 class="font-display font-bold text-lg text-primary-900">문서 AGENT</h3><p class="text-xs text-neutral-sub mt-2">문서 생성/요약/검색/QA<br>4가지 오퍼레이션</p></div>
+        <div class="space-y-2 text-xs text-neutral-sub">
+          <div class="bg-accent-50 rounded-lg px-3 py-2 text-center font-medium text-accent-700">사용자 질의</div>
+          <p class="text-center text-neutral-muted">&darr;</p>
+          <p class="text-center">서브타입 판단</p>
+          <div class="flex justify-center gap-1 flex-wrap"><span class="tag bg-surface-main text-neutral-main text-[10px]">doc_generate</span><span class="tag bg-surface-main text-neutral-main text-[10px]">doc_retrieve</span></div>
+          <p class="text-center text-neutral-muted">&darr;</p>
+          <p class="text-center">sLLM &larr; LoRA 라우팅</p>
+          <p class="text-center text-neutral-muted">&darr;</p>
+          <div class="bg-accent-50 rounded-lg px-3 py-2 text-center font-medium text-accent-700">응답</div>
+        </div>
+      </div>
+      <!-- 판단 Agent -->
+      <div class="bg-white rounded-2xl p-6 border border-neutral-divider">
+        <div class="text-center mb-5"><div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-primary-50 flex items-center justify-center"><svg class="w-8 h-8 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div><h3 class="font-display font-bold text-lg text-primary-900">판단 AGENT</h3><p class="text-xs text-neutral-sub mt-2">사내규정 기반<br>yes/no/conditional 판단<br>+ 근거 조항 + 대안</p></div>
+        <div class="space-y-2 text-xs text-neutral-sub">
+          <div class="bg-primary-50 rounded-lg px-3 py-2 text-center font-medium text-primary-700">사용자 질의</div>
+          <p class="text-center text-neutral-muted">&darr;</p>
+          <p class="text-center">RAG (top-k)</p>
+          <p class="text-center text-neutral-muted">&darr;</p>
+          <p class="text-center">sLLM 판단 <span class="text-primary-500">(LoRA v1)</span></p>
+          <p class="text-center text-neutral-muted">&darr;</p>
+          <div class="bg-success/10 rounded-lg px-3 py-2 text-center font-medium text-success">3중 검증 + confidence</div>
+          <p class="text-center text-neutral-muted">&darr;</p>
+          <div class="bg-primary-50 rounded-lg px-3 py-2 text-center font-medium text-primary-700">응답</div>
+        </div>
+      </div>
+      <!-- 일정 Agent -->
+      <div class="bg-white rounded-2xl p-6 border border-neutral-divider">
+        <div class="text-center mb-5"><div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-success/10 flex items-center justify-center"><svg class="w-8 h-8 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div><h3 class="font-display font-bold text-lg text-primary-900">일정 AGENT</h3><p class="text-xs text-neutral-sub mt-2">자연어 &rarr; 일정 등록/조회<br>+ Google 5종 연동</p></div>
+        <div class="space-y-2 text-xs text-neutral-sub">
+          <div class="bg-success/10 rounded-lg px-3 py-2 text-center font-medium text-success">사용자 질의</div>
+          <p class="text-center text-neutral-muted">&darr;</p>
+          <p class="text-center">LLM 자연어 파싱</p>
+          <p class="text-center text-neutral-muted">&darr;</p>
+          <p class="text-center">Google API 호출</p>
+          <p class="text-[10px] text-center text-success">Calendar | Meet | Tasks | Gmail | Sheets</p>
+          <p class="text-center text-neutral-muted">&darr;</p>
+          <div class="bg-success/10 rounded-lg px-3 py-2 text-center font-medium text-success">결과 반환</div>
+        </div>
+      </div>
+    </div>
+    <div class="mt-8 bg-primary-700 text-white rounded-xl p-4 text-center text-sm">
+      <strong>Planner Agent</strong>: 3개 Agent를 하나의 LangGraph 오케스트레이터로 융합 (intent 분해 &rarr; 병렬 라우팅 &rarr; 응답 통합)
+    </div>
+  </div>
+</section>
+
+<!-- ========== 06. DATASET (바 차트 + 테이블 — Canva 스타일) ========== -->
+<section id="data" class="py-20 md:py-28 bg-white">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-16"><span class="tag bg-primary-50 text-primary-700 mb-4">06</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">데이터셋 현황</h2></div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Bar Chart -->
+      <div class="bg-surface-main rounded-2xl p-6 border border-neutral-divider">
+        <div class="flex items-center gap-4 mb-6"><span class="w-3 h-3 rounded-full bg-primary-700"></span><span class="text-xs text-neutral-sub">train</span><span class="w-3 h-3 rounded-full bg-error/60 ml-2"></span><span class="text-xs text-neutral-sub">eval</span></div>
+        <div class="flex items-end justify-around gap-3 h-52">
+          <div class="flex-1 flex flex-col items-center gap-1">
+            <span class="text-xs font-bold text-primary-900">3,954</span>
+            <div class="w-full bg-primary-700 bar" style="height:180px"></div>
+            <div class="w-full bg-error/60 bar" style="height:28px"></div>
+            <span class="text-[10px] text-neutral-muted mt-1">Intent 분류</span>
+          </div>
+          <div class="flex-1 flex flex-col items-center gap-1">
+            <span class="text-xs font-bold text-primary-900">1,471</span>
+            <div class="w-full bg-primary-700 bar" style="height:67px"></div>
+            <div class="w-full bg-error/60 bar" style="height:7px"></div>
+            <span class="text-[10px] text-neutral-muted mt-1">Planner</span>
+          </div>
+          <div class="flex-1 flex flex-col items-center gap-1">
+            <span class="text-xs font-bold text-primary-900">3,468</span>
+            <div class="w-full bg-primary-700 bar" style="height:158px"></div>
+            <div class="w-full bg-error/60 bar" style="height:15px"></div>
+            <span class="text-[10px] text-neutral-muted mt-1">판단</span>
+          </div>
+          <div class="flex-1 flex flex-col items-center gap-1">
+            <span class="text-xs font-bold text-primary-900">900</span>
+            <div class="w-full bg-primary-700 bar" style="height:41px"></div>
+            <div class="w-full bg-error/60 bar" style="height:5px"></div>
+            <span class="text-[10px] text-neutral-muted mt-1">문서 요약</span>
+          </div>
+          <div class="flex-1 flex flex-col items-center gap-1">
+            <span class="text-xs font-bold text-primary-900">1,350</span>
+            <div class="w-full bg-primary-700 bar" style="height:62px"></div>
+            <div class="w-full bg-error/60 bar" style="height:7px"></div>
+            <span class="text-[10px] text-neutral-muted mt-1">문서 생성</span>
+          </div>
+        </div>
+      </div>
+      <!-- Table -->
+      <div class="bg-surface-main rounded-2xl p-6 border border-neutral-divider">
+        <h4 class="font-semibold text-primary-900 mb-4">전체 데이터 현황</h4>
+        <table class="w-full text-sm">
+          <thead><tr class="bg-primary-700 text-white text-xs"><th class="px-4 py-2 rounded-tl-lg text-left">구분</th><th class="px-4 py-2 rounded-tr-lg text-left">출처</th></tr></thead>
+          <tbody class="text-xs">
+            <tr class="border-b border-neutral-divider"><td class="px-4 py-3">Intent 분류</td><td class="px-4 py-3">자체 제작 + Adversarial 463</td></tr>
+            <tr class="border-b border-neutral-divider"><td class="px-4 py-3">Planner</td><td class="px-4 py-3">자체 제작 + GPT 증강</td></tr>
+            <tr class="border-b border-neutral-divider"><td class="px-4 py-3">판단 LoRA</td><td class="px-4 py-3">수동 제작(Excel) + 규정DB</td></tr>
+            <tr class="border-b border-neutral-divider"><td class="px-4 py-3">문서요약 LoRA</td><td class="px-4 py-3">AI Hub SN 582 + GPT 증강</td></tr>
+            <tr><td class="px-4 py-3">문서생성 LoRA</td><td class="px-4 py-3">AI Hub + 합성(회의록/보고서/제안서)</td></tr>
+          </tbody>
+        </table>
+        <div class="grid grid-cols-2 gap-3 mt-5">
+          <div class="bg-white rounded-lg p-3 border border-neutral-divider"><p class="text-[10px] font-semibold text-primary-700 mb-1">Track 1: 수동 제작 (고품질)</p><p class="text-[10px] text-neutral-sub">규정 판단 1,000쌍 / QA 1,000쌍 / Intent 1,453개 / Adversarial 463개</p></div>
+          <div class="bg-white rounded-lg p-3 border border-neutral-divider"><p class="text-[10px] font-semibold text-primary-700 mb-1">Track 2: AI Hub + 합성 (대량)</p><p class="text-[10px] text-neutral-sub">AI Hub SN 582 (요약) / GPT-4o 빈 필드 증강 / 합성 회의록+보고서+제안서</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 07. PREPROCESSING PIPELINE (4개 모듈 카드 — Canva 스타일) ========== -->
+<section id="pipeline" class="py-20 md:py-28 gradient-section">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-6"><span class="tag bg-primary-50 text-primary-700 mb-4">07</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">전처리 파이프라인 개요</h2></div>
+    <p class="text-center text-neutral-sub text-sm mb-12">4개 모듈 &times; 각각 다른 파이프라인 &mdash; 각 모듈은 데이터 소스, 증강 방법, 최종 포맷이 모두 다름</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <!-- Intent -->
+      <div class="pipe-card bg-white rounded-xl p-5" style="border-color:#56728A">
+        <h4 class="font-bold text-primary-700 text-sm mb-4">Intent</h4>
+        <div class="space-y-3 text-xs text-neutral-sub">
+          <div><p class="font-semibold text-primary-900">데이터 소스</p><p>Claude API 자체 생성</p></div>
+          <div><p class="font-semibold text-primary-900">증강</p><p>경계값 600 + 적대적 463 + KD round 3</p></div>
+          <div><p class="font-semibold text-primary-900">검증/정제</p><p>중복 제거 (dedup) 경계값 &ge; 1.1</p></div>
+          <div><p class="font-semibold text-primary-900">최종 포맷</p><p>text / label (6-class 멀티라벨)</p><p class="text-neutral-muted">Train/Val/Test</p></div>
+        </div>
+        <div class="mt-4 pt-3 border-t border-neutral-divider text-center"><p class="text-[10px] text-primary-700 font-medium">~5,177건 | RoBERTa-large</p></div>
+      </div>
+      <!-- Planner -->
+      <div class="pipe-card bg-white rounded-xl p-5" style="border-color:#5B9A6F">
+        <h4 class="font-bold text-success text-sm mb-4">Planner</h4>
+        <div class="space-y-3 text-xs text-neutral-sub">
+          <div><p class="font-semibold text-primary-900">데이터 소스</p><p>템플릿 기반 스크립트 합성</p></div>
+          <div><p class="font-semibold text-primary-900">증강</p><p>v3&rarr;v7 반복 (v5 블랙, v6 증강)</p></div>
+          <div><p class="font-semibold text-primary-900">검증/정제</p><p>judgment vs doc_retrieve 경계</p></div>
+          <div><p class="font-semibold text-primary-900">최종 포맷</p><p>Chat SFT (JSON plan)</p><p class="text-neutral-muted">Train/Eval 95:5</p></div>
+        </div>
+        <div class="mt-4 pt-3 border-t border-neutral-divider text-center"><p class="text-[10px] text-success font-medium">~1,561건 | Kanana LoRA</p></div>
+      </div>
+      <!-- 문서 Agent -->
+      <div class="pipe-card bg-white rounded-xl p-5" style="border-color:#A89580">
+        <h4 class="font-bold text-accent-700 text-sm mb-4">문서 Agent</h4>
+        <div class="space-y-3 text-xs text-neutral-sub">
+          <div><p class="font-semibold text-primary-900">데이터 소스</p><p>AI Hub 다운로드 SN 582</p></div>
+          <div><p class="font-semibold text-primary-900">증강</p><p>GPT-4o 합성 + 필드를 3계층</p></div>
+          <div><p class="font-semibold text-primary-900">검증/정제</p><p>C등급 필터 (&lt;154) + 언필드 부스팅</p></div>
+          <div><p class="font-semibold text-primary-900">최종 포맷</p><p>Chat SFT (2개 서브태스크별)</p><p class="text-neutral-muted">Train/Eval 90:10</p></div>
+        </div>
+        <div class="mt-4 pt-3 border-t border-neutral-divider text-center"><p class="text-[10px] text-accent-700 font-medium">~2,500건 | Kanana LoRA</p></div>
+      </div>
+      <!-- 판단 Agent -->
+      <div class="pipe-card bg-white rounded-xl p-5" style="border-color:#3D5164">
+        <h4 class="font-bold text-primary-900 text-sm mb-4">판단 Agent</h4>
+        <div class="space-y-3 text-xs text-neutral-sub">
+          <div><p class="font-semibold text-primary-900">데이터 소스</p><p>내부 Excel (1,000건) + 규정DB</p></div>
+          <div><p class="font-semibold text-primary-900">증강</p><p>GPT-4o-mini 7개 규정별 500건</p></div>
+          <div><p class="font-semibold text-primary-900">검증/정제</p><p>스키마 검증 + 클래스 리밸런싱</p></div>
+          <div><p class="font-semibold text-primary-900">최종 포맷</p><p>Chat SFT (JSON 판단)</p><p class="text-neutral-muted">Train/Val/Test 80:10:10</p></div>
+        </div>
+        <div class="mt-4 pt-3 border-t border-neutral-divider text-center"><p class="text-[10px] text-primary-700 font-medium">~3,000건 | Kanana LoRA</p></div>
+      </div>
+    </div>
+    <div class="mt-6 bg-primary-700 text-white rounded-xl p-4 text-center text-xs">
+      공통: JSONL 포맷 | 프로덕션 동일 시스템 프롬프트 사용 | Stratified Split (층화추출)
+    </div>
+  </div>
+</section>
+
+<!-- ========== 08. FINE-TUNING ========== -->
+<section id="finetuning" class="py-20 md:py-28 bg-white">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-16"><span class="tag bg-primary-50 text-primary-700 mb-4">08</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">파인튜닝</h2></div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+      <!-- Intent -->
+      <div class="bg-surface-main rounded-2xl p-6 border border-neutral-divider">
+        <h4 class="font-semibold text-primary-900 mb-4">Intent 분류 (roberta-large 338M)</h4>
+        <div class="space-y-3">
+          <div><div class="flex justify-between text-xs mb-1"><span class="text-neutral-muted">규칙 기반</span><span>41.7%</span></div><div class="w-full bg-neutral-divider rounded-full h-2"><div class="bg-neutral-muted h-2 rounded-full" style="width:41.7%"></div></div></div>
+          <div><div class="flex justify-between text-xs mb-1"><span class="text-neutral-muted">koelectra (112M)</span><span>76.7%</span></div><div class="w-full bg-neutral-divider rounded-full h-2"><div class="bg-warning h-2 rounded-full" style="width:76.7%"></div></div></div>
+          <div><div class="flex justify-between text-xs mb-1"><span class="text-neutral-muted">roberta + KD R1~R3</span><span>88.3%</span></div><div class="w-full bg-neutral-divider rounded-full h-2"><div class="bg-accent-500 h-2 rounded-full" style="width:88.3%"></div></div></div>
+          <div><div class="flex justify-between text-xs mb-1"><span class="font-medium text-primary-700">5-Seed 앙상블 (최종)</span><span class="font-bold text-primary-700">93.3%</span></div><div class="w-full bg-neutral-divider rounded-full h-2"><div class="bg-primary-700 h-2 rounded-full" style="width:93.3%"></div></div></div>
+        </div>
+        <p class="text-[11px] text-neutral-muted mt-3">Held-out 60건 기준 &middot; 과적합 0%p &middot; Focal Loss + FGM + KD</p>
+      </div>
+      <!-- Planner -->
+      <div class="bg-surface-main rounded-2xl p-6 border border-neutral-divider">
+        <h4 class="font-semibold text-primary-900 mb-4">Task Planner (Kanana-1.5-8B LoRA)</h4>
+        <p class="text-sm text-neutral-sub mb-4">복합 요청 &rarr; step-by-step JSON plan (의존성 그래프 포함)</p>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between"><span class="text-neutral-sub">최종 버전</span><span class="font-medium">v7 (1,561 샘플)</span></div>
+          <div class="flex justify-between"><span class="text-neutral-sub">Held-out</span><span class="font-medium">87.0%</span></div>
+          <div class="flex justify-between"><span class="text-neutral-sub">모델 선정</span><span class="font-medium">Kanana (Qwen3 대비 5.2x 빠름)</span></div>
+          <div class="flex justify-between"><span class="text-neutral-sub">배포</span><span class="font-medium">vLLM RunPod 핫스왑</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- LoRA Adapters -->
+    <h4 class="font-semibold text-primary-900 mb-4 text-center">sLLM LoRA 어댑터 (Base: Kanana-1.5-8B)</h4>
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 max-w-4xl mx-auto">
+      <div class="bg-primary-50 rounded-xl p-4 text-center"><p class="font-display font-bold text-primary-700 mb-1">Base</p><p class="text-xs text-primary-900 font-medium">Kanana-1.5-8B</p></div>
+      <div class="bg-accent-50 rounded-xl p-4 text-center"><p class="font-display font-bold text-accent-700 mb-1">v1</p><p class="text-xs text-primary-900 font-medium">규정 판단</p></div>
+      <div class="bg-accent-50 rounded-xl p-4 text-center"><p class="font-display font-bold text-accent-700 mb-1">v3</p><p class="text-xs text-primary-900 font-medium">문서 생성</p></div>
+      <div class="bg-accent-50 rounded-xl p-4 text-center"><p class="font-display font-bold text-accent-700 mb-1">Summary</p><p class="text-xs text-primary-900 font-medium">문서 요약</p></div>
+      <div class="bg-success/10 rounded-xl p-4 text-center"><p class="font-display font-bold text-success mb-1">Planner</p><p class="text-xs text-primary-900 font-medium">태스크 플래너</p></div>
+    </div>
+    <p class="text-xs text-neutral-sub mt-3 text-center">vLLM 런타임에서 어댑터 핫스왑 &middot; GPU 재시작 없이 즉시 교체</p>
+  </div>
+</section>
+
+<!-- ========== 09. TECH STACK ========== -->
+<section id="tech" class="py-20 md:py-28 gradient-section">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-16"><span class="tag bg-primary-50 text-primary-700 mb-4">09</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">기술 스택</h2></div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="bg-white rounded-2xl p-6 card-hover"><div class="w-12 h-12 rounded-xl bg-primary-700 text-white flex items-center justify-center mb-4"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><h3 class="font-semibold text-lg text-primary-900 mb-3">AI / ML</h3><ul class="space-y-2 text-sm text-neutral-sub"><li>LangGraph</li><li>Kanana-1.5-8B + LoRA</li><li>vLLM (RunPod A100)</li><li>roberta-large (Intent)</li><li>Qdrant + BM25 + BGE Reranker</li></ul></div>
+      <div class="bg-white rounded-2xl p-6 card-hover"><div class="w-12 h-12 rounded-xl bg-accent-700 text-white flex items-center justify-center mb-4"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/></svg></div><h3 class="font-semibold text-lg text-primary-900 mb-3">Backend</h3><ul class="space-y-2 text-sm text-neutral-sub"><li>FastAPI + SSE</li><li>PostgreSQL 16 (RDS)</li><li>SQLAlchemy + Alembic</li><li>JWT + Google OAuth 2.0</li></ul></div>
+      <div class="bg-white rounded-2xl p-6 card-hover"><div class="w-12 h-12 rounded-xl bg-success text-white flex items-center justify-center mb-4"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div><h3 class="font-semibold text-lg text-primary-900 mb-3">Frontend</h3><ul class="space-y-2 text-sm text-neutral-sub"><li>React 18 (Vite)</li><li>Zustand + TanStack Query</li><li>Tailwind + shadcn/ui</li><li>FullCalendar</li></ul></div>
+      <div class="bg-white rounded-2xl p-6 card-hover"><div class="w-12 h-12 rounded-xl bg-warning text-white flex items-center justify-center mb-4"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg></div><h3 class="font-semibold text-lg text-primary-900 mb-3">Infra</h3><ul class="space-y-2 text-sm text-neutral-sub"><li>AWS EC2 + RDS</li><li>Docker Compose</li><li>GitHub Actions CI/CD</li><li>RunPod A100 + Qdrant Cloud</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 10. PAGES ========== -->
+<section id="pages" class="py-20 md:py-28 bg-white">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-16"><span class="tag bg-primary-50 text-primary-700 mb-4">10</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">화면 구성</h2></div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div class="bg-surface-main rounded-xl p-4 text-center card-hover"><p class="font-semibold text-primary-900 text-sm">Chat</p><p class="text-[11px] text-neutral-sub mt-1">AI 챗봇 + SSE + 카드 UI</p></div>
+      <div class="bg-surface-main rounded-xl p-4 text-center card-hover"><p class="font-semibold text-primary-900 text-sm">Dashboard</p><p class="text-[11px] text-neutral-sub mt-1">타임라인 + 위젯 커스텀</p></div>
+      <div class="bg-surface-main rounded-xl p-4 text-center card-hover"><p class="font-semibold text-primary-900 text-sm">Documents</p><p class="text-[11px] text-neutral-sub mt-1">문서 라이브러리 + 검색</p></div>
+      <div class="bg-surface-main rounded-xl p-4 text-center card-hover"><p class="font-semibold text-primary-900 text-sm">Doc Generate</p><p class="text-[11px] text-neutral-sub mt-1">템플릿 DOCX 생성</p></div>
+      <div class="bg-surface-main rounded-xl p-4 text-center card-hover"><p class="font-semibold text-primary-900 text-sm">Schedules</p><p class="text-[11px] text-neutral-sub mt-1">FullCalendar + Google</p></div>
+      <div class="bg-surface-main rounded-xl p-4 text-center card-hover"><p class="font-semibold text-primary-900 text-sm">Tasks</p><p class="text-[11px] text-neutral-sub mt-1">Google Tasks</p></div>
+      <div class="bg-surface-main rounded-xl p-4 text-center card-hover"><p class="font-semibold text-primary-900 text-sm">Approvals</p><p class="text-[11px] text-neutral-sub mt-1">결재 요청/승인</p></div>
+      <div class="bg-surface-main rounded-xl p-4 text-center card-hover"><p class="font-semibold text-primary-900 text-sm">MyPage</p><p class="text-[11px] text-neutral-sub mt-1">프로필 + 보안</p></div>
+      <div class="bg-surface-main rounded-xl p-4 text-center card-hover"><p class="font-semibold text-primary-900 text-sm">Admin</p><p class="text-[11px] text-neutral-sub mt-1">사용자/규정 관리</p></div>
+      <div class="bg-surface-main rounded-xl p-4 text-center card-hover"><p class="font-semibold text-primary-900 text-sm">Login</p><p class="text-[11px] text-neutral-sub mt-1">JWT + Google OAuth</p></div>
+    </div>
+    <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div class="bg-primary-50 rounded-xl p-3"><p class="text-xs font-medium text-primary-700">SSE 실시간 스트리밍</p></div>
+      <div class="bg-primary-50 rounded-xl p-3"><p class="text-xs font-medium text-primary-700">다크 모드 (CSS 변수)</p></div>
+      <div class="bg-primary-50 rounded-xl p-3"><p class="text-xs font-medium text-primary-700">반응형 + 접근성 (ESLint 0 경고)</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 11. DEPLOY ========== -->
+<section id="deploy" class="py-20 md:py-28 gradient-section">
+  <div class="max-w-5xl mx-auto px-6">
+    <div class="text-center mb-16"><span class="tag bg-primary-50 text-primary-700 mb-4">11</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">배포 아키텍처</h2></div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-white rounded-2xl p-6 border border-neutral-divider text-center"><div class="w-12 h-12 rounded-xl bg-accent-700 text-white flex items-center justify-center mx-auto mb-4 text-sm font-bold">EC2</div><h4 class="font-semibold text-primary-900 mb-2">Backend</h4><p class="text-xs text-neutral-sub">FastAPI + uvicorn<br>systemd + Alembic 자동 마이그레이션</p></div>
+      <div class="bg-white rounded-2xl p-6 border border-neutral-divider text-center"><div class="w-12 h-12 rounded-xl bg-warning text-white flex items-center justify-center mx-auto mb-4 text-sm font-bold">RDS</div><h4 class="font-semibold text-primary-900 mb-2">Database</h4><p class="text-xs text-neutral-sub">PostgreSQL 16<br>17 테이블 + SSL</p></div>
+      <div class="bg-white rounded-2xl p-6 border border-neutral-divider text-center"><div class="w-12 h-12 rounded-xl bg-success text-white flex items-center justify-center mx-auto mb-4 text-sm font-bold">GPU</div><h4 class="font-semibold text-primary-900 mb-2">sLLM Serving</h4><p class="text-xs text-neutral-sub">RunPod A100<br>vLLM + LoRA 핫스왑</p></div>
+    </div>
+    <div class="mt-8 bg-white rounded-2xl p-6 border border-neutral-divider">
+      <h4 class="font-semibold text-primary-900 mb-4 text-center">CI/CD</h4>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-3 text-xs text-center">
+        <span class="bg-surface-main rounded-lg px-4 py-2">git push</span><span class="text-neutral-muted">&rarr;</span>
+        <span class="bg-surface-main rounded-lg px-4 py-2">GitHub Actions</span><span class="text-neutral-muted">&rarr;</span>
+        <span class="bg-surface-main rounded-lg px-4 py-2">EC2 배포</span><span class="text-neutral-muted">&rarr;</span>
+        <span class="bg-primary-50 rounded-lg px-4 py-2 text-primary-700">Health Check + Discord</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 12. PERFORMANCE ========== -->
+<section id="performance" class="py-20 md:py-28 bg-white">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-16"><span class="tag bg-success/10 text-success mb-4">12</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">성능 지표</h2></div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+      <div class="text-center bg-surface-main rounded-2xl p-6 card-hover"><p class="font-display text-3xl md:text-4xl font-bold text-primary-700">93.3<span class="text-lg">%</span></p><p class="text-sm text-neutral-sub mt-2">Intent Held-out</p><p class="text-xs text-neutral-muted">5-seed 앙상블</p></div>
+      <div class="text-center bg-surface-main rounded-2xl p-6 card-hover"><p class="font-display text-3xl md:text-4xl font-bold text-accent-700">87.0<span class="text-lg">%</span></p><p class="text-sm text-neutral-sub mt-2">Planner 정확도</p><p class="text-xs text-neutral-muted">Kanana LoRA v7</p></div>
+      <div class="text-center bg-surface-main rounded-2xl p-6 card-hover"><p class="font-display text-3xl md:text-4xl font-bold text-success">0<span class="text-lg">%</span></p><p class="text-sm text-neutral-sub mt-2">Over-triggering</p><p class="text-xs text-neutral-muted">복합 오인 완전 해결</p></div>
+      <div class="text-center bg-surface-main rounded-2xl p-6 card-hover"><p class="font-display text-3xl md:text-4xl font-bold text-warning">30<span class="text-lg">ms</span></p><p class="text-sm text-neutral-sub mt-2">Intent 추론</p><p class="text-xs text-neutral-muted">앙상블 GPU</p></div>
+    </div>
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-surface-main rounded-xl p-5 flex items-center gap-4"><div class="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center shrink-0"><span class="font-display font-bold text-primary-700 text-sm">RAG</span></div><div><p class="font-semibold text-primary-900 text-sm">80~150ms</p><p class="text-xs text-neutral-sub">하이브리드 검색</p></div></div>
+      <div class="bg-surface-main rounded-xl p-5 flex items-center gap-4"><div class="w-12 h-12 rounded-full bg-accent-100 flex items-center justify-center shrink-0"><span class="font-display font-bold text-accent-700 text-sm">E2E</span></div><div><p class="font-semibold text-primary-900 text-sm">2~4초</p><p class="text-xs text-neutral-sub">전체 채팅 응답</p></div></div>
+      <div class="bg-surface-main rounded-xl p-5 flex items-center gap-4"><div class="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center shrink-0"><span class="font-display font-bold text-success text-sm">vLLM</span></div><div><p class="font-semibold text-primary-900 text-sm">80~120 tok/s</p><p class="text-xs text-neutral-sub">sLLM (A100)</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 13. ROADMAP ========== -->
+<section id="roadmap" class="py-20 md:py-28 gradient-section">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-16"><span class="tag bg-primary-50 text-primary-700 mb-4">13</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">마일스톤</h2></div>
+    <div class="max-w-3xl mx-auto space-y-0">
+      <div class="flex gap-4 md:gap-6"><div class="flex flex-col items-center"><div class="w-10 h-10 rounded-full bg-primary-700 text-white flex items-center justify-center font-display font-bold text-sm shrink-0">1</div><div class="w-0.5 flex-1 bg-primary-100"></div></div><div class="pb-8"><h4 class="font-semibold text-primary-900">설계 및 환경 세팅</h4><p class="text-sm text-neutral-sub mt-1">API 스키마, AgentState, 모델 비교, DB 설계</p><span class="tag bg-success/10 text-success mt-2">완료</span></div></div>
+      <div class="flex gap-4 md:gap-6"><div class="flex flex-col items-center"><div class="w-10 h-10 rounded-full bg-primary-700 text-white flex items-center justify-center font-display font-bold text-sm shrink-0">2</div><div class="w-0.5 flex-1 bg-primary-100"></div></div><div class="pb-8"><h4 class="font-semibold text-primary-900">기반 개발 + LLM API 연동</h4><p class="text-sm text-neutral-sub mt-1">RAG, LLM 공통 모듈, JWT 인증, 기본 UI</p><span class="tag bg-success/10 text-success mt-2">완료</span></div></div>
+      <div class="flex gap-4 md:gap-6"><div class="flex flex-col items-center"><div class="w-10 h-10 rounded-full bg-primary-700 text-white flex items-center justify-center font-display font-bold text-sm shrink-0">3</div><div class="w-0.5 flex-1 bg-primary-100"></div></div><div class="pb-8"><h4 class="font-semibold text-primary-900">Agent 개발 + 핵심 기능</h4><p class="text-sm text-neutral-sub mt-1">판단/문서/일정 Agent, Google 연동, 카드 UI</p><span class="tag bg-success/10 text-success mt-2">완료</span></div></div>
+      <div class="flex gap-4 md:gap-6"><div class="flex flex-col items-center"><div class="w-10 h-10 rounded-full bg-primary-700 text-white flex items-center justify-center font-display font-bold text-sm shrink-0">4</div><div class="w-0.5 flex-1 bg-primary-100"></div></div><div class="pb-8"><h4 class="font-semibold text-primary-900">데이터 수집 + 파인튜닝</h4><p class="text-sm text-neutral-sub mt-1">LoRA v1/v3, Intent 실험, Planner v7, vLLM 서빙</p><span class="tag bg-success/10 text-success mt-2">완료</span></div></div>
+      <div class="flex gap-4 md:gap-6"><div class="flex flex-col items-center"><div class="w-10 h-10 rounded-full bg-primary-700 text-white flex items-center justify-center font-display font-bold text-sm shrink-0">5</div><div class="w-0.5 flex-1 bg-primary-100"></div></div><div class="pb-8"><h4 class="font-semibold text-primary-900">통합 및 테스트</h4><p class="text-sm text-neutral-sub mt-1">E2E 테스트, 성능 평가, 에러 핸들링</p><span class="tag bg-success/10 text-success mt-2">완료</span></div></div>
+      <div class="flex gap-4 md:gap-6"><div class="flex flex-col items-center"><div class="w-10 h-10 rounded-full bg-primary-700 text-white flex items-center justify-center font-display font-bold text-sm shrink-0">6</div></div><div class="pb-2"><h4 class="font-semibold text-primary-900">배포 및 마무리</h4><p class="text-sm text-neutral-sub mt-1">AWS EC2 + GitHub Actions CI/CD + vLLM RunPod</p><span class="tag bg-success/10 text-success mt-2">완료</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer class="gradient-hero py-12 text-center">
+  <div class="max-w-4xl mx-auto px-6">
+    <h2 class="font-display text-2xl md:text-3xl font-bold text-white mb-4">WorkFlow Agent &mdash; DUDE 듀드</h2>
+    <p class="text-primary-100 text-sm mb-6">LangGraph 기반 멀티 에이전트 업무 자동화 시스템</p>
+    <div class="flex flex-wrap justify-center gap-4 text-xs text-primary-300"><span>SKN21 Final Project</span><span>&middot;</span><span>3TEAM</span><span>&middot;</span><span>멘토: 최민수</span></div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  const ids=['hero','toc','problem','solution','team','effects','architecture','agents','data','pipeline','finetuning','tech','pages','deploy','performance','roadmap'];
+  const dots=document.querySelectorAll('#navDots .nav-dot');
+  let cur=0;
+  const obs=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{if(e.isIntersecting){const i=ids.indexOf(e.target.id);if(i!==-1){cur=i;dots.forEach((d,j)=>d.classList.toggle('active',j===cur))}}});
+  },{rootMargin:'-30% 0px -60% 0px',threshold:0});
+  ids.forEach(id=>{const el=document.getElementById(id);if(el)obs.observe(el)});
+})();
+</script>
+</body>
+</html>
