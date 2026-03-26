@@ -1,4 +1,4 @@
-# LoRA v2: 문서 요약 (doc_summary) 전용 어댑터
+# LoRA v3: 문서 요약 (doc_summary) 전용 어댑터
 # 문서 → 태그 + 요약
 # 베이스 모델: Kanana 1.5 8B Instruct
 model:
@@ -32,6 +32,7 @@ training:
   early_stopping_patience: 3
 
 data:
+  # NOTE: 디렉토리명은 v2_summary이지만 실제로는 v3 학습에 사용된 데이터 (1000건)
   train_path: "data/training/v2_summary/train.jsonl"
   eval_path: "data/training/v2_summary/eval.jsonl"
   eval_ratio: 0.15            # 1000개 중 ~150개 eval

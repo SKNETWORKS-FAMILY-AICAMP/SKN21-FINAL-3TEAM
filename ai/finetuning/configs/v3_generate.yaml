@@ -26,6 +26,7 @@ training:
   early_stopping_patience: 3
 
 data:
+  # NOTE: 디렉토리명은 v2_generate이지만 실제로는 v3 재설계 데이터 (1500건, 3계층 필드)
   train_path: "data/training/v2_generate/train.jsonl"
   eval_path: "data/training/v2_generate/eval.jsonl"
   eval_ratio: 0.1
