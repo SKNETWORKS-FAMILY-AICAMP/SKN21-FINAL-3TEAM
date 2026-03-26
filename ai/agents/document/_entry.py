@@ -297,6 +297,19 @@ async def document_agent(state: AgentState) -> AgentState:
         except Exception as e:
             logger.warning("[DocumentEntry] 규정 검증 실패 (비차단): %s", e)
 
+    # ── 일정 제안 추출 (doc_generate + data 있을 때만, 비차단) ──
+    if response_data.get("type") == "doc_generate" and response_data.get("data"):
+        try:
+            from ai.agents.document._schedule_suggest import extract_suggested_schedules
+            suggested = extract_suggested_schedules(response_data)
+            if suggested:
+                response_data["suggested_schedules"] = suggested
+                response_data["schedule_suggest_message"] = (
+                    f"문서에서 {len(suggested)}건의 일정 항목을 발견했습니다. 캘린더에 등록할까요?"
+                )
+        except Exception as e:
+            logger.warning("[DocumentEntry] 일정 제안 추출 실패 (비차단): %s", e)
+
     # 모델명 추가 (프론트에서 표시용)
     if response_data.get("sub_type") == "search":
         response_data["model_name"] = "RAG (BM25+Vector)"
