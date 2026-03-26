@@ -501,13 +501,15 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
     default: {
       const isFirstAssistantCard = messages.findIndex(m => m.role === 'assistant') === index;
       const alreadyHasGuide = messages.some(m => m.role === 'assistant' && m.content === USAGE_GUIDE_TEXT);
+      const prevUserMsg = messages.slice(0, index).reverse().find(m => m.role === 'user');
+      const isGreeting = prevUserMsg && /^(안녕|하이|hello|hi)\b/i.test(prevUserMsg.content?.trim());
       // 짧은 일반 응답에서 문장 사이 빈 줄(\n\n) 제거 → 줄바꿈만 유지
       const cleanContent = content ? content.replace(/\n{2,}/g, '  \n') : content;
       return (
         <div>
           <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
             <MarkdownText>{cleanContent}</MarkdownText>
-            {isFirstAssistantCard && !alreadyHasGuide && (
+            {isFirstAssistantCard && !alreadyHasGuide && isGreeting && (
               <>
                 <p className="mt-2 text-neutral-sub text-sm">사용법이 궁금하시면 아래 <strong>사용법</strong> 버튼을 눌러주세요.</p>
                 <button
@@ -899,14 +901,16 @@ export default function ChatPage() {
               }
 
               // AI 완료 — 기본 텍스트 버블
-              // 첫 번째 assistant 메시지에 사용법 버튼 표시 (LLM 응답에 의존하지 않음)
+              // "안녕하세요" 인사일 때만 사용법 버튼 표시
               const isFirstAssistant = messages.findIndex(m => m.role === 'assistant') === i;
+              const prevUser = messages.slice(0, i).reverse().find(m => m.role === 'user');
+              const isGreetingMsg = prevUser && /^(안녕|하이|hello|hi)\b/i.test(prevUser.content?.trim());
               const cleanedContent = msg.content ? msg.content.replace(/\n{2,}/g, '  \n') : msg.content;
               return (
                 <MessageBubble key={i} type="bot" intent={msg.intent} modelName={msg.agentResponse?.model_name}>
                   <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
                     <MarkdownText>{cleanedContent}</MarkdownText>
-                    {isFirstAssistant && !messages.some(m => m.role === 'assistant' && m.content === USAGE_GUIDE_TEXT) && (
+                    {isFirstAssistant && !messages.some(m => m.role === 'assistant' && m.content === USAGE_GUIDE_TEXT) && isGreetingMsg && (
                       <>
                         <p className="mt-2 text-neutral-sub text-sm">사용법이 궁금하시면 아래 <strong>사용법</strong> 버튼을 눌러주세요.</p>
                         <button
