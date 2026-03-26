@@ -38,6 +38,9 @@ export const analyzeAllDocuments = () =>
 export const reindexAllDocuments = () =>
   client.post('/documents/reindex-all')
 
+export const checkDocumentRegulations = (id) =>
+  client.post(`/documents/${id}/regulation-check`, null, { timeout: 120000 })
+
 // ── 문서 생성 ──
 
 export const generateDocument = (data) =>

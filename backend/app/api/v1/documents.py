@@ -616,17 +616,28 @@ async def get_document(
         "tags": doc.tags,
         "summary": doc.summary,
     }
-    # 규정 검증 (문서 내용이 충분하면 실시간 체크)
-    if doc.content and len(doc.content) > 50:
-        try:
-            from ai.agents.regulation_validator import check_content_regulations
-            reg = await check_content_regulations(doc.content[:5000], user_id=user.id)
-            if reg and reg.get("notes"):
-                result["regulation_check"] = reg
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning(f"[DocDetail] 규정 검증 실패: {e}")
     return result
+
+
+@router.post("/{document_id}/regulation-check")
+async def check_document_regulations(
+    document_id: int,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """문서 규정 검증 (사용자 요청 시 실행)"""
+    doc = await document_service.get_document(db, document_id)
+    if not doc.content or len(doc.content) < 50:
+        raise HTTPException(status_code=400, detail="문서 내용이 부족하여 규정 검증을 수행할 수 없습니다.")
+
+    try:
+        from ai.agents.regulation_validator import check_content_regulations
+        reg = await check_content_regulations(doc.content[:5000], user_id=user.id)
+        return reg or {"checked": True, "notes": [], "summary": ""}
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"[RegCheck] 규정 검증 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"규정 검증 실패: {str(e)}")
 
 
 class UpdateCategoryRequest(BaseModel):

@@ -74,19 +74,25 @@ async def regulation_check(
         "checked": False,
     }
 
-    # 1. RAG 검색
+    # 1. RAG 검색 (동기 함수를 executor에서 실행하여 스레드 안전성 확보)
     try:
+        import asyncio
         from ai.rag.qdrant_pipeline import get_qdrant_pipeline
         pipeline = get_qdrant_pipeline()
-        context = pipeline.retrieve(
-            query=query,
-            user_id=user_id,
-            top_k=top_k,
-            filter={"source": "regulations"},
-            use_reranker=False,
-            score_threshold=0.0,
-            use_hyde=False,
-        )
+
+        def _do_retrieve():
+            return pipeline.retrieve(
+                query=query,
+                user_id=user_id,
+                top_k=top_k,
+                filter={"source": "regulations"},
+                use_reranker=False,
+                score_threshold=0.0,
+                use_hyde=False,
+            )
+
+        loop = asyncio.get_event_loop()
+        context = await loop.run_in_executor(None, _do_retrieve)
     except Exception as e:
         logger.warning("[RegCheck] RAG 검색 실패: %s", e)
         return _default
@@ -113,21 +119,29 @@ async def regulation_check(
     try:
         from ai.llm import get_llm, create_llm
 
-        # sLLM 우선, 실패 시 GPT fallback
-        try:
-            llm = create_llm(provider="vllm")
-        except Exception:
-            llm = get_llm()
-
         sys_prompt = REGULATION_CHECK_PROMPT.format(context=context_str[:3000])
 
-        response = await llm.generate(
-            prompt=query,
-            system_prompt=sys_prompt,
-            json_mode=True,
-            temperature=0.1,
-            max_tokens=500,
-        )
+        # sLLM 우선, 실패(타임아웃 포함) 시 GPT fallback
+        response = None
+        try:
+            llm = create_llm(provider="vllm")
+            response = await llm.generate(
+                prompt=query,
+                system_prompt=sys_prompt,
+                json_mode=True,
+                temperature=0.1,
+                max_tokens=500,
+            )
+        except Exception as vllm_err:
+            logger.info("[RegCheck] sLLM 실패 (%s), GPT fallback", vllm_err)
+            llm = get_llm()
+            response = await llm.generate(
+                prompt=query,
+                system_prompt=sys_prompt,
+                json_mode=True,
+                temperature=0.1,
+                max_tokens=500,
+            )
 
         raw = response.content.strip()
         # 코드블록 제거

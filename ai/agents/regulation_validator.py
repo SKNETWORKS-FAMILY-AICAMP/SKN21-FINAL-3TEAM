@@ -105,15 +105,15 @@ async def validate_document_regulations(
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     # 3. 결과 취합
-    notes = _aggregate_results(queries, results)
+    notes, fail_count = _aggregate_results(queries, results)
 
     has_violations = any(n["result"] == "no" for n in notes)
     has_conditions = any(n["result"] == "conditional" for n in notes)
     summary = _format_regulation_summary(notes, has_violations, has_conditions)
 
     logger.info(
-        "[RegValidator] 검증 완료 (%.2fs) | %d건 체크, %d건 관련, violations=%s, conditions=%s",
-        time.time() - _t, len(queries), len(notes), has_violations, has_conditions,
+        "[RegValidator] 검증 완료 (%.2fs) | %d건 체크, %d건 실패, %d건 관련, violations=%s, conditions=%s",
+        time.time() - _t, len(queries), fail_count, len(notes), has_violations, has_conditions,
     )
 
     return {
@@ -121,6 +121,8 @@ async def validate_document_regulations(
         "notes": notes,
         "has_violations": has_violations,
         "has_conditions": has_conditions,
+        "fail_count": fail_count,
+        "total_queries": len(queries),
         "summary": summary,
     }
 
@@ -158,14 +160,20 @@ async def check_content_regulations(
     tasks = [regulation_check(q["query"], user_id=user_id) for q in queries]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    notes = _aggregate_results(queries, results)
+    notes, fail_count = _aggregate_results(queries, results)
     summary = _format_content_regulation_notes(notes) if notes else ""
 
     logger.info(
-        "[RegValidator] 컨텐츠 규정 연결 완료 (%.2fs) | %d건", time.time() - _t, len(notes),
+        "[RegValidator] 컨텐츠 규정 연결 완료 (%.2fs) | %d건 체크, %d건 실패", time.time() - _t, len(queries), fail_count,
     )
 
-    return {"checked": True, "notes": notes, "summary": summary}
+    return {
+        "checked": True,
+        "notes": notes,
+        "fail_count": fail_count,
+        "total_queries": len(queries),
+        "summary": summary,
+    }
 
 
 def append_regulation_section_to_docx(docx_path: str, notes: List[Dict]) -> None:
@@ -252,14 +260,17 @@ def _empty_result() -> Dict[str, Any]:
 
 def _aggregate_results(
     queries: List[Dict], results: list
-) -> List[Dict[str, Any]]:
-    """regulation_check 결과를 취합하여 notes 리스트 생성"""
+) -> tuple[List[Dict[str, Any]], int]:
+    """regulation_check 결과를 취합하여 (notes, fail_count) 반환"""
     notes = []
+    fail_count = 0
     for query_info, result in zip(queries, results):
         if isinstance(result, Exception):
             logger.warning("[RegValidator] 규정 체크 실패: %s", result)
+            fail_count += 1
             continue
         if not result.get("checked"):
+            fail_count += 1
             continue
         # no_regulation → 관련 규정 없음 → 스킵
         if result.get("result") == "no_regulation":
@@ -273,7 +284,7 @@ def _aggregate_results(
             "regulation": result.get("regulation"),
             "confidence": result.get("confidence", 0.0),
         })
-    return notes
+    return notes, fail_count
 
 
 async def _extract_regulation_queries(
@@ -365,6 +376,9 @@ async def _llm_extract_queries(
 
         raw = _strip_code_block(response.content)
         items = json.loads(raw)
+        # LLM이 단일 dict를 반환하는 경우 배열로 감싸기
+        if isinstance(items, dict):
+            items = [items]
         if isinstance(items, list):
             return [
                 {"topic": item.get("topic", ""), "query": item.get("query", "")}
@@ -478,6 +492,9 @@ async def _extract_content_regulation_points(content: str) -> List[Dict[str, str
 
         raw = _strip_code_block(response.content)
         items = json.loads(raw)
+        # LLM이 단일 dict를 반환하는 경우 배열로 감싸기
+        if isinstance(items, dict):
+            items = [items]
         if isinstance(items, list):
             return [
                 {"topic": item.get("topic", ""), "query": item.get("query", "")}
