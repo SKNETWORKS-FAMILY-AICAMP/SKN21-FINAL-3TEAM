@@ -518,6 +518,20 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                 yield f"data: {json.dumps({'type': 'status', 'value': 'DOCX 생성 완료'}, ensure_ascii=False)}\n\n"
 
                                 agent_response.update(result)
+
+                                # ── 일정 제안 추출 (비차단, 기존 흐름 변경 없음) ──
+                                try:
+                                    from ai.agents.document._schedule_suggest import extract_suggested_schedules
+                                    _suggested = extract_suggested_schedules(agent_response)
+                                    if _suggested:
+                                        agent_response["suggested_schedules"] = _suggested
+                                        agent_response["schedule_suggest_message"] = (
+                                            f"문서에서 {len(_suggested)}건의 일정 항목을 발견했습니다. "
+                                            f"캘린더에 등록할까요?"
+                                        )
+                                except Exception as _exc:
+                                    logger.warning("[Chat] 일정 제안 추출 실패 (비차단): %s", _exc)
+
                             except Exception as e:
                                 logger.error("[Chat] 문서 생성 실패: %s", e)
                                 agent_response["message"] = f"문서 생성 중 오류가 발생했습니다: {e}"

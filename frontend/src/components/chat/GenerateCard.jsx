@@ -1,7 +1,10 @@
-import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, CalendarPlus, Check, CheckCircle, Info, Loader2 } from 'lucide-react';
+import { createSchedule } from '../../api/schedules';
+import { toast } from '../../store/toastStore';
 import Badge from '../common/Badge';
 
-export default function GenerateCard({ title, templateType, fields = [], actionItems = [], downloadUrl, onDownload, modelName, regulationCheck, warnings }) {
+export default function GenerateCard({ title, templateType, fields = [], actionItems = [], downloadUrl, onDownload, modelName, regulationCheck, warnings, suggestedSchedules = [] }) {
   const typeLabels = { meeting_minutes: '회의록', report: '보고서', jd: '채용 공고', proposal: '제안서' };
 
   return (
@@ -54,6 +57,11 @@ export default function GenerateCard({ title, templateType, fields = [], actionI
           </div>
         )}
 
+        {/* 일정 제안 섹션 */}
+        {suggestedSchedules.length > 0 && (
+          <ScheduleSuggestSection items={suggestedSchedules} />
+        )}
+
         {/* 규정 검증 결과 */}
         {regulationCheck?.notes?.length > 0 && (
           <div className="mb-4 space-y-1.5">
@@ -104,6 +112,171 @@ export default function GenerateCard({ title, templateType, fields = [], actionI
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+
+/* ── 일정 제안 서브 컴포넌트 ── */
+
+const PRIORITY_STYLES = {
+  high: 'bg-red-100 text-red-700',
+  medium: 'bg-yellow-100 text-yellow-700',
+  low: 'bg-green-100 text-green-700',
+};
+const PRIORITY_LABELS = { high: '높음', medium: '보통', low: '낮음' };
+
+function ScheduleSuggestSection({ items }) {
+  const [editItems, setEditItems] = useState(() =>
+    items.map((item, i) => ({ ...item, checked: true, registered: false, _key: i })),
+  );
+  const [loading, setLoading] = useState(false);
+
+  const checkedCount = editItems.filter((it) => it.checked && !it.registered).length;
+
+  const toggleCheck = (idx) => {
+    setEditItems((prev) => prev.map((it, i) => (i === idx ? { ...it, checked: !it.checked } : it)));
+  };
+
+  const updateField = (idx, field, value) => {
+    setEditItems((prev) => prev.map((it, i) => (i === idx ? { ...it, [field]: value } : it)));
+  };
+
+  const handleRegister = async () => {
+    const toRegister = editItems.filter((it) => it.checked && !it.registered);
+    if (toRegister.length === 0) return;
+
+    setLoading(true);
+    let successCount = 0;
+
+    for (const item of toRegister) {
+      try {
+        await createSchedule({
+          title: item.title,
+          description: item.description || '',
+          start_time: item.start_time,
+          end_time: item.end_time,
+          schedule_type: item.schedule_type || 'task',
+          priority: item.priority || 'medium',
+        });
+        successCount++;
+        setEditItems((prev) =>
+          prev.map((it) => (it._key === item._key ? { ...it, registered: true } : it)),
+        );
+      } catch (err) {
+        toast.error(`'${item.title}' 등록 실패: ${err.response?.data?.detail || err.message}`);
+      }
+    }
+
+    setLoading(false);
+    if (successCount > 0) {
+      toast.success(`${successCount}건의 일정이 캘린더에 등록되었습니다.`);
+    }
+  };
+
+  const isPastDate = (dateStr) => {
+    try {
+      return new Date(dateStr) < new Date(new Date().toDateString());
+    } catch { return false; }
+  };
+
+  return (
+    <div className="mb-4 p-3 rounded-lg border border-blue-200 bg-blue-50/50">
+      <div className="text-[0.8125rem] font-semibold text-blue-700 mb-2 flex items-center gap-1.5">
+        <CalendarPlus size={14} />
+        일정 등록 제안 ({items.length}건)
+      </div>
+
+      <div className="space-y-2">
+        {editItems.map((item, idx) => (
+          <div
+            key={item._key}
+            className={`flex items-start gap-2 p-2 rounded border text-xs transition-colors ${
+              item.registered
+                ? 'bg-green-50 border-green-200 opacity-75'
+                : item.checked
+                  ? 'bg-white border-blue-200'
+                  : 'bg-neutral-50 border-neutral-200 opacity-60'
+            }`}
+          >
+            {/* 체크박스 */}
+            <input
+              type="checkbox"
+              checked={item.checked}
+              disabled={item.registered}
+              onChange={() => toggleCheck(idx)}
+              className="mt-1 shrink-0 accent-blue-600"
+            />
+
+            <div className="flex-1 min-w-0 space-y-1">
+              {/* 제목 (수정 가능) */}
+              <input
+                type="text"
+                value={item.title}
+                disabled={item.registered}
+                onChange={(e) => updateField(idx, 'title', e.target.value)}
+                className="w-full font-medium text-neutral-main bg-transparent border-b border-transparent hover:border-neutral-300 focus:border-blue-400 focus:outline-none px-0 py-0.5 disabled:hover:border-transparent"
+              />
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* 날짜 (수정 가능) */}
+                <input
+                  type="date"
+                  value={item.start_time?.slice(0, 10) || ''}
+                  disabled={item.registered}
+                  onChange={(e) => {
+                    const d = e.target.value;
+                    updateField(idx, 'start_time', `${d}T09:00:00`);
+                    updateField(idx, 'end_time', `${d}T10:00:00`);
+                  }}
+                  className="text-[0.6875rem] text-neutral-sub border border-neutral-200 rounded px-1.5 py-0.5 disabled:opacity-50"
+                />
+
+                {/* 우선순위 */}
+                <span className={`inline-block px-1.5 py-0.5 rounded text-[0.625rem] font-medium ${PRIORITY_STYLES[item.priority] || PRIORITY_STYLES.medium}`}>
+                  {PRIORITY_LABELS[item.priority] || '보통'}
+                </span>
+
+                {/* 담당자 표시 */}
+                {item.description && (
+                  <span className="text-[0.6875rem] text-neutral-400 truncate">
+                    {item.description}
+                  </span>
+                )}
+
+                {/* 과거 날짜 경고 */}
+                {isPastDate(item.start_time) && !item.registered && (
+                  <span className="text-[0.625rem] text-orange-500 flex items-center gap-0.5">
+                    <AlertTriangle size={10} /> 과거 날짜
+                  </span>
+                )}
+
+                {/* 등록 완료 표시 */}
+                {item.registered && (
+                  <span className="text-[0.625rem] text-green-600 flex items-center gap-0.5">
+                    <Check size={10} /> 등록 완료
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* 등록 버튼 */}
+      {editItems.some((it) => !it.registered) && (
+        <button
+          onClick={handleRegister}
+          disabled={loading || checkedCount === 0}
+          className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {loading ? (
+            <><Loader2 size={12} className="animate-spin" /> 등록 중...</>
+          ) : (
+            <><CalendarPlus size={12} /> 선택한 일정 등록 ({checkedCount}건)</>
+          )}
+        </button>
+      )}
     </div>
   );
 }

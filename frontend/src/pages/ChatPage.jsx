@@ -334,6 +334,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
           modelName={data.model_name || ''}
           regulationCheck={data.regulation_check}
           warnings={data.warnings}
+          suggestedSchedules={data.suggested_schedules || []}
         />
       );
     }
