@@ -4213,10 +4213,36 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
   - `renderCardMessage` 내부 (510행)
   - 메인 렌더 경로 (909행)
 
+#### 4) 발표 자료 HTML 대폭 개편 (`presentation.html`)
+
+- **아키텍처 섹션 재설계**: 3종 시안(라이프사이클/허브&스포크/레이어) 비교 후 최종 선정
+  - Ingress(User Query → React → FastAPI) → AI Core(Intent → Planner → Orchestrator → 4 Agent) → Infrastructure → SSE Response 구조
+  - Agent 이름 영어화 (Judgment/Document/Schedule/General)
+- **Agent 상세 페이지 3장 추가**: 각 Agent별 처리 흐름 다이어그램
+  - 05-1 Judgment: RAG → sLLM → 4중 보조장치 → Confidence 보정 플로우
+  - 05-2 Document: doc_retrieve(3-way 분기) + doc_generate(4단계 파이프라인) + LoRA 라우팅 테이블
+  - 05-3 Schedule: schedule_add/view/followup 3분기 + Google Workspace 5종 연동
+- **RAG 데이터 파이프라인 페이지 추가**: 데이터 적재(Ingestion) + 검색 흐름(Retrieval) 2컬럼 + RAG 기술 스택 테이블
+- **파인튜닝 페이지 확장**:
+  - 08-1 Intent & Planner: Base 모델 비교(Kanana vs Qwen3), 실험 과정 프로그레스바, Step별 성능, 학습 기법 태그
+  - 08-2 문서 Agent: v3_generate(Base vs LoRA 비교 + 필드 채움률) + v3_summary(BERTScore 분포)
+  - 08-3 판단 Agent: 모델 선정 + 7회 실험 타임라인(Base 37.2%→최종 85.4%) + 카테고리별 Base vs v3 비교 + 핵심 인사이트 4칸
+- **성능 평가 섹션 확장**: 핵심 성과 수치 4개 + 모델별 최종 성능 요약 테이블 + Kanana Base vs LoRA 비교 테이블 + 응답 속도 4칸
+- **한계점 및 향후 계획 페이지 추가**: 현재 한계점 4개 + 향후 발전 방향 4개
+- **페이지 구조 개편**:
+  - 솔루션 + 핵심효과 한 페이지 통합, 팀 구성 별도 분리
+  - 기술 스택 앞쪽(아키텍처 전)으로 이동, 화면 구성 페이지 삭제
+  - 목차 그룹핑 (Overview / Architecture / AI·Data / Product / Result)
+  - 3대 솔루션 카드 → 컴팩트 pill 태그로 압축
+- **팀 구성 페이지 리디자인**: 캐릭터 아바타 4명 적용 + 이름 바 + 역할 라벨 + 상세 담당 업무 + 하단 액센트 라인
+- **데이터셋 바 차트 개선**: train/eval 나란히 표시 + Y축 라벨 + eval 수치 업데이트 (610/150/328/100/150)
+- **수치 통일**: Intent 최종 91.0% (Held-out 100건), Planner 87.0%, 판단 4중 보조장치
+- **전체 섹션 min-h-screen 적용**: 짧은 페이지 화면 가득 채움
+- **PPT 변환 스크립트 작성** (`generate-pptx.js`): 핵심 10장 슬라이드 자동 생성
+
 ### 다음 할 일
 
+- [ ] 트러블슈팅 페이지 추가
+- [ ] 서비스 데모 영상 촬영 및 HTML 삽입
 - [ ] E2E 멀티스텝 테스트 3-step / 4-step / 5-step 진행
-- [ ] S2-001 approval_create 오분류 원인 분석
-- [ ] S2-004 compound 문서 리스트 렌더링 이슈 수정
 - [ ] 문서 생성 다운로드 404 이슈 수정
-- [ ] 멘토님 발표 준비 (model_test_report.html + planner_architecture.html)

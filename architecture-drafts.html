@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>아키텍처 시안 3종 비교</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config={theme:{extend:{colors:{primary:{50:'#E8EEF3',100:'#C8D5E2',300:'#8FA3B4',500:'#6E87A0',700:'#56728A',900:'#3D5164'},accent:{50:'#F7F3EB',100:'#EDE5D0',300:'#C4B49A',500:'#A89580',700:'#8B7D6E'},surface:{main:'#F4F5F7',sub:'#EBEDF0',card:'#FFFFFF'},neutral:{main:'#2C3340',sub:'#6B7280',muted:'#9CA3AF',border:'#D1D5DB',divider:'#E5E7EB'},success:'#5B9A6F',warning:'#C49A3C',error:'#C06060'},fontFamily:{sans:['Noto Sans KR','sans-serif'],display:['Poppins','sans-serif']}}}}
+</script>
+<style>
+body{font-family:'Noto Sans KR',sans-serif}
+.font-display{font-family:'Poppins',sans-serif}
+.gradient-section{background:linear-gradient(180deg,#E8EEF3 0%,#F4F5F7 100%)}
+.gradient-hero{background:linear-gradient(135deg,#3D5164 0%,#56728A 50%,#6E87A0 100%)}
+
+/* Flow arrows */
+.arrow-down{position:relative}.arrow-down::after{content:'';position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #8FA3B4}
+.arrow-right{position:relative}.arrow-right::after{content:'';position:absolute;right:-18px;top:50%;transform:translateY(-50%);width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:8px solid #8FA3B4}
+
+/* Hub spoke lines */
+.spoke-line{position:absolute;background:#C8D5E2;z-index:0}
+
+/* Pulse animation */
+@keyframes pulse-soft{0%,100%{opacity:1}50%{opacity:.6}}
+.pulse-soft{animation:pulse-soft 2s ease-in-out infinite}
+
+/* Dashed connector */
+.dash-connector{border:1.5px dashed #C8D5E2}
+.bg-cream{background:#F5F0E8}
+.card-dark{background:#4A4A4A;color:#fff;border-radius:12px}
+.card-dark-sm{background:#555;color:#fff;border-radius:8px;padding:4px 12px;font-size:11px;display:inline-block}
+.card-mid{background:#6B6B6B;color:#fff;border-radius:12px}
+.card-light{background:#E8E4DC;border-radius:12px}
+.intent-tag{background:#3A3A3A;color:#fff;border-radius:6px;padding:3px 10px;font-size:11px;font-family:'Poppins',monospace;display:inline-block}
+.arrow-line{stroke:#8A8070;stroke-width:2;fill:none}
+.arrow-head{fill:#8A8070}
+.label-muted{color:#8A8070;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase}
+</style>
+</head>
+<body class="bg-surface-main text-neutral-main">
+
+<!-- Header -->
+<div class="gradient-hero py-10 text-center">
+  <h1 class="font-display text-3xl md:text-4xl font-bold text-white mb-2">아키텍처 시안 3종 비교</h1>
+  <p class="text-primary-100 text-sm">마음에 드는 스타일을 골라주세요</p>
+  <div class="flex justify-center gap-4 mt-6">
+    <a href="#draft1" class="px-5 py-2 bg-white/15 backdrop-blur text-white text-sm rounded-full hover:bg-white/25 transition">A. 라이프사이클</a>
+    <a href="#draft2" class="px-5 py-2 bg-white/15 backdrop-blur text-white text-sm rounded-full hover:bg-white/25 transition">B. 허브 & 스포크</a>
+    <a href="#draft3" class="px-5 py-2 bg-white/15 backdrop-blur text-white text-sm rounded-full hover:bg-white/25 transition">C. 레이어 + 사이드</a>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- DRAFT A: 요청 라이프사이클 플로우 (compact) -->
+<!-- ============================================================ -->
+<section id="draft1" class="py-20 md:py-28 bg-white">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-12">
+      <span class="inline-block px-3 py-1 bg-primary-700 text-white text-xs font-bold rounded-full mb-4">A</span>
+      <h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-2">Request Lifecycle</h2>
+      <p class="text-neutral-sub text-sm mt-3">질의 &rarr; 의도 분류 &rarr; 태스크 분해 &rarr; 라우팅 &rarr; Agent 실행 &rarr; 스트리밍 응답</p>
+    </div>
+
+    <div class="max-w-4xl mx-auto">
+
+      <!-- Single continuous flow -->
+      <div class="flex items-center justify-center gap-2 mb-5">
+        <div class="bg-primary-900 rounded-lg px-5 py-2.5 text-center">
+          <p class="font-semibold text-white text-xs">사용자 질의</p>
+        </div>
+        <svg class="w-4 h-4 text-neutral-border shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+        <div class="bg-success/8 border border-success/25 rounded-lg px-5 py-2.5 text-center">
+          <p class="font-semibold text-success text-xs">React</p>
+          <p class="text-[9px] text-neutral-muted">SSE Client</p>
+        </div>
+        <svg class="w-4 h-4 text-neutral-border shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+        <div class="bg-accent-50 border border-accent-100 rounded-lg px-5 py-2.5 text-center">
+          <p class="font-semibold text-accent-700 text-xs">FastAPI</p>
+          <p class="text-[9px] text-neutral-muted">JWT + OAuth</p>
+        </div>
+      </div>
+
+      <!-- Connector -->
+      <div class="flex justify-center"><svg class="w-4 h-6 text-neutral-border" viewBox="0 0 16 24"><line x1="8" y1="0" x2="8" y2="20" stroke="currentColor" stroke-width="1.5"/><polygon points="4,18 12,18 8,24" fill="currentColor"/></svg></div>
+
+      <!-- AI Core box -->
+      <div class="border border-primary-300/40 rounded-xl overflow-hidden mt-1">
+        <div class="bg-primary-700 px-4 py-1.5"><p class="text-[10px] font-display font-semibold text-primary-100 uppercase tracking-widest">AI Core &mdash; LangGraph</p></div>
+        <div class="bg-primary-50/40 p-5">
+
+          <!-- 3-step horizontal pipeline -->
+          <div class="flex items-center gap-2 mb-5">
+            <div class="flex-1 bg-white border border-primary-100 rounded-lg px-4 py-3 text-center">
+              <p class="font-semibold text-primary-900 text-sm">Intent Classifier</p>
+              <p class="text-[10px] text-neutral-muted mt-0.5">roberta-large &middot; 93.3%</p>
+            </div>
+            <svg class="w-4 h-4 text-primary-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            <div class="flex-1 bg-white border border-primary-100 rounded-lg px-4 py-3 text-center">
+              <p class="font-semibold text-primary-900 text-sm">Task Planner</p>
+              <p class="text-[10px] text-neutral-muted mt-0.5">Kanana-1.5-8B LoRA &middot; 87.0%</p>
+            </div>
+            <svg class="w-4 h-4 text-primary-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            <div class="flex-1 bg-primary-700 rounded-lg px-4 py-3 text-center">
+              <p class="font-semibold text-white text-sm">Orchestrator</p>
+              <p class="text-[10px] text-primary-200 mt-0.5">조건부 라우팅</p>
+            </div>
+          </div>
+
+          <!-- 4-way branch -->
+          <div class="flex justify-center mb-3">
+            <svg width="100%" height="20" viewBox="0 0 400 20" preserveAspectRatio="none" class="text-primary-300 max-w-md">
+              <line x1="200" y1="0" x2="50" y2="18" stroke="currentColor" stroke-width="1" stroke-dasharray="3 2"/>
+              <line x1="200" y1="0" x2="150" y2="18" stroke="currentColor" stroke-width="1" stroke-dasharray="3 2"/>
+              <line x1="200" y1="0" x2="250" y2="18" stroke="currentColor" stroke-width="1" stroke-dasharray="3 2"/>
+              <line x1="200" y1="0" x2="350" y2="18" stroke="currentColor" stroke-width="1" stroke-dasharray="3 2"/>
+              <circle cx="50" cy="18" r="2.5" fill="currentColor"/><circle cx="150" cy="18" r="2.5" fill="currentColor"/><circle cx="250" cy="18" r="2.5" fill="currentColor"/><circle cx="350" cy="18" r="2.5" fill="currentColor"/>
+            </svg>
+          </div>
+
+          <!-- 4 Agents -->
+          <div class="grid grid-cols-4 gap-3">
+            <div class="bg-white border-l-[3px] border-primary-700 rounded-r-lg p-3 text-center">
+              <p class="font-display font-semibold text-primary-700 text-sm">Judgment</p>
+              <p class="text-[10px] text-neutral-muted mt-1">RAG + 3중 검증 + 신뢰도</p>
+            </div>
+            <div class="bg-white border-l-[3px] border-accent-500 rounded-r-lg p-3 text-center">
+              <p class="font-display font-semibold text-accent-700 text-sm">Document</p>
+              <p class="text-[10px] text-neutral-muted mt-1">생성 / 요약 / 검색 / QA</p>
+            </div>
+            <div class="bg-white border-l-[3px] border-success rounded-r-lg p-3 text-center">
+              <p class="font-display font-semibold text-success text-sm">Schedule</p>
+              <p class="text-[10px] text-neutral-muted mt-1">자연어 &rarr; Google 5종 연동</p>
+            </div>
+            <div class="bg-white border-l-[3px] border-neutral-border rounded-r-lg p-3 text-center">
+              <p class="font-display font-semibold text-neutral-sub text-sm">General</p>
+              <p class="text-[10px] text-neutral-muted mt-1">일반 대화 / 인사</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Connector -->
+      <div class="flex justify-center mt-1"><svg class="w-4 h-6 text-neutral-border" viewBox="0 0 16 24"><line x1="8" y1="0" x2="8" y2="20" stroke="currentColor" stroke-width="1.5"/><polygon points="4,18 12,18 8,24" fill="currentColor"/></svg></div>
+
+      <!-- Infrastructure -->
+      <div class="border border-neutral-divider rounded-xl overflow-hidden mt-1">
+        <div class="bg-neutral-main px-4 py-1.5"><p class="text-[10px] font-display font-semibold text-neutral-divider uppercase tracking-widest">인프라</p></div>
+        <div class="bg-white p-3">
+          <div class="grid grid-cols-4 gap-3">
+            <div class="bg-surface-main rounded-lg px-3 py-2.5 text-center"><p class="font-semibold text-primary-900 text-xs">PostgreSQL</p><p class="text-[10px] text-neutral-muted">RDS &middot; 17 tables</p></div>
+            <div class="bg-surface-main rounded-lg px-3 py-2.5 text-center"><p class="font-semibold text-primary-900 text-xs">Qdrant Cloud</p><p class="text-[10px] text-neutral-muted">Vector + BM25</p></div>
+            <div class="bg-surface-main rounded-lg px-3 py-2.5 text-center"><p class="font-semibold text-primary-900 text-xs">vLLM</p><p class="text-[10px] text-neutral-muted">RunPod A100 &middot; LoRA</p></div>
+            <div class="bg-surface-main rounded-lg px-3 py-2.5 text-center"><p class="font-semibold text-primary-900 text-xs">Google APIs</p><p class="text-[10px] text-neutral-muted">Calendar / Tasks / Gmail / Sheets</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Connector -->
+      <div class="flex justify-center mt-1"><svg class="w-4 h-6 text-neutral-border" viewBox="0 0 16 24"><line x1="8" y1="0" x2="8" y2="20" stroke="currentColor" stroke-width="1.5"/><polygon points="4,18 12,18 8,24" fill="currentColor"/></svg></div>
+
+      <!-- Response -->
+      <div class="flex justify-center mt-1">
+        <div class="bg-primary-50 border border-primary-300 rounded-lg px-8 py-2.5 text-center">
+          <p class="font-semibold text-primary-900 text-xs">실시간 스트리밍 응답 (SSE)</p>
+          <p class="text-[9px] text-neutral-sub">전체 응답 2~4초</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="h-px bg-neutral-divider"></div>
+
+<!-- ============================================================ -->
+<!-- DRAFT B: 허브 & 스포크 (오케스트레이터 아래 Agent) -->
+<!-- ============================================================ -->
+<section id="draft2" class="py-20 md:py-28 gradient-section">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-12">
+      <span class="inline-block px-3 py-1 bg-primary-700 text-white text-xs font-bold rounded-full mb-4">B</span>
+      <h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-2">Hub &amp; Spoke Architecture</h2>
+      <p class="text-neutral-sub text-sm mt-3">오케스트레이터 중심 라우팅 + Agent별 전용 인프라</p>
+    </div>
+
+    <div class="max-w-4xl mx-auto">
+
+      <!-- Ingress: horizontal pipeline -->
+      <div class="bg-white border border-neutral-divider rounded-xl p-4 mb-2">
+        <p class="text-[10px] font-display font-semibold text-neutral-muted uppercase tracking-widest mb-3">입력 흐름</p>
+        <div class="flex items-center gap-2">
+          <div class="bg-surface-main rounded-lg px-4 py-2 flex-1 text-center">
+            <p class="text-xs font-semibold text-primary-900">User Query</p>
+          </div>
+          <svg class="w-4 h-4 text-neutral-border shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+          <div class="bg-surface-main rounded-lg px-4 py-2 flex-1 text-center">
+            <p class="text-xs font-semibold text-primary-900">React + FastAPI</p>
+            <p class="text-[9px] text-neutral-muted">SSE / JWT / OAuth</p>
+          </div>
+          <svg class="w-4 h-4 text-neutral-border shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+          <div class="bg-surface-main rounded-lg px-4 py-2 flex-1 text-center">
+            <p class="text-xs font-semibold text-primary-900">Intent Classifier</p>
+            <p class="text-[9px] text-neutral-muted">roberta-large &middot; 93.3%</p>
+          </div>
+          <svg class="w-4 h-4 text-neutral-border shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+          <div class="bg-surface-main rounded-lg px-4 py-2 flex-1 text-center">
+            <p class="text-xs font-semibold text-primary-900">Task Planner</p>
+            <p class="text-[9px] text-neutral-muted">Kanana LoRA &middot; 87.0%</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Connector -->
+      <div class="flex justify-center"><svg class="w-4 h-5 text-neutral-border" viewBox="0 0 16 20"><line x1="8" y1="0" x2="8" y2="16" stroke="currentColor" stroke-width="1.5"/><polygon points="4,14 12,14 8,20" fill="currentColor"/></svg></div>
+
+      <!-- Hub: Orchestrator (centered, full width) -->
+      <div class="bg-primary-700 rounded-xl p-4 text-center mb-2">
+        <p class="font-display font-bold text-white text-lg">Orchestrator</p>
+        <p class="text-[10px] text-primary-200 mt-1">LangGraph &middot; 조건부 라우팅 &middot; 병렬 실행</p>
+      </div>
+
+      <!-- 4-way branch from orchestrator -->
+      <div class="flex justify-center mb-2">
+        <svg width="100%" height="24" viewBox="0 0 400 24" preserveAspectRatio="none" class="text-primary-300 max-w-lg">
+          <line x1="200" y1="0" x2="50" y2="20" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 2"/>
+          <line x1="200" y1="0" x2="150" y2="20" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 2"/>
+          <line x1="200" y1="0" x2="250" y2="20" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 2"/>
+          <line x1="200" y1="0" x2="350" y2="20" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 2"/>
+          <circle cx="50" cy="20" r="2.5" fill="currentColor"/><circle cx="150" cy="20" r="2.5" fill="currentColor"/><circle cx="250" cy="20" r="2.5" fill="currentColor"/><circle cx="350" cy="20" r="2.5" fill="currentColor"/>
+        </svg>
+      </div>
+
+      <!-- 4 Agents + their infra (vertical stacks) -->
+      <div class="grid grid-cols-4 gap-3">
+        <!-- Judgment -->
+        <div class="space-y-2">
+          <div class="bg-white border border-primary-300/50 rounded-lg p-4">
+            <div class="w-2.5 h-2.5 rounded-full bg-primary-700 mb-2"></div>
+            <p class="font-display font-semibold text-primary-700 text-sm">Judgment</p>
+            <p class="text-[10px] text-neutral-sub mt-1.5 leading-relaxed">RAG 검색<br>3중 검증<br>신뢰도 점수</p>
+          </div>
+          <div class="bg-surface-main border border-neutral-divider rounded-lg p-2.5">
+            <p class="text-[10px] font-medium text-neutral-sub">Qdrant &middot; BM25</p>
+          </div>
+          <div class="bg-surface-main border border-neutral-divider rounded-lg p-2.5">
+            <p class="text-[10px] font-medium text-neutral-sub">LoRA v1</p>
+            <p class="text-[9px] text-neutral-muted">규정 판단</p>
+          </div>
+        </div>
+        <!-- Document -->
+        <div class="space-y-2">
+          <div class="bg-white border border-accent-300/50 rounded-lg p-4">
+            <div class="w-2.5 h-2.5 rounded-full bg-accent-700 mb-2"></div>
+            <p class="font-display font-semibold text-accent-700 text-sm">Document</p>
+            <p class="text-[10px] text-neutral-sub mt-1.5 leading-relaxed">생성<br>요약<br>검색 / QA</p>
+          </div>
+          <div class="bg-surface-main border border-neutral-divider rounded-lg p-2.5">
+            <p class="text-[10px] font-medium text-neutral-sub">LoRA v3</p>
+            <p class="text-[9px] text-neutral-muted">문서 생성</p>
+          </div>
+          <div class="bg-surface-main border border-neutral-divider rounded-lg p-2.5">
+            <p class="text-[10px] font-medium text-neutral-sub">LoRA Summary</p>
+            <p class="text-[9px] text-neutral-muted">문서 요약</p>
+          </div>
+        </div>
+        <!-- Schedule -->
+        <div class="space-y-2">
+          <div class="bg-white border border-success/40 rounded-lg p-4">
+            <div class="w-2.5 h-2.5 rounded-full bg-success mb-2"></div>
+            <p class="font-display font-semibold text-success text-sm">Schedule</p>
+            <p class="text-[10px] text-neutral-sub mt-1.5 leading-relaxed">자연어 파싱<br>일정 등록<br>Meet 자동 생성</p>
+          </div>
+          <div class="bg-surface-main border border-neutral-divider rounded-lg p-2.5">
+            <p class="text-[10px] font-medium text-neutral-sub">Google APIs</p>
+            <p class="text-[9px] text-neutral-muted">5종 연동</p>
+          </div>
+        </div>
+        <!-- General -->
+        <div class="space-y-2">
+          <div class="bg-white border border-neutral-border rounded-lg p-4">
+            <div class="w-2.5 h-2.5 rounded-full bg-neutral-muted mb-2"></div>
+            <p class="font-display font-semibold text-neutral-sub text-sm">General</p>
+            <p class="text-[10px] text-neutral-sub mt-1.5 leading-relaxed">일반 대화<br>인사<br>기본 응답</p>
+          </div>
+          <div class="bg-surface-main border border-neutral-divider rounded-lg p-2.5">
+            <p class="text-[10px] font-medium text-neutral-sub">PostgreSQL</p>
+            <p class="text-[9px] text-neutral-muted">RDS &middot; 17 tables</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom connectors merge -->
+      <div class="flex justify-center mt-4"><svg class="w-4 h-5 text-neutral-border" viewBox="0 0 16 20"><line x1="8" y1="0" x2="8" y2="16" stroke="currentColor" stroke-width="1.5"/><polygon points="4,14 12,14 8,20" fill="currentColor"/></svg></div>
+
+      <!-- Shared infra bar -->
+      <div class="bg-white border border-neutral-divider rounded-xl overflow-hidden">
+        <div class="bg-neutral-main px-4 py-1.5"><p class="text-[10px] font-display font-semibold text-neutral-divider uppercase tracking-widest">공유 인프라</p></div>
+        <div class="p-3 flex items-center justify-center gap-4 text-[10px] text-neutral-sub">
+          <span class="bg-surface-main rounded px-3 py-1.5 font-medium">vLLM &middot; RunPod A100</span>
+          <span class="bg-surface-main rounded px-3 py-1.5 font-medium">Kanana-1.5-8B + LoRA hot-swap</span>
+          <span class="bg-surface-main rounded px-3 py-1.5 font-medium">80~120 tok/s</span>
+        </div>
+      </div>
+
+      <!-- Connector -->
+      <div class="flex justify-center mt-1"><svg class="w-4 h-5 text-neutral-border" viewBox="0 0 16 20"><line x1="8" y1="0" x2="8" y2="16" stroke="currentColor" stroke-width="1.5"/><polygon points="4,14 12,14 8,20" fill="currentColor"/></svg></div>
+
+      <!-- Response -->
+      <div class="bg-primary-50 border border-primary-300 rounded-xl p-3 text-center">
+        <p class="text-xs font-semibold text-primary-900">실시간 스트리밍 응답 (SSE)</p>
+        <p class="text-[10px] text-neutral-sub">전체 응답 2~4초</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<div class="h-px bg-neutral-divider"></div>
+
+<!-- ============================================================ -->
+<!-- DRAFT C: 수평 레이어 + 사이드 연결 -->
+<!-- ============================================================ -->
+<section id="draft3" class="py-20 md:py-28 bg-white">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-4">
+      <span class="inline-block px-3 py-1 bg-primary-700 text-white text-xs font-bold rounded-full mb-4">C</span>
+      <h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-2">수평 레이어 + 사이드 연결</h2>
+      <p class="text-neutral-sub text-sm mt-3">계층별 수평 배치 + 외부 서비스를 오른쪽 사이드에 배치</p>
+    </div>
+
+    <div class="max-w-5xl mx-auto mt-12">
+      <div class="grid grid-cols-12 gap-4">
+
+        <!-- Main Layers (col 1-8) -->
+        <div class="col-span-12 lg:col-span-8 space-y-4">
+
+          <!-- Layer 1: Client -->
+          <div class="bg-success/5 border-2 border-success/20 rounded-2xl p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-8 h-8 rounded-lg bg-success text-white flex items-center justify-center text-xs font-bold">FE</div>
+              <div>
+                <p class="font-bold text-success text-sm">Client Layer</p>
+                <p class="text-[10px] text-neutral-muted">사용자 인터페이스</p>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <span class="bg-white rounded-lg px-3 py-1.5 text-xs text-neutral-sub border border-success/20">React 18</span>
+              <span class="bg-white rounded-lg px-3 py-1.5 text-xs text-neutral-sub border border-success/20">Zustand</span>
+              <span class="bg-white rounded-lg px-3 py-1.5 text-xs text-neutral-sub border border-success/20">TanStack Query</span>
+              <span class="bg-white rounded-lg px-3 py-1.5 text-xs text-neutral-sub border border-success/20">SSE 스트리밍</span>
+              <span class="bg-white rounded-lg px-3 py-1.5 text-xs text-neutral-sub border border-success/20">Tailwind + shadcn</span>
+            </div>
+          </div>
+
+          <div class="flex justify-center"><svg class="w-5 h-5 text-neutral-border" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg></div>
+
+          <!-- Layer 2: API Gateway -->
+          <div class="bg-accent-50 border-2 border-accent-100 rounded-2xl p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-8 h-8 rounded-lg bg-accent-700 text-white flex items-center justify-center text-xs font-bold">BE</div>
+              <div>
+                <p class="font-bold text-accent-700 text-sm">API Gateway</p>
+                <p class="text-[10px] text-neutral-muted">인증 + 라우팅 + 스트리밍</p>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <span class="bg-white rounded-lg px-3 py-1.5 text-xs text-neutral-sub border border-accent-100">FastAPI</span>
+              <span class="bg-white rounded-lg px-3 py-1.5 text-xs text-neutral-sub border border-accent-100">JWT Auth</span>
+              <span class="bg-white rounded-lg px-3 py-1.5 text-xs text-neutral-sub border border-accent-100">SSE Endpoint</span>
+              <span class="bg-white rounded-lg px-3 py-1.5 text-xs text-neutral-sub border border-accent-100">Google OAuth 2.0</span>
+            </div>
+          </div>
+
+          <div class="flex justify-center"><svg class="w-5 h-5 text-neutral-border" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg></div>
+
+          <!-- Layer 3: AI Core -->
+          <div class="bg-primary-50 border-2 border-primary-100 rounded-2xl p-5">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-8 h-8 rounded-lg bg-primary-700 text-white flex items-center justify-center text-xs font-bold">AI</div>
+              <div>
+                <p class="font-bold text-primary-700 text-sm">AI Core (LangGraph)</p>
+                <p class="text-[10px] text-neutral-muted">의도 분류 &rarr; 태스크 분해 &rarr; 에이전트 실행</p>
+              </div>
+            </div>
+
+            <!-- Sub-row: Classifiers -->
+            <div class="flex gap-2 mb-3">
+              <div class="flex-1 bg-white rounded-xl p-3 text-center border border-primary-100">
+                <p class="text-xs font-bold text-primary-900">Intent Classifier</p>
+                <p class="text-[10px] text-neutral-muted">roberta-large 5-seed</p>
+                <p class="text-[10px] text-primary-500 font-medium">93.3%</p>
+              </div>
+              <div class="flex items-center"><svg class="w-4 h-4 text-primary-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg></div>
+              <div class="flex-1 bg-white rounded-xl p-3 text-center border border-primary-100">
+                <p class="text-xs font-bold text-primary-900">Task Planner</p>
+                <p class="text-[10px] text-neutral-muted">Kanana-1.5-8B LoRA</p>
+                <p class="text-[10px] text-success font-medium">87.0%</p>
+              </div>
+              <div class="flex items-center"><svg class="w-4 h-4 text-primary-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg></div>
+              <div class="flex-1 bg-primary-700 rounded-xl p-3 text-center">
+                <p class="text-xs font-bold text-white">Orchestrator</p>
+                <p class="text-[10px] text-primary-100">조건부 라우팅</p>
+              </div>
+            </div>
+
+            <!-- Sub-row: Agents -->
+            <div class="grid grid-cols-4 gap-2">
+              <div class="bg-white rounded-lg p-2.5 text-center border-2 border-primary-500/30">
+                <p class="text-xs font-semibold text-primary-700">Judgment Agent</p>
+                <p class="text-[9px] text-neutral-muted">3중 검증 + confidence</p>
+              </div>
+              <div class="bg-white rounded-lg p-2.5 text-center border-2 border-accent-500/30">
+                <p class="text-xs font-semibold text-accent-700">Document Agent</p>
+                <p class="text-[9px] text-neutral-muted">생성/요약/검색/QA</p>
+              </div>
+              <div class="bg-white rounded-lg p-2.5 text-center border-2 border-success/30">
+                <p class="text-xs font-semibold text-success">Schedule Agent</p>
+                <p class="text-[9px] text-neutral-muted">Google 5종 연동</p>
+              </div>
+              <div class="bg-white rounded-lg p-2.5 text-center border border-neutral-border">
+                <p class="text-xs font-semibold text-neutral-sub">General Agent</p>
+                <p class="text-[9px] text-neutral-muted">대화/인사</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-center"><svg class="w-5 h-5 text-neutral-border" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg></div>
+
+          <!-- Layer 4: Data -->
+          <div class="bg-warning/5 border-2 border-warning/15 rounded-2xl p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-8 h-8 rounded-lg bg-warning text-white flex items-center justify-center text-xs font-bold">DB</div>
+              <div>
+                <p class="font-bold text-warning text-sm">Data Layer</p>
+                <p class="text-[10px] text-neutral-muted">영속성 + 벡터 검색</p>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <span class="bg-white rounded-lg px-3 py-1.5 text-xs text-neutral-sub border border-warning/20">PostgreSQL 16 (RDS)</span>
+              <span class="bg-white rounded-lg px-3 py-1.5 text-xs text-neutral-sub border border-warning/20">Qdrant Cloud</span>
+              <span class="bg-white rounded-lg px-3 py-1.5 text-xs text-neutral-sub border border-warning/20">BM25 하이브리드</span>
+              <span class="bg-white rounded-lg px-3 py-1.5 text-xs text-neutral-sub border border-warning/20">BGE Reranker</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Side: External Services (col 9-12) -->
+        <div class="col-span-12 lg:col-span-4 space-y-4 lg:pt-4">
+          <div class="bg-surface-sub rounded-xl p-3 text-center">
+            <p class="text-[10px] font-semibold text-neutral-muted uppercase tracking-wider">External Services</p>
+          </div>
+
+          <!-- Google Workspace -->
+          <div class="bg-white rounded-2xl p-5 border border-neutral-divider">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-7 h-7 rounded-lg bg-success/10 flex items-center justify-center"><svg class="w-4 h-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg></div>
+              <p class="font-bold text-primary-900 text-sm">Google Workspace</p>
+            </div>
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2 bg-surface-main rounded-lg px-3 py-1.5"><div class="w-1.5 h-1.5 rounded-full bg-success"></div><p class="text-xs text-neutral-sub">Calendar</p></div>
+              <div class="flex items-center gap-2 bg-surface-main rounded-lg px-3 py-1.5"><div class="w-1.5 h-1.5 rounded-full bg-success"></div><p class="text-xs text-neutral-sub">Google Meet</p></div>
+              <div class="flex items-center gap-2 bg-surface-main rounded-lg px-3 py-1.5"><div class="w-1.5 h-1.5 rounded-full bg-success"></div><p class="text-xs text-neutral-sub">Tasks</p></div>
+              <div class="flex items-center gap-2 bg-surface-main rounded-lg px-3 py-1.5"><div class="w-1.5 h-1.5 rounded-full bg-success"></div><p class="text-xs text-neutral-sub">Gmail</p></div>
+              <div class="flex items-center gap-2 bg-surface-main rounded-lg px-3 py-1.5"><div class="w-1.5 h-1.5 rounded-full bg-success"></div><p class="text-xs text-neutral-sub">Sheets</p></div>
+            </div>
+            <p class="text-[10px] text-neutral-muted mt-2 text-center">단일 OAuth 2.0</p>
+          </div>
+
+          <!-- sLLM Serving -->
+          <div class="bg-white rounded-2xl p-5 border border-neutral-divider">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-7 h-7 rounded-lg bg-primary-50 flex items-center justify-center"><svg class="w-4 h-4 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div>
+              <p class="font-bold text-primary-900 text-sm">sLLM Serving</p>
+            </div>
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2 bg-surface-main rounded-lg px-3 py-1.5"><div class="w-1.5 h-1.5 rounded-full bg-primary-700"></div><p class="text-xs text-neutral-sub">vLLM (RunPod A100)</p></div>
+              <div class="flex items-center gap-2 bg-surface-main rounded-lg px-3 py-1.5"><div class="w-1.5 h-1.5 rounded-full bg-primary-700"></div><p class="text-xs text-neutral-sub">Kanana-1.5-8B Base</p></div>
+              <div class="flex items-center gap-2 bg-surface-main rounded-lg px-3 py-1.5"><div class="w-1.5 h-1.5 rounded-full bg-accent-500"></div><p class="text-xs text-neutral-sub">LoRA: 판단 / 문서 / 요약 / Planner</p></div>
+            </div>
+            <p class="text-[10px] text-neutral-muted mt-2 text-center">80~120 tok/s | 핫스왑</p>
+          </div>
+
+          <!-- CI/CD -->
+          <div class="bg-white rounded-2xl p-5 border border-neutral-divider">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-7 h-7 rounded-lg bg-warning/10 flex items-center justify-center"><svg class="w-4 h-4 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></div>
+              <p class="font-bold text-primary-900 text-sm">CI/CD</p>
+            </div>
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2 bg-surface-main rounded-lg px-3 py-1.5"><div class="w-1.5 h-1.5 rounded-full bg-warning"></div><p class="text-xs text-neutral-sub">GitHub Actions</p></div>
+              <div class="flex items-center gap-2 bg-surface-main rounded-lg px-3 py-1.5"><div class="w-1.5 h-1.5 rounded-full bg-warning"></div><p class="text-xs text-neutral-sub">AWS EC2 자동 배포</p></div>
+              <div class="flex items-center gap-2 bg-surface-main rounded-lg px-3 py-1.5"><div class="w-1.5 h-1.5 rounded-full bg-warning"></div><p class="text-xs text-neutral-sub">Discord 알림</p></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="gradient-hero py-10 text-center">
+  <p class="text-primary-100 text-sm">3가지 시안 중 마음에 드는 스타일을 골라주세요</p>
+  <p class="text-primary-300 text-xs mt-2">선택하면 presentation.html에 적용합니다</p>
+</footer>
+
+<script>
+// Smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(a=>{
+  a.addEventListener('click',e=>{
+    e.preventDefault();
+    document.querySelector(a.getAttribute('href'))?.scrollIntoView({behavior:'smooth'});
+  });
+});
+</script>
+</body>
+</html>
