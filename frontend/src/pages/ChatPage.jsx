@@ -477,6 +477,8 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
 
     case 'clarify': {
       const candidates = data.candidates || [];
+      // 이 assistant 메시지 바로 앞의 user 메시지가 원본 쿼리
+      const originalQuery = index > 0 ? (messages[index - 1]?.content || '') : '';
       return (
         <div>
           <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">
@@ -487,7 +489,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
               {candidates.map((c, idx) => (
                 <button
                   key={idx}
-                  onClick={() => onSelectClarify?.(typeof c === 'string' ? c : c.query || c.label)}
+                  onClick={() => onSelectClarify?.(originalQuery || c.query || c.label, { forceIntent: c.intent })}
                   className="px-3 py-1.5 text-xs bg-primary-50 text-primary-700 rounded-full border border-primary-200 hover:bg-primary-100 transition"
                 >
                   {typeof c === 'string' ? c : c.label || c.query}

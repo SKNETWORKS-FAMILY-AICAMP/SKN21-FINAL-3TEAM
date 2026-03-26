@@ -26,7 +26,7 @@ from langgraph.graph import StateGraph, END
 
 from ai.agents.state import AgentState
 from ai.agents.intent_classifier import get_classifier, detect_compound_query, _split_compound_text
-from ai.agents.config import INTENT_CONFIDENCE_THRESHOLD, ENABLE_COMPLEX_QUERY
+from ai.agents.config import INTENT_CONFIDENCE_THRESHOLD, INTENT_GAP_THRESHOLD, ENABLE_COMPLEX_QUERY
 
 logger = logging.getLogger(__name__)
 
@@ -485,6 +485,25 @@ def classify_intent(state: AgentState) -> AgentState:
         ]
         state["_is_compound"] = ml_result["is_compound"]
         state["_compound_intents"] = ml_result["intents"]
+
+        # ── top1/top2 gap 체크: 모델이 헷갈리면 사용자에게 확인 ──
+        if not state.get("_is_compound"):
+            all_probs = ml_result.get("all_probs", {})
+            sorted_probs = sorted(all_probs.items(), key=lambda x: x[1], reverse=True)
+            if len(sorted_probs) >= 2:
+                top1_label, top1_prob = sorted_probs[0]
+                top2_label, top2_prob = sorted_probs[1]
+                gap = top1_prob - top2_prob
+                if gap < INTENT_GAP_THRESHOLD:
+                    state["confidence"] = 0.5  # threshold 미만 → clarify 발동
+                    state["intent_candidates"] = [
+                        {"intent": top1_label, "confidence": top1_prob},
+                        {"intent": top2_label, "confidence": top2_prob},
+                    ]
+                    logger.info(
+                        "[Orchestrator] intent gap 감지: %s(%.4f) vs %s(%.4f), gap=%.4f < %.2f → clarify",
+                        top1_label, top1_prob, top2_label, top2_prob, gap, INTENT_GAP_THRESHOLD,
+                    )
 
         logger.info(
             "[Orchestrator] classify_intent 완료 (%.2fs) | intent=%s, confidence=%.4f, compound=%s",
