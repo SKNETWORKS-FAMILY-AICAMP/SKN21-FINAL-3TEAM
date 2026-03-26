@@ -86,9 +86,9 @@ async def regulation_check(
                 user_id=user_id,
                 top_k=top_k,
                 filter={"source": "regulations"},
-                use_reranker=False,
+                use_reranker=True,
                 score_threshold=0.0,
-                use_hyde=False,
+                use_hyde=True,
             )
 
         loop = asyncio.get_event_loop()
