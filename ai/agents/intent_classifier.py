@@ -1,15 +1,13 @@
 """
 Intent Classification 모델 (팀원 A 담당)
 
-카테고리 (8개):
+카테고리 (6개):
   - judgment: 규정 기반 판단
   - doc_retrieve: 문서 검색/조회/요약/QA (RAG 파이프라인 → agent 내부에서 세부 분류)
   - doc_generate: 문서 생성 (보고서/회의록/JD/제안서)
-  - schedule_add: 일정 추가
+  - schedule_add: 일정 추가 (파이프라인/결재도 schedule_agent 내부에서 분기)
   - schedule_view: 일정 조회
   - general: 일반 질문
-  - pipeline_create: 파이프라인 생성
-  - approval_create: 결재 요청
 
 모델: klue/roberta-large (Fine-tuned, 8-label multi-seed ensemble)
 """
@@ -31,8 +29,6 @@ INTENT_LABELS = [
     "schedule_add",
     "schedule_view",
     "general",
-    "pipeline_create",
-    "approval_create",
 ]
 
 # 모델 weights 경로
@@ -516,10 +512,8 @@ class IntentClassifier:
                 - judgment: 규정/규칙 기반 판단 요청 (예: "이거 규정 위반이야?", "이렇게 해도 돼?")
                 - doc_retrieve: 문서 검색/조회/요약/QA — 문서 찾기, 내용 질의응답, 문서 요약 (예: "마케팅 문서 찾아줘", "이 문서 요약해줘", "예산 얼마야?")
                 - doc_generate: 문서 작성 — 보고서/회의록/JD/제안서 생성 (예: "보고서 작성해줘", "회의록 만들어줘")
-                - schedule_add: 일정 추가/등록 (예: "내일 2시 회의 일정 추가해줘", "스케줄 등록해줘")
+                - schedule_add: 일정 추가/등록, 태스크 생성, 결재 요청 (예: "내일 2시 회의 일정 추가해줘", "태스크 만들어줘", "연차 신청해줘")
                 - schedule_view: 일정 조회/확인 (예: "오늘 일정 보여줘", "이번 주 스케줄 확인해줘")
-                - pipeline_create: 파이프라인/칸반 태스크 생성 (예: "태스크 만들어줘", "보드에 추가해줘")
-                - approval_create: 결재/승인 요청 생성 (예: "연차 신청해줘", "결재 올려줘")
                 - general: 위 카테고리에 해당하지 않는 일반 질문"""
 
             if return_candidates:
@@ -634,28 +628,17 @@ class IntentClassifier:
                     "일정 추가해줘",
                     "스케줄 등록해줘",
                     "일정 넣어줘",
+                    "태스크 만들어줘",
+                    "결재 올려줘",
+                    "연차 신청해줘",
                 ],
                 "schedule_view": [
                     "일정 보여줘",
                     "스케줄 확인해줘",
                     "일정 조회해줘",
                 ],
-                "pipeline_create": [
-                    "태스크 만들어줘",
-                    "파이프라인에 추가해줘",
-                    "칸반 보드에 등록해줘",
-                    "코드 리뷰 태스크 생성해줘",
-                    "할 일 추가해줘",
-                    "프로젝트 하나 추가하려고 해",
-                    "프로젝트 만들어줘",
-                ],
-                "approval_create": [
-                    "결재 올려줘",
-                    "연차 신청해줘",
-                    "승인 요청 등록해줘",
-                    "휴가 결재 올려줘",
-                    "리뷰 결재 신청해줘",
-                ],
+                # pipeline/approval도 schedule_add에 포함 (schedule_agent 내부에서 분기)
+                # "태스크 만들어줘", "결재 올려줘" 등은 schedule_add 예제에 추가
             }
 
             # 임베딩 모델 로드
@@ -756,12 +739,10 @@ KNOWN_OVERRIDES = {
     r"(문서|보고서|회의록|규정|자료).*(찾아|검색|목록|조회|보여)": "doc_retrieve",
     r"(찾아|검색|목록|조회).*(문서|보고서|회의록|규정|자료)": "doc_retrieve",
     r".*(관련|관한)\s*(문서|자료|보고서|규정).*(찾아|검색|있어|보여|알려)": "doc_retrieve",
-    # pipeline_create 패턴: "태스크 만들어줘", "파이프라인에 추가해줘", "프로젝트 추가해줘"
-    r"(태스크|task|파이프라인|pipeline|칸반|보드|프로젝트).*(만들|생성|추가|등록)": "pipeline_create",
-    r"(만들|생성|추가|등록).*(태스크|task|파이프라인|pipeline|칸반|프로젝트)": "pipeline_create",
-    # approval_create 패턴: "결재 올려줘", "연차 신청해줘"
-    r"(결재|승인|결재요청|결재 요청).*(올려|신청|등록|만들)": "approval_create",
-    r"(연차|휴가|반차|조퇴|출장).*(신청|올려|결재|요청)": "approval_create",
+    # pipeline/approval → schedule_add로 보내면 schedule_agent 내부에서 _classify_add_type()이 분기
+    r"(태스크|task|파이프라인|pipeline|칸반|보드).*(만들|생성|추가|등록)": "schedule_add",
+    r"(결재|승인|결재요청|결재 요청).*(올려|신청|등록|만들)": "schedule_add",
+    r"(연차|휴가|반차|조퇴|출장).*(신청|올려|결재|요청)": "schedule_add",
 }
 
 
@@ -791,8 +772,6 @@ _INTENT_VERB_PATTERNS = {
     "doc_generate": r"(작성|생성|만들어|만들고|써 줘|써줘|작성해|만들어 줘)",
     "schedule_add": r"(일정.*(?:추가|등록|잡아|넣어)|(?:추가|등록|잡아|넣어).*일정|회의.*(?:잡아|등록|잡고))",
     "schedule_view": r"(일정.*(?:보여|조회|확인|알려)|(?:보여|조회|확인).*일정|스케줄.*(?:보여|확인))",
-    "pipeline_create": r"(태스크|task|파이프라인|pipeline|칸반|보드|프로젝트).*(?:만들|생성|추가|등록)",
-    "approval_create": r"(결재|승인|연차|휴가|반차|조퇴|출장).*(?:올려|신청|등록|만들|요청)",
 }
 
 # 동사 어간 + "하고"/"주고" 패턴 (분리점으로 사용)

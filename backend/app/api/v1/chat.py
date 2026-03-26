@@ -200,8 +200,6 @@ def _get_agent_type(intent: str) -> str:
         return "document_agent"
     elif intent.startswith("schedule_"):
         return "schedule_agent"
-    elif intent in ("pipeline_create", "approval_create"):
-        return "schedule_agent"
     return "general"
 
 
@@ -588,7 +586,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                         else:
                             # 선택지(template_pick, doc_pick) / clarify는 token 스트리밍 불필요
                             skip_token = agent_response.get("stream_pending") or resp_type in ("template_pick", "doc_pick", "clarify")
-                            if not skip_token and intent not in ("general", "doc_retrieve", "doc_search", "doc_summary", "judgment", "compound", "pipeline_create", "approval_create"):
+                            if not skip_token and intent not in ("general", "doc_retrieve", "doc_search", "doc_summary", "judgment", "compound"):
                                 yield f"data: {json.dumps({'type': 'token', 'value': message}, ensure_ascii=False)}\n\n"
 
                             yield f"data: {json.dumps({'type': 'result', 'intent': resp_type, 'data': agent_response}, ensure_ascii=False)}\n\n"
