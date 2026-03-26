@@ -429,11 +429,15 @@ class IntentClassifier:
         # confidence 내림차순 정렬
         intents.sort(key=lambda x: x["confidence"], reverse=True)
 
+        # 전체 레이블 sigmoid 확률 (top1/top2 gap 판단용)
+        all_probs = {self.id2label[i]: round(float(probs_np[i]), 4) for i in range(len(self.id2label))}
+
         return {
             "intents": intents,
             "is_compound": len(intents) >= 2,
             "primary_intent": intents[0]["intent"],
             "primary_confidence": intents[0]["confidence"],
+            "all_probs": all_probs,
         }
 
     def _apply_multilabel_rules(self, text: str, intents: list) -> list:

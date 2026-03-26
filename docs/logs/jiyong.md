@@ -4,7 +4,45 @@
 
 ---
 
-## 2026-03-26 (수)
+## 2026-03-26 (수) — 세션 2
+
+**세션: Intent 분류 불확실성 감지 + Clarify UX 개선**
+
+### 한 일
+
+**1. Intent Gap 기반 Clarify 기능 구현**
+- 문제: ONNX 앙상블 모델이 규정 관련 질문을 doc_retrieve로 오분류하는 경향 발견
+  - 후처리 룰(Rule 1/2)이 keyword 기반으로 judgment로 강제 교정하고 있었으나, 사용자가 진짜 문서 검색을 원할 때도 judgment으로 빠지는 문제
+- 해결: top-1/top-2 sigmoid confidence gap 기반 불확실성 감지
+  - gap < 0.40이면 clarify 발동 → 사용자에게 선택지 제시 (예: "규정 판단(59%) / 문서 검색(41%)")
+  - 130개 테스트 쿼리로 최적 threshold 산출: gap 0.40에서 schedule/general/doc_generate 오탐 0%
+
+**2. 수정 파일 (4개)**
+- `ai/agents/config.py`: `INTENT_GAP_THRESHOLD = 0.40` 추가
+- `ai/agents/intent_classifier.py`: `predict_multilabel()` return에 `all_probs` (6개 레이블 전체 sigmoid 확률) 추가
+- `ai/agents/orchestrator.py`: `classify_intent` 노드에서 top1-top2 gap 체크 → 낮으면 confidence=0.5 + candidates 세팅 → 기존 clarify 흐름 재활용
+- `frontend/src/pages/ChatPage.jsx`: clarify 버튼 클릭 시 원래 질문 + `forceIntent` 전달 (기존 버그 수정 — 이전에는 label 텍스트를 재전송하여 원래 질문 유실)
+
+**3. E2E 테스트 (EC2 배포 후 검증)**
+- 확실한 쿼리 (schedule_add, doc_generate): clarify 미발생 ✅
+- 애매한 쿼리 ("수당 관련 규정 정리해줘" gap=0.182): clarify 발동, 후보 2개 표시 ✅
+- forceIntent=judgment / doc_retrieve: 각각 정상 라우팅 ✅
+- 같은 쿼리 다른 forceIntent → 다른 agent 분기 ✅
+
+**4. 분석 결과 (130개 쿼리 테스트)**
+- judgment 확실 30개: gap min=0.189, max=0.931, avg=0.707 (룰교정 3개)
+- doc_retrieve 확실 30개: gap min=0.312, max=0.948, avg=0.905 (룰교정 0개)
+- judgment/doc 애매 40개: gap min=0.182, max=0.949, avg=0.702 (룰교정 32개)
+- schedule/general/doc_generate 30개: gap min=0.734, max=0.924 (오탐 0개)
+- 핵심 발견: 모델이 규정 질문을 doc_retrieve로 강하게 분류 (40개 중 32개 룰교정 필요)
+
+### 다음 할 일
+- Intent 모델 재학습 검토: judgment 학습 데이터 보강 (규정 질문 → judgment 매핑 강화)
+- clarify 빈도 모니터링: 실사용에서 clarify 발생 비율 추적
+
+---
+
+## 2026-03-26 (수) — 세션 1
 
 **세션: 문서 Agent 아키텍처 리뷰 + QA/Judgment 리팩토링 + 성능 최적화**
 

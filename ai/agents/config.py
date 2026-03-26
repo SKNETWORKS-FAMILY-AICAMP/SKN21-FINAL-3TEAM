@@ -11,6 +11,7 @@ Intent 분류 및 오케스트레이터 설정 상수
 # - 0.85 기준으로 분리 가능 (Stage 6 결과 확인 후 최종 확정)
 INTENT_CONFIDENCE_THRESHOLD = 0.85   # 이하면 clarify (top-3 후보 제시)
 INTENT_FALLBACK_THRESHOLD = 0.4      # 이하면 general 강제 (임베딩 fallback)
+INTENT_GAP_THRESHOLD = 0.40          # top1-top2 sigmoid gap이 이 미만이면 clarify 발동 (130개 테스트 기준, other 오탐 0%)
 
 # ── 복합 질문 설정 ──
 ENABLE_COMPLEX_QUERY = True          # 복합 질문 감지 활성화
