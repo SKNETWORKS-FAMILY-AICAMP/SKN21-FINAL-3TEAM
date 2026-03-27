@@ -4354,9 +4354,22 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 - **결과**: "비는 날에 휴가 등록" → 제목 "휴가 등록"으로 정상 표시
 - **참고**: 챗봇 일정 조회 시 Google Calendar에서 삭제한 이벤트가 여전히 표시되는 현상 발견 (캘린더 앱에서는 삭제됨) — 캐시 또는 API 동기화 문제로 추정
 
+#### 15) 챗봇 일정 조회 — 삭제/수정된 이벤트 표시 버그 수정
+
+- **문제**: Google Calendar에서 이벤트를 수정(김서영 첫 출근→서영이 첫 출근)하거나 삭제(휴가)해도 챗봇 일정 조회에서 수정 전 버전이 계속 표시됨. 일정 관리 페이지에서는 정상.
+- **원인**:
+  1. `calendar_service.py` — Google Calendar API에서 `status="cancelled"` 이벤트를 필터링하지 않음
+  2. `schedule_agent.py` — DB↔Google 중복 제거가 **제목 비교**로만 되어 있어서, 제목이 바뀌면 옛 버전(DB) + 새 버전(Google) 둘 다 표시. Google에서 삭제해도 DB 레코드가 남아서 계속 표시.
+- **수정**:
+  - `calendar_service.py:133` — `if item.get("status") == "cancelled": continue` 추가
+  - `schedule_agent.py:566-606` — `google_event_id` 기반 동기화 로직으로 교체:
+    - DB 이벤트에 `google_event_id` 필드 포함하도록 변경
+    - DB 이벤트의 `google_event_id`가 Google에 있으면 → Google 버전(제목/시간)으로 갱신
+    - DB 이벤트의 `google_event_id`가 Google에 없으면 → 삭제된 것으로 판단하여 제외
+    - Google 이벤트 중복 제거도 `event_id` 기반으로 우선 처리
+- **상태**: 로컬 코드 수정 완료, EC2 배포 필요 (프론트 로컬 → EC2 백엔드 프록시 구조)
+
 ### 다음 할 일
 
+- [ ] 일정 조회 버그 수정 EC2 배포 후 동작 확인
 - [ ] 3-step PARTIAL 3건 intent hint 매칭 수정 (요약/정리 → doc_generate)
-- [ ] 챗봇 일정 조회 시 삭제된 이벤트 표시 문제 조사
-- [ ] 데모 시나리오 (09) 실제 내용 채우기
-- [ ] E2E 멀티스텝 테스트 4-step / 5-step 진행
