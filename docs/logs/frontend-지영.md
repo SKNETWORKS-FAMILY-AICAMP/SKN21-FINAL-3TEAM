@@ -4367,9 +4367,29 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
     - DB 이벤트의 `google_event_id`가 Google에 있으면 → Google 버전(제목/시간)으로 갱신
     - DB 이벤트의 `google_event_id`가 Google에 없으면 → 삭제된 것으로 판단하여 제외
     - Google 이벤트 중복 제거도 `event_id` 기반으로 우선 처리
-- **상태**: 로컬 코드 수정 완료, EC2 배포 필요 (프론트 로컬 → EC2 백엔드 프록시 구조)
+- **상태**: EC2 배포 완료 (uvicorn 재시작 포함), 동작 확인 필요
+
+#### 16) 챗봇 일정 등록 — 네이티브 달력 → 서비스 DatePicker 교체 (`ScheduleConfirmCard.jsx`)
+
+- **문제**: 챗봇 일정 등록 폼의 날짜 입력이 브라우저 네이티브 `<input type="date">` 사용 → 투박한 UI, 아이콘만 클릭 가능
+- **수정**: `<input type="date">` → 공통 `DatePicker` 컴포넌트(`components/common/DatePicker.jsx`)로 교체
+  - 일정 관리 페이지와 동일한 커스텀 달력 UI
+  - 필드 어디를 눌러도 달력 팝업 오픈
+  - Portal 기반으로 overflow 문제 없음
+
+#### 17) 복합질문 "비는 날" 날짜 자동 계산 (`schedule_agent.py`, `chat.py`)
+
+- **문제**: "이번 주 일정 보고 비는 날에 휴가 등록해줘" → 일정 조회는 되지만, 일정 추가 시 날짜가 비어있음 ("비는 날"을 이해 못함)
+- **원인**: 복합질문 처리 시 이전 단계(schedule_view) 결과가 다음 단계(schedule_add)로 전달되지 않는 구조적 문제
+  - `chat.py`에서 각 sub_query를 독립 state로 실행 → 이전 결과 접근 불가
+  - `schedule_agent.py`의 LLM 파싱 프롬프트에 "비는 날" 규칙 없음
+  - 제목 추출 regex가 "비는 날" 키워드를 제거하여 날짜 정보 소실
+- **수정**:
+  - `chat.py:338` — sub_state에 `prev_agent_context`로 직전 단계 응답 전달
+  - `schedule_agent.py:167-191` — `_find_free_date()` 함수 신규 추가: 이전 schedule_view 결과에서 이번 주 평일 중 일정 없는 날 계산
+  - `schedule_agent.py:194-205` — `_handle_schedule_add()`에 `prev_context` 파라미터 추가, "비는 날" 감지 시 자동 날짜 설정
 
 ### 다음 할 일
 
-- [ ] 일정 조회 버그 수정 EC2 배포 후 동작 확인
+- [ ] "비는 날" 자동 계산 + DatePicker 교체 EC2 배포 후 동작 확인
 - [ ] 3-step PARTIAL 3건 intent hint 매칭 수정 (요약/정리 → doc_generate)

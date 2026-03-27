@@ -99,7 +99,8 @@ async def schedule_agent(state: AgentState) -> AgentState:
             # 복합질문 sub_query(force_intent)면 2차 분류 건너뜀 → 일정 추가 직행
             force_intent = state.get("force_intent")
             if force_intent:
-                response_data = await _handle_schedule_add(user_input, user_id)
+                prev_context = state.get("prev_agent_context")
+                response_data = await _handle_schedule_add(user_input, user_id, prev_context=prev_context)
             else:
                 # 키워드 기반 2차 분기: 일정 / 태스크 / 결재
                 sub_type = _classify_add_type(user_input)
@@ -163,10 +164,45 @@ async def schedule_agent(state: AgentState) -> AgentState:
     return state
 
 
-async def _handle_schedule_add(user_input: str, user_id: int) -> dict:
+def _find_free_date(prev_context: dict) -> str | None:
+    """이전 schedule_view 결과에서 이번 주 비는 날(일정 없는 평일)을 찾아 반환"""
+    schedules = prev_context.get("schedules") if prev_context else None
+    if not schedules:
+        return None
+
+    now = datetime.now()
+    # 이번 주 월~금 날짜 생성
+    monday = now - timedelta(days=now.weekday())
+    weekdays = [(monday + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(5)]
+
+    # 일정이 있는 날짜 수집
+    busy_dates = set()
+    for s in schedules:
+        start = s.get("start") or s.get("start_time") or ""
+        if start:
+            busy_dates.add(start[:10])  # YYYY-MM-DD
+
+    # 오늘 이후의 비는 평일 찾기
+    today_str = now.strftime("%Y-%m-%d")
+    for d in weekdays:
+        if d >= today_str and d not in busy_dates:
+            return d
+
+    return None
+
+
+async def _handle_schedule_add(user_input: str, user_id: int, prev_context: dict = None) -> dict:
     """일정 추가: LLM 파싱 → 캘린더 등록 (Meet 없이) → 후속 질문"""
     parsed = await _parse_schedule_input(user_input)
     logger.info("[ScheduleAgent] 파싱 결과: %s", parsed)
+
+    # "비는 날" 요청 시 이전 일정 조회 결과에서 빈 날짜 계산
+    if re.search(r'비는\s*날|빈\s*날', user_input) and not parsed.get("start_time"):
+        free_date = _find_free_date(prev_context)
+        if free_date:
+            parsed["start_time"] = f"{free_date}T09:00:00"
+            parsed["end_time"] = f"{free_date}T10:00:00"
+            logger.info("[ScheduleAgent] 비는 날 자동 계산: %s", free_date)
 
     if not parsed.get("title"):
         return {
