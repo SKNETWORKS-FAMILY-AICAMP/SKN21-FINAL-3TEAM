@@ -1,4 +1,5 @@
 """문서 요약"""
+import re
 import time
 from typing import Any, Dict
 
@@ -133,11 +134,37 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
     _t = time.time()
     print(f"[DocumentAgent] _handle_doc_summary | document_id={document_id}, content_len={len(document_content) if document_content else 0}, stream_mode={stream_mode}")
 
-    # 문서 내용이 없으면 RAG로 문서 식별 시도, 실패 시 doc_pick
+    # 문서 내용이 없으면 문서 식별 시도
     if not document_content:
-        print("[DocumentAgent] document_content 없음 → RAG로 문서 식별 시도")
+        # 요약 키워드를 제거하여 실질적 검색어 추출
+        _search_query = re.sub(
+            r"(문서|이\s*문서|위\s*문서)?\s*(요약|정리|핵심|간추리|간추려|줄여)\s*(해|해줘|해주세요|부탁|하자|할래|줘|주세요|좀)?",
+            "", user_input
+        ).strip()
+        # "있어?", "있나?", "찾아" 등 부가 표현 제거
+        _search_query = re.sub(r"\s*(있어\??|있나\??|찾아줘?|보여줘?|알려줘?)\s*", "", _search_query).strip()
 
-        search_results, _, _, _rag_status = await _retrieve_context(user_input, user_id, user_team, top_k=5)
+        if not _search_query:
+            # 케이스 1: "문서 요약해줘" — 문서명 미지정 → 전체 목록
+            print("[DocumentAgent] 문서명 미지정 → 전체 문서 목록 조회")
+            try:
+                from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+                pipeline = get_qdrant_pipeline()
+                doc_list = pipeline.list_documents(source="documents", user_id=user_id)
+                print(f"[DocumentAgent] Qdrant 문서 목록 {len(doc_list)}개 조회됨")
+            except Exception as e:
+                print(f"[DocumentAgent] Qdrant 문서 목록 조회 실패: {e}")
+                doc_list = []
+            return {
+                "type": "doc_pick",
+                "message": "어떤 문서를 요약할까요? 아래에서 선택해주세요:",
+                "documents": doc_list,
+                "model_name": "RAG (문서 목록)",
+            }
+
+        # 케이스 2: "ERP 제안서 요약해줘" — 문서명 있음 → 키워드로 RAG 검색
+        print(f"[DocumentAgent] 문서 검색어 추출: '{_search_query}' (원본: '{user_input}')")
+        search_results, _, _, _rag_status = await _retrieve_context(_search_query, user_id, user_team, top_k=5)
 
         if search_results:
             # document_id 기준 중복 제거
@@ -169,14 +196,14 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
                 print(f"[DocumentAgent] RAG {len(unique_docs)}개 매칭 → 선택지 제공")
                 return {
                     "type": "doc_pick",
-                    "message": f"'{user_input}' 관련 문서가 {len(unique_docs)}건 있습니다. 요약할 문서를 선택해주세요:",
+                    "message": f"'{_search_query}' 관련 문서가 {len(unique_docs)}건 있습니다. 요약할 문서를 선택해주세요:",
                     "documents": unique_docs,
                     "model_name": "RAG (문서 식별)",
                 }
 
-        # RAG로도 못 찾으면 전체 목록 제공 (기존 fallback)
+        # RAG로도 못 찾으면 전체 목록 제공
         if not document_content:
-            print("[DocumentAgent] RAG 식별 실패 → 전체 문서 목록 조회")
+            print(f"[DocumentAgent] '{_search_query}' RAG 식별 실패 → 전체 문서 목록 조회")
             try:
                 from ai.rag.qdrant_pipeline import get_qdrant_pipeline
                 pipeline = get_qdrant_pipeline()
@@ -187,7 +214,7 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
                 doc_list = []
             return {
                 "type": "doc_pick",
-                "message": "어떤 문서를 요약할까요? 아래에서 선택해주세요:",
+                "message": f"'{_search_query}' 관련 문서를 찾지 못했습니다. 아래에서 선택해주세요:",
                 "documents": doc_list,
                 "model_name": "RAG (문서 목록)",
             }
