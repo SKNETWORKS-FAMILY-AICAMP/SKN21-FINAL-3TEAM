@@ -691,8 +691,9 @@ async def _parse_schedule_input(user_input: str) -> dict:
         else:
             parsed["schedule_type"] = "meeting"
 
-    # LLM이 title을 비워둔 경우, user_input에서 핵심어 추출
-    if not parsed.get("title"):
+    # LLM이 title을 비워두거나 원문 그대로 넣은 경우, user_input에서 핵심어 추출
+    _raw_title = (parsed.get("title") or "").strip()
+    if not _raw_title or _raw_title == user_input.strip():
         _t_clean = re.sub(
             r'(내일|모레|글피|오늘|다음\s*주|이번\s*주|저번\s*주|지난\s*주|오전|오후|저녁|아침|점심)'
             r'|\d{1,2}\s*시간?\s*(뒤|후|있다가|있다)|\d{1,2}\s*분\s*(뒤|후)'
