@@ -9,7 +9,6 @@ from app.models.document import Document as _Document
 
 from ai.agents.document._common import (
     _call_llm,
-    _retrieve_context,
     truncate_by_paragraph,
 )
 
@@ -21,6 +20,26 @@ async def _get_document(document_id: int):
         return result.scalar_one_or_none()
 
 
+async def _list_all_documents(user_id: int = None) -> list:
+    """DB에서 전체 문서 목록 조회 (최신순)"""
+    try:
+        async with _AsyncSessionLocal() as db:
+            stmt = sa_select(_Document.id, _Document.title).where(
+                _Document.status != "processing"
+            ).order_by(_Document.created_at.desc())
+            if user_id:
+                stmt = stmt.where(
+                    (_Document.uploaded_by == user_id) | (_Document.scope != "personal")
+                )
+            result = await db.execute(stmt)
+            rows = result.all()
+            print(f"[DocumentAgent] DB 전체 문서 목록 {len(rows)}개 조회됨")
+            return [{"document_id": r.id, "title": r.title} for r in rows]
+    except Exception as e:
+        print(f"[DocumentAgent] DB 문서 목록 조회 실패: {e}")
+        return []
+
+
 async def _search_by_title(query: str, user_id: int = None) -> list:
     """DB에서 제목에 검색어가 포함된 문서 조회"""
     async with _AsyncSessionLocal() as db:
@@ -30,7 +49,7 @@ async def _search_by_title(query: str, user_id: int = None) -> list:
         )
         if user_id:
             stmt = stmt.where(
-                (_Document.uploaded_by == user_id) | (_Document.access_level != "private")
+                (_Document.uploaded_by == user_id) | (_Document.scope != "personal")
             )
         result = await db.execute(stmt)
         rows = result.all()
@@ -162,27 +181,18 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
         _search_query = re.sub(r"\s+", " ", _search_query).strip()
 
         if not _search_query:
-            # 케이스 1: "문서 요약해줘" — 문서명 미지정 → 전체 목록
-            print("[DocumentAgent] 문서명 미지정 → 전체 문서 목록 조회")
-            try:
-                from ai.rag.qdrant_pipeline import get_qdrant_pipeline
-                pipeline = get_qdrant_pipeline()
-                doc_list = pipeline.list_documents(source="documents", user_id=user_id)
-                print(f"[DocumentAgent] Qdrant 문서 목록 {len(doc_list)}개 조회됨")
-            except Exception as e:
-                print(f"[DocumentAgent] Qdrant 문서 목록 조회 실패: {e}")
-                doc_list = []
+            # 케이스 1: "문서 요약해줘" — 문서명 미지정 → DB 전체 목록
+            print("[DocumentAgent] 문서명 미지정 → DB 전체 문서 목록 조회")
+            doc_list = await _list_all_documents(user_id)
             return {
                 "type": "doc_pick",
                 "message": "어떤 문서를 요약할까요? 아래에서 선택해주세요:",
                 "documents": doc_list,
-                "model_name": "RAG (문서 목록)",
+                "model_name": "DB (문서 목록)",
             }
 
-        # 케이스 2: "ERP 제안서 요약해줘" — 문서명 있음
+        # 케이스 2: "ERP 제안서 요약해줘" — 문서명 있음 → DB 제목 매칭
         print(f"[DocumentAgent] 문서 검색어 추출: '{_search_query}' (원본: '{user_input}')")
-
-        # 2-1: DB에서 제목 매칭 먼저 시도 (RAG보다 정확)
         try:
             title_matches = await _search_by_title(_search_query, user_id)
             if len(title_matches) == 1:
@@ -205,62 +215,17 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
                     "model_name": "DB (제목 검색)",
                 }
         except Exception as e:
-            print(f"[DocumentAgent] 제목 매칭 실패 (RAG fallback): {e}")
+            print(f"[DocumentAgent] 제목 매칭 실패: {e}")
 
-        # 2-2: 제목 매칭 실패 시 RAG 검색
-        search_results, _, _, _rag_status = await _retrieve_context(_search_query, user_id, user_team, top_k=5)
-
-        if search_results:
-            # document_id 기준 중복 제거
-            seen = set()
-            unique_docs = []
-            for r in search_results:
-                did = r.get("document_id")
-                if did and did not in seen:
-                    seen.add(did)
-                    unique_docs.append({"document_id": did, "title": r.get("title", ""), "score": r.get("score", 0)})
-
-            if len(unique_docs) == 1:
-                matched_id = unique_docs[0]["document_id"]
-                print(f"[DocumentAgent] RAG 1개 매칭 → document_id={matched_id} 전체 content 조회")
-                try:
-                    doc = await _get_document(matched_id)
-                    if doc and doc.content:
-                        document_content = doc.content
-                        document_id = matched_id
-                        print(f"[DocumentAgent] DB content 확보: {len(document_content)}자")
-                        cached = _format_cached_summary(doc)
-                        if cached:
-                            print(f"[DocumentAgent] DB 요약 사용 (document_id={document_id}, {time.time()-_t:.2f}s)")
-                            return cached
-                except Exception as e:
-                    print(f"[DocumentAgent] DB content 조회 실패: {e}")
-
-            elif len(unique_docs) > 1:
-                print(f"[DocumentAgent] RAG {len(unique_docs)}개 매칭 → 선택지 제공")
-                return {
-                    "type": "doc_pick",
-                    "message": f"'{_search_query}' 관련 문서가 {len(unique_docs)}건 있습니다. 요약할 문서를 선택해주세요:",
-                    "documents": unique_docs,
-                    "model_name": "RAG (문서 식별)",
-                }
-
-        # RAG로도 못 찾으면 전체 목록 제공
+        # 제목 매칭 0건 → 전체 목록
         if not document_content:
-            print(f"[DocumentAgent] '{_search_query}' RAG 식별 실패 → 전체 문서 목록 조회")
-            try:
-                from ai.rag.qdrant_pipeline import get_qdrant_pipeline
-                pipeline = get_qdrant_pipeline()
-                doc_list = pipeline.list_documents(source="documents", user_id=user_id)
-                print(f"[DocumentAgent] Qdrant 문서 목록 {len(doc_list)}개 조회됨")
-            except Exception as e:
-                print(f"[DocumentAgent] Qdrant 문서 목록 조회 실패: {e}")
-                doc_list = []
+            print(f"[DocumentAgent] '{_search_query}' 제목 매칭 실패 → DB 전체 목록")
+            doc_list = await _list_all_documents(user_id)
             return {
                 "type": "doc_pick",
                 "message": f"'{_search_query}' 관련 문서를 찾지 못했습니다. 아래에서 선택해주세요:",
                 "documents": doc_list,
-                "model_name": "RAG (문서 목록)",
+                "model_name": "DB (문서 목록)",
             }
 
     # ── DB에 이미 요약이 있으면 바로 반환 (sLLM 호출 스킵) ──
