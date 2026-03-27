@@ -23,7 +23,7 @@ const isLoraModel = (name) => {
   return name.toLowerCase().includes('lora') || name.toLowerCase().includes('kanana');
 };
 
-export default function GenerateCard({ title, templateType, fields = [], actionItems = [], downloadUrl, onDownload, modelName, regulationCheck, warnings, suggestedSchedules = [] }) {
+export default function GenerateCard({ title, templateType, fields = [], actionItems = [], actionLabel = 'Action Items', downloadUrl, onDownload, modelName, regulationCheck, warnings, suggestedSchedules = [] }) {
   const typeLabels = { meeting_minutes: '회의록', report: '보고서', jd: '채용 공고', proposal: '제안서' };
   const displayModel = formatModel(modelName);
   const lora = isLoraModel(modelName);
@@ -47,10 +47,10 @@ export default function GenerateCard({ title, templateType, fields = [], actionI
       </div>
 
       <div className="p-4">
-        {/* Action Items (회의록만) */}
+        {/* Action Items / 주요 업무 */}
         {actionItems.length > 0 && (
           <div className="mb-4">
-            <div className="text-[0.8125rem] font-semibold text-neutral-sub mb-2">Action Items</div>
+            <div className="text-[0.8125rem] font-semibold text-neutral-sub mb-2">{actionLabel}</div>
             <div className="space-y-1.5">
               {actionItems.map((item, i) => (
                 <div key={i} className="flex items-start gap-2 text-[0.8125rem]">

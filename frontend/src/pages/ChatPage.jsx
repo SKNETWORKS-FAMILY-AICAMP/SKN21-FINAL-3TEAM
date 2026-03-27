@@ -302,10 +302,19 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
         }
       };
 
-      // 회의록이면 action_items 전달
-      const actionItems = data.template_type === 'meeting_minutes'
-        ? (data.action_items || docData.action_items || [])
-        : [];
+      // 회의록: action_items, 보고서: tasks → 통일된 형태로 전달
+      let actionItems = [];
+      let actionLabel = 'Action Items';
+      if (data.template_type === 'meeting_minutes') {
+        actionItems = data.action_items || docData.action_items || [];
+      } else if (data.template_type === 'report') {
+        actionLabel = '주요 업무';
+        const tasks = docData.tasks || [];
+        actionItems = tasks.map((t) => typeof t === 'string'
+          ? { task: t, assignee: '', due_date: '' }
+          : { task: t.item || t.task || t.content || '', assignee: t.assignee || '', due_date: t.end_date || t.due_date || '' }
+        ).filter((t) => t.task);
+      }
 
       const schedules = data.suggested_schedules || [];
 
@@ -316,6 +325,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
             templateType={data.template_type}
             fields={[]}
             actionItems={actionItems}
+            actionLabel={actionLabel}
             onDownload={handleDocDownload}
             modelName={data.model_name || ''}
             regulationCheck={data.regulation_check}
