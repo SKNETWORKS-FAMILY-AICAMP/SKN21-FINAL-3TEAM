@@ -4389,6 +4389,11 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
   - `schedule_agent.py:167-191` — `_find_free_date()` 함수 신규 추가: 이전 schedule_view 결과에서 이번 주 평일 중 일정 없는 날 계산
   - `schedule_agent.py:194-205` — `_handle_schedule_add()`에 `prev_context` 파라미터 추가, "비는 날" 감지 시 자동 날짜 설정
 
+#### 18) Intent 분류 모호 시 clarify 메시지에서 번호+퍼센트 목록 제거 (`orchestrator.py`)
+
+- **문제**: Intent 후보가 2개일 때 텍스트로 "1. 문서 검색/조회/요약 (60%) 2. 규정 판단 (38%)" 표시 + 아래에 버튼도 중복 표시
+- **수정**: `orchestrator.py:648` — `message`에서 번호 목록 제거, "다음 중 어느 것에 가까운가요?"만 표시. 선택지는 `candidates` 필드의 버튼으로만 노출.
+
 ### 다음 할 일
 
 - [ ] "비는 날" 자동 계산 + DatePicker 교체 EC2 배포 후 동작 확인
