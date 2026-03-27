@@ -5,7 +5,7 @@ import asyncio
 
 from fastapi import APIRouter, Depends, Body, HTTPException, Query
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_admin_user
@@ -348,12 +348,35 @@ async def delete_user(
     admin: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """사용자 삭제 (관리자 전용)"""
+    """사용자 삭제 (관리자 전용) — 연관 데이터 CASCADE 삭제"""
+    from sqlalchemy import text
+
     if user_id == admin.id:
         raise HTTPException(status_code=400, detail="본인 계정은 삭제할 수 없습니다")
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다")
+
+    # FK 연관 데이터 삭제 (users 테이블 참조하는 모든 테이블)
+    fk_deletes = [
+        "DELETE FROM chat_logs WHERE user_id = :uid",
+        "DELETE FROM chat_sessions WHERE user_id = :uid",
+        "DELETE FROM schedules WHERE user_id = :uid",
+        "DELETE FROM documents WHERE uploaded_by = :uid",
+        "DELETE FROM document_templates WHERE uploaded_by = :uid",
+        "DELETE FROM judgments WHERE user_id = :uid",
+        "DELETE FROM action_items WHERE assignee_id = :uid OR created_by = :uid",
+        "DELETE FROM messages WHERE sender_id = :uid OR receiver_id = :uid",
+        "DELETE FROM oauth_tokens WHERE user_id = :uid",
+        "DELETE FROM google_sheet_trackers WHERE user_id = :uid",
+        "DELETE FROM approval_requests WHERE target_user_id = :uid OR requester_id = :uid",
+        "DELETE FROM pipeline_tasks WHERE assignee_id = :uid OR created_by = :uid",
+        "DELETE FROM projects WHERE created_by = :uid",
+        "DELETE FROM meetings WHERE created_by = :uid",
+    ]
+    for sql in fk_deletes:
+        await db.execute(text(sql), {"uid": user_id})
+
     await db.delete(user)
     return {"detail": "사용자가 삭제되었습니다"}
