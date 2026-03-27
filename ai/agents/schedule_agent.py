@@ -691,6 +691,21 @@ async def _parse_schedule_input(user_input: str) -> dict:
         else:
             parsed["schedule_type"] = "meeting"
 
+    # LLM이 title을 비워둔 경우, user_input에서 핵심어 추출
+    if not parsed.get("title"):
+        _t_clean = re.sub(
+            r'(내일|모레|글피|오늘|다음\s*주|이번\s*주|저번\s*주|지난\s*주|오전|오후|저녁|아침|점심)'
+            r'|\d{1,2}\s*시간?\s*(뒤|후|있다가|있다)|\d{1,2}\s*분\s*(뒤|후)'
+            r'|반\s*시간\s*(뒤|후)|\d{1,2}\s*일\s*(뒤|후)|\d{1,2}\s*시(\s*\d{1,2}\s*분)?'
+            r'|(월|화|수|목|금|토|일)\s*요일'
+            r'|잡아줘|등록해줘|추가해줘|넣어줘|만들어줘|해줘|잡아|등록|추가|넣어|잡고'
+            r'|비는\s*날에?|빈\s*날에?',
+            '', user_input
+        ).strip()
+        _t_clean = re.sub(r'^에\s*', '', _t_clean).strip()
+        if _t_clean:
+            parsed["title"] = _t_clean
+
     # LLM이 null로 반환한 경우 → 시간 불명확, 그대로 둠 (되물어보기 트리거)
     start_time = parsed.get("start_time")
     if start_time is None:
