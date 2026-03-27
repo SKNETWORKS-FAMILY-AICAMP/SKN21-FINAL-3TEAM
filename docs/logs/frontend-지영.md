@@ -4394,7 +4394,29 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 - **문제**: Intent 후보가 2개일 때 텍스트로 "1. 문서 검색/조회/요약 (60%) 2. 규정 판단 (38%)" 표시 + 아래에 버튼도 중복 표시
 - **수정**: `orchestrator.py:648` — `message`에서 번호 목록 제거, "다음 중 어느 것에 가까운가요?"만 표시. 선택지는 `candidates` 필드의 버튼으로만 노출.
 
+#### 19) Intent clarify 버튼 선택 시 사용자 메시지 중복 표시 제거 (`ChatPage.jsx`)
+
+- **문제**: Intent 후보 버튼(문서 검색/조회/요약, 규정 판단) 클릭 시 원본 질문이 사용자 채팅으로 한 번 더 표시됨
+- **원인**: clarify 버튼 onClick이 `handleSend(originalQuery, { forceIntent })` 호출 → `silent` 옵션 없이 전송되어 사용자 메시지 버블 추가
+- **수정**: `ChatPage.jsx:519` — `{ forceIntent: c.intent }` → `{ forceIntent: c.intent, silent: true }` 추가. silent 모드는 사용자 메시지 버블 없이 API만 호출.
+
+#### 20) 발표자료 v2 트러블슈팅 섹션 개편 (`presentation_v2.html`)
+
+- Planner 트러블슈팅 카드 → 판단 Agent와 동일한 테이블 형태(#, 문제, 원인, 해결)로 통일
+- 심각도 컬럼 제거 (두 테이블 모두)
+- Intent 분류 모델 트러블슈팅 추가 (koelectra 과적합 → roberta-large 교체)
+- Intent + Planner를 "sLLM 파인튜닝 트러블슈팅 — 2건"으로 합침 (문서 Agent 공간 확보)
+- v6 재학습 대실패 항목 삭제, 판단 Agent 번호 3→2로 변경
+
+#### 21) 발표자료 v2 레이아웃 조정
+
+- 한계점 및 향후 계획: `min-h-screen` 추가
+- 솔루션 페이지: `min-h-screen` 추가
+- 왜 sLLM인가?: 카드 패딩/간격 축소(`p-8`→`p-6`, `gap-8`→`gap-6`)로 한 화면에 맞춤
+- Nav dots 순서 수정: `rag`, `ft-document`, `ft-judgment` dot 추가 + 실제 섹션 순서 1:1 매칭
+
 ### 다음 할 일
 
+- [ ] 문서 Agent 트러블슈팅 내용 받아서 추가
 - [ ] "비는 날" 자동 계산 + DatePicker 교체 EC2 배포 후 동작 확인
 - [ ] 3-step PARTIAL 3건 intent hint 매칭 수정 (요약/정리 → doc_generate)
