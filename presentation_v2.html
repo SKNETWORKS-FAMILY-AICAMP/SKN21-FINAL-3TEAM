@@ -50,6 +50,7 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
   <a href="#result-judgment" class="nav-dot"><span class="nav-tooltip">판단 성과</span></a>
   <a href="#result-docgen" class="nav-dot"><span class="nav-tooltip">문서생성 성과</span></a>
   <a href="#result-summary" class="nav-dot"><span class="nav-tooltip">문서요약 성과</span></a>
+  <a href="#troubleshooting" class="nav-dot"><span class="nav-tooltip">트러블슈팅</span></a>
   <a href="#limitations" class="nav-dot"><span class="nav-tooltip">한계점</span></a>
   <a href="#roadmap" class="nav-dot"><span class="nav-tooltip">마일스톤</span></a>
 </nav>
@@ -117,12 +118,16 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
           <span class="font-display text-2xl font-bold text-primary-300 group-hover:text-primary-700 w-10 text-right transition-colors">09</span>
           <span class="text-base text-neutral-main group-hover:text-primary-900 font-medium transition-colors">배포 아키텍처</span>
         </a>
-        <a href="#limitations" class="flex items-center gap-5 py-3 group">
+        <a href="#troubleshooting" class="flex items-center gap-5 py-3 group">
           <span class="font-display text-2xl font-bold text-primary-300 group-hover:text-primary-700 w-10 text-right transition-colors">10</span>
+          <span class="text-base text-neutral-main group-hover:text-primary-900 font-medium transition-colors">Trouble Shooting</span>
+        </a>
+        <a href="#limitations" class="flex items-center gap-5 py-3 group">
+          <span class="font-display text-2xl font-bold text-primary-300 group-hover:text-primary-700 w-10 text-right transition-colors">11</span>
           <span class="text-base text-neutral-main group-hover:text-primary-900 font-medium transition-colors">한계점 &amp; 향후 계획</span>
         </a>
         <a href="#roadmap" class="flex items-center gap-5 py-3 group">
-          <span class="font-display text-2xl font-bold text-primary-300 group-hover:text-primary-700 w-10 text-right transition-colors">11</span>
+          <span class="font-display text-2xl font-bold text-primary-300 group-hover:text-primary-700 w-10 text-right transition-colors">12</span>
           <span class="text-base text-neutral-main group-hover:text-primary-900 font-medium transition-colors">마일스톤 &amp; Q&amp;A</span>
         </a>
       </div>
@@ -1406,10 +1411,104 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
   </div>
 </section>
 
+<!-- ========== 트러블슈팅 ========== -->
+<section id="troubleshooting" class="py-20 gradient-section">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-14"><span class="tag bg-error/10 text-error mb-4">15</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">Trouble Shooting</h2><p class="text-neutral-sub text-sm mt-3">개발 과정에서 만난 핵심 문제와 해결 과정</p></div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+      <!-- TS-1: Planner judgment↔doc_retrieve 혼동 -->
+      <div class="bg-white border border-neutral-divider rounded-2xl p-6">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-error/10 text-error font-bold text-sm">1</span>
+          <h3 class="font-semibold text-primary-900">Planner judgment &harr; doc_retrieve 혼동</h3>
+        </div>
+        <div class="bg-error/5 border border-error/20 rounded-lg p-3 mb-4">
+          <p class="text-xs font-medium text-error mb-1">Problem</p>
+          <p class="text-xs text-neutral-sub">"규정 찾아서 판단해줘"에서 judgment와 doc_retrieve를 혼동 &mdash; <strong>15건 오분류</strong></p>
+          <p class="text-xs text-neutral-muted mt-1">LoRA로 학습해도 베이스 모델(Kanana 8B)의 "규정 = 검색" 사전지식을 덮어쓸 수 없음</p>
+        </div>
+        <div class="mb-4">
+          <p class="text-xs font-medium text-neutral-sub mb-2">시도한 해결책 (전부 실패)</p>
+          <div class="space-y-1">
+            <div class="flex items-center gap-2 text-xs"><span class="text-error">&#10005;</span><span class="text-neutral-sub">+121건 judgment 데이터 보강 &rarr; 12건 그대로</span></div>
+            <div class="flex items-center gap-2 text-xs"><span class="text-error">&#10005;</span><span class="text-neutral-sub">프롬프트에 구분 기준 명시 &rarr; 12건 여전</span></div>
+            <div class="flex items-center gap-2 text-xs"><span class="text-error">&#10005;</span><span class="text-neutral-sub">5-label 전환 (합치기) &rarr; PM 34.7% 대폭락</span></div>
+          </div>
+        </div>
+        <div class="bg-success/5 border border-success/20 rounded-lg p-3 mb-3">
+          <p class="text-xs font-medium text-success mb-1">Solution &mdash; 발상의 전환</p>
+          <p class="text-xs text-neutral-sub">"모델을 바꾸지 말고, 모델 출력을 바꾸자"</p>
+          <p class="text-xs text-neutral-sub mt-1">학습은 6-label 유지 &rarr; 서빙에서만 judgment + doc_retrieve &rarr; <code class="bg-neutral-100 px-1 rounded text-[10px]">knowledge_query</code>로 후처리 매핑</p>
+          <p class="text-xs font-semibold text-success mt-2">혼동 12건 전부 해소 &middot; PM 69.5% &rarr; 83.2% (+13.7%p)</p>
+        </div>
+        <div class="bg-primary-50 rounded-lg px-3 py-2">
+          <p class="text-[10px] text-primary-700 italic">"모델 구조를 억지로 바꾸는 것보다 후처리로 우회하는 게 답일 때가 있다"</p>
+        </div>
+      </div>
+
+      <!-- TS-2: Planner v6 재학습 대실패 -->
+      <div class="bg-white border border-neutral-divider rounded-2xl p-6">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-error/10 text-error font-bold text-sm">2</span>
+          <h3 class="font-semibold text-primary-900">Planner v6 재학습 대실패 (87% &rarr; 64%)</h3>
+        </div>
+        <div class="bg-error/5 border border-error/20 rounded-lg p-3 mb-4">
+          <p class="text-xs font-medium text-error mb-1">Problem</p>
+          <p class="text-xs text-neutral-sub">v5(87.0%)에서 더 올리려고 <strong>3가지를 동시에 변경</strong></p>
+          <div class="flex flex-wrap gap-1 mt-2">
+            <span class="bg-neutral-100 text-[10px] text-neutral-sub px-2 py-0.5 rounded-full">lr 낮추기</span>
+            <span class="bg-neutral-100 text-[10px] text-neutral-sub px-2 py-0.5 rounded-full">MLP target_modules 추가</span>
+            <span class="bg-neutral-100 text-[10px] text-neutral-sub px-2 py-0.5 rounded-full">judgment 오답 57건 보강</span>
+          </div>
+        </div>
+        <div class="mb-4">
+          <p class="text-xs font-medium text-error mb-2">PM 87% &rarr; 64% 폭락</p>
+          <div class="grid grid-cols-3 gap-2">
+            <div class="bg-surface-main rounded-lg p-2 text-center"><p class="text-[10px] text-neutral-muted">Perfect Match</p><p class="text-xs"><span class="text-success">71.0%</span> &rarr; <span class="text-error font-bold">64.0%</span></p></div>
+            <div class="bg-surface-main rounded-lg p-2 text-center"><p class="text-[10px] text-neutral-muted">과잉 분리</p><p class="text-xs"><span class="text-success">5건</span> &rarr; <span class="text-error font-bold">9건</span></p></div>
+            <div class="bg-surface-main rounded-lg p-2 text-center"><p class="text-[10px] text-neutral-muted">Step Collapse</p><p class="text-xs"><span class="text-success">9.4%</span> &rarr; <span class="text-error font-bold">11.3%</span></p></div>
+          </div>
+        </div>
+        <div class="bg-warning/5 border border-warning/20 rounded-lg p-3 mb-3">
+          <p class="text-xs font-medium text-warning mb-1">Root Cause</p>
+          <p class="text-xs text-neutral-sub">MLP + judgment 보강이 모델을 judgment 과잉 예측으로 밀어버림</p>
+          <p class="text-xs text-neutral-sub mt-1">v5: judgment &rarr; doc_retrieve 15건 &middot; v6: 반대로 doc_retrieve &rarr; judgment 11건</p>
+        </div>
+        <div class="bg-primary-50 rounded-lg px-3 py-2">
+          <p class="text-[10px] text-primary-700 italic">"한 번에 여러 변수를 바꾸면 뭐가 원인인지 알 수 없다. v6 폐기, v5 유지"</p>
+        </div>
+      </div>
+
+      <!-- TS-3: 다른 팀원 트러블슈팅 (추가 예정) -->
+      <!--
+      <div class="bg-white border border-neutral-divider rounded-2xl p-6">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-error/10 text-error font-bold text-sm">3</span>
+          <h3 class="font-semibold text-primary-900">제목</h3>
+        </div>
+      </div>
+      -->
+
+      <!-- TS-4: 다른 팀원 트러블슈팅 (추가 예정) -->
+      <!--
+      <div class="bg-white border border-neutral-divider rounded-2xl p-6">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-error/10 text-error font-bold text-sm">4</span>
+          <h3 class="font-semibold text-primary-900">제목</h3>
+        </div>
+      </div>
+      -->
+
+    </div>
+  </div>
+</section>
+
 <!-- ========== 한계점 및 향후 계획 ========== -->
 <section id="limitations" class="py-20 gradient-section">
   <div class="max-w-6xl mx-auto px-6">
-    <div class="text-center mb-14"><span class="tag bg-warning/10 text-warning mb-4">15</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">한계점 및 향후 계획</h2></div>
+    <div class="text-center mb-14"><span class="tag bg-warning/10 text-warning mb-4">16</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">한계점 및 향후 계획</h2></div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
       <!-- 한계점 -->
@@ -1488,7 +1587,7 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
 <!-- ========== 13. ROADMAP ========== -->
 <section id="roadmap" class="min-h-screen flex items-center py-16 gradient-section">
   <div class="max-w-6xl mx-auto px-6">
-    <div class="text-center mb-16"><span class="tag bg-primary-50 text-primary-700 mb-4">16</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">마일스톤</h2></div>
+    <div class="text-center mb-16"><span class="tag bg-primary-50 text-primary-700 mb-4">17</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">마일스톤</h2></div>
     <div class="max-w-3xl mx-auto space-y-0">
       <div class="flex gap-4 md:gap-6"><div class="flex flex-col items-center"><div class="w-10 h-10 rounded-full bg-primary-700 text-white flex items-center justify-center font-display font-bold text-sm shrink-0">1</div><div class="w-0.5 flex-1 bg-primary-100"></div></div><div class="pb-8"><h4 class="font-semibold text-primary-900">설계 및 환경 세팅</h4><p class="text-sm text-neutral-sub mt-1">API 스키마, AgentState, 모델 비교, DB 설계</p><span class="tag bg-success/10 text-success mt-2">완료</span></div></div>
       <div class="flex gap-4 md:gap-6"><div class="flex flex-col items-center"><div class="w-10 h-10 rounded-full bg-primary-700 text-white flex items-center justify-center font-display font-bold text-sm shrink-0">2</div><div class="w-0.5 flex-1 bg-primary-100"></div></div><div class="pb-8"><h4 class="font-semibold text-primary-900">기반 개발 + LLM API 연동</h4><p class="text-sm text-neutral-sub mt-1">RAG, LLM 공통 모듈, JWT 인증, 기본 UI</p><span class="tag bg-success/10 text-success mt-2">완료</span></div></div>
@@ -1522,7 +1621,7 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
 
 <script>
 (function(){
-  const ids=['hero','toc','problem','solution','why-sllm','team','tech','architecture','agents','agent-judgment','agent-document','agent-schedule','data','rag','base-limit','finetuning','ft-document','ft-judgment','result-judgment','result-docgen','result-summary','limitations','roadmap'];
+  const ids=['hero','toc','problem','solution','why-sllm','team','tech','architecture','agents','agent-judgment','agent-document','agent-schedule','data','rag','base-limit','finetuning','ft-document','ft-judgment','result-judgment','result-docgen','result-summary','troubleshooting','limitations','roadmap'];
   const dots=document.querySelectorAll('#navDots .nav-dot');
   let cur=0;
   const obs=new IntersectionObserver(entries=>{
