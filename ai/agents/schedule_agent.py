@@ -544,6 +544,7 @@ async def _handle_schedule_view(user_input: str, user_id: int) -> dict:
                 "start": s.start_time.isoformat() if s.start_time else "",
                 "end": s.end_time.isoformat() if s.end_time else "",
                 "schedule_type": s.schedule_type,
+                "google_event_id": s.google_event_id,
                 "source": "db",
             })
     except Exception as e:
@@ -562,15 +563,42 @@ async def _handle_schedule_view(user_input: str, user_id: int) -> dict:
                 time_max=parsed.get("time_max"),
             )
 
+        # Google Calendar을 source of truth로 사용하여 DB 이벤트 동기화
+        google_event_map = {ev.get("event_id"): ev for ev in raw_events}
+
+        # DB 이벤트 중 google_event_id가 있는 것은 Google 기준으로 갱신/제거
+        synced_db_events = []
+        synced_google_ids = set()
+        for ev in db_events:
+            gid = ev.get("google_event_id")
+            if gid and gid in google_event_map:
+                # Google에서 수정된 이벤트 → Google 버전으로 갱신
+                g_ev = google_event_map[gid]
+                ev["title"] = g_ev.get("title", ev["title"])
+                ev["start"] = g_ev.get("start", ev["start"])
+                ev["end"] = g_ev.get("end", ev["end"])
+                synced_db_events.append(ev)
+                synced_google_ids.add(gid)
+            elif gid and gid not in google_event_map:
+                # Google에서 삭제된 이벤트 → 제외
+                continue
+            else:
+                # google_event_id 없는 로컬 전용 이벤트 → 유지
+                synced_db_events.append(ev)
+        db_events = synced_db_events
+
         # schedule_type 필터: Google Calendar 이벤트는 제목 키워드로 판별
         _meeting_kw = ("회의", "미팅", "meeting", "스탠드업", "킥오프")
         _deadline_kw = ("마감", "데드라인", "deadline", "제출")
 
         db_titles = {e["title"] for e in db_events}
         for ev in raw_events:
+            event_id = ev.get("event_id", "")
             title = ev.get("title", "")
+            if event_id in synced_google_ids:
+                continue  # 이미 DB 이벤트로 반영됨
             if title in db_titles:
-                continue  # DB에 이미 있는 것은 중복 제거
+                continue  # 제목 기반 중복 제거
             if schedule_type == "meeting" and not any(kw in title for kw in _meeting_kw):
                 continue
             if schedule_type == "deadline" and not any(kw in title for kw in _deadline_kw):
