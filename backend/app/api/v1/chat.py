@@ -603,9 +603,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                             if not skip_token and intent not in ("general", "doc_retrieve", "doc_search", "doc_summary", "judgment", "compound"):
                                 yield f"data: {json.dumps({'type': 'token', 'value': message}, ensure_ascii=False)}\n\n"
 
-                            # clarify/template_pick 등 중간 상태는 원래 agent intent 유지 (프론트 AgentIndicator용)
-                            result_intent = intent if resp_type in ("clarify", "template_pick") else resp_type
-                            yield f"data: {json.dumps({'type': 'result', 'intent': result_intent, 'data': agent_response}, ensure_ascii=False)}\n\n"
+                            yield f"data: {json.dumps({'type': 'result', 'intent': resp_type, 'data': agent_response}, ensure_ascii=False)}\n\n"
 
                     else:
                         # 기타 노드 완료 시 상태 업데이트
