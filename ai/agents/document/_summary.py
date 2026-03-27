@@ -136,13 +136,14 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
 
     # 문서 내용이 없으면 문서 식별 시도
     if not document_content:
-        # 요약 키워드를 제거하여 실질적 검색어 추출
+        # 요약 키워드 + 부가 표현 제거하여 실질적 검색어 추출
         _search_query = re.sub(
-            r"(문서|이\s*문서|위\s*문서)?\s*(요약|정리|핵심|간추리|간추려|줄여)\s*(해|해줘|해주세요|부탁|하자|할래|줘|주세요|좀)?",
+            r"(이\s*문서|위\s*문서|문서)?\s*(요약|정리|핵심|간추리|간추려|줄여)\s*(해줘|해주세요|해\s*줘|해\s*주세요|해|부탁|하자|할래|줘|주세요|좀)*",
             "", user_input
         ).strip()
-        # "있어?", "있나?", "찾아" 등 부가 표현 제거
-        _search_query = re.sub(r"\s*(있어\??|있나\??|찾아줘?|보여줘?|알려줘?)\s*", "", _search_query).strip()
+        _search_query = re.sub(r"\s*(있어\??|있나\??|있어요\??|찾아줘?|보여줘?|알려줘?|좀|줘|해줘)\s*", "", _search_query).strip()
+        # 남은 공백 정리
+        _search_query = re.sub(r"\s+", " ", _search_query).strip()
 
         if not _search_query:
             # 케이스 1: "문서 요약해줘" — 문서명 미지정 → 전체 목록
