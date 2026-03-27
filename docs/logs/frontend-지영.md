@@ -4344,6 +4344,14 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 - Vite 프록시 기본 대상을 `http://3.37.118.197:8000`(EC2) → `http://localhost:8000`(로컬)로 변경
 - 로컬 백엔드(`uvicorn`) + 프론트엔드(`npm run dev`) 실행 확인
 
+#### 14) 일정 추가 시 제목 누락 버그 수정 (`schedule_agent.py`)
+
+- **문제**: 복합질문의 sub_query "비는 날에 휴가 등록"에서 일정 제목이 "(제목 없음)"으로 표시
+  - 원인: LLM이 start_time은 반환하지만 title을 비워둔 경우, fallback 타이틀 추출이 타지 않는 코드 구조
+- **수정**: `_parse_schedule_input()`에서 LLM 파싱 후 title이 비어있으면 user_input에서 핵심어 추출하는 로직 추가
+  - 시간/날짜 키워드, 동작 동사(등록/추가/잡아 등), 조건 표현(비는 날/빈 날) 제거 → 남은 텍스트를 title로 사용
+- **결과**: "비는 날에 휴가 등록" → "휴가", "금요일에 리뷰 미팅 등록해줘" → "리뷰 미팅" 등 정상 추출
+
 ### 다음 할 일
 
 - [ ] 3-step PARTIAL 3건 intent hint 매칭 수정 (요약/정리 → doc_generate)
