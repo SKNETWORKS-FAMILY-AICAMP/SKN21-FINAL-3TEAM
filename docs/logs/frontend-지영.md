@@ -4290,9 +4290,21 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 - **기술 스택**: 4개 카드 → 한 줄 인라인 바 (색상 도트 + 텍스트)로 대폭 압축
 - **아키텍처**: `min-h-screen flex items-center` 적용하여 전체 화면 차지
 
+#### 8) Intent & Planner 트러블슈팅 문서 작성
+
+- `docs/intent_planner/intent_planner_troubleshooting.md` 생성
+- 작업로그 + model_test_report.html + planner_architecture.html 기반으로 핵심 트러블슈팅 4건 정리
+- **Part 1. Intent 분류 모델**:
+  - 1) koelectra 과적합 (Dev 90% vs Held-out 76.7%) → roberta-large 교체로 해소
+  - 2) 후보 모델 탐색 실패 — xlm-r(550M) seed 붕괴, DeBERTa 학습 불가 → roberta-large 확정
+- **Part 2. Planner 모델**:
+  - 5) judgment↔doc_retrieve 혼동 15건 → 후처리 매핑으로 전부 해소 (+13.7%p)
+  - 6) v6 재학습 대실패 (87%→64%) → 변수 동시 변경 금지 교훈, v5 유지
+- 중요도 낮은 항목(Held-out 60→100건 폭락, 앙상블 가중치 소실+ONNX) 제외
+
 ### 다음 할 일
 
-- [ ] 트러블슈팅 (07) 실제 내용 채우기
+- [ ] 트러블슈팅 (07) 실제 내용 채우기 (발표자료 HTML에 반영)
 - [ ] 데모 시나리오 (09) 실제 내용 채우기
 - [ ] 이미지 base64 임베딩 (파일 하나로 공유 가능하게)
 - [ ] PPT 변환 작업
