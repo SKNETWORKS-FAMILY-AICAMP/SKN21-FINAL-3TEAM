@@ -4302,6 +4302,14 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
   - 6) v6 재학습 대실패 (87%→64%) → 변수 동시 변경 금지 교훈, v5 유지
 - 중요도 낮은 항목(Held-out 60→100건 폭락, 앙상블 가중치 소실+ONNX) 제외
 
+#### 9) presentation_v2.html 구조 정리 + 색상 통일
+
+- **RAG 검색 흐름 색상 통일** — accent/warning/success 혼용 → primary 그라데이션(900→700→500→300)으로 왼쪽 데이터 적재와 통일
+- **개발 전략 섹션 삭제** (id="dev-strategy")
+- **배포 아키텍처 섹션 삭제** (id="deploy")
+- **목차를 presentation.html과 동일하게 교체** — 2컬럼 그리드, 11개 항목 (Overview/Architecture/AI·Data/Engineering/Result/Closing), max-w-5xl
+- nav dots + JS IntersectionObserver ID 목록도 함께 정리
+
 ### 다음 할 일
 
 - [ ] 트러블슈팅 (07) 실제 내용 채우기 (발표자료 HTML에 반영)
