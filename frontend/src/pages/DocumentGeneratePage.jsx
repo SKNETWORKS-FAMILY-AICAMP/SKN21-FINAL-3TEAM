@@ -806,7 +806,7 @@ export default function DocumentGeneratePage() {
                     onChange={(e) => handleFieldChange(field.key, e.target.value)}
                     rows={3}
                     onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px'; }}
-                    placeholder={field.description || `${field.label || field.key}을(를) 입력하세요`}
+                    placeholder={field.description && !field.description.includes('{') ? field.description : `${field.label || field.key}을(를) 입력하세요`}
                     className={`w-full px-3.5 py-2.5 border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[200px] ${borderClass}`}
                   />
                 ) : (
@@ -814,7 +814,7 @@ export default function DocumentGeneratePage() {
                     type={field.type === 'date' ? 'date' : 'text'}
                     value={value}
                     onChange={(e) => handleFieldChange(field.key, e.target.value)}
-                    placeholder={field.description || `${field.label || field.key}을(를) 입력하세요`}
+                    placeholder={field.description && !field.description.includes('{') ? field.description : `${field.label || field.key}을(를) 입력하세요`}
                     className={`w-full px-3.5 py-2.5 border rounded-md text-sm outline-none focus:border-primary-500 ${borderClass}`}
                   />
                 )}
