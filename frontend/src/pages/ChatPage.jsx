@@ -529,19 +529,20 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
     }
 
     default: {
-      const isFirstAssistantCard = messages.findIndex(m => m.role === 'assistant') === index;
       const alreadyHasGuide = messages.some(m => m.role === 'assistant' && m.content === USAGE_GUIDE_TEXT);
       const prevUserMsg = messages.slice(0, index).reverse().find(m => m.role === 'user');
-      const isGreeting = prevUserMsg && /^(안녕|하이|hello|hi)\b/i.test(prevUserMsg.content?.trim());
-      // 짧은 일반 응답에서 문장 사이 빈 줄(\n\n) 제거 → 줄바꿈만 유지
-      const cleanContent = content ? content.replace(/\n{2,}/g, '  \n') : content;
+      const isGreeting = prevUserMsg && /^(안녕|하이|hello|hi)|사용법|도움말|뭐.*할.*수|어떻게.*써/i.test(prevUserMsg.content?.trim());
+      const GREETING_TEXT = '안녕하세요! 듀드입니다.\n오늘도 업무에 도움이 필요하신가요?\n궁금한 점이나 요청 사항을 말씀해 주세요.';
+      // 일반 응답: 문단 간격 없이 줄바꿈만 유지
+      const cleanContent = content ? content.replace(/\(?\s*업무와\s*관련된\s*질문만\s*부탁드립니다\.?\s*\)?\s*\n?/g, '').replace(/\n+/g, '  \n').trim() : content;
+      const displayContent = isGreeting ? GREETING_TEXT : cleanContent;
       return (
         <div>
-          <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
-            <MarkdownText>{cleanContent}</MarkdownText>
-            {isFirstAssistantCard && !alreadyHasGuide && isGreeting && (
+          <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-line">
+            {displayContent}
+            {!alreadyHasGuide && isGreeting && (
               <>
-                <p className="mt-2 text-neutral-sub text-sm">사용법이 궁금하시면 아래 <strong>사용법</strong> 버튼을 눌러주세요.</p>
+                <p className="mt-4 text-neutral-sub text-sm">사용법이 궁금하시면 아래 <strong>사용법</strong> 버튼을 눌러주세요.</p>
                 <button
                   onClick={() => useChatStore.getState().addMessage({ role: 'assistant', content: USAGE_GUIDE_TEXT })}
                   className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-primary-300 bg-primary-50 text-primary-700 text-xs font-semibold hover:bg-primary-100 transition"
@@ -932,15 +933,14 @@ export default function ChatPage() {
 
               // AI 완료 — 기본 텍스트 버블
               // "안녕하세요" 인사일 때만 사용법 버튼 표시
-              const isFirstAssistant = messages.findIndex(m => m.role === 'assistant') === i;
               const prevUser = messages.slice(0, i).reverse().find(m => m.role === 'user');
-              const isGreetingMsg = prevUser && /^(안녕|하이|hello|hi)\b/i.test(prevUser.content?.trim());
-              const cleanedContent = msg.content ? msg.content.replace(/\n{2,}/g, '  \n') : msg.content;
+              const isGreetingMsg = prevUser && /^(안녕|하이|hello|hi)|사용법|도움말|뭐.*할.*수|어떻게.*써/i.test(prevUser.content?.trim());
+              const cleanedContent = msg.content ? msg.content.replace(/\n{2,}/g, '\n') : msg.content;
               return (
                 <MessageBubble key={i} type="bot" intent={msg.intent} modelName={msg.agentResponse?.model_name}>
                   <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed">
                     <MarkdownText>{cleanedContent}</MarkdownText>
-                    {isFirstAssistant && !messages.some(m => m.role === 'assistant' && m.content === USAGE_GUIDE_TEXT) && isGreetingMsg && (
+                    {!messages.some(m => m.role === 'assistant' && m.content === USAGE_GUIDE_TEXT) && isGreetingMsg && (
                       <>
                         <p className="mt-2 text-neutral-sub text-sm">사용법이 궁금하시면 아래 <strong>사용법</strong> 버튼을 눌러주세요.</p>
                         <button
