@@ -4319,8 +4319,34 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 - **Judgment Agent 상세 가로 전환** — 세로 7단 → 상단 4칸 그리드 + 하단 3칸 (4중보조 | Confidence | 최종응답), PPT 비율 적용
 - **팀 구성 사이즈업** — 아바타 w-28→w-36, 이름/역할 text-sm→text-base, 설명 text-xs→text-sm
 - **안혜빈 역할 수정** — "인증", "멀티 Agent 기능 강화" 제거 → "FastAPI + DB + Google API 연동"
+
+#### 11) 3-step 복합질문 Step Collapse 버그 수정 (`intent_classifier.py`)
+
+- **문제**: `_split_compound_text()`가 3-step 질문을 항상 2-step으로 축소 (Step Collapse)
+  - 원인: `re.split` 후 첫 매치만 분리하고 나머지를 `"".join(segments[2:])`로 합쳐버리는 구조
+- **수정**:
+  - verb 연결(`~하고/~주고`) + 순차 연결(`~해서`) 패턴을 **통합 패턴**으로 합침
+  - 모든 매치 지점에서 분리하도록 반복문으로 변경 (`for i in range(0, len(segments)-1, 2)`)
+  - 누락 패턴 추가: "잡고"(`잡`+`고`), "보고"(`보`+`고`)
+- **결과**: 3-step 테스트 10건 중 **0/10 → 7/10 PASS** (3건 PARTIAL은 intent hint 매칭 문제)
+
+#### 12) 발표자료 Trouble Shooting 섹션 추가 (`presentation_v2.html`)
+
+- **섹션 15번으로 삽입** (성과 뒤, 한계점 전)
+  - 카드 1: Planner judgment↔doc_retrieve 혼동 → 후처리 매핑 해결 (+13.7%p)
+  - 카드 2: Planner v6 재학습 대실패 (87→64%) → v5 유지 결정
+  - 카드 3~4: 다른 팀원용 빈 슬롯 (주석 처리)
+- **목차에 10번 Trouble Shooting 추가** (한계점 11, 마일스톤 12로 밀림)
+- **네비게이션** dot + IntersectionObserver ids에 `troubleshooting` 추가
+
+#### 13) 로컬 프론트엔드 ↔ 백엔드 연결 (`vite.config.js`)
+
+- Vite 프록시 기본 대상을 `http://3.37.118.197:8000`(EC2) → `http://localhost:8000`(로컬)로 변경
+- 로컬 백엔드(`uvicorn`) + 프론트엔드(`npm run dev`) 실행 확인
+
 ### 다음 할 일
 
-- [ ] 트러블슈팅 (07) 실제 내용 채우기 (발표자료 HTML에 반영)
+- [ ] 3-step PARTIAL 3건 intent hint 매칭 수정 (요약/정리 → doc_generate)
 - [ ] 데모 시나리오 (09) 실제 내용 채우기
 - [ ] 이미지 base64 임베딩 (파일 하나로 공유 가능하게)
+- [ ] E2E 멀티스텝 테스트 4-step / 5-step 진행
