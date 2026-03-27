@@ -4,7 +4,7 @@
 
 **멘토**: 최민수
 
-**팀원**: 신지용(PM) | 윤경은(AI Engineer) | 진승언(AI Engineer) | 안혜빈(Backend) | 문지영(Frontend)
+**팀원**: 신지용(PM) | 윤경은(AI Engineer) | 진승언(AI Engineer) | 안혜빈(Backend) | 문지영(Frontend/AI Engineer)
 
 ---
 
@@ -781,7 +781,7 @@ SKN21-FINAL-3TEAM/
 | **윤경은** (AI Engineer) | 파인튜닝 v1 + 판단 + RAG | `judgment_agent.py`, `ai/rag/*`, LoRA v1, vLLM 서빙 |
 | **진승언** (AI Engineer) | 파인튜닝 v2 + 문서 Agent | `document_agent.py`, `ai/templates/*`, `document_parser/*`, LoRA v2 |
 | **안혜빈** (Backend) | DB + 인증 + 일정 Agent | `models/*`, `services/*`, JWT, Google Services 통합, 관리자 API |
-| **문지영** (Frontend) | React UI 전담 | `frontend/src/` 전체, SSE 수신, 카드 UI, 반응형 |
+| **문지영** (Frontend) | React UI 전담 + Intent 분류 + Task Planner LoRA 파인튜닝 | frontend, SSE 실시간 스트리밍, 복합질문 멀티에이전트, Intent 앙상블|  
 
 ---
 
@@ -796,7 +796,7 @@ main (배포용 - PM 지용만 머지)
       ├── feat/ai-경은          LLM API, RAG, 판단 Agent, 파인튜닝
       ├── feat/ai-승언          문서 Agent, 파서, 템플릿, 파인튜닝
       ├── feat/backend-혜빈     DB, 인증, API, Google Services
-      └── feat/frontend-지영    전체 UI
+      └── feat/frontend-지영    React UI, 멀티라벨 Intent 분류(RoBERTa-large), Task Planner LoRA 파인튜닝(Kanana-1.5-8B) 
 ```
 
 ### 커밋 컨벤션
