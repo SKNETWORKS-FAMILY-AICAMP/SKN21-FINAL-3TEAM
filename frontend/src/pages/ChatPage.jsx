@@ -516,7 +516,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
               {candidates.map((c, idx) => (
                 <button
                   key={idx}
-                  onClick={() => onSelectClarify?.(originalQuery || c.query || c.label, { forceIntent: c.intent })}
+                  onClick={() => onSelectClarify?.(originalQuery || c.query || c.label, { forceIntent: c.intent, silent: true })}
                   className="px-3 py-1.5 text-xs bg-primary-50 text-primary-700 rounded-full border border-primary-200 hover:bg-primary-100 transition"
                 >
                   {typeof c === 'string' ? c : c.label || c.query}
