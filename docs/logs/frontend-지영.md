@@ -4344,17 +4344,19 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 - Vite 프록시 기본 대상을 `http://3.37.118.197:8000`(EC2) → `http://localhost:8000`(로컬)로 변경
 - 로컬 백엔드(`uvicorn`) + 프론트엔드(`npm run dev`) 실행 확인
 
-#### 14) 일정 추가 시 제목 누락 버그 수정 (`schedule_agent.py`)
+#### 14) 일정 추가 시 제목 누락 버그 수정 (`schedule_agent.py`) — 2단계 수정
 
 - **문제**: 복합질문의 sub_query "비는 날에 휴가 등록"에서 일정 제목이 "(제목 없음)"으로 표시
-  - 원인: LLM이 start_time은 반환하지만 title을 비워둔 경우, fallback 타이틀 추출이 타지 않는 코드 구조
-- **수정**: `_parse_schedule_input()`에서 LLM 파싱 후 title이 비어있으면 user_input에서 핵심어 추출하는 로직 추가
-  - 시간/날짜 키워드, 동작 동사(등록/추가/잡아 등), 조건 표현(비는 날/빈 날) 제거 → 남은 텍스트를 title로 사용
-- **결과**: "비는 날에 휴가 등록" → "휴가", "금요일에 리뷰 미팅 등록해줘" → "리뷰 미팅" 등 정상 추출
+- **원인 1차**: LLM이 title을 비워두거나 공백으로 반환할 때 fallback 타이틀 추출이 안 타는 구조
+  - 수정: `.strip()` 체크 + 원문 비교 조건 추가, 시간/동작/조건 키워드 제거 regex로 핵심어 추출
+- **원인 2차 (근본 원인)**: `_APPROVAL_KEYWORDS`에 "휴가"가 포함 → `_classify_add_type()`이 "approval" 반환 → `_handle_approval_create`으로 빠져서 `_parse_schedule_input` 자체가 호출 안 됨
+  - 수정: compound sub_query(`force_intent` 있음)일 때 2차 분류 건너뛰고 `_handle_schedule_add` 직행
+- **결과**: "비는 날에 휴가 등록" → 제목 "휴가 등록"으로 정상 표시
+- **참고**: 챗봇 일정 조회 시 Google Calendar에서 삭제한 이벤트가 여전히 표시되는 현상 발견 (캘린더 앱에서는 삭제됨) — 캐시 또는 API 동기화 문제로 추정
 
 ### 다음 할 일
 
 - [ ] 3-step PARTIAL 3건 intent hint 매칭 수정 (요약/정리 → doc_generate)
+- [ ] 챗봇 일정 조회 시 삭제된 이벤트 표시 문제 조사
 - [ ] 데모 시나리오 (09) 실제 내용 채우기
-- [ ] 이미지 base64 임베딩 (파일 하나로 공유 가능하게)
 - [ ] E2E 멀티스텝 테스트 4-step / 5-step 진행

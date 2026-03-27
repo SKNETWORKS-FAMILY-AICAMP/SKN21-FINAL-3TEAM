@@ -96,14 +96,19 @@ async def schedule_agent(state: AgentState) -> AgentState:
 
     try:
         if intent == "schedule_add":
-            # 키워드 기반 2차 분기: 일정 / 태스크 / 결재
-            sub_type = _classify_add_type(user_input)
-            if sub_type == "pipeline":
-                response_data = await _handle_pipeline_create(user_input, user_id, user_team=state.get("user_team"))
-            elif sub_type == "approval":
-                response_data = await _handle_approval_create(user_input, user_id, user_team=state.get("user_team"))
-            else:
+            # 복합질문 sub_query(force_intent)면 2차 분류 건너뜀 → 일정 추가 직행
+            force_intent = state.get("force_intent")
+            if force_intent:
                 response_data = await _handle_schedule_add(user_input, user_id)
+            else:
+                # 키워드 기반 2차 분기: 일정 / 태스크 / 결재
+                sub_type = _classify_add_type(user_input)
+                if sub_type == "pipeline":
+                    response_data = await _handle_pipeline_create(user_input, user_id, user_team=state.get("user_team"))
+                elif sub_type == "approval":
+                    response_data = await _handle_approval_create(user_input, user_id, user_team=state.get("user_team"))
+                else:
+                    response_data = await _handle_schedule_add(user_input, user_id)
         elif intent == "schedule_view":
             response_data = await _handle_schedule_view(user_input, user_id)
         elif intent == "schedule_followup":
