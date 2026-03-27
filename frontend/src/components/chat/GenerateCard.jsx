@@ -47,6 +47,10 @@ export default function GenerateCard({ title, templateType, fields = [], actionI
       </div>
 
       <div className="p-4">
+        {/* 내용 없을 때 완료 메시지 */}
+        {actionItems.length === 0 && (
+          <p className="text-sm text-neutral-sub mb-3">문서가 생성되었습니다. 다운로드하여 확인해주세요.</p>
+        )}
         {/* Action Items / 주요 업무 */}
         {actionItems.length > 0 && (
           <div className="mb-4">
