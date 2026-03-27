@@ -918,8 +918,20 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div class="bg-white border-2 border-error/30 rounded-2xl p-6">
         <div class="flex items-center gap-2 mb-4"><div class="w-8 h-8 rounded-lg bg-error/10 flex items-center justify-center"><svg class="w-4 h-4 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></div><h3 class="font-display font-bold text-primary-900">판단 Agent</h3></div>
-        <div class="bg-error/5 rounded-xl p-4 mb-4"><p class="text-[10px] text-neutral-muted mb-1">입력: "회의실 예약 없이 사용해도 되나?"</p><p class="text-[11px] text-error font-medium">규정이 없는 질문인데 "yes/no"로 답변</p><p class="text-[10px] text-neutral-sub mt-2">no_regulation 감지율: <strong class="text-error">6%</strong> (67건 중 4건만 정답)</p></div>
-        <div class="space-y-2"><div class="flex justify-between text-xs"><span class="text-neutral-muted">정확도</span><span class="font-bold text-error">37.2%</span></div><div class="flex justify-between text-xs"><span class="text-neutral-muted">JSON 유효율</span><span class="font-bold text-error">70.4%</span></div><div class="flex justify-between text-xs"><span class="text-neutral-muted">yes 정답률</span><span class="text-error">42%</span></div><div class="flex justify-between text-xs"><span class="text-neutral-muted">no 정답률</span><span class="text-error">48%</span></div></div>
+        <div class="bg-error/5 rounded-xl p-4 mb-3">
+          <p class="text-[10px] text-neutral-muted mb-1">입력: "인턴에게 AWS 접근 권한 줘도 돼?"</p>
+          <pre class="text-[9px] text-error font-mono mt-1 whitespace-pre-wrap">{"result": "yes",        // 오답 (정답: conditional)
+ "confidence": 0.92,     // 과신
+ "regulations": [{"article": "제12조"}]
+ // ← 제12조는 미존재 (환각)
+ // ← conditions, alternatives 누락}</pre>
+        </div>
+        <div class="space-y-1.5">
+          <div class="flex justify-between text-[11px]"><span class="text-neutral-muted">정확도</span><span class="font-bold text-error">37.2%</span></div>
+          <div class="flex justify-between text-[11px]"><span class="text-neutral-muted">JSON 유효율</span><span class="font-bold text-error">70.4%</span></div>
+          <div class="flex justify-between text-[11px]"><span class="text-neutral-muted">no_regulation</span><span class="font-bold text-error">6% (67건 중 4건)</span></div>
+          <div class="flex justify-between text-[11px]"><span class="text-neutral-muted">confidence</span><span class="text-error">항상 0.9+ (과신)</span></div>
+        </div>
       </div>
       <div class="bg-white border-2 border-error/30 rounded-2xl p-6">
         <div class="flex items-center gap-2 mb-4"><div class="w-8 h-8 rounded-lg bg-error/10 flex items-center justify-center"><svg class="w-4 h-4 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></div><h3 class="font-display font-bold text-primary-900">문서생성 Agent</h3></div>
@@ -1170,7 +1182,7 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
 <!-- ========== 08-3. 판단 파인튜닝 ========== -->
 <section id="ft-judgment" class="py-20 bg-white">
   <div class="max-w-6xl mx-auto px-6">
-    <div class="text-center mb-14"><span class="tag bg-primary-50 text-primary-700 mb-4">11-3</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">판단 Agent 파인튜닝</h2><p class="text-neutral-sub text-sm mt-3">Kanana-1.5-8B + LoRA &middot; 7회 실험 &middot; Base 37.2% &rarr; 최종 85.4% (+48.2%p)</p></div>
+    <div class="text-center mb-14"><span class="tag bg-primary-50 text-primary-700 mb-4">11-3</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">판단 Agent 파인튜닝</h2><p class="text-neutral-sub text-sm mt-3">Kanana-1.5-8B + LoRA &middot; 3단계 실험 &middot; Base 37.2% &rarr; 최종 85.4% (+48.2%p)</p></div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
 
@@ -1210,50 +1222,24 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
 
       <!-- 우측: 실험 과정 + 최종 결과 -->
       <div class="space-y-6">
-        <!-- 실험 타임라인 -->
+        <!-- 3단계 실험 과정 (성공 → 실패 → 극복) -->
         <div class="bg-surface-main border border-neutral-divider rounded-2xl p-6">
-          <h3 class="font-semibold text-primary-900 text-base mb-4">7회 실험 과정</h3>
-          <div class="space-y-2">
-            <div class="flex items-center gap-3">
-              <div class="bg-neutral-divider text-neutral-sub rounded px-2.5 py-1 text-[10px] font-medium shrink-0 w-36 text-center">Base (파인튜닝 전)</div>
-              <div class="flex-1 bg-neutral-divider rounded-full h-2"><div class="bg-neutral-muted h-2 rounded-full" style="width:37.2%"></div></div>
-              <span class="text-xs font-semibold w-12 text-right text-neutral-muted">37.2%</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <div class="bg-primary-300 text-primary-900 rounded px-2.5 py-1 text-[10px] font-medium shrink-0 w-36 text-center">v1 하드코딩 3ep</div>
-              <div class="flex-1 bg-neutral-divider rounded-full h-2"><div class="bg-primary-700 h-2 rounded-full" style="width:86.6%"></div></div>
-              <span class="text-xs font-semibold w-12 text-right">86.6%</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <div class="bg-neutral-divider text-neutral-sub rounded px-2.5 py-1 text-[10px] font-medium shrink-0 w-36 text-center">v2 보강 98건</div>
-              <div class="flex-1 bg-neutral-divider rounded-full h-2"><div class="bg-neutral-muted h-2 rounded-full" style="width:83.4%"></div></div>
-              <span class="text-xs font-semibold w-12 text-right text-neutral-muted">83.4%</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <div class="bg-neutral-divider text-neutral-sub rounded px-2.5 py-1 text-[10px] font-medium shrink-0 w-36 text-center">v1 RAG 1ep</div>
-              <div class="flex-1 bg-neutral-divider rounded-full h-2"><div class="bg-neutral-muted h-2 rounded-full" style="width:76.8%"></div></div>
-              <span class="text-xs font-semibold w-12 text-right text-neutral-muted">76.8%</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <div class="bg-neutral-divider text-neutral-sub rounded px-2.5 py-1 text-[10px] font-medium shrink-0 w-36 text-center">v1 RAG 3ep</div>
-              <div class="flex-1 bg-neutral-divider rounded-full h-2"><div class="bg-neutral-muted h-2 rounded-full" style="width:77.1%"></div></div>
-              <span class="text-xs font-semibold w-12 text-right text-neutral-muted">77.1%</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <div class="bg-primary-300 text-primary-900 rounded px-2.5 py-1 text-[10px] font-medium shrink-0 w-36 text-center">v1 하드코딩 재학습</div>
-              <div class="flex-1 bg-neutral-divider rounded-full h-2"><div class="bg-primary-500 h-2 rounded-full" style="width:83.5%"></div></div>
-              <span class="text-xs font-semibold w-12 text-right">83.5%</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <div class="bg-primary-300 text-primary-900 rounded px-2.5 py-1 text-[10px] font-medium shrink-0 w-36 text-center">v3 conditional 보강</div>
-              <div class="flex-1 bg-neutral-divider rounded-full h-2"><div class="bg-primary-500 h-2 rounded-full" style="width:84.5%"></div></div>
-              <span class="text-xs font-semibold w-12 text-right">84.5%</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <div class="bg-success text-white rounded px-2.5 py-1 text-[10px] font-bold shrink-0 w-36 text-center">v3 RunPod 최종</div>
-              <div class="flex-1 bg-neutral-divider rounded-full h-2"><div class="bg-success h-2 rounded-full" style="width:85.4%"></div></div>
-              <span class="text-xs font-bold w-12 text-right text-success">85.4%</span>
-            </div>
+          <h3 class="font-semibold text-primary-900 text-base mb-4">3단계 실험 과정</h3>
+          <table class="w-full text-[11px] mb-4">
+            <thead><tr class="bg-primary-700 text-white"><th class="px-2 py-1.5 rounded-tl-lg text-left">단계</th><th class="px-2 py-1.5 text-left">실험</th><th class="px-2 py-1.5 text-center">정확도</th><th class="px-2 py-1.5 rounded-tr-lg text-left">핵심</th></tr></thead>
+            <tbody>
+              <tr class="border-b border-neutral-divider bg-neutral-divider/30"><td class="px-2 py-2 text-neutral-muted">Base</td><td class="px-2 py-2">파인튜닝 전</td><td class="px-2 py-2 text-center text-neutral-muted">37.2%</td><td class="px-2 py-2 text-neutral-muted">기준점</td></tr>
+              <tr class="border-b border-neutral-divider"><td class="px-2 py-2 font-bold text-success">1. 성공</td><td class="px-2 py-2">v1 하드코딩 3ep</td><td class="px-2 py-2 text-center font-bold text-success">86.6%</td><td class="px-2 py-2"><span class="text-success">+49.4%p</span> 최초 파인튜닝</td></tr>
+              <tr class="border-b border-neutral-divider bg-error/5"><td class="px-2 py-2 font-bold text-error">2-a. 실패</td><td class="px-2 py-2">v2 +98건 보강</td><td class="px-2 py-2 text-center text-error">83.4%</td><td class="px-2 py-2">라벨 품질 낮아 <span class="text-error">-3.2%p</span></td></tr>
+              <tr class="border-b border-neutral-divider bg-error/5"><td class="px-2 py-2 font-bold text-error">2-b. 실패</td><td class="px-2 py-2">v1 RAG 전환</td><td class="px-2 py-2 text-center text-error">76.8%</td><td class="px-2 py-2">RAG 노이즈로 <span class="text-error">-9.8%p</span></td></tr>
+              <tr><td class="px-2 py-2 font-bold text-primary-700">3. 극복</td><td class="px-2 py-2">v3 19건 정밀 보강</td><td class="px-2 py-2 text-center font-bold text-primary-700">85.4%</td><td class="px-2 py-2">재량표현 14건 + 경계 5건 타겟</td></tr>
+            </tbody>
+          </table>
+          <!-- 인사이트 3칸 -->
+          <div class="grid grid-cols-3 gap-2">
+            <div class="bg-white border border-neutral-divider rounded-lg p-2.5 text-center"><p class="text-[10px] font-semibold text-primary-900">데이터 양 &lt; 질</p><p class="text-[9px] text-neutral-sub mt-0.5">98건 추가 &rarr; 하락<br>19건 정밀 &rarr; +1.9%p</p></div>
+            <div class="bg-white border border-neutral-divider rounded-lg p-2.5 text-center"><p class="text-[10px] font-semibold text-primary-900">하드코딩 &gt; RAG</p><p class="text-[9px] text-neutral-sub mt-0.5">RAG 전환 &rarr; -9.8%p<br>서빙 시 RAG를 정제 삽입</p></div>
+            <div class="bg-white border border-neutral-divider rounded-lg p-2.5 text-center"><p class="text-[10px] font-semibold text-primary-900">약점 집중 보강</p><p class="text-[9px] text-neutral-sub mt-0.5">conditional 47% &rarr; 78%<br>재량표현+경계 19건 타겟</p></div>
           </div>
         </div>
 
@@ -1275,24 +1261,7 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
       </div>
     </div>
 
-    <!-- 핵심 인사이트 -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <div class="bg-surface-main border border-neutral-divider rounded-xl p-4">
-        <p class="font-semibold text-primary-900 text-xs mb-2">Base &rarr; LoRA 효과</p>
-        <p class="text-[11px] text-neutral-sub">37.2% &rarr; 85.4% (+48.2%p). 특히 no_regulation 6% &rarr; 97% 극적 개선</p>
-      </div>
-      <div class="bg-surface-main border border-neutral-divider rounded-xl p-4">
-        <p class="font-semibold text-primary-900 text-xs mb-2">하드코딩 &gt; RAG 컨텍스트</p>
-        <p class="text-[11px] text-neutral-sub">RAG 전환 시 10%p 하락. 서빙 시 RAG 결과를 하드코딩 형식으로 정제하여 삽입</p>
-      </div>
-      <div class="bg-surface-main border border-neutral-divider rounded-xl p-4">
-        <p class="font-semibold text-primary-900 text-xs mb-2">데이터 양 &lt; 질</p>
-        <p class="text-[11px] text-neutral-sub">v2 +98건 &rarr; 하락. v3 +19건 정밀 추가 &rarr; +1.9%p 상승. 타겟 보강이 핵심</p>
-      </div>
-      <div class="bg-surface-main border border-neutral-divider rounded-xl p-4">
-        <p class="font-semibold text-primary-900 text-xs mb-2">conditional 병목</p>
-        <p class="text-[11px] text-neutral-sub">판단 경계 모호. 재량 표현 14건 + 경계 5건 보강으로 47% &rarr; 78% 개선</p>
-      </div>
+    <!-- 핵심 인사이트는 3단계 실험 테이블 하단의 3칸 카드로 통합됨 -->
     </div>
   </div>
 </section>
@@ -1300,26 +1269,89 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
 <!-- ========== 판단 Agent 성과 ========== -->
 <section id="result-judgment" class="py-20 bg-white">
   <div class="max-w-5xl mx-auto px-6">
-    <div class="text-center mb-14"><span class="tag bg-success/10 text-success mb-4">12</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">판단 Agent 성과</h2><p class="text-neutral-sub text-sm mt-3">LoRA v3 &middot; Kanana-1.5-8B &middot; 7회 실험</p></div>
+    <div class="text-center mb-14"><span class="tag bg-success/10 text-success mb-4">12</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">판단 Agent 성과</h2><p class="text-neutral-sub text-sm mt-3">LoRA v1_judgment &middot; Kanana-1.5-8B &middot; 동일 질문 + 동일 RAG 컨텍스트 비교</p></div>
+
+    <!-- 수치 리마인드 -->
     <div class="flex flex-wrap justify-center gap-4 mb-8">
       <div class="bg-surface-main rounded-xl px-6 py-3 text-center"><p class="text-xs text-neutral-muted">정확도</p><p class="text-sm"><span class="text-error line-through">37.2%</span> &rarr; <span class="font-bold text-success text-lg">85.4%</span></p><p class="text-[10px] text-success font-medium">+48.2%p</p></div>
       <div class="bg-surface-main rounded-xl px-6 py-3 text-center"><p class="text-xs text-neutral-muted">JSON 유효율</p><p class="text-sm"><span class="text-error line-through">70.4%</span> &rarr; <span class="font-bold text-success text-lg">97.6%</span></p><p class="text-[10px] text-success font-medium">+27.2%p</p></div>
       <div class="bg-surface-main rounded-xl px-6 py-3 text-center"><p class="text-xs text-neutral-muted">no_regulation</p><p class="text-sm"><span class="text-error line-through">6%</span> &rarr; <span class="font-bold text-success text-lg">97%</span></p><p class="text-[10px] text-success font-medium">+91%p</p></div>
     </div>
-    <div class="bg-surface-main border border-neutral-divider rounded-2xl p-6">
-      <h4 class="font-semibold text-primary-900 text-sm mb-4">LoRA 실제 출력 예시</h4>
+
+    <!-- LoRA 실제 출력 예시 (경은님 상세 비교) -->
+    <div class="bg-surface-main border border-neutral-divider rounded-2xl p-6 mb-6">
+      <h4 class="font-semibold text-primary-900 text-sm mb-2">입력: "인턴에게 AWS 콘솔 접근 권한을 줘도 되나요?"</h4>
+      <p class="text-[10px] text-neutral-muted mb-4">+ RAG 컨텍스트: 정보보안규정 제5장, 인사규정 제8조 등</p>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div><p class="text-[10px] text-neutral-muted mb-2">입력</p><div class="bg-white border border-neutral-divider rounded-lg p-3"><p class="text-xs text-primary-900">"인턴에게 AWS 접근 권한 줘도 돼?"</p></div></div>
-        <div><p class="text-[10px] text-neutral-muted mb-2">LoRA 출력</p><div class="bg-white border border-success/30 rounded-lg p-3"><pre class="text-[10px] text-primary-900 whitespace-pre-wrap font-mono leading-relaxed">{
-  "result": "no",
-  "confidence": 0.92,
-  "reasoning": "보안규정에 따라 인턴은 AWS 콘솔 접근 불가",
-  "evidence": [
-    {"source": "보안규정", "article": "제15조",
-     "content": "접근권한 부여 기준..."}
-  ],
-  "alternatives": ["읽기 전용 권한 신청 가능"]
+        <div><p class="text-[10px] text-error font-medium mb-2">Base 출력 (오답 + 환각)</p><div class="bg-white border border-error/30 rounded-lg p-3"><pre class="text-[9px] text-primary-900 whitespace-pre-wrap font-mono leading-relaxed">{
+  "result": "yes",          <span class="text-error">// 오답</span>
+  "confidence": 0.92,       <span class="text-error">// 과신</span>
+  "reasoning": "접근 권한 부여가 가능합니다",
+  "regulations": [
+    {"article": "제12조"}   <span class="text-error">// 미존재 (환각)</span>
+  ]
+  <span class="text-error">// conditions 없음, alternatives 없음</span>
 }</pre></div></div>
+        <div><p class="text-[10px] text-success font-medium mb-2">LoRA 출력 (정답 + 실존 근거)</p><div class="bg-white border border-success/30 rounded-lg p-3"><pre class="text-[9px] text-primary-900 whitespace-pre-wrap font-mono leading-relaxed">{
+  "result": "conditional",  <span class="text-success">// 정답</span>
+  "confidence": 0.78,       <span class="text-success">// 적절</span>
+  "reasoning": "수습기간 80% 이상 근무 후
+    제한적 접근 가능",
+  "regulations": [
+    {"article": "<span class="text-success">정보보안규정 제25조</span>"},
+    {"article": "<span class="text-success">인사규정 제8조</span>"}
+  ],
+  "conditions": "보안 교육 이수 + 부서장 승인",
+  "alternatives": ["테스트 환경 한정 접근"]
+}</pre></div></div>
+      </div>
+    </div>
+
+    <!-- GPT vs sLLM 비교 + 학습 상세 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      <div class="bg-white border border-neutral-divider rounded-2xl p-5">
+        <h4 class="font-semibold text-primary-900 text-sm mb-3 text-center">GPT-4o-mini vs Kanana sLLM</h4>
+        <div class="grid grid-cols-2 gap-2 text-center text-xs">
+          <div class="bg-surface-main rounded-lg p-2.5"><p class="text-neutral-muted mb-1">품질</p><p class="font-semibold">둘 다 100/100</p></div>
+          <div class="bg-surface-main rounded-lg p-2.5"><p class="text-neutral-muted mb-1">비용</p><p class="font-semibold text-success">sLLM: 0원</p><p class="text-[9px] text-neutral-muted">vs 종량 과금</p></div>
+          <div class="bg-surface-main rounded-lg p-2.5"><p class="text-neutral-muted mb-1">보안</p><p class="font-semibold text-success">프라이버시 보장</p><p class="text-[9px] text-neutral-muted">vs 외부 전송</p></div>
+          <div class="bg-surface-main rounded-lg p-2.5"><p class="text-neutral-muted mb-1">장애</p><p class="font-semibold text-success">Fallback &rarr; 0건</p><p class="text-[9px] text-neutral-muted">vs API 의존</p></div>
+        </div>
+      </div>
+      <div class="bg-white border border-neutral-divider rounded-2xl p-5">
+        <h4 class="font-semibold text-primary-900 text-sm mb-3">학습 &amp; RAG 상세</h4>
+        <div class="space-y-1.5 text-xs">
+          <div class="flex justify-between"><span class="text-neutral-muted">eval_loss</span><span class="font-semibold">0.1067</span></div>
+          <div class="flex justify-between"><span class="text-neutral-muted">학습 시간</span><span class="font-semibold">2h 20m (A100 80GB)</span></div>
+          <div class="flex justify-between"><span class="text-neutral-muted">RAG MRR</span><span class="font-semibold">0.636 &rarr; <span class="text-success">0.952</span> (+49.7%)</span></div>
+          <div class="flex justify-between"><span class="text-neutral-muted">규정 청크</span><span class="font-semibold">44 &rarr; <span class="text-success">270개</span> (6.1배)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 프롬프트 설계 -->
+    <div class="bg-surface-main border border-neutral-divider rounded-2xl p-5">
+      <h4 class="font-semibold text-primary-900 text-sm mb-3">프롬프트 설계</h4>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div>
+          <p class="text-[10px] text-neutral-muted mb-2">conditional 5가지 판단 기준</p>
+          <div class="space-y-1 text-[10px] text-neutral-sub">
+            <p>1. 사전 승인/허가 필요</p>
+            <p>2. 특정 조건 충족 시 허용</p>
+            <p>3. 여러 규정 &rarr; 상황따라 결과 다름</p>
+            <p>4. 규정 간 충돌 &rarr; 상위 규정 확인</p>
+            <p>5. "~할 수 있다" 재량 표현</p>
+          </div>
+        </div>
+        <div>
+          <p class="text-[10px] text-neutral-muted mb-2">confidence 4단계</p>
+          <div class="space-y-1 text-[10px]">
+            <div class="flex items-center gap-2"><div class="w-16 bg-success h-1.5 rounded-full"></div><span class="text-neutral-sub">0.9~1.0 명확 적용</span></div>
+            <div class="flex items-center gap-2"><div class="w-12 bg-primary-500 h-1.5 rounded-full"></div><span class="text-neutral-sub">0.7~0.9 해석 필요</span></div>
+            <div class="flex items-center gap-2"><div class="w-8 bg-warning h-1.5 rounded-full"></div><span class="text-neutral-sub">0.5~0.7 직접 적용 어려움</span></div>
+            <div class="flex items-center gap-2"><div class="w-4 bg-error h-1.5 rounded-full"></div><span class="text-neutral-sub">&lt;0.5 규정 없음</span></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
