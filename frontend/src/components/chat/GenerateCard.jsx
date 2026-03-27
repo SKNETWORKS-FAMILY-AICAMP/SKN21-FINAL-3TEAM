@@ -1,36 +1,74 @@
 import { useState } from 'react';
-import { AlertTriangle, CalendarPlus, Check, CheckCircle, Info, Loader2, Pencil } from 'lucide-react';
+import { AlertTriangle, CalendarPlus, Check, CheckCircle, ChevronDown, ChevronUp, Download, Info, Loader2, Pencil } from 'lucide-react';
 import { createSchedule } from '../../api/schedules';
 import { toast } from '../../store/toastStore';
 import Badge from '../common/Badge';
 
+// 모델명을 사용자 친화적으로 변환
+const formatModel = (name) => {
+  if (!name) return null;
+  const lower = name.toLowerCase();
+  // (placeholder) 제거
+  const cleaned = name.replace(/\s*\(placeholder\)/gi, '');
+  if (lower.includes('kanana') || lower.includes('lora')) return 'Kanana-1.5-8B';
+  if (lower.includes('gpt-4o-mini')) return 'GPT-4o-mini';
+  if (lower.includes('gpt-4o')) return 'GPT-4o';
+  if (lower.includes('gpt')) return cleaned;
+  return cleaned;
+};
+
+// LoRA 여부 판별
+const isLoraModel = (name) => {
+  if (!name) return false;
+  return name.toLowerCase().includes('lora') || name.toLowerCase().includes('kanana');
+};
+
 export default function GenerateCard({ title, templateType, fields = [], actionItems = [], downloadUrl, onDownload, modelName, regulationCheck, warnings, suggestedSchedules = [] }) {
   const typeLabels = { meeting_minutes: '회의록', report: '보고서', jd: '채용 공고', proposal: '제안서' };
+  const [showPreview, setShowPreview] = useState(false);
+
+  const displayModel = formatModel(modelName);
+  const lora = isLoraModel(modelName);
 
   return (
-    <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
+    <div className="bg-surface-card rounded-xl border border-neutral-border overflow-hidden shadow-sm">
+      {/* 헤더: 타이틀 + 모델 뱃지 */}
       <div className="px-4 py-3 border-b border-neutral-divider flex items-center justify-between">
-        <div className="flex items-center gap-2 font-bold text-sm text-primary-700">
-{title || '문서 생성 완료'}
+        <div className="font-bold text-sm text-primary-700">
+          {title || '문서 생성 완료'}
         </div>
         <div className="flex items-center gap-2">
-          {templateType && <Badge variant="document">{typeLabels[templateType] || templateType}</Badge>}
-          {modelName && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.6875rem] font-medium bg-violet-100 text-violet-700">
-              {modelName.includes('LoRA') ? '🔧 ' : '🤖 '}{modelName}
+          {displayModel && (
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.6875rem] font-medium ${
+              lora ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700'
+            }`}>
+              {lora ? 'sLLM' : 'LLM'} · {displayModel}
             </span>
           )}
         </div>
       </div>
+
       <div className="p-4">
+        {/* 문서 미리보기 (접힘/펼침) */}
         {fields.length > 0 && (
-          <div className="space-y-2 mb-4">
-            {fields.map((f, i) => (
-              <div key={i} className="text-[0.8125rem]">
-                <span className="font-semibold text-neutral-sub">{f.label}: </span>
-                <span className="text-neutral-main">{f.value}</span>
+          <div className="mb-4">
+            <button
+              onClick={() => setShowPreview(!showPreview)}
+              className="flex items-center gap-1.5 text-xs text-primary-700 font-medium hover:text-primary-900 transition mb-2"
+            >
+              {showPreview ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {showPreview ? '미리보기 접기' : '문서 미리보기'}
+            </button>
+            {showPreview && (
+              <div className="bg-surface-sub rounded-lg p-3 space-y-2 border border-neutral-divider">
+                {fields.map((f, i) => (
+                  <div key={i} className="text-[0.8125rem]">
+                    <span className="font-semibold text-primary-700">{f.label}</span>
+                    <p className="text-neutral-main mt-0.5 leading-relaxed">{f.value}</p>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
 
@@ -101,8 +139,9 @@ export default function GenerateCard({ title, templateType, fields = [], actionI
         <div className="flex gap-2">
           <button
             onClick={onDownload}
-            className="btn-primary text-xs"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary-700 text-white text-xs font-semibold transition-all hover:bg-primary-900 hover:shadow-md"
           >
+            <Download size={14} />
             다운로드
           </button>
           {downloadUrl && (
@@ -202,11 +241,11 @@ function ScheduleSuggestSection({ items }) {
         {editItems.map((item, idx) => (
           <div
             key={item._key}
-            className={`flex items-start gap-2 p-2.5 rounded-lg border text-xs transition-colors ${
+            className={`flex items-start gap-2 p-2.5 rounded-lg border text-xs transition-all ${
               item.registered
                 ? 'bg-green-50 border-green-200'
                 : item.checked
-                  ? 'bg-white border-blue-200'
+                  ? 'bg-white border-blue-200 hover:shadow-sm'
                   : 'bg-neutral-50 border-neutral-200 opacity-60'
             }`}
           >

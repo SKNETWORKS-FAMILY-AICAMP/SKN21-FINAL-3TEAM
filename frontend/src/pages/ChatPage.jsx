@@ -287,19 +287,29 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       const TEMPLATE_NAMES = { meeting_minutes: '회의록', report: '업무보고서', proposal: '제안서' };
       const templateName = data.template_name || TEMPLATE_NAMES[data.template_type] || '문서';
 
+      const arrToStr = (v) => {
+        if (Array.isArray(v)) return v.filter(Boolean).join(', ');
+        if (v && typeof v === 'object') return '';
+        return String(v || '');
+      };
       const fieldsMap = {
         meeting_minutes: [
           { label: '날짜', value: String(docData.date || '') },
-          { label: '참석자', value: Array.isArray(docData.attendees) ? docData.attendees.join(', ') : String(docData.attendees || '') },
+          { label: '참석자', value: arrToStr(docData.attendees) },
           { label: '요약', value: String(data.summary || docData.summary || '') },
+          { label: '결정사항', value: arrToStr(docData.decisions) },
         ],
         report: [
+          { label: '작성자', value: String(docData.author || '') },
           { label: '보고 개요', value: typeof docData.overview === 'string' ? docData.overview : '' },
+          { label: '주요 업무', value: typeof docData.main_content === 'string' ? docData.main_content : '' },
           { label: '향후 계획', value: typeof docData.next_plan === 'string' ? docData.next_plan : '' },
         ],
         proposal: [
           { label: '제안 배경', value: typeof docData.background === 'string' ? docData.background : '' },
           { label: '기대 효과', value: typeof docData.expected_effect === 'string' ? docData.expected_effect : '' },
+          { label: '일정', value: typeof docData.schedule === 'string' ? docData.schedule : '' },
+          { label: '예산', value: typeof docData.budget === 'string' ? docData.budget : '' },
         ],
       };
       const fields = (fieldsMap[data.template_type] || []).filter((f) => f.value);
