@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, Users, FolderOpen } from 'lucide-react';
 import TimeSelect, { addOneHour } from '../common/TimeSelect';
+import DatePicker from '../common/DatePicker';
 import MemberMultiSelect from '../common/MemberMultiSelect';
 import ScheduleCard from './ScheduleCard';
 import { createSchedule } from '../../api/schedules';
@@ -160,11 +161,10 @@ export default function ScheduleConfirmCard({ initialData, onConfirmed }) {
               </div>
               <div>
                 <label className="text-xs font-semibold text-neutral-sub block mb-1">날짜</label>
-                <input
-                  type="date"
+                <DatePicker
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-neutral-border rounded-lg text-sm bg-white dark:bg-neutral-800 outline-none focus:border-primary-500 transition"
+                  onChange={(d) => setDate(d)}
+                  placeholder="날짜 선택..."
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">

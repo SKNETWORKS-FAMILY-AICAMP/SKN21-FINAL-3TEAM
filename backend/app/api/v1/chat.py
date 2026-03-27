@@ -335,6 +335,7 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                                 "sub_queries": None,  # 재귀 방지
                                 "sub_responses": None,
                                 "force_intent": sq_hint,
+                                "prev_agent_context": all_sub_responses[-1]["response"] if all_sub_responses else None,
                             }
 
                             try:
