@@ -406,9 +406,9 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                   key={idx}
                   onClick={() => {
                     useChatStore.getState().setSelectedTemplate(tpl.template_id, tpl.name, data.template_type);
-                    onSelectClarify?.(originalQuery, { silent: true });
+                    onSelectClarify?.(originalQuery, { silent: true, forceIntent: 'doc_generate' });
                   }}
-                  className="p-3 bg-surface-card border border-neutral-border rounded-xl hover:bg-primary-50 hover:border-primary-300 transition text-left"
+                  className={`p-3 border rounded-xl transition text-left hover:shadow-md hover:border-primary-300 ${tpl.recommended ? 'bg-primary-50/50 border-primary-300' : 'bg-surface-card border-neutral-border hover:bg-primary-50'}`}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     {tpl.is_system ? (
@@ -416,18 +416,18 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
                     ) : (
                       <FileText size={14} className="text-primary-500" />
                     )}
-                    <span className="font-medium text-sm text-neutral-main">{tpl.name}</span>
+                    <span className="font-semibold text-sm text-neutral-main">{tpl.name}</span>
                     {tpl.recommended && (
                       <span className="px-1.5 py-0.5 text-[10px] bg-amber-100 text-amber-700 rounded font-medium">추천</span>
                     )}
-                    <span className="ml-auto text-xs text-neutral-muted">
-                      {tpl.is_system ? '시스템' : '업로드'}
+                    <span className="ml-auto text-[11px] text-neutral-muted">
+                      {tpl.is_system ? '기본' : '커스텀'}
                     </span>
                   </div>
                   {tpl.field_labels?.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {tpl.field_labels.map((label, i) => (
-                        <span key={i} className="px-1.5 py-0.5 text-xs bg-neutral-100 text-neutral-600 rounded">
+                        <span key={i} className="px-1.5 py-0.5 text-[11px] bg-primary-50 text-primary-700 rounded">
                           {label}
                         </span>
                       ))}
@@ -861,7 +861,7 @@ export default function ChatPage() {
 
               // 스트리밍 중이지만 result가 이미 도착한 경우 → 카드 UI로 바로 전환
               if ((isLastAssistant || isWaitingForResponse) && !(msg.agentResponse && msg.resultIntent)) {
-                const intent = currentIntent || msg.resultIntent || msg.intent || 'general';
+                const intent = msg.resultIntent || msg.intent || currentIntent || 'general';
                 const subType = useChatStore.getState().currentSubType;
 
                 // QA: 카드 스켈레톤 안에서 텍스트 스트리밍 (날것 → 카드 전환 방지)

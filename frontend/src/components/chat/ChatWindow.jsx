@@ -120,14 +120,15 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       mountedRef.current = true;
       if (messages && messages.length > 0) {
         markProgrammaticScroll();
-        container.scrollTop = container.scrollHeight;
+        container.scrollTo({ top: container.scrollHeight, behavior: 'instant' });
       }
     } else {
       // 사용자가 위로 스크롤한 상태면 자동 스크롤하지 않음
       const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
       if (isNearBottom) {
         markProgrammaticScroll();
-        container.scrollTop = container.scrollHeight;
+        // 스트리밍 중: instant (토큰마다 smooth하면 끊김), 완료 후: smooth
+        container.scrollTo({ top: container.scrollHeight, behavior: isStreaming ? 'instant' : 'smooth' });
       }
     }
   }, [messages, isStreaming]);
@@ -141,7 +142,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
       if (isNearBottom) {
         markProgrammaticScroll();
-        container.scrollTop = container.scrollHeight;
+        container.scrollTo({ top: container.scrollHeight, behavior: 'instant' });
       }
     });
     // 스크롤 컨테이너의 직접 자식들 높이 변화 감지
@@ -247,7 +248,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
 
       {/* 헤더는 ChatPage에서 별도로 렌더링됨 */}
 
-      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto py-4 scroll-smooth custom-scrollbar" data-main-scroll="" onScroll={handleScroll}>
+      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto py-4 custom-scrollbar" data-main-scroll="" onScroll={handleScroll}>
         <div className="max-w-4xl mx-auto w-full px-6 min-h-[calc(100%+1px)]">
           {children}
           <div ref={bottomRef} />
