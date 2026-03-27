@@ -896,7 +896,7 @@ export default function DocumentGeneratePage() {
                 fields={mergedFields}
                 formData={formData}
                 onChange={handleFieldChange}
-                skipKeys={[]}
+                skipKeys={isMeeting ? ['attendees', 'team'] : []}
                 category={selectedTemplate}
                 user={user}
                 selectedTeam={selectedTeam}
