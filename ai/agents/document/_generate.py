@@ -441,24 +441,20 @@ async def _handle_doc_generate(user_input: str, template_type: str, document_con
             tpl_info = await _get_template_info(template_id)
             if tpl_info and not tpl_info["is_system"] and tpl_info["field_labels"]:
                 # 커스텀 양식: DB 필드로 동적 안내
-                fields_desc = ", ".join(tpl_info["field_labels"])
                 return {
                     "type": "clarify",
-                    "message": (
-                        f"{tpl_info['name']}을 작성할게요. 아래 내용을 알려주세요:\n\n"
-                        f"- {fields_desc}\n\n"
-                        f"내용을 자유롭게 입력해주세요."
-                    ),
+                    "template_name": tpl_info["name"],
+                    "fields": tpl_info["field_labels"],
+                    "message": f"{tpl_info['name']}을 작성할게요. 아래 내용을 자유롭게 입력해주세요.",
                 }
         # 시스템 양식 또는 fallback
         guide = _GENERATE_GUIDE.get(template_type, _GENERATE_GUIDE["report"])
         return {
             "type": "clarify",
-            "message": (
-                f"{guide['title']}을 작성할게요. 아래 내용을 알려주세요:\n\n"
-                f"- {guide['fields']}\n\n"
-                f"예시: \"{guide['example']}\""
-            ),
+            "template_name": guide["title"],
+            "fields": [f.strip() for f in guide["fields"].split(",")],
+            "example": guide["example"],
+            "message": f"{guide['title']}을 작성할게요. 아래 내용을 자유롭게 입력해주세요.",
         }
 
     # ── 3단계: 생성 실행 ──

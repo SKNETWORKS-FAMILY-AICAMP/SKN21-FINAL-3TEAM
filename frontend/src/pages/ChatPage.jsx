@@ -477,12 +477,28 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
 
     case 'clarify': {
       const candidates = data.candidates || [];
+      const clarifyFields = data.fields || [];
       // 이 assistant 메시지 바로 앞의 user 메시지가 원본 쿼리
       const originalQuery = index > 0 ? (messages[index - 1]?.content || '') : '';
       return (
         <div>
-          <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">
-            {content || data.message || '질문을 명확히 해주세요.'}
+          <div className="bg-surface-card border border-neutral-border rounded-2xl rounded-bl-sm p-4 text-sm text-neutral-main leading-normal">
+            <p>{content || data.message || '질문을 명확히 해주세요.'}</p>
+            {clarifyFields.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs text-neutral-muted mb-2">필요한 정보</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {clarifyFields.map((field, idx) => (
+                    <span key={idx} className="px-2 py-1 text-xs bg-primary-50 text-primary-700 rounded-lg font-medium">
+                      {field}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {data.example && (
+              <p className="mt-3 text-xs text-neutral-muted">예시: "{data.example}"</p>
+            )}
           </div>
           {candidates.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
