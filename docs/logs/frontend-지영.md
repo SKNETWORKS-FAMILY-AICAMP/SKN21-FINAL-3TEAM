@@ -4246,3 +4246,53 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 - [ ] 서비스 데모 영상 촬영 및 HTML 삽입
 - [ ] E2E 멀티스텝 테스트 3-step / 4-step / 5-step 진행
 - [ ] 문서 생성 다운로드 404 이슈 수정
+
+---
+
+## 2026-03-27 (목)
+
+### 한 일
+
+#### 1) 발표자료 (presentation.html) 목차 및 구조 전면 개편
+- **목차 11개 항목으로 재정의** (기존 9개 → 11개)
+  - 01 개요 / 02 전체 시스템 아키텍처 / 03 Agent 구조와 역할 / 04 데이터셋 구축 및 전처리 / 05 RAG Pipeline 최적화 / 06 LLM 파인튜닝 전략 및 수행 / 07 트러블슈팅 / 08 성능 평가 / 09 데모 시나리오 / 10 한계점 및 향후 발전 방향 / 11 팀 회고 및 Q&A
+- **목차 레이아웃 개편**: 1컬럼 리스트 → 2컬럼 그리드 + 카테고리 구분선 (Overview / Architecture / AI·Data / Engineering / Result / Closing) + 번호 `text-2xl` 대형화
+- **목차 제목 다듬기**: "핵심 에이전트 정의 및 역할" → "Agent 구조와 역할", "성능 평가, 성과와 수치" → "성능 평가", "핵심 문제 해결 사례 / 트러블슈팅" → "트러블슈팅"
+
+#### 2) 전체 섹션 재배치 + 번호 통일 (Python 스크립트)
+- **22개 섹션을 목차 순서대로 재배치** (problem→solution→team→tech→architecture→deploy→agents→...→qa)
+- **번호 태그 전면 수정**: 기존 불일치 (04 중복, 08→11 점프, RAG 태그 없음 등) → 01~11 + 서브번호 (03-1, 06-2 등) 통일
+- **deploy를 02 아키텍처 그룹으로 이동**, pipeline을 rag 앞으로 이동 (04→05 순서)
+- **navDots 목차 기준 재구성** (11개 메인 항목), 하단 JS IntersectionObserver도 새 순서에 맞춤
+- 존재하지 않던 `#pages` 링크 제거
+
+#### 3) 플레이스홀더 섹션 추가
+- **#troubleshooting (07)**: 트러블슈팅 placeholder (TBD 카드 2개)
+- **#demo (09)**: 데모 시나리오 placeholder (TBD 카드 3개)
+
+#### 4) 커버 및 텍스트 수정
+- 커버 제목: `DUDE (듀드)` → `DUDE`
+- 솔루션 섹션 제목: `DUDE가 해결합니다` → `DUDE가 처리합니다`
+
+#### 5) 팀 구성 카드 크기 업
+- 아바타: `w-28 h-28` → `w-36 h-36`
+- 이름/역할 텍스트: `text-sm` → `text-base`
+- 설명 텍스트: `text-xs` → `text-sm`
+- 카드 간격: `gap-6` → `gap-8`
+
+#### 6) 전체 시스템 아키텍처 가로 레이아웃 전환
+- 세로 7단 플로우 → **가로 3컬럼** (입력 | AI Core | 인프라+출력)
+- AI Core 내부도 가로: Intent Classifier → Task Planner → Orchestrator
+- 4 Agent 카드 + 분기 화살표 유지
+- 내부 요소 전체 사이즈업: 패딩 `p-5→p-8`, 카드 `p-3→p-4`, 아이콘 `w-8→w-10`, 텍스트 `text-xs→text-sm`
+
+#### 7) 기술 스택 vs 아키텍처 비중 조정
+- **기술 스택**: 4개 카드 → 한 줄 인라인 바 (색상 도트 + 텍스트)로 대폭 압축
+- **아키텍처**: `min-h-screen flex items-center` 적용하여 전체 화면 차지
+
+### 다음 할 일
+
+- [ ] 트러블슈팅 (07) 실제 내용 채우기
+- [ ] 데모 시나리오 (09) 실제 내용 채우기
+- [ ] 이미지 base64 임베딩 (파일 하나로 공유 가능하게)
+- [ ] PPT 변환 작업
