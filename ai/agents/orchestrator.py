@@ -645,9 +645,7 @@ def clarify_with_candidates(state: AgentState) -> AgentState:
 
     state["agent_response"] = {
         "type": "clarify_candidates",
-        "message": "다음 중 어느 것에 가까운가요?\n" + "\n".join(
-            f"  {i+1}. {c['display']}" for i, c in enumerate(candidate_list)
-        ),
+        "message": "다음 중 어느 것에 가까운가요?",
         "candidates": candidate_list,
     }
 

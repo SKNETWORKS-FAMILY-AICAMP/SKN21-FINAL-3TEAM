@@ -4344,17 +4344,57 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 - Vite 프록시 기본 대상을 `http://3.37.118.197:8000`(EC2) → `http://localhost:8000`(로컬)로 변경
 - 로컬 백엔드(`uvicorn`) + 프론트엔드(`npm run dev`) 실행 확인
 
-#### 14) 일정 추가 시 제목 누락 버그 수정 (`schedule_agent.py`)
+#### 14) 일정 추가 시 제목 누락 버그 수정 (`schedule_agent.py`) — 2단계 수정
 
 - **문제**: 복합질문의 sub_query "비는 날에 휴가 등록"에서 일정 제목이 "(제목 없음)"으로 표시
-  - 원인: LLM이 start_time은 반환하지만 title을 비워둔 경우, fallback 타이틀 추출이 타지 않는 코드 구조
-- **수정**: `_parse_schedule_input()`에서 LLM 파싱 후 title이 비어있으면 user_input에서 핵심어 추출하는 로직 추가
-  - 시간/날짜 키워드, 동작 동사(등록/추가/잡아 등), 조건 표현(비는 날/빈 날) 제거 → 남은 텍스트를 title로 사용
-- **결과**: "비는 날에 휴가 등록" → "휴가", "금요일에 리뷰 미팅 등록해줘" → "리뷰 미팅" 등 정상 추출
+- **원인 1차**: LLM이 title을 비워두거나 공백으로 반환할 때 fallback 타이틀 추출이 안 타는 구조
+  - 수정: `.strip()` 체크 + 원문 비교 조건 추가, 시간/동작/조건 키워드 제거 regex로 핵심어 추출
+- **원인 2차 (근본 원인)**: `_APPROVAL_KEYWORDS`에 "휴가"가 포함 → `_classify_add_type()`이 "approval" 반환 → `_handle_approval_create`으로 빠져서 `_parse_schedule_input` 자체가 호출 안 됨
+  - 수정: compound sub_query(`force_intent` 있음)일 때 2차 분류 건너뛰고 `_handle_schedule_add` 직행
+- **결과**: "비는 날에 휴가 등록" → 제목 "휴가 등록"으로 정상 표시
+- **참고**: 챗봇 일정 조회 시 Google Calendar에서 삭제한 이벤트가 여전히 표시되는 현상 발견 (캘린더 앱에서는 삭제됨) — 캐시 또는 API 동기화 문제로 추정
+
+#### 15) 챗봇 일정 조회 — 삭제/수정된 이벤트 표시 버그 수정
+
+- **문제**: Google Calendar에서 이벤트를 수정(김서영 첫 출근→서영이 첫 출근)하거나 삭제(휴가)해도 챗봇 일정 조회에서 수정 전 버전이 계속 표시됨. 일정 관리 페이지에서는 정상.
+- **원인**:
+  1. `calendar_service.py` — Google Calendar API에서 `status="cancelled"` 이벤트를 필터링하지 않음
+  2. `schedule_agent.py` — DB↔Google 중복 제거가 **제목 비교**로만 되어 있어서, 제목이 바뀌면 옛 버전(DB) + 새 버전(Google) 둘 다 표시. Google에서 삭제해도 DB 레코드가 남아서 계속 표시.
+- **수정**:
+  - `calendar_service.py:133` — `if item.get("status") == "cancelled": continue` 추가
+  - `schedule_agent.py:566-606` — `google_event_id` 기반 동기화 로직으로 교체:
+    - DB 이벤트에 `google_event_id` 필드 포함하도록 변경
+    - DB 이벤트의 `google_event_id`가 Google에 있으면 → Google 버전(제목/시간)으로 갱신
+    - DB 이벤트의 `google_event_id`가 Google에 없으면 → 삭제된 것으로 판단하여 제외
+    - Google 이벤트 중복 제거도 `event_id` 기반으로 우선 처리
+- **상태**: EC2 배포 완료 (uvicorn 재시작 포함), 동작 확인 필요
+
+#### 16) 챗봇 일정 등록 — 네이티브 달력 → 서비스 DatePicker 교체 (`ScheduleConfirmCard.jsx`)
+
+- **문제**: 챗봇 일정 등록 폼의 날짜 입력이 브라우저 네이티브 `<input type="date">` 사용 → 투박한 UI, 아이콘만 클릭 가능
+- **수정**: `<input type="date">` → 공통 `DatePicker` 컴포넌트(`components/common/DatePicker.jsx`)로 교체
+  - 일정 관리 페이지와 동일한 커스텀 달력 UI
+  - 필드 어디를 눌러도 달력 팝업 오픈
+  - Portal 기반으로 overflow 문제 없음
+
+#### 17) 복합질문 "비는 날" 날짜 자동 계산 (`schedule_agent.py`, `chat.py`)
+
+- **문제**: "이번 주 일정 보고 비는 날에 휴가 등록해줘" → 일정 조회는 되지만, 일정 추가 시 날짜가 비어있음 ("비는 날"을 이해 못함)
+- **원인**: 복합질문 처리 시 이전 단계(schedule_view) 결과가 다음 단계(schedule_add)로 전달되지 않는 구조적 문제
+  - `chat.py`에서 각 sub_query를 독립 state로 실행 → 이전 결과 접근 불가
+  - `schedule_agent.py`의 LLM 파싱 프롬프트에 "비는 날" 규칙 없음
+  - 제목 추출 regex가 "비는 날" 키워드를 제거하여 날짜 정보 소실
+- **수정**:
+  - `chat.py:338` — sub_state에 `prev_agent_context`로 직전 단계 응답 전달
+  - `schedule_agent.py:167-191` — `_find_free_date()` 함수 신규 추가: 이전 schedule_view 결과에서 이번 주 평일 중 일정 없는 날 계산
+  - `schedule_agent.py:194-205` — `_handle_schedule_add()`에 `prev_context` 파라미터 추가, "비는 날" 감지 시 자동 날짜 설정
+
+#### 18) Intent 분류 모호 시 clarify 메시지에서 번호+퍼센트 목록 제거 (`orchestrator.py`)
+
+- **문제**: Intent 후보가 2개일 때 텍스트로 "1. 문서 검색/조회/요약 (60%) 2. 규정 판단 (38%)" 표시 + 아래에 버튼도 중복 표시
+- **수정**: `orchestrator.py:648` — `message`에서 번호 목록 제거, "다음 중 어느 것에 가까운가요?"만 표시. 선택지는 `candidates` 필드의 버튼으로만 노출.
 
 ### 다음 할 일
 
+- [ ] "비는 날" 자동 계산 + DatePicker 교체 EC2 배포 후 동작 확인
 - [ ] 3-step PARTIAL 3건 intent hint 매칭 수정 (요약/정리 → doc_generate)
-- [ ] 데모 시나리오 (09) 실제 내용 채우기
-- [ ] 이미지 base64 임베딩 (파일 하나로 공유 가능하게)
-- [ ] E2E 멀티스텝 테스트 4-step / 5-step 진행

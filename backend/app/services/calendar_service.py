@@ -130,6 +130,8 @@ class GoogleCalendarService(GoogleBaseService):
                     result = service.events().list(**params).execute()
                     items = result.get("items", [])
                     for item in items:
+                        if item.get("status") == "cancelled":
+                            continue
                         event_type = (
                             item.get("extendedProperties", {})
                             .get("private", {})
