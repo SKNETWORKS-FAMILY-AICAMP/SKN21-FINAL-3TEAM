@@ -1,319 +1,316 @@
 const pptxgen = require("pptxgenjs");
 
 const pres = new pptxgen();
-pres.layout = "LAYOUT_16x9";
+pres.layout = "LAYOUT_16x9"; // 10" × 5.625"
 pres.author = "3TEAM";
-pres.title = "WorkFlow Agent - DUDE";
+pres.title = "WorkFlow Agent DUDE";
 
-// Color palette (matches presentation.html)
+// === Color Palette ===
 const C = {
-  primary900: "3D5164",
-  primary700: "56728A",
-  primary500: "6E87A0",
-  primary300: "8FA3B4",
-  primary100: "C8D5E2",
-  primary50: "E8EEF3",
-  accent700: "8B7D6E",
-  accent50: "F7F3EB",
-  success: "5B9A6F",
-  warning: "C49A3C",
-  error: "C06060",
-  dark: "2C3340",
-  sub: "6B7280",
-  muted: "9CA3AF",
-  border: "D1D5DB",
-  divider: "E5E7EB",
-  surface: "F4F5F7",
-  white: "FFFFFF",
+  pri900: "3D5164", pri700: "56728A", pri500: "6E87A0", pri300: "8FA3B4", pri100: "C8D5E2", pri50: "E8EEF3",
+  acc700: "8B7D6E", acc500: "A89580", acc300: "C4B49A", acc100: "EDE5D0", acc50: "F7F3EB",
+  sfcMain: "F4F5F7", sfcSub: "EBEDF0", sfcCard: "FFFFFF",
+  success: "5B9A6F", successBg: "E8F4EC",
+  warning: "C49A3C", warningBg: "F5EDD0",
+  error: "C06060", errorBg: "F5E0E0",
+  white: "FFFFFF", black: "2C3340", sub: "6B7280", muted: "9CA3AF", border: "D1D5DB", divider: "E5E7EB",
 };
 
-const mkShadow = () => ({ type: "outer", blur: 4, offset: 2, angle: 135, color: "000000", opacity: 0.08 });
+const FT = "Arial Black";
+const FB = "Arial";
 
-// ========== SLIDE 1: HERO ==========
-let s = pres.addSlide();
-s.background = { color: C.primary900 };
-s.addText("SKN21 Final Project · 3TEAM", { x: 0.5, y: 1.2, w: 9, h: 0.4, fontSize: 12, color: C.primary100, align: "center", fontFace: "Arial" });
-s.addText("WorkFlow Agent", { x: 0.5, y: 1.8, w: 9, h: 1.2, fontSize: 48, bold: true, color: C.white, align: "center", fontFace: "Arial" });
-s.addText("DUDE (듀드)", { x: 0.5, y: 2.9, w: 9, h: 0.8, fontSize: 36, bold: true, color: C.accent50, align: "center", fontFace: "Arial" });
-s.addText("LangGraph 기반 멀티 에이전트 업무 자동화 시스템", { x: 0.5, y: 3.9, w: 9, h: 0.4, fontSize: 14, color: C.primary100, align: "center" });
-s.addText("규정 판단 · 문서 생성/분석 · 일정 관리를 AI가 자연어로 처리합니다", { x: 0.5, y: 4.4, w: 9, h: 0.4, fontSize: 11, color: C.primary300, align: "center" });
+function addCard(s, x, y, w, h, fill, border) {
+  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h, fill: { color: fill }, rectRadius: 0.08, line: border ? { color: border, width: 0.5 } : undefined });
+}
+function addTag(s, x, y, text, bg, tc) {
+  addCard(s, x, y, 0.6, 0.28, bg);
+  s.addText(text, { x, y, w: 0.6, h: 0.28, fontSize: 9, fontFace: FB, color: tc, align: "center", valign: "middle", margin: 0 });
+}
 
-// ========== SLIDE 2: 문제 정의 ==========
-s = pres.addSlide();
-s.background = { color: C.surface };
-s.addText("01", { x: 0.5, y: 0.3, w: 0.5, h: 0.3, fontSize: 10, bold: true, color: C.primary700, align: "center" });
-s.addText("왜 필요한가?", { x: 0.5, y: 0.7, w: 9, h: 0.6, fontSize: 32, bold: true, color: C.primary900, align: "center", fontFace: "Arial" });
+// ========== 1. HERO ==========
+{
+  const s = pres.addSlide(); s.background = { color: C.pri900 };
+  addCard(s, 3.2, 0.8, 3.6, 0.35, "FFFFFF");
+  s.addText("SKN21 Final Project · 3TEAM", { x: 3.2, y: 0.8, w: 3.6, h: 0.35, fontSize: 11, fontFace: FB, color: C.pri900, align: "center", valign: "middle", margin: 0 });
+  s.addText([
+    { text: "WorkFlow Agent", options: { breakLine: true, fontSize: 40, bold: true, color: C.white } },
+    { text: "DUDE", options: { fontSize: 40, bold: true, color: C.acc300 } },
+  ], { x: 1, y: 1.5, w: 8, h: 1.8, fontFace: FT, align: "center", valign: "middle" });
+  s.addText("LangGraph 기반 멀티 에이전트 업무 자동화 시스템", { x: 1.5, y: 3.4, w: 7, h: 0.4, fontSize: 16, fontFace: FB, color: C.pri100, align: "center" });
+  s.addText("규정 판단 · 문서 생성/분석 · 일정 관리를 AI가 자연어로 처리합니다", { x: 1.5, y: 3.9, w: 7, h: 0.4, fontSize: 12, fontFace: FB, color: C.pri300, align: "center" });
+}
 
-const problems = [
-  { pct: "68%", title: "집중 시간 부족", desc: "핵심 업무에 집중할 시간이 부족", color: C.error },
-  { pct: "62%", title: "정보 검색 낭비", desc: "사내 문서와 규정 검색에 과도한 시간", color: C.warning },
-  { pct: "57%", title: "커뮤니케이션 부담", desc: "반복적 소통 업무에 시간 소요", color: C.primary700 },
-];
-problems.forEach((p, i) => {
-  const x = 0.8 + i * 3;
-  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: 1.8, w: 2.8, h: 2.8, fill: { color: C.white }, shadow: mkShadow(), rectRadius: 0.15 });
-  s.addText(p.pct, { x, y: 2.0, w: 2.8, h: 0.8, fontSize: 28, bold: true, color: p.color, align: "center", fontFace: "Arial" });
-  s.addText(p.title, { x, y: 2.8, w: 2.8, h: 0.4, fontSize: 14, bold: true, color: C.primary900, align: "center" });
-  s.addText(p.desc, { x, y: 3.3, w: 2.8, h: 0.4, fontSize: 10, color: C.sub, align: "center" });
-});
+// ========== 2. TOC ==========
+{
+  const s = pres.addSlide(); s.background = { color: C.white };
+  s.addText("목차", { x: 0, y: 0.3, w: 10, h: 0.6, fontSize: 32, fontFace: FT, color: C.pri900, align: "center", bold: true });
+  s.addText("Contents", { x: 0, y: 0.85, w: 10, h: 0.3, fontSize: 11, fontFace: FB, color: C.muted, align: "center" });
+  function drawToc(items, sx) {
+    let y = 1.4;
+    for (const [cat, entries] of items) {
+      s.addText(cat, { x: sx, y, w: 4, h: 0.25, fontSize: 8, fontFace: FB, color: C.pri500, bold: true, charSpacing: 2 });
+      s.addShape(pres.shapes.LINE, { x: sx, y: y + 0.25, w: 3.8, h: 0, line: { color: C.pri100, width: 0.5 } });
+      y += 0.4;
+      for (const [n, t] of entries) {
+        s.addText(n, { x: sx, y, w: 0.5, h: 0.35, fontSize: 18, fontFace: FT, color: C.pri300, align: "right", bold: true, margin: 0 });
+        s.addText(t, { x: sx + 0.65, y, w: 3.3, h: 0.35, fontSize: 13, fontFace: FB, color: C.black, valign: "middle", margin: 0 });
+        y += 0.4;
+      }
+      y += 0.15;
+    }
+  }
+  drawToc([["OVERVIEW",[["01","개요"]]],["ARCHITECTURE",[["02","전체 시스템 아키텍처"],["03","Agent 구조와 역할"]]],["AI / DATA",[["04","데이터셋 구축 및 전처리"],["05","RAG Pipeline 최적화"],["06","LLM 파인튜닝 전략 및 수행"]]]], 0.8);
+  drawToc([["ENGINEERING",[["07","트러블슈팅"]]],["RESULT",[["08","성능 평가"],["09","데모 시나리오"],["10","한계점 및 향후 발전 방향"]]],["CLOSING",[["11","팀 회고 및 Q&A"]]]], 5.2);
+}
 
-// ========== SLIDE 3: 솔루션 & 핵심 효과 ==========
-s = pres.addSlide();
-s.background = { color: C.white };
-s.addText("02", { x: 0.5, y: 0.3, w: 0.5, h: 0.3, fontSize: 10, bold: true, color: C.success });
-s.addText("DUDE가 해결합니다", { x: 0.5, y: 0.6, w: 9, h: 0.6, fontSize: 28, bold: true, color: C.primary900, align: "center" });
-s.addText("자연어 한 마디로 규정 확인, 문서 생성, 일정 등록까지", { x: 0.5, y: 1.1, w: 9, h: 0.3, fontSize: 11, color: C.sub, align: "center" });
+// ========== 3. PROBLEM ==========
+{
+  const s = pres.addSlide(); s.background = { color: C.sfcMain };
+  addTag(s, 4.7, 0.3, "01", C.errorBg, C.error);
+  s.addText("Why?", { x: 0, y: 0.7, w: 10, h: 0.6, fontSize: 32, fontFace: FT, color: C.pri900, align: "center", bold: true });
+  [{ p:"68%",t:"집중 시간 부족",d:"핵심 업무에 집중할 시간이 부족",c:C.error },
+   { p:"62%",t:"정보 검색 낭비",d:"사내 문서와 규정 검색에 과도한 시간",c:C.warning },
+   { p:"57%",t:"커뮤니케이션 부담",d:"반복적 소통 업무에 시간 소요",c:C.pri700 }
+  ].forEach((v,i) => {
+    const x = 1.2+i*2.8;
+    addCard(s, x, 1.6, 2.4, 2.8, C.white, C.divider);
+    s.addShape(pres.shapes.OVAL, { x:x+0.6,y:1.85,w:1.2,h:1.2, fill:{color:v.c,transparency:85}, line:{color:v.c,width:2,transparency:60} });
+    s.addText(v.p, { x:x+0.6,y:1.85,w:1.2,h:1.2, fontSize:20, fontFace:FT, color:v.c, align:"center", valign:"middle", bold:true, margin:0 });
+    s.addText(v.t, { x:x+0.1,y:3.2,w:2.2,h:0.35, fontSize:14, fontFace:FB, color:C.pri900, align:"center", bold:true });
+    s.addText(v.d, { x:x+0.1,y:3.55,w:2.2,h:0.5, fontSize:10, fontFace:FB, color:C.sub, align:"center" });
+  });
+}
 
-// Compact solution pills
-const sols = [
-  { name: "규정 판단", desc: "RAG + 4중 보조장치", color: C.primary700 },
-  { name: "문서", desc: "생성/요약/검색/QA", color: C.accent700 },
-  { name: "일정", desc: "Google 5종 연동", color: C.success },
-];
-sols.forEach((sol, i) => {
-  const x = 1.2 + i * 2.8;
-  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: 1.6, w: 2.4, h: 0.45, fill: { color: C.surface }, line: { color: C.divider, width: 0.5 }, rectRadius: 0.2 });
-  s.addText(sol.name + "  " + sol.desc, { x, y: 1.6, w: 2.4, h: 0.45, fontSize: 10, color: C.primary900, align: "center", margin: 0 });
-});
+// ========== 4. SOLUTION ==========
+{
+  const s = pres.addSlide(); s.background = { color: C.white };
+  addTag(s, 4.7, 0.2, "02", C.successBg, C.success);
+  s.addText("DUDE가 처리합니다", { x:0,y:0.55,w:10,h:0.5, fontSize:28, fontFace:FT, color:C.pri900, align:"center", bold:true });
+  s.addText("자연어 한 마디로 규정 확인, 문서 생성, 일정 등록까지", { x:0,y:1.0,w:10,h:0.3, fontSize:11, fontFace:FB, color:C.sub, align:"center" });
+  [{ l:"규정 판단",s2:"RAG + 4중 보조장치",c:C.pri700 },{ l:"문서 생성/요약/검색/QA",s2:"LoRA 라우팅",c:C.acc700 },{ l:"일정 관리",s2:"Google 5종 연동",c:C.success }].forEach((p,i) => {
+    const px = 0.8+i*3.1;
+    addCard(s,px,1.45,2.7,0.55,p.c);
+    s.addText([{text:p.l,options:{bold:true,fontSize:11,color:C.white,breakLine:true}},{text:p.s2,options:{fontSize:9,color:C.white}}], { x:px+0.15,y:1.45,w:2.4,h:0.55, fontFace:FB, align:"center", valign:"middle" });
+  });
+  [{ t:"업무 시간 절감",d:"규정 판단 30분→10초\n문서 작성 2시간→5분" },{ t:"판단 정확도 향상",d:"Base 37.2% → LoRA 85.4%\n(+48.2%p)" },
+   { t:"복합 업무 자동 분해",d:"Intent 91.0% → Planner 87.0%\n멀티스텝 순차 실행" },{ t:"sLLM 독립 운영",d:"외부 API 의존 없이\n온프레미스 서빙" }
+  ].forEach((e,i) => {
+    const ex = 0.5+(i%2)*4.6, ey = 2.25+Math.floor(i/2)*1.55;
+    addCard(s,ex,ey,4.3,1.35,C.sfcMain,C.divider);
+    s.addText(e.t, { x:ex+0.2,y:ey+0.15,w:3.9,h:0.3, fontSize:13, fontFace:FB, color:C.pri900, bold:true, margin:0 });
+    s.addText(e.d, { x:ex+0.2,y:ey+0.5,w:3.9,h:0.7, fontSize:10, fontFace:FB, color:C.sub, margin:0 });
+  });
+}
 
-// Effects - left
-s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 0.5, y: 2.4, w: 4.3, h: 2.8, fill: { color: C.surface }, line: { color: C.divider, width: 0.5 }, rectRadius: 0.1 });
-s.addText("핵심 효과", { x: 0.7, y: 2.5, w: 3, h: 0.4, fontSize: 14, bold: true, color: C.primary900 });
-const effects = ["업무 시간 절감 — 규정 확인 30분→10초, 문서 작성 2시간→5분", "판단 정확도 향상 — RAG 4중 보조장치 + 신뢰도 점수", "복합 업무 자동 분해 — Task Planner 단계별 자동 실행", "sLLM 독립 운영 — Kanana-1.5-8B + LoRA 자체 서빙"];
-s.addText(effects.map((e, i) => ({ text: e, options: { bullet: true, breakLine: i < effects.length - 1, fontSize: 9, color: C.sub } })), { x: 0.7, y: 3.0, w: 3.9, h: 2.0 });
+// ========== 5. WHY sLLM ==========
+{
+  const s = pres.addSlide(); s.background = { color: C.sfcMain };
+  addTag(s, 4.7, 0.2, "03", C.pri50, C.pri700);
+  s.addText("왜 온프레미스 sLLM인가?", { x:0,y:0.55,w:10,h:0.5, fontSize:28, fontFace:FT, color:C.pri900, align:"center", bold:true });
+  s.addText("GPT/Claude API 대신 자체 파인튜닝 모델을 운영하는 이유", { x:0,y:1.0,w:10,h:0.3, fontSize:11, fontFace:FB, color:C.sub, align:"center" });
+  [{t:"보안",d:"데이터 외부 전송 X\n컴플라이언스 충족",c:C.error},{t:"비용",d:"무제한 추론\n비용 절감 극대화",c:C.success},{t:"도메인 특화",d:"LoRA 파인튜닝\n정밀 최적화 + 정확도 향상",c:C.pri700}].forEach((r,i) => {
+    const rx = 0.7+i*3.1;
+    addCard(s,rx,1.5,2.7,1.6,C.white,C.divider);
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x:rx+0.85,y:1.7,w:1.0,h:0.7, fill:{color:r.c,transparency:85}, rectRadius:0.1 });
+    s.addText(r.t, { x:rx+0.1,y:2.5,w:2.5,h:0.3, fontSize:14, fontFace:FB, color:C.pri900, align:"center", bold:true });
+    s.addText(r.d, { x:rx+0.1,y:2.8,w:2.5,h:0.5, fontSize:10, fontFace:FB, color:C.sub, align:"center" });
+  });
+  addCard(s, 0.7, 3.35, 8.6, 0.5, C.pri700);
+  s.addText("Kanana-1.5-8B  ·  4종 LoRA 어댑터 (판단/생성/요약/플래너)  ·  vLLM A100 핫스왑  ·  80~120 tok/s", { x:0.7,y:3.35,w:8.6,h:0.5, fontSize:11, fontFace:FB, color:C.white, align:"center", valign:"middle" });
+  [{v:"80~120",u:"tok/s"},{v:"~100ms",u:"LoRA 핫스왑"},{v:"4-bit",u:"QLoRA"},{v:"6~10초",u:"E2E 응답"}].forEach((m,i) => {
+    const mx = 0.7+i*2.15;
+    addCard(s,mx,4.05,2.0,0.8,C.white,C.divider);
+    s.addText(m.v, { x:mx,y:4.1,w:2.0,h:0.4, fontSize:16, fontFace:FT, color:C.pri700, align:"center", bold:true, margin:0 });
+    s.addText(m.u, { x:mx,y:4.5,w:2.0,h:0.25, fontSize:9, fontFace:FB, color:C.sub, align:"center", margin:0 });
+  });
+}
 
-// Effects - right
-s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 5.2, y: 2.4, w: 4.3, h: 2.8, fill: { color: C.surface }, line: { color: C.divider, width: 0.5 }, rectRadius: 0.1 });
-s.addText("기대 효과", { x: 5.4, y: 2.5, w: 3, h: 0.4, fontSize: 14, bold: true, color: C.primary900 });
-const expected = ["컴플라이언스 리스크 감소 — 규정 기반 판단 자동화", "조직 지식 자산화 — 사내 문서 벡터 DB 축적", "Google Workspace 통합 — 단일 OAuth", "확장 가능한 Agent 아키텍처 — LangGraph + LoRA 핫스왑"];
-s.addText(expected.map((e, i) => ({ text: e, options: { bullet: true, breakLine: i < expected.length - 1, fontSize: 9, color: C.sub } })), { x: 5.4, y: 3.0, w: 3.9, h: 2.0 });
+// ========== 6. TEAM ==========
+{
+  const s = pres.addSlide(); s.background = { color: C.sfcMain };
+  addTag(s, 4.7, 0.2, "04", C.pri50, C.pri700);
+  s.addText("팀 구성 및 역할 분담", { x:0,y:0.55,w:10,h:0.5, fontSize:28, fontFace:FT, color:C.pri900, align:"center", bold:true });
+  s.addText("멘토: 최민수", { x:0,y:1.0,w:10,h:0.25, fontSize:10, fontFace:FB, color:C.muted, align:"center" });
+  [{n:"신지용",r:"PM",d:"프로젝트 관리 +\n의도 분류 +\n오케스트레이터\n+ 문서 Agent"},{n:"문지영",r:"FE / AI",d:"React UI +\nSSE 실시간 채팅 +\nIntent 멀티라벨 분류 +\nPlanner LoRA 파인튜닝"},{n:"안혜빈",r:"BE",d:"FastAPI + DB +\nGoogle API 연동"},{n:"윤경은",r:"AI",d:"판단 Agent + RAG\n+ LoRA 파인튜닝\n+ 팀스페이스 기능"}].forEach((m,i) => {
+    const mx = 0.5+i*2.35;
+    s.addShape(pres.shapes.OVAL, { x:mx+0.45,y:1.5,w:1.2,h:1.2, fill:{color:C.pri100}, line:{color:C.pri300,width:1} });
+    s.addText(m.n[0], { x:mx+0.45,y:1.5,w:1.2,h:1.2, fontSize:24, fontFace:FT, color:C.pri700, align:"center", valign:"middle", bold:true, margin:0 });
+    addCard(s,mx+0.1,2.85,1.9,0.35,C.pri700);
+    s.addText(m.n, { x:mx+0.1,y:2.85,w:1.9,h:0.35, fontSize:12, fontFace:FB, color:C.white, align:"center", valign:"middle", bold:true, margin:0 });
+    s.addText(m.r, { x:mx+0.1,y:3.3,w:1.9,h:0.3, fontSize:12, fontFace:FB, color:C.pri900, align:"center", bold:true, margin:0 });
+    s.addShape(pres.shapes.LINE, { x:mx+0.7,y:3.65,w:0.7,h:0, line:{color:C.pri300,width:0.5} });
+    s.addText(m.d, { x:mx+0.05,y:3.75,w:2.0,h:1.2, fontSize:10, fontFace:FB, color:C.sub, align:"center", valign:"top" });
+    s.addShape(pres.shapes.LINE, { x:mx+0.1,y:5.1,w:1.9,h:0, line:{color:C.pri700,width:2} });
+  });
+}
 
-// ========== SLIDE 4: 팀 구성 ==========
-s = pres.addSlide();
-s.background = { color: C.surface };
-s.addText("03", { x: 0.5, y: 0.3, w: 0.5, h: 0.3, fontSize: 10, bold: true, color: C.primary700 });
-s.addText("팀 구성 및 역할 분담", { x: 0.5, y: 0.6, w: 9, h: 0.6, fontSize: 28, bold: true, color: C.primary900, align: "center" });
-s.addText("멘토: 최민수", { x: 0.5, y: 1.1, w: 9, h: 0.3, fontSize: 10, color: C.muted, align: "center" });
+// ========== 7. TECH STACK ==========
+{
+  const s = pres.addSlide(); s.background = { color: C.white };
+  addTag(s, 4.7, 0.2, "06", C.pri50, C.pri700);
+  s.addText("기술 스택", { x:0,y:0.55,w:10,h:0.5, fontSize:28, fontFace:FT, color:C.pri900, align:"center", bold:true });
+  [{t:"AI / ML",items:["LangGraph","Kanana-1.5-8B + LoRA","vLLM (RunPod A100)","roberta-large (Intent)","Qdrant + BM25 + Reranker"],c:C.pri700},
+   {t:"Backend",items:["FastAPI + SSE","PostgreSQL 16 (RDS)","SQLAlchemy + Alembic","JWT + Google OAuth 2.0"],c:C.acc700},
+   {t:"Frontend",items:["React 18 (Vite)","Zustand + TanStack Query","Tailwind + shadcn/ui","FullCalendar"],c:C.success},
+   {t:"Infra",items:["AWS EC2 + RDS","Docker Compose","GitHub Actions CI/CD","RunPod A100 + Qdrant Cloud"],c:C.warning}
+  ].forEach((st,i) => {
+    const sx = 0.5+i*2.35;
+    addCard(s,sx,1.3,2.15,3.5,C.sfcMain,C.divider);
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x:sx+0.65,y:1.5,w:0.85,h:0.7, fill:{color:st.c}, rectRadius:0.08 });
+    s.addText(st.t, { x:sx+0.1,y:2.35,w:1.95,h:0.35, fontSize:14, fontFace:FB, color:C.pri900, bold:true, align:"center", margin:0 });
+    s.addText(st.items.map((item,idx) => ({text:item, options:{bullet:true, breakLine:idx<st.items.length-1, fontSize:10, color:C.sub}})), { x:sx+0.15,y:2.8,w:1.85,h:1.8, fontFace:FB, valign:"top" });
+  });
+}
 
-const team = [
-  { name: "신지용", role: "PM", desc: "프로젝트 관리 + 의도 분류 +\n오케스트레이터\n+ 문서 Agent", color: C.primary700, img: "assets/avatar-jiyong.png" },
-  { name: "문지영", role: "FE / AI", desc: "React UI + SSE 실시간 채팅\n+ Intent 멀티라벨 분류 +\nPlanner LoRA 파인튜닝", color: C.success, img: "assets/avatar-jiyoung.png" },
-  { name: "안혜빈", role: "BE", desc: "FastAPI + DB + 인증 +\nGoogle API 연동\n+ 멀티 Agent 기능 강화", color: C.warning, img: "assets/avatar-hyebin.png" },
-  { name: "윤경은", role: "AI", desc: "판단 Agent + RAG\n+ LoRA 파인튜닝\n+ 팀스페이스 기능", color: C.accent700, img: "assets/avatar-gyeongeun.png" },
-];
-team.forEach((t, i) => {
-  const x = 0.5 + i * 2.4;
-  // Avatar
-  try { s.addImage({ path: t.img, x: x + 0.6, y: 1.6, w: 1.1, h: 1.1, rounding: true }); } catch(e) {}
-  // Name bar
-  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: 2.9, w: 2.1, h: 0.4, fill: { color: C.primary700 }, rectRadius: 0.05 });
-  s.addText(t.name, { x, y: 2.9, w: 2.1, h: 0.4, fontSize: 12, bold: true, color: C.white, align: "center", margin: 0 });
-  // Role
-  s.addText(t.role, { x, y: 3.4, w: 2.1, h: 0.3, fontSize: 11, bold: true, color: C.primary900, align: "center" });
-  // Desc
-  s.addText(t.desc, { x, y: 3.8, w: 2.1, h: 1.0, fontSize: 8, color: C.sub, align: "center" });
-  // Bottom line
-  s.addShape(pres.shapes.LINE, { x, y: 4.9, w: 2.1, h: 0, line: { color: C.primary700, width: 2 } });
-});
-
-// ========== SLIDE 5: 기술 스택 ==========
-s = pres.addSlide();
-s.background = { color: C.white };
-s.addText("04", { x: 0.5, y: 0.3, w: 0.5, h: 0.3, fontSize: 10, bold: true, color: C.primary700 });
-s.addText("기술 스택", { x: 0.5, y: 0.6, w: 9, h: 0.6, fontSize: 28, bold: true, color: C.primary900, align: "center" });
-
-const stacks = [
-  { title: "AI / ML", color: C.primary700, items: ["LangGraph", "Kanana-1.5-8B + LoRA", "vLLM (RunPod A100)", "KoELECTRA (Intent)", "Qdrant + BM25 + BGE Reranker"] },
-  { title: "Backend", color: C.accent700, items: ["FastAPI + SSE", "PostgreSQL 16 (RDS)", "SQLAlchemy + Alembic", "JWT + Google OAuth 2.0"] },
-  { title: "Frontend", color: C.success, items: ["React 18 (Vite)", "Zustand + TanStack Query", "Tailwind + shadcn/ui", "FullCalendar"] },
-  { title: "Infra", color: C.warning, items: ["AWS EC2 + RDS", "Docker Compose", "GitHub Actions CI/CD", "RunPod A100 + Qdrant Cloud"] },
-];
-stacks.forEach((st, i) => {
-  const x = 0.4 + i * 2.4;
-  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: 1.5, w: 2.2, h: 3.5, fill: { color: C.surface }, shadow: mkShadow(), rectRadius: 0.1 });
-  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: x + 0.3, y: 1.7, w: 0.5, h: 0.5, fill: { color: st.color }, rectRadius: 0.08 });
-  s.addText(st.title, { x, y: 2.4, w: 2.2, h: 0.35, fontSize: 13, bold: true, color: C.primary900, align: "left", margin: [0, 0, 0, 10] });
-  s.addText(st.items.map((item, j) => ({ text: item, options: { bullet: true, breakLine: j < st.items.length - 1, fontSize: 9, color: C.sub } })), { x: x + 0.15, y: 2.8, w: 1.9, h: 2.0 });
-});
-
-// ========== SLIDE 6: 아키텍처 ==========
-s = pres.addSlide();
-s.background = { color: C.white };
-s.addText("05", { x: 0.5, y: 0.2, w: 0.5, h: 0.3, fontSize: 10, bold: true, color: C.primary700 });
-s.addText("전체 시스템 아키텍처", { x: 0.5, y: 0.4, w: 9, h: 0.5, fontSize: 24, bold: true, color: C.primary900, align: "center" });
-
-// Ingress
-s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 1.5, y: 1.0, w: 7, h: 0.6, fill: { color: C.surface }, line: { color: C.divider, width: 0.5 }, rectRadius: 0.08 });
-s.addText("User Query  →  React  →  FastAPI", { x: 1.5, y: 1.0, w: 7, h: 0.6, fontSize: 11, color: C.primary900, align: "center", margin: 0 });
-
-// Arrow
-s.addText("↓", { x: 4.5, y: 1.6, w: 1, h: 0.3, fontSize: 14, color: C.muted, align: "center" });
-
-// AI Core box
-s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 1, y: 1.9, w: 8, h: 2.2, fill: { color: C.primary50 }, line: { color: C.primary100, width: 0.5 }, rectRadius: 0.1 });
-s.addText("AI CORE (LangGraph)", { x: 1, y: 1.95, w: 8, h: 0.3, fontSize: 9, color: C.primary500, align: "center" });
-
-// Intent → Planner → Orchestrator
-s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 1.5, y: 2.3, w: 2, h: 0.6, fill: { color: C.white }, line: { color: C.primary100, width: 0.5 }, rectRadius: 0.05 });
-s.addText("Intent Classifier\nroberta-large · 93.3%", { x: 1.5, y: 2.3, w: 2, h: 0.6, fontSize: 8, color: C.primary900, align: "center", margin: 0 });
-s.addText("→", { x: 3.55, y: 2.4, w: 0.4, h: 0.4, fontSize: 12, color: C.primary300, align: "center" });
-s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 4, y: 2.3, w: 2, h: 0.6, fill: { color: C.white }, line: { color: C.primary100, width: 0.5 }, rectRadius: 0.05 });
-s.addText("Task Planner\nKanana LoRA · 87.0%", { x: 4, y: 2.3, w: 2, h: 0.6, fontSize: 8, color: C.primary900, align: "center", margin: 0 });
-s.addText("→", { x: 6.05, y: 2.4, w: 0.4, h: 0.4, fontSize: 12, color: C.primary300, align: "center" });
-s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 6.5, y: 2.3, w: 2, h: 0.6, fill: { color: C.primary700 }, rectRadius: 0.05 });
-s.addText("Orchestrator\n조건부 라우팅", { x: 6.5, y: 2.3, w: 2, h: 0.6, fontSize: 8, color: C.white, align: "center", margin: 0 });
-
-// 4 Agents
-const agents = [
-  { name: "Judgment", desc: "4중 보조장치 + 신뢰도", color: C.primary700 },
-  { name: "Document", desc: "생성/요약/검색/QA", color: C.accent700 },
-  { name: "Schedule", desc: "Google 5종 연동", color: C.success },
-  { name: "General", desc: "대화/인사", color: C.muted },
-];
-agents.forEach((a, i) => {
-  const x = 1.3 + i * 1.9;
-  s.addShape(pres.shapes.RECTANGLE, { x, y: 3.2, w: 1.7, h: 0.7, fill: { color: C.white }, line: { color: C.divider, width: 0.5 } });
-  s.addShape(pres.shapes.RECTANGLE, { x, y: 3.2, w: 0.04, h: 0.7, fill: { color: a.color } });
-  s.addText(a.name, { x: x + 0.1, y: 3.22, w: 1.5, h: 0.3, fontSize: 9, bold: true, color: a.color, margin: 0 });
-  s.addText(a.desc, { x: x + 0.1, y: 3.5, w: 1.5, h: 0.25, fontSize: 7, color: C.muted, margin: 0 });
-});
-
-// Arrow
-s.addText("↓", { x: 4.5, y: 4.1, w: 1, h: 0.3, fontSize: 14, color: C.muted, align: "center" });
-
-// Infrastructure
-const infra = ["PostgreSQL\nRDS · 17 tables", "Qdrant Cloud\nVector + BM25", "vLLM\nRunPod A100 · LoRA", "Google APIs\nCalendar/Tasks/Gmail/Sheets"];
-infra.forEach((inf, i) => {
-  const x = 1.3 + i * 1.9;
-  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: 4.4, w: 1.7, h: 0.6, fill: { color: C.accent50 }, line: { color: C.divider, width: 0.5 }, rectRadius: 0.05 });
-  s.addText(inf, { x, y: 4.4, w: 1.7, h: 0.6, fontSize: 7, color: C.accent700, align: "center", margin: 0 });
-});
-
-// SSE
-s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 1.5, y: 5.1, w: 7, h: 0.4, fill: { color: C.surface }, line: { color: C.divider, width: 0.5 }, rectRadius: 0.08 });
-s.addText("SSE Streaming Response · E2E 2~4s", { x: 1.5, y: 5.1, w: 7, h: 0.4, fontSize: 10, color: C.primary900, align: "center", margin: 0 });
-
-// ========== SLIDE 7: Agent 구조 ==========
-s = pres.addSlide();
-s.background = { color: C.surface };
-s.addText("06", { x: 0.5, y: 0.2, w: 0.5, h: 0.3, fontSize: 10, bold: true, color: C.primary700 });
-s.addText("Agent 구조", { x: 0.5, y: 0.5, w: 9, h: 0.5, fontSize: 24, bold: true, color: C.primary900, align: "center" });
-
-const agentDetails = [
-  { name: "Judgment AGENT", desc: "사내규정 기반\nyes/no/conditional 판단\n+ 근거 조항 + 대안", flow: ["사용자 질의", "↓", "RAG (top-k)", "↓", "sLLM 판단 (LoRA v1)", "↓", "4중 보조장치 + confidence", "↓", "응답"], color: C.primary700 },
-  { name: "Document AGENT", desc: "문서 생성/요약/검색/QA\n4가지 오퍼레이션", flow: ["사용자 질의", "↓", "서브타입 판단", "↓", "sLLM ← LoRA 라우팅", "↓", "응답"], color: C.accent700 },
-  { name: "Schedule AGENT", desc: "자연어 → 일정 등록/조회\n+ Google 5종 연동", flow: ["사용자 질의", "↓", "LLM 자연어 파싱", "↓", "Google API 호출", "↓", "결과 반환"], color: C.success },
-];
-agentDetails.forEach((ag, i) => {
-  const x = 0.3 + i * 3.3;
-  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: 1.2, w: 3, h: 4.0, fill: { color: C.white }, line: { color: C.divider, width: 0.5 }, shadow: mkShadow(), rectRadius: 0.1 });
-  s.addText(ag.name, { x, y: 1.4, w: 3, h: 0.35, fontSize: 13, bold: true, color: C.primary900, align: "center", margin: 0 });
-  s.addText(ag.desc, { x, y: 1.8, w: 3, h: 0.6, fontSize: 8, color: C.sub, align: "center" });
-  ag.flow.forEach((step, j) => {
-    const isArrow = step === "↓";
-    const yPos = 2.5 + j * 0.2;
-    if (!isArrow) {
-      const isFirst = j === 0;
-      const isLast = j === ag.flow.length - 1;
-      const bgColor = (isFirst || isLast) ? ag.color : C.surface;
-      const txtColor = (isFirst || isLast) ? C.white : C.sub;
-      s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: x + 0.3, y: yPos - 0.02, w: 2.4, h: 0.22, fill: { color: bgColor }, rectRadius: 0.03 });
-      s.addText(step, { x: x + 0.3, y: yPos - 0.02, w: 2.4, h: 0.22, fontSize: 7, color: txtColor, align: "center", margin: 0 });
+// ========== 8. ARCHITECTURE ==========
+{
+  const s = pres.addSlide(); s.background = { color: C.white };
+  addTag(s, 4.55, 0.15, "07", C.pri50, C.pri700);
+  s.addText("전체 시스템 아키텍처", { x:0,y:0.45,w:10,h:0.45, fontSize:26, fontFace:FT, color:C.pri900, align:"center", bold:true });
+  // Left
+  [{l:"User Query",s2:""},{l:"React",s2:"SSE Client"},{l:"FastAPI",s2:"JWT / OAuth"}].forEach((item,i) => {
+    const iy = 1.2+i*1.15;
+    addCard(s,0.3,iy,1.3,0.8,C.sfcMain,C.divider);
+    s.addText(item.l, { x:0.3,y:iy+(item.s2?0.08:0.15),w:1.3,h:0.35, fontSize:11, fontFace:FB, color:C.pri900, align:"center", bold:true, margin:0 });
+    if(item.s2) s.addText(item.s2, { x:0.3,y:iy+0.42,w:1.3,h:0.25, fontSize:8, fontFace:FB, color:C.muted, align:"center", margin:0 });
+  });
+  s.addText("→", { x:1.6,y:2.1,w:0.4,h:0.4, fontSize:18, color:C.pri300, align:"center", valign:"middle" });
+  // Center
+  addCard(s,2.1,1.0,5.4,3.8,C.pri50,C.pri100);
+  s.addText("AI CORE — LANGGRAPH ORCHESTRATOR", { x:2.1,y:1.1,w:5.4,h:0.25, fontSize:8, fontFace:FB, color:C.pri500, align:"center", bold:true, charSpacing:2, margin:0 });
+  addCard(s,2.8,1.45,4.1,0.65,C.white,C.pri100);
+  s.addText("classify_intent", { x:2.8,y:1.48,w:4.1,h:0.3, fontSize:13, fontFace:FB, color:C.pri900, align:"center", bold:true, margin:0 });
+  s.addText("roberta-large ONNX 멀티라벨 · 91.0% · 19ms", { x:2.8,y:1.78,w:4.1,h:0.25, fontSize:9, fontFace:FB, color:C.muted, align:"center", margin:0 });
+  // Branches
+  [{t:"compound",tc:C.warning,bg:"FFF8EE",bd:C.warning,items:[["decompose_query","Planner LoRA"],["compound_pending","순차 스트리밍"]]},
+   {t:"단일 (conf ≥ 0.85)",tc:C.success,bg:"EEFBF0",bd:C.success,items:[["Judgment",""],["Document",""],["Schedule",""],["General",""]]},
+   {t:"low conf (< 0.85)",tc:C.error,bg:"FFF0F0",bd:C.error,items:[["clarify_with_candidates","top-2 후보 제시"]]}
+  ].forEach((b,i) => {
+    const bx = 2.3+i*1.75;
+    addCard(s,bx,2.3,1.55,1.8,b.bg,b.bd);
+    s.addText(b.t, { x:bx,y:2.35,w:1.55,h:0.25, fontSize:9, fontFace:FB, color:b.tc, align:"center", bold:true, margin:0 });
+    if(i===1) {
+      b.items.forEach((a,ai) => {
+        const ax=bx+0.08+(ai%2)*0.72, ay=2.7+Math.floor(ai/2)*0.55;
+        addCard(s,ax,ay,0.67,0.45,C.white,C.divider);
+        s.addText(a[0], { x:ax,y:ay+0.05,w:0.67,h:0.35, fontSize:8, fontFace:FB, color:C.pri700, align:"center", bold:true, margin:0 });
+      });
     } else {
-      s.addText("↓", { x: x + 0.3, y: yPos - 0.05, w: 2.4, h: 0.2, fontSize: 8, color: C.muted, align: "center" });
+      b.items.forEach((item,ii) => {
+        const iy=2.7+ii*0.6;
+        addCard(s,bx+0.1,iy,1.35,0.5,C.white,C.divider);
+        s.addText(item[0], { x:bx+0.1,y:iy+0.02,w:1.35,h:0.25, fontSize:8, fontFace:FB, color:C.pri900, align:"center", bold:true, margin:0 });
+        if(item[1]) s.addText(item[1], { x:bx+0.1,y:iy+0.25,w:1.35,h:0.2, fontSize:7, fontFace:FB, color:C.muted, align:"center", margin:0 });
+      });
     }
   });
-});
+  addCard(s,2.3,4.25,5.0,0.35,C.pri700);
+  s.addText("format_response → SSE Streaming → END", { x:2.3,y:4.25,w:5.0,h:0.35, fontSize:10, fontFace:FB, color:C.white, align:"center", valign:"middle", bold:true, margin:0 });
+  s.addText("→", { x:7.5,y:2.1,w:0.4,h:0.4, fontSize:18, color:C.pri300, align:"center", valign:"middle" });
+  // Right
+  [{l:"Qdrant Cloud",s2:"벡터+BM25"},{l:"vLLM (RunPod)",s2:"Kanana+LoRA"},{l:"Google APIs",s2:"Cal/Tasks/Gmail/Sheets"},{l:"PostgreSQL",s2:"RDS 16 테이블"}].forEach((inf,i) => {
+    const iy=1.2+i*0.9;
+    addCard(s,8.0,iy,1.7,0.7,C.acc50,C.acc300);
+    s.addText(inf.l, { x:8.0,y:iy+0.05,w:1.7,h:0.3, fontSize:10, fontFace:FB, color:C.acc700, align:"center", bold:true, margin:0 });
+    s.addText(inf.s2, { x:8.0,y:iy+0.35,w:1.7,h:0.25, fontSize:8, fontFace:FB, color:C.muted, align:"center", margin:0 });
+  });
+}
 
-s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 0.5, y: 5.35, w: 9, h: 0.3, fill: { color: C.primary700 }, rectRadius: 0.05 });
-s.addText("Planner Agent: 3개 Agent를 하나의 LangGraph 오케스트레이터로 융합", { x: 0.5, y: 5.35, w: 9, h: 0.3, fontSize: 9, color: C.white, align: "center", margin: 0 });
+// ========== 9. AGENT STRUCTURE ==========
+{
+  const s = pres.addSlide(); s.background = { color: C.sfcMain };
+  addTag(s,4.7,0.2,"08",C.pri50,C.pri700);
+  s.addText("Agent 구조", { x:0,y:0.55,w:10,h:0.5, fontSize:28, fontFace:FT, color:C.pri900, align:"center", bold:true });
+  [{n:"문서 AGENT",r:"문서 생성/요약/검색/QA\n4가지 오퍼레이션",c:C.acc700,bg:C.acc50,f:"사용자 질의 → 서브타입 판단\n→ sLLM ← LoRA 라우팅 → 응답"},
+   {n:"판단 AGENT",r:"사내규정 기반\nyes/no/conditional 판단\n+ 근거 조항 + 대안",c:C.pri700,bg:C.pri50,f:"사용자 질의 → RAG (top-k)\n→ sLLM 판단 (LoRA v1)\n→ 4중 보조장치 + confidence → 응답"},
+   {n:"일정 AGENT",r:"자연어 → 일정 등록/조회\n+ Google 5종 연동",c:C.success,bg:C.successBg,f:"사용자 질의 → LLM 자연어 파싱\n→ Google API 호출\n→ 결과 반환"}
+  ].forEach((a,i) => {
+    const ax=0.5+i*3.15;
+    addCard(s,ax,1.3,2.85,3.4,C.white,C.divider);
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x:ax+0.85,y:1.5,w:1.15,h:0.8, fill:{color:a.bg}, rectRadius:0.1 });
+    s.addText(a.n, { x:ax+0.1,y:2.45,w:2.65,h:0.35, fontSize:14, fontFace:FT, color:C.pri900, align:"center", bold:true, margin:0 });
+    s.addText(a.r, { x:ax+0.1,y:2.8,w:2.65,h:0.65, fontSize:9, fontFace:FB, color:C.sub, align:"center" });
+    s.addText(a.f, { x:ax+0.15,y:3.55,w:2.55,h:1.0, fontSize:9, fontFace:FB, color:C.sub, align:"center", valign:"top" });
+  });
+  addCard(s,0.5,4.85,9.0,0.4,C.pri700);
+  s.addText("LangGraph Orchestrator: classify_intent → 조건부 라우팅 (단일 / 복합 / 저신뢰)", { x:0.5,y:4.85,w:9.0,h:0.4, fontSize:10, fontFace:FB, color:C.white, align:"center", valign:"middle", margin:0 });
+}
 
-// ========== SLIDE 8: 데이터셋 현황 ==========
-s = pres.addSlide();
-s.background = { color: C.white };
-s.addText("07", { x: 0.5, y: 0.2, w: 0.5, h: 0.3, fontSize: 10, bold: true, color: C.primary700 });
-s.addText("데이터셋 현황", { x: 0.5, y: 0.5, w: 9, h: 0.5, fontSize: 24, bold: true, color: C.primary900, align: "center" });
+// ========== 10. JUDGMENT AGENT DETAIL ==========
+{
+  const s = pres.addSlide(); s.background = { color: C.white };
+  addTag(s,4.55,0.15,"08-1",C.pri50,C.pri700);
+  s.addText("Judgment Agent 상세", { x:0,y:0.45,w:10,h:0.45, fontSize:26, fontFace:FT, color:C.pri900, align:"center", bold:true });
+  s.addText("사내규정 기반 판단 · RAG 검색 → sLLM 판단 → 4중 보조장치 → Confidence 보정", { x:0,y:0.85,w:10,h:0.25, fontSize:10, fontFace:FB, color:C.sub, align:"center" });
+  // Top 4 flow
+  [{t:"사용자 질의",d:"+ 이전 대화 컨텍스트\n(최근 3턴)",bg:C.sfcMain,bd:C.divider,tc:C.pri900},
+   {t:"RAG 하이브리드 검색",d:"Qdrant + BM25 + Reranker\ntop_k=5 · 규정 전용 필터",bg:C.pri50,bd:C.pri100,tc:C.pri700},
+   {t:"규정 그룹핑 + 프롬프트",d:"출처별 규정 분류\n이전 판단 이력 3건 포함",bg:C.pri50,bd:C.pri100,tc:C.pri700},
+   {t:"sLLM 판단",d:"LoRA v1_judgment\nKanana-1.5-8B · JSON mode",bg:C.pri700,bd:undefined,tc:C.white}
+  ].forEach((tf,i) => {
+    const tx=0.35+i*2.4;
+    addCard(s,tx,1.25,2.15,1.1,tf.bg,tf.bd);
+    s.addText(tf.t, { x:tx+0.1,y:1.3,w:1.95,h:0.35, fontSize:11, fontFace:FB, color:tf.tc, align:"center", bold:true, margin:0 });
+    s.addText(tf.d, { x:tx+0.1,y:1.65,w:1.95,h:0.55, fontSize:9, fontFace:FB, color:tf.bg===C.pri700?C.pri100:C.muted, align:"center", margin:0 });
+  });
+  // Bottom 3
+  addCard(s,0.35,2.6,3.7,2.3,C.successBg,C.success);
+  s.addText("4중 보조장치", { x:0.35,y:2.7,w:3.7,h:0.3, fontSize:12, fontFace:FB, color:C.success, align:"center", bold:true, margin:0 });
+  [["1. 카테고리 제한","yes / no / conditional"],["2. 키워드 매칭","인용 조항 환각 탐지"],["3. 조항 존재 검증","Qdrant 실존 여부 확인"],["4. 일관성 모니터링","동일 쿼리 캐싱+비교"]].forEach((sg,i) => {
+    const gx=0.5+(i%2)*1.8, gy=3.1+Math.floor(i/2)*0.85;
+    addCard(s,gx,gy,1.65,0.7,C.white,C.divider);
+    s.addText(sg[0], { x:gx+0.05,y:gy+0.05,w:1.55,h:0.3, fontSize:10, fontFace:FB, color:C.pri900, align:"center", bold:true, margin:0 });
+    s.addText(sg[1], { x:gx+0.05,y:gy+0.35,w:1.55,h:0.25, fontSize:8, fontFace:FB, color:C.muted, align:"center", margin:0 });
+  });
+  addCard(s,4.25,2.6,2.9,2.3,C.acc50,C.acc300);
+  s.addText("Confidence 보정", { x:4.25,y:2.7,w:2.9,h:0.3, fontSize:12, fontFace:FB, color:C.acc700, align:"center", bold:true, margin:0 });
+  s.addText("calibrated =\nLLM×0.6 + RAG×0.25\n+ coverage×0.15\n- penalties", { x:4.4,y:3.1,w:2.6,h:0.9, fontSize:10, fontFace:FB, color:C.sub, align:"center" });
+  ["충돌 패널티","환각 패널티","미존재 조항"].forEach((p,i) => {
+    addCard(s,4.4+i*0.88,4.15,0.82,0.3,C.white,C.divider);
+    s.addText(p, { x:4.4+i*0.88,y:4.15,w:0.82,h:0.3, fontSize:7, fontFace:FB, color:C.sub, align:"center", valign:"middle", margin:0 });
+  });
+  addCard(s,7.35,2.6,2.3,2.3,C.sfcMain,C.divider);
+  s.addText("최종 응답", { x:7.35,y:2.7,w:2.3,h:0.3, fontSize:12, fontFace:FB, color:C.pri900, align:"center", bold:true, margin:0 });
+  s.addText("result + confidence\n+ reasoning\n+ 근거 조항\n+ 교차참조\n+ 대안", { x:7.35,y:3.15,w:2.3,h:1.3, fontSize:10, fontFace:FB, color:C.sub, align:"center" });
+}
 
-// Bar chart
-s.addChart(pres.charts.BAR, [
-  { name: "train", labels: ["Intent 분류", "Planner", "판단", "문서 요약", "문서 생성"], values: [3954, 1471, 3468, 900, 1350] },
-  { name: "eval", labels: ["Intent 분류", "Planner", "판단", "문서 요약", "문서 생성"], values: [610, 150, 328, 100, 150] },
-], {
-  x: 0.3, y: 1.2, w: 5, h: 3.5, barDir: "col",
-  chartColors: [C.primary300, C.error],
-  chartArea: { fill: { color: C.white }, roundedCorners: true },
-  catAxisLabelColor: C.sub, valAxisLabelColor: C.sub,
-  valGridLine: { color: C.divider, size: 0.5 }, catGridLine: { style: "none" },
-  showValue: true, dataLabelPosition: "outEnd", dataLabelColor: C.dark, dataLabelFontSize: 7,
-  showLegend: true, legendPos: "t",
-});
+// ========== 11. LIMITATIONS ==========
+{
+  const s = pres.addSlide(); s.background = { color: C.sfcMain };
+  addTag(s,4.7,0.2,"10",C.warningBg,C.warning);
+  s.addText("한계점 및 향후 계획", { x:0,y:0.55,w:10,h:0.5, fontSize:28, fontFace:FT, color:C.pri900, align:"center", bold:true });
+  s.addText("현재 한계점", { x:0.5,y:1.2,w:4.3,h:0.35, fontSize:14, fontFace:FB, color:C.pri900, bold:true });
+  [["Conditional 정확도 78%","목표 85% -7%p\n조건부 가능 경계 모호"],["3-step 복합 요청 66.7%","1-step 91.3% 대비 낮음\n8B 모델 멀티스텝 추론 한계"],
+   ["Reranker 지연 +5.7초","정확도 vs 속도 트레이드오프\nMRR 0.636→0.952"],["vLLM LoRA 전환 이슈","v3_summary 한글 깨짐\npeft 버전 호환"]
+  ].forEach((l,i) => {
+    const ly=1.65+i*0.9;
+    addCard(s,0.5,ly,4.3,0.75,C.white,C.divider);
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x:0.55,y:ly+0.05,w:0.12,h:0.65, fill:{color:C.error}, rectRadius:0.04 });
+    s.addText(l[0], { x:0.8,y:ly+0.05,w:3.9,h:0.3, fontSize:11, fontFace:FB, color:C.pri900, bold:true, margin:0 });
+    s.addText(l[1], { x:0.8,y:ly+0.35,w:3.9,h:0.35, fontSize:8, fontFace:FB, color:C.sub, margin:0 });
+  });
+  s.addText("향후 발전 방향", { x:5.2,y:1.2,w:4.3,h:0.35, fontSize:14, fontFace:FB, color:C.pri900, bold:true });
+  [["Conditional 데이터 정밀 보강","레이블 표준 재정의 + 경계 사례\n추가 수집 → 목표 85%"],["빈출 규정 판단 캐싱","자주 묻는 규정 질문 캐싱으로\nReranker 지연 우회"],
+   ["모델 경량화 & 최적화","4-bit 양자화 적용 · ONNX 변환\n추론 속도 개선"],["복합 질문 연쇄 처리","규정 판단+문서 생성 연쇄\n3-step 이상 분해 성능 강화"]
+  ].forEach((f,i) => {
+    const fy=1.65+i*0.9;
+    addCard(s,5.2,fy,4.3,0.75,C.white,C.divider);
+    s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x:5.25,y:fy+0.05,w:0.12,h:0.65, fill:{color:C.success}, rectRadius:0.04 });
+    s.addText(f[0], { x:5.5,y:fy+0.05,w:3.9,h:0.3, fontSize:11, fontFace:FB, color:C.pri900, bold:true, margin:0 });
+    s.addText(f[1], { x:5.5,y:fy+0.35,w:3.9,h:0.35, fontSize:8, fontFace:FB, color:C.sub, margin:0 });
+  });
+}
 
-// Table
-s.addText("전체 데이터 현황", { x: 5.5, y: 1.2, w: 4.2, h: 0.35, fontSize: 12, bold: true, color: C.primary900 });
-const dataRows = [
-  [{ text: "구분", options: { fill: { color: C.primary700 }, color: C.white, bold: true, fontSize: 9 } }, { text: "출처", options: { fill: { color: C.primary700 }, color: C.white, bold: true, fontSize: 9 } }],
-  [{ text: "Intent 분류", options: { fontSize: 8 } }, { text: "자체 제작 + Adversarial 463", options: { fontSize: 8 } }],
-  [{ text: "Planner", options: { fontSize: 8 } }, { text: "자체 제작 + GPT 증강", options: { fontSize: 8 } }],
-  [{ text: "판단 LoRA", options: { fontSize: 8 } }, { text: "수동 제작(Excel) + 규정DB", options: { fontSize: 8 } }],
-  [{ text: "문서요약 LoRA", options: { fontSize: 8 } }, { text: "AI Hub SN 582 + GPT 증강", options: { fontSize: 8 } }],
-  [{ text: "문서생성 LoRA", options: { fontSize: 8 } }, { text: "AI Hub + 합성(회의록/보고서/제안서)", options: { fontSize: 8 } }],
-];
-s.addTable(dataRows, { x: 5.5, y: 1.6, w: 4.2, colW: [1.4, 2.8], border: { pt: 0.5, color: C.divider } });
+// ========== 12. Q&A ==========
+{
+  const s = pres.addSlide(); s.background = { color: C.pri900 };
+  s.addText("WorkFlow Agent — DUDE", { x:0,y:1.3,w:10,h:0.4, fontSize:12, fontFace:FB, color:C.pri300, align:"center", charSpacing:3 });
+  s.addText("Q & A", { x:0,y:1.8,w:10,h:1.2, fontSize:54, fontFace:FT, color:C.white, align:"center", valign:"middle", bold:true });
+  s.addText("감사합니다", { x:0,y:3.2,w:10,h:0.5, fontSize:16, fontFace:FB, color:C.pri100, align:"center" });
+  s.addText("SKN21 Final Project · 3TEAM", { x:0,y:3.8,w:10,h:0.4, fontSize:11, fontFace:FB, color:C.pri300, align:"center" });
+}
 
-// ========== SLIDE 9: 성능 평가 ==========
-s = pres.addSlide();
-s.background = { color: C.white };
-s.addText("성능 평가", { x: 0.5, y: 0.3, w: 9, h: 0.5, fontSize: 24, bold: true, color: C.primary900, align: "center" });
-
-// Key metrics
-const metrics = [
-  { val: "97.9%", label: "Intent Test F1", sub: "KoELECTRA · 7.9ms", color: C.primary700 },
-  { val: "85.4%", label: "Judgment 정확도", sub: "LoRA v3 · JSON 97.6%", color: C.accent700 },
-  { val: "0.926", label: "Doc Gen BERTScore", sub: "LoRA v3", color: C.success },
-  { val: "0.952", label: "RAG MRR", sub: "Hybrid+Reranker+HyDE", color: C.warning },
-];
-metrics.forEach((m, i) => {
-  const x = 0.4 + i * 2.4;
-  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: 1.0, w: 2.2, h: 1.2, fill: { color: C.surface }, shadow: mkShadow(), rectRadius: 0.1 });
-  s.addText(m.val, { x, y: 1.05, w: 2.2, h: 0.5, fontSize: 22, bold: true, color: m.color, align: "center", fontFace: "Arial", margin: 0 });
-  s.addText(m.label, { x, y: 1.5, w: 2.2, h: 0.3, fontSize: 9, color: C.sub, align: "center", margin: 0 });
-  s.addText(m.sub, { x, y: 1.75, w: 2.2, h: 0.2, fontSize: 7, color: C.muted, align: "center", margin: 0 });
-});
-
-// Base vs LoRA table
-s.addText("Kanana Base vs LoRA 파인튜닝", { x: 0.5, y: 2.5, w: 4.5, h: 0.35, fontSize: 12, bold: true, color: C.primary900 });
-const compRows = [
-  [{ text: "항목", options: { fill: { color: C.primary700 }, color: C.white, bold: true, fontSize: 8 } }, { text: "Base", options: { fill: { color: C.primary700 }, color: C.white, bold: true, fontSize: 8 } }, { text: "LoRA", options: { fill: { color: C.primary700 }, color: C.white, bold: true, fontSize: 8 } }, { text: "개선", options: { fill: { color: C.primary700 }, color: C.white, bold: true, fontSize: 8 } }],
-  [{ text: "판단 정확도", options: { fontSize: 8 } }, { text: "83.5%", options: { fontSize: 8, align: "center" } }, { text: "85.4%", options: { fontSize: 8, bold: true, align: "center" } }, { text: "+1.9%p", options: { fontSize: 8, color: C.success, align: "center" } }],
-  [{ text: "요약 BERTScore", options: { fontSize: 8 } }, { text: "0.828", options: { fontSize: 8, align: "center" } }, { text: "0.859", options: { fontSize: 8, bold: true, align: "center" } }, { text: "+0.031", options: { fontSize: 8, color: C.success, align: "center" } }],
-  [{ text: "생성 BERTScore", options: { fontSize: 8 } }, { text: "0.896", options: { fontSize: 8, align: "center" } }, { text: "0.926", options: { fontSize: 8, bold: true, align: "center" } }, { text: "+0.030", options: { fontSize: 8, color: C.success, align: "center" } }],
-  [{ text: "생성 JSON 유효율", options: { fontSize: 8 } }, { text: "77.3%", options: { fontSize: 8, align: "center" } }, { text: "87.3%", options: { fontSize: 8, bold: true, align: "center" } }, { text: "+10%p", options: { fontSize: 8, color: C.success, align: "center" } }],
-  [{ text: "생성 False Fill", options: { fontSize: 8 } }, { text: "44.3%", options: { fontSize: 8, align: "center" } }, { text: "17.9%", options: { fontSize: 8, bold: true, align: "center" } }, { text: "-26.4%p", options: { fontSize: 8, color: C.success, align: "center" } }],
-];
-s.addTable(compRows, { x: 0.5, y: 2.9, w: 4.5, colW: [1.3, 0.9, 0.9, 1.0], border: { pt: 0.5, color: C.divider } });
-
-// Model summary table
-s.addText("모델별 최종 성능 요약", { x: 5.3, y: 2.5, w: 4.5, h: 0.35, fontSize: 12, bold: true, color: C.primary900 });
-const modelRows = [
-  [{ text: "모듈", options: { fill: { color: C.primary700 }, color: C.white, bold: true, fontSize: 8 } }, { text: "지표", options: { fill: { color: C.primary700 }, color: C.white, bold: true, fontSize: 8 } }, { text: "결과", options: { fill: { color: C.primary700 }, color: C.white, bold: true, fontSize: 8 } }],
-  [{ text: "Intent (KoELECTRA)", options: { fontSize: 8, color: C.primary700, bold: true } }, { text: "Test F1 / Adversarial F1", options: { fontSize: 8 } }, { text: "97.9% / 87.8%", options: { fontSize: 8, bold: true } }],
-  [{ text: "Planner (Kanana)", options: { fontSize: 8, color: C.primary700, bold: true } }, { text: "Held-out 정확도", options: { fontSize: 8 } }, { text: "87.0%", options: { fontSize: 8, bold: true } }],
-  [{ text: "Judgment (LoRA v3)", options: { fontSize: 8, color: C.accent700, bold: true } }, { text: "정확도 / JSON 유효", options: { fontSize: 8 } }, { text: "85.4% / 97.6%", options: { fontSize: 8, bold: true } }],
-  [{ text: "Doc Summary (v3)", options: { fontSize: 8, color: C.accent700, bold: true } }, { text: "BERTScore / 포맷", options: { fontSize: 8 } }, { text: "0.859 / 100%", options: { fontSize: 8, bold: true } }],
-  [{ text: "Doc Generate (v3)", options: { fontSize: 8, color: C.accent700, bold: true } }, { text: "BERTScore / JSON", options: { fontSize: 8 } }, { text: "0.926 / 87.3%", options: { fontSize: 8, bold: true } }],
-  [{ text: "RAG 검색", options: { fontSize: 8, color: C.success, bold: true } }, { text: "MRR / Hit Rate", options: { fontSize: 8 } }, { text: "0.952 / 95.2%", options: { fontSize: 8, bold: true } }],
-];
-s.addTable(modelRows, { x: 5.3, y: 2.9, w: 4.5, colW: [1.6, 1.5, 1.4], border: { pt: 0.5, color: C.divider } });
-
-// ========== SLIDE 10: Q&A ==========
-s = pres.addSlide();
-s.background = { color: C.primary900 };
-s.addText("WorkFlow Agent — DUDE", { x: 0.5, y: 1.2, w: 9, h: 0.4, fontSize: 12, color: C.primary100, align: "center" });
-s.addText("Q & A", { x: 0.5, y: 2.0, w: 9, h: 1.5, fontSize: 60, bold: true, color: C.white, align: "center", fontFace: "Arial" });
-s.addText("감사합니다", { x: 0.5, y: 3.5, w: 9, h: 0.5, fontSize: 16, color: C.primary100, align: "center" });
-s.addText("SKN21 Final Project · 3TEAM", { x: 0.5, y: 4.2, w: 9, h: 0.3, fontSize: 10, color: C.primary300, align: "center" });
-
-// Save
-pres.writeFile({ fileName: "/Users/moonjiyoung/Desktop/SKN21-FINAL-3TEAM/DUDE_Presentation.pptx" })
-  .then(() => console.log("PPTX created successfully!"))
-  .catch(err => console.error(err));
+// === SAVE ===
+pres.writeFile({ fileName: "/Users/moonjiyoung/Desktop/SKN21-FINAL-3TEAM/DUDE_Presentation.pptx" }).then(() => {
+  console.log("PPT 생성 완료: DUDE_Presentation.pptx");
+}).catch(err => console.error("오류:", err));

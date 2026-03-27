@@ -4310,9 +4310,17 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 - **목차를 presentation.html과 동일하게 교체** — 2컬럼 그리드, 11개 항목 (Overview/Architecture/AI·Data/Engineering/Result/Closing), max-w-5xl
 - nav dots + JS IntersectionObserver ID 목록도 함께 정리
 
+#### 10) presentation_v2.html 추가 수정
+
+- **커버 페이지**: "DUDE (듀드)" → "DUDE" 한글만 삭제 (푸터도 동일 적용)
+- **"해결합니다" → "처리합니다"** 변경
+- **개발 전략 섹션 재삭제** — develop pull 시 다시 들어와서 재삭제
+- **전체 시스템 아키텍처 가로 전환** — 세로 플로우 → 가로 3컬럼 (입력 | AI Core | 인프라), PPT 슬라이드 비율(min-h-screen) 적용
+- **Judgment Agent 상세 가로 전환** — 세로 7단 → 상단 4칸 그리드 + 하단 3칸 (4중보조 | Confidence | 최종응답), PPT 비율 적용
+- **팀 구성 사이즈업** — 아바타 w-28→w-36, 이름/역할 text-sm→text-base, 설명 text-xs→text-sm
+- **안혜빈 역할 수정** — "인증", "멀티 Agent 기능 강화" 제거 → "FastAPI + DB + Google API 연동"
 ### 다음 할 일
 
 - [ ] 트러블슈팅 (07) 실제 내용 채우기 (발표자료 HTML에 반영)
 - [ ] 데모 시나리오 (09) 실제 내용 채우기
 - [ ] 이미지 base64 임베딩 (파일 하나로 공유 가능하게)
-- [ ] PPT 변환 작업

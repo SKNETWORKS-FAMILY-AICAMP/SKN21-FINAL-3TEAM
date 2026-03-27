@@ -795,7 +795,7 @@ _SEQUENTIAL_PHRASE_PATTERNS = [
 
 
 def _split_compound_text(text: str) -> list[str]:
-    """복합 질문 텍스트를 서브쿼리 파트로 분리"""
+    """복합 질문 텍스트를 서브쿼리 파트로 분리 (3step 이상 지원)"""
     # 1. "그리고" / 쉼표로 분리
     if "그리고" in text:
         return [p.strip() for p in text.split("그리고") if p.strip()]
@@ -804,25 +804,27 @@ def _split_compound_text(text: str) -> list[str]:
         if len(parts) >= 2:
             return parts
 
-    # 2. "~하고 ", "~주고 " 동사 연결 패턴
-    segments = re.split(_VERB_CONNECTOR_PATTERN, text)
+    # 2. 동사 연결 + 순차 연결 통합 패턴 (verb "~하고/~주고" + seq "~해서")
+    combined = (
+        r"("
+        r"(?:추가|등록|잡아|잡|검색|찾아|조회|확인|판단|생성|작성|요약|정리|만들|보)(?:하고|고)"
+        r"|(?:해|찾아|보여|알려|잡아|확인해|조회해|만들어)(?:줘|주고)"
+        r"|(?:찾아|검색해|확인해|정리해|검토해|조회해)서"
+        r")\s+"
+    )
+    segments = re.split(combined, text)
     if len(segments) >= 3:
-        parts = [segments[0] + segments[1]]
-        remaining = "".join(segments[2:])
-        if remaining.strip():
-            parts.append(remaining.strip())
-        return parts
+        parts = []
+        for i in range(0, len(segments) - 1, 2):
+            part = (segments[i] + segments[i + 1]).strip()
+            if part:
+                parts.append(part)
+        if len(segments) % 2 == 1 and segments[-1].strip():
+            parts.append(segments[-1].strip())
+        if len(parts) >= 2:
+            return parts
 
-    # 3. "~해서/~어서" 순차 연결 패턴
-    segments = re.split(_SEQUENTIAL_CONNECTOR_PATTERN, text)
-    if len(segments) >= 3:
-        parts = [segments[0] + segments[1]]
-        remaining = "".join(segments[2:])
-        if remaining.strip():
-            parts.append(remaining.strip())
-        return parts
-
-    # 4. "~보고", "바탕으로", "한 다음" 등 순차 구문
+    # 3. "~보고", "바탕으로", "한 다음" 등 순차 구문
     for pattern in _SEQUENTIAL_PHRASE_PATTERNS:
         m = re.match(pattern, text)
         if m:
