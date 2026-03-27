@@ -4,13 +4,11 @@ LangGraph Agent 오케스트레이터 (팀원 A 담당)
 그래프 구조:
   [사용자 입력]
        |
-  [decompose_query]  ← 복합 질문 감지 (규칙 기반)
-       | (route_after_decompose)
-    +-- compound       → compound_pending (chat.py에서 스트리밍 처리)
-    +-- single         ↓
-  [classify_intent]  ← BERT (→ Solar fallback → 임베딩 fallback)
+  [classify_intent]  ← roberta-large ONNX 멀티라벨 (복합 감지 포함)
        | (route_by_intent)
-    +-- low_confidence  → clarify_with_candidates (top-3 후보 제시)
+    +-- compound       → decompose_query → compound_pending (chat.py에서 순차 스트리밍)
+    +-- schedule_followup → schedule_agent (이전 대화 맥락 기반)
+    +-- low_confidence  → clarify_with_candidates (top-2 후보 제시)
     +-- judgment        → judgment_agent
     +-- doc_*           → document_agent
     +-- schedule_*      → schedule_agent
@@ -620,7 +618,7 @@ def route_by_intent(state: AgentState) -> str:
 
 
 def clarify_with_candidates(state: AgentState) -> AgentState:
-    """top-3 후보 제시 노드 (confidence < 0.7)"""
+    """top-2 후보 제시 노드 (confidence < 0.85 또는 gap < 0.40)"""
     candidates = state.get("intent_candidates", [])
     logger.debug("[Orchestrator] clarify_with_candidates 진입 | candidates=%s", candidates)
 

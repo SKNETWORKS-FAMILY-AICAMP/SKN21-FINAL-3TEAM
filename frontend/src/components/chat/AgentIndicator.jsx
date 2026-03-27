@@ -8,6 +8,7 @@ const agentConfig = {
   doc_summary: { icon: FileSearch, label: '문서 요약 Agent', color: 'text-accent-700 bg-accent-50' },
   doc_pick: { icon: FileSearch, label: '문서 선택', color: 'text-accent-700 bg-accent-50' },
   template_pick: { icon: FileText, label: '양식 선택', color: 'text-accent-700 bg-accent-50' },
+  clarify: { icon: FileText, label: '문서 생성 Agent', color: 'text-accent-700 bg-accent-50' },
   schedule_add: { icon: CalendarPlus, label: '일정 추가 Agent', color: 'text-success bg-success-bg' },
   schedule_view: { icon: CalendarDays, label: '일정 조회 Agent', color: 'text-success bg-success-bg' },
   general: { icon: MessageCircle, label: '일반 질문 Agent', color: 'text-neutral-sub bg-surface-hover' },
