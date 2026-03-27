@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
-import { MessageSquarePlus, Menu, CheckCircle, XCircle, AlertTriangle, HelpCircle, ShieldCheck, FileText, Search, MessageCircle, Copy, Star } from 'lucide-react';
+import { MessageSquarePlus, Menu, CheckCircle, XCircle, AlertTriangle, HelpCircle, ShieldCheck, FileText, Search, MessageCircle, Copy, Star, CalendarPlus } from 'lucide-react';
 import ChatWindow from '../components/chat/ChatWindow';
 import MessageBubble from '../components/chat/MessageBubble';
 import StreamingMessage from '../components/chat/StreamingMessage';
@@ -13,7 +13,7 @@ import ChatSessionSidebar from '../components/chat/ChatSessionSidebar';
 import JudgmentCard from '../components/chat/JudgmentCard';
 import ScheduleCard from '../components/chat/ScheduleCard';
 import ScheduleConfirmCard from '../components/chat/ScheduleConfirmCard';
-import GenerateCard from '../components/chat/GenerateCard';
+import GenerateCard, { ScheduleSuggestSection } from '../components/chat/GenerateCard';
 import MarkdownText from '../components/chat/MarkdownText';
 import SourceItem from '../components/chat/SourceItem';
 import SourceList from '../components/chat/SourceList';
@@ -307,18 +307,36 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
         ? (data.action_items || docData.action_items || [])
         : [];
 
+      const schedules = data.suggested_schedules || [];
+
       return (
-        <GenerateCard
-          title={String(docData.title || templateName)}
-          templateType={data.template_type}
-          fields={[]}
-          actionItems={actionItems}
-          onDownload={handleDocDownload}
-          modelName={data.model_name || ''}
-          regulationCheck={data.regulation_check}
-          warnings={data.warnings}
-          suggestedSchedules={data.suggested_schedules || []}
-        />
+        <div className="space-y-3">
+          <GenerateCard
+            title={String(docData.title || templateName)}
+            templateType={data.template_type}
+            fields={[]}
+            actionItems={actionItems}
+            onDownload={handleDocDownload}
+            modelName={data.model_name || ''}
+            regulationCheck={data.regulation_check}
+            warnings={data.warnings}
+            suggestedSchedules={[]}
+          />
+          {schedules.length > 0 && (
+            <div className="bg-surface-card rounded-xl border border-neutral-border overflow-hidden shadow-sm">
+              <div className="px-4 py-2.5 border-b border-neutral-divider flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.6875rem] font-semibold bg-success-bg text-success">
+                  <CalendarPlus size={12} />
+                  일정 Agent
+                </span>
+                <span className="text-xs text-neutral-muted">Action Items에서 {schedules.length}건의 일정을 감지했습니다</span>
+              </div>
+              <div className="p-4">
+                <ScheduleSuggestSection items={schedules} />
+              </div>
+            </div>
+          )}
+        </div>
       );
     }
 

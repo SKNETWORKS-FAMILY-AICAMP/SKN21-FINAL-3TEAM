@@ -70,11 +70,6 @@ export default function GenerateCard({ title, templateType, fields = [], actionI
           </div>
         )}
 
-        {/* 일정 제안 섹션 */}
-        {suggestedSchedules.length > 0 && (
-          <ScheduleSuggestSection items={suggestedSchedules} />
-        )}
-
         {/* 규정 검증 결과 */}
         {regulationCheck?.notes?.length > 0 && (
           <div className="mb-4 space-y-1.5">
@@ -131,9 +126,9 @@ export default function GenerateCard({ title, templateType, fields = [], actionI
 }
 
 
-/* ── 일정 제안 서브 컴포넌트 ── */
+/* ── 일정 제안 서브 컴포넌트 (외부에서도 사용) ── */
 
-function ScheduleSuggestSection({ items }) {
+export function ScheduleSuggestSection({ items }) {
   // description에서 담당자만 추출 ("담당: 한대리 | 출처: ..." → "한대리")
   const parseAssignee = (desc) => {
     if (!desc) return '';
@@ -201,12 +196,8 @@ function ScheduleSuggestSection({ items }) {
   };
 
   return (
-    <div className="mb-4 p-3 rounded-lg border border-blue-200 bg-blue-50/50">
+    <div>
       <div className="flex items-center justify-between mb-2">
-        <div className="text-[0.8125rem] font-semibold text-blue-700 flex items-center gap-1.5">
-          <CalendarPlus size={14} />
-          일정 등록 제안 ({items.length}건)
-        </div>
         <span className="text-[0.625rem] text-neutral-400 flex items-center gap-0.5">
           <Pencil size={9} /> 제목, 날짜 수정 가능
         </span>
