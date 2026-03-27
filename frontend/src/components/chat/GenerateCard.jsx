@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, CalendarPlus, Check, CheckCircle, ChevronDown, ChevronUp, Download, Info, Loader2, Pencil } from 'lucide-react';
+import { AlertTriangle, CalendarPlus, Check, CheckCircle, Download, Info, Loader2, Pencil } from 'lucide-react';
 import { createSchedule } from '../../api/schedules';
 import { toast } from '../../store/toastStore';
 import Badge from '../common/Badge';
@@ -25,8 +25,6 @@ const isLoraModel = (name) => {
 
 export default function GenerateCard({ title, templateType, fields = [], actionItems = [], downloadUrl, onDownload, modelName, regulationCheck, warnings, suggestedSchedules = [] }) {
   const typeLabels = { meeting_minutes: '회의록', report: '보고서', jd: '채용 공고', proposal: '제안서' };
-  const [showPreview, setShowPreview] = useState(false);
-
   const displayModel = formatModel(modelName);
   const lora = isLoraModel(modelName);
 
@@ -49,29 +47,6 @@ export default function GenerateCard({ title, templateType, fields = [], actionI
       </div>
 
       <div className="p-4">
-        {/* 문서 미리보기 (접힘/펼침) */}
-        {fields.length > 0 && (
-          <div className="mb-4">
-            <button
-              onClick={() => setShowPreview(!showPreview)}
-              className="flex items-center gap-1.5 text-xs text-primary-700 font-medium hover:text-primary-900 transition mb-2"
-            >
-              {showPreview ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              {showPreview ? '미리보기 접기' : '문서 미리보기'}
-            </button>
-            {showPreview && (
-              <div className="bg-surface-sub rounded-lg p-3 space-y-2 border border-neutral-divider">
-                {fields.map((f, i) => (
-                  <div key={i} className="text-[0.8125rem]">
-                    <span className="font-semibold text-primary-700">{f.label}</span>
-                    <p className="text-neutral-main mt-0.5 leading-relaxed">{f.value}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Action Items (회의록만) */}
         {actionItems.length > 0 && (
           <div className="mb-4">
