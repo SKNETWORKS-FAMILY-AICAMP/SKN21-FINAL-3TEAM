@@ -21,6 +21,22 @@ async def _get_document(document_id: int):
         return result.scalar_one_or_none()
 
 
+async def _search_by_title(query: str, user_id: int = None) -> list:
+    """DB에서 제목에 검색어가 포함된 문서 조회"""
+    async with _AsyncSessionLocal() as db:
+        from sqlalchemy import func
+        stmt = sa_select(_Document.id, _Document.title).where(
+            func.lower(_Document.title).contains(query.lower())
+        )
+        if user_id:
+            stmt = stmt.where(
+                (_Document.uploaded_by == user_id) | (_Document.access_level != "private")
+            )
+        result = await db.execute(stmt)
+        rows = result.all()
+        return [{"document_id": r.id, "title": r.title} for r in rows]
+
+
 def _format_cached_summary(doc) -> dict | None:
     """DB에 저장된 요약이 있으면 응답 dict 반환, 없으면 None"""
     if not (doc and doc.summary):
@@ -163,8 +179,35 @@ async def _handle_doc_summary(user_input: str, document_content: str = None, doc
                 "model_name": "RAG (문서 목록)",
             }
 
-        # 케이스 2: "ERP 제안서 요약해줘" — 문서명 있음 → 키워드로 RAG 검색
+        # 케이스 2: "ERP 제안서 요약해줘" — 문서명 있음
         print(f"[DocumentAgent] 문서 검색어 추출: '{_search_query}' (원본: '{user_input}')")
+
+        # 2-1: DB에서 제목 매칭 먼저 시도 (RAG보다 정확)
+        try:
+            title_matches = await _search_by_title(_search_query, user_id)
+            if len(title_matches) == 1:
+                matched = title_matches[0]
+                print(f"[DocumentAgent] 제목 매칭 1건 → document_id={matched['document_id']}")
+                doc = await _get_document(matched["document_id"])
+                if doc and doc.content:
+                    document_content = doc.content
+                    document_id = matched["document_id"]
+                    cached = _format_cached_summary(doc)
+                    if cached:
+                        print(f"[DocumentAgent] DB 요약 사용 (제목 매칭, {time.time()-_t:.2f}s)")
+                        return cached
+            elif len(title_matches) > 1:
+                print(f"[DocumentAgent] 제목 매칭 {len(title_matches)}건 → 선택지 제공")
+                return {
+                    "type": "doc_pick",
+                    "message": f"'{_search_query}' 관련 문서가 {len(title_matches)}건 있습니다. 요약할 문서를 선택해주세요:",
+                    "documents": title_matches,
+                    "model_name": "DB (제목 검색)",
+                }
+        except Exception as e:
+            print(f"[DocumentAgent] 제목 매칭 실패 (RAG fallback): {e}")
+
+        # 2-2: 제목 매칭 실패 시 RAG 검색
         search_results, _, _, _rag_status = await _retrieve_context(_search_query, user_id, user_team, top_k=5)
 
         if search_results:
