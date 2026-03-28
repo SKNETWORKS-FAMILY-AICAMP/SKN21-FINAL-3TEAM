@@ -1,859 +1,888 @@
-# WorkFlow Agent (듀듀)
+# DUDE — WorkFlow Agent
 
-> LangGraph 기반 멀티 Agent 업무 자동화 시스템
+> **하나의 채팅으로 업무의 모든 것을**
+>
+> 사내 규정 / 문서 / 일정을 하나로 — Multi Agent 팀 워크스페이스
 
-**멘토**: 최민수
-
-**팀원**: 신지용(PM) | 윤경은(AI Engineer) | 진승언(AI Engineer) | 안혜빈(Backend) | 문지영(Frontend/AI Engineer)
+**SKN21 FINAL 3TEAM** | 멘토: 최민수 | 2026.03.31
 
 ---
 
 ## 목차
 
-1. [프로젝트 배경 및 문제 정의](#프로젝트-배경-및-문제-정의)
-2. [프로젝트 목표](#프로젝트-목표)
-3. [핵심 성과](#핵심-성과)
-4. [시스템 아키텍처](#시스템-아키텍처)
-5. [기술 스택](#기술-스택)
-6. [개발 전략](#개발-전략-llm-api-먼저--sllm은-나중에)
-7. [파인튜닝 현황](#파인튜닝-현황)
-8. [DB ERD](#db-erd-12-테이블)
-9. [RAG 파이프라인 상세](#rag-파이프라인-상세)
-10. [프로젝트 구조](#프로젝트-구조)
-11. [팀원별 담당](#팀원별-담당)
-12. [Git 브랜치 전략](#git-브랜치-전략)
-13. [빠른 시작](#빠른-시작)
-14. [문서 참고 & API 문서](#문서-참고--api-문서)
+1. [프로젝트 개요](#1-프로젝트-개요)
+2. [핵심 성과](#2-핵심-성과)
+3. [시스템 아키텍처](#3-시스템-아키텍처)
+4. [에이전트 상세](#4-에이전트-상세)
+5. [데이터셋 및 파인튜닝](#5-데이터셋-및-파인튜닝)
+6. [RAG 파이프라인](#6-rag-파이프라인)
+7. [기술 스택](#7-기술-스택)
+8. [프로젝트 구조](#8-프로젝트-구조)
+9. [팀 구성](#9-팀-구성)
+10. [빠른 시작](#10-빠른-시작)
 
 ---
 
-## 프로젝트 배경 및 문제 정의
+## 1. 프로젝트 개요
 
-### 사내 업무 환경의 한계와 변화
+### 배경
 
-- **LLM 및 AI Agent 도입 가속화**: 기업 내 단순 반복 업무를 지능형 AI를 통해 자동화하여 실무자의 생산성을 극대화하려는 시장의 니즈가 급증하고 있습니다.
-- **복잡해진 사내 규정과 정보의 파편화**: 인사, 보안 등 사내 규정이 방대해져, 기존의 시스템으로는 정확한 규정검색, 판단 그리고 예외 상황 대응이 어렵습니다.
-- **수작업 중심의 행정 업무 병목**: 회의록 작성, 문서 초안 기획, 복수의 앱(메일, 캘린더 등)을 오가는 수동적인 일정 관리 등 비핵심 행정 업무에 과도한 리소스가 소모되고 있습니다.
+Microsoft Work Trend Index 2023에 따르면, 현대 직장인의 업무 환경에는 다음과 같은 문제가 존재합니다.
 
-| 지표 | 수치 | 설명 |
-|------|------|------|
-| 충분한 집중 시간 부족 | **68%** | 방해받지 않고 핵심 업무에 몰입할 수 있는 Focus Time이 없다고 응답 |
-| 과도한 정보 탐색 소요 | **62%** | 업무 중 필요한 정보나 데이터를 찾는 데 너무 많은 시간이 낭비됨 |
-| 커뮤니케이션 소모 비중 | **57%** | 평균 업무 시간 중 회의, 이메일, 채팅에 쓰이는 시간 (실제 생산 활동은 43%) |
+| 문제 | 비율 |
+|------|------|
+| 충분한 집중 시간 부족 | 68% |
+| 과도한 정보 탐색 소요 | 62% |
+| 커뮤니케이션 소모 비중 | 57% |
 
-> *출처: Microsoft Work Trend Index (2023)*
+### DUDE가 해결하는 것
 
----
+DUDE는 **3개의 전문 Agent + 1개의 Planner**로 구성된 Multi-Agent 시스템입니다. 사내 규정 확인, 문서 작성, 일정 관리를 하나의 채팅 인터페이스에서 자연어로 처리합니다.
 
-## 프로젝트 목표
-
-### 사내 업무 자동화의 혁신
-
-사내 규정 판단, 문서 분석, 일정 관리를 지능형 AI 에이전트가 처리합니다. 단순 LLM 호출을 넘어, **LangGraph**를 통한 유연한 오케스트레이션과 **sLLM 파인튜닝**으로 도메인 특화 성능을 극대화합니다.
-
-- **보안**: 사내 데이터 외부 유출 차단을 위한 프라이빗 sLLM 운영
-- **정밀**: RAG 기반의 근거 중심 규정 교차 판단
-- **통합**: Google 워크스페이스(Calendar, Tasks, Gmail, Sheets) 연동
-
-### Solution: 자연어로 업무 자동화
-
-```
-사용자 입력 → Intent 분류(KoELECTRA) → Orchestrator(LangGraph 라우팅) → Agent 처리(규정/문서/일정)
-```
-
-| Agent | 기능 | 상세 |
-|-------|------|------|
-| **Judgment Agent** | 규정 판단 | RAG 기반 다중 규정 교차 판단 + 근거 + 대안 제시 |
-| **Document Agent** | 문서 처리 | 생성 / 요약 / 검색 / QA |
-| **Schedule Agent** | 일정 관리 | 일정 등록·조회 + Google 연동 |
-
-### 핵심 기능
+### 4대 핵심 기능
 
 | 기능 | 설명 |
 |------|------|
-| **규정 판단** | "인턴에게 AWS 접근 줘도 돼?" → 다중 규정 교차 판단 + 근거 + 대안 제시 |
-| **문서 생성** | 등록된 템플릿에 맞춰 초안 생성 → 초안 + 추가 입력 항목 반환 |
-| **문서 요약** | 사용자가 선택한 문서를 회사 요약 포맷으로 요약 |
-| **문서 검색 / QA** | RAG 하이브리드 검색으로 문서 추천 + 근거 기반 답변·인용 반환 |
-| **일정 관리** | 자연어 → 일정 자동 등록/조회 + Google Calendar·Tasks·Gmail·Sheets 통합 |
+| **AI 챗봇** | Multi-Agent 라우팅 + SSE 실시간 스트리밍 |
+| **규정 판단 자동화** | sLLM + RAG + 4중 Guardrail |
+| **문서 처리** | 템플릿 기반 자동 생성 + 검색 / 요약 / QA |
+| **일정 및 결재 관리** | Google Workspace 5종 연동 (Calendar, Meet, Gmail, Tasks, Sheets) |
+
+### 기대 효과
+
+| 업무 영역 | AS-IS | TO-BE |
+|-----------|-------|-------|
+| 규정 확인 | 수동 검색 10~15분 | 자연어 질의 10초 이내 |
+| 문서 작성 | 수동 30분~1시간 | AI 자동 생성, 검토만 5분 |
+| 일정 관리 | 3~4개 앱 수동 전환 | 채팅 한 줄로 등록/조회/알림 |
+| 정보 탐색 | 여러 문서 직접 검색 | RAG 하이브리드 즉시 답변 |
 
 ---
 
-## 핵심 성과
+## 2. 핵심 성과
 
-| 영역 | 성과 |
+### 모델별 성능 지표
+
+| 모델 | 핵심 지표 | 수치 | 평가 방법 | 데이터 규모 |
+|------|---------|------|---------|-----------|
+| 판단 Agent (v1_judgment) | 정확도 | **85.4%** | 328건 eval (yes/no/cond/no_reg) | RAFT 80:10:10 |
+| 문서 생성 (v3_generate) | eval_loss / Token Acc | **0.508 / 85.8%** | 150건 eval | 1,500건 학습 |
+| 문서 요약 (v3_summary) | BERTScore F1 | **0.8594** | 100건 eval (Base 대비 +0.03) | 1,000건 학습 |
+| Planner | usable_rate | v5 채택 | v3~v7 반복 실험 | ~1,471건 |
+| Intent 분류 | F1 (macro) | **90.07%** | ONNX 앙상블 5-seed | ~5,177건 |
+| RAG 검색 | Context Recall (RAGAS) | **0.944** | 30건 벤치마크 | 670건 테스트셋 |
+| RAG 검색 | Context Precision (RAGAS) | **0.889** | 30건 벤치마크 | Reranker ON |
+| RAG 검색 | Hit Rate / MRR | **93.3% / 0.838** | 30건 벤치마크 | kiwipiepy ON |
+
+### GPT 대비 sLLM 비교
+
+| 항목 | GPT-4o-mini | Kanana sLLM |
+|------|------------|-------------|
+| 템플릿 품질 | 100/100 | 100/100 |
+| 응답 시간 | 2.4~3.5초 | 7.3초 |
+| 자연어 품질 | 우수 | 약간 경직됨 |
+| API 비용 | 종량제 (과금) | 무료 (자체 서빙) |
+| 데이터 보안 | 외부 전송 | 프라이버시 보장 |
+
+### 주요 성과 요약
+
+| 항목 | 결과 |
 |------|------|
-| **Intent 분류** | KoELECTRA 파인튜닝 — Test F1 97.88%, Adversarial F1 87.58%, 추론 7.9ms |
-| **RAG 파이프라인** | BM25 + Vector(Qdrant) + RRF 하이브리드 검색 구현 |
-| **Google 4종 연동** | Calendar + Tasks + Gmail + Sheets 통합 OAuth |
-| **Backend** | 12 테이블 DB + JWT 인증 + SSE 실시간 스트리밍 |
-| **Frontend** | 11 페이지 + 챗봇 카드 UI + FullCalendar 일정 관리 |
-| **실험** | 7단계 체계적 실험 (32-point Grid Search → Label Smoothing → 시나리오 검증) |
+| API 비용 | sLLM 전환으로 **과금 0원** (GPT fallback 자동 전환, 서비스 중단 0건) |
+| RAG 검색 품질 | RAGAS Context Recall **0.944**, Reranker MRR **0.636 → 0.952** |
+| Google Workspace | Calendar + Tasks + Gmail + Sheets + Meet **5종 연동 완료** |
+| 이슈 해결 | 23건 이슈 중 **100% 해결** |
+| LoRA 파인튜닝 | 판단(v1) + 문서생성(v3) + 문서요약(v3) + Planner(v7) **4종 완료** |
 
 ---
 
-## 시스템 아키텍처
+## 2-1. 핵심 문제 해결 사례
 
-### 전체 파이프라인
+### AI / 모델
+
+| 문제 | 원인 | 해결 |
+|------|------|------|
+| Intent vs Adversarial F1 10%p 격차 | 학습 데이터 vs 적대적 데이터 분포 차이 | 7단계 체계적 실험 + Label Smoothing |
+| 문서 생성 필드 0건 출력 | 3줄 입력 시 필드 누락 | 자동화 파싱 + meta/body 분리, 완성도 100% 달성 |
+| Confidence 과신 문제 | LLM raw 점수만으로 환각 판별 불가 | 4중 보조장치 도입 (환각탐지/조항검증/카테고리제한/일관성), 0.95 → 0.72 현실 반영 |
+| RAG 청킹 너무 단순 | 12청크만 존재, no_reg vs conditional 불명확 | 44청크로 세분화, 규정 조항별 정밀 분리 |
+
+### Backend / Infra
+
+| 문제 | 원인 | 해결 |
+|------|------|------|
+| 테이블 파싱 100% 누락 | python-docx paragraphs만 조회 | doc.tables 순회 추가, 환경 무관 동작 |
+| Qdrant 벡터 19건 미동기 | document_id 불일치 (83/86건) | reindex 스크립트로 자동 복구 |
+| CI/CD SIGTERM 반복 | nohup SSH 종료 시 프로세스 kill | systemd 서비스로 전환, EC2 자동 재시작 확보 |
+| bcrypt 호환성 오류 | passlib + bcrypt 5.0 충돌 | bcrypt 4.0.1 다운그레이드 |
+| Google 2중 인증 불편 | 로그인 + OAuth 별도 = UX 저하 | 로그인 1회로 5종 서비스 동시 인증 |
+
+### Frontend
+
+| 문제 | 원인 | 해결 |
+|------|------|------|
+| SSE 스트리밍 State 손실 | Stale Closure로 스트리밍 중단 | Ref 기반의 배열 관리로 전환 |
+
+---
+
+## 2-2. 한계점 및 향후 발전 방향
+
+### 현재 한계
+
+| 한계 | 상세 |
+|------|------|
+| conditional 카테고리 정확도 78% | "조건부 허용"의 판단 경계가 모호, 목표 85% 대비 +7%p 추가 개선 필요 |
+| Planner v5 수렴 한계 | v6/v7 실험 시도했으나 성능 정체, 데이터 품질 개선 및 재수집 필요 |
+| vLLM LoRA 전환 일부 이슈 | v3_summary, v3_generate 어댑터에서 발생, peft 버전 로드맵 회피 중 |
+| Reranker 지연 시간 +5.7초 | Cross-Encoder 적용 시 정확도 향상 vs 속도 트레이드오프 |
+| 멀티턴 대화 미지원 | 현재 단건 질문-응답 구조, 대화 이력 기반 맥락 유지 미구현 |
+
+### 발전 로드맵
+
+**단기 (1~2주)**
+- vLLM 전환 이슈 완전 해결 (peft 버전 업그레이드 또는 우회)
+- conditional 데이터 추가 수집 (레이블 표준 + 경계 사례 집중)
+
+**중기 (1~2개월)**
+- RAG + LoRA 통합 최적화 (하드코딩 없이 RAG 컨텍스트 기반 판단)
+- Planner 데이터 품질 개선 후 v8 재학습
+- 멀티턴 대화 지원 (대화 이력 + 컨텍스트 윈도우 설계)
+
+**장기 (3~6개월)**
+- 모델 경량화 (4-bit 양자화 + 배치 최적화)
+- 프라이버시 GPU 서빙 전환 (RunPod 탈피)
+- 추가 Agent 확장 (HR봇, 경비 자동화 등)
+- 사용자 피드백 기반 RLHF 적용
+
+---
+
+## 3. 시스템 아키텍처
+
+### 전체 시스템 흐름
 
 ```mermaid
-flowchart TD
+flowchart TB
+    User([사용자]) --> FE[React Frontend<br/>Vite + Zustand + TanStack Query]
+    FE -->|REST API + SSE Streaming| BE[FastAPI Backend]
 
-    %% =========================
-    %% 1. USER → FRONTEND
-    %% =========================
-    U["👤 User"] --> F["💻 Frontend (React)"]
-    F -->|POST /api/v1/chat/stream| B["⚙️ Backend (FastAPI)"]
+    BE --> Auth[JWT + Google OAuth 2.0]
+    BE --> DB[(PostgreSQL<br/>16 Tables)]
+    BE --> Redis[(Redis Cache)]
+    BE --> S3[(AWS S3)]
 
-    %% =========================
-    %% 2. AUTH & ORCHESTRATOR
-    %% =========================
-    B --> A["🔐 JWT Auth & AgentState Init"]
-    A --> I["🎯 Intent Classifier<br/>(koelectra-base-v3)"]
+    BE --> Orch[LangGraph Orchestrator]
+    Orch --> Intent[Intent Classifier<br/>roberta-large ONNX Ensemble]
 
-    I -->|confidence ≥ 0.85| O["🧠 LangGraph Orchestrator"]
-    I -->|confidence ↓ 0.85| C["❓ Clarification Node"]
-    C --> O
+    Intent -->|conf >= 0.85| Router{Agent Router}
+    Intent -->|conf < 0.85| Clarify[Clarification Node]
+    Intent -->|복합 인텐트| Planner[Planner Agent<br/>v7_planner LoRA]
+    Clarify --> Router
+    Planner -->|단계별 분해| Router
 
-    %% =========================
-    %% 3. AGENT ROUTING
-    %% =========================
-    O -->|judgment| J["⚖️ Judgment Agent"]
-    O -->|document_*| D["📄 Document Agent"]
-    O -->|schedule_*| S["📅 Schedule Agent"]
-    O -->|general| G["💬 General Agent"]
+    Router -->|doc_retrieve<br/>doc_generate| DocAgent[문서 Agent]
+    Router -->|judgment| JudgeAgent[판단 Agent]
+    Router -->|schedule_add<br/>schedule_view<br/>approval_create| SchedAgent[일정 Agent]
+    Router -->|general| General[General Agent]
 
-    %% =========================
-    %% 4. RAG (Conditional)
-    %% =========================
-    J --> R1["🔎 RAG Pipeline"]
-    D -->|doc_search / doc_qa| R1
+    DocAgent --> RAG_Doc[RAG<br/>source=documents]
+    DocAgent --> vLLM
 
-    R1 --> HS["Hybrid Search<br/>BM25 + Vector(Qdrant) + RRF"]
-    HS --> L
+    JudgeAgent --> RAG_Reg[RAG<br/>source=regulations]
+    JudgeAgent --> Guard[4중 보조장치]
+    JudgeAgent --> vLLM
 
-    %% =========================
-    %% 5. LLM LAYER
-    %% =========================
-    J --> L["🤖 LLM Module"]
-    D -->|generate / summary| L
-    S --> L
-    G --> L
+    SchedAgent --> Google[Google Workspace<br/>Calendar / Meet / Gmail / Tasks / Sheets]
+    SchedAgent --> Approval[결재/승인 엔진]
+    Approval -->|규정 검증| RAG_Reg
 
-    L -->|Current| API["GPT / Claude API"]
-    L -->|Future| VLLM["vLLM + LoRA (sLLM)"]
+    RAG_Doc --> HybridSearch[Hybrid Search<br/>BM25 + Vector + RRF]
+    RAG_Reg --> HybridSearch
+    HybridSearch --> Qdrant[(Qdrant<br/>Vector DB)]
+    HybridSearch --> Reranker[bge-reranker-v2-m3]
 
-    %% =========================
-    %% 6. EXTERNAL SERVICES
-    %% =========================
-    S --> GS["Google Services<br/>(Calendar / Tasks / Gmail / Sheets)"]
+    vLLM[vLLM Serving<br/>Kanana-1.5-8B + LoRA]
 
-    %% =========================
-    %% 7. RESPONSE FLOW
-    %% =========================
-    L --> FMT["📝 Response Formatter"]
-    FMT --> DB["💾 PostgreSQL (chat_logs)"]
-    DB -->|SSE Streaming| F
+    style DocAgent fill:#e8f4fd,stroke:#4a90d9
+    style JudgeAgent fill:#fdf2e8,stroke:#d9944a
+    style SchedAgent fill:#e8fdf0,stroke:#4ad97a
+    style Planner fill:#f0e8fd,stroke:#944ad9
 ```
 
-### 각 Agent 워크플로우
+### Agent별 처리 워크플로우
 
 ```mermaid
 graph TD
-    %% Judgment Agent Section
-    subgraph "1. Judgment Agent (규정 판단)"
-        J1[사용자 질문 입력] --> J2[RAG 하이브리드 검색<br/>규정 문서/top_k=10]
-        J2 --> J3[LLM 판단 및 JSON 생성]
-        J3 --> J4{3중 보조장치 검증}
-        J4 --> J4a[환각 탐지]
-        J4 --> J4b[조항 존재 검증]
-        J4 --> J4c[Confidence 보정]
-        J4a & J4b & J4c --> J5[판단 결과 출력]
+    subgraph DOC ["문서 Agent"]
+        D1[사용자 질의] --> D2{서브타입 판단<br/>Regex + RAG score}
+        D2 -->|search| D3[RAG 하이브리드 검색<br/>LLM 호출 없음]
+        D2 -->|QA| D4[RAG 검색 + sLLM QA]
+        D2 -->|summary| D5[RAG 검색 + v3_summary LoRA]
+        D2 -->|generate| D6[템플릿 선택 → v3_generate LoRA → DOCX]
     end
 
-    %% Document Agent Section
-    subgraph "2. Document Agent (문서 처리)"
-        D1[문서 관련 의도 파악] --> D2{기능 분기}
-        D2 -- 생성 --> D3a[템플릿 로드 및 초안 생성]
-        D2 -- 요약 --> D3b[회사 요약 포맷 생성]
-        D2 -- 검색 --> D3c[업로드 문서 RAG 검색]
-        D2 -- QA --> D3d[답변 및 인용 추출]
-        D3a & D3b & D3c & D3d --> D4[문서 작업 결과 출력]
+    subgraph JUDGE ["판단 Agent"]
+        J1[규정 질문] --> J2[RAG 검색<br/>source=regulations, Top-5]
+        J2 --> J3[규정 그룹핑 + 이전 이력]
+        J3 --> J4[v1_judgment LoRA 판단]
+        J4 --> J5[4중 보조장치 검증]
+        J5 --> J6[5-factor Confidence 보정]
     end
 
-    %% Schedule Agent Section
-    subgraph "3. Schedule Agent (일정 관리)"
-        S1[일정 관련 입력] --> S2{작업 선택}
-        S2 -- 등록 --> S3a[자연어 파싱 및 API 등록]
-        S2 -- 조회 --> S3b[기간 추출 및 API 조회]
-        S3a & S3b --> S4[일정 처리 결과 출력]
+    subgraph SCHED ["일정 Agent"]
+        S1[사용자 입력] --> S2{인텐트 분기}
+        S2 -->|schedule_add| S3[LLM 파싱 → Fallback → Calendar 등록]
+        S2 -->|schedule_view| S4[기간 파싱 → DB 조회 → 목록]
+        S2 -->|approval_create| S5[LLM 파싱 → 결재 생성]
+        S3 --> S6[후속 처리: Meet / Gmail / 되물어보기]
+        S5 --> S7[AI 추천 + 규정 검증]
     end
 
-    %% General Response Section
-    subgraph "4. General Response (일반 업무)"
-        G1[일반 업무 문의] --> G2[LLM 기반 친절 응답 생성]
-        G2 --> G3[응답 메시지 출력]
-    end
-
-    %% 연결 (수직 흐름 강조)
-    J5 -.-> D1
-    D4 -.-> S1
-    S4 -.-> G1
+    style DOC fill:#e8f4fd,stroke:#4a90d9
+    style JUDGE fill:#fdf2e8,stroke:#d9944a
+    style SCHED fill:#e8fdf0,stroke:#4ad97a
 ```
 
-### Intent 분류 체계 (8개)
+### RAG 파이프라인 상세
+
+```mermaid
+flowchart LR
+    Query[사용자 질의] --> Hyde{HyDE 적용?}
+    Hyde -->|Yes| HydeGen[LLM 가상 문서 생성]
+    Hyde -->|No| Direct[원본 쿼리]
+    HydeGen --> Search
+    Direct --> Search
+
+    Search --> BM25[BM25 키워드 검색<br/>Top-15]
+    Search --> Vector[Vector 시멘틱 검색<br/>Qdrant Top-15]
+
+    BM25 --> RRF[RRF 합산 정렬]
+    Vector --> RRF
+
+    RRF --> Rerank{Reranker?}
+    Rerank -->|Yes| CE[Cross-Encoder<br/>bge-reranker-v2-m3]
+    Rerank -->|No| Threshold
+
+    CE --> Threshold[Score Threshold<br/>필터링]
+    Threshold --> TopK[Top-K 결과 반환]
+```
+
+### Intent 분류 체계
+
+**분류 모델** (klue/roberta-large ONNX 앙상블, 6-label):
 
 ```
-judgment       → Judgment Agent    (규정 판단/정보)
-doc_search     → Document Agent    (문서 검색)
-doc_generate   → Document Agent    (문서 생성, 회의록 포함)
-doc_summary    → Document Agent    (문서 요약)
-doc_qa         → Document Agent    (문서 QA)
-schedule_add   → Schedule Agent    (일정 추가)
+judgment       → Judgment Agent    (규정 판단)
+doc_retrieve   → Document Agent    (문서 검색/QA/요약)
+doc_generate   → Document Agent    (문서 생성)
+schedule_add   → Schedule Agent    (일정 등록)
 schedule_view  → Schedule Agent    (일정 조회)
 general        → General Response  (일반 대화)
 ```
 
-### 전체 구조
+**기능적 세분화** (Agent 내부 라우팅 포함, 9개 + Planner):
 
-```mermaid
-graph TD
-    %% 1. Frontend Layer
-    subgraph Frontend ["Frontend (React 18, Vite, Zustand, TanStack Query)"]
-        FE_UI[UI Components: Dashboard, AI Chatbot, Minutes, Document, Schedule]
-        FE_State[State Management: Zustand, TanStack Query]
-        FE_Comm[Communication: REST API, SSE Stream]
+| 기능 인텐트 | 라우팅 | 상세 |
+|-------------|--------|------|
+| judgment | Judgment Agent | 규정 판단 요청 |
+| doc_search | Document Agent (서브타입) | 문서 검색 (RAG only, LLM 호출 없음) |
+| doc_qa | Document Agent (서브타입) | 문서 QA (RAG + LLM 답변) |
+| doc_summary | Document Agent (서브타입) | 문서 요약 (v3_summary LoRA) |
+| doc_generate | Document Agent | 문서 생성 (v3_generate LoRA) |
+| schedule_add | Schedule Agent | 일정 등록 |
+| schedule_view | Schedule Agent | 일정 조회 |
+| approval_create | Schedule Agent (서브타입) | 결재/승인 요청 |
+| general | General Response | 일반 대화 |
+| + Planner | Orchestrator | 복합 인텐트 분해 (v7_planner LoRA) |
 
-        FE_UI --> FE_State
-        FE_State --> FE_Comm
-    end
+> `doc_retrieve`는 Document Agent 내부에서 Regex + RAG score 기반으로 search/QA/summary로 세분화됩니다.
 
-    %% 2. Backend Layer
-    subgraph Backend ["Backend API (FastAPI)"]
-        BE_Router["API Endpoints (/api/v1/*)"]
-        BE_Auth[Auth: JWT, OAuth 2.0]
-
-        subgraph BE_Data ["Data Storage"]
-            DB[(PostgreSQL: 12 Tables)]
-            Cache[(Redis: Cache)]
-        end
-
-        subgraph BE_Svc ["Internal Services"]
-            Svc_Tmpl[template_service]
-            Svc_Stat[statistics_svc]
-            Svc_Pars[parsing_svc]
-            Svc_Sched[schedule_service: Google Orchestration]
-        end
-
-        BE_Router --> BE_Auth
-        BE_Router --> BE_Svc
-        BE_Svc --> BE_Data
-    end
-
-    %% 3. AI Engine Layer
-    subgraph AI_Engine ["AI Engine"]
-        AI_Intent["Intent Classifier (koelectra-base-v3)"]
-        AI_Graph["LangGraph Orchestrator (StateGraph)"]
-
-        subgraph AI_Agents ["AI Agents"]
-            Agent_J[Judgment Agent: 규정 판단]
-            Agent_D[Document Agent: 문서 처리]
-            Agent_S[Schedule Agent: 일정 관리]
-        end
-
-        subgraph AI_Infra ["AI Infrastructure"]
-            AI_RAG["RAG Pipeline (BM25 + Qdrant + RRF)"]
-            AI_LLM["LLM: Kanana-1.5-8B (GPT/Claude/vLLM)"]
-            AI_Parser["Doc Parser: Docling, PaddleOCR"]
-        end
-
-        AI_Intent --> AI_Graph
-        AI_Graph --> Agent_J & Agent_D & Agent_S
-        Agent_J & Agent_D --> AI_RAG
-        AI_RAG --> AI_LLM
-        Agent_D --> AI_Parser
-    end
-
-    %% 4. External Services
-    subgraph External ["External Services"]
-        Ext_Google["Google APIs (Calendar, Tasks, Gmail, Sheets, Meet)"]
-        Ext_Auth["Google OAuth 2.0"]
-        Ext_GPU["RunPod: A100 GPU Training"]
-    end
-
-    %% Cross-Layer Connections
-    FE_Comm <==> BE_Router
-    BE_Router <==> AI_Intent
-    BE_Svc <==> Ext_Google
-    BE_Auth <==> Ext_Auth
-    AI_LLM --- Ext_GPU
-```
-
-### Agent 처리 흐름 (예: 규정 판단)
-
-```mermaid
-graph TD
-    %% 사용자 입력
-    User([사용자: 인턴에게 AWS 콘솔 접근 권한을 줘도 되나요?]) --> Intent
-
-    %% 1. Intent Classification
-    subgraph Step1 [1. Intent Classification]
-        Intent[koelectra-base-v3]
-        Intent --> Intent_Out[intent: judgment / conf: 0.95]
-    end
-
-    %% 2. Orchestrator
-    subgraph Step2 [2. LangGraph Orchestrator]
-        Orch[StateGraph: AgentState 저장]
-        Orch --> Edge{조건부 엣지: judgment}
-        Orch -.-> SSE1[SSE: 판단 Agent 호출 중...]
-    end
-
-    %% 3. RAG Pipeline
-    subgraph Step3 [3. RAG Pipeline]
-        RAG_Search[BM25 + Vector Search]
-        RAG_Rank[RRF 합산 Top 20]
-        RAG_Filter[Source 필터: Regulations]
-
-        RAG_Search --> RAG_Rank --> RAG_Filter
-        RAG_Filter --> RAG_Docs[정보보안 3.2조 / 개발 가이드 5.1조 / 인사 2.3조]
-    end
-
-    %% 4. Agent Analysis
-    subgraph Step4 [4. Judgment Agent + LLM]
-        LLM[GPT/Claude or LoRA v1]
-        LLM_Proc[다중 규정 교차 판단]
-
-        LLM --> LLM_Proc
-        LLM_Proc --> LLM_Res[종합: 조건부 가능 / 근거: 3개 조항 / 대안: 테스트 환경 한정 / conf: 0.85]
-    end
-
-    %% 5. Streaming
-    subgraph Step5 [5. SSE Streaming]
-        Stream[SSE 스트리밍 응답]
-        Stream --> S_Token[type: token 실시간]
-        Stream --> S_Done[type: done 완료]
-    end
-
-    %% 6. UI Rendering
-    subgraph Step6 [6. UI Rendering]
-        UI[JudgmentCard 렌더링]
-        UI --> UI_Badge[결과 뱃지 / 근거 조항 목록]
-        UI --> UI_Detail[Confidence 게이지 / 대안 제시]
-    end
-
-    %% 전체 흐름 연결
-    Intent_Out --> Orch
-    Edge --> RAG_Search
-    RAG_Docs --> LLM
-    LLM_Res --> Stream
-    S_Done --> UI
-```
-
----
-
-## 기술 스택
-
-### AI / ML
-
-| 구분 | 기술 | 용도 |
-|------|------|------|
-| Agent Framework | **LangGraph** | StateGraph 기반 Agent 오케스트레이션 |
-| LLM API (현재) | **GPT-4o-mini / Claude Sonnet 4** | 기능 구현 단계에서 사용, 추후 sLLM 교체 |
-| Base sLLM (예정) | **Kanana-1.5-8B** | 벤치마크 선정 완료 (종합 0.652) |
-| Fine-tuning (예정) | **LoRA (PEFT)** + QLoRA 4-bit | 판단/문서 Agent 특화 (LLM API 기능 확정 후 진행) |
-| 모델 서빙 | **vLLM** | OpenAI 호환 API + LoRA 핫스왑 + 스트리밍 |
-| Vector DB | **Qdrant** | 문서 임베딩 저장 + 유사도 검색 |
-| Embedding | **jhgan/ko-sbert-nli** | 한국어 문장 임베딩 (768차원) |
-| Reranker | **BAAI/bge-reranker-v2-m3** | 구현 완료, 현재 비활성 (성능 최적화 후 적용 예정) |
-| 키워드 검색 | **BM25 (rank_bm25)** | Hybrid Search의 키워드 매칭 |
-| Intent 분류 | **koelectra-base-v3** (파인튜닝) | 8개 카테고리, Adversarial F1 87.58%, 추론 7.9ms |
-| 문서 파싱 | **Docling + PaddleOCR** | PDF 구조화 + 스캔 OCR |
-
-### Backend
-
-| 구분 | 기술 |
-|------|------|
-| Framework | FastAPI + SSE (StreamingResponse) |
-| Database | PostgreSQL (12 tables) |
-| ORM | SQLAlchemy + Alembic |
-| 인증 | JWT (PyJWT) + Google OAuth 2.0 |
-| 캐시 | Redis |
-| 암호화 | AES-256 (cryptography) |
-
-### Frontend
-
-| 구분 | 기술 |
-|------|------|
-| Framework | React 18 (Vite) |
-| 상태관리 | Zustand + TanStack Query |
-| 스트리밍 | EventSource (SSE) |
-| 스타일 | Tailwind CSS + Lucide Icons |
-| 캘린더 | FullCalendar |
-| 애니메이션 | framer-motion |
-| E2E 테스트 | Playwright |
-
-### Infra
-
-| 구분 | 기술 |
-|------|------|
-| Cloud | AWS (EC2 + S3 + RDS) |
-| GPU (학습) | RunPod (A100 40GB) |
-| Container | Docker + Docker Compose |
-| CI/CD | GitHub Actions |
-
-> **현재 배포 상태**: Backend만 AWS EC2에 CI/CD(GitHub Actions) 배포 중. Frontend는 로컬에서 Backend API에 연결하여 개발 중.
-
----
-
-## 개발 전략: LLM API 먼저 → sLLM은 나중에
-
-```
-1단계  설계 · 환경 세팅                                          ✅ 완료
-2단계  LLM API(GPT/Claude)로 전체 기능 먼저 구현                  ✅ 완료
-3단계  Agent 개발 — LLM API 기반으로 실제 동작 확인                ✅ 대부분 완료
-4단계  Intent 파인튜닝 (단일질문 분류)                             ✅ 완료 (v2 7단계 실험)
-       Agent 파인튜닝 (판단/문서 특화)                              ← 중간발표 후 진행
-5단계  복합질문 강화 + sLLM(vLLM) 교체                             ← 예정
-6단계  통합 테스트 → 배포
-```
-
-- **왜?** 파인튜닝 먼저 하면 input/output이 바뀔 때마다 데이터를 다시 만들어야 함
-- LLM API로 기능을 완성하면서 실제 형태를 확정한 뒤, 그에 맞는 데이터를 수집하는 게 효율적
-- Agent 코드는 LLM 호출 인터페이스만 바꾸면 되는 구조 (공통 모듈 #39)
-
----
-
-## 파인튜닝 현황
-
-### Intent 분류 — 완료
-
-> 7단계 체계적 실험을 통해 KoELECTRA + Label Smoothing 조합 확정. 현재 단일질문 분류에 적용 중이며, 복합질문 강화는 중간발표 후 진행 예정.
-
-### Intent 분류 데이터 (v2 실험 완료)
-
-| 구분 | 건수 | 비고 |
-|------|------|------|
-| 기본 데이터 (GPT-4o + Claude) | 2,299개 | 8개 intent × 2 LLM |
-| 경계 쌍 데이터 | 600개 | 10쌍 × 30개 × 2 LLM |
-| 타겟 보강 데이터 | 98개 | 오분류 패턴 기반 |
-| **학습 합계 (Train)** | **2,425개** | Val 285 / Test 286 |
-| Adversarial 테스트셋 | 450개 | 7단계 실험 완료 |
-
-**최종 모델**: koelectra-base-v3 (Label Smoothing 0.1)
-- Test F1: **97.88%** / Adversarial F1: **87.58%**
-- 과신뢰 오분류 69% 감소 (Stage 6 Label Smoothing 적용)
-- 추론 속도: 7.9ms (GPU)
-- 현재 적용: 단일질문 분류 / 복합질문 강화: 중간발표 후 진행
-
-> 7단계 실험 수행, **6단계(Label Smoothing) 모델 최종 선택**: Baseline → Grid Search → 최종 평가 → 오분류 분석 → 보강 재학습 → **Label Smoothing** → 시나리오 검증
-
-#### 3모델 Baseline 비교
-
-![Baseline Comparison](ai/experiments_v2/results/baseline_comparison.png)
-
-#### Label Smoothing 적용 효과 (Stage 5 vs Stage 6)
-
-![Stage 6 Comparison](ai/experiments_v2/results/stage6_comparison.png)
-
-#### 시나리오 테스트 (유형별 정확도)
-
-![Scenario Test](ai/experiments_v2/results/scenario_test_accuracy.png)
-
-### Agent 파인튜닝 — 중간발표 후 진행 예정
-
-> LLM API로 기능을 완성한 뒤, 확정된 input/output 형태에 맞춰 데이터 수집 → sLLM 교체
-
-| 대상 | 방식 | 상태 |
-|------|------|------|
-| LoRA v1 — 판단 Agent 특화 | 규정 판단 input/output 기반 학습 | LLM API 기능 확정 후 진행 |
-| LoRA v2 — 문서 Agent 특화 | 문서 생성/요약 input/output 기반 학습 | LLM API 기능 확정 후 진행 |
-| Base 모델 | Kanana-1.5-8B (벤치마크 종합 0.652) | 선정 완료 |
-| 서빙 | vLLM (OpenAI 호환 API + LoRA 핫스왑) | 구조 설계 완료 |
-
----
-
-## DB ERD (12 테이블)
+### DB 구조 (16 테이블)
 
 ```mermaid
 erDiagram
-    %% 1. 인증 및 사용자
-    USER ||--o{ GOOGLE_AUTH : "has"
+    USER ||--o{ OAUTH_TOKEN : "has"
     USER ||--o{ DOCUMENT : "uploads"
     USER ||--o{ CHAT_SESSION : "starts"
     USER ||--o{ MEETING : "organizes"
     USER ||--o{ SCHEDULE : "manages"
-    USER ||--o{ STATS_LOG : "generates"
+    USER ||--o{ PIPELINE_TASK : "creates"
+    USER ||--o{ APPROVAL_REQUEST : "submits"
+    USER ||--o{ MESSAGE : "sends"
+    USER ||--o{ GOOGLE_SHEET_TRACKER : "tracks"
+    MEETING ||--o{ GOOGLE_SHEET_TRACKER : "exports"
 
     USER {
-        uuid id PK
+        int id PK
         string email UK
         string password_hash
         string name
-        string role "admin/user"
-        datetime created_at
+        string team
+        string avatar
+        boolean is_admin
+        boolean is_active
     }
 
-    GOOGLE_AUTH {
-        uuid id PK
-        uuid user_id FK
-        string access_token
+    OAUTH_TOKEN {
+        int id PK
+        int user_id FK
+        string provider
+        text access_token
         string refresh_token
         datetime expires_at
     }
 
-    %% 2. 문서 및 파싱
-    DOCUMENT ||--o| PARSING_TASK : "triggers"
     DOCUMENT {
-        uuid id PK
-        uuid user_id FK
+        int id PK
+        int user_id FK
         string title
         string file_path
-        string file_type
-        int size
-        datetime created_at
-    }
-
-    PARSING_TASK {
-        uuid id PK
-        uuid doc_id FK
-        string status "pending/processing/done/error"
-        string error_msg
-        datetime updated_at
-    }
-
-    %% 3. AI 채팅 및 판단
-    CHAT_SESSION ||--o{ CHAT_MESSAGE : "contains"
-    CHAT_SESSION {
-        uuid id PK
-        uuid user_id FK
-        string title
-        datetime created_at
-    }
-
-    CHAT_MESSAGE {
-        uuid id PK
-        uuid session_id FK
-        string role "user/assistant"
         text content
-        string intent "judgment/doc_qa/etc"
-        jsonb metadata "confidence/regulations"
-        datetime created_at
+        string scope
+        string category
+        json tags
+        text summary
     }
 
-    %% 4. 규정 및 템플릿 (Global/Static)
-    REGULATION {
-        uuid id PK
-        string category "security/hr/etc"
+    DOCUMENT_TEMPLATE {
+        int id PK
+        string name
+        string file_path
+        json parsed_structure
+        string category
+        boolean is_system
+    }
+
+    CHAT_SESSION ||--o{ CHAT_LOG : "contains"
+    CHAT_SESSION {
+        int id PK
+        string session_id UK
+        int user_id FK
+        string name
+        text summary
+    }
+
+    CHAT_LOG {
+        int id PK
+        string session_id FK
+        int user_id FK
+        text user_message
+        string intent
+        float intent_confidence
+        string agent_type
+        text agent_response
+        int response_time_ms
+    }
+
+    MEETING ||--o{ ACTION_ITEM : "generates"
+    MEETING {
+        int id PK
         string title
+        text raw_content
+        text summary
+        jsonb decisions
+        datetime meeting_date
+    }
+
+    ACTION_ITEM {
+        int id PK
+        int meeting_id FK
+        text content
+        string assignee
+        datetime due_date
+        string priority
+        string status
+        string google_task_id
+    }
+
+    SCHEDULE {
+        int id PK
+        int user_id FK
+        string title
+        datetime start_time
+        datetime end_time
+        string schedule_type
+        string google_event_id
+        string google_meet_link
+        boolean is_team_visible
+    }
+
+    REGULATION {
+        int id PK
+        string title
+        string category
+        string article_number
         text content
         string version
     }
 
-    TEMPLATE {
-        uuid id PK
+    JUDGMENT {
+        int id PK
+        int user_id FK
+        string query
+        string result
+        float confidence
+    }
+
+    PROJECT ||--o{ PIPELINE_TASK : "contains"
+    PROJECT {
+        int id PK
         string name
-        string category "meeting/report/jd"
-        text content_structure
-        datetime updated_at
+        string team
+        string members
+        int created_by FK
     }
 
-    %% 5. 회의 및 일정
-    MEETING ||--o| MEETING_SUMMARY : "results_in"
-    MEETING {
-        uuid id PK
-        uuid user_id FK
+    PIPELINE_TASK {
+        int id PK
         string title
-        datetime meeting_date
-        string location
-        string google_event_id
+        string assignee
+        string stage
+        string priority
+        datetime due_date
     }
 
-    MEETING_SUMMARY {
-        uuid id PK
-        uuid meeting_id FK
-        text core_summary
-        jsonb key_points
-        string doc_url
-    }
-
-    SCHEDULE {
-        uuid id PK
-        uuid user_id FK
+    APPROVAL_REQUEST {
+        int id PK
+        string type
         string title
-        datetime start_time
-        datetime end_time
-        string google_event_id
-        boolean is_synced
+        text detail
+        string status
+        int requester_id FK
     }
 
-    %% 6. 관리 및 통계
-    STATS_LOG {
-        uuid id PK
-        uuid user_id FK
-        string query_text
-        float response_time
-        int tokens_used
-        datetime created_at
+    MESSAGE {
+        int id PK
+        int sender_id FK
+        int receiver_id FK
+        text content
+        boolean is_read
+    }
+
+    GOOGLE_SHEET_TRACKER {
+        int id PK
+        int user_id FK
+        string spreadsheet_id
+        string sheet_name
+        string project_name
     }
 ```
 
 ---
 
-## RAG 파이프라인 상세
+## 4. 에이전트 상세
 
-### RAG 검색 대상
+### 에이전트 비교 테이블
 
-| Agent/기능 | RAG | 검색 대상 | Qdrant Filter | 비고 |
-|-----------|-----|----------|---------------|------|
-| Judgment | O | 사내 규정 | `source="regulations"` | 규정만 검색 |
-| doc_search | O | 업로드 문서 | `source="documents"` | 업로드 문서만 검색 |
-| doc_qa | O | 업로드 문서 | `source="documents"` | 업로드 문서만 검색 |
-| doc_generate | X | - | - | 사용자 입력 기반 생성 |
-| doc_summary | X | - | - | 대상 문서가 명시적으로 주어짐 |
-| Schedule | X | - | - | |
-| General | X | - | - | |
-
-### Qdrant 메타데이터 구조
-
-```
-source (2개 고정)         doc_type (확장 자유)
-├── "regulations"         ├── "HR"              (급여, 교육, 복리후생, 출장, 징계)
-│                         ├── "IT"              (정보보안, 개발 가이드라인)
-│                         └── "governance"       (윤리강령)
-└── "documents"           ├── "general"          (업로드 문서)
-                          └── "meeting_minutes"  (회의록)
-```
-
-- **source**: Agent 라우팅용 (judgment → regulations, doc_search/doc_qa → documents)
-- **doc_type**: 세부 분류용 (향후 필터링·통계에 활용)
-- 재정립 스크립트: `python -m scripts.rebuild_qdrant` (backend 디렉토리에서 실행)
+| 구분 | 문서 Agent | 판단 Agent | 일정 Agent | Planner |
+|------|-----------|-----------|-----------|---------|
+| **입력** | doc_retrieve, doc_generate | judgment (규정 질문) | schedule_add, schedule_view, approval_create | 복합 요청 (멀티 인텐트) |
+| **핵심 기술** | LoRA 라우팅 (v3_generate / v3_summary) | 4중 보조장치, 5-factor confidence | LLM+Regex 2-layer 파싱, Google 5종, 결재 자동화 | 템플릿 합성, depends_on 병렬 처리 |
+| **RAG 사용** | 검색/QA만 (source=documents) | 항상 (source=regulations) | 결재 규정 검증 시 연동 | X |
+| **sLLM / LoRA** | v3_generate, v3_summary, QA는 base | v1_judgment | Solar API (파싱용) | v7_planner |
+| **출력 포맷** | JSON + DOCX, 카드/파일 | JSON (result / conf / reasoning) | JSON + Google event link + 결재 객체 | JSON (plan: steps) |
+| **특징** | 검색은 LLM 호출 없음 (최고속) | LLM 판단을 맹신하지 않음 (다중 검증) | 멀티스텝 인터랙션 + 결재/승인/추천 | 최대 4단계 의존성 관리 |
 
 ---
 
-## 프로젝트 구조
+### 4-1. 문서 Agent
+
+4가지 오퍼레이션으로 구성되며, LoRA 어댑터로 라우팅합니다.
+
+```mermaid
+flowchart TB
+    Input[사용자 질의] --> Entry{doc_retrieve<br/>or doc_generate?}
+
+    Entry -->|doc_retrieve| SubType{서브타입 판단<br/>Regex + RAG score}
+    SubType -->|search| Search[RAG 하이브리드 검색<br/>LLM 호출 없음]
+    SubType -->|QA| QA[RAG Top-5 검색]
+    SubType -->|summary| Summary[DB 캐시 체크]
+
+    QA --> QA_LLM[sLLM QA 추론<br/>base LoRA]
+    QA_LLM --> QA_Out[답변 + 인용 citations]
+
+    Summary --> Sum_LLM[v3_summary LoRA]
+    Sum_LLM --> Sum_Out[분류/태그/요약 생성<br/>DB 저장]
+
+    Search --> Search_Out[카드형 결과 반환<br/>title / score / preview]
+
+    Entry -->|doc_generate| T1[1. 템플릿 선택<br/>시스템 3종 + 커스텀]
+    T1 --> T2[2. 내용 확인<br/>20자 미만 시 추가 요청]
+    T2 --> T3[3. v3_generate LoRA<br/>필드풀 3계층 JSON 생성]
+    T3 --> T4[4. DOCX 빌더<br/>템플릿 기반 파일 생성]
+
+    style Search fill:#d4edda,stroke:#28a745
+    style QA_Out fill:#d4edda,stroke:#28a745
+    style Sum_Out fill:#d4edda,stroke:#28a745
+    style T4 fill:#d4edda,stroke:#28a745
+```
+
+**LoRA 라우팅 + 출력 포맷**
+
+| 서브모듈 | LoRA 어댑터 | 출력 포맷 |
+|---------|-----------|---------|
+| generate | v3_generate | JSON (필드 명세 기반 문서) |
+| summary | v3_summary | 텍스트 (분류/태그/요약) |
+| qa | base model | JSON (answer + citations) |
+| search | 없음 (RAG only) | 카드형 (title/score/preview) |
+
+지원 템플릿: 회의록, 보고서, 제안서, JD 등
+
+---
+
+### 4-2. 판단 Agent
+
+규정 기반 yes/no/conditional 판단을 수행하며, LLM 결과를 **맹신하지 않는** 다중 검증 구조입니다.
+
+```mermaid
+flowchart TB
+    Input[규정 질문] --> S1[1. RAG 검색<br/>source=regulations, Top-5<br/>Reranker + HyDE 적용]
+    S1 --> S2[2. 규정 그룹핑<br/>chapter별 묶기<br/>예: 제3장 근로시간, 제5장 정보보호]
+    S2 --> S3[3. 이전 판단 이력 추출<br/>대화 이력에서 이전 판단 JSON 추출<br/>일관성 유지 참고]
+    S3 --> S4[4. sLLM 판단<br/>v1_judgment LoRA<br/>result / confidence / reasoning / cross_references]
+    S4 --> S5[5. 4중 보조장치]
+    S5 --> G1[규정 키워드 매칭<br/>매칭률 0~1.0 산출]
+    S5 --> G2[조항 존재 검증<br/>인용 조항이 RAG에 실존?]
+    S5 --> G3[판단 카테고리 제한<br/>yes/no/conditional 외 차단]
+    S5 --> G4[일관성 모니터링<br/>동일 쿼리 캐싱 500건 FIFO]
+    G1 & G2 & G3 & G4 --> S6[6. 5-factor Confidence 보정]
+    S6 --> Output[최종 판단 응답<br/>result + reasoning + 근거 조항 + confidence]
+
+    style S5 fill:#fff3cd,stroke:#ffc107
+    style S6 fill:#f8d7da,stroke:#dc3545
+    style Output fill:#d4edda,stroke:#28a745
+```
+
+**4중 보조장치 (Guardrail)**
+
+| 장치 | 역할 |
+|------|------|
+| 규정 키워드 매칭 | LLM이 인용한 조항이 RAG 결과에 실제 있는지, 매칭률 0~1.0 산출 |
+| 조항 존재 검증 | 각 인용 조항(제N조)이 RAG에 존재하는지, 미존재 시 환각 의심 플래그 |
+| 판단 카테고리 제한 | yes/no/conditional/no_regulation 외 값 자동 대체, conf 0.3 이하 처리 |
+| 일관성 모니터링 | 동일 쿼리 캐싱 (max 500건 FIFO), 이전과 다른 결과 시 경고 플래그 |
+
+**5-factor Confidence 산출**
 
 ```
-SKN21-FINAL-3TEAM/
-│
-├── backend/                     # FastAPI 백엔드
-│   ├── app/
-│   │   ├── main.py              # 앱 진입점
-│   │   ├── config.py            # 환경변수
-│   │   ├── api/v1/              # REST API 엔드포인트
-│   │   │   ├── chat.py          # 챗봇 + SSE 스트리밍
-│   │   │   ├── auth.py          # JWT + 비밀번호 재설정 + Google 소셜 로그인
-│   │   │   ├── documents.py     # 문서 CRUD + 생성/다운로드
-│   │   │   ├── meetings.py      # 회의 관리
-│   │   │   ├── schedules.py     # 일정 CRUD
-│   │   │   ├── calendar.py      # Google Calendar + Meet
-│   │   │   ├── google_connect.py # 통합 OAuth
-│   │   │   ├── tasks.py         # Google Tasks API
-│   │   │   ├── gmail.py         # Gmail 발송 API
-│   │   │   ├── sheets.py        # Google Sheets API
-│   │   │   ├── regulations.py   # 규정 목록 조회 (공개)
-│   │   │   ├── admin.py         # 관리자 + 통계 + 로그 + 규정 CRUD
-│   │   │   └── router.py        # API 라우터 통합
-│   │   ├── models/              # ORM 모델 (12개 테이블)
-│   │   ├── schemas/             # Pydantic 스키마
-│   │   └── services/            # 비즈니스 로직
-│   │       ├── chat_service.py       # 챗봇 세션/대화 관리
-│   │       ├── document_service.py   # 문서 업로드/파싱 + Qdrant 인덱싱
-│   │       ├── meeting_service.py    # 회의 CRUD + AI 분석
-│   │       ├── template_service.py   # 문서 생성/다운로드
-│   │       ├── statistics_service.py # 통계/로그
-│   │       ├── parsing_service.py    # 파싱 상태 관리
-│   │       ├── google_base_service.py # Google API 공통 베이스
-│   │       ├── calendar_service.py   # Calendar + Meet 연동
-│   │       ├── tasks_service.py      # Google Tasks 동기화
-│   │       ├── gmail_service.py      # 알림/초대 메일 발송
-│   │       ├── sheets_service.py     # Sheets 추적 시트
-│   │       └── schedule_service.py   # 4개 서비스 오케스트레이션
-│   ├── alembic/                 # DB 마이그레이션 (Alembic, 3개 버전)
-│   ├── create_tables.py         # DB 테이블 생성 스크립트
-│   └── scripts/                 # 유틸리티 스크립트
-│       ├── rebuild_qdrant.py    # Qdrant 전체 재정립
-│       ├── migrate_docs_to_qdrant.py # 기존 문서 마이그레이션
-│       └── seed_sample_documents.py  # 샘플 데이터 시딩
-│
-├── ai/                          # AI/ML 모듈
-│   ├── agents/                  # LangGraph Agent
-│   │   ├── state.py             # AgentState 공유 상태
-│   │   ├── config.py            # 분류 임계값 설정 (0.85 / 0.4)
-│   │   ├── orchestrator.py      # StateGraph 오케스트레이터
-│   │   ├── intent_classifier.py # Intent 분류 (koelectra-base-v3)
-│   │   ├── preprocessing.py     # 한국어 전처리 (kiwipiepy)
-│   │   ├── judgment_agent.py    # 판단 Agent
-│   │   ├── document_agent.py    # 문서 Agent
-│   │   ├── schedule_agent.py    # 일정 Agent
-│   │   ├── train_intent.py      # Intent 모델 학습
-│   │   └── test_intent.py       # Intent 테스트
-│   ├── llm/                     # LLM 공통 모듈
-│   │   ├── base.py              # BaseLLM 인터페이스
-│   │   ├── factory.py           # LLM 팩토리 (openai/anthropic/vllm)
-│   │   ├── openai_provider.py   # OpenAI (GPT)
-│   │   ├── anthropic_provider.py # Anthropic (Claude)
-│   │   └── prompts.py           # 프롬프트 관리
-│   ├── rag/                     # RAG 파이프라인
-│   │   ├── hybrid_search.py     # BM25 + Vector (RRF 합산)
-│   │   ├── reranker.py          # bge-reranker-v2-m3
-│   │   ├── embeddings.py        # ko-sbert-nli 임베딩
-│   │   ├── query_refiner.py     # 쿼리 정제
-│   │   ├── qdrant_pipeline.py   # Qdrant 파이프라인 (싱글톤)
-│   │   ├── qdrant_store.py      # Qdrant 벡터스토어
-│   │   ├── pipeline.py          # RAG 파이프라인 통합
-│   │   ├── vectorstore.py       # 벡터스토어 인터페이스
-│   │   └── inspect_sources.py   # 소스 검사 유틸리티
-│   ├── templates/               # 문서 템플릿
-│   │   ├── base.py              # BaseTemplate
-│   │   ├── meeting_minutes.py   # 회의록
-│   │   ├── report.py            # 보고서
-│   │   ├── jd.py                # 채용 공고
-│   │   └── proposal.py          # 제안서
-│   ├── document_parser/         # 문서 파싱
-│   │   ├── docling_parser.py    # Docling (디지털 PDF)
-│   │   ├── ocr_parser.py        # PaddleOCR (스캔 문서)
-│   │   ├── docx_parser.py       # DOCX 파싱
-│   │   ├── parser.py             # 파서 오케스트레이터
-│   │   ├── manual_parser.py     # 수동 파싱 지원
-│   │   └── regulation_parser.py # 규정 파싱 (조문 기반 청킹)
-│   ├── skills/                  # 문서 생성 스킬 (회의록, 보고서, 제안서)
-│   ├── serving/vllm_client.py   # vLLM 클라이언트
-│   ├── finetuning/              # LoRA 학습
-│   ├── models/                  # 학습된 모델 체크포인트
-│   ├── tests/                   # AI 테스트
-│   ├── experiments/             # ML 실험 v1 (BERT, QA 비교)
-│   └── experiments_v2/          # ML 실험 v2 (6단계 실험 파이프라인)
-│
-├── frontend/                    # React 프론트엔드
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── chat/            # 챗봇 UI + 응답 카드 (17개 컴포넌트)
-│   │   │   ├── common/          # 공통 UI (Sidebar, Header, Layout, ThemeToggle 등)
-│   │   │   ├── dashboard/       # 대시보드 위젯 (14개)
-│   │   │   ├── documents/       # 문서 관리
-│   │   │   ├── meetings/        # 회의 관리
-│   │   │   ├── schedules/       # 일정 (FullCalendar + Google 연동)
-│   │   │   ├── auth/            # 로그인/회원가입
-│   │   │   └── admin/           # 관리자 (사용자/규정/통계)
-│   │   ├── api/                 # API 클라이언트 모듈 (9개: chat, auth, documents 등)
-│   │   ├── hooks/               # useAuth, useSSE, useChat, useGoogleServices
-│   │   ├── store/               # Zustand (auth, chat, ui, google, scheduleType)
-│   │   └── pages/               # 11개 페이지 (대시보드, 챗봇, 회의록, 문서생성, 문서관리, 일정, 마이페이지, 관리자 등)
-│   └── e2e/                     # Playwright E2E 테스트
-│
-├── data/                        # 학습/평가 데이터
-│   ├── training/
-│   │   ├── intent/              # Intent 데이터 v1 (원본 1,405 + 증강 463)
-│   │   ├── intent_v2/           # Intent 데이터 v2 (GPT-4o + Claude, 2,425 train)
-│   │   ├── v1_judgment/         # 판단 데이터 (1,500개)
-│   │   └── v2_document/         # 문서 데이터 (1,700개)
-│   ├── evaluation/              # 벤치마크 리포트 + 결과
-│   ├── proceedings/             # 회의록 샘플 데이터 (8개 JSON)
-│   └── regulations/             # 규정 원본 문서 (7개 규정 + PDF)
-│
-├── docs/                        # 기획/설계 문서
-│   ├── agent/architecture.md    # 아키텍처 설계
-│   ├── TASK_BOARD.md            # 작업 보드 (일일 참고)
-│   ├── logs/                    # 팀원별 작업 로그 (5명)
-│   ├── 복합질문_설계서.md        # 복합 질문 처리 설계
-│   ├── 프로젝트_구조_학습가이드.md # 프로젝트 구조 가이드
-│   └── 역할분배_기술스택_v5_final.md # 기술 참고서
-│
-├── docker/                     # Docker 설정
-│   ├── docker-compose.yml      # 컴포즈 설정
-│   ├── Dockerfile.backend      # 백엔드 이미지
-│   ├── Dockerfile.frontend     # 프론트엔드 이미지
-│   └── Dockerfile.vllm         # vLLM 서빙 이미지
-│
-├── .github/workflows/
-│   ├── ci.yml                  # CI 파이프라인
-│   └── deploy.yml              # 배포 파이프라인
+Confidence = (LLM raw x 0.60) + (RAG avg score x 0.25) + (규정 커버리지 x 0.15)
+             - 규정 충돌 감점 (-0.1/건)
+             - 환각 감점 (보조1 기반)
+             - 미존재 조항 감점 (-0.05/건, 보조2)
+
+Hard Cap: RAG < 0.2 → max 0.4 | keyword < 0.2 → max 0.3 | 전부 미존재 → max 0.25
 ```
 
 ---
 
-## 팀원별 담당
+### 4-3. 일정 Agent
 
-| 팀원 | 역할 | 핵심 담당 |
-|------|------|----------|
-| **신지용** (PM) | Intent + 오케스트레이션 | `ai/agents/orchestrator.py`, SSE 스트리밍, API 스키마, 배포 |
-| **윤경은** (AI Engineer) | 파인튜닝 v1 + 판단 + RAG | `judgment_agent.py`, `ai/rag/*`, LoRA v1, vLLM 서빙 |
-| **진승언** (AI Engineer) | 파인튜닝 v2 + 문서 Agent | `document_agent.py`, `ai/templates/*`, `document_parser/*`, LoRA v2 |
-| **안혜빈** (Backend) | DB + 인증 + 일정 Agent | `models/*`, `services/*`, JWT, Google Services 통합, 관리자 API |
-| **문지영** (Frontend) | React UI 전담 + Intent 분류 + Task Planner LoRA 파인튜닝 | frontend, SSE 실시간 스트리밍, 복합질문 멀티에이전트, Intent 앙상블|  
+자연어를 일정 데이터로 변환하고, Google Workspace 5종 연동 및 결재/승인 자동화를 처리합니다.
+
+```mermaid
+flowchart TB
+    Input[사용자 입력] --> Route{인텐트 분기}
+
+    Route -->|schedule_add| A1[1. LLM 자연어 파싱<br/>Solar API → JSON 변환<br/>상대시간 → 절대시간]
+    A1 --> A2[2. Fallback 파싱<br/>LLM 실패 시 정규식 매칭]
+    A2 --> A3[3. 누락 정보 체크<br/>시간 null → 되물어보기]
+    A3 --> A4[4. Google Calendar 등록<br/>DB 저장 + event_id 반환]
+    A4 --> A5[5. 후속 제안<br/>Meet 생성? 초대 메일?]
+
+    Route -->|schedule_view| V1[기간 파싱<br/>오늘/이번주/다음달]
+    V1 --> V2[DB 조회 → 시간대별 목록 반환]
+
+    Route -->|approval_create| AP1[LLM 파싱<br/>type/title/detail 추출]
+    AP1 --> AP2[Fallback 규칙 기반 파싱]
+    AP2 --> AP3[DB 저장<br/>status: pending]
+    AP3 --> AP4[응답 반환]
+
+    A5 -->|Meet 생성| Meet[Calendar API → Meet 링크]
+    A5 -->|메일 발송| Gmail[Gmail API → N명 초대]
+    A5 -->|되물어보기| Clarify[이전 정보 + 시간 병합<br/>→ 자동 등록 재시도]
+
+    style A4 fill:#d4edda,stroke:#28a745
+    style V2 fill:#d4edda,stroke:#28a745
+    style AP4 fill:#d4edda,stroke:#28a745
+```
+
+**approval_create (결재 요청)**
+
+| 키워드 | 결재 타입 |
+|--------|----------|
+| 연차, 휴가, 반차, 조퇴, 병가 | leave |
+| 코드 리뷰, PR, 검토 | review |
+| 예산, 품의, 비용, 구매 | budget |
+| 출장 | business_trip |
+| 배포 승인 | deploy |
+| 기타 | general |
+
+**결재 API 기능**
+
+| 기능 | 설명 |
+|------|------|
+| 결재 생성 | 자연어 또는 직접 입력, 파일 첨부 지원 (PDF/DOCX/이미지) |
+| 승인/거절 | 팀원이 수신한 pending 요청을 승인 또는 거절 |
+| 수신 목록 | 내 팀 대상 pending 요청 자동 필터링 |
+| 발신 이력 | 내가 보낸 요청 상태 추적 (pending/approved/rejected) |
+| AI 결재 추천 | 파이프라인 + 캘린더 분석 → 결재 항목 자동 추천 (sLLM → API → 규칙 기반 3단계 fallback) |
+| 일정 추천 | 파이프라인 태스크 현황 기반 일정 제안 |
+| 체크리스트 | 일정 + 태스크 분석 → 할 일 자동 생성 |
+| 규정 검증 연동 | 추천 항목에 대해 regulation_check 수행, 위반 시 경고 태그 부착 |
+
+**Google Workspace 연동 5종**
+
+| 서비스 | 기능 |
+|--------|------|
+| Calendar | 일정 등록/조회/수정, event_id 연동 |
+| Meet | 화상 회의 링크 자동 생성 |
+| Gmail | 참석자 초대 메일 자동 발송 (N명 일괄) |
+| Tasks | 파이프라인 태스크 생성/관리 |
+| Sheets | 프로젝트 현황 관리, 데이터 동기화, 실시간 업데이트 |
 
 ---
 
-## Git 브랜치 전략
+### 4-4. Planner Agent
 
-> 1인 1브랜치 원칙 — 브랜치 5개로 충돌 최소화
+3개 Agent를 하나의 LangGraph 오케스트레이터로 융합합니다.
+
+```mermaid
+flowchart LR
+    Input["복합 질의<br/>예: 내일 회의 잡고<br/>보고서 작성하고<br/>출장 규정 확인해줘"] --> Parse[v7_planner LoRA<br/>Intent 분해]
+
+    Parse --> Plan[Plan 생성]
+
+    Plan --> Step1["Step 1: schedule_add<br/>내일 회의 등록<br/>depends_on: 없음"]
+    Plan --> Step2["Step 2: doc_generate<br/>보고서 작성<br/>depends_on: 없음"]
+    Plan --> Step3["Step 3: judgment<br/>출장 규정 확인<br/>depends_on: 없음"]
+
+    Step1 --> Merge[응답 통합]
+    Step2 --> Merge
+    Step3 --> Merge
+    Merge --> Output[통합 응답 반환]
+
+    style Parse fill:#e8d5f5,stroke:#944ad9
+    style Merge fill:#d4edda,stroke:#28a745
+```
+
+- 최대 4단계 의존성 관리 (depends_on으로 순차/병렬 자동 결정)
+- v7_planner LoRA 파인튜닝
+- 멀티 인텐트 요청을 단계별 plan으로 분해하여 순차/병렬 실행
+
+---
+
+## 5. 데이터셋 및 파인튜닝
+
+### 데이터 구성 총괄
+
+| 구분 | Train | Eval | 출처 |
+|------|-------|------|------|
+| Intent 분류 | 3,954 | 610 | 자체 제작 + Adversarial 463 |
+| Planner | 1,471 | 150 | 자체 제작 + GPT 증강 |
+| 판단 LoRA | 3,468 | 328 | 수동 제작(Excel) + RAG 증강 |
+| 문서 요약 | 900 | 100 | AI Hub SN 582 + GPT 증강 |
+| 문서 생성 | 1,350 | 150 | AI Hub + 합성(회의록/보고서/제안서) |
+
+### 데이터 수집 전략 (2-Track)
+
+**Track 1 — 수동 제작 (고품질)**
+
+| 데이터 | 수량 |
+|--------|------|
+| 규정 판단 쌍 | 1,000 |
+| 규정 QA 쌍 | 1,000 |
+| Intent 분류 | 1,453 |
+| Adversarial | 463 |
+| 복합 질문 | 780 |
+
+**Track 2 — AI Hub + 합성 (대량)**
+
+- AI Hub SN 582, SN 569 활용
+- GPT-4o 빈 필드 증강
+- 합성 회의록 / 보고서 / 제안서
+- 최대 50% 합성 비율 유지 (품질 관리)
+
+### 파인튜닝 모델
+
+| 모델 | Base | 용도 |
+|------|------|------|
+| v1_judgment | Kanana-1.5-8B | 규정 판단 (yes/no/conditional + 근거 + 대안) |
+| v3_generate | Kanana-1.5-8B | 문서 생성 (회의록, 보고서, 제안서) |
+| v3_summary | Kanana-1.5-8B | 문서 요약 |
+| v7_planner | Kanana-1.5-8B | 복합 인텐트 분해 및 plan 생성 |
+| Intent Classifier | klue/roberta-large | Intent 멀티라벨 분류 (6-label ONNX 앙상블) |
+
+---
+
+## 6. RAG 파이프라인
+
+```mermaid
+flowchart LR
+    Q[사용자 질의] --> HyDE[HyDE 가설 문서 생성]
+    HyDE --> BM25[BM25 검색]
+    HyDE --> Vec[Vector 검색 - Qdrant]
+    BM25 --> RRF[RRF 합산]
+    Vec --> RRF
+    RRF --> Rerank[Cross-Encoder Reranker]
+    Rerank --> Filter[Score Threshold 필터링]
+    Filter --> Context[상위 문서 Context]
+```
+
+| 구성 요소 | 기술 |
+|-----------|------|
+| Embedding | jhgan/ko-sbert-nli (768d) |
+| Vector DB | Qdrant |
+| Sparse Search | BM25 |
+| 합산 | RRF (Reciprocal Rank Fusion) |
+| Reranker | bge-reranker-v2-m3 (Cross-Encoder) |
+| Query 확장 | HyDE (Hypothetical Document Embeddings) |
+| 후처리 | Score Threshold 기반 필터링 |
+
+---
+
+## 7. 기술 스택
+
+### AI / ML
+
+| 기술 | 용도 |
+|------|------|
+| LangGraph | Agent 오케스트레이션 |
+| Kanana-1.5-8B + LoRA | sLLM 파인튜닝 (판단/문서/Planner) |
+| vLLM | 모델 서빙 |
+| Qdrant | 벡터 DB |
+| BM25 | 희소 검색 |
+| bge-reranker-v2-m3 | Cross-Encoder Reranker |
+| klue/roberta-large (ONNX) | Intent 멀티라벨 분류 (6-label 앙상블) |
+| Docling + PaddleOCR | 문서 파싱 |
+| jhgan/ko-sbert-nli | 임베딩 (768d) |
+
+### Backend
+
+| 기술 | 용도 |
+|------|------|
+| FastAPI + SSE | API 서버 + 실시간 스트리밍 |
+| PostgreSQL | 메인 DB (16 테이블) |
+| SQLAlchemy + Alembic | ORM + 마이그레이션 |
+| JWT + Google OAuth 2.0 | 인증 (로그인 1회로 5종 서비스 동시 인증) |
+| Redis | 캐시 / 세션 |
+| AES-256 (Fernet) | OAuth 토큰 암호화 |
+| Slack Webhook | 마감 알림 / 스케줄러 |
+
+### Frontend
+
+| 기술 | 용도 |
+|------|------|
+| React 18 (Vite) | UI 프레임워크 |
+| Zustand + TanStack Query | 상태 관리 + 데이터 페칭 |
+| Tailwind CSS + Lucide Icons | 스타일링 |
+| FullCalendar | 일정 캘린더 UI |
+| framer-motion | 애니메이션 |
+| Recharts | 대시보드 차트 |
+| Playwright | E2E 테스트 |
+
+### Infra
+
+| 기술 | 용도 |
+|------|------|
+| AWS EC2 + S3 + RDS | 클라우드 인프라 (Backend 배포 + DB) |
+| RunPod Serverless (A100) | vLLM GPU 서빙 (LoRA 어댑터 4종) |
+| Qdrant Cloud | 벡터 DB (GCP) |
+| Docker + Docker Compose | 컨테이너화 (PostgreSQL, Redis, Qdrant, Backend, Frontend) |
+| GitHub Actions | CI/CD (ruff lint → deploy → systemd restart → health check) |
+
+---
+
+## 8. 프로젝트 구조
 
 ```
-main (배포용 - PM 지용만 머지)
- └── develop (통합 개발 - PR 머지 대상)
-      ├── feat/jiyong            Intent, 오케스트레이터, SSE, 스키마
-      ├── feat/ai-경은          LLM API, RAG, 판단 Agent, 파인튜닝
-      ├── feat/ai-승언          문서 Agent, 파서, 템플릿, 파인튜닝
-      ├── feat/backend-혜빈     DB, 인증, API, Google Services
-      └── feat/frontend-지영    React UI, 멀티라벨 Intent 분류(RoBERTa-large), Task Planner LoRA 파인튜닝(Kanana-1.5-8B) 
-```
+backend/app/              — FastAPI 백엔드
+  api/v1/                 — REST API (16개 라우터: chat, auth, documents, meetings,
+                             schedules, calendar, google_connect, tasks, gmail,
+                             sheets, admin, slack, pipeline, approvals, messages, regulations)
+  models/                 — ORM 모델 (16개 테이블)
+  services/               — 비즈니스 로직 (Google Services 5종 포함)
+  schemas/                — Pydantic 스키마
+  core/                   — 보안 (JWT, AES-256), 미들웨어
 
-### 커밋 컨벤션
+ai/                       — AI/ML 모듈
+  agents/                 — LangGraph Agent (orchestrator, judgment, document, schedule)
+    document/             — 문서 Agent 서브모듈 (search, qa, summary, generate)
+  llm/                    — LLM 공통 모듈 (factory, openai/anthropic/vllm provider, prompts)
+  rag/                    — RAG 파이프라인 (hybrid_search, reranker, qdrant)
+  skills/                 — 문서 생성 스킬 (DOCX 빌더: 회의록, 보고서, 제안서)
+  templates/              — 문서 템플릿 (회의록, 보고서, JD, 제안서)
+  document_parser/        — 문서 파싱 (Docling, PaddleOCR, DOCX, 규정 파서)
+  finetuning/             — LoRA 학습 (v1_judgment, v3_generate, v3_summary, v7_planner)
+  serving/                — vLLM 클라이언트 (LoRA 핫스왑)
 
-```
-<type>: <설명> #이슈번호
+frontend/src/             — React 프론트엔드
+  components/             — UI 컴포넌트 (chat, dashboard, documents, meetings,
+                             schedules, messages, approvals, auth, admin, common)
+  pages/                  — 14개 페이지
+  store/                  — Zustand (7개: auth, chat, ui, google, toast, slack, scheduleType)
+  hooks/                  — useAuth, useSSE, useChat, useGoogleServices
+  api/                    — API 클라이언트 모듈 (13개)
 
-feat: 판단 Agent LLM API 연동 #12
-fix: Intent 분류 confidence 임계값 조정 #5
-docs: API 스키마 문서 업데이트 #2
-```
-
-### PR 규칙
-
-```
-1. 자기 브랜치에서 작업 후 push
-2. GitHub PR 생성 (develop ← feat/xxx-이름)
-3. PR 본문에 "Closes #이슈번호"
-4. 리뷰 승인 후 Squash and merge
-5. develop → main은 PM(지용)만 머지
+data/                     — 학습 데이터 / 평가셋 / 규정 문서
+docker/                   — Docker 설정 (backend, frontend, vLLM, docker-compose)
+scripts/                  — 유틸리티 스크립트 (시드, 벤치마크, 인제스트)
 ```
 
 ---
 
-## 빠른 시작
+## 9. 팀 구성
+
+| 이름 | 역할 | 담당 |
+|------|------|------|
+| **신지용** | PM | 프로젝트 관리, 의도 분류, 오케스트레이터, 문서 Agent |
+| **윤경은** | AI 서브 | 판단 Agent, RAG 파이프라인, LoRA 파인튜닝 (v1_judgment), 팀스페이스 기능 |
+| **진승언** | AI 리드 | 문서 Agent, 문서 파서, 템플릿 시스템, LoRA 파인튜닝 (v3_generate, v3_summary) |
+| **안혜빈** | BE | FastAPI, DB, 인증, Google API 5종 연동, 일정 Agent, 멀티 Agent 기능 강화 |
+| **문지영** | FE / AI | React UI, SSE 실시간 채팅, Intent 멀티라벨 분류, Planner LoRA 파인튜닝 |
+
+---
+
+## 10. 빠른 시작
+
+### Backend
 
 ```bash
-# 1. 환경변수 설정
-# .env 파일을 프로젝트 루트에 생성 (OPENAI_API_KEY, DATABASE_URL, QDRANT_URL 등)
-
-# 2. Docker로 실행
-cd docker && docker-compose up -d
-
-# 3. 또는 로컬 개발
-# Backend
-pip install -r requirements.txt   # 루트의 requirements.txt
-cd backend && uvicorn app.main:app --reload
-
-# Frontend
-cd frontend && npm install && npm run dev
+# 프로젝트 루트에서 실행
+pip install -r requirements.txt
+uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+### Frontend
+
+```bash
+cd frontend
+npm install --legacy-peer-deps
+npm run dev
+```
+
+### Docker (전체 서비스)
+
+```bash
+cd docker
+docker-compose up -d
+```
+
+### 환경 변수
+
+프로젝트 루트의 `.env` 파일에 다음 항목을 설정해야 합니다:
+
+| 구분 | 변수 | 설명 |
+|------|------|------|
+| DB | `DATABASE_URL` | PostgreSQL 연결 문자열 (asyncpg) |
+| 인증 | `JWT_SECRET_KEY` | JWT 서명 키 |
+| Google | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google OAuth 2.0 |
+| LLM | `OPENAI_API_KEY` 또는 `ANTHROPIC_API_KEY` | LLM API 키 |
+| vLLM | `VLLM_BASE_URL`, `VLLM_MODEL_NAME` | sLLM 서빙 서버 |
+| Vector DB | `QDRANT_URL`, `QDRANT_API_KEY` | Qdrant 벡터 DB |
+| Infra | `REDIS_URL` | Redis 캐시 |
+| Slack | `SLACK_WEBHOOK_URL` | Slack 알림 웹훅 |
+
+Frontend는 `frontend/.env.local`에 `BACKEND_URL`을 설정합니다.
 
 ---
 
-## 문서 참고 & API 문서
-
-| 문서 | 용도 |
-|------|------|
-| `docs/agent/architecture.md` | 아키텍처 설계 (Agent 워크플로우, RAG 대상, 파인튜닝 전략) |
-| `docs/TASK_BOARD.md` | 일일 작업 참고 (체크리스트, 이슈 매핑) |
-| `docs/역할분배_기술스택_v5_final.md` | 기술 결정 배경, 멘토 피드백, 아키텍처 상세 |
-| `docs/복합질문_설계서.md` | 복합 질문 처리 설계 (Smart Hybrid 아키텍처) |
-| `docs/프로젝트_구조_학습가이드.md` | 프로젝트 구조 및 팀원별 가이드 |
-| `docs/logs/` | 팀원별 작업 로그 (세션 기록) |
-| Swagger UI (`/docs`) | API 스펙 확인 (서버 실행 후) |
-| ReDoc (`/redoc`) | API 문서 대체 뷰어 |
-
-서버 실행 후:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+> **DUDE** — 하나의 채팅으로 업무의 모든 것을
