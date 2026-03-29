@@ -4446,3 +4446,17 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
   - 출처: Microsoft Work Trend Index (2023)
 - 한 화면에 들어오도록 상하 사이즈 축소 (섹션 패딩, 카드 패딩·간격, 원 크기 등)
 - After 카드 하단 요약 텍스트(규정 문의 30분→10초 등) 제거 — 상단 바 차트와 중복
+
+#### 3) 발표자료 v3 — 08 Multi-Agent Orchestration 개편 (`presentation_v3.html`)
+
+- 섹션 제목 "Intent 분류" → "Multi-Agent Orchestration"으로 변경
+- 복합 질문 분해(Task Planning) 예시 추가: 3-step 분해 흐름 (judgment → schedule_view → schedule_add)
+- 한 화면 맞춤 레이아웃 축소
+
+#### 4) 발표자료 v3 — Agent 상세 페이지 3장 추가 (`presentation_v3.html`)
+
+- **08-1 Judgment Agent**: 오른쪽 4중 보조장치 → 정량 성과(Base 37.2%→LoRA 85.4%) + Base vs LoRA 출력 비교로 교체, 하단에 RAGAS 4개 수치 + 핵심 지표 테이블 가로 배치
+- **08-1b 4중 보조장치 전용 페이지 추가**: 4단계별 감점 공식 상세, 환각 탐지 예시(제12조→미존재→Confidence 0.92→0.25), 5-Factor Confidence 보정 공식 + Hard Cap
+- **08-2a Document Agent 정량 성과**: 생성(BERTScore, ROUGE-L, False Fill, 채움률) + 요약(분류율, 길이) 테이블, Base vs LoRA JSON 비교
+- **08-3a Schedule Agent Google 연동**: Google 5종 연동 테이블, 3단계 Fallback 흐름도, AI 추천 기능
+
