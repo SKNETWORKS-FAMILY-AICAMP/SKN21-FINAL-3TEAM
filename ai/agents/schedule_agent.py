@@ -165,7 +165,7 @@ async def schedule_agent(state: AgentState) -> AgentState:
 
 
 def _find_free_date(prev_context: dict) -> str | None:
-    """이전 schedule_view 결과에서 이번 주 비는 날(일정 없는 평일)을 찾아 반환"""
+    """이전 schedule_view 결과에서 비는 날(일정 없는 평일)을 찾아 반환"""
     schedules = prev_context.get("schedules") if prev_context else None
     if not schedules:
         return None
@@ -188,6 +188,13 @@ def _find_free_date(prev_context: dict) -> str | None:
         if d >= today_str and d not in busy_dates:
             return d
 
+    # 이번 주 평일이 모두 지났거나 빈 날이 없으면 → 다음 주 탐색
+    next_monday = monday + timedelta(days=7)
+    next_weekdays = [(next_monday + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(5)]
+    for d in next_weekdays:
+        if d not in busy_dates:
+            return d
+
     return None
 
 
@@ -197,12 +204,20 @@ async def _handle_schedule_add(user_input: str, user_id: int, prev_context: dict
     logger.info("[ScheduleAgent] 파싱 결과: %s", parsed)
 
     # "비는 날" 요청 시 이전 일정 조회 결과에서 빈 날짜 계산
-    if re.search(r'비는\s*날|빈\s*날', user_input) and not parsed.get("start_time"):
+    is_free_day_request = bool(re.search(r'비는\s*날|빈\s*날', user_input))
+    if is_free_day_request and not parsed.get("start_time"):
         free_date = _find_free_date(prev_context)
         if free_date:
             parsed["start_time"] = f"{free_date}T09:00:00"
             parsed["end_time"] = f"{free_date}T10:00:00"
             logger.info("[ScheduleAgent] 비는 날 자동 계산: %s", free_date)
+        else:
+            logger.info("[ScheduleAgent] 비는 날을 찾지 못함 (prev_context=%s)", bool(prev_context))
+            return {
+                "type": "schedule_add",
+                "message": "이번 주에는 비는 평일이 없습니다. 다른 날짜를 지정해주세요.",
+                "schedule": parsed,
+            }
 
     if not parsed.get("title"):
         return {
