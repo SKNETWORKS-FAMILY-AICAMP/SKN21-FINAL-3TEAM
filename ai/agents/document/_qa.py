@@ -127,7 +127,7 @@ async def _handle_doc_qa(
             "post_stream": {
                 "update_summary_db": None,
                 # "check_regulation": True,  # 시연용 비활성화
-                "filter_sources": True,
+                "filter_sources": False,  # RAG가 찾은 전체 소스 표시
             },
             "answer": "",
             "message": "",

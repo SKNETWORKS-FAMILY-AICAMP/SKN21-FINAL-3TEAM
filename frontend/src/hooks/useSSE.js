@@ -164,6 +164,16 @@ export default function useSSE() {
                 if (currentIntentRef.current) {
                   setLastAssistantIntent(currentIntentRef.current)
                 }
+                // log_id를 마지막 assistant 메시지에 저장 (페이지 재방문 시 상태 동기화용)
+                if (event.log_id) {
+                  const store = useChatStore.getState()
+                  const msgs = [...store.messages]
+                  const last = msgs[msgs.length - 1]
+                  if (last && last.role === 'assistant') {
+                    msgs[msgs.length - 1] = { ...last, logId: event.log_id }
+                    useChatStore.setState({ messages: msgs })
+                  }
+                }
                 break
               case 'error':
                 flushTokens()

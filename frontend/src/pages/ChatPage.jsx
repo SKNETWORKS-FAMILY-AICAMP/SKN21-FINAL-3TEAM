@@ -21,6 +21,7 @@ import CompoundCard from '../components/chat/CompoundCard';
 import useChat from '../hooks/useChat';
 import useChatStore from '../store/chatStore';
 import { listRegulations } from '../api/regulations';
+import { patchChatLog } from '../api/chat';
 import { listDocuments, downloadDocument, uploadDocument } from '../api/documents';
 import { toast } from '../store/toastStore';
 
@@ -85,7 +86,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       // 사용자의 질문 내용 확인 (이전 메시지)
       const userMsg = index > 0 ? messages[index - 1]?.content || '' : '';
       // '규정', '알려줘', '설명'만 있는 경우는 정보 조회로 간주 (의문형/판단형 키워드가 없을 때)
-      const isJudgmentRequest = /가능|요건|조건|되나요|있나요|수 있|있습니|허용|금지|위반|처벌|준수/.test(userMsg);
+      const isJudgmentRequest = /가능|요건|조건|되나요|있나요|인가요|할까요|해야|필수|의무|수 있|있습니|허용|금지|위반|처벌|준수/.test(userMsg);
 
       // 'none'이나 판단 결과가 명확하지 않거나, 단순 정보 조회인 경우 배지 숨김
       const isInformational = !data.result || data.result === 'none' || data.result === 'info' || (data.result === 'yes' && !isJudgmentRequest);
@@ -357,14 +358,23 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
         <ScheduleConfirmCard
           initialData={sched}
           onConfirmed={(apiResult) => {
-            // 등록 완료 시 메시지의 intent/response를 schedule_add로 교체 → 자동 re-render
-            msg.resultIntent = 'schedule_add';
-            msg.agentResponse = {
+            const updatedResponse = {
               ...data,
               type: 'schedule_add',
               schedule: apiResult.schedule || sched,
               google_services: apiResult.google_services || {},
             };
+            // Zustand store 정식 업데이트 (immutable) → re-render 보장
+            useChatStore.getState().updateMessageByIndex(index, {
+              resultIntent: 'schedule_add',
+              agentResponse: updatedResponse,
+            });
+            // DB에도 반영하여 페이지 재방문 시 등록 완료 상태 유지
+            const sid = useChatStore.getState().activeSessionId;
+            const logId = msg.logId;
+            if (sid && logId) {
+              patchChatLog(sid, logId, updatedResponse).catch(() => {});
+            }
           }}
         />
       );

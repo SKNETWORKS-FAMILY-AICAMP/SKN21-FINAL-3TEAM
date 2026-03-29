@@ -648,7 +648,10 @@ async def chat_stream(request: ChatRequest, user=Depends(get_current_user), db: 
                 logger.warning("[Chat] 요약 갱신 실패 (무시): %s", sum_err)
 
             logger.info("[Chat] 스트림 완료 (%.2fs)", _t_done)
-            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+            _done_payload = {'type': 'done'}
+            if log and log.id:
+                _done_payload['log_id'] = log.id
+            yield f"data: {json.dumps(_done_payload)}\n\n"
 
         except Exception as e:
             logger.error("[Chat] 스트림 에러: %s", e, exc_info=True)
@@ -810,6 +813,7 @@ async def get_session_messages(
             "content": content,
             "resultIntent": result_intent,
             "agentResponse": agent_response,
+            "logId": log.id,
         })
 
     return messages
@@ -834,6 +838,36 @@ async def rename_session(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="세션을 찾을 수 없습니다")
 
     session.name = body.name[:100]
+    await db.commit()
+    return {"ok": True}
+
+
+class _PatchLogBody(BaseModel):
+    agent_response: dict
+
+
+@router.patch("/sessions/{session_id}/logs/{log_id}")
+async def patch_chat_log(
+    session_id: str,
+    log_id: int,
+    body: _PatchLogBody,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """채팅 로그의 agent_response 업데이트 (일정 등록 완료 등 상태 반영)"""
+    result = await db.execute(
+        select(ChatLog).where(
+            ChatLog.id == log_id,
+            ChatLog.session_id == session_id,
+            ChatLog.user_id == user.id,
+        )
+    )
+    log = result.scalar_one_or_none()
+    if log is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="로그를 찾을 수 없습니다")
+
+    log.agent_response = json.dumps(body.agent_response, ensure_ascii=False, default=str)
+    log.intent = body.agent_response.get("type", log.intent)
     await db.commit()
     return {"ok": True}
 

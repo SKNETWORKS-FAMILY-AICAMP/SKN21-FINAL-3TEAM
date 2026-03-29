@@ -97,7 +97,7 @@ export default function SchedulesPage() {
         const end = s.end_time ? new Date(s.end_time) : start;
         const hasTime = s.start_time.includes('T');
         const timeStr = hasTime
-          ? `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
+          ? `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}`
           : null;
         const label = s.project_name ? `[${s.project_name}] ${s.title}` : s.is_team_visible ? `[팀] ${s.title}` : s.title;
         const baseEvent = {
@@ -142,7 +142,7 @@ export default function SchedulesPage() {
           .forEach((s) => {
             const start = new Date(s.start_time);
             const end = s.end_time ? new Date(s.end_time) : start;
-            const timeStr = `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
+            const timeStr = `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
             const baseEvent = {
               type: s.schedule_type || 'meeting',
               label: `[팀] ${s.title}`,
@@ -179,7 +179,7 @@ export default function SchedulesPage() {
         .forEach((s) => {
           const start = new Date(s.start_time);
           const end = s.end_time ? new Date(s.end_time) : start;
-          const timeStr = `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`;
+          const timeStr = `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
           const baseEvent = {
             type: s.schedule_type || 'meeting',
             label: `[${s.project_name}] ${s.title}`,
@@ -215,7 +215,7 @@ export default function SchedulesPage() {
 
       const hasTime = event.start.includes('T');
       const timeStr = hasTime
-        ? `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
+        ? `${start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}~${end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}`
         : null;
 
       return {
