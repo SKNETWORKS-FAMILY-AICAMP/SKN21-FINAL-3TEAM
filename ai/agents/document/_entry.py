@@ -200,7 +200,7 @@ async def document_agent(state: AgentState) -> AgentState:
                 from ai.agents.document._common import _retrieve_context
                 search_results, rag_context, sources, rag_status = await _retrieve_context(
                     user_input, user_id, user_team,
-                    top_k=5, use_reranker=True, score_threshold=0.0, use_hyde=True,
+                    top_k=5, use_reranker=False, score_threshold=0.0, use_hyde=False,
                 )
                 top_score = max((r.get("score", 0) for r in search_results), default=0) if search_results else 0
                 print(f"[DocumentAgent] RAG 선검색 완료: {len(sources)}건, top_score={top_score:.2f}")
