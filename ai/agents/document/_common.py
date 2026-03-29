@@ -132,7 +132,7 @@ def truncate_by_paragraph(text: str, max_chars: int = 8000) -> str:
 
 # ── RAG ──
 
-async def _retrieve_context(query: str, user_id: int = None, user_team: str = None, top_k: int = 7, use_reranker: bool = False, score_threshold: float = None) -> tuple:
+async def _retrieve_context(query: str, user_id: int = None, user_team: str = None, top_k: int = 7, use_reranker: bool = False, score_threshold: float = None, use_hyde: bool = False) -> tuple:
     """공통 RAG 검색 — search/QA/summary에서 재사용
 
     Args:
@@ -161,6 +161,7 @@ async def _retrieve_context(query: str, user_id: int = None, user_team: str = No
                     top_k=top_k, filter={"source": "documents"},
                     use_reranker=use_reranker,
                     score_threshold=score_threshold,
+                    use_hyde=use_hyde,
                 ),
             ),
             timeout=60,

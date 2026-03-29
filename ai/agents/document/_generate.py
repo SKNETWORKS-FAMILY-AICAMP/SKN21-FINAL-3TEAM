@@ -115,17 +115,40 @@ def _detect_template_type(user_input: str) -> str:
     """사용자 입력에서 템플릿 타입을 키워드로 감지 (LLM 판단 실패 시 fallback)
 
     Returns:
-        "meeting_minutes" | "jd" | "proposal" | "report" (기본값)
+        "meeting_minutes" | "proposal" | "report" (기본값)
     """
     input_lower = user_input.lower()
 
     if re.search(r"회의록|미팅.*(기록|노트|정리)", input_lower):
         return "meeting_minutes"
-    if re.search(r"jd|채용.*공고|직무.*기술서|job.*description", input_lower):
-        return "jd"
     if re.search(r"제안서|proposal", input_lower):
         return "proposal"
     return "report"
+
+
+_VALID_TEMPLATE_TYPES = {"meeting_minutes", "report", "proposal"}
+
+_CLASSIFY_SYSTEM_PROMPT = (
+    "사용자의 문서 생성 요청을 분류하세요.\n"
+    "반드시 다음 3개 중 하나만 JSON으로 답하세요:\n"
+    '- 회의록 → {"type":"meeting_minutes"}\n'
+    '- 보고서 → {"type":"report"}\n'
+    '- 제안서 → {"type":"proposal"}\n'
+    "판단 기준: 회의/미팅/참석자 언급→회의록, 제안/도입/기대효과 언급→제안서, 그 외→보고서"
+)
+
+
+async def _classify_template_type(user_input: str) -> str | None:
+    """LLM으로 문서 유형 분류. 실패 시 None 반환 (정규식 폴백으로 넘김)."""
+    try:
+        raw = await _call_llm(_CLASSIFY_SYSTEM_PROMPT, user_input, json_mode=True)
+        result = json.loads(raw)
+        ttype = result.get("type", "")
+        if ttype in _VALID_TEMPLATE_TYPES:
+            return ttype
+    except Exception:
+        pass
+    return None
 
 
 async def _query_custom_templates(category: str) -> list:

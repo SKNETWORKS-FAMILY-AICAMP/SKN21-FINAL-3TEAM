@@ -49,7 +49,7 @@ async def _handle_doc_search(
     else:
         search_results, context, sources, rag_status = await _retrieve_context(
             query, user_id, user_team,
-            top_k=10, use_reranker=False, score_threshold=0.1,
+            top_k=5, use_reranker=False, score_threshold=0.0, use_hyde=True,
         )
 
     # 2. 검색 실패 — 타임아웃과 결과 없음 구분
