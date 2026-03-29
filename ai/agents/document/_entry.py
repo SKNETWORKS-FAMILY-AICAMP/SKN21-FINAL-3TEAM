@@ -131,13 +131,9 @@ async def document_agent(state: AgentState) -> AgentState:
                 prev_title = prev_doc["title"] or ""
                 print(f"[DocumentAgent] follow-up 감지 | prev_title='{prev_title}', prev_doc_id={prev_doc_id}")
 
-                # QA/Summary follow-up → 이전 문서 content 직접 확보 (RAG 스킵)
-                is_qa_or_summary = (
-                    _needs_llm_answer(user_input)
-                    or re.search(r"(내용|자세히|자세하게|상세|알려|설명).{0,6}(줘|해|주세요|해줘)", user_input)
-                    or _has_summary_keyword
-                )
-                if is_qa_or_summary and prev_doc_id:
+                # follow-up 확정 시 → 무조건 이전 문서 content 확보 (QA 라우팅)
+                # "위 문서에서 X야?" 같은 질문은 항상 QA여야 함
+                if prev_doc_id:
                     try:
                         from ai.agents.document._summary import _get_document
                         doc = await _get_document(prev_doc_id)
@@ -200,7 +196,7 @@ async def document_agent(state: AgentState) -> AgentState:
                 from ai.agents.document._common import _retrieve_context
                 search_results, rag_context, sources, rag_status = await _retrieve_context(
                     user_input, user_id, user_team,
-                    top_k=5, use_reranker=True, score_threshold=0.0, use_hyde=True,
+                    top_k=5, use_reranker=True, score_threshold=0.0, use_hyde=False,
                 )
                 top_score = max((r.get("score", 0) for r in search_results), default=0) if search_results else 0
                 print(f"[DocumentAgent] RAG 선검색 완료: {len(sources)}건, top_score={top_score:.2f}")
@@ -278,10 +274,10 @@ async def document_agent(state: AgentState) -> AgentState:
     # NOTE: follow_up_actions는 프론트엔드(ChatPage.jsx)에서 하드코딩으로 구현 완료
     # 백엔드에서 중복 전송하지 않음
 
-    # 규정 검증 활성화: 문서 생성/QA/요약 시 규정 위반 여부 체크
+    # 규정 검증: 문서 생성(generate)만 활성화 — QA/summary는 Reranker 중복 호출로 성능 저하
     _sub = response_data.get("sub_type", "")
     _type = response_data.get("type", "")
-    if _sub in ("generate", "qa", "summary") or _type == "doc_generate":
+    if _sub == "generate" or _type == "doc_generate":
         try:
             from ai.agents.regulation_validator import validate_document_regulations
             reg_result = await validate_document_regulations(

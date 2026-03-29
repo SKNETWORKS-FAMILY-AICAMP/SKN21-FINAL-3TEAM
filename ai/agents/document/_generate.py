@@ -3,6 +3,7 @@ import json
 import re
 import time
 import uuid
+from datetime import date as _date
 from pathlib import Path
 from typing import Any, Dict
 
@@ -569,7 +570,9 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
         # 경로 1: 커스텀 템플릿 fill-fields 데이터 → sLLM 생략
         filled_count = sum(1 for v in fields_data.values() if v not in (None, "", []))
         print(f"[DocumentAgent] fill-fields 데이터 사용 (sLLM 생략) | {filled_count}/{len(fields)}개 채워짐")
-        set_last_model_name("사용자 입력 (폼)")
+        # fill-fields에서 설정된 모델명 유지 (없으면 빈 문자열)
+        if not get_last_model_name():
+            set_last_model_name("")
         data = dict(fields_data)
         for f in fields:
             if f["key"] not in data:
@@ -618,6 +621,25 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
                 desc = f.get("description", "")
                 data[f["key"]] = [] if ("배열" in desc or "목록" in desc) else ""
 
+    # ── 공통 후처리: 날짜 연도 보정 (sLLM 2023년 hallucination → 올해) ──
+    _current_year = str(_date.today().year)
+    _today = _date.today().isoformat()
+    for f in fields:
+        key = f["key"]
+        val = data.get(key)
+        if not isinstance(val, str) or not val:
+            continue
+        hint = f"{f.get('label', '')} {f.get('description', '')}".lower()
+        is_date = f.get("type") == "date" or any(k in hint for k in ("날짜", "일자", "일시", "제출일", "작성일", "보고일"))
+        if is_date:
+            year_match = re.search(r"(20\d{2})", val)
+            if year_match and year_match.group(1) != _current_year:
+                # YYYY-MM-DD 형식이면 연도만 교체, 아니면 today
+                if re.match(r"\d{4}[-./]\d{1,2}[-./]\d{1,2}", val):
+                    data[key] = _current_year + val[4:]
+                else:
+                    data[key] = _today
+
     # 회의록: action_items 정규화 + 문자열 필드 변환
     if template_type == "meeting_minutes":
         for str_field in ("title", "summary"):
@@ -647,6 +669,16 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
                     "assignee": _first_val(item, _ASSIGNEE_KEYS),
                     "due_date": _first_val(item, _DUE_KEYS),
                 })
+        # action_items 날짜 연도 보정
+        for ai_item in normalized_ai:
+            dd = ai_item.get("due_date", "")
+            if dd and re.search(r"20\d{2}", dd):
+                year_match = re.search(r"(20\d{2})", dd)
+                if year_match and year_match.group(1) != _current_year:
+                    if re.match(r"\d{4}[-./]\d{1,2}[-./]\d{1,2}", dd):
+                        ai_item["due_date"] = _current_year + dd[4:]
+                    else:
+                        ai_item["due_date"] = re.sub(r"20\d{2}", _current_year, dd)
         data["action_items"] = normalized_ai
         print(f"[DocumentAgent] 커스텀 회의록 action_items 정규화: {len(normalized_ai)}개")
 
@@ -699,6 +731,17 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
                     "start_date": _first_val(t, _START_KEYS),
                     "end_date":   _first_val(t, _END_KEYS),
                 })
+        # tasks 날짜 연도 보정
+        for task_item in normalized_tasks:
+            for dk in ("start_date", "end_date"):
+                dd = task_item.get(dk, "")
+                if dd and re.search(r"20\d{2}", dd):
+                    ym = re.search(r"(20\d{2})", dd)
+                    if ym and ym.group(1) != _current_year:
+                        if re.match(r"\d{4}[-./]\d{1,2}[-./]\d{1,2}", dd):
+                            task_item[dk] = _current_year + dd[4:]
+                        else:
+                            task_item[dk] = re.sub(r"20\d{2}", _current_year, dd)
         data["tasks"] = normalized_tasks
         print(f"[DocumentAgent] 커스텀 보고서 tasks 정규화: {len(normalized_tasks)}개")
 
@@ -830,7 +873,7 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
                     print(f"[DocumentAgent] placeholder fill_result: {fill_result}")
                     if fill_result.get("success") and fill_result.get("filled_count", 0) > 0:
                         placeholder_success = True
-                        set_last_model_name(get_last_model_name() + " (placeholder)")
+                        # placeholder 태그 불필요 — fill-fields 모델명만 표시
                         print(f"[DocumentAgent] placeholder 방식 성공: {fill_result['filled_count']}개 필드")
                 except Exception as e:
                     print(f"[DocumentAgent] placeholder 실패: {e}")

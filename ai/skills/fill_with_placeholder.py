@@ -21,6 +21,19 @@ _DATE_PATTERN = re.compile(
 )
 
 
+def _fix_date_year(date_str: str) -> str:
+    """날짜 문자열의 연도를 올해로 보정. '2023-04-01' → '4월 1일'"""
+    from datetime import date as _date
+    current_year = str(_date.today().year)
+    # YYYY-MM-DD 형식이면 X월 Y일로 변환 + 연도 보정
+    m = re.match(r'(\d{4})[-./](\d{1,2})[-./](\d{1,2})', date_str)
+    if m:
+        return f"{int(m.group(2))}월 {int(m.group(3))}일"
+    # "2023년" 등 잘못된 연도 → 올해로
+    date_str = re.sub(r'20\d{2}년', f'{current_year}년', date_str)
+    return date_str
+
+
 def _extract_date_from_text(text: str) -> tuple[str, str]:
     """텍스트에서 날짜 패턴을 추출. (날짜, 날짜 제거된 텍스트) 반환."""
     m = _DATE_PATTERN.search(text)
@@ -142,11 +155,20 @@ def fill_docx_with_placeholder(
                     for tsk, safe in safe_tpl_map.items():
                         if safe not in safe_item:
                             safe_item[safe] = ""
-                    # 날짜 sub_key가 비어있으면 내용에서 날짜 추출 + 내용에서 날짜 제거
-                    if date_safe_key and not safe_item.get(date_safe_key) and content_safe_key:
-                        extracted, cleaned = _extract_date_from_text(safe_item.get(content_safe_key, ""))
-                        if extracted:
-                            safe_item[date_safe_key] = extracted
+                    # 날짜 sub_key 후처리
+                    if date_safe_key and content_safe_key:
+                        date_val = safe_item.get(date_safe_key, "")
+                        content_val = safe_item.get(content_safe_key, "")
+                        if not date_val:
+                            # 날짜가 비어있으면 내용에서 추출
+                            extracted, cleaned = _extract_date_from_text(content_val)
+                            if extracted:
+                                safe_item[date_safe_key] = extracted
+                                safe_item[content_safe_key] = cleaned
+                        else:
+                            # 날짜가 있으면: 연도 보정 + 내용에서 날짜 제거
+                            safe_item[date_safe_key] = _fix_date_year(date_val)
+                            _, cleaned = _extract_date_from_text(content_val)
                             safe_item[content_safe_key] = cleaned
                     safe_items.append(safe_item)
                 context[key] = safe_items

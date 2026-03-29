@@ -4,11 +4,16 @@ import json
 import logging
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 logger = logging.getLogger("document_agent")
 
 GENERATED_DOCS_DIR = Path(__file__).resolve().parents[3] / "backend" / "generated_docs"
+
+# RAG 전용 스레드풀 — default executor 와 격리하여 zombie thread 가 다른 요청을 블로킹하지 않도록 한다.
+# max_workers=2: BM25+Vector(빠름) 1개 + Reranker(느림) 1개가 동시에 돌 수 있는 최소 크기.
+_rag_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="rag")
 
 # task별 LoRA 어댑터 이름 매핑 (vLLM 스트리밍/비스트리밍 공통)
 # None = base 모델 사용 (LoRA 없음)
@@ -20,7 +25,7 @@ LORA_ADAPTER_NAMES = {
 
 # ── 모델명 getter/setter (요청별 격리) ──
 _last_model_name: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "_last_model_name", default="unknown",
+    "_last_model_name", default="",
 )
 
 
@@ -153,9 +158,10 @@ async def _retrieve_context(query: str, user_id: int = None, user_team: str = No
         from ai.rag.qdrant_pipeline import get_qdrant_pipeline
 
         pipeline = get_qdrant_pipeline()
+        # 전용 executor 사용 — default pool 과 격리하여 zombie thread 영향 차단
         search_results = await asyncio.wait_for(
             asyncio.get_running_loop().run_in_executor(
-                None,
+                _rag_executor,
                 lambda: pipeline.retrieve(
                     query, user_id=user_id, user_team=user_team,
                     top_k=top_k, filter={"source": "documents"},
@@ -164,7 +170,7 @@ async def _retrieve_context(query: str, user_id: int = None, user_team: str = No
                     use_hyde=use_hyde,
                 ),
             ),
-            timeout=60,
+            timeout=30,
         )
         context = [f"[문서 제목: {doc.get('title', '')}]\n{doc['content']}" for doc in search_results]
         logger.info("_retrieve_context 완료 (%.2fs): %d개 문서", time.time()-_t, len(context))

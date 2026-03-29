@@ -59,7 +59,7 @@ async def _handle_doc_qa(
         # 둘 다 없으면 RAG 검색
         search_results, rag_context, rag_sources, _rag_status = await _retrieve_context(
             query, user_id, user_team,
-            top_k=5, use_reranker=True, use_hyde=True,
+            top_k=5, use_reranker=True, use_hyde=False,
         )
         context = rag_context
         sources = rag_sources
@@ -126,8 +126,8 @@ async def _handle_doc_qa(
             },
             "post_stream": {
                 "update_summary_db": None,
-                "check_regulation": True,
-                "filter_sources": True,
+                # "check_regulation": True,  # 시연용 비활성화
+                "filter_sources": False,  # RAG가 찾은 전체 소스 표시
             },
             "answer": "",
             "message": "",
