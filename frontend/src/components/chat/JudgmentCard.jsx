@@ -84,11 +84,30 @@ function ConfidenceBar({ label, value, maxValue = 1 }) {
 }
 
 function RegulationPopup({ reg, onClose }) {
+  const [fullContent, setFullContent] = useState(null);
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
+
+  // 규정명에서 조항 번호 추출 (예: "정보보안규정 제25조" → "제25조")
+  useEffect(() => {
+    const articleMatch = reg.name?.match(/제\d+조/);
+    if (articleMatch) {
+      setLoading(true);
+      import('../../api/regulations').then(({ getRegulationByArticle }) => {
+        getRegulationByArticle(articleMatch[0])
+          .then((res) => setFullContent(res.data?.content || res.content || null))
+          .catch(() => setFullContent(null))
+          .finally(() => setLoading(false));
+      });
+    }
+  }, [reg.name]);
+
+  const displayContent = fullContent || reg.verdict;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
@@ -103,8 +122,10 @@ function RegulationPopup({ reg, onClose }) {
           </button>
         </div>
         <div className="overflow-y-auto px-5 py-4 flex-1">
-          {reg.verdict ? (
-            <p className="text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">{reg.verdict}</p>
+          {loading ? (
+            <p className="text-sm text-neutral-muted text-center py-8">규정 원문을 불러오는 중...</p>
+          ) : displayContent ? (
+            <p className="text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">{displayContent}</p>
           ) : (
             <p className="text-sm text-neutral-muted text-center py-8">내용이 없습니다.</p>
           )}

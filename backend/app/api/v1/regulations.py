@@ -2,7 +2,7 @@
 공개 규정 API
 인증 없이 규정 목록 조회 가능 (프론트엔드 RegulationPanel 연동용)
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,6 +29,28 @@ async def list_regulations_public(db: AsyncSession = Depends(get_db)):
         }
         for r in result.scalars().all()
     ]
+
+
+@router.get("/by-article")
+async def get_regulation_by_article(
+    article: str = Query(..., description="조항 번호 (예: 제9조)"),
+    db: AsyncSession = Depends(get_db),
+):
+    """조항 번호로 규정 전문 조회"""
+    result = await db.execute(
+        select(Regulation).where(Regulation.article_number == article)
+    )
+    reg = result.scalar_one_or_none()
+    if not reg:
+        raise HTTPException(status_code=404, detail="해당 조항을 찾을 수 없습니다")
+    return {
+        "id": reg.id,
+        "title": reg.title,
+        "category": reg.category,
+        "article_number": reg.article_number,
+        "content": reg.content,
+        "version": reg.version,
+    }
 
 
 @router.get("/check")

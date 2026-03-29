@@ -3,11 +3,30 @@ import KeywordHighlight from '../common/KeywordHighlight';
 import { BookOpen, X, FileText } from 'lucide-react';
 
 function RegulationModal({ reg, onClose }) {
+  const [fullContent, setFullContent] = useState(null);
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
+
+  useEffect(() => {
+    const articleStr = reg.article_number || reg.article || '';
+    const articleMatch = articleStr.match(/제\d+조/) || reg.name?.match(/제\d+조/);
+    if (articleMatch) {
+      setLoading(true);
+      import('../../api/regulations').then(({ getRegulationByArticle }) => {
+        getRegulationByArticle(articleMatch[0])
+          .then((res) => setFullContent(res.data?.content || res.content || null))
+          .catch(() => setFullContent(null))
+          .finally(() => setLoading(false));
+      });
+    }
+  }, [reg]);
+
+  const displayContent = fullContent || reg.content;
 
   return (
     <div
@@ -39,8 +58,10 @@ function RegulationModal({ reg, onClose }) {
 
         {/* 본문 */}
         <div className="overflow-y-auto px-5 py-4 flex-1">
-          {reg.content ? (
-            <p className="text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">{reg.content}</p>
+          {loading ? (
+            <p className="text-sm text-neutral-muted text-center py-8">규정 원문을 불러오는 중...</p>
+          ) : displayContent ? (
+            <p className="text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">{displayContent}</p>
           ) : (
             <p className="text-sm text-neutral-muted text-center py-8">내용이 없습니다.</p>
           )}
