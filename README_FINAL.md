@@ -320,10 +320,14 @@ flowchart LR
 | 3단계 | roberta-large + KD | 88.3% | 과적합 gap -3.3%p로 해소 |
 | **최종** | **5-Seed 앙상블 + ONNX INT8** | **91.0%** | Focal Loss, FGM, KD |
 
-```
-[Base — Regex (41.7%)]  "내일 3시에 회의 잡아줘" → doc_generate 오분류
-[LoRA — 앙상블 (91.0%)] "내일 3시에 회의 잡아줘" → schedule_add (conf: 0.94) 정확 분류
-```
+**Base vs LoRA 출력 비교** — 입력: `"내일 3시에 회의 잡아줘"`
+
+| | Base (규칙 기반 Regex) | LoRA (5-Seed 앙상블) |
+|---|---|---|
+| 분류 결과 | `doc_generate` | `schedule_add` |
+| confidence | — | **0.94** |
+| 문제점 | "회의" 키워드만 매칭 → 문서 생성으로 오분류, 실제로 문서 Agent가 회의록 템플릿을 생성하려 시도 | — |
+| 실제 동작 | 사용자 의도 무시, 엉뚱한 Agent 호출 | 일정 Agent가 Google Calendar에 내일 15:00 회의 정확히 등록 |
 
 ---
 
@@ -337,9 +341,26 @@ flowchart LR
 
 성능 추이: baseline 71.0% → +Few-shot 75.0% → +매핑 82.0% → **Hybrid 87.0%** | Step별: 1-step 91.5% / 2-step 84.9% / 3-step 66.7%
 
-```
-[Base (71.0%)] "회의 잡고 보고서 쓰고 출장 규정 확인" → 3개 인텐트를 1개로 뭉침
-[LoRA (87.0%)] → step1: schedule_add + step2: doc_generate + step3: judgment (정확 분해)
+**Base vs LoRA 출력 비교** — 입력: `"내일 회의 잡고, 보고서 작성하고, 출장 규정 확인해줘"`
+
+```json
+// Base (v5 baseline, 71.0%) — 분해 실패
+{
+  "steps": [
+    {"intent": "schedule_add", "query": "내일 회의 잡고 보고서 작성하고 출장 규정 확인"}
+  ]
+  // 3개 인텐트를 1개로 뭉침 → schedule_add만 실행, 나머지 무시
+}
+
+// LoRA (v7 Hybrid, 87.0%) — 정확 분해
+{
+  "steps": [
+    {"step": 1, "intent": "schedule_add",  "query": "내일 회의 등록",    "depends_on": []},
+    {"step": 2, "intent": "doc_generate",  "query": "보고서 작성",       "depends_on": []},
+    {"step": 3, "intent": "judgment",      "query": "출장 규정 확인",    "depends_on": []}
+  ]
+  // 3개 인텐트를 정확히 분해, depends_on=[] → 병렬 실행
+}
 ```
 
 ---
@@ -357,12 +378,32 @@ flowchart LR
 
 카테고리별: no_regulation 6%→**97%** / yes 42%→**86%** / no 48%→**84%** / conditional 47%→**78%** / JSON 유효율 70.4%→**97.6%**
 
-```
-[Base] "인턴에게 AWS 접근 권한 줘도 되나요?"
-→ result: "yes" (오답), confidence: 0.92 (과신), 제12조 인용 (환각)
+**Base vs LoRA 출력 비교** — 입력: `"인턴에게 AWS 콘솔 접근 권한을 줘도 되나요?"` + RAG 컨텍스트: 정보보안규정 제5장, 인사규정 제8조
 
-[LoRA] → result: "conditional" (정답), confidence: 0.78 (적절)
-→ 정보보안규정 제25조 + 인사규정 제8조 (실존), conditions: "보안교육 이수 + 부서장 승인"
+```json
+// Base (37.2%) — 오답 + 환각 + 과신
+{
+  "result": "yes",                    // ❌ 오답 (정답: conditional)
+  "confidence": 0.92,                 // ❌ 근거 없이 과신
+  "reasoning": "접근 권한 부여가 가능합니다",
+  "regulations": [
+    {"article": "제12조"}             // ❌ 존재하지 않는 조항 (환각)
+  ]
+  // conditions 필드 없음, alternatives 필드 없음
+}
+
+// LoRA v1_judgment (85.4%) — 정답 + 실존 근거 + 조건 명시
+{
+  "result": "conditional",            // ✅ 정답
+  "confidence": 0.78,                 // ✅ 불확실성을 반영한 적절한 수치
+  "reasoning": "수습기간 80% 이상 근무 후 제한적 접근 가능",
+  "regulations": [
+    {"article": "정보보안규정 제25조"},  // ✅ 실존 조항
+    {"article": "인사규정 제8조"}        // ✅ 실존 조항
+  ],
+  "conditions": "보안 교육 이수 + 부서장 승인",
+  "alternatives": ["테스트 환경 한정 접근"]
+}
 ```
 
 ---
@@ -381,9 +422,29 @@ flowchart LR
 | False Fill | 44.3% | **17.9%** | -26.4%p |
 | content 채움률 | 34% | **100%** | +66%p |
 
-```
-[Base] "연말 성과 평가 회의" → content: "" (빈칸), budget: "500만원" (환각)
-[LoRA] → content: "매출 8% 달성, 물류비 절감...", decisions: ["우수사원 포상 기준 확립"]
+**Base vs LoRA 출력 비교** — 입력: `"연말 성과 평가 회의, 참석: 김영수 박지훈 이서현 정민수, 매출 8% 성장, 물류비 절감, 고객만족도 개선"`
+
+```json
+// Base — content 비움 + 환각
+{
+  "title": "회의록",
+  "content": "",                          // ❌ 핵심 필드를 비워서 제출 (채움률 34%)
+  "budget": "500만원",                    // ❌ 입력에 없는 예산 정보를 지어냄 (환각 96.6%)
+  "decisions": [],                        // ❌ 빈 배열
+  "action_items": []                      // ❌ 빈 배열
+}
+
+// LoRA v3_generate — 정확한 필드 채움
+{
+  "title": "2023 연말 성과 평가 회의",
+  "date": "2023-12-10",
+  "attendees": ["김영수", "박지훈", "이서현", "정민수"],
+  "content": "매출 성장률 8% 달성, 물류비 절감 및 공급망 효율성 개선이 주요 요인...",
+  "decisions": ["우수사원 포상 기준 확립"],    // ✅ 내용에서 자연스럽게 도출
+  "action_items": [
+    {"담당": "이서현", "내용": "고객서비스 후속조치"}  // ✅ 담당자 + 업무 매칭
+  ]
+}
 ```
 
 ---
@@ -401,9 +462,23 @@ flowchart LR
 | 분류 유효율 | 85% | **100%** | +15%p |
 | 평균 길이 | 274자 | **132자** | 2배 간결 |
 
+**Base vs LoRA 출력 비교** — 입력: 경주 관광지 방문객 현황 보고서
+
 ```
-[Base] 분류: "뉴스기사" (존재하지 않는 카테고리), 274자 장황한 서술
-[LoRA] 분류: "보고서" (정확), 132자 핵심만 간결
+// Base — 274자, 잘못된 분류
+분류: 뉴스기사                    ❌ 존재하지 않는 카테고리 (7개 분류 체계 무시)
+태그: 경주관광, 코로나영향, 관광회복...
+요약: 코로나19로 인해 침체되었던 경주 관광지의 방문객 수가 점차 회복세를
+      보이고 있습니다. 3~5월 기준, 주요 관광지 방문객 수는 지난해 대비
+      20~40%까지 증가했으며, 특히 황리단길과 동궁과 월지 일대는 주말
+      기준 일 평균 방문객이...  (274자, 장황하고 반복적)
+
+// LoRA v3_summary — 132자, 정확한 분류
+분류: 보고서                      ✅ 7개 분류 체계 정확 준수
+태그: 경주시, 황리단길, 관광객, 코로나19
+요약: 경주시 황리단길은 코로나19 이후 관광객의 방문이 점차 회복되고 있다.
+      경주의 주요 관광지 방문객 수는 3월부터 5월까지 점진적인 증가세를
+      보이고 있다.  (132자, 핵심만 간결)
 ```
 
 > BERTScore 분포 (Eval 100건): 0.9이상 16% / 0.8~0.9 76% / 0.7~0.8 8%
@@ -414,13 +489,13 @@ flowchart LR
 
 | 모델 | 용도 | LoRA 설정 | Before → After |
 |------|------|----------|:---:|
-| roberta-large (338M) | Intent 분류 9클래스 | 5-Seed 앙상블, ONNX INT8 | F1: 41.7% → **91.0%** |
+| roberta-large (338M) | Intent 분류 6클래스 | 5-Seed 앙상블, ONNX INT8 | F1: 41.7% → **91.0%** |
 | v7_planner | 복합 인텐트 분해 | QLoRA r=16, Hybrid | usable: 71.0% → **87.0%** |
 | v1_judgment | 규정 판단 | r=16, alpha=32 | 정확도: 37.2% → **85.4%** |
 | v3_generate | 문서 생성 | r=32, alpha=64, 4-bit QLoRA | BERTScore: 0.896 → **0.926** |
 | v3_summary | 문서 요약 | r=16, alpha=32, 4-bit QLoRA | 분류: 85% → **100%** |
 
-> Base: Kanana-1.5-8B · A100 80GB (RunPod) · vLLM 어댑터 핫스왑 (~100ms)
+> Base: Kanana-1.5-8B · A100 40GB (RunPod) · vLLM 어댑터 핫스왑 (~100ms)
 
 ---
 
@@ -433,7 +508,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    Q[사용자 질의] --> Refine[쿼리 정제<br/>kiwipiepy + 동의어 24종<br/>구어→문어 15패턴]
+    Q[사용자 질의] --> Refine[쿼리 정제<br/>kiwipiepy + 동의어 23종<br/>구어→문어 15패턴]
     Refine --> HyDE[HyDE 가설 문서]
     HyDE --> BM25[BM25 Top-15]
     HyDE --> Vec[Vector Top-15]
