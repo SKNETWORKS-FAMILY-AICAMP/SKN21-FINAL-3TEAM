@@ -260,17 +260,17 @@ class HybridSearcher:
         _t0 = _time.time()
         bm25_query = refine_query_for_bm25(query)
         vector_query = refine_query_for_vector(query)
-        logger.info(f"[HybridSearch] query_refine: {_time.time()-_t0:.2f}s")
+        print(f"[HybridSearch] query_refine: {_time.time()-_t0:.2f}s")
 
         # 1. BM25 검색 → Top 15 (scope 필터 포함, 키워드+동의어 확장 쿼리)
         _t1 = _time.time()
         bm25_results = self._bm25_search(bm25_query, user_id=user_id, user_team=user_team, top_k=15, filter=filter)
-        logger.info(f"[HybridSearch] BM25: {_time.time()-_t1:.2f}s ({len(bm25_results)}건)")
+        print(f"[HybridSearch] BM25: {_time.time()-_t1:.2f}s ({len(bm25_results)}건)")
 
         # 2. Vector 검색 → Top 15 (원본 쿼리, 시멘틱 의미 보존)
         _t2 = _time.time()
         vector_results = self._vector_search(vector_query, top_k=15, filter=filter)
-        logger.info(f"[HybridSearch] Vector: {_time.time()-_t2:.2f}s ({len(vector_results)}건)")
+        print(f"[HybridSearch] Vector: {_time.time()-_t2:.2f}s ({len(vector_results)}건)")
 
         # 3. RRF(Reciprocal Rank Fusion)로 합산
         rrf_scores: dict[str, dict] = {}
@@ -399,8 +399,8 @@ class HybridSearcher:
             try:
                 from ai.rag.reranker import Reranker
                 reranker = Reranker()
-                # Reranker에 넘길 후보 수 (상위 10개로 제한 — CPU 환경 성능)
-                _rerank_candidates = rerank_top_k or min(top_k * 2, 10)
+                # Reranker에 넘길 후보 수 (상위 5개로 제한 — CPU 환경 성능)
+                _rerank_candidates = rerank_top_k or min(top_k, 5)
                 candidates = normalized_results[:_rerank_candidates]
                 _t_rr = _time.time()
                 reranked = reranker.rerank(
@@ -409,8 +409,8 @@ class HybridSearcher:
                     top_k=top_k,
                     score_threshold=score_threshold if score_threshold is not None else -1.0,
                 )
-                logger.info(
-                    f"[HybridSearch] Reranker 적용: {len(candidates)}개 → {len(reranked)}개 ({_time.time()-_t_rr:.2f}s)"
+                print(
+                    f"[HybridSearch] Reranker: {len(candidates)}개 → {len(reranked)}개 ({_time.time()-_t_rr:.2f}s)"
                 )
                 return reranked
             except Exception as e:
