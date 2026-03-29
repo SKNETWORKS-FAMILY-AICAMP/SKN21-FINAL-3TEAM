@@ -21,6 +21,7 @@ import CompoundCard from '../components/chat/CompoundCard';
 import useChat from '../hooks/useChat';
 import useChatStore from '../store/chatStore';
 import { listRegulations } from '../api/regulations';
+import { patchChatLog } from '../api/chat';
 import { listDocuments, downloadDocument, uploadDocument } from '../api/documents';
 import { toast } from '../store/toastStore';
 
@@ -357,14 +358,23 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
         <ScheduleConfirmCard
           initialData={sched}
           onConfirmed={(apiResult) => {
-            // 등록 완료 시 메시지의 intent/response를 schedule_add로 교체 → 자동 re-render
-            msg.resultIntent = 'schedule_add';
-            msg.agentResponse = {
+            const updatedResponse = {
               ...data,
               type: 'schedule_add',
               schedule: apiResult.schedule || sched,
               google_services: apiResult.google_services || {},
             };
+            // Zustand store 정식 업데이트 (immutable) → re-render 보장
+            useChatStore.getState().updateMessageByIndex(index, {
+              resultIntent: 'schedule_add',
+              agentResponse: updatedResponse,
+            });
+            // DB에도 반영하여 페이지 재방문 시 등록 완료 상태 유지
+            const sid = useChatStore.getState().activeSessionId;
+            const logId = msg.logId;
+            if (sid && logId) {
+              patchChatLog(sid, logId, updatedResponse).catch(() => {});
+            }
           }}
         />
       );

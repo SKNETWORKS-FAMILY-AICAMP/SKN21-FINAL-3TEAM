@@ -93,13 +93,14 @@ function RegulationPopup({ reg, onClose }) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
-  // 규정명에서 조항 번호 추출 (예: "정보보안규정 제25조" → "제25조")
+  // 규정명에서 조항 번호 추출 (예: "윤리강령 제1조" → "제1조", title로 정확 매칭)
   useEffect(() => {
     const articleMatch = reg.name?.match(/제\d+조/);
     if (articleMatch) {
       setLoading(true);
+      const titleHint = reg.name || '';
       import('../../api/regulations').then(({ getRegulationByArticle }) => {
-        getRegulationByArticle(articleMatch[0])
+        getRegulationByArticle(articleMatch[0], titleHint)
           .then((res) => setFullContent(res.data?.content || res.content || null))
           .catch(() => setFullContent(null))
           .finally(() => setLoading(false));
