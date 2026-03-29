@@ -9,6 +9,34 @@ import re
 from docxtpl import DocxTemplate
 
 
+# 날짜/일정 관련 sub_key 키워드
+_DATE_SUB_KEYS = {"진행일정", "기한", "일정", "마감일", "완료일", "due_date", "deadline", "date", "end_date"}
+
+# 날짜 패턴: "X월 Y일", "X/Y", "YYYY-MM-DD", "이번주", "다음주" 등
+_DATE_PATTERN = re.compile(
+    r'\d{4}[-./]\d{1,2}[-./]\d{1,2}'   # 2026-04-01, 2026/4/1
+    r'|\d{1,2}월\s*\d{1,2}일'           # 4월 1일
+    r'|\d{1,2}/\d{1,2}'                 # 4/1
+    r'|이번\s*주|다음\s*주|금주|차주'
+)
+
+
+def _extract_date_from_text(text: str) -> tuple[str, str]:
+    """텍스트에서 날짜 패턴을 추출. (날짜, 날짜 제거된 텍스트) 반환."""
+    m = _DATE_PATTERN.search(text)
+    if not m:
+        return "", text
+    date_str = m.group(0)
+    # 날짜 + "까지"/"부터"/"에" 등 주변 조사까지 제거
+    cleaned = re.sub(
+        r'(?:' + _DATE_PATTERN.pattern + r')(?:\s*(?:까지|부터|에|로|내))?',
+        '', text
+    ).strip()
+    # 잔여 정리: 연속 공백
+    cleaned = re.sub(r'\s{2,}', ' ', cleaned).strip()
+    return date_str, cleaned
+
+
 def fill_docx_with_placeholder(
     placeholder_path: str,
     output_path: str,
@@ -93,6 +121,17 @@ def fill_docx_with_placeholder(
                             safe_dk = 'f_' + safe_dk
                         key_map[dk] = safe_dk
 
+                # 날짜 관련 sub_key 식별 (진행일정, 기한 등)
+                date_safe_key = None
+                content_safe_key = None
+                for tsk, safe in safe_tpl_map.items():
+                    tsk_lower = tsk.lower()
+                    if tsk_lower in _DATE_SUB_KEYS or any(k in tsk_lower for k in ("일정", "기한", "날짜", "date")):
+                        date_safe_key = safe
+                    else:
+                        if content_safe_key is None:
+                            content_safe_key = safe
+
                 safe_items = []
                 for item in val:
                     safe_item = {}
@@ -103,6 +142,12 @@ def fill_docx_with_placeholder(
                     for tsk, safe in safe_tpl_map.items():
                         if safe not in safe_item:
                             safe_item[safe] = ""
+                    # 날짜 sub_key가 비어있으면 내용에서 날짜 추출 + 내용에서 날짜 제거
+                    if date_safe_key and not safe_item.get(date_safe_key) and content_safe_key:
+                        extracted, cleaned = _extract_date_from_text(safe_item.get(content_safe_key, ""))
+                        if extracted:
+                            safe_item[date_safe_key] = extracted
+                            safe_item[content_safe_key] = cleaned
                     safe_items.append(safe_item)
                 context[key] = safe_items
             elif isinstance(val, str) and fields:
