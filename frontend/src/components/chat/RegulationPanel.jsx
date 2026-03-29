@@ -17,8 +17,10 @@ function RegulationModal({ reg, onClose }) {
     const articleMatch = articleStr.match(/제\d+조/) || reg.name?.match(/제\d+조/);
     if (articleMatch) {
       setLoading(true);
+      // 규정명(reg.name)을 title 힌트로 전달하여 정확한 조항 조회
+      const titleHint = reg.name || reg.title || '';
       import('../../api/regulations').then(({ getRegulationByArticle }) => {
-        getRegulationByArticle(articleMatch[0])
+        getRegulationByArticle(articleMatch[0], titleHint)
           .then((res) => setFullContent(res.data?.content || res.content || null))
           .catch(() => setFullContent(null))
           .finally(() => setLoading(false));

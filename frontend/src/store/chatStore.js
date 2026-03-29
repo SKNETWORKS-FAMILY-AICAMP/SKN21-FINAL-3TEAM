@@ -237,6 +237,16 @@ const useChatStore = create((set, get) => ({
       return { messages }
     }),
 
+  // 특정 메시지의 resultIntent + agentResponse를 업데이트 (일정 등록 완료 등)
+  updateMessageByIndex: (index, patch) =>
+    set((state) => {
+      const messages = [...state.messages]
+      if (messages[index]) {
+        messages[index] = { ...messages[index], ...patch }
+      }
+      return { messages }
+    }),
+
   setLastAssistantIntent: (intent) =>
     set((state) => {
       const messages = [...state.messages]
