@@ -182,10 +182,10 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
 </section>
 
 <!-- ========== 01. 경영지원팀의 하루 ========== -->
-<section id="persona" class="min-h-screen flex items-center py-16 gradient-section">
+<section id="persona" class="min-h-screen flex items-center py-8 gradient-section">
   <div class="max-w-6xl mx-auto px-6 w-full">
-    <div class="text-center mb-10">
-      <span class="tag bg-primary-50 text-primary-700 mb-4">01</span>
+    <div class="text-center mb-6">
+      <span class="tag bg-primary-50 text-primary-700 mb-2">01</span>
       <h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">경영지원팀의 하루</h2>
       <p class="text-neutral-sub mt-2 text-sm">DUDE 도입 전후 — 같은 업무, 달라진 하루</p>
       <div class="inline-flex items-center gap-1.5 mt-3 px-3 py-1 bg-neutral-main/5 rounded-full border border-neutral-divider">
@@ -197,12 +197,12 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
       <!-- Before -->
-      <div class="bg-white rounded-2xl p-8 border border-neutral-divider">
-        <div class="flex items-center justify-between mb-6">
+      <div class="bg-white rounded-2xl p-6 border border-neutral-divider">
+        <div class="flex items-center justify-between mb-4">
           <span class="tag bg-error/10 text-error text-sm px-3 py-1">Before</span>
           <span class="text-xs text-neutral-muted">GPT 없이 버티는 하루</span>
         </div>
-        <div class="space-y-5">
+        <div class="space-y-3">
           <div class="flex items-center gap-4">
             <span class="font-display font-bold text-primary-300 text-sm w-14 shrink-0 text-right">09:00</span>
             <div class="flex-1">
@@ -257,12 +257,12 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
       </div>
 
       <!-- After -->
-      <div class="bg-white rounded-2xl p-8 border-2 border-success/30">
-        <div class="flex items-center justify-between mb-6">
+      <div class="bg-white rounded-2xl p-6 border-2 border-success/30">
+        <div class="flex items-center justify-between mb-4">
           <span class="tag bg-success/10 text-success text-sm px-3 py-1">After — DUDE</span>
           <span class="text-xs text-neutral-muted">사내 sLLM · 보안 0건 · 비용 0원</span>
         </div>
-        <div class="space-y-5">
+        <div class="space-y-3">
           <div class="flex items-center gap-4">
             <span class="font-display font-bold text-primary-300 text-sm w-14 shrink-0 text-right">09:00</span>
             <div class="flex-1">
@@ -314,23 +314,36 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
           <p class="font-semibold text-success text-sm">반복 업무 13분으로 단축</p>
           <p class="font-display font-bold text-success text-lg">핵심 = 7시간+</p>
         </div>
-        <div class="mt-4 space-y-1.5">
-          <div class="flex items-center justify-between text-xs">
-            <span class="text-neutral-sub">규정 문의</span>
-            <span class="text-neutral-main">30분 &rarr; <strong class="text-success">10초</strong></span>
-          </div>
-          <div class="flex items-center justify-between text-xs">
-            <span class="text-neutral-sub">회의록 작성</span>
-            <span class="text-neutral-main">2시간 &rarr; <strong class="text-success">5분</strong></span>
-          </div>
-          <div class="flex items-center justify-between text-xs">
-            <span class="text-neutral-sub">일정 조율</span>
-            <span class="text-neutral-main">1시간 &rarr; <strong class="text-success">1분</strong></span>
-          </div>
-        </div>
       </div>
 
     </div>
+
+    <!-- 실제 통계 근거 -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+      <div class="bg-white rounded-2xl p-5 border border-neutral-divider text-center">
+        <div class="w-20 h-20 mx-auto mb-3 rounded-full border-[5px] border-red-200 flex items-center justify-center">
+          <span class="font-display font-bold text-2xl text-red-400">68%</span>
+        </div>
+        <p class="font-semibold text-primary-900 text-base">집중 시간 부족</p>
+        <p class="text-xs text-neutral-muted mt-1">핵심 업무에 집중할 시간이 부족</p>
+      </div>
+      <div class="bg-white rounded-2xl p-5 border border-neutral-divider text-center">
+        <div class="w-20 h-20 mx-auto mb-3 rounded-full border-[5px] border-yellow-300 flex items-center justify-center">
+          <span class="font-display font-bold text-2xl text-yellow-500">62%</span>
+        </div>
+        <p class="font-semibold text-primary-900 text-base">정보 검색 낭비</p>
+        <p class="text-xs text-neutral-muted mt-1">사내 문서와 규정 검색에 과도한 시간</p>
+      </div>
+      <div class="bg-white rounded-2xl p-5 border border-neutral-divider text-center">
+        <div class="w-20 h-20 mx-auto mb-3 rounded-full border-[5px] border-gray-300 flex items-center justify-center">
+          <span class="font-display font-bold text-2xl text-gray-500">57%</span>
+        </div>
+        <p class="font-semibold text-primary-900 text-base">커뮤니케이션 부담</p>
+        <p class="text-xs text-neutral-muted mt-1">반복적 소통 업무에 시간 소요</p>
+      </div>
+    </div>
+    <p class="text-center text-[11px] text-neutral-muted mt-2">출처: Microsoft Work Trend Index (2023)</p>
+
   </div>
 </section>
 
