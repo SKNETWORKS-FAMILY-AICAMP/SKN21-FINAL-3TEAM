@@ -21,10 +21,20 @@ _DATE_PATTERN = re.compile(
 )
 
 
-def _extract_date_from_text(text: str) -> str:
-    """텍스트에서 날짜 패턴을 추출하여 반환. 없으면 빈 문자열."""
+def _extract_date_from_text(text: str) -> tuple[str, str]:
+    """텍스트에서 날짜 패턴을 추출. (날짜, 날짜 제거된 텍스트) 반환."""
     m = _DATE_PATTERN.search(text)
-    return m.group(0) if m else ""
+    if not m:
+        return "", text
+    date_str = m.group(0)
+    # 날짜 + "까지"/"부터"/"에" 등 주변 조사까지 제거
+    cleaned = re.sub(
+        r'(?:' + _DATE_PATTERN.pattern + r')(?:\s*(?:까지|부터|에|로|내))?',
+        '', text
+    ).strip()
+    # 잔여 정리: 연속 공백
+    cleaned = re.sub(r'\s{2,}', ' ', cleaned).strip()
+    return date_str, cleaned
 
 
 def fill_docx_with_placeholder(
@@ -132,11 +142,12 @@ def fill_docx_with_placeholder(
                     for tsk, safe in safe_tpl_map.items():
                         if safe not in safe_item:
                             safe_item[safe] = ""
-                    # 날짜 sub_key가 비어있으면 내용에서 날짜 추출
+                    # 날짜 sub_key가 비어있으면 내용에서 날짜 추출 + 내용에서 날짜 제거
                     if date_safe_key and not safe_item.get(date_safe_key) and content_safe_key:
-                        extracted = _extract_date_from_text(safe_item.get(content_safe_key, ""))
+                        extracted, cleaned = _extract_date_from_text(safe_item.get(content_safe_key, ""))
                         if extracted:
                             safe_item[date_safe_key] = extracted
+                            safe_item[content_safe_key] = cleaned
                     safe_items.append(safe_item)
                 context[key] = safe_items
             elif isinstance(val, str) and fields:
