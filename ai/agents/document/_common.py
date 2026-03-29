@@ -20,7 +20,7 @@ LORA_ADAPTER_NAMES = {
 
 # ── 모델명 getter/setter (요청별 격리) ──
 _last_model_name: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "_last_model_name", default="unknown",
+    "_last_model_name", default="",
 )
 
 
