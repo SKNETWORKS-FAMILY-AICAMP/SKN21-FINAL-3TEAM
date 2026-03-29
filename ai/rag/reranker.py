@@ -82,8 +82,10 @@ class Reranker:
             if self.model is None:
                 self.load_model()
 
-            # (query, doc.content) 쌍 구성
-            pairs = [[query, doc["content"]] for doc in documents]
+            # (query, doc.content) 쌍 구성 — content 512자 제한
+            # Cross-Encoder max_length=512 tokens이지만, 긴 텍스트의 토크나이징 자체가
+            # CPU에서 매우 느림. 사전에 잘라서 토크나이저 부하를 줄인다.
+            pairs = [[query, doc["content"][:512]] for doc in documents]
 
             # relevance score 계산
             scores = self.model.predict(pairs)
