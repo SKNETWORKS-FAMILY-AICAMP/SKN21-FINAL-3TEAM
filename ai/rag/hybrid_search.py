@@ -391,8 +391,8 @@ class HybridSearcher:
             try:
                 from ai.rag.reranker import Reranker
                 reranker = Reranker()
-                # Reranker에 넘길 후보 수 (기본: top_k * 2, 최소 top_k)
-                _rerank_candidates = rerank_top_k or max(top_k * 2, len(normalized_results))
+                # Reranker에 넘길 후보 수 (상위 10개로 제한 — CPU 환경 성능)
+                _rerank_candidates = rerank_top_k or min(top_k * 2, 10)
                 candidates = normalized_results[:_rerank_candidates]
                 reranked = reranker.rerank(
                     query=query,
