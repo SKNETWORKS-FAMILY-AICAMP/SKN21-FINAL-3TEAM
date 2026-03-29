@@ -99,6 +99,10 @@ def fill_docx_with_placeholder(
                     for sk, sv in item.items():
                         mapped_key = key_map.get(sk, sk)
                         safe_item[mapped_key] = sv if sv is not None else ""
+                    # 누락된 sub_key에 빈 문자열 기본값 보충
+                    for tsk, safe in safe_tpl_map.items():
+                        if safe not in safe_item:
+                            safe_item[safe] = ""
                     safe_items.append(safe_item)
                 context[key] = safe_items
             elif isinstance(val, str) and fields:

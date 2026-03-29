@@ -597,6 +597,11 @@ def fields_to_prompt(fields: list[dict]) -> str:
     """추출된 필드를 [필드 명세] 프롬프트 문자열로 변환 (sLLM 호출용)"""
     lines = []
     for f in fields:
-        desc = f.get('description') or f.get('label', f['key'])
+        sub_keys = f.get('sub_keys')
+        if sub_keys:
+            pairs = ", ".join(f'"{sk}": "값"' for sk in sub_keys)
+            desc = f'목록 배열. 각 항목은 반드시 {{{pairs}}} 형태의 객체로 출력. 모든 키를 포함하되, 입력에서 관련 정보를 찾아 매핑하고 없으면 빈 문자열로 두세요'
+        else:
+            desc = f.get('description') or f.get('label', f['key'])
         lines.append(f"- {f['key']}: {desc}")
     return "\n".join(lines)
