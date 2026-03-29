@@ -153,12 +153,18 @@ async def _retrieve_context(query: str, user_id: int = None, user_team: str = No
         from ai.rag.qdrant_pipeline import get_qdrant_pipeline
 
         pipeline = get_qdrant_pipeline()
-        search_results = pipeline.retrieve(
-            query, user_id=user_id, user_team=user_team,
-            top_k=top_k, filter={"source": "documents"},
-            use_reranker=use_reranker,
-            score_threshold=score_threshold,
-            use_hyde=use_hyde,
+        search_results = await asyncio.wait_for(
+            asyncio.get_running_loop().run_in_executor(
+                None,
+                lambda: pipeline.retrieve(
+                    query, user_id=user_id, user_team=user_team,
+                    top_k=top_k, filter={"source": "documents"},
+                    use_reranker=use_reranker,
+                    score_threshold=score_threshold,
+                    use_hyde=use_hyde,
+                ),
+            ),
+            timeout=120,
         )
         context = [f"[문서 제목: {doc.get('title', '')}]\n{doc['content']}" for doc in search_results]
         logger.info("_retrieve_context 완료 (%.2fs): %d개 문서", time.time()-_t, len(context))
