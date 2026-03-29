@@ -4429,8 +4429,16 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 - 일반 대화 응답: MarkdownText 대신 `whitespace-pre-line` 직접 렌더링으로 변경 (문단 간격 빈 줄 제거)
 - 사용법 안내 문구와 본문 사이 여백 `mt-4`로 한 줄 간격 확보
 
+#### 24) "비는 날" 자동 계산 버그 수정 (`schedule_agent.py`)
+
+- **문제**: "이번주 일정 보고 비는 날에 휴가 등록해줘" 요청 시 빈 날짜를 못 찾고 날짜 없이 등록 시도
+- **원인 1**: `_find_free_date()`가 `d >= today_str` 필터를 적용 → 주말(토/일)에는 이번 주 평일이 모두 과거로 판정되어 항상 None 반환
+- **원인 2**: None 반환 시에도 에러 메시지 없이 날짜 빈 채로 일정 등록 진행
+- **수정 1**: `_find_free_date()`에 다음 주 월~금 탐색 fallback 추가 — 이번 주 빈 날이 없으면 다음 주로 넘어감
+- **수정 2**: `_handle_schedule_add()`에서 비는 날 못 찾으면 "이번 주에는 비는 평일이 없습니다" 메시지 반환 후 등록 중단
+
 ### 다음 할 일
 
+- [ ] "비는 날" 수정 EC2 배포 후 동작 확인
 - [ ] 문서 Agent 트러블슈팅 내용 받아서 추가
-- [ ] "비는 날" 자동 계산 + DatePicker 교체 EC2 배포 후 동작 확인
 - [ ] 3-step PARTIAL 3건 intent hint 매칭 수정 (요약/정리 → doc_generate)
