@@ -446,15 +446,17 @@ export default function Topbar({ isScrolled = false }) {
     const fetchData = async () => {
       try {
         const todayStr = dayjs().format('YYYY-MM-DD');
-        const endOfDayStr = dayjs().add(1, 'day').format('YYYY-MM-DD');
+        // 다음날 새벽 일정도 타임라인에 포함 (자정 근처에서 끊기지 않도록)
+        const fetchEndStr = dayjs().add(1, 'day').format('YYYY-MM-DD');
+        const fetchEndLateStr = dayjs().add(2, 'day').format('YYYY-MM-DD');
 
         const timeMinStr = dayjs().startOf('day').toISOString();
-        const timeMaxStr = dayjs().endOf('day').toISOString();
+        const timeMaxStr = dayjs().add(1, 'day').endOf('day').toISOString();
 
         const [schedulesRes, googleRes] = await Promise.all([
           listSchedules({
             start_time_gte: `${todayStr}T00:00:00`,
-            start_time_lt: `${endOfDayStr}T00:00:00`,
+            start_time_lt: `${fetchEndLateStr}T00:00:00`,
             include_team: true,
             skip: 0,
           }),
@@ -465,7 +467,12 @@ export default function Topbar({ isScrolled = false }) {
         let googleSchedules = Array.isArray(googleRes) ? googleRes : [];
 
         const todayKey = dayjs().format('YYYY-MM-DD');
-        const isToday = (dateStr) => dateStr && dayjs(dateStr).format('YYYY-MM-DD') === todayKey;
+        const tomorrowKey = dayjs().add(1, 'day').format('YYYY-MM-DD');
+        const isTodayOrTomorrow = (dateStr) => {
+          if (!dateStr) return false;
+          const d = dayjs(dateStr).format('YYYY-MM-DD');
+          return d === todayKey || d === tomorrowKey;
+        };
         const mergedSchedules = [...dbSchedules];
 
         googleSchedules.forEach(ge => {
@@ -485,26 +492,22 @@ export default function Topbar({ isScrolled = false }) {
             attendees: googleAttendees
           };
           const duplicate = dbSchedules.some(
-            s => s.title === normalizedGe.title && isToday(s.start_time)
+            s => s.title === normalizedGe.title && isTodayOrTomorrow(s.start_time)
           );
           if (!duplicate) mergedSchedules.push(normalizedGe);
         });
 
         let todayAllMeetings = mergedSchedules
           .filter(s => {
-            if (!isToday(s.start_time)) return false;
+            if (!isTodayOrTomorrow(s.start_time)) return false;
 
             const startStr = String(s.start_time || '');
-            const endStr = String(s.end_time || '');
 
             // 1. 날짜만 있는 경우 (YYYY-MM-DD 등 길이 10 이하)
             if (startStr.length <= 10) return false;
 
             // 2. 명시적 플래그
             if (s.is_all_day || s.all_day) return false;
-
-            // 3. 멀티데이 일정 제외 (start와 end 날짜가 다르면)
-            if (endStr && dayjs(s.end_time).format('YYYY-MM-DD') !== todayKey) return false;
 
             return true;
           })
@@ -586,7 +589,7 @@ export default function Topbar({ isScrolled = false }) {
                               onMouseEnter={() => setHoveredEventId(event.id)}
                               onMouseLeave={() => setHoveredEventId(null)}
                               className={`absolute top-[3px] bottom-[3px] rounded-[21px] flex items-center text-white cursor-pointer transition-all ${isActive ? 'shadow-[0_0_15px_rgba(255,255,255,0.3)]' : ''}`}
-                              title={`${dayjs(event.start_time).format('hh:mm A')} - ${dayjs(event.end_time || dayjs(event.start_time).add(1, 'hour')).format('hh:mm A')} ${event.title}`}
+                              title={`${dayjs(event.start_time).format('h:mm A')} - ${dayjs(event.end_time || dayjs(event.start_time).add(1, 'hour')).format('h:mm A')} ${event.title}`}
                               style={{
                                 left: `${left}px`,
                                 width: `${width}px`,
@@ -645,7 +648,7 @@ export default function Topbar({ isScrolled = false }) {
                                   </AnimatePresence>
 
                                   <span className="font-bold text-[12px] text-white whitespace-nowrap shrink-0">
-                                    {dayjs(event.start_time).format('h:mm')} - {dayjs(event.end_time || dayjs(event.start_time).add(1, 'hour')).format('h:mm')}
+                                    {dayjs(event.start_time).format('h:mm A')} - {dayjs(event.end_time || dayjs(event.start_time).add(1, 'hour')).format('h:mm A')}
                                   </span>
                                   <span className="text-white/50 text-[11px] shrink-0">|</span>
                                   <span className="text-[12px] font-bold truncate text-white leading-none tracking-wide">{event.title}</span>
