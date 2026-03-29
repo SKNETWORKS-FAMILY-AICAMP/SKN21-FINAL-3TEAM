@@ -278,10 +278,10 @@ async def document_agent(state: AgentState) -> AgentState:
     # NOTE: follow_up_actions는 프론트엔드(ChatPage.jsx)에서 하드코딩으로 구현 완료
     # 백엔드에서 중복 전송하지 않음
 
-    # 규정 검증 활성화: 문서 생성/QA/요약 시 규정 위반 여부 체크
+    # 규정 검증: 문서 생성(generate)만 활성화 — QA/summary는 Reranker 중복 호출로 성능 저하
     _sub = response_data.get("sub_type", "")
     _type = response_data.get("type", "")
-    if _sub in ("generate", "qa", "summary") or _type == "doc_generate":
+    if _sub == "generate" or _type == "doc_generate":
         try:
             from ai.agents.regulation_validator import validate_document_regulations
             reg_result = await validate_document_regulations(
