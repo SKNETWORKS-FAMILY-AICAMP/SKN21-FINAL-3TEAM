@@ -569,7 +569,9 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
         # 경로 1: 커스텀 템플릿 fill-fields 데이터 → sLLM 생략
         filled_count = sum(1 for v in fields_data.values() if v not in (None, "", []))
         print(f"[DocumentAgent] fill-fields 데이터 사용 (sLLM 생략) | {filled_count}/{len(fields)}개 채워짐")
-        set_last_model_name("사용자 입력 (폼)")
+        # fill-fields에서 설정된 모델명 유지 (없으면 빈 문자열)
+        if not get_last_model_name():
+            set_last_model_name("")
         data = dict(fields_data)
         for f in fields:
             if f["key"] not in data:
@@ -830,7 +832,7 @@ async def _generate_with_custom_template(user_input: str, template_id: int, temp
                     print(f"[DocumentAgent] placeholder fill_result: {fill_result}")
                     if fill_result.get("success") and fill_result.get("filled_count", 0) > 0:
                         placeholder_success = True
-                        set_last_model_name(get_last_model_name() + " (placeholder)")
+                        # placeholder 태그 불필요 — fill-fields 모델명만 표시
                         print(f"[DocumentAgent] placeholder 방식 성공: {fill_result['filled_count']}개 필드")
                 except Exception as e:
                     print(f"[DocumentAgent] placeholder 실패: {e}")
