@@ -4429,7 +4429,9 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 - 일반 대화 응답: MarkdownText 대신 `whitespace-pre-line` 직접 렌더링으로 변경 (문단 간격 빈 줄 제거)
 - 사용법 안내 문구와 본문 사이 여백 `mt-4`로 한 줄 간격 확보
 
-#### 24) "비는 날" 자동 계산 버그 수정 (`schedule_agent.py`)
+## 2026-03-29 (일)
+
+#### 1) "비는 날" 자동 계산 버그 수정 (`schedule_agent.py`)
 
 - **문제**: "이번주 일정 보고 비는 날에 휴가 등록해줘" 요청 시 빈 날짜를 못 찾고 날짜 없이 등록 시도
 - **원인 1**: `_find_free_date()`가 `d >= today_str` 필터를 적용 → 주말(토/일)에는 이번 주 평일이 모두 과거로 판정되어 항상 None 반환
@@ -4437,8 +4439,24 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 - **수정 1**: `_find_free_date()`에 다음 주 월~금 탐색 fallback 추가 — 이번 주 빈 날이 없으면 다음 주로 넘어감
 - **수정 2**: `_handle_schedule_add()`에서 비는 날 못 찾으면 "이번 주에는 비는 평일이 없습니다" 메시지 반환 후 등록 중단
 
-### 다음 할 일
+#### 2) 발표자료 v3 — 시나리오 섹션 통계 카드 추가 + 레이아웃 조정 (`presentation_v3.html`)
 
-- [ ] "비는 날" 수정 EC2 배포 후 동작 확인
-- [ ] 문서 Agent 트러블슈팅 내용 받아서 추가
-- [ ] 3-step PARTIAL 3건 intent hint 매칭 수정 (요약/정리 → doc_generate)
+- "경영지원팀의 하루" 시나리오(Before/After) 아래에 실제 통계 근거 카드 3개 추가
+  - 68% 집중 시간 부족 / 62% 정보 검색 낭비 / 57% 커뮤니케이션 부담
+  - 출처: Microsoft Work Trend Index (2023)
+- 한 화면에 들어오도록 상하 사이즈 축소 (섹션 패딩, 카드 패딩·간격, 원 크기 등)
+- After 카드 하단 요약 텍스트(규정 문의 30분→10초 등) 제거 — 상단 바 차트와 중복
+
+#### 3) 발표자료 v3 — 08 Multi-Agent Orchestration 개편 (`presentation_v3.html`)
+
+- 섹션 제목 "Intent 분류" → "Multi-Agent Orchestration"으로 변경
+- 복합 질문 분해(Task Planning) 예시 추가: 3-step 분해 흐름 (judgment → schedule_view → schedule_add)
+- 한 화면 맞춤 레이아웃 축소
+
+#### 4) 발표자료 v3 — Agent 상세 페이지 3장 추가 (`presentation_v3.html`)
+
+- **08-1 Judgment Agent**: 오른쪽 4중 보조장치 → 정량 성과(Base 37.2%→LoRA 85.4%) + Base vs LoRA 출력 비교로 교체, 하단에 RAGAS 4개 수치 + 핵심 지표 테이블 가로 배치
+- **08-1b 4중 보조장치 전용 페이지 추가**: 4단계별 감점 공식 상세, 환각 탐지 예시(제12조→미존재→Confidence 0.92→0.25), 5-Factor Confidence 보정 공식 + Hard Cap
+- **08-2a Document Agent 정량 성과**: 생성(BERTScore, ROUGE-L, False Fill, 채움률) + 요약(분류율, 길이) 테이블, Base vs LoRA JSON 비교
+- **08-3a Schedule Agent Google 연동**: Google 5종 연동 테이블, 3단계 Fallback 흐름도, AI 추천 기능
+
