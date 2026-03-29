@@ -85,7 +85,7 @@ function renderCardMessage(msg, onSelectClarify, onSelectDoc, messages = [], ind
       // 사용자의 질문 내용 확인 (이전 메시지)
       const userMsg = index > 0 ? messages[index - 1]?.content || '' : '';
       // '규정', '알려줘', '설명'만 있는 경우는 정보 조회로 간주 (의문형/판단형 키워드가 없을 때)
-      const isJudgmentRequest = /가능|요건|조건|되나요|있나요|수 있|있습니|허용|금지|위반|처벌|준수/.test(userMsg);
+      const isJudgmentRequest = /가능|요건|조건|되나요|있나요|인가요|할까요|해야|필수|의무|수 있|있습니|허용|금지|위반|처벌|준수/.test(userMsg);
 
       // 'none'이나 판단 결과가 명확하지 않거나, 단순 정보 조회인 경우 배지 숨김
       const isInformational = !data.result || data.result === 'none' || data.result === 'info' || (data.result === 'yes' && !isJudgmentRequest);
