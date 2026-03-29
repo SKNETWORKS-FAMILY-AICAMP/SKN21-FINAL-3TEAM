@@ -126,7 +126,7 @@ async def _handle_doc_qa(
             },
             "post_stream": {
                 "update_summary_db": None,
-                "check_regulation": True,
+                # "check_regulation": True,  # 시연용 비활성화
                 "filter_sources": True,
             },
             "answer": "",
