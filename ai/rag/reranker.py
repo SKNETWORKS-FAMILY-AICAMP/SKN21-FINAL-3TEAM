@@ -106,15 +106,10 @@ class Reranker:
                 f"(threshold={score_threshold}, top_k={top_k})"
             )
 
-            # 원본 메타데이터 보존 + rerank_score 추가
-            # Cross-Encoder raw score(logit)를 sigmoid로 0~1 변환 후 40~100% display 범위로 매핑
-            import math
+            # reranker는 정렬만 담당 — display score는 원본(RRF) 유지
+            # Cross-Encoder raw score는 rerank_score에 보존 (디버깅용)
             return [
-                {
-                    **doc,
-                    "rerank_score": score,
-                    "score": 0.4 + 0.6 / (1 + math.exp(-score)),  # sigmoid → 40~100%
-                }
+                {**doc, "rerank_score": score}
                 for doc, score in scored_docs
             ]
         finally:
