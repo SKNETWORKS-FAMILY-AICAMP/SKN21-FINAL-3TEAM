@@ -106,10 +106,21 @@ class Reranker:
                 f"(threshold={score_threshold}, top_k={top_k})"
             )
 
-            # reranker는 정렬만 담당 — display score는 원본(RRF) 유지
-            # Cross-Encoder raw score는 rerank_score에 보존 (디버깅용)
+            # reranker score를 40~100% 범위로 상대 정규화
+            # 최고점=100%, 최저점=40%, 중간은 비례 배분
+            if len(scored_docs) == 1:
+                return [{**scored_docs[0][0], "rerank_score": scored_docs[0][1], "score": 1.0}]
+
+            max_rs = scored_docs[0][1]
+            min_rs = scored_docs[-1][1]
+            span = max_rs - min_rs if max_rs != min_rs else 1.0
+
             return [
-                {**doc, "rerank_score": score}
+                {
+                    **doc,
+                    "rerank_score": score,
+                    "score": 0.4 + 0.6 * (score - min_rs) / span,
+                }
                 for doc, score in scored_docs
             ]
         finally:
