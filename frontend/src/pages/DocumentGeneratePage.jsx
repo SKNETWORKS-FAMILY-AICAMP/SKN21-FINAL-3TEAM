@@ -577,7 +577,7 @@ export default function DocumentGeneratePage() {
 
       const data = apiData.data || {};
 
-      if (isMeeting) {
+      if (isMeeting && !isCustom) {
         setMeetingResult({
           title: data.title || formData.title,
           date: data.date || formData.date,
@@ -918,11 +918,11 @@ export default function DocumentGeneratePage() {
           </div>
         )}
 
-        {/* 회의록 결과: MeetingPreview (action_items + Pipeline/Google Tasks) */}
-        {isMeeting && <MeetingPreview data={meetingResult} onDownload={handleDownload} loading={loading} />}
+        {/* 회의록 결과: MeetingPreview (시스템 템플릿만) */}
+        {isMeeting && !isCustom && <MeetingPreview data={meetingResult} onDownload={handleDownload} loading={loading} />}
 
-        {/* 보고서/제안서 결과 */}
-        {!isMeeting && <DocumentPreview data={result} onDownload={handleDownload} loading={loading} />}
+        {/* 보고서/제안서/커스텀 결과 */}
+        {(!isMeeting || isCustom) && <DocumentPreview data={result} onDownload={handleDownload} loading={loading} />}
 
         {/* 업로드 다이얼로그 */}
         <TemplateUploadDialog
