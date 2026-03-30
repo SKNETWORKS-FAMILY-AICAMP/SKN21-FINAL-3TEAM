@@ -566,33 +566,43 @@ async def _handle_schedule_view(user_input: str, user_id: int, user_team: str | 
     try:
         from app.services.schedule_service import list_schedules as db_list_schedules
 
-        logger.info("[ScheduleAgent] DB 조회 파라미터: user_id=%s, user_team=%s, schedule_type=%s", user_id, user_team, schedule_type)
+        print(f"[ScheduleAgent] DB 조회 파라미터: user_id={user_id}, user_team={user_team}, schedule_type={schedule_type}", flush=True)
         async with async_session() as db:
             db_schedules = await db_list_schedules(
                 db, user_id=user_id, schedule_type=schedule_type,
                 include_team=True, user_team=user_team,
             )
-        logger.info("[ScheduleAgent] DB 조회 결과: %d건, titles=%s", len(db_schedules), [s.title for s in db_schedules])
+        print(f"[ScheduleAgent] DB 조회 결과: {len(db_schedules)}건, titles={[s.title for s in db_schedules]}", flush=True)
 
         time_min = parsed.get("time_min")
         time_max = parsed.get("time_max")
 
+        # LLM은 UTC(Z)로 출력, DB는 KST naive → UTC를 KST로 변환하여 비교
+        def _utc_to_kst_naive(iso_str: str) -> datetime | None:
+            try:
+                # Z 또는 +00:00 → UTC로 파싱 후 +9h
+                dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
+                kst = dt + timedelta(hours=9)
+                return kst.replace(tzinfo=None)
+            except (ValueError, TypeError):
+                # Z 없으면 그대로 파싱 (이미 KST라고 가정)
+                try:
+                    return datetime.fromisoformat(iso_str)
+                except (ValueError, TypeError):
+                    return None
+
+        t_min = _utc_to_kst_naive(time_min) if time_min else None
+        t_max = _utc_to_kst_naive(time_max) if time_max else None
+        print(f"[ScheduleAgent] 시간 필터(KST변환): t_min={t_min}, t_max={t_max}, raw_min={time_min}, raw_max={time_max}", flush=True)
+
         for s in db_schedules:
             # 기간 필터 적용
-            if time_min and s.start_time:
-                try:
-                    t_min = datetime.fromisoformat(time_min.replace("Z", "+00:00")).replace(tzinfo=None)
-                    if s.start_time < t_min:
-                        continue
-                except (ValueError, TypeError):
-                    pass
-            if time_max and s.start_time:
-                try:
-                    t_max = datetime.fromisoformat(time_max.replace("Z", "+00:00")).replace(tzinfo=None)
-                    if s.start_time > t_max:
-                        continue
-                except (ValueError, TypeError):
-                    pass
+            if t_min and s.start_time:
+                if s.start_time < t_min:
+                    continue
+            if t_max and s.start_time:
+                if s.start_time > t_max:
+                    continue
             db_events.append({
                 "title": s.title,
                 "start": s.start_time.isoformat() if s.start_time else "",
@@ -621,11 +631,20 @@ async def _handle_schedule_view(user_input: str, user_id: int, user_team: str | 
         google_event_map = {ev.get("event_id"): ev for ev in raw_events}
 
         # DB 이벤트 중 google_event_id가 있는 것은 Google 기준으로 갱신/제거
+        # DB 이벤트의 user_id를 보존하기 위해 원본에서 추출
+        db_user_ids = {}
+        for s in db_schedules:
+            db_user_ids[s.google_event_id] = s.user_id if hasattr(s, 'user_id') else None
+
         synced_db_events = []
         synced_google_ids = set()
         for ev in db_events:
             gid = ev.get("google_event_id")
-            if gid and gid in google_event_map:
+            is_team_event = db_user_ids.get(gid) != user_id if gid else False
+            if is_team_event:
+                # 팀원이 등록한 일정 → Google 동기화 건너뛰고 유지
+                synced_db_events.append(ev)
+            elif gid and gid in google_event_map:
                 # Google에서 수정된 이벤트 → Google 버전으로 갱신
                 g_ev = google_event_map[gid]
                 ev["title"] = g_ev.get("title", ev["title"])
@@ -1037,14 +1056,15 @@ async def _parse_view_request(user_input: str) -> dict:
 }}
 
 규칙:
-- "오늘 일정" → 오늘 00:00:00Z ~ 오늘 23:59:59Z
-- "내일 일정" → 내일 00:00:00Z ~ 내일 23:59:59Z
-- "이번 주 일정" → 이번 주 월요일({this_monday}) 00:00:00Z ~ 일요일 23:59:59Z
-- "다음 주 일정" → 다음 주 월요일({next_monday}) 00:00:00Z ~ 일요일 23:59:59Z
-- "저번 주/지난 주 일정" → 저번 주 월요일({last_monday}) 00:00:00Z ~ 일요일 23:59:59Z
-- "이번 달 일정" → 이번 달 1일 00:00:00Z ~ 말일 23:59:59Z
-- "저번 달/지난 달 일정" → 지난 달 1일 00:00:00Z ~ 말일 23:59:59Z
-- "다음 달 일정" → 다음 달 1일 00:00:00Z ~ 말일 23:59:59Z
+- 시간대는 UTC(Z) 형식으로 출력. 한국시간 KST = UTC+9이므로 KST 00:00은 UTC 전날 15:00.
+- "오늘 일정" → 오늘(KST) 00:00 ~ 23:59를 UTC로 변환하여 출력
+- "이번 주 일정" → 이번 주 월요일({this_monday}) KST 00:00 ~ 일요일 KST 23:59를 UTC로 변환
+  예: {this_monday} KST 00:00 = {this_monday}의 전날 15:00:00Z
+- "다음 주 일정" → 다음 주 월요일({next_monday}) KST 00:00 ~ 일요일 KST 23:59를 UTC로 변환
+- "저번 주/지난 주 일정" → 저번 주 월요일({last_monday}) KST 00:00 ~ 일요일 KST 23:59를 UTC로 변환
+- "이번 달 일정" → 이번 달 1일 KST 00:00 ~ 말일 KST 23:59를 UTC로 변환
+- "저번 달/지난 달 일정" → 지난 달 1일 KST 00:00 ~ 말일 KST 23:59를 UTC로 변환
+- "다음 달 일정" → 다음 달 1일 KST 00:00 ~ 말일 KST 23:59를 UTC로 변환
 - "최근 일정", "일정 조회" 등 명확하지 않으면 → 오늘 00:00:00Z ~ 오늘로부터 +30일 23:59:59Z (향후 한 달)
 - 시간대는 UTC(Z) 형식으로 출력 (한국시간 KST = UTC+9 이므로 -9시간 보정)
 - schedule_type: "회의"/"미팅"/"meeting"/"스탠드업"/"킥오프" → "meeting", "마감"/"데드라인"/"deadline"/"제출" → "deadline", 특정 유형 언급 없으면 → null
