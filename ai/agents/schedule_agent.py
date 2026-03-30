@@ -566,11 +566,13 @@ async def _handle_schedule_view(user_input: str, user_id: int, user_team: str | 
     try:
         from app.services.schedule_service import list_schedules as db_list_schedules
 
+        logger.info("[ScheduleAgent] DB 조회 파라미터: user_id=%s, user_team=%s, schedule_type=%s", user_id, user_team, schedule_type)
         async with async_session() as db:
             db_schedules = await db_list_schedules(
                 db, user_id=user_id, schedule_type=schedule_type,
                 include_team=True, user_team=user_team,
             )
+        logger.info("[ScheduleAgent] DB 조회 결과: %d건, titles=%s", len(db_schedules), [s.title for s in db_schedules])
 
         time_min = parsed.get("time_min")
         time_max = parsed.get("time_max")
