@@ -4460,3 +4460,22 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 - **08-2a Document Agent 정량 성과**: 생성(BERTScore, ROUGE-L, False Fill, 채움률) + 요약(분류율, 길이) 테이블, Base vs LoRA JSON 비교
 - **08-3a Schedule Agent Google 연동**: Google 5종 연동 테이블, 3단계 Fallback 흐름도, AI 추천 기능
 
+---
+
+## 2026-03-30 (월)
+
+### 한 일
+
+#### 1) 일정 조회 시 팀 일정 누락 버그 수정 (`schedule_agent.py`)
+
+- **문제**: "이번주 일정 확인" 시 다른 팀원이 등록한 [팀] 일정(스프린트 회고, 발표자료 점검 등)이 챗봇 응답에서 빠짐
+- **원인**: `_handle_schedule_view()`에서 `db_list_schedules()` 호출 시 `include_team=True`를 전달하지 않음 → `is_team_visible=True`인 팀 공유 일정이 DB 쿼리에서 제외
+- **수정**:
+  - `_handle_schedule_view()` 함수 시그니처에 `user_team` 파라미터 추가
+  - 호출부에서 `state.get("user_team")` 전달
+  - `db_list_schedules()` 호출에 `include_team=True, user_team=user_team` 추가
+- **영향**: "비는 날" 계산(`_find_free_date`)도 팀 일정을 인식하게 됨 — prev_context에 팀 일정이 포함되므로 팀 일정 있는 날을 비는 날로 잘못 판단하는 문제도 해소
+
+### 다음 할 일
+
+- [ ] 발표자료 v4 Judgment Agent 상세 페이지 PPT 세로 사이즈 조정
