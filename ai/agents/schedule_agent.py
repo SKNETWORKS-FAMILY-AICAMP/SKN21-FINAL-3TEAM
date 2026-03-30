@@ -626,11 +626,20 @@ async def _handle_schedule_view(user_input: str, user_id: int, user_team: str | 
         google_event_map = {ev.get("event_id"): ev for ev in raw_events}
 
         # DB 이벤트 중 google_event_id가 있는 것은 Google 기준으로 갱신/제거
+        # DB 이벤트의 user_id를 보존하기 위해 원본에서 추출
+        db_user_ids = {}
+        for s in db_schedules:
+            db_user_ids[s.google_event_id] = s.user_id if hasattr(s, 'user_id') else None
+
         synced_db_events = []
         synced_google_ids = set()
         for ev in db_events:
             gid = ev.get("google_event_id")
-            if gid and gid in google_event_map:
+            is_team_event = db_user_ids.get(gid) != user_id if gid else False
+            if is_team_event:
+                # 팀원이 등록한 일정 → Google 동기화 건너뛰고 유지
+                synced_db_events.append(ev)
+            elif gid and gid in google_event_map:
                 # Google에서 수정된 이벤트 → Google 버전으로 갱신
                 g_ev = google_event_map[gid]
                 ev["title"] = g_ev.get("title", ev["title"])
