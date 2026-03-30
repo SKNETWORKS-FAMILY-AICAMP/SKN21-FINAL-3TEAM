@@ -56,9 +56,9 @@
     <p>"저희가 Base 모델로 Kanana-1.5-8B을 선택했는데요, 3개 Agent 모두 그대로 쓰기엔 부족했습니다."</p>
     <p class="action">(카드 3개 가리키며)</p>
     <ul>
-      <li>"<strong>판단 Agent</strong>는 정확도 <span class="error">37%</span>, 없는 제12조를 근거로 대는 환각, 틀려도 '나 90% 확신해'라고 하는 과신 문제"</li>
-      <li>"<strong>문서생성</strong>은 입력에 없는 정보를 지어내는 환각이 <span class="error">44%</span>"</li>
-      <li>"<strong>문서요약</strong>은 요약 자체는 괜찮지만, 존재하지 않는 카테고리를 만들어서 문서관리 페이지에서 분류 검색이 안 되는 문제"</li>
+      <li>"<strong>판단 Agent</strong>는 정확도 <span class="error">37%</span>였는데요, 예를 들어 '인턴에게 AWS 권한 줘도 돼?'라고 물으면 <strong>존재하지 않는 제12조를 만들어서</strong> 'yes'라고 답합니다. 틀렸는데 <strong>자기는 92% 확신</strong>한다고 해요."</li>
+      <li>"<strong>문서생성</strong>은 회의에서 예산 얘기를 안 했는데 <strong>2400만원을 지어냅니다.</strong> 이런 환각이 <span class="error">44%</span>."</li>
+      <li>"<strong>문서요약</strong>은 요약은 괜찮은데, '뉴스기사'같은 <strong>없는 카테고리를 만들어서</strong> 문서관리 페이지 필터가 깨졌습니다."</li>
     </ul>
     <p>"이 세 가지를 <strong>LoRA 파인튜닝으로 하나씩 해결</strong>했습니다."</p>
     <p>"파인튜닝은 쉽게 말해 <strong>모델의 판단력을 올리는 건데요</strong> — 그런데 판단력이 아무리 좋아도, <strong>참고하는 규정이나 문서가 엉뚱하면 답도 틀립니다.</strong> 그래서 먼저 검색부터 잡았습니다."</p>
@@ -71,10 +71,10 @@
   <div class="script">
     <p>"Agent가 참고하는 규정과 문서를 <strong>정확히 찾아오는 것</strong>, 저희는 이걸 RAG 파이프라인이라고 부릅니다."</p>
     <p class="action">(왼쪽 가리키며)</p>
-    <p>"사용자가 '연차 며칠 쓸 수 있어?'처럼 구어체로 물으면, 규정 문서는 문어체라 검색이 안 됐습니다. 정답이 있어도 3번째에 묻혀버렸습니다."</p>
-    <p class="action">(가운데→오른쪽 빠르게)</p>
-    <p>"3단계로 해결했습니다. 첫째 <strong>전처리</strong>로 규정을 조항 단위로 잘게 나누고, 둘째 <strong>HyDE</strong>라는 기법으로 구어체 질문을 규정 문서 스타일로 바꿔서 검색하고, 셋째 <strong>Reranker</strong>로 검색 결과를 재정렬했습니다."</p>
-    <p>"결과적으로 <strong>정답 규정이 항상 1순위로 올라오게</strong> 됐습니다."</p>
+    <p>"사용자가 '연차 며칠 쓸 수 있어?'라고 물었는데, 규정에는 '유급휴가 부여 일수'라고 적혀있습니다. <strong>같은 내용인데 단어가 달라서</strong> 검색이 안 됐습니다."</p>
+    <p class="action">(가운데→오른쪽 순서대로)</p>
+    <p>"이러한 문제를 3단계로 해결했는데요 — 먼저 <strong>전처리</strong>로 규정을 조항 단위로 잘게 나눠서 검색 정밀도를 올리고, <strong>HyDE</strong>로 LLM이 '연차 며칠'을 '유급휴가 부여 일수'처럼 규정 문서 스타일로 바꿔서 검색하고, 마지막으로 <strong>Reranker</strong>가 진짜 관련 있는 걸 맨 위로 올려줍니다."</p>
+    <p>"이 3단계를 거치면서 <strong>정답 규정이 항상 1순위로 올라오게</strong> 됐습니다."</p>
   </div>
 </div>
 
