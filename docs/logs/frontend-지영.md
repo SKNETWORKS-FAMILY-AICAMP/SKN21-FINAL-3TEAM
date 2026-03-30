@@ -4476,6 +4476,14 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
   - `db_list_schedules()` 호출에 `include_team=True, user_team=user_team` 추가
 - **영향**: "비는 날" 계산(`_find_free_date`)도 팀 일정을 인식하게 됨 — prev_context에 팀 일정이 포함되므로 팀 일정 있는 날을 비는 날로 잘못 판단하는 문제도 해소
 
+#### 2) 일정 조회 시간 필터 UTC→KST 변환 버그 수정 (`schedule_agent.py`)
+
+- **문제**: 1)번 수정 후에도 3/30 당일 팀 일정(스프린트 회고 00:15, 발표자료 점검 00:00)이 여전히 조회되지 않음
+- **디버깅**: EC2 서버 로그에 print 디버그 추가 → DB 조회 32건에 팀 일정 포함 확인, 시간 필터에서 탈락 확인
+- **근본 원인**: LLM이 `time_min=2026-03-30T00:00:00Z`(UTC)를 출력하는데, DB에는 KST naive datetime으로 저장됨. 기존 코드가 UTC 문자열에서 timezone만 제거하고 비교 → 3/30 00:15(KST)가 UTC 기준 3/29 15:15이 되어 `t_min(3/30 00:00)` 보다 작아서 필터 탈락
+- **수정**: `_utc_to_kst_naive()` 헬퍼 함수 추가 — UTC(Z) 파싱 후 +9시간 보정하여 KST naive datetime으로 변환한 뒤 DB 값과 비교
+
 ### 다음 할 일
 
+- [ ] EC2 배포 후 팀 일정 + 당일 일정 조회 동작 확인
 - [ ] 발표자료 v4 Judgment Agent 상세 페이지 PPT 세로 사이즈 조정
