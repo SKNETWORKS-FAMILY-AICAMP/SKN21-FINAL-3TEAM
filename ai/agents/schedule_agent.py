@@ -576,6 +576,7 @@ async def _handle_schedule_view(user_input: str, user_id: int, user_team: str | 
 
         time_min = parsed.get("time_min")
         time_max = parsed.get("time_max")
+        print(f"[ScheduleAgent] 시간 필터: time_min={time_min}, time_max={time_max}", flush=True)
 
         for s in db_schedules:
             # 기간 필터 적용
@@ -583,6 +584,7 @@ async def _handle_schedule_view(user_input: str, user_id: int, user_team: str | 
                 try:
                     t_min = datetime.fromisoformat(time_min.replace("Z", "+00:00")).replace(tzinfo=None)
                     if s.start_time < t_min:
+                        print(f"[ScheduleAgent] 필터OUT(min): {s.title} start={s.start_time} < t_min={t_min}", flush=True)
                         continue
                 except (ValueError, TypeError):
                     pass
