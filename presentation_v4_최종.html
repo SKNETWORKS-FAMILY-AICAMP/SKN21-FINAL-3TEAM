@@ -1412,11 +1412,19 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
           <div class="space-y-2">
             <div class="bg-white rounded-lg p-3 border border-neutral-divider">
               <div class="flex items-center gap-2 mb-1">
-                <span class="text-[9px] font-bold text-white bg-warning rounded px-1.5 py-0.5">review</span>
-                <span class="text-xs font-bold text-primary-900">PR 리뷰 요청</span>
-                <span class="text-[9px] text-warning bg-warning/10 rounded px-1.5 py-0.5 ml-auto">high</span>
+                <span class="text-[9px] font-bold text-white bg-warning rounded px-1.5 py-0.5">deploy</span>
+                <span class="text-xs font-bold text-primary-900">완성된 태스크 배포 승인</span>
+                <span class="text-[9px] text-warning bg-warning/10 rounded px-1.5 py-0.5 ml-auto">HIGH</span>
               </div>
-              <p class="text-[10px] text-neutral-sub">Review 단계 태스크 3건 대기 중 → 코드 리뷰 결재 요청</p>
+              <p class="text-[10px] text-neutral-sub">파이프라인 Done 비율이 46%로 배포/릴리즈 적기</p>
+            </div>
+            <!-- 규정판단 Agent 연동 메시지 -->
+            <div class="bg-amber-50 rounded-lg p-3 border border-amber-200">
+              <div class="flex items-center gap-2 mb-1.5">
+                <span class="text-[9px] font-bold text-amber-700 bg-amber-200 rounded-full px-2 py-0.5">⚖ 규정 확인 필요</span>
+              </div>
+              <p class="text-[10px] text-neutral-700 leading-relaxed">변경관리 절차에 따라 배포 승인 여부를 결정하는 도중 명시되어 있으나, 구체적인 배포 임계도의 기준(예: 완성도 100% 또는 중간 이상) 및 세부 절차에 대한 별도 규정이 없으므로 상황에 따라 다름.</p>
+              <p class="text-[10px] text-neutral-muted mt-1.5">근거: 변경관리</p>
             </div>
             <div class="bg-white rounded-lg p-3 border border-neutral-divider">
               <div class="flex items-center gap-2 mb-1">
