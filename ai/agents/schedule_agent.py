@@ -577,18 +577,23 @@ async def _handle_schedule_view(user_input: str, user_id: int, user_team: str | 
         time_min = parsed.get("time_min")
         time_max = parsed.get("time_max")
 
-        # LLM이 KST로 출력 → naive datetime으로 파싱 (DB도 KST naive)
-        # 하위호환: Z가 붙어있으면 제거 후 파싱
-        def _parse_kst_naive(iso_str: str) -> datetime | None:
+        # LLM은 UTC(Z)로 출력, DB는 KST naive → UTC를 KST로 변환하여 비교
+        def _utc_to_kst_naive(iso_str: str) -> datetime | None:
             try:
-                cleaned = iso_str.replace("Z", "").replace("+00:00", "").replace("+09:00", "")
-                return datetime.fromisoformat(cleaned)
+                # Z 또는 +00:00 → UTC로 파싱 후 +9h
+                dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
+                kst = dt + timedelta(hours=9)
+                return kst.replace(tzinfo=None)
             except (ValueError, TypeError):
-                return None
+                # Z 없으면 그대로 파싱 (이미 KST라고 가정)
+                try:
+                    return datetime.fromisoformat(iso_str)
+                except (ValueError, TypeError):
+                    return None
 
-        t_min = _parse_kst_naive(time_min) if time_min else None
-        t_max = _parse_kst_naive(time_max) if time_max else None
-        print(f"[ScheduleAgent] 시간 필터: t_min={t_min}, t_max={t_max}", flush=True)
+        t_min = _utc_to_kst_naive(time_min) if time_min else None
+        t_max = _utc_to_kst_naive(time_max) if time_max else None
+        print(f"[ScheduleAgent] 시간 필터(KST변환): t_min={t_min}, t_max={t_max}, raw_min={time_min}, raw_max={time_max}", flush=True)
 
         for s in db_schedules:
             # 기간 필터 적용
@@ -1045,20 +1050,21 @@ async def _parse_view_request(user_input: str) -> dict:
 
 출력 형식(JSON):
 {{
-    "time_min": "YYYY-MM-DDTHH:MM:SS",
-    "time_max": "YYYY-MM-DDTHH:MM:SS",
+    "time_min": "YYYY-MM-DDTHH:MM:SSZ",
+    "time_max": "YYYY-MM-DDTHH:MM:SSZ",
     "schedule_type": null
 }}
 
-규칙 (모든 시간은 한국시간 KST 기준, Z를 붙이지 마세요):
-- "오늘 일정" → 오늘 00:00:00 ~ 오늘 23:59:59
-- "내일 일정" → 내일 00:00:00 ~ 내일 23:59:59
-- "이번 주 일정" → 이번 주 월요일({this_monday}) 00:00:00 ~ 일요일 23:59:59
-- "다음 주 일정" → 다음 주 월요일({next_monday}) 00:00:00 ~ 일요일 23:59:59
-- "저번 주/지난 주 일정" → 저번 주 월요일({last_monday}) 00:00:00 ~ 일요일 23:59:59
-- "이번 달 일정" → 이번 달 1일 00:00:00 ~ 말일 23:59:59
-- "저번 달/지난 달 일정" → 지난 달 1일 00:00:00 ~ 말일 23:59:59
-- "다음 달 일정" → 다음 달 1일 00:00:00 ~ 말일 23:59:59
+규칙:
+- 시간대는 UTC(Z) 형식으로 출력. 한국시간 KST = UTC+9이므로 KST 00:00은 UTC 전날 15:00.
+- "오늘 일정" → 오늘(KST) 00:00 ~ 23:59를 UTC로 변환하여 출력
+- "이번 주 일정" → 이번 주 월요일({this_monday}) KST 00:00 ~ 일요일 KST 23:59를 UTC로 변환
+  예: {this_monday} KST 00:00 = {this_monday}의 전날 15:00:00Z
+- "다음 주 일정" → 다음 주 월요일({next_monday}) KST 00:00 ~ 일요일 KST 23:59를 UTC로 변환
+- "저번 주/지난 주 일정" → 저번 주 월요일({last_monday}) KST 00:00 ~ 일요일 KST 23:59를 UTC로 변환
+- "이번 달 일정" → 이번 달 1일 KST 00:00 ~ 말일 KST 23:59를 UTC로 변환
+- "저번 달/지난 달 일정" → 지난 달 1일 KST 00:00 ~ 말일 KST 23:59를 UTC로 변환
+- "다음 달 일정" → 다음 달 1일 KST 00:00 ~ 말일 KST 23:59를 UTC로 변환
 - "최근 일정", "일정 조회" 등 명확하지 않으면 → 오늘 00:00:00Z ~ 오늘로부터 +30일 23:59:59Z (향후 한 달)
 - 시간대는 UTC(Z) 형식으로 출력 (한국시간 KST = UTC+9 이므로 -9시간 보정)
 - schedule_type: "회의"/"미팅"/"meeting"/"스탠드업"/"킥오프" → "meeting", "마감"/"데드라인"/"deadline"/"제출" → "deadline", 특정 유형 언급 없으면 → null
