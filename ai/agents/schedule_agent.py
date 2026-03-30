@@ -111,7 +111,7 @@ async def schedule_agent(state: AgentState) -> AgentState:
                 else:
                     response_data = await _handle_schedule_add(user_input, user_id)
         elif intent == "schedule_view":
-            response_data = await _handle_schedule_view(user_input, user_id)
+            response_data = await _handle_schedule_view(user_input, user_id, user_team=state.get("user_team"))
         elif intent == "schedule_followup":
             response_data = await _handle_schedule_followup(user_input, user_id, state)
         else:
@@ -545,7 +545,7 @@ def _extract_last_schedule_from_history(chat_history: list[dict]) -> dict | None
     return None
 
 
-async def _handle_schedule_view(user_input: str, user_id: int) -> dict:
+async def _handle_schedule_view(user_input: str, user_id: int, user_team: str | None = None) -> dict:
     """일정 조회: LLM 파싱 → DB 조회(schedule_type 필터) + Google Calendar 조회"""
     # 1. LLM으로 조회 범위 + schedule_type 파싱
     logger.debug("[ScheduleAgent] schedule_view 파싱 시작")
@@ -568,7 +568,8 @@ async def _handle_schedule_view(user_input: str, user_id: int) -> dict:
 
         async with async_session() as db:
             db_schedules = await db_list_schedules(
-                db, user_id=user_id, schedule_type=schedule_type
+                db, user_id=user_id, schedule_type=schedule_type,
+                include_team=True, user_team=user_team,
             )
 
         time_min = parsed.get("time_min")
