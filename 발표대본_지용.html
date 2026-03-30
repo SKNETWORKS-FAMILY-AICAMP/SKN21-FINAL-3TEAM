@@ -41,7 +41,7 @@
 <body>
 
 <h1>발표 대본 — 신지용 (PM)</h1>
-<p class="subtitle">09번 Base 모델 한계 ~ Q&A | 약 8~9분 + 시연 5분</p>
+<p class="subtitle">10번 Base 모델 한계 ~ Q&A | 약 8~9분 + 시연 5분</p>
 
 <div class="slide">
   <div class="slide-header"><span class="slide-title">이어받기 멘트</span><span class="slide-time">5초</span></div>
@@ -49,132 +49,134 @@
 </div>
 
 <div class="slide">
-  <div class="slide-header"><span class="slide-title">09. Base 모델 한계</span><span class="slide-time">30초</span></div>
+  <div class="slide-header"><span class="slide-title">10. Base 모델 한계</span><span class="slide-time">30초</span></div>
   <div class="keywords"><span class="kw red">판단 환각+과신</span><span class="kw red">생성 환각</span><span class="kw red">요약 카테고리 깨짐</span><span class="kw green">→ LoRA로 해결</span></div>
   <div class="script">
-    <p>"파인튜닝 말씀 드리기 전에, 먼저 <strong>왜 파인튜닝이 필요했는지</strong>부터 보여드리겠습니다."</p>
+    <p>"본격적인 설명 전에, 먼저 <strong>왜 파인튜닝이 필요했는지</strong>부터 보여드리겠습니다."</p>
     <p>"저희가 Base 모델로 Kanana-1.5-8B을 선택했는데요, 3개 Agent 모두 그대로 쓰기엔 부족했습니다."</p>
     <p class="action">(카드 3개 가리키며)</p>
     <ul>
-      <li>"<strong>판단 Agent</strong>는 정확도 <span class="error">37%</span>, 존재하지 않는 조항을 인용하는 환각, 틀려도 confidence 0.9를 찍는 과신 문제"</li>
-      <li>"<strong>문서생성</strong>은 핵심 필드를 비우면서 없는 정보를 지어내는 환각이 <span class="error">44%</span>"</li>
-      <li>"<strong>문서요약</strong>은 요약 자체는 가능하지만 존재하지 않는 카테고리를 만들어서 서비스 필터가 깨지는 문제"</li>
+      <li>"<strong>판단 Agent</strong>는 정확도 <span class="error">37%</span>였는데요, 예를 들어 '인턴에게 AWS 권한 줘도 돼?'라고 물으면 <strong>존재하지 않는 제12조를 만들어서</strong> 'yes'라고 답합니다. 틀렸는데 <strong>자기는 92% 확신</strong>한다고 해요."</li>
+      <li>"<strong>문서생성</strong>은 회의에서 예산 얘기를 안 했는데 <strong>2400만원을 지어냅니다.</strong> 이런 환각이 <span class="error">44%</span>."</li>
+      <li>"<strong>문서요약</strong>은 요약은 괜찮은데, '뉴스기사'같은 <strong>없는 카테고리를 만들어서</strong> 문서관리 페이지 필터가 깨졌습니다."</li>
     </ul>
-    <p>"이런 문제들을 <strong>LoRA 파인튜닝으로 해결</strong>하기로 했습니다."</p>
+    <p>"이 세 가지를 <strong>LoRA 파인튜닝으로 하나씩 해결</strong>했습니다."</p>
+    <p>"파인튜닝은 쉽게 말해 <strong>모델의 판단력을 올리는 건데요</strong> — 그런데 판단력이 아무리 좋아도, <strong>참고하는 규정이나 문서가 엉뚱하면 답도 틀립니다.</strong> 그래서 먼저 검색부터 잡았습니다."</p>
   </div>
 </div>
 
 <div class="slide">
-  <div class="slide-header"><span class="slide-title">09-1. RAG 파이프라인</span><span class="slide-time">30초</span></div>
+  <div class="slide-header"><span class="slide-title">10-1. RAG 파이프라인</span><span class="slide-time">30초</span></div>
   <div class="keywords"><span class="kw red">구어체 매칭 실패</span><span class="kw">3단계 해결</span><span class="kw">HyDE</span><span class="kw green">Reranker → 1위</span></div>
   <div class="script">
-    <p>"판단 Agent에서 쓰는 RAG 파이프라인도 개선이 필요했습니다."</p>
-    <p class="action">(왼쪽→가운데→오른쪽 빠르게)</p>
-    <p>"사용자가 구어체로 물으면 BM25가 매칭을 실패하고, 정답이 3번째에 묻혀서 MRR이 <span class="error">0.636</span>이었는데요. <strong>전처리 개선, HyDE 도입, Cross-Encoder Reranker</strong> 3단계로 해결해서 MRR <span class="success">0.952</span>, 정답 순위가 항상 <span class="success">1위</span>가 됐습니다."</p>
+    <p>"Agent가 참고하는 규정과 문서를 <strong>정확히 찾아오는 것</strong>, 저희는 이걸 RAG 파이프라인이라고 부릅니다."</p>
+    <p class="action">(왼쪽 가리키며)</p>
+    <p>"사용자가 '연차 며칠 쓸 수 있어?'라고 물었는데, 규정에는 '유급휴가 부여 일수'라고 적혀있습니다. <strong>같은 내용인데 단어가 달라서</strong> 검색이 안 됐습니다."</p>
+    <p class="action">(가운데→오른쪽 순서대로)</p>
+    <p>"이러한 문제를 3단계로 해결했는데요 — 먼저 <strong>전처리</strong>로 규정을 조항 단위로 잘게 나눠서 검색 정밀도를 올리고, <strong>HyDE</strong>로 LLM이 '연차 며칠'을 '유급휴가 부여 일수'처럼 규정 문서 스타일로 바꿔서 검색하고, 마지막으로 <strong>Reranker</strong>가 진짜 관련 있는 걸 맨 위로 올려줍니다."</p>
+    <p>"이 3단계를 거치면서 <strong>정답 규정이 항상 1순위로 올라오게</strong> 됐습니다."</p>
   </div>
 </div>
 
 <div class="slide">
-  <div class="slide-header"><span class="slide-title">10. 데이터셋 현황</span><span class="slide-time">20초</span></div>
+  <div class="slide-header"><span class="slide-title">11. 데이터셋 현황</span><span class="slide-time">20초</span></div>
   <div class="keywords"><span class="kw">5개 태스크</span><span class="kw">수동 + AI Hub</span><span class="kw">두 트랙</span></div>
   <div class="script">
-    <p>"파인튜닝에 사용한 데이터 현황입니다."</p>
+    <p>"검색을 잡았으니, 이제 본격적으로 파인튜닝입니다. 데이터 현황을 보시면,"</p>
     <p class="action">(바 차트 가리키며)</p>
-    <p>"총 5개 태스크, Intent 약 4천 건부터 문서요약 1천 건까지. 수동 제작과 AI Hub + GPT 합성, 두 트랙으로 데이터를 만들었습니다."</p>
-    <p>"각 태스크별 자세한 과정은 다음 슬라이드에서 설명드리겠습니다."</p>
+    <p>"총 5개 태스크에 대해 <strong>약 1만 건의 학습 데이터</strong>를 구축했습니다. GPT 합성과 AI Hub 공공 데이터를 활용하되, 판단처럼 품질이 중요한 태스크는 <strong>직접 검수</strong>해서 품질을 확보했습니다. 이어서 각 태스크별 과정과 성과를 보여드리겠습니다."</p>
   </div>
 </div>
 
 <div class="slide">
-  <div class="slide-header"><span class="slide-title">11. sLLM 파인튜닝 성과 비교</span><span class="slide-time">15초</span></div>
+  <div class="slide-header"><span class="slide-title">12. sLLM 파인튜닝 성과 비교</span><span class="slide-time">15초</span></div>
   <div class="keywords"><span class="kw green">전체 개선 요약</span><span class="kw green">실무 투입 가능 멘트</span><span class="kw">빠르게 넘기기</span></div>
   <div class="script">
-    <p>"이 표가 전체 성과 요약인데요, 4개 태스크 모두 <strong>30~50%p씩 개선</strong>됐습니다. 즉, 기존에는 실무 투입이 어려웠던 수준에서 <strong>실제 서비스에 바로 쓸 수 있는 수준까지</strong> 끌어올린 겁니다. 자세한 과정은 다음 슬라이드에서 보시겠습니다."</p>
+    <p>"이 표가 전체 성과 요약인데요, 4개 태스크 모두 <strong>30~50%p씩 개선</strong>됐습니다. 기존에는 실무 투입이 어려웠던 수준에서 <strong>실제 서비스에 바로 쓸 수 있는 수준까지</strong> 끌어올렸습니다. 자세한 과정은 이어서 보여드리겠습니다."</p>
   </div>
 </div>
 
 <div class="slide">
-  <div class="slide-header"><span class="slide-title">11-1. Intent & Planner</span><span class="slide-time">40초</span></div>
+  <div class="slide-header"><span class="slide-title">12-1. Intent & Planner</span><span class="slide-time">40초</span></div>
   <div class="keywords"><span class="kw">왜 LLM 대신?</span><span class="kw green">100배 빠름</span><span class="kw red">KoELECTRA→roberta 교체</span><span class="kw">Planner도 개선</span></div>
   <div class="script">
-    <p>"먼저 Intent 분류입니다. 모든 채팅 메시지가 이걸 거쳐서 Agent로 라우팅됩니다."</p>
     <p class="action">(왼쪽 가리키며)</p>
-    <p>"왜 LLM이 아니라 별도 모델을 쓰냐면, 매 메시지마다 실행되니까 LLM으로 하면 1~2초씩 걸립니다. 저희는 roberta-large 5-Seed 앙상블로 <span class="success">19ms</span>, LLM 대비 100배 빠릅니다."</p>
-    <p class="action">(프로그레스바 가리키며)</p>
-    <p>"규칙 기반 <span class="error">41.7%</span>에서 KoELECTRA, roberta 순으로 올렸고 최종 <span class="success">91%</span>를 달성했습니다. 중간에 KoELECTRA가 과적합 문제가 있어서 roberta-large로 교체한 판단이 중요했습니다."</p>
-    <p>"오른쪽 Planner도 71%에서 <span class="success">87%</span>로 개선했습니다."</p>
+    <p>"먼저 <strong>Intent 분류</strong>입니다. 사용자 입력을 6종으로 분류해서 적절한 Agent로 보내는 역할인데요. 매 메시지마다 실행되니까 LLM으로 하면 1~2초씩 느리고, 규칙 기반은 <strong>정확도</strong> <span class="error">41.7%</span>밖에 안 됐습니다. <strong>빠르면서도 정확한 모델이 필요해서 직접 학습시켰습니다.</strong>"</p>
+    <p>"왼쪽 아래 그래프를 보시면 과정이 보이는데요 — 처음 규칙 기반은 41.7%로 절반도 못 맞췄고, KoELECTRA로 바꿨더니 <strong>76%</strong>까지 올랐는데 새로운 데이터에서 과적합이 생겼습니다. 그래서 roberta-large로 갈아타고, 큰 모델의 판단력을 <strong>증류</strong>해서 <strong>88%</strong>, 여기에 <strong>5개 모델이 다수결 투표</strong>하는 앙상블을 묶어서 최종 <span class="success">정확도 91%</span>를 달성했습니다. 배포 시에는 경량화해서 <strong>추론 19ms</strong>, LLM 대비 100배 빠릅니다."</p>
+    <p class="action">(오른쪽 가리키며)</p>
+    <p>"<strong>Planner</strong>는 '출장비 확인하고 보고서 작성해줘'처럼 복합 요청을 단계별로 분해하는 역할입니다. 기존에는 8B 모델이 복합 요청의 순서를 잘못 짜는 문제가 있었는데, 프롬프트 개선과 규칙 보정으로 71%에서 <span class="success">87%</span>까지 개선했습니다."</p>
   </div>
 </div>
 
 <div class="slide">
-  <div class="slide-header"><span class="slide-title">11-2. 문서생성 과정</span><span class="slide-time">30초</span></div>
+  <div class="slide-header"><span class="slide-title">12-2. 문서생성 과정</span><span class="slide-time">30초</span></div>
   <div class="keywords"><span class="kw red">필드 못 채움 + 환각</span><span class="kw green">3계층 필드 설계</span><span class="kw">Always/Priority/Optional</span></div>
   <div class="script">
-    <p>"문서생성 파인튜닝입니다."</p>
+    <p>"가장 환각이 심했던 문서생성부터 보겠습니다."</p>
     <p class="action">(왼쪽 가리키며)</p>
     <p>"목적은 사용자가 회의 내용만 입력하면 완성된 문서 초안을 생성하는 건데요, Base 모델은 핵심 필드 채움률이 <span class="error">34%</span>밖에 안 됐고 환각이 <span class="error">44%</span>였습니다."</p>
     <p class="action">(오른쪽 바 차트 가리키며)</p>
-    <p>"해결 핵심은 <strong>3계층 필드 설계</strong>입니다. Always 필드는 100% 항상 포함, Priority는 80%, Optional은 의도적으로 랜덤으로 비워서 '없으면 채우지 마'를 학습시켰습니다. 이게 환각 방지의 핵심이었습니다."</p>
+    <p>"해결 핵심은 <strong>학습 데이터의 프롬프트 설계</strong>입니다. Base 모델이 환각을 내는 이유가, <strong>빈 필드를 보면 뭐라도 채우려는 습성</strong> 때문이었거든요. 그래서 3계층 필드라는 구조를 만들었습니다. 핵심 필드는 Always로 100% 넣되, Optional 필드는 <strong>일부러 비워서</strong> 학습시켰습니다. 모델이 '근거 없으면 안 채워도 된다'를 <strong>빈칸을 보면서 직접 배우게</strong> 한 겁니다."</p>
   </div>
 </div>
 
 <div class="slide">
-  <div class="slide-header"><span class="slide-title">11-3. 문서생성 성과</span><span class="slide-time">40초</span></div>
+  <div class="slide-header"><span class="slide-title">12-3. 문서생성 성과</span><span class="slide-time">40초</span></div>
   <div class="keywords"><span class="kw">Before/After 카드</span><span class="kw red">예산 지어냄</span><span class="kw green">환각 59% 감소</span></div>
   <div class="script">
-    <p>"같은 입력을 넣었을 때 Before/After입니다."</p>
+    <p>"그 결과를 Before/After로 보시면,"</p>
     <p class="action">(왼쪽 카드 가리키며)</p>
-    <p>"Base 모델은 제목이 그냥 '회의록', 참석자 1명 누락, 내용도 한 줄, 그리고 입력에 없는 예산 <span class="error">2400만원을 지어냈습니다</span>."</p>
+    <p>"Base 모델은 제목이 그냥 '회의록', 참석자 1명 누락, 내용도 한 줄입니다. 그리고 입력에 없는 예산 <span class="error">2400만원을 지어냈습니다</span>. <strong>정보가 없으면 비워야 하는데 지어내는 게 환각입니다.</strong>"</p>
     <p class="action">(오른쪽 카드 가리키며)</p>
-    <p>"LoRA 모델은 제목이 구체적이고, 참석자 3명 정확 추출, 결정사항과 Action Item까지 정확하게 채웠습니다."</p>
+    <p>"LoRA 모델은 제목이 구체적이고, 참석자 3명 정확 추출, 결정사항과 Action Item까지 채웠습니다. <strong>없는 정보는 채우지 않았고요.</strong>"</p>
     <p class="action">(하단 테이블 가리키며)</p>
-    <p>"정량적으로 ROUGE-L 43% 향상, 환각이 44%에서 17.9%로 <span class="success">59% 감소</span>했습니다."</p>
+    <p>"정량적으로 <strong>내용 유사도가 43% 향상</strong>, 환각이 44%에서 17.9%로 <span class="success">59% 감소</span>했습니다."</p>
   </div>
 </div>
 
 <div class="slide">
-  <div class="slide-header"><span class="slide-title">11-4. 문서요약 과정</span><span class="slide-time">30초</span></div>
+  <div class="slide-header"><span class="slide-title">12-4. 문서요약 과정</span><span class="slide-time">30초</span></div>
   <div class="keywords"><span class="kw yellow">양호↔서비스 불일치</span><span class="kw red">없는 카테고리</span><span class="kw red">장황</span><span class="kw green">3줄 포맷 통일</span></div>
   <div class="script">
-    <p>"문서요약은 스토리가 좀 다릅니다. Base 모델이 요약 품질 자체는 양호했습니다."</p>
-    <p>"문제는 <strong>서비스에 안 맞는다</strong>는 거였습니다. 존재하지 않는 카테고리를 만들어서 문서관리 페이지 필터가 깨지고, 274자로 장황했습니다."</p>
-    <p>"그래서 출력 포맷을 분류, 태그, 요약 3줄 구조로 통일하고 7종 분류를 명시해서 학습시켰습니다."</p>
+    <p>"이번엔 문서요약인데요, 이건 스토리가 좀 다릅니다. <strong>목적은 문서를 업로드하면 자동으로 분류하고 키워드를 뽑고 요약하는 건데요,</strong> Base 모델이 요약 품질 자체는 양호했습니다."</p>
+    <p>"문제는 <strong>서비스에 안 맞는다</strong>는 거였습니다. 존재하지 않는 카테고리를 만들어서 문서관리 페이지 필터가 깨지고, 274자로 너무 길었습니다."</p>
+    <p>"그래서 프롬프트에서 출력 포맷을 <strong>분류, 태그, 요약 3줄로 강제</strong>하고, 허용되는 카테고리 7종을 <strong>목록으로 명시</strong>했습니다. 모델이 이 목록 밖으로 벗어나지 못하게 <strong>선택지를 제한</strong>한 거죠."</p>
   </div>
 </div>
 
 <div class="slide">
-  <div class="slide-header"><span class="slide-title">11-5. 문서요약 성과</span><span class="slide-time">30초</span></div>
+  <div class="slide-header"><span class="slide-title">12-5. 문서요약 성과</span><span class="slide-time">30초</span></div>
   <div class="keywords"><span class="kw red">뉴스기사→</span><span class="kw green">보고서 정확</span><span class="kw green">간결</span><span class="kw">UI 목업 = 서비스 반영</span></div>
   <div class="script">
     <p class="action">(Before/After 가리키며)</p>
-    <p>"Base는 '<span class="error">뉴스기사</span>'라는 없는 카테고리를 출력하고 274자로 장황한데, LoRA는 '<span class="success">보고서</span>'로 정확히 분류하고 132자로 핵심만 간결합니다."</p>
+    <p>"성과를 보시면, Base는 '<span class="error">뉴스기사</span>'라는 없는 카테고리를 출력하고 274자로 너무 긴데, LoRA는 '<span class="success">보고서</span>'로 정확히 분류하고 132자로 <strong>핵심만</strong> 간결합니다."</p>
     <p class="action">(UI 목업 가리키며)</p>
-    <p>"이 결과가 실제 문서관리 페이지에서 카테고리 필터, 태그 검색, 미리보기 텍스트로 바로 사용됩니다. 분류 유효율이 85%에서 <span class="success">100%</span>가 됐습니다."</p>
+    <p>"이 결과가 실제 문서관리 페이지에서 카테고리 필터, 태그 검색, 미리보기 텍스트로 바로 사용됩니다. 분류 유효율이 85%에서 <span class="success">100%</span>, <strong>잘못된 카테고리가 완전히 사라진 겁니다.</strong>"</p>
   </div>
 </div>
 
 <div class="slide">
-  <div class="slide-header"><span class="slide-title">11-6. 판단 Agent 과정</span><span class="slide-time">50초</span></div>
+  <div class="slide-header"><span class="slide-title">12-6. 판단 Agent 과정</span><span class="slide-time">50초</span></div>
   <div class="keywords"><span class="kw red">문제 심각</span><span class="kw">3단계 실험</span><span class="kw red">RAG 넣으면 급락</span><span class="kw green">학습=하드코딩, 서빙=RAG</span></div>
   <div class="script">
-    <p>"판단 Agent 파인튜닝이 가장 드라마틱한 스토리를 갖고 있습니다."</p>
+    <p>"마지막으로 판단 Agent입니다. 실험 과정이 가장 흥미롭습니다."</p>
     <p class="action">(왼쪽 가리키며)</p>
-    <p>"Base 모델은 정확도 <span class="error">37%</span>, 환각 조항 인용, confidence 과신까지 문제가 심각했습니다."</p>
+    <p>"Base 모델은 정확도 <span class="error">37%</span>, 환각 조항 인용에, confidence는 과신까지 — 문제가 심각했습니다."</p>
     <p class="action">(오른쪽 실험 여정 가리키며)</p>
-    <p>"3단계 실험을 했는데요. v1에서 하드코딩 규정으로 학습해서 86.6%를 찍었고, v2에서 'RAG 검색 결과를 학습에 넣으면 더 좋지 않을까?' 시도해봤더니 <strong>오히려 <span class="error">-9.8%p 급락</span></strong>했습니다. RAG 노이즈가 라벨을 모순시킨 겁니다."</p>
-    <p>"여기서 핵심 인사이트를 얻었습니다 — <strong>학습은 하드코딩으로 깨끗한 신호를 주고, 서빙할 때만 RAG를 쓰자</strong>. 데이터 양보다 질이 중요하다는 걸 실험으로 증명한 거죠."</p>
-    <p>"v3에서 약점 카테고리를 집중 보강해서 최종 <span class="success">85.4%</span>를 달성했습니다."</p>
+    <p>"3단계 실험을 했는데요. v1에서 정확한 규정 원문을 직접 넣어서 학습해 86.6%를 찍었고, v2에서 'RAG 검색 결과를 학습에 넣으면 더 좋지 않을까?' 시도해봤더니 <strong>오히려 <span class="error">-9.8%p 급락</span></strong>했습니다. 검색 결과에 섞인 노이즈가 오히려 학습을 방해했습니다."</p>
+    <p>"이 실패에서 교훈을 얻었습니다 — <strong>학습할 때는 정확한 규정 원문을 넣고, 서빙할 때만 RAG를 쓰자</strong>. 양이 아니라 질이었습니다."</p>
+    <p>"v3에서는 v2에서 드러난 약점 카테고리를 집중 보강해서 최종 <span class="success">85.4%</span>를 달성했습니다."</p>
   </div>
 </div>
 
 <div class="slide">
-  <div class="slide-header"><span class="slide-title">11-7. 판단 Agent 성과</span><span class="slide-time">30초</span></div>
+  <div class="slide-header"><span class="slide-title">12-7. 판단 Agent 성과</span><span class="slide-time">30초</span></div>
   <div class="keywords"><span class="kw red">yes 오답→</span><span class="kw green">conditional 정답</span><span class="kw red">환각 조항→</span><span class="kw green">실존 조항</span><span class="kw green">no_regulation 대폭 개선</span></div>
   <div class="script">
     <p class="action">(Before/After 가리키며)</p>
-    <p>"같은 질문에 Base는 <span class="error">yes</span>라고 오답을 내면서 존재하지 않는 제12조를 인용했는데, LoRA는 <span class="success">conditional</span>로 정답을 맞추고 실존하는 정보시스템 제17조를 근거로 제시합니다."</p>
+    <p>"성과를 보시면, 같은 질문에 Base는 <span class="error">yes</span>라고 오답을 내면서 존재하지 않는 제12조를 인용했는데, LoRA는 <span class="success">conditional</span>로 정답을 맞추고 실존하는 정보시스템 제17조를 근거로 제시합니다."</p>
     <p class="action">(테이블 가리키며)</p>
-    <p>"특히 no_regulation 인식률이 <span class="error">6%</span>에서 <span class="success">97%</span>로, 91%p 향상된 게 가장 큰 성과입니다."</p>
+    <p>"특히 <strong>'해당 규정 없음'</strong>을 인식하는 비율이 <span class="error">6%</span>에서 <span class="success">97%</span>로, 91%p 향상된 게 가장 큰 성과입니다."</p>
   </div>
 </div>
 
@@ -188,15 +190,15 @@
 </div>
 
 <div class="slide trouble">
-  <div class="slide-header"><span class="slide-title">12. Trouble Shooting & 한계점</span><span class="slide-time">1분</span></div>
+  <div class="slide-header"><span class="slide-title">13. Trouble Shooting & 한계점</span><span class="slide-time">1분</span></div>
   <div class="keywords"><span class="kw">과적합/RAG급락/과신</span><span class="kw yellow">한계: Cond·3step·표</span><span class="kw green">향후: 데이터+모델</span></div>
   <div class="script">
     <p class="action">(테이블 가리키며)</p>
-    <p>"개발 과정에서 해결한 핵심 이슈 5건인데요, 3가지만 짚으면 — <strong>Intent 과적합</strong>은 모델을 roberta-large로 교체해서 해소했고, <strong>RAG 학습 급락</strong>은 하드코딩 전략으로 전환, <strong>Confidence 과신</strong>은 5-factor 보정으로 해결했습니다. 나머지는 표에 정리해뒀습니다."</p>
+    <p>"개발 과정에서 해결한 핵심 이슈 5건인데요, 3가지만 짚으면 — <strong>Intent 과적합</strong>은 모델을 roberta-large로 교체해서 해소했고, <strong>RAG 학습 급락</strong>은 규정 원문 직접 입력 전략으로 전환, <strong>Confidence 과신</strong>은 RAG 품질 등 5가지 요소로 보정해서 해결했습니다. 나머지는 표에 정리해뒀습니다."</p>
     <p class="action">(한계점 가리키며)</p>
-    <p>"남은 한계로는 Conditional 정확도가 <span class="error">78%</span>로 목표 대비 부족하고, 3-step 복합 요청이 <span class="error">66.7%</span>, v4 실험에서 채움률을 올리면 환각도 같이 올라가는 트레이드오프가 있었습니다. 그리고 커스텀 템플릿에서 복잡한 표 양식은 Placeholder 방식으로 완벽히 대응이 어렵다는 한계가 있습니다."</p>
+    <p>"남은 한계로는 Conditional 정확도가 <span class="error">78%</span>로 목표 대비 부족하고, 문서생성에서 채움률을 올리면 환각도 같이 올라가는 트레이드오프가 있었습니다."</p>
     <p class="action">(향후 방향 가리키며)</p>
-    <p>"향후에는 Conditional 데이터 정밀 보강, 다양한 문서 양식 기반으로 학습 데이터를 확장해서 더 많은 양식을 지원하고, 모델 스케일업과 Reranker 경량화를 계획하고 있습니다."</p>
+    <p>"향후에는 Conditional 경계 데이터를 집중 보강하고, 모델 스케일업도 계획하고 있습니다."</p>
     <p>"저희 DUDE가 Base 모델의 한계를 파인튜닝으로 어떻게 극복했는지 보여드렸습니다. <strong>감사합니다.</strong>"</p>
   </div>
 </div>

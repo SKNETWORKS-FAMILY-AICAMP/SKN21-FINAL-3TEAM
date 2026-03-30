@@ -1,0 +1,41 @@
+import sys
+sys.path.insert(0, "/home/ubuntu/SKN21-FINAL-3TEAM")
+from ai.agents.intent_classifier import get_classifier
+c = get_classifier()
+queries = [
+    ("연차 사용 가능한지 확인해줘","judgment"),("재택근무 신청 조건이 뭐야?","judgment"),("경조사 휴가 며칠까지 가능해?","judgment"),("야근 수당 지급 기준 알려줘","judgment"),("겸업 가능한지 확인해줘","judgment"),("정보보안 위반하면 어떻게 돼?","judgment"),("출장비 정산 한도가 얼마야?","judgment"),("병가 사용 조건이 어떻게 돼?","judgment"),("유급휴가 일수 알려줘","judgment"),("복장 규정 위반 시 불이익 있어?","judgment"),("교통비 지원 기준이 뭐야?","judgment"),("육아휴직 신청 자격 조건 알려줘","judgment"),("연봉 협상 시기가 언제야?","judgment"),("퇴직금 계산 기준 알려줘","judgment"),("시간외근무 승인 절차가 어떻게 돼?","judgment"),("휴일근무 수당은 몇 배야?","judgment"),("개인정보 유출 시 처벌 기준은?","judgment"),("인사평가 기준이 어떻게 되나요?","judgment"),("점심시간 외출 가능한가요?","judgment"),("회사 차량 사적 사용 가능해?","judgment"),("출산휴가 기간이 어떻게 되나요?","judgment"),("법인카드 사용 범위 알려줘","judgment"),("근무지 변경 신청 가능한가요?","judgment"),("징계 절차가 어떻게 진행돼?","judgment"),("수습 기간 중 해고 가능한가요?","judgment"),("통신비 지원 받을 수 있어?","judgment"),("경력 인정 기준이 뭐야?","judgment"),("직급 승진 요건 알려줘","judgment"),("보안 서약서 작성 의무 있어?","judgment"),("파견근무 시 수당 기준은?","judgment"),
+    ("지난달 매출 보고서 찾아줘","doc_retrieve"),("프로젝트 기획안 검색해줘","doc_retrieve"),("회의록 조회해줘","doc_retrieve"),("마케팅 전략 문서 보여줘","doc_retrieve"),("분기별 실적 보고서 찾아봐","doc_retrieve"),("신입사원 교육 자료 검색","doc_retrieve"),("거래처 계약서 찾아줘","doc_retrieve"),("이 문서 요약해줘","doc_retrieve"),("작년 사업계획서 보여줘","doc_retrieve"),("팀 주간보고 조회해줘","doc_retrieve"),("고객 분석 자료 찾아줘","doc_retrieve"),("예산안 문서 검색해줘","doc_retrieve"),("기술 검토 보고서 보여줘","doc_retrieve"),("인수인계 문서 찾아봐","doc_retrieve"),("입사 지원서 양식 찾아줘","doc_retrieve"),("월간 KPI 보고서 조회","doc_retrieve"),("제안서 샘플 보여줘","doc_retrieve"),("비용 정산 내역 찾아줘","doc_retrieve"),("출장 결과 보고서 검색해줘","doc_retrieve"),("조직도 문서 보여줘","doc_retrieve"),("업무 매뉴얼 찾아줘","doc_retrieve"),("세미나 발표 자료 검색","doc_retrieve"),("연구 보고서 조회해줘","doc_retrieve"),("계약 조건 문서 찾아봐","doc_retrieve"),("이전 회의 안건 보여줘","doc_retrieve"),("프로젝트 일정표 찾아줘","doc_retrieve"),("품질 관리 보고서 검색","doc_retrieve"),("납품 실적 자료 조회해줘","doc_retrieve"),("직원 만족도 조사 결과 보여줘","doc_retrieve"),("지출 내역 문서 찾아줘","doc_retrieve"),
+    ("휴가 관련 규정 확인해줘","ambiguous"),("퇴직금 규정 알려줘","ambiguous"),("경조사비 얼마까지 받을 수 있어?","ambiguous"),("출장 규정 알려줘","ambiguous"),("복리후생 관련 규정 보여줘","ambiguous"),("사내 복지 기준 문서 보여줘","ambiguous"),("인사 규정 문서 찾아줘","ambiguous"),("근태 관리 규정 알려줘","ambiguous"),("보안 규정 내용 보여줘","ambiguous"),("출장비 관련 자료 찾아봐","ambiguous"),("연차 규정 문서 검색해줘","ambiguous"),("수당 관련 규정 정리해줘","ambiguous"),("복지 제도 관련 자료 보여줘","ambiguous"),("교육 훈련 규정 찾아줘","ambiguous"),("안전 관리 규정 확인해줘","ambiguous"),("채용 절차 규정 보여줘","ambiguous"),("급여 체계 규정 알려줘","ambiguous"),("퇴직 관련 규정 문서 조회","ambiguous"),("근무 시간 규정 찾아봐","ambiguous"),("직원 복지 규정 내용 알려줘","ambiguous"),("출산 관련 지원 규정 보여줘","ambiguous"),("경비 처리 기준 문서 찾아줘","ambiguous"),("인센티브 지급 규정 알려줘","ambiguous"),("해외 출장 규정 확인해줘","ambiguous"),("성과 평가 규정 보여줘","ambiguous"),("보안 위반 처리 규정 찾아줘","ambiguous"),("휴직 관련 규정 문서 보여줘","ambiguous"),("사내 교육비 지원 규정 알려줘","ambiguous"),("통근 수당 규정 찾아봐","ambiguous"),("연말 상여금 기준 알려줘","ambiguous"),("업무용 차량 이용 규정 확인","ambiguous"),("직무 전환 규정 보여줘","ambiguous"),("정년 퇴직 규정 알려줘","ambiguous"),("비밀유지 규정 내용 찾아줘","ambiguous"),("사내 동호회 지원 규정 보여줘","ambiguous"),("건강검진 지원 규정 알려줘","ambiguous"),("자기개발비 지원 기준 찾아줘","ambiguous"),("주차장 이용 규정 확인해줘","ambiguous"),("사택 지원 규정 보여줘","ambiguous"),("학자금 지원 규정 알려줘","ambiguous"),
+    ("내일 오전 10시에 회의 잡아줘","schedule_add"),("금요일에 팀 미팅 등록해줘","schedule_add"),("다음 주 월요일 출장 일정 추가","schedule_add"),("3월 15일에 면접 잡아줘","schedule_add"),("오후 3시 고객 미팅 등록","schedule_add"),("내일 점심 약속 추가해줘","schedule_add"),("수요일 오전 세미나 일정 잡아줘","schedule_add"),("프로젝트 킥오프 일정 등록해줘","schedule_add"),("이번 주 금요일 회식 잡아줘","schedule_add"),("다음 달 워크숍 일정 추가해줘","schedule_add"),
+    ("이번 주 일정 보여줘","schedule_view"),("내일 회의 있어?","schedule_view"),("다음 주 스케줄 확인해줘","schedule_view"),("오늘 남은 일정 뭐야?","schedule_view"),("3월 일정 조회해줘","schedule_view"),("팀 회의 언제야?","schedule_view"),("이번 달 출장 일정 보여줘","schedule_view"),("금요일 오후 일정 있어?","schedule_view"),("다음 주 미팅 일정 확인","schedule_view"),("휴가 일정 조회해줘","schedule_view"),
+    ("주간 보고서 작성해줘","doc_generate"),("회의록 만들어줘","doc_generate"),("프로젝트 제안서 작성해줘","doc_generate"),("업무 일지 작성해줘","doc_generate"),("출장 보고서 만들어줘","doc_generate"),("팀 소개 문서 작성해줘","doc_generate"),("월간 실적 보고서 만들어줘","doc_generate"),("신규 사업 기획안 작성해줘","doc_generate"),("교육 결과 보고서 만들어줘","doc_generate"),("고객 응대 매뉴얼 작성해줘","doc_generate"),
+]
+
+results = []
+for q, expected in queries:
+    r = c.predict_multilabel(q)
+    ap = r.get("all_probs", {})
+    if not ap: continue
+    sp = sorted(ap.items(), key=lambda x: x[1], reverse=True)
+    gap = sp[0][1] - sp[1][1]
+    final = r["primary_intent"]
+    results.append({"q":q,"exp":expected,"final":final,"t1":sp[0][0],"t1p":sp[0][1],"t2":sp[1][0],"t2p":sp[1][1],"gap":gap,"rule":(sp[0][0]!=final)})
+
+for g in ["judgment","doc_retrieve","ambiguous","schedule_add","schedule_view","doc_generate"]:
+    grp=[r for r in results if r["exp"]==g]
+    if not grp: continue
+    gaps=[r["gap"] for r in grp]
+    rc=sum(1 for r in grp if r["rule"])
+    print(f"=== {g} ({len(grp)}) gap: min={min(gaps):.3f} max={max(gaps):.3f} avg={sum(gaps)/len(gaps):.3f} rule:{rc}")
+    for r in sorted(grp,key=lambda x:x["gap"]):
+        f="RULE" if r["rule"] else "    "
+        print(f'  {r["gap"]:.3f} {f} raw:{r["t1"]:12s}({r["t1p"]:.3f}) vs {r["t2"]:12s}({r["t2p"]:.3f}) -> {r["final"]:12s} | {r["q"]}')
+    print()
+
+print("=== THRESHOLD ===")
+jg=[r["gap"] for r in results if r["exp"]=="judgment"]
+dg=[r["gap"] for r in results if r["exp"]=="doc_retrieve"]
+ag=[r["gap"] for r in results if r["exp"]=="ambiguous"]
+og=[r["gap"] for r in results if r["exp"] in ("schedule_add","schedule_view","doc_generate")]
+for th in [0.30,0.35,0.40,0.45,0.50,0.55,0.60,0.65,0.70]:
+    print(f"  th={th:.2f} | judg:{sum(1 for g in jg if g<th)}/30 doc:{sum(1 for g in dg if g<th)}/30 ambig:{sum(1 for g in ag if g<th)}/40 other:{sum(1 for g in og if g<th)}/30")
