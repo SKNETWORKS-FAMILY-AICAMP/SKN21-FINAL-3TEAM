@@ -4483,6 +4483,17 @@ sub_state = {**initial_state, "user_input": sq_query, "stream_mode": False, "for
 - **근본 원인**: LLM이 `time_min=2026-03-30T00:00:00Z`(UTC)를 출력하는데, DB에는 KST naive datetime으로 저장됨. 기존 코드가 UTC 문자열에서 timezone만 제거하고 비교 → 3/30 00:15(KST)가 UTC 기준 3/29 15:15이 되어 `t_min(3/30 00:00)` 보다 작아서 필터 탈락
 - **수정**: `_utc_to_kst_naive()` 헬퍼 함수 추가 — UTC(Z) 파싱 후 +9시간 보정하여 KST naive datetime으로 변환한 뒤 DB 값과 비교
 
+#### 3) 발표자료 nav dots JS ids 배열 순서 수정 (`presentation_v4_최종.html`)
+
+- **문제**: 스크롤 시 nav dots 활성 표시가 실제 섹션과 어긋남
+- **원인**: JS `ids` 배열에서 `team`이 7번째에 있었으나 HTML nav dots에서는 3번째, `demo`는 아예 빠져있음
+- **수정**: `ids` 배열을 nav dots HTML 순서와 1:1 매칭되도록 재정렬 + `demo` 추가 (27개 → 28개)
+
+#### 4) 판단 Agent 5-Factor → 6-Factor 수정 (`presentation_v4_최종.html`)
+
+- **문제**: Confidence 보정 팩터가 가산 3개 + 감점 3개 = 6개인데, 발표자료에 5-Factor로 표기되어 있었음
+- **수정**: 5-Factor → 6-Factor 일괄 변경 (6곳)
+
 ### 다음 할 일
 
 - [ ] EC2 배포 후 팀 일정 + 당일 일정 조회 동작 확인
