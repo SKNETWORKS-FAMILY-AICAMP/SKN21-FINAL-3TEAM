@@ -51,7 +51,6 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
   <a href="#agent-document-pipelines" class="nav-dot"><span class="nav-tooltip">Document</span></a>
   <a href="#agent-schedule" class="nav-dot"><span class="nav-tooltip">Schedule</span></a>
   <a href="#base-limit" class="nav-dot"><span class="nav-tooltip">Base 한계</span></a>
-  <a href="#rag-pipeline" class="nav-dot"><span class="nav-tooltip">RAG 파이프라인</span></a>
   <a href="#data" class="nav-dot"><span class="nav-tooltip">데이터셋</span></a>
   <a href="#ft-results" class="nav-dot"><span class="nav-tooltip">성과 비교</span></a>
   <a href="#finetuning" class="nav-dot"><span class="nav-tooltip">Intent&amp;Planner</span></a>
@@ -830,407 +829,407 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
 <!-- ========== 08-1. JUDGMENT AGENT 상세 ========== -->
 <section id="agent-judgment" class="py-8 bg-white">
   <div class="max-w-5xl mx-auto px-6">
-    <div class="text-center mb-5"><span class="tag bg-primary-50 text-primary-700 mb-2">08-1</span><h2 class="font-display text-2xl md:text-3xl font-bold text-primary-900 mt-2">Judgment Agent 상세</h2><p class="text-neutral-sub text-sm mt-1">사내규정 기반 판단 Agent &mdash; "이거 해도 돼?"에 근거 있는 답변</p></div>
+    <div class="text-center mb-5"><span class="tag bg-primary-50 text-primary-700 mb-2">08-1</span><h2 class="font-display text-2xl md:text-3xl font-bold text-primary-900 mt-2">Judgment Agent 상세</h2><p class="text-neutral-sub text-sm mt-1">사내규정 기반 판단 Agent</p></div>
 
-    <!-- 상단: 채팅 UI 목업 (full-width) -->
-    <div class="bg-surface-main rounded-2xl p-6 border border-neutral-divider mb-5">
-      <div class="max-w-2xl mx-auto">
-        <!-- 사용자 질문 -->
-        <div class="flex justify-end mb-4">
-          <div class="chat-bubble-user px-5 py-3 max-w-[75%]">
-            <p class="text-sm text-primary-900 font-medium">인턴에게 AWS 콘솔 접근 권한을 줘도 되나요?</p>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+      <!-- 왼쪽: 파이프라인 흐름 -->
+      <div class="bg-surface-main rounded-2xl p-5 border border-neutral-divider">
+        <h3 class="font-semibold text-primary-900 text-sm mb-3">파이프라인</h3>
+        <div class="space-y-2">
+          <div class="bg-white border border-neutral-divider rounded-lg px-4 py-2 text-center">
+            <p class="font-semibold text-primary-900 text-xs">사용자 질의</p>
+          </div>
+          <div class="flex justify-center"><svg class="w-3 h-4 text-neutral-border" viewBox="0 0 12 16"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" stroke-width="1.5"/><polygon points="3,11 9,11 6,16" fill="currentColor"/></svg></div>
+          <div class="bg-primary-50 border border-primary-100 rounded-lg px-4 py-2 text-center">
+            <p class="font-semibold text-primary-700 text-xs">RAG 하이브리드 검색</p>
+            <p class="text-[10px] text-neutral-muted">BM25 + Vector &rarr; RRF 융합 &rarr; Reranker</p>
+          </div>
+          <div class="flex justify-center"><svg class="w-3 h-4 text-neutral-border" viewBox="0 0 12 16"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" stroke-width="1.5"/><polygon points="3,11 9,11 6,16" fill="currentColor"/></svg></div>
+          <div class="bg-primary-700 rounded-lg px-4 py-2 text-center">
+            <p class="font-semibold text-white text-xs">sLLM 판단 (LoRA v1)</p>
+          </div>
+          <div class="flex justify-center"><svg class="w-3 h-4 text-neutral-border" viewBox="0 0 12 16"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" stroke-width="1.5"/><polygon points="3,11 9,11 6,16" fill="currentColor"/></svg></div>
+          <div class="bg-success/10 border border-success/20 rounded-lg px-4 py-2 text-center">
+            <p class="font-semibold text-success text-xs">4중 보조장치 + Confidence 보정</p>
+          </div>
+          <div class="flex justify-center"><svg class="w-3 h-4 text-neutral-border" viewBox="0 0 12 16"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" stroke-width="1.5"/><polygon points="3,11 9,11 6,16" fill="currentColor"/></svg></div>
+          <div class="bg-white border border-neutral-divider rounded-lg px-4 py-2 text-center">
+            <p class="font-semibold text-primary-900 text-xs">최종 응답</p>
           </div>
         </div>
-        <!-- Agent 응답 -->
-        <div class="flex justify-start">
-          <div class="chat-bubble-bot px-5 py-4 max-w-[85%]">
-            <div class="space-y-2.5">
-              <div class="flex items-center gap-2">
-                <span class="text-[10px] font-bold text-white bg-warning rounded px-2.5 py-1">conditional</span>
-                <span class="text-sm font-bold text-primary-900">조건부 허용</span>
-                <span class="text-[10px] text-neutral-muted ml-auto">confidence 0.78</span>
-              </div>
-              <p class="text-xs text-neutral-sub leading-relaxed">정보시스템 제17조에 따라 인턴은 <strong>부서장 승인 후 제한된 범위</strong>에서 시스템 접근이 가능합니다.</p>
-              <div class="border-t border-neutral-divider pt-2.5 grid grid-cols-3 gap-3">
-                <div><p class="text-[9px] text-neutral-muted mb-0.5">근거 조항</p><p class="text-[11px] text-primary-900 font-medium">정보시스템 제17조<br>접근통제 제12조</p></div>
-                <div><p class="text-[9px] text-neutral-muted mb-0.5">조건</p><p class="text-[11px] text-primary-900 font-medium">보안 교육 이수<br>부서장 승인</p></div>
-                <div><p class="text-[9px] text-neutral-muted mb-0.5">대안</p><p class="text-[11px] text-primary-900 font-medium">테스트 환경<br>한정 접근</p></div>
-              </div>
+      </div>
+
+      <!-- 오른쪽: Base vs LoRA -->
+      <div class="bg-surface-main rounded-2xl p-5 border border-neutral-divider">
+        <h3 class="font-semibold text-primary-900 text-sm mb-2">Base vs LoRA 출력 비교</h3>
+        <p class="text-[11px] text-neutral-muted mb-3">Q: "인턴에게 AWS 콘솔 접근 권한을 줘도 되나요?"</p>
+        <div class="space-y-2">
+          <div class="bg-error/5 border border-error/20 rounded-xl p-3">
+            <p class="text-[10px] font-bold text-error mb-1">Base (37.2%)</p>
+            <div class="space-y-0.5 text-[11px] text-neutral-sub">
+              <p>result: <strong class="text-error">"yes"</strong> <span class="text-error">&cross;</span> <span class="text-[10px] text-neutral-muted">(정답: conditional)</span></p>
+              <p>confidence: <strong class="text-error">0.92</strong> <span class="text-[10px] text-neutral-muted">(근거 없는 과신)</span></p>
+              <p>regulations: <strong class="text-error">"제12조"</strong> <span class="text-[10px] text-neutral-muted">(존재하지 않는 조항)</span></p>
+            </div>
+          </div>
+          <div class="bg-success/5 border border-success/20 rounded-xl p-3">
+            <p class="text-[10px] font-bold text-success mb-1">LoRA v1_judgment (85.4%)</p>
+            <div class="space-y-0.5 text-[11px] text-neutral-sub">
+              <p>result: <strong class="text-success">"conditional"</strong> <span class="text-success">&check;</span></p>
+              <p>confidence: <strong class="text-success">0.78</strong> <span class="text-[10px] text-neutral-muted">(불확실성 반영)</span></p>
+              <p>regulations: <strong class="text-success">정보보안규정 제25조, 인사규정 제8조</strong> <span class="text-success">&check;</span></p>
+              <p>conditions: <strong>"보안 교육 이수 + 부서장 승인"</strong></p>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 하단: 판단 결과 4종 + 2가지 동작 모드 (가로 배치) -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-      <!-- 판단 결과 4종 (8칸) -->
-      <div class="lg:col-span-8">
-        <h3 class="font-semibold text-primary-900 text-sm mb-2">판단 결과 4종 <span class="text-xs text-neutral-muted font-normal">&mdash; 모든 판단에 근거 조항 + confidence + reasoning 포함</span></h3>
-        <div class="grid grid-cols-4 gap-2">
-          <div class="bg-success/10 border border-success/20 rounded-lg p-3 text-center">
-            <p class="font-bold text-success text-sm">yes</p>
-            <p class="text-[10px] text-neutral-sub mt-1">허용 + 근거 조항</p>
-          </div>
-          <div class="bg-error/10 border border-error/20 rounded-lg p-3 text-center">
-            <p class="font-bold text-error text-sm">no</p>
-            <p class="text-[10px] text-neutral-sub mt-1">금지 + 사유 + 대안</p>
-          </div>
-          <div class="bg-warning/10 border border-warning/20 rounded-lg p-3 text-center">
-            <p class="font-bold text-warning text-sm">conditional</p>
-            <p class="text-[10px] text-neutral-sub mt-1">조건부 + 조건 명시</p>
-          </div>
-          <div class="bg-primary-50 border border-primary-100 rounded-lg p-3 text-center">
-            <p class="font-bold text-primary-700 text-sm">no_regulation</p>
-            <p class="text-[10px] text-neutral-sub mt-1">관련 규정 없음</p>
-          </div>
+    <!-- 하단: RAGAS + 핵심 지표 가로 배치 -->
+    <div class="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
+      <div class="bg-surface-main rounded-2xl p-4 border border-neutral-divider flex flex-col">
+        <h3 class="font-semibold text-primary-900 text-sm mb-2">RAG 검색 품질 (RAGAS)</h3>
+        <div class="grid grid-cols-2 gap-2 flex-1">
+          <div class="bg-white rounded-lg px-2 py-3 text-center"><p class="font-bold text-primary-700 text-base">0.944</p><p class="text-[10px] text-neutral-muted mt-0.5">Context Recall</p></div>
+          <div class="bg-white rounded-lg px-2 py-3 text-center"><p class="font-bold text-primary-700 text-base">0.889</p><p class="text-[10px] text-neutral-muted mt-0.5">Context Precision</p></div>
+          <div class="bg-white rounded-lg px-2 py-3 text-center"><p class="font-bold text-primary-700 text-base">93.3%</p><p class="text-[10px] text-neutral-muted mt-0.5">Hit Rate</p></div>
+          <div class="bg-white rounded-lg px-2 py-3 text-center"><p class="font-bold text-primary-700 text-base">0.952</p><p class="text-[10px] text-neutral-muted mt-0.5">MRR (Reranker)</p></div>
         </div>
       </div>
-      <!-- 2가지 동작 모드 (4칸) -->
-      <div class="lg:col-span-4">
-        <h3 class="font-semibold text-primary-900 text-sm mb-2">2가지 동작 모드</h3>
-        <div class="space-y-2">
-          <div class="bg-white border border-success/20 rounded-lg p-2.5">
-            <div class="flex items-center gap-2">
-              <span class="text-[9px] font-bold text-white bg-success rounded px-2 py-0.5">스트리밍</span>
-              <p class="text-[10px] font-bold text-primary-900">2단계 처리</p>
-            </div>
-            <p class="text-[9px] text-neutral-muted mt-1 pl-12">1) sLLM &rarr; JSON 판단</p>
-            <p class="text-[9px] text-neutral-muted pl-12">2) Base Kanana &rarr; 자연어 설명 스트리밍</p>
-          </div>
-          <div class="bg-white border border-primary-100 rounded-lg p-2.5">
-            <div class="flex items-center gap-2">
-              <span class="text-[9px] font-bold text-white bg-primary-700 rounded px-2 py-0.5">비스트리밍</span>
-              <p class="text-[10px] font-bold text-primary-900">다른 Agent와 협업</p>
-            </div>
-            <p class="text-[9px] text-neutral-muted mt-1 pl-12">문서 Agent · 일정 Agent에서 규정 검사 호출</p>
-          </div>
-        </div>
+      <div class="bg-surface-main rounded-2xl p-4 border border-neutral-divider flex flex-col">
+        <h3 class="font-semibold text-primary-900 text-sm mb-2">핵심 지표</h3>
+        <table class="w-full text-xs flex-1">
+          <thead><tr class="border-b border-neutral-divider"><th class="text-left py-2 text-neutral-muted font-medium">항목</th><th class="text-center py-2 text-neutral-muted font-medium">Base</th><th class="text-center py-2 text-neutral-muted font-medium">LoRA v1</th><th class="text-center py-2 text-neutral-muted font-medium">변화</th></tr></thead>
+          <tbody>
+            <tr class="border-b border-neutral-divider/50"><td class="py-2.5 font-medium text-primary-900">정확도</td><td class="text-center text-error">37.2%</td><td class="text-center text-success font-bold">85.4%</td><td class="text-center text-success font-bold">+48.2%p</td></tr>
+            <tr class="border-b border-neutral-divider/50"><td class="py-2.5 font-medium text-primary-900">JSON 유효율</td><td class="text-center text-error">70.4%</td><td class="text-center text-success font-bold">97.6%</td><td class="text-center text-success font-bold">+27.2%p</td></tr>
+            <tr><td class="py-2.5 font-medium text-primary-900">Eval 데이터</td><td class="text-center" colspan="3">328건 (RAFT 80:10:10)</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
   </div>
 </section>
 
-<!-- ========== 08-1b. 신뢰성 확보 ========== -->
+<!-- ========== 08-1b. 4중 보조장치 상세 ========== -->
 <section class="py-10 gradient-section">
   <div class="max-w-5xl mx-auto px-6">
-    <div class="text-center mb-6"><span class="tag bg-primary-50 text-primary-700 mb-2">08-1</span><h2 class="font-display text-2xl md:text-3xl font-bold text-primary-900 mt-2">Judgment Agent &mdash; 4중 보조장치</h2><p class="text-neutral-sub text-sm mt-1">sLLM은 환각을 만든다 &mdash; RAG + 4중 검증 + Confidence 보정으로 방어</p></div>
+    <div class="text-center mb-6"><span class="tag bg-primary-50 text-primary-700 mb-2">08-1</span><h2 class="font-display text-2xl md:text-3xl font-bold text-primary-900 mt-2">4중 보조장치 (Guardrail)</h2><p class="text-neutral-sub text-sm mt-1">sLLM은 환각을 만든다 — RAG 원본과 대조하여 4단계 검증</p></div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-
-      <!-- 왼쪽 (5칸): 4중 보조장치 세로 깔때기 -->
-      <div class="lg:col-span-5 bg-white rounded-2xl p-5 border border-neutral-divider">
-        <h3 class="font-semibold text-primary-900 text-base mb-4">4중 보조장치</h3>
-        <div class="space-y-1">
-          <!-- sLLM 출력 -->
-          <div class="bg-error/5 border border-error/20 rounded-lg px-4 py-2.5 text-center">
-            <p class="text-xs font-bold text-error">sLLM 출력 (환각 가능)</p>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <!-- 왼쪽: 4중 보조장치 상세 테이블 -->
+      <div class="bg-white rounded-2xl p-5 border border-neutral-divider">
+        <h3 class="font-semibold text-primary-900 text-sm mb-4">검증 단계별 상세</h3>
+        <div class="space-y-3">
+          <div class="bg-surface-main rounded-xl p-3 border border-neutral-divider">
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="text-xs font-bold text-white bg-primary-700 rounded px-1.5 py-0.5">1</span>
+              <p class="text-xs font-bold text-primary-900">판단 카테고리 제한</p>
+            </div>
+            <p class="text-[11px] text-neutral-sub mb-1">LLM 출력이 <strong>yes / no / conditional / no_regulation</strong> 4가지 외의 값이면 자동 대체</p>
+            <p class="text-[10px] text-error font-mono">위반 시: Confidence &rarr; min(raw, 0.3)</p>
           </div>
-          <div class="flex justify-center"><svg class="w-3 h-4 text-neutral-border" viewBox="0 0 12 16"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" stroke-width="1.5"/><polygon points="3,11 9,11 6,16" fill="currentColor"/></svg></div>
-          <!-- 1 -->
-          <div class="bg-white border border-neutral-divider rounded-lg px-4 py-2 flex items-center gap-3">
-            <span class="text-[10px] font-bold text-white bg-primary-700 rounded px-1.5 py-0.5 shrink-0">1</span>
-            <div><p class="text-sm font-bold text-primary-900">카테고리 제한</p><p class="text-xs text-neutral-sub">yes/no/conditional/no_regulation 외 &rarr; 자동 대체</p></div>
+          <div class="bg-surface-main rounded-xl p-3 border border-neutral-divider">
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="text-xs font-bold text-white bg-primary-700 rounded px-1.5 py-0.5">2</span>
+              <p class="text-xs font-bold text-primary-900">규정 키워드 매칭</p>
+            </div>
+            <p class="text-[11px] text-neutral-sub mb-1">LLM이 인용한 조항이 RAG 검색 결과에 <strong>실제 존재하는지</strong> 매칭률(0~1.0) 산출</p>
+            <p class="text-[10px] text-error font-mono">감점: (0.5 - match_ratio) &times; 0.3</p>
           </div>
-          <div class="flex justify-center"><svg class="w-3 h-4 text-neutral-border" viewBox="0 0 12 16"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" stroke-width="1.5"/><polygon points="3,11 9,11 6,16" fill="currentColor"/></svg></div>
-          <!-- 2 -->
-          <div class="bg-white border border-neutral-divider rounded-lg px-4 py-2 flex items-center gap-3">
-            <span class="text-[10px] font-bold text-white bg-primary-700 rounded px-1.5 py-0.5 shrink-0">2</span>
-            <div><p class="text-sm font-bold text-primary-900">키워드 매칭</p><p class="text-xs text-neutral-sub">인용 조항이 RAG에 실제 존재하는지 매칭률 산출</p></div>
+          <div class="bg-surface-main rounded-xl p-3 border border-neutral-divider">
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="text-xs font-bold text-white bg-primary-700 rounded px-1.5 py-0.5">3</span>
+              <p class="text-xs font-bold text-primary-900">조항 존재 검증</p>
+            </div>
+            <p class="text-[11px] text-neutral-sub mb-1">"제N조"로 인용한 조항을 <strong>Qdrant DB에서 직접 검색</strong>, 미존재 시 환각 플래그</p>
+            <p class="text-[10px] text-error font-mono">감점: 0.05 &times; missing_count</p>
           </div>
-          <div class="flex justify-center"><svg class="w-3 h-4 text-neutral-border" viewBox="0 0 12 16"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" stroke-width="1.5"/><polygon points="3,11 9,11 6,16" fill="currentColor"/></svg></div>
-          <!-- 3 -->
-          <div class="bg-white border border-neutral-divider rounded-lg px-4 py-2 flex items-center gap-3">
-            <span class="text-[10px] font-bold text-white bg-primary-700 rounded px-1.5 py-0.5 shrink-0">3</span>
-            <div><p class="text-sm font-bold text-primary-900">조항 존재 검증</p><p class="text-xs text-neutral-sub">Qdrant DB에서 직접 검색, 미존재 시 환각 플래그</p></div>
-          </div>
-          <div class="flex justify-center"><svg class="w-3 h-4 text-neutral-border" viewBox="0 0 12 16"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" stroke-width="1.5"/><polygon points="3,11 9,11 6,16" fill="currentColor"/></svg></div>
-          <!-- 4 -->
-          <div class="bg-white border border-neutral-divider rounded-lg px-4 py-2 flex items-center gap-3">
-            <span class="text-[10px] font-bold text-white bg-primary-700 rounded px-1.5 py-0.5 shrink-0">4</span>
-            <div><p class="text-sm font-bold text-primary-900">일관성 모니터링</p><p class="text-xs text-neutral-sub">동일 쿼리 캐싱(500건), 다른 결과 시 경고</p></div>
-          </div>
-          <div class="flex justify-center"><svg class="w-3 h-4 text-neutral-border" viewBox="0 0 12 16"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" stroke-width="1.5"/><polygon points="3,11 9,11 6,16" fill="currentColor"/></svg></div>
-          <!-- 5-Factor -->
-          <div class="bg-success/10 border border-success/20 rounded-lg px-4 py-2.5 text-center">
-            <p class="text-xs font-bold text-success">5-Factor Confidence 보정 &rarr; 검증된 응답</p>
+          <div class="bg-surface-main rounded-xl p-3 border border-neutral-divider">
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="text-xs font-bold text-white bg-primary-700 rounded px-1.5 py-0.5">4</span>
+              <p class="text-xs font-bold text-primary-900">일관성 모니터링</p>
+            </div>
+            <p class="text-[11px] text-neutral-sub mb-1">동일 쿼리 캐싱(max 500건 FIFO), <strong>같은 질문에 다른 결과</strong> 나오면 경고</p>
+            <p class="text-[10px] text-neutral-muted font-mono">flag만 부여 (감점 없음)</p>
           </div>
         </div>
       </div>
 
-      <!-- 오른쪽 (7칸): 환각 탐지 예시 + 5-Factor -->
-      <div class="lg:col-span-7 space-y-4">
-      <!-- 환각 탐지 Before/After -->
-      <div class="bg-white rounded-2xl p-5 border border-neutral-divider">
-        <h3 class="font-semibold text-primary-900 text-base mb-1">환각 탐지 예시</h3>
-        <div class="bg-primary-50 border border-primary-100 rounded-lg px-3 py-2 mb-3 inline-block"><p class="text-xs text-primary-900 font-medium">Q: "인턴에게 AWS 콘솔 접근 권한을 줘도 되나요?"</p></div>
-        <div class="grid grid-cols-2 gap-4">
-          <!-- Before -->
-          <div class="bg-error/5 border-2 border-error/30 rounded-xl p-4">
-            <p class="text-sm font-bold text-error mb-3">검증 전</p>
-            <div class="space-y-1.5 text-sm font-mono text-neutral-sub">
-              <p>result: <strong class="text-error">"yes"</strong></p>
-              <p>confidence: <strong class="text-error">0.92</strong></p>
-              <p>regulations: <strong class="text-error">"제12조"</strong></p>
+      <!-- 오른쪽: 환각 탐지 예시 + Confidence 보정 -->
+      <div class="flex flex-col gap-4">
+        <div class="bg-white rounded-2xl p-5 border border-neutral-divider">
+          <h3 class="font-semibold text-primary-900 text-sm mb-3">환각 탐지 예시</h3>
+          <div class="bg-error/5 border border-error/20 rounded-xl p-3 mb-3">
+            <p class="text-[10px] font-bold text-error mb-1">sLLM 출력 (검증 전)</p>
+            <p class="text-[11px] text-neutral-sub font-mono">regulations: <strong class="text-error">"제12조"</strong></p>
+            <p class="text-[11px] text-neutral-sub font-mono">confidence: <strong class="text-error">0.92</strong></p>
+          </div>
+          <div class="space-y-1.5 mb-3">
+            <div class="flex items-center gap-2 text-[11px]">
+              <span class="font-bold text-white bg-primary-700 rounded px-1 py-0.5 text-[9px]">3</span>
+              <span class="text-neutral-sub">Qdrant에서 "제12조" 검색 &rarr;</span>
+              <span class="text-error font-bold">미존재 (환각)</span>
             </div>
-            <div class="mt-3 space-y-1.5">
-              <div class="flex items-center gap-2">
-                <span class="font-bold text-white bg-primary-700 rounded px-1.5 py-0.5 text-[9px]">3</span>
-                <span class="text-xs text-error font-bold">Qdrant에서 미존재 (환각)</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="font-bold text-white bg-primary-700 rounded px-1.5 py-0.5 text-[9px]">2</span>
-                <span class="text-xs text-error font-bold">매칭률 0.0 (불일치)</span>
-              </div>
+            <div class="flex items-center gap-2 text-[11px]">
+              <span class="font-bold text-white bg-primary-700 rounded px-1 py-0.5 text-[9px]">2</span>
+              <span class="text-neutral-sub">RAG 결과 매칭률 &rarr;</span>
+              <span class="text-error font-bold">0.0 (불일치)</span>
             </div>
           </div>
-          <!-- After -->
-          <div class="bg-success/5 border-2 border-success/30 rounded-xl p-4">
-            <p class="text-sm font-bold text-success mb-3">보정 후</p>
-            <div class="space-y-1.5 text-sm font-mono text-neutral-sub">
-              <p>confidence: <span class="text-error line-through">0.92</span> &rarr; <strong class="text-success text-lg">0.25</strong></p>
-              <p>hallucination: <strong class="text-error">true</strong></p>
-            </div>
-            <p class="text-xs text-neutral-muted mt-3">환각 감지 &rarr; 신뢰도 대폭 하향</p>
+          <div class="bg-success/5 border border-success/20 rounded-xl p-3">
+            <p class="text-[10px] font-bold text-success mb-1">보정 후 출력</p>
+            <p class="text-[11px] text-neutral-sub font-mono">confidence: 0.92 &rarr; <strong class="text-success">0.25</strong> <span class="text-[10px] text-neutral-muted">(Hard Cap 적용)</span></p>
+            <p class="text-[11px] text-neutral-sub font-mono">hallucination_flag: <strong class="text-error">true</strong></p>
           </div>
         </div>
-      </div>
-
-      <!-- 5-Factor Confidence (감점 포함) -->
-      <div class="bg-white rounded-2xl p-5 border border-neutral-divider">
-        <h3 class="font-semibold text-primary-900 text-base mb-3">5-Factor Confidence 보정</h3>
-        <!-- 가산 -->
-        <div class="flex items-center gap-2 mb-2">
-          <div class="text-sm font-mono text-primary-900 font-bold shrink-0">Score =</div>
-          <div class="flex-1 grid grid-cols-3 gap-2 text-center text-xs">
-            <div class="bg-success/5 rounded-lg p-2 border border-success/20"><p class="font-bold text-primary-700">LLM raw</p><p class="text-neutral-muted">&times; 0.60</p></div>
-            <div class="bg-success/5 rounded-lg p-2 border border-success/20"><p class="font-bold text-primary-700">RAG score</p><p class="text-neutral-muted">&times; 0.25</p></div>
-            <div class="bg-success/5 rounded-lg p-2 border border-success/20"><p class="font-bold text-primary-700">커버리지</p><p class="text-neutral-muted">&times; 0.15</p></div>
+        <div class="bg-white rounded-2xl p-5 border border-neutral-divider">
+          <h3 class="font-semibold text-primary-900 text-sm mb-3">5-Factor Confidence 보정</h3>
+          <div class="bg-surface-main rounded-lg p-3 text-[11px] font-mono text-neutral-sub space-y-1">
+            <p><strong class="text-primary-900">Base</strong> = LLM_raw &times; 0.60 + RAG_score &times; 0.25 + 규정커버리지 &times; 0.15</p>
+            <p class="text-error">&minus; 규정 충돌 감점 (0.1/건)</p>
+            <p class="text-error">&minus; 키워드 매칭 감점</p>
+            <p class="text-error">&minus; 미존재 조항 감점 (0.05/건)</p>
           </div>
-        </div>
-        <!-- 감점 -->
-        <div class="flex items-center gap-2 mb-3">
-          <div class="text-sm font-mono text-error font-bold shrink-0 pl-14">&minus;</div>
-          <div class="flex-1 grid grid-cols-3 gap-2 text-center text-xs">
-            <div class="bg-error/5 rounded-lg p-2 border border-error/20"><p class="font-bold text-error">규정 충돌</p><p class="text-neutral-muted">-0.1/건</p></div>
-            <div class="bg-error/5 rounded-lg p-2 border border-error/20"><p class="font-bold text-error">키워드 불일치</p><p class="text-neutral-muted">매칭률 기반</p></div>
-            <div class="bg-error/5 rounded-lg p-2 border border-error/20"><p class="font-bold text-error">조항 미존재</p><p class="text-neutral-muted">-0.05/건</p></div>
+          <div class="mt-2 text-[10px] text-neutral-muted">
+            <strong>Hard Cap</strong>: RAG 품질 &lt; 0.2 → max 0.4 · 키워드 매칭 &lt; 0.2 → max 0.3 · 인용 전부 미존재 → max 0.25
           </div>
-        </div>
-        <div class="bg-surface-main rounded-lg p-2.5 text-center">
-          <p class="text-sm text-neutral-sub">Base: <strong class="text-error">항상 0.9+</strong> (과신) &rarr; 보정 후: <strong class="text-success text-base">0.25~0.85</strong> 현실 반영</p>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ========== 08-2a. DOCUMENT AGENT 상세 ========== -->
-<section id="agent-document-pipelines" class="py-10 bg-white">
+<!-- ========== 08-2 (개요) 삭제됨 — 08-2a/08-2b로 대체 ========== -->
+<section id="agent-document-old" class="hidden">
   <div class="max-w-5xl mx-auto px-6">
-    <div class="text-center mb-6"><span class="tag bg-accent-50 text-accent-700 mb-2">08-2</span><h2 class="font-display text-2xl md:text-3xl font-bold text-primary-900 mt-2">Document Agent 상세</h2><p class="text-neutral-sub text-sm mt-1">하나의 Agent, 4가지 다른 파이프라인</p></div>
+    <div class="text-center mb-12"><span class="tag bg-accent-50 text-accent-700 mb-4">08-2</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">Document Agent 상세</h2><p class="text-neutral-sub text-sm mt-3">문서 생성 · 요약 · 검색 · QA Agent</p></div>
 
-    <!-- 상단: 4-way 분기 다이어그램 -->
-    <div class="bg-surface-main rounded-2xl p-6 border border-neutral-divider mb-5">
-      <!-- 사용자 질의 -->
-      <div class="max-w-xs mx-auto mb-3">
-        <div class="bg-white border border-neutral-divider rounded-lg px-4 py-2.5 text-center">
-          <p class="font-semibold text-primary-900 text-sm">사용자 질의</p>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+      <!-- 왼쪽: 파이프라인 -->
+      <div class="bg-white rounded-2xl p-8 border border-neutral-divider">
+        <h3 class="font-semibold text-primary-900 text-base mb-6">파이프라인</h3>
+        <div class="space-y-2">
+          <div class="bg-surface-main border border-neutral-divider rounded-xl px-5 py-3 text-center">
+            <p class="font-semibold text-primary-900 text-sm">사용자 질의</p>
+          </div>
+          <div class="flex justify-center"><svg class="w-4 h-5 text-neutral-border" viewBox="0 0 16 20"><line x1="8" y1="0" x2="8" y2="16" stroke="currentColor" stroke-width="1.5"/><polygon points="4,14 12,14 8,20" fill="currentColor"/></svg></div>
+          <div class="bg-accent-50 border border-accent-100 rounded-xl px-5 py-3 text-center">
+            <p class="font-semibold text-accent-700 text-sm">서브타입 자동 판단</p>
+            <p class="text-[10px] text-neutral-muted mt-1">생성 · 검색 · 요약 · QA 4-way 분기</p>
+          </div>
+          <div class="flex justify-center"><svg class="w-4 h-5 text-neutral-border" viewBox="0 0 16 20"><line x1="8" y1="0" x2="8" y2="16" stroke="currentColor" stroke-width="1.5"/><polygon points="4,14 12,14 8,20" fill="currentColor"/></svg></div>
+          <div class="bg-accent-700 rounded-xl px-5 py-3 text-center">
+            <p class="font-semibold text-white text-sm">sLLM + LoRA 자동 선택</p>
+            <p class="text-[10px] text-accent-200 mt-1">생성: v3_generate · 요약: v3_summary</p>
+          </div>
+          <div class="flex justify-center"><svg class="w-4 h-5 text-neutral-border" viewBox="0 0 16 20"><line x1="8" y1="0" x2="8" y2="16" stroke="currentColor" stroke-width="1.5"/><polygon points="4,14 12,14 8,20" fill="currentColor"/></svg></div>
+          <div class="bg-surface-main border border-neutral-divider rounded-xl px-5 py-3 text-center">
+            <p class="font-semibold text-primary-900 text-sm">응답 + 후처리</p>
+            <p class="text-[10px] text-neutral-muted mt-1">규정 위반 검사 · Action Item 추출</p>
+          </div>
         </div>
       </div>
-      <!-- 화살표 -->
-      <div class="flex justify-center mb-3"><svg class="w-3 h-4 text-neutral-border" viewBox="0 0 12 16"><line x1="6" y1="0" x2="6" y2="12" stroke="currentColor" stroke-width="1.5"/><polygon points="3,11 9,11 6,16" fill="currentColor"/></svg></div>
-      <!-- 서브타입 판단 -->
-      <div class="max-w-sm mx-auto mb-3">
-        <div class="bg-accent-700 rounded-lg px-4 py-2.5 text-center">
-          <p class="font-semibold text-white text-sm">서브타입 자동 판단</p>
-          <p class="text-[10px] text-accent-200 mt-0.5">LLM이 의도 분석 → 4-way 분기</p>
+
+      <!-- 오른쪽: 핵심 포인트 -->
+      <div class="flex flex-col gap-6">
+        <!-- 4-way 분기 -->
+        <div class="bg-white rounded-2xl p-8 border border-neutral-divider">
+          <h3 class="font-semibold text-primary-900 text-base mb-4">4가지 서브타입</h3>
+          <div class="space-y-3">
+            <div class="flex items-start gap-3">
+              <span class="text-xs font-bold text-accent-700 bg-accent-50 rounded px-1.5 py-0.5 shrink-0">생성</span>
+              <p class="text-sm text-neutral-sub">회의록 · 보고서 · 제안서 자동 생성 + 커스텀 템플릿</p>
+            </div>
+            <div class="flex items-start gap-3">
+              <span class="text-xs font-bold text-accent-700 bg-accent-50 rounded px-1.5 py-0.5 shrink-0">검색</span>
+              <p class="text-sm text-neutral-sub">RAG 하이브리드 검색 · LLM 호출 없이 최고속 응답</p>
+            </div>
+            <div class="flex items-start gap-3">
+              <span class="text-xs font-bold text-accent-700 bg-accent-50 rounded px-1.5 py-0.5 shrink-0">요약</span>
+              <p class="text-sm text-neutral-sub">문서 분류 + 태그 + 핵심 요약 (LoRA v3_summary)</p>
+            </div>
+            <div class="flex items-start gap-3">
+              <span class="text-xs font-bold text-accent-700 bg-accent-50 rounded px-1.5 py-0.5 shrink-0">Q&A</span>
+              <p class="text-sm text-neutral-sub">문서 기반 질의응답 · 답변 + 근거 인용</p>
+            </div>
+          </div>
         </div>
-      </div>
-      <!-- 4방향 분기 화살표 -->
-      <div class="flex justify-center mb-3">
-        <svg class="w-64 h-8 text-accent-500" viewBox="0 0 256 32">
-          <line x1="128" y1="0" x2="32" y2="28" stroke="currentColor" stroke-width="1.5"/><polygon points="28,24 36,24 32,32" fill="currentColor"/>
-          <line x1="128" y1="0" x2="96" y2="28" stroke="currentColor" stroke-width="1.5"/><polygon points="92,24 100,24 96,32" fill="currentColor"/>
-          <line x1="128" y1="0" x2="160" y2="28" stroke="currentColor" stroke-width="1.5"/><polygon points="156,24 164,24 160,32" fill="currentColor"/>
-          <line x1="128" y1="0" x2="224" y2="28" stroke="currentColor" stroke-width="1.5"/><polygon points="220,24 228,24 224,32" fill="currentColor"/>
-        </svg>
-      </div>
-      <!-- 4가지 서브타입 카드 -->
-      <div class="grid grid-cols-4 gap-3">
-        <div class="bg-white border-2 border-accent-300 rounded-xl p-4 text-center">
-          <span class="text-xs font-bold text-white bg-accent-700 rounded px-2 py-0.5">생성</span>
-          <p class="text-sm font-bold text-primary-900 mt-2">문서 생성</p>
-          <p class="text-[10px] text-neutral-sub mt-1">sLLM → JSON → DOCX</p>
-          <p class="text-[9px] text-accent-700 mt-1">LoRA v3_generate</p>
-        </div>
-        <div class="bg-white border-2 border-accent-300 rounded-xl p-4 text-center">
-          <span class="text-xs font-bold text-white bg-accent-700 rounded px-2 py-0.5">검색</span>
-          <p class="text-sm font-bold text-primary-900 mt-2">문서 검색</p>
-          <p class="text-[10px] text-neutral-sub mt-1">RAG만 (LLM 없이)</p>
-          <p class="text-[9px] text-neutral-muted mt-1">LLM 호출 없이 빠른 응답</p>
-        </div>
-        <div class="bg-white border-2 border-accent-300 rounded-xl p-4 text-center">
-          <span class="text-xs font-bold text-white bg-accent-700 rounded px-2 py-0.5">QA</span>
-          <p class="text-sm font-bold text-primary-900 mt-2">문서 Q&A</p>
-          <p class="text-[10px] text-neutral-sub mt-1">문서 기반 답변 + 근거</p>
-          <p class="text-[9px] text-neutral-muted mt-1">3단계 컨텍스트 우선순위</p>
-        </div>
-        <div class="bg-white border-2 border-accent-300 rounded-xl p-4 text-center">
-          <span class="text-xs font-bold text-white bg-accent-700 rounded px-2 py-0.5">요약</span>
-          <p class="text-sm font-bold text-primary-900 mt-2">문서 요약</p>
-          <p class="text-[10px] text-neutral-sub mt-1">분류 + 태그 + 요약</p>
-          <p class="text-[9px] text-accent-700 mt-1">LoRA v3_summary</p>
+        <!-- 차별점 -->
+        <div class="bg-white rounded-2xl p-8 border border-neutral-divider">
+          <h3 class="font-semibold text-primary-900 text-base mb-4">핵심 차별점</h3>
+          <div class="space-y-3">
+            <div class="flex items-start gap-3">
+              <div class="w-1.5 h-1.5 rounded-full bg-accent-700 mt-1.5 shrink-0"></div>
+              <p class="text-sm text-neutral-sub"><strong class="text-primary-900">LoRA 자동 라우팅</strong> — 서브타입별 최적 어댑터 자동 선택</p>
+            </div>
+            <div class="flex items-start gap-3">
+              <div class="w-1.5 h-1.5 rounded-full bg-accent-700 mt-1.5 shrink-0"></div>
+              <p class="text-sm text-neutral-sub"><strong class="text-primary-900">규정 위반 자동 검사</strong> — 생성 시 판단 Agent 연계 검증</p>
+            </div>
+            <div class="flex items-start gap-3">
+              <div class="w-1.5 h-1.5 rounded-full bg-accent-700 mt-1.5 shrink-0"></div>
+              <p class="text-sm text-neutral-sub"><strong class="text-primary-900">Action Item → 캘린더</strong> — 추출 후 선택하여 일정 등록</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
+  </div>
+</section>
 
-    <!-- 하단: 핵심 차별점 3가지 -->
-    <div class="grid grid-cols-3 gap-4">
-      <div class="bg-white rounded-xl p-4 border border-neutral-divider text-center">
-        <p class="text-sm font-bold text-accent-700 mb-1">LoRA 자동 라우팅</p>
-        <p class="text-xs text-neutral-sub">서브타입별 최적 어댑터<br>자동 선택 &middot; 핫스왑</p>
+<!-- ========== 08-2a. DOCUMENT AGENT 서브타입별 파이프라인 ========== -->
+<section id="agent-document-pipelines" class="py-20 bg-white">
+  <div class="max-w-5xl mx-auto px-6">
+    <div class="text-center mb-10"><span class="tag bg-accent-50 text-accent-700 mb-2">08-2</span><h2 class="font-display text-2xl md:text-3xl font-bold text-primary-900 mt-2">Document Agent 상세</h2><p class="text-neutral-sub text-sm mt-1">4가지 서브타입이 각각 다른 파이프라인으로 동작</p></div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <!-- 생성 -->
+      <div class="bg-surface-main rounded-2xl p-6 border border-neutral-divider">
+        <div class="flex items-center gap-2 mb-4"><span class="text-xs font-bold text-white bg-accent-700 rounded px-2.5 py-1">생성</span><span class="text-sm font-semibold text-primary-900">4단계 파이프라인</span></div>
+        <div class="space-y-1.5 text-[11px] text-neutral-sub">
+          <div class="flex items-center gap-2"><span class="text-accent-700 font-bold w-4 shrink-0">1</span><p>템플릿 자동 선택 <span class="text-neutral-muted">(유형 감지: 프론트→DB→LLM→Regex)</span></p></div>
+          <div class="flex items-center gap-2"><span class="text-accent-700 font-bold w-4 shrink-0">2</span><p>입력 검증 <span class="text-neutral-muted">(20자 미만 → 추가 정보 요청 + 가이드 제공)</span></p></div>
+          <div class="flex items-center gap-2"><span class="text-accent-700 font-bold w-4 shrink-0">3</span><p>sLLM JSON 생성 <span class="text-neutral-muted">(LoRA v3_generate · 필드 6~10개)</span></p></div>
+          <div class="flex items-center gap-2"><span class="text-accent-700 font-bold w-4 shrink-0">4</span><p>DOCX 빌더 → 파일 출력 <span class="text-neutral-muted">(전용 빌더 3종)</span></p></div>
+        </div>
+        <div class="bg-white rounded-lg px-3 py-2 mt-3 border border-neutral-divider">
+          <p class="text-[10px] text-neutral-muted"><strong class="text-accent-700">사용자 흐름:</strong> "회의록 만들어줘" → 양식 카드 → 내용 입력 → 미리보기 + 수정 → DOCX 다운로드</p>
+        </div>
       </div>
-      <div class="bg-white rounded-xl p-4 border border-neutral-divider text-center">
-        <p class="text-sm font-bold text-accent-700 mb-1">규정 위반 자동 검사</p>
-        <p class="text-xs text-neutral-sub">생성 시 판단 Agent<br>자동 호출 &middot; 위반 경고</p>
+
+      <!-- 검색 -->
+      <div class="bg-surface-main rounded-2xl p-6 border border-neutral-divider">
+        <div class="flex items-center gap-2 mb-4"><span class="text-xs font-bold text-white bg-accent-700 rounded px-2.5 py-1">검색</span><span class="text-sm font-semibold text-primary-900">LLM 호출 없이 최고속</span></div>
+        <div class="space-y-1.5 text-[11px] text-neutral-sub">
+          <div class="flex items-center gap-2"><span class="text-accent-700 font-bold w-4 shrink-0">1</span><p>RAG 하이브리드 검색 <span class="text-neutral-muted">(BM25 + Vector)</span></p></div>
+          <div class="flex items-center gap-2"><span class="text-accent-700 font-bold w-4 shrink-0">2</span><p>document_id 기준 중복 제거</p></div>
+          <div class="flex items-center gap-2"><span class="text-accent-700 font-bold w-4 shrink-0">3</span><p>카드형 결과 반환 <span class="text-neutral-muted">(title · score · preview)</span></p></div>
+        </div>
+        <div class="bg-white rounded-lg px-3 py-2 mt-3 border border-neutral-divider">
+          <p class="text-[10px] text-neutral-muted"><strong class="text-accent-700">왜 LLM 없이?</strong> 검색 목적은 문서를 찾는 것 — LLM 5~10초 vs RAG 1초 미만. 비용 0원</p>
+        </div>
       </div>
-      <div class="bg-white rounded-xl p-4 border border-neutral-divider text-center">
-        <p class="text-sm font-bold text-accent-700 mb-1">Action Item → 캘린더</p>
-        <p class="text-xs text-neutral-sub">회의록에서 추출 후<br>선택하여 일정 등록</p>
+
+      <!-- QA -->
+      <div class="bg-surface-main rounded-2xl p-6 border border-neutral-divider">
+        <div class="flex items-center gap-2 mb-4"><span class="text-xs font-bold text-white bg-accent-700 rounded px-2.5 py-1">QA</span><span class="text-sm font-semibold text-primary-900">3단계 컨텍스트 우선순위</span></div>
+        <div class="space-y-1.5 text-[11px] text-neutral-sub">
+          <div class="flex items-center gap-2"><span class="text-accent-700 font-bold w-4 shrink-0">1</span><p>1순위: 사용자 선택 문서 <span class="text-neutral-muted">(trust score 1.0)</span></p></div>
+          <div class="flex items-center gap-2"><span class="text-accent-700 font-bold w-4 shrink-0">2</span><p>2순위: 이전 RAG 결과 재활용 <span class="text-neutral-muted">(중복 검색 방지)</span></p></div>
+          <div class="flex items-center gap-2"><span class="text-accent-700 font-bold w-4 shrink-0">3</span><p>3순위: 새 RAG 검색 <span class="text-neutral-muted">(fallback)</span></p></div>
+          <div class="flex items-center gap-2"><span class="text-accent-700 font-bold w-4 shrink-0">4</span><p>sLLM 추론 → 답변 + 근거 인용 파싱</p></div>
+        </div>
+        <div class="bg-white rounded-lg px-3 py-2 mt-3 border border-neutral-divider">
+          <p class="text-[10px] text-neutral-muted"><strong class="text-accent-700">토큰 관리:</strong> 8192 중 시스템+이력+출력 예약 → 남은 예산으로 문단 단위 트렁케이션</p>
+        </div>
+      </div>
+
+      <!-- 요약 -->
+      <div class="bg-surface-main rounded-2xl p-6 border border-neutral-divider">
+        <div class="flex items-center gap-2 mb-4"><span class="text-xs font-bold text-white bg-accent-700 rounded px-2.5 py-1">요약</span><span class="text-sm font-semibold text-primary-900">DB 캐시 + sLLM 구조화</span></div>
+        <div class="space-y-1.5 text-[11px] text-neutral-sub">
+          <div class="flex items-center gap-2"><span class="text-accent-700 font-bold w-4 shrink-0">1</span><p>DB 캐시 체크 <span class="text-neutral-muted">(기존 요약 있으면 즉시 반환)</span></p></div>
+          <div class="flex items-center gap-2"><span class="text-accent-700 font-bold w-4 shrink-0">2</span><p>LoRA v3_summary 호출 <span class="text-neutral-muted">(분류 · 태그 · 요약 구조화)</span></p></div>
+          <div class="flex items-center gap-2"><span class="text-accent-700 font-bold w-4 shrink-0">3</span><p>결과 DB 저장 <span class="text-neutral-muted">(다음 요청 시 캐시 활용)</span></p></div>
+        </div>
+        <div class="bg-white rounded-lg px-3 py-2 mt-3 border border-neutral-divider">
+          <p class="text-[10px] text-neutral-muted"><strong class="text-accent-700">출력 형식:</strong> 분류: 보고서 / 태그: #경주시 #관광 / 요약: 핵심 2~3문장</p>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
 <!-- ========== 08-2b. DOCUMENT AGENT 템플릿 + Cross-Agent ========== -->
-<section id="agent-document-tech" class="py-10 gradient-section">
+<section id="agent-document-tech" class="py-20 gradient-section">
   <div class="max-w-5xl mx-auto px-6">
-    <div class="text-center mb-6"><span class="tag bg-accent-50 text-accent-700 mb-2">08-2</span><h2 class="font-display text-2xl md:text-3xl font-bold text-primary-900 mt-2">Document Agent — 템플릿 &amp; Agent 연계</h2><p class="text-neutral-sub text-sm mt-1">커스텀 템플릿 + Placeholder 방식 + Cross-Agent 자동 협업</p></div>
+    <div class="text-center mb-10"><span class="tag bg-accent-50 text-accent-700 mb-2">08-2</span><h2 class="font-display text-2xl md:text-3xl font-bold text-primary-900 mt-2">Document Agent — 템플릿 시스템 &amp; Agent 연계</h2><p class="text-neutral-sub text-sm mt-1">문서 생성 방식 + 3개 Agent 자동 협업</p></div>
 
-    <!-- 상단: 커스텀 템플릿 파이프라인 (메인) -->
-    <div class="bg-white rounded-2xl p-6 border-2 border-accent-300 mb-5">
-      <h3 class="font-semibold text-primary-900 text-base mb-1">커스텀 템플릿 — 사용자 양식 그대로 AI가 채운다</h3>
-      <p class="text-xs text-neutral-muted mb-4">회사 고유 양식을 업로드하면 원본 100% 보존하면서 AI가 내용 작성</p>
-      <!-- 가로 파이프라인 -->
-      <div class="flex flex-wrap items-center justify-center gap-2 text-xs">
-        <div class="bg-accent-50 border border-accent-100 rounded-lg px-4 py-3 text-center">
-          <p class="font-bold text-accent-700">DOCX 업로드</p>
-          <p class="text-[10px] text-neutral-muted">사용자 양식</p>
-        </div>
-        <span class="text-accent-500 font-bold text-lg">&rarr;</span>
-        <div class="bg-accent-50 border border-accent-100 rounded-lg px-4 py-3 text-center">
-          <p class="font-bold text-accent-700">필드 자동 추출</p>
-          <p class="text-[10px] text-neutral-muted">Regex + 테이블 분석</p>
-        </div>
-        <span class="text-accent-500 font-bold text-lg">&rarr;</span>
-        <div class="bg-accent-50 border border-accent-100 rounded-lg px-4 py-3 text-center">
-          <p class="font-bold text-accent-700">사용자 확인</p>
-          <p class="text-[10px] text-neutral-muted">필드 검토 + 수정</p>
-        </div>
-        <span class="text-accent-500 font-bold text-lg">&rarr;</span>
-        <div class="bg-primary-700 rounded-lg px-4 py-3 text-center">
-          <p class="font-bold text-white">AI 내용 생성</p>
-          <p class="text-[10px] text-primary-200">sLLM &rarr; JSON</p>
-        </div>
-        <span class="text-accent-500 font-bold text-lg">&rarr;</span>
-        <div class="bg-accent-700 rounded-lg px-4 py-3 text-center">
-          <p class="font-bold text-white">Placeholder 채우기</p>
-          <p class="text-[10px] text-accent-200">{{key}} &rarr; 값 치환</p>
-        </div>
-        <span class="text-accent-500 font-bold text-lg">&rarr;</span>
-        <div class="bg-success/10 border border-success/20 rounded-lg px-4 py-3 text-center">
-          <p class="font-bold text-success">DOCX 출력</p>
-          <p class="text-[10px] text-neutral-muted">원본 100% 보존</p>
-        </div>
-      </div>
-      <!-- Placeholder 시각화 -->
-      <div class="mt-4 grid grid-cols-2 gap-3">
-        <div class="bg-surface-main rounded-lg p-3 border border-neutral-divider">
-          <p class="text-xs font-bold text-accent-700 mb-2">원본 양식 → Placeholder 주입</p>
-          <div class="bg-white rounded border border-neutral-divider text-xs font-mono">
-            <div class="grid grid-cols-3 border-b border-neutral-divider">
-              <div class="px-3 py-2 bg-surface-main font-bold">회의 제목</div>
-              <div class="px-3 py-2 col-span-2 font-bold text-accent-700">{{title}}</div>
-            </div>
-            <div class="grid grid-cols-3 border-b border-neutral-divider">
-              <div class="px-3 py-2 bg-surface-main font-bold">참석자</div>
-              <div class="px-3 py-2 col-span-2 font-bold text-accent-700">{{attendees}}</div>
-            </div>
-            <div class="grid grid-cols-3">
-              <div class="px-3 py-2 bg-surface-main font-bold">결정사항</div>
-              <div class="px-3 py-2 col-span-2 font-bold text-accent-700">{{decisions}}</div>
-            </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- 왼쪽: 템플릿 시스템 -->
+      <div class="bg-white rounded-2xl p-7 border border-neutral-divider">
+        <h3 class="font-semibold text-primary-900 text-base mb-5">문서 생성 방식</h3>
+
+        <!-- 기본 템플릿 -->
+        <div class="mb-5">
+          <div class="flex items-center gap-2 mb-2"><span class="text-xs font-bold text-white bg-primary-700 rounded px-2 py-0.5">기본</span><span class="text-xs font-semibold text-primary-900">시스템 템플릿 3종</span></div>
+          <div class="bg-surface-main rounded-lg p-3 border border-neutral-divider space-y-1.5 text-[11px] text-neutral-sub">
+            <p>회의록 · 보고서 · 제안서 각각 <strong class="text-primary-900">전용 DOCX 빌더</strong></p>
+            <p>문서 유형별 최적화된 필드 구성 (평균 8.1개)</p>
+            <p>sLLM이 JSON 구조 생성 → 빌더가 DOCX로 변환</p>
           </div>
         </div>
-        <div class="bg-surface-main rounded-lg p-3 border border-neutral-divider">
-          <p class="text-xs font-bold text-success mb-2">AI가 값 치환 → 완성된 문서</p>
-          <div class="bg-white rounded border border-success/30 text-xs font-mono">
-            <div class="grid grid-cols-3 border-b border-neutral-divider">
-              <div class="px-3 py-2 bg-surface-main font-bold">회의 제목</div>
-              <div class="px-3 py-2 text-success font-medium col-span-2">AI 챗봇 도입 킥오프</div>
+
+        <!-- 커스텀 템플릿 -->
+        <div class="mb-5">
+          <div class="flex items-center gap-2 mb-2"><span class="text-xs font-bold text-white bg-accent-700 rounded px-2 py-0.5">커스텀</span><span class="text-xs font-semibold text-primary-900">사용자 업로드 템플릿</span></div>
+          <div class="bg-surface-main rounded-lg p-3 border border-neutral-divider space-y-1.5 text-[11px] text-neutral-sub">
+            <p>사용자 DOCX 업로드 → <strong class="text-primary-900">Regex + 테이블 분석</strong>으로 필드 자동 추출</p>
+            <p>추출된 필드를 사용자에게 확인 → AI가 내용 채우기</p>
+            <p>원본 양식 100% 보존 (Placeholder 주입 방식)</p>
+          </div>
+        </div>
+
+        <!-- 3단계 Fallback -->
+        <div>
+          <div class="flex items-center gap-2 mb-2"><span class="text-xs font-bold text-warning bg-warning/10 rounded px-2 py-0.5">Fallback</span><span class="text-xs font-semibold text-primary-900">3단계 DOCX 생성 보장</span></div>
+          <div class="space-y-2">
+            <div class="bg-success/5 border border-success/20 rounded-lg px-3 py-2 text-[11px]">
+              <strong class="text-success">1단계:</strong> <span class="text-neutral-sub">Placeholder 주입 — LLM 없이 10~20배 빠름</span>
             </div>
-            <div class="grid grid-cols-3 border-b border-neutral-divider">
-              <div class="px-3 py-2 bg-surface-main font-bold">참석자</div>
-              <div class="px-3 py-2 text-success font-medium col-span-2">박과장, 김대리, 정인턴</div>
+            <div class="bg-primary-50 border border-primary-100 rounded-lg px-3 py-2 text-[11px]">
+              <strong class="text-primary-700">2단계:</strong> <span class="text-neutral-sub">sLLM 필드 생성 — placeholder 실패 시</span>
             </div>
-            <div class="grid grid-cols-3">
-              <div class="px-3 py-2 bg-surface-main font-bold">결정사항</div>
-              <div class="px-3 py-2 text-success font-medium col-span-2">PoC 4월까지 완료</div>
+            <div class="bg-surface-main border border-neutral-divider rounded-lg px-3 py-2 text-[11px]">
+              <strong class="text-neutral-main">3단계:</strong> <span class="text-neutral-sub">범용 빌더 — 최종 fallback (메타+본문+배열)</span>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 하단: 기본 3종 + Fallback (왼) / Cross-Agent (오) -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-      <!-- 기본 템플릿 3종 -->
-      <div class="bg-white rounded-xl p-5 border border-neutral-divider">
-        <h3 class="font-semibold text-primary-900 text-base mb-3">기본 템플릿 3종</h3>
-        <p class="text-xs text-neutral-muted mb-3">각 유형별 전용 DOCX 빌더</p>
-        <div class="grid grid-cols-3 gap-3">
-          <div class="bg-primary-50 rounded-lg p-4 text-center border border-primary-100">
-            <p class="text-base font-bold text-primary-700 mb-1">회의록</p>
-            <p class="text-xs text-neutral-sub">결정사항<br>Action Item</p>
+      <!-- 오른쪽: Cross-Agent 연계 -->
+      <div class="bg-white rounded-2xl p-7 border border-neutral-divider">
+        <h3 class="font-semibold text-primary-900 text-base mb-5">Cross-Agent 자동 협업</h3>
+        <p class="text-[10px] text-neutral-muted mb-5">문서 생성 후 판단 · 일정 Agent가 자동으로 후처리</p>
+
+        <!-- 규정 검사 -->
+        <div class="mb-5">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-xs font-bold text-primary-700 bg-primary-50 rounded px-2 py-0.5">문서 → 판단</span>
+            <span class="text-xs font-semibold text-primary-900">규정 위반 자동 검사</span>
           </div>
-          <div class="bg-primary-50 rounded-lg p-4 text-center border border-primary-100">
-            <p class="text-base font-bold text-primary-700 mb-1">보고서</p>
-            <p class="text-xs text-neutral-sub">현황 + 과제<br>다음 계획</p>
-          </div>
-          <div class="bg-primary-50 rounded-lg p-4 text-center border border-primary-100">
-            <p class="text-base font-bold text-primary-700 mb-1">제안서</p>
-            <p class="text-xs text-neutral-sub">예산 + 일정<br>기대효과</p>
+          <div class="bg-surface-main rounded-lg p-3 border border-neutral-divider space-y-1.5 text-[11px] text-neutral-sub">
+            <p>문서 생성/QA/요약 시 <strong class="text-primary-900">판단 Agent 자동 호출</strong></p>
+            <p>규정 위반 발견 → 경고 표시 (Non-blocking: 문서 생성은 계속)</p>
+            <p>조건부 허용 사항도 함께 안내</p>
           </div>
         </div>
-      </div>
 
-      <!-- Cross-Agent 연결 다이어그램 -->
-      <div class="bg-white rounded-xl p-5 border border-neutral-divider">
-        <h3 class="font-semibold text-primary-900 text-base mb-4">Cross-Agent 자동 협업</h3>
-        <!-- 다이어그램 -->
-        <div class="text-center mb-4">
-          <div class="inline-block bg-accent-700 rounded-xl px-6 py-3 text-white font-bold text-sm mb-3">문서 Agent</div>
-          <div class="flex justify-center gap-16">
-            <!-- 왼쪽: 판단 -->
-            <div class="text-center">
-              <svg class="w-6 h-8 text-primary-500 mx-auto" viewBox="0 0 24 32"><line x1="12" y1="0" x2="4" y2="24" stroke="currentColor" stroke-width="1.5"/><polygon points="1,21 7,21 4,28" fill="currentColor"/></svg>
-              <div class="bg-primary-50 border border-primary-100 rounded-lg px-5 py-3">
-                <p class="text-sm font-bold text-primary-700">판단 Agent</p>
-                <p class="text-xs text-neutral-sub mt-1">규정 위반 자동 검사</p>
-                <p class="text-[10px] text-neutral-muted">Non-blocking 경고</p>
-              </div>
-            </div>
-            <!-- 오른쪽: 일정 -->
-            <div class="text-center">
-              <svg class="w-6 h-8 text-success mx-auto" viewBox="0 0 24 32"><line x1="12" y1="0" x2="20" y2="24" stroke="currentColor" stroke-width="1.5"/><polygon points="17,21 23,21 20,28" fill="currentColor"/></svg>
-              <div class="bg-success/10 border border-success/20 rounded-lg px-5 py-3">
-                <p class="text-sm font-bold text-success">일정 Agent</p>
-                <p class="text-xs text-neutral-sub mt-1">Action Item 추출</p>
-                <p class="text-[10px] text-neutral-muted">&rarr; Google Calendar</p>
-              </div>
-            </div>
+        <!-- Action Item -->
+        <div class="mb-5">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-xs font-bold text-success bg-success/10 rounded px-2 py-0.5">문서 → 일정</span>
+            <span class="text-xs font-semibold text-primary-900">Action Item → 캘린더 등록</span>
+          </div>
+          <div class="bg-surface-main rounded-lg p-3 border border-neutral-divider space-y-1.5 text-[11px] text-neutral-sub">
+            <p>회의록 생성 후 <strong class="text-primary-900">action_items/tasks 자동 추출</strong></p>
+            <p>날짜 파싱 (한국어 포맷) + 우선순위 자동 계산</p>
+            <p>사용자가 체크 → 선택한 항목만 Google Calendar 등록</p>
+          </div>
+        </div>
+
+        <!-- Follow-up -->
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-xs font-bold text-accent-700 bg-accent-50 rounded px-2 py-0.5">대화 연속</span>
+            <span class="text-xs font-semibold text-primary-900">Follow-up 자동 감지</span>
+          </div>
+          <div class="bg-surface-main rounded-lg p-3 border border-neutral-divider space-y-1.5 text-[11px] text-neutral-sub">
+            <p>"위 문서 요약해줘" → <strong class="text-primary-900">Regex 빠른 감지 + sLLM 리라이팅</strong></p>
+            <p>키워드 검증으로 환각 방지 (제목 매칭 확인)</p>
+            <p>이전 검색 맥락 자동 연결 — 중복 검색 방지</p>
           </div>
         </div>
       </div>
@@ -1239,205 +1238,145 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
 </section>
 
 <!-- ========== 08-3. SCHEDULE AGENT 상세 ========== -->
-<!-- ========== 08-3. SCHEDULE AGENT — 뭘 하는지 ========== -->
-<section id="agent-schedule" class="py-10 bg-white">
+<section id="agent-schedule" class="py-20 bg-white">
   <div class="max-w-5xl mx-auto px-6">
-    <div class="text-center mb-5"><span class="tag bg-success/10 text-success mb-2">08-3</span><h2 class="font-display text-2xl md:text-3xl font-bold text-primary-900 mt-2">Schedule Agent 상세</h2><p class="text-neutral-sub text-sm mt-1">한 마디로 일정 등록 + Meet 생성 + 메일 발송까지</p></div>
+    <div class="text-center mb-12"><span class="tag bg-success/10 text-success mb-4">08-3</span><h2 class="font-display text-3xl md:text-4xl font-bold text-primary-900 mt-4">Schedule Agent 상세</h2><p class="text-neutral-sub text-sm mt-3">자연어 → 일정 관리 Agent</p></div>
 
-    <!-- 상단: 채팅 목업 — 한 번에 3가지 처리 -->
-    <div class="bg-surface-main rounded-2xl p-6 border border-neutral-divider mb-5">
-      <div class="max-w-2xl mx-auto">
-        <!-- 사용자 -->
-        <div class="flex justify-end mb-4">
-          <div class="chat-bubble-user px-5 py-3 max-w-[80%]">
-            <p class="text-sm text-primary-900 font-medium">내일 오후 3시에 팀 회의 잡아줘.<br>Meet 링크도 만들고 참석자들한테 초대 메일 보내줘.</p>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+      <!-- 왼쪽: 파이프라인 -->
+      <div class="bg-surface-main rounded-2xl p-8 border border-neutral-divider">
+        <h3 class="font-semibold text-primary-900 text-base mb-6">파이프라인</h3>
+        <div class="space-y-2">
+          <div class="bg-white border border-neutral-divider rounded-xl px-5 py-3 text-center">
+            <p class="font-semibold text-primary-900 text-sm">사용자 질의</p>
+          </div>
+          <div class="flex justify-center"><svg class="w-4 h-5 text-neutral-border" viewBox="0 0 16 20"><line x1="8" y1="0" x2="8" y2="16" stroke="currentColor" stroke-width="1.5"/><polygon points="4,14 12,14 8,20" fill="currentColor"/></svg></div>
+          <div class="bg-success/10 border border-success/20 rounded-xl px-5 py-3 text-center">
+            <p class="font-semibold text-success text-sm">LLM 자연어 파싱</p>
+            <p class="text-[10px] text-neutral-muted mt-1">날짜 · 시간 · 참석자 · 제목 추출</p>
+          </div>
+          <div class="flex justify-center"><svg class="w-4 h-5 text-neutral-border" viewBox="0 0 16 20"><line x1="8" y1="0" x2="8" y2="16" stroke="currentColor" stroke-width="1.5"/><polygon points="4,14 12,14 8,20" fill="currentColor"/></svg></div>
+          <div class="bg-success text-white rounded-xl px-5 py-3 text-center">
+            <p class="font-semibold text-sm">서브 액션 분류</p>
+            <p class="text-[10px] text-white/80 mt-1">등록 · 조회 · 후속 처리 3-way 분기</p>
+          </div>
+          <div class="flex justify-center"><svg class="w-4 h-5 text-neutral-border" viewBox="0 0 16 20"><line x1="8" y1="0" x2="8" y2="16" stroke="currentColor" stroke-width="1.5"/><polygon points="4,14 12,14 8,20" fill="currentColor"/></svg></div>
+          <div class="bg-success/10 border border-success/20 rounded-xl px-5 py-3 text-center">
+            <p class="font-semibold text-success text-sm">Google API 호출</p>
+            <p class="text-[10px] text-neutral-muted mt-1">Calendar · Meet · Tasks · Gmail · Sheets</p>
+          </div>
+          <div class="flex justify-center"><svg class="w-4 h-5 text-neutral-border" viewBox="0 0 16 20"><line x1="8" y1="0" x2="8" y2="16" stroke="currentColor" stroke-width="1.5"/><polygon points="4,14 12,14 8,20" fill="currentColor"/></svg></div>
+          <div class="bg-white border border-neutral-divider rounded-xl px-5 py-3 text-center">
+            <p class="font-semibold text-primary-900 text-sm">결과 반환</p>
           </div>
         </div>
-        <!-- Agent 응답 — 3가지 동시 처리 결과 -->
-        <div class="flex justify-start">
-          <div class="chat-bubble-bot px-5 py-4 max-w-[90%]">
-            <p class="text-xs text-neutral-sub mb-3">일정을 등록하고 관련 서비스를 처리했습니다.</p>
-            <div class="grid grid-cols-3 gap-3">
-              <!-- Calendar -->
-              <div class="bg-success/5 border border-success/20 rounded-lg p-3 text-center">
-                <div class="w-8 h-8 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <svg class="w-4 h-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke-width="2"/><line x1="8" y1="2" x2="8" y2="6" stroke-width="2"/><line x1="3" y1="10" x2="21" y2="10" stroke-width="2"/></svg>
-                </div>
-                <p class="text-xs font-bold text-success">Calendar</p>
-                <p class="text-[10px] text-neutral-sub mt-1">3/31 15:00~16:00<br>팀 회의 등록 완료</p>
-              </div>
-              <!-- Meet -->
-              <div class="bg-primary-50 border border-primary-100 rounded-lg p-3 text-center">
-                <div class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <svg class="w-4 h-4 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                </div>
-                <p class="text-xs font-bold text-primary-700">Meet</p>
-                <p class="text-[10px] text-neutral-sub mt-1">화상 회의 링크<br>자동 생성</p>
-              </div>
-              <!-- Gmail -->
-              <div class="bg-accent-50 border border-accent-100 rounded-lg p-3 text-center">
-                <div class="w-8 h-8 bg-accent-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <svg class="w-4 h-4 text-accent-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                </div>
-                <p class="text-xs font-bold text-accent-700">Gmail</p>
-                <p class="text-[10px] text-neutral-sub mt-1">팀원 3명에게<br>초대 메일 발송</p>
-              </div>
+      </div>
+
+      <!-- 오른쪽: 핵심 포인트 -->
+      <div class="flex flex-col gap-6">
+        <!-- 3가지 서브 액션 -->
+        <div class="bg-surface-main rounded-2xl p-8 border border-neutral-divider">
+          <h3 class="font-semibold text-primary-900 text-base mb-4">3가지 서브 액션</h3>
+          <div class="space-y-3">
+            <div class="flex items-start gap-3">
+              <span class="text-xs font-bold text-success bg-success/10 rounded px-1.5 py-0.5 shrink-0">등록</span>
+              <p class="text-sm text-neutral-sub">일정 등록 · 태스크 생성 · 결재 요청 (키워드 자동 분류)</p>
+            </div>
+            <div class="flex items-start gap-3">
+              <span class="text-xs font-bold text-success bg-success/10 rounded px-1.5 py-0.5 shrink-0">조회</span>
+              <p class="text-sm text-neutral-sub">기간별 일정 조회 · DB + Google Calendar 통합 검색</p>
+            </div>
+            <div class="flex items-start gap-3">
+              <span class="text-xs font-bold text-success bg-success/10 rounded px-1.5 py-0.5 shrink-0">후속</span>
+              <p class="text-sm text-neutral-sub">Meet 링크 생성 · 초대 메일 발송 · 시간 보충 재등록</p>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- 하단: 기능 그룹 4칸 -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      <div class="bg-white rounded-xl p-4 border border-neutral-divider">
-        <p class="text-sm font-bold text-success mb-2">일정 관리</p>
-        <div class="space-y-1 text-xs text-neutral-sub">
-          <p>&bull; 등록 · 조회 · 수정 · 삭제</p>
-          <p>&bull; 자연어 날짜/시간 파싱</p>
-          <p>&bull; 되묻기 (Clarify) 플로우</p>
-        </div>
-      </div>
-      <div class="bg-white rounded-xl p-4 border border-neutral-divider">
-        <p class="text-sm font-bold text-primary-700 mb-2">태스크 &amp; 결재</p>
-        <div class="space-y-1 text-xs text-neutral-sub">
-          <p>&bull; 파이프라인 태스크 생성</p>
-          <p>&bull; 연차/출장/품의 결재 요청</p>
-          <p>&bull; 우선순위 자동 계산</p>
-        </div>
-      </div>
-      <div class="bg-white rounded-xl p-4 border border-neutral-divider">
-        <p class="text-sm font-bold text-accent-700 mb-2">Google 5종</p>
-        <div class="space-y-1 text-xs text-neutral-sub">
-          <p>&bull; Calendar (양방향 동기화)</p>
-          <p>&bull; Meet · Gmail · Tasks</p>
-          <p>&bull; Sheets (WBS 내보내기)</p>
-        </div>
-      </div>
-      <div class="bg-white rounded-xl p-4 border border-neutral-divider">
-        <p class="text-sm font-bold text-warning mb-2">AI 추천</p>
-        <div class="space-y-1 text-xs text-neutral-sub">
-          <p>&bull; sLLM이 현황 분석 → 결재 추천</p>
-          <p>&bull; sLLM이 캘린더 분석 → 일정 추천</p>
-          <p>&bull; 문서 생성 후 일정 자동 제안</p>
+        <!-- 핵심 차별점 -->
+        <div class="bg-surface-main rounded-2xl p-8 border border-neutral-divider">
+          <h3 class="font-semibold text-primary-900 text-base mb-4">핵심 차별점</h3>
+          <div class="space-y-3">
+            <div class="flex items-start gap-3">
+              <div class="w-1.5 h-1.5 rounded-full bg-success mt-1.5 shrink-0"></div>
+              <p class="text-sm text-neutral-sub"><strong class="text-primary-900">Google 5종 원클릭</strong> — 단일 OAuth로 5개 서비스 동시 연결</p>
+            </div>
+            <div class="flex items-start gap-3">
+              <div class="w-1.5 h-1.5 rounded-full bg-success mt-1.5 shrink-0"></div>
+              <p class="text-sm text-neutral-sub"><strong class="text-primary-900">시간 불명확 시 Clarify</strong> — "몇 시에 잡을까요?" 자동 확인</p>
+            </div>
+            <div class="flex items-start gap-3">
+              <div class="w-1.5 h-1.5 rounded-full bg-success mt-1.5 shrink-0"></div>
+              <p class="text-sm text-neutral-sub"><strong class="text-primary-900">규정 검증 자동 수행</strong> — 일정 등록 시 규정 위반 여부 체크</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ========== 08-3b. SCHEDULE AGENT — 어떻게 동작하는지 ========== -->
+<!-- ========== 08-3a. SCHEDULE AGENT 정량 성과 ========== -->
 <section class="py-10 gradient-section">
   <div class="max-w-5xl mx-auto px-6">
-    <div class="text-center mb-6"><span class="tag bg-success/10 text-success mb-2">08-3</span><h2 class="font-display text-2xl md:text-3xl font-bold text-primary-900 mt-2">Schedule Agent — 파이프라인</h2><p class="text-neutral-sub text-sm mt-1">자연어 파싱 → 서브액션 분류 → Google API → 후속 처리</p></div>
+    <div class="text-center mb-6"><span class="tag bg-success/10 text-success mb-2">08-3</span><h2 class="font-display text-2xl md:text-3xl font-bold text-primary-900 mt-2">Schedule Agent — Google Workspace 연동</h2><p class="text-neutral-sub text-sm mt-1">단일 OAuth로 5개 서비스 통합 · 3단계 Fallback</p></div>
 
-    <!-- 상단: 파이프라인 가로 흐름 -->
-    <div class="bg-white rounded-2xl p-5 border border-neutral-divider mb-5">
-      <div class="flex flex-wrap items-center justify-center gap-2 text-xs">
-        <div class="bg-white border border-neutral-divider rounded-lg px-4 py-3 text-center">
-          <p class="font-bold text-primary-900">사용자 질의</p>
-          <p class="text-[10px] text-neutral-muted">자연어 입력</p>
-        </div>
-        <span class="text-success font-bold text-lg">&rarr;</span>
-        <div class="bg-success/10 border border-success/20 rounded-lg px-4 py-3 text-center">
-          <p class="font-bold text-success">LLM 파싱</p>
-          <p class="text-[10px] text-neutral-muted">날짜 · 시간 · 참석자</p>
-        </div>
-        <span class="text-success font-bold text-lg">&rarr;</span>
-        <div class="bg-success rounded-lg px-4 py-3 text-center">
-          <p class="font-bold text-white">서브액션 분류</p>
-          <p class="text-[10px] text-white/80">등록 · 조회 · 후속</p>
-        </div>
-        <span class="text-success font-bold text-lg">&rarr;</span>
-        <div class="bg-success/10 border border-success/20 rounded-lg px-4 py-3 text-center">
-          <p class="font-bold text-success">Google API</p>
-          <p class="text-[10px] text-neutral-muted">Calendar · Meet · Gmail</p>
-        </div>
-        <span class="text-success font-bold text-lg">&rarr;</span>
-        <div class="bg-white border border-neutral-divider rounded-lg px-4 py-3 text-center">
-          <p class="font-bold text-primary-900">결과 반환</p>
-          <p class="text-[10px] text-neutral-muted">+ 규정 검증</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- 하단: Clarify 플로우 + Fallback -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-      <!-- Clarify 대화 플로우 -->
-      <div class="bg-white rounded-xl p-5 border border-neutral-divider">
-        <h3 class="font-semibold text-primary-900 text-base mb-3">Clarify 플로우</h3>
-        <p class="text-xs text-neutral-muted mb-4">정보가 부족하면 되묻고, 답변 받으면 자동 이어서 처리</p>
-        <div class="space-y-2">
-          <!-- 사용자 1 -->
-          <div class="flex justify-end">
-            <div class="chat-bubble-user px-3 py-2 text-xs max-w-[75%]">
-              <p class="text-primary-900">"내일 팀 회의 잡아줘"</p>
-            </div>
-          </div>
-          <!-- Agent clarify -->
-          <div class="flex justify-start">
-            <div class="chat-bubble-bot px-3 py-2 text-xs max-w-[80%]">
-              <p class="text-primary-900">'팀 회의' 일정을 등록하려고 합니다.</p>
-              <p class="text-warning font-medium mt-1">- 몇 시에 잡을까요? (예: 오후 3시, 14:00)</p>
-            </div>
-          </div>
-          <!-- 사용자 2 -->
-          <div class="flex justify-end">
-            <div class="chat-bubble-user px-3 py-2 text-xs max-w-[75%]">
-              <p class="text-primary-900">"오후 2시"</p>
-            </div>
-          </div>
-          <!-- Agent confirm -->
-          <div class="flex justify-start">
-            <div class="chat-bubble-bot px-3 py-2 text-xs max-w-[75%]">
-              <p class="text-success font-medium">내일 14:00 팀 회의 등록 완료 ✓</p>
-            </div>
-          </div>
-        </div>
+      <!-- 왼쪽: Google 5종 연동 -->
+      <div class="bg-white rounded-2xl p-5 border border-neutral-divider">
+        <h3 class="font-semibold text-primary-900 text-sm mb-3">Google Workspace 5종 연동</h3>
+        <table class="w-full text-xs">
+          <thead><tr class="border-b border-neutral-divider"><th class="text-left py-2 text-neutral-muted font-medium">서비스</th><th class="text-left py-2 text-neutral-muted font-medium">기능</th><th class="text-center py-2 text-neutral-muted font-medium">양방향</th></tr></thead>
+          <tbody>
+            <tr class="border-b border-neutral-divider/50"><td class="py-2.5 font-medium text-primary-900">Calendar</td><td class="text-neutral-sub">일정 CRUD · event_id 연동</td><td class="text-center text-success">&check;</td></tr>
+            <tr class="border-b border-neutral-divider/50"><td class="py-2.5 font-medium text-primary-900">Meet</td><td class="text-neutral-sub">화상 회의 링크 자동 생성</td><td class="text-center">—</td></tr>
+            <tr class="border-b border-neutral-divider/50"><td class="py-2.5 font-medium text-primary-900">Gmail</td><td class="text-neutral-sub">참석자 초대 메일 N명 일괄</td><td class="text-center">—</td></tr>
+            <tr class="border-b border-neutral-divider/50"><td class="py-2.5 font-medium text-primary-900">Tasks</td><td class="text-neutral-sub">Action Item 동기화</td><td class="text-center text-success">&check;</td></tr>
+            <tr><td class="py-2.5 font-medium text-primary-900">Sheets</td><td class="text-neutral-sub">WBS · Gantt · Dashboard 내보내기</td><td class="text-center text-success">&check;</td></tr>
+          </tbody>
+        </table>
       </div>
 
-      <!-- AI 추천 시스템 -->
-      <div class="bg-white rounded-xl p-5 border border-neutral-divider">
-        <h3 class="font-semibold text-primary-900 text-base mb-1">AI 추천 시스템</h3>
-        <p class="text-xs text-neutral-muted mb-4">파이프라인 현황 + 캘린더 일정을 sLLM이 분석 → 다음 할 일 자동 추천</p>
-
-        <!-- 미니 UI 목업 -->
-        <div class="bg-surface-main rounded-lg p-4 border border-neutral-divider mb-3">
-          <!-- 탭 -->
-          <div class="flex gap-0 mb-3">
-            <div class="bg-warning/20 text-warning text-xs font-bold px-4 py-1.5 rounded-l-lg border border-warning/30">결재 추천</div>
-            <div class="bg-white text-neutral-sub text-xs px-4 py-1.5 rounded-r-lg border border-neutral-divider">일정 추천</div>
-          </div>
-          <!-- 추천 카드들 -->
-          <div class="space-y-2">
-            <div class="bg-white rounded-lg p-3 border border-neutral-divider">
-              <div class="flex items-center gap-2 mb-1">
-                <span class="text-[9px] font-bold text-white bg-warning rounded px-1.5 py-0.5">review</span>
-                <span class="text-xs font-bold text-primary-900">PR 리뷰 요청</span>
-                <span class="text-[9px] text-warning bg-warning/10 rounded px-1.5 py-0.5 ml-auto">high</span>
-              </div>
-              <p class="text-[10px] text-neutral-sub">Review 단계 태스크 3건 대기 중 → 코드 리뷰 결재 요청</p>
+      <!-- 오른쪽: Fallback + AI 추천 -->
+      <div class="flex flex-col gap-4">
+        <div class="bg-white rounded-2xl p-5 border border-neutral-divider">
+          <h3 class="font-semibold text-primary-900 text-sm mb-3">3단계 Fallback</h3>
+          <div class="flex items-center gap-2 flex-wrap">
+            <div class="bg-primary-50 border border-primary-100 rounded-lg px-3 py-2 text-center">
+              <p class="text-[10px] text-neutral-muted">1차</p>
+              <p class="text-xs font-semibold text-primary-700">sLLM</p>
+              <p class="text-[10px] text-neutral-muted">Kanana-1.5-8B</p>
             </div>
-            <div class="bg-white rounded-lg p-3 border border-neutral-divider">
-              <div class="flex items-center gap-2 mb-1">
-                <span class="text-[9px] font-bold text-white bg-primary-700 rounded px-1.5 py-0.5">room</span>
-                <span class="text-xs font-bold text-primary-900">회의실 예약</span>
-                <span class="text-[9px] text-primary-500 bg-primary-50 rounded px-1.5 py-0.5 ml-auto">medium</span>
-              </div>
-              <p class="text-[10px] text-neutral-sub">내일 14:00 팀 미팅 예정 → 회의실 예약 필요</p>
+            <svg class="w-4 h-3 text-neutral-border shrink-0" viewBox="0 0 16 12"><line x1="0" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.5"/><polygon points="9,3 16,6 9,9" fill="currentColor"/></svg>
+            <div class="bg-warning/5 border border-warning/20 rounded-lg px-3 py-2 text-center">
+              <p class="text-[10px] text-neutral-muted">2차</p>
+              <p class="text-xs font-semibold text-warning">OpenAI</p>
+              <p class="text-[10px] text-neutral-muted">GPT Fallback</p>
+            </div>
+            <svg class="w-4 h-3 text-neutral-border shrink-0" viewBox="0 0 16 12"><line x1="0" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.5"/><polygon points="9,3 16,6 9,9" fill="currentColor"/></svg>
+            <div class="bg-surface-main border border-neutral-divider rounded-lg px-3 py-2 text-center">
+              <p class="text-[10px] text-neutral-muted">3차</p>
+              <p class="text-xs font-semibold text-neutral-sub">규칙 기반</p>
+              <p class="text-[10px] text-neutral-muted">정규식 파싱</p>
             </div>
           </div>
+          <p class="text-[10px] text-neutral-muted mt-2">sLLM 실패 시 자동 전환 → 서비스 중단 0건</p>
         </div>
-
-        <!-- 동작 흐름 -->
-        <div class="flex items-center justify-center gap-2 text-[10px]">
-          <span class="bg-primary-50 border border-primary-100 rounded px-2.5 py-1 font-medium text-primary-900">Pipeline 현황</span>
-          <span class="text-neutral-muted">+</span>
-          <span class="bg-success/10 border border-success/20 rounded px-2.5 py-1 font-medium text-success">Calendar 일정</span>
-          <span class="text-neutral-muted font-bold">&rarr;</span>
-          <span class="bg-primary-700 text-white rounded px-2.5 py-1 font-medium">sLLM 분석</span>
-          <span class="text-neutral-muted font-bold">&rarr;</span>
-          <span class="bg-warning/10 border border-warning/20 rounded px-2.5 py-1 font-medium text-warning">추천 생성</span>
+        <div class="bg-white rounded-2xl p-5 border border-neutral-divider">
+          <h3 class="font-semibold text-primary-900 text-sm mb-3">AI 추천 기능</h3>
+          <div class="space-y-2">
+            <div class="flex items-start gap-2">
+              <div class="w-1.5 h-1.5 rounded-full bg-success mt-1.5 shrink-0"></div>
+              <p class="text-xs text-neutral-sub"><strong class="text-primary-900">결재 추천</strong> — 캘린더 + 파이프라인 분석 → 결재 항목 자동 제안</p>
+            </div>
+            <div class="flex items-start gap-2">
+              <div class="w-1.5 h-1.5 rounded-full bg-success mt-1.5 shrink-0"></div>
+              <p class="text-xs text-neutral-sub"><strong class="text-primary-900">일정 추천</strong> — 프로젝트 분석 → 추천 일정 자동 생성</p>
+            </div>
+            <div class="flex items-start gap-2">
+              <div class="w-1.5 h-1.5 rounded-full bg-success mt-1.5 shrink-0"></div>
+              <p class="text-xs text-neutral-sub"><strong class="text-primary-900">규정 검증</strong> — 모든 등록에 regulation_check 자동 적용</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1483,100 +1422,6 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
       </div>
     </div>
     <div class="mt-8 bg-error/10 border border-error/20 rounded-xl p-4 text-center text-sm text-error font-medium">Base 모델만으로는 실무 품질 미달 &mdash; 환각, 낮은 정확도, 서비스 연동 문제 &rarr; <strong>LoRA 파인튜닝으로 해결</strong></div>
-  </div>
-</section>
-
-<!-- ========== 09-1. RAG 파이프라인 ========== -->
-<section id="rag-pipeline" class="py-12 bg-white">
-  <div class="max-w-6xl mx-auto px-6">
-    <div class="text-center mb-8"><span class="tag bg-success/10 text-success mb-2">09-1</span><h2 class="font-display text-3xl font-bold text-primary-900 mt-3">RAG 파이프라인</h2><p class="text-neutral-sub text-xs mt-1">"엉뚱한 규정을 가져온다" &rarr; 어떻게 고쳤는가</p></div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-      <!-- 문제 -->
-      <div class="lg:col-span-3 bg-white rounded-xl p-5 border-2 border-error/30 flex flex-col justify-center">
-        <div class="flex items-center gap-2 mb-3">
-          <span class="w-6 h-6 rounded-full bg-error/10 flex items-center justify-center text-error text-[10px] font-bold">!</span>
-          <h3 class="font-display font-bold text-error text-sm">문제</h3>
-        </div>
-        <div class="space-y-3">
-          <div class="bg-error/5 rounded-lg p-3">
-            <p class="text-[11px] text-neutral-sub font-medium mb-1">"연차 며칠 쓸 수 있어?"</p>
-            <p class="text-[10px] text-error">BM25가 "연차" 매칭 실패<br>구어체 &ne; 규정 문어체</p>
-          </div>
-          <div class="bg-error/5 rounded-lg p-3">
-            <p class="text-[11px] text-neutral-sub font-medium mb-1">정답이 3번째에 묻힘</p>
-            <p class="text-[10px] text-error">MRR <strong>0.636</strong><br>정답 평균 <strong>2.65위</strong></p>
-          </div>
-        </div>
-      </div>
-      <!-- 화살표 -->
-      <div class="hidden lg:flex lg:col-span-1 items-center justify-center">
-        <svg class="w-8 h-8 text-primary-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
-      </div>
-      <!-- 해결 -->
-      <div class="lg:col-span-4 bg-white rounded-xl p-5 border-2 border-primary-300 flex flex-col">
-        <div class="flex items-center gap-2 mb-3">
-          <span class="w-6 h-6 rounded-full bg-primary-50 flex items-center justify-center text-primary-700 text-[10px] font-bold">&rarr;</span>
-          <h3 class="font-display font-bold text-primary-900 text-sm">3단계 해결</h3>
-        </div>
-        <div class="bg-primary-50/50 rounded-lg p-2.5 mb-2">
-          <p class="font-bold text-primary-900 text-[11px] mb-1">1. 전처리 <span class="text-neutral-muted font-normal text-[9px]">기본기</span></p>
-          <p class="text-[10px] text-neutral-sub">청킹 <span class="text-error font-bold">12</span>&rarr;<span class="text-success font-bold">44</span> (제N조 단위) &middot; 동의어 23종 &middot; 구어&rarr;문어 15패턴</p>
-        </div>
-        <div class="bg-primary-50 rounded-lg p-3 mb-2 border border-primary-100">
-          <p class="font-bold text-primary-900 text-[11px] mb-1">2. HyDE <span class="text-primary-500 font-normal text-[9px]">시멘틱 강화</span></p>
-          <p class="text-[10px] text-neutral-sub mb-1.5">LLM이 <strong>가설 규정 문서</strong>를 먼저 생성 &rarr; 이걸로 Vector 검색</p>
-          <div class="bg-white/70 rounded p-1.5 text-[9px]">
-            <p class="text-neutral-muted">"연차 며칠 쓸 수 있어?" &rarr; <span class="text-primary-700 font-medium">"유급휴가 일수 기준"</span></p>
-            <p class="text-primary-700 mt-0.5">&rarr; LLM: <em>"제15조에 따라 1년 이상 근속 시 15일의 유급휴가를 부여한다..."</em></p>
-          </div>
-        </div>
-        <div class="bg-success/10 rounded-lg p-3 border-2 border-success/30 flex-1">
-          <p class="font-bold text-success text-xs mb-1">3. Cross-Encoder Reranker <span class="tag bg-success/20 text-success text-[8px] ml-1">핵심</span></p>
-          <p class="text-[10px] text-neutral-sub"><strong>bge-reranker-v2-m3</strong>가 (질문, 문서) 쌍을 직접 비교</p>
-          <p class="text-[10px] text-neutral-sub">&rarr; 정답을 <strong class="text-success">항상 1순위</strong>로 끌어올림</p>
-          <p class="text-[10px] text-neutral-sub mt-1">+ 출처당 max 3건 다양성 필터</p>
-        </div>
-      </div>
-      <!-- 화살표 -->
-      <div class="hidden lg:flex lg:col-span-1 items-center justify-center">
-        <svg class="w-8 h-8 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
-      </div>
-      <!-- 성과 -->
-      <div class="lg:col-span-3 bg-white rounded-xl p-5 border-2 border-success/40 flex flex-col justify-center">
-        <div class="flex items-center gap-2 mb-3">
-          <span class="w-6 h-6 rounded-full bg-success/10 flex items-center justify-center text-success text-[10px] font-bold">3</span>
-          <h3 class="font-display font-bold text-success text-sm">성과</h3>
-        </div>
-        <div class="text-center mb-3">
-          <p class="text-[10px] text-neutral-muted mb-1">MRR</p>
-          <div class="flex items-center justify-center gap-2">
-            <span class="font-display text-lg text-error font-bold">0.636</span>
-            <span class="text-neutral-muted">&rarr;</span>
-            <span class="font-display text-2xl text-success font-bold">0.952</span>
-          </div>
-          <p class="tag bg-success/10 text-success text-[10px] mt-1">+49.7%</p>
-        </div>
-        <div class="space-y-1.5">
-          <div class="flex justify-between text-[10px] border-b border-neutral-divider pb-1"><span class="text-neutral-muted">정답 순위</span><span><span class="text-error">2.65위</span> &rarr; <b class="text-success">1.0위</b></span></div>
-          <div class="flex justify-between text-[10px] border-b border-neutral-divider pb-1"><span class="text-neutral-muted">RAGAS Recall</span><b class="text-success">0.944</b></div>
-          <div class="flex justify-between text-[10px] border-b border-neutral-divider pb-1"><span class="text-neutral-muted">RAGAS Precision</span><b class="text-primary-700">0.889</b></div>
-          <div class="flex justify-between text-[10px]"><span class="text-neutral-muted">Hit Rate</span><b class="text-primary-900">93.3%</b></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 하단: 파이프라인 한 줄 -->
-    <div class="mt-5 bg-surface-sub rounded-xl px-4 py-2.5 border border-neutral-divider flex flex-wrap items-center justify-center gap-1.5 text-[10px]">
-      <span class="bg-primary-50 rounded px-2 py-1 font-bold text-primary-900 border border-primary-100">질의</span><span class="flow-arrow font-bold">&rarr;</span>
-      <span class="bg-accent-50 rounded px-2 py-1 border border-accent-100"><b class="text-primary-900">쿼리 정제</b></span><span class="flow-arrow font-bold">&rarr;</span>
-      <span class="bg-accent-50 rounded px-2 py-1 border border-accent-100"><b class="text-primary-900">HyDE</b></span><span class="flow-arrow font-bold">&rarr;</span>
-      <span class="bg-primary-50 rounded px-2 py-1 border border-primary-100"><b class="text-primary-900">BM25</b> + <b>Vector</b></span><span class="flow-arrow font-bold">&rarr;</span>
-      <span class="bg-primary-50 rounded px-2 py-1 border border-primary-100"><b class="text-primary-900">RRF</b></span><span class="flow-arrow font-bold">&rarr;</span>
-      <span class="bg-success/10 rounded px-2 py-1 border border-success/30"><b class="text-success">Reranker</b></span><span class="flow-arrow font-bold">&rarr;</span>
-      <span class="bg-success/10 rounded px-2 py-1 border border-success/30"><b class="text-success">다양성 필터</b></span><span class="flow-arrow font-bold">&rarr;</span>
-      <span class="bg-primary-900 rounded px-2 py-1 font-bold text-white">Top-K</span>
-    </div>
   </div>
 </section>
 
@@ -1757,30 +1602,23 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
 
         <!-- 목적 -->
         <div class="bg-success/5 border border-success/20 rounded-lg p-3 mb-3">
-          <p class="text-base font-bold text-primary-900 mb-1">목적: 모든 메시지의 첫 관문</p>
-          <div class="space-y-0.5 text-[10px] text-neutral-sub">
-            <p>채팅 입력 &rarr; 6종 분류 &rarr; Agent 라우팅</p>
-            <p class="text-[9px] text-neutral-muted">(판단/문서생성/문서검색/일정등록/일정조회/일반)</p>
-          </div>
+          <p class="text-[11px] font-bold text-primary-900 mb-1">목적: 사용자 의도를 6종으로 분류</p>
+          <p class="text-[10px] text-neutral-sub">채팅 입력 &rarr; 판단/문서생성/문서검색/일정등록/일정조회/일반 &rarr; Agent 라우팅</p>
         </div>
 
         <!-- 문제 -->
         <div class="bg-error/5 border border-error/20 rounded-lg p-3 mb-3">
-          <p class="text-base font-bold text-error mb-1">왜 LLM이 아닌 별도 모델?</p>
-          <div class="space-y-0.5 text-[10px] text-neutral-sub">
-            <p>&bull; 매 메시지마다 실행 &rarr; LLM 호출 시 <strong class="text-error">1~2초 지연 + GPU 비용</strong></p>
-            <p>&bull; 규칙기반 매칭은 <strong class="text-error">41.7%</strong> &mdash; 유사 표현 구분 불가</p>
-            <p>&bull; <strong class="text-primary-900">경량 분류 모델</strong>이 필요 (빠르고 정확하게)</p>
-          </div>
+          <p class="text-[11px] font-bold text-error mb-1">문제: 규칙기반 41.7%</p>
+          <p class="text-[10px] text-neutral-sub">키워드 매칭으로는 복합 요청, 유사 표현 구분 불가</p>
         </div>
 
         <!-- 해결 -->
         <div class="bg-success/5 border border-success/20 rounded-lg p-3 mb-3">
-          <p class="text-base font-bold text-success mb-1">해결: roberta-large 5-Seed 앙상블</p>
+          <p class="text-[11px] font-bold text-success mb-1">해결: roberta-large 5-Seed 앙상블</p>
           <div class="space-y-0.5 text-[10px] text-neutral-sub">
             <p>&bull; KoELECTRA 과적합(Dev 90% vs Held-out 77%) &rarr; roberta 교체</p>
             <p>&bull; Focal Loss + FGM + Knowledge Distillation</p>
-            <p>&bull; ONNX INT8 양자화 &rarr; <strong class="text-success">추론 19ms</strong> (LLM 대비 100배 빠름)</p>
+            <p>&bull; ONNX INT8 양자화 &rarr; 추론 19ms</p>
           </div>
         </div>
 
@@ -1816,21 +1654,21 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
 
         <!-- 목적 -->
         <div class="bg-success/5 border border-success/20 rounded-lg p-3 mb-3">
-          <p class="text-base font-bold text-primary-900 mb-1">목적: 복합 요청을 단계별로 분해</p>
+          <p class="text-[11px] font-bold text-primary-900 mb-1">목적: 복합 요청을 단계별로 분해</p>
           <p class="text-[10px] text-neutral-sub">"출장비 규정 확인하고 출장 보고서 작성해줘" &rarr; [규정판단, 문서생성] 순차 실행</p>
         </div>
 
         <!-- 문제 -->
         <div class="bg-error/5 border border-error/20 rounded-lg p-3 mb-3">
-          <p class="text-base font-bold text-error mb-1">문제: Baseline 71.0%</p>
-          <p class="text-[10px] text-neutral-sub">복합 요청에서 intent를 잘못 분류하는 케이스 발생</p>
+          <p class="text-[11px] font-bold text-error mb-1">문제: Baseline 71.0%</p>
+          <p class="text-[10px] text-neutral-sub">8B 모델의 사전지식이 LoRA로 안 덮여서 intent 혼동 발생</p>
         </div>
 
         <!-- 해결 -->
         <div class="bg-success/5 border border-success/20 rounded-lg p-3 mb-3">
-          <p class="text-base font-bold text-success mb-1">해결: Hybrid 프롬프트 + 후처리 매핑</p>
+          <p class="text-[11px] font-bold text-success mb-1">해결: Hybrid 프롬프트 + 후처리 매핑</p>
           <div class="space-y-0.5 text-[10px] text-neutral-sub">
-            <p>&bull; 잘못 분류된 intent를 규칙으로 보정</p>
+            <p>&bull; knowledge_query &rarr; doc_search 후처리 매핑</p>
             <p>&bull; Rule Guide 9개로 경계 케이스 처리</p>
             <p>&bull; Kanana-1.5-8B QLoRA r=16 (Qwen3 대비 5배 빠름)</p>
           </div>
@@ -1883,7 +1721,7 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
       <div class="lg:col-span-5 bg-white rounded-xl p-4 border border-neutral-divider">
         <!-- 1. 목적 -->
         <div class="bg-success/5 border border-success/20 rounded-lg p-3 mb-3">
-          <p class="text-sm font-bold text-primary-900 mb-1.5">목적: 회의 내용만 입력하면 완성된 문서 초안 생성</p>
+          <p class="text-xs font-bold text-primary-900 mb-1.5">목적: 회의 내용만 입력하면 완성된 문서 초안 생성</p>
           <div class="space-y-1 text-[11px] text-neutral-sub">
             <p>사용자가 자연어로 내용을 입력하면 sLLM이:</p>
             <p class="font-medium text-primary-900 pl-2">&rarr; <strong class="text-success">회의록 / 보고서 / 제안서</strong> 3종 문서 자동 생성</p>
@@ -1893,7 +1731,7 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
 
         <!-- 2. 문제 -->
         <div class="bg-error/5 border border-error/20 rounded-lg p-3 mb-2.5">
-          <p class="text-base font-bold text-error mb-1">Base 모델의 문제</p>
+          <p class="text-[11px] font-bold text-error mb-1">Base 모델의 문제</p>
           <div class="space-y-0.5 text-[11px] text-neutral-sub">
             <p>&bull; 핵심 필드(content, decisions) 채움률 <strong class="text-error">34%</strong></p>
             <p>&bull; 입력에 없는 정보를 지어냄 &rarr; <strong class="text-error">환각 44.3%</strong></p>
@@ -1901,51 +1739,49 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
           </div>
         </div>
 
-        <!-- 3. 학습 설정 -->
-        <div class="bg-surface-main rounded-lg p-4 border border-neutral-divider">
-          <h4 class="text-xs font-semibold text-primary-700 mb-2">학습 설정</h4>
-          <table class="w-full text-xs">
-            <tbody>
-              <tr class="border-b border-neutral-divider"><td class="py-2 text-neutral-muted w-24">Base Model</td><td class="py-2 font-medium">Kanana-1.5-8B-Instruct</td></tr>
-              <tr class="border-b border-neutral-divider"><td class="py-2 text-neutral-muted">LoRA r / alpha</td><td class="py-2 font-medium">32 / 64 (QLoRA 4-bit NF4)</td></tr>
-              <tr class="border-b border-neutral-divider"><td class="py-2 text-neutral-muted">Epochs / LR</td><td class="py-2 font-medium">5ep (Best: ep2) / 1e-4 cosine</td></tr>
-              <tr class="border-b border-neutral-divider"><td class="py-2 text-neutral-muted">데이터</td><td class="py-2 font-medium">Synthetic + AI Hub = 1,500건</td></tr>
-              <tr><td class="py-2 text-neutral-muted">인프라</td><td class="py-2 font-medium">RunPod H200 143GB</td></tr>
-            </tbody>
-          </table>
+        <!-- 3. 해결 -->
+        <div class="bg-success/5 border border-success/20 rounded-lg p-3 mb-3">
+          <p class="text-[11px] font-bold text-success mb-1">해결: 3계층 필드 설계</p>
+          <div class="space-y-0.5 text-[11px] text-neutral-sub">
+            <p>&bull; <strong class="text-primary-900">Always 100%</strong> &mdash; content, summary 항상 포함</p>
+            <p>&bull; <strong class="text-primary-900">Priority 80%</strong> &mdash; decisions, action_items</p>
+            <p>&bull; <strong class="text-primary-900">Optional</strong> &mdash; notes, risks 랜덤</p>
+          </div>
         </div>
+
+        <!-- 4. 학습 설정 -->
+        <h4 class="text-[11px] font-semibold text-primary-700 mb-1.5">학습 설정</h4>
+        <table class="w-full text-[11px]">
+          <tbody>
+            <tr class="border-b border-neutral-divider"><td class="py-1.5 text-neutral-muted w-24">Base Model</td><td class="py-1.5 font-medium">Kanana-1.5-8B-Instruct</td></tr>
+            <tr class="border-b border-neutral-divider"><td class="py-1.5 text-neutral-muted">LoRA r / alpha</td><td class="py-1.5 font-medium">32 / 64 (QLoRA 4-bit NF4)</td></tr>
+            <tr class="border-b border-neutral-divider"><td class="py-1.5 text-neutral-muted">Epochs / LR</td><td class="py-1.5 font-medium">5ep (Best: ep2) / 1e-4 cosine</td></tr>
+            <tr class="border-b border-neutral-divider"><td class="py-1.5 text-neutral-muted">데이터</td><td class="py-1.5 font-medium">Synthetic + AI Hub = 1,500건</td></tr>
+            <tr><td class="py-1.5 text-neutral-muted">인프라</td><td class="py-1.5 font-medium">RunPod H200 143GB</td></tr>
+          </tbody>
+        </table>
       </div>
 
       <!-- 오른쪽 (7칸): 시각적 증거 -->
       <div class="lg:col-span-7 space-y-3">
         <!-- 3계층 필드 설계 시각화 -->
-        <div class="bg-white rounded-xl p-5 border-2 border-primary-300">
-          <h3 class="font-semibold text-success text-base mb-4">해결: 3계층 필드 설계</h3>
-          <!-- 시각적 바 차트 형태 -->
-          <div class="space-y-4">
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-sm font-bold text-success">Always</span>
-                <span class="text-sm font-bold text-success">100%</span>
-              </div>
-              <div class="w-full bg-neutral-divider rounded-full h-5"><div class="bg-success h-5 rounded-full flex items-center px-3" style="width:100%"><span class="text-[10px] text-white font-medium">content · summary</span></div></div>
+        <div class="bg-white rounded-xl p-5 border border-neutral-divider">
+          <h3 class="font-semibold text-primary-900 text-sm mb-1">3계층 필드 설계</h3>
+          <p class="text-[10px] text-neutral-sub mb-3">중요도에 따라 학습 데이터의 필드 포함률을 차등 설정</p>
+          <div class="space-y-2.5">
+            <div class="bg-success/10 border border-success/20 rounded-lg p-3 flex items-center justify-between">
+              <div><p class="text-xs font-bold text-success">Always (100%)</p><p class="text-[10px] text-neutral-sub">content, summary &mdash; 핵심 필드는 항상 포함</p></div>
+              <div class="w-20 bg-neutral-divider rounded-full h-2.5"><div class="bg-success h-2.5 rounded-full" style="width:100%"></div></div>
             </div>
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-sm font-bold text-primary-700">Priority</span>
-                <span class="text-sm font-bold text-primary-700">80%</span>
-              </div>
-              <div class="w-full bg-neutral-divider rounded-full h-5"><div class="bg-primary-500 h-5 rounded-full flex items-center px-3" style="width:80%"><span class="text-[10px] text-white font-medium">decisions · action_items</span></div></div>
+            <div class="bg-primary-50 border border-primary-100 rounded-lg p-3 flex items-center justify-between">
+              <div><p class="text-xs font-bold text-primary-700">Priority (80%)</p><p class="text-[10px] text-neutral-sub">decisions, action_items &mdash; 대부분 포함</p></div>
+              <div class="w-20 bg-neutral-divider rounded-full h-2.5"><div class="bg-primary-500 h-2.5 rounded-full" style="width:80%"></div></div>
             </div>
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-sm font-bold text-neutral-muted">Optional</span>
-                <span class="text-sm font-bold text-neutral-muted">~35%</span>
-              </div>
-              <div class="w-full bg-neutral-divider rounded-full h-5"><div class="bg-neutral-muted h-5 rounded-full flex items-center px-3" style="width:35%"><span class="text-[10px] text-white font-medium">agenda · risks · notes 등</span></div></div>
+            <div class="bg-surface-main border border-neutral-divider rounded-lg p-3 flex items-center justify-between">
+              <div><p class="text-xs font-bold text-neutral-muted">Optional (의도적 랜덤)</p><p class="text-[10px] text-neutral-sub">notes, risks &mdash; <strong class="text-primary-900">일부러 비워서 "없으면 채우지 마"를 학습</strong></p></div>
+              <div class="w-20 bg-neutral-divider rounded-full h-2.5"><div class="bg-neutral-muted h-2.5 rounded-full" style="width:35%"></div></div>
             </div>
           </div>
-          <p class="text-xs text-primary-900 mt-4 bg-primary-50 rounded-lg p-2.5 text-center"><strong>Optional을 의도적으로 비워서</strong> "없으면 채우지 마"를 학습 → 환각 방지</p>
         </div>
 
         <!-- 학습 데이터 예시 -->
@@ -1955,21 +1791,21 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
             <span class="text-[9px] text-neutral-muted">train 1,350건 / eval 150건</span>
           </div>
           <div class="space-y-2">
-            <div class="bg-surface-main rounded-lg p-2.5 flex gap-0 overflow-hidden">
-              <div class="w-1 bg-primary-300 rounded-l shrink-0 -ml-2.5 -my-2.5 mr-2.5"></div>
-              <div><p class="text-[9px] font-bold text-primary-700 mb-1">system</p><p class="text-[11px] text-neutral-sub font-mono">"기업 문서 작성 전문가입니다. [필드 명세]에 따라 JSON으로 생성하세요. 입력에 해당 정보가 없으면 빈 문자열로 두세요."</p></div>
+            <div class="bg-surface-main rounded-lg p-2.5">
+              <p class="text-[9px] font-bold text-primary-700 mb-1">system</p>
+              <p class="text-[11px] text-neutral-sub font-mono">"기업 문서 작성 전문가입니다. [필드 명세]에 따라 JSON으로 생성하세요. 입력에 해당 정보가 없으면 빈 문자열로 두세요."</p>
             </div>
-            <div class="bg-primary-50 rounded-lg p-2.5 flex gap-0 overflow-hidden">
-              <div class="w-1 bg-primary-700 rounded-l shrink-0 -ml-2.5 -my-2.5 mr-2.5"></div>
-              <div><p class="text-[9px] font-bold text-primary-700 mb-1">user</p><p class="text-[11px] text-neutral-sub font-mono">[문서 유형] 회의록 &middot; [필드 명세] title, date, attendees, content, decisions, action_items<br>[회의 내용] "AI 챗봇 도입 킥오프. 3월 15일 회의실B. 박과장, 김대리, 정인턴 참석. PoC 4월까지 완료 결정."</p></div>
+            <div class="bg-primary-50 rounded-lg p-2.5">
+              <p class="text-[9px] font-bold text-primary-700 mb-1">user</p>
+              <p class="text-[11px] text-neutral-sub font-mono">[문서 유형] 회의록 &middot; [필드 명세] title, date, attendees, content, decisions, action_items<br>[회의 내용] "AI 챗봇 도입 킥오프. 3월 15일 회의실B. 박과장, 김대리, 정인턴 참석. PoC 4월까지 완료 결정."</p>
             </div>
-            <div class="bg-success/5 rounded-lg p-2.5 flex gap-0 overflow-hidden">
-              <div class="w-1 bg-success rounded-l shrink-0 -ml-2.5 -my-2.5 mr-2.5"></div>
-              <div><p class="text-[9px] font-bold text-success mb-1">assistant (정답)</p><pre class="text-[11px] text-neutral-sub font-mono whitespace-pre-wrap">{"title":"AI 챗봇 도입 킥오프 회의", "date":"2026-03-15",
+            <div class="bg-success/5 rounded-lg p-2.5">
+              <p class="text-[9px] font-bold text-success mb-1">assistant (정답)</p>
+              <pre class="text-[11px] text-neutral-sub font-mono whitespace-pre-wrap">{"title":"AI 챗봇 도입 킥오프 회의", "date":"2026-03-15",
  "attendees":["박과장","김대리","정인턴"],
  "content":"AI 챗봇 PoC 범위와 일정을 논의하고 4월 완료 목표를 수립...",
  "decisions":["PoC 4월까지 완료"],
- "action_items":[{"담당":"김대리","내용":"벤더 3곳 비교표 작성"}]}</pre></div>
+ "action_items":[{"담당":"김대리","내용":"벤더 3곳 비교표 작성"}]}</pre>
             </div>
           </div>
         </div>
@@ -2142,7 +1978,7 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
       <div class="lg:col-span-5 bg-white rounded-xl p-4 border border-neutral-divider">
         <!-- 1. 목적 -->
         <div class="bg-success/5 border border-success/20 rounded-lg p-3 mb-3">
-          <p class="text-sm font-bold text-primary-900 mb-1.5">목적: 문서관리 페이지 자동화</p>
+          <p class="text-xs font-bold text-primary-900 mb-1.5">목적: 문서관리 페이지 자동화</p>
           <div class="space-y-1 text-[11px] text-neutral-sub">
             <p>사용자가 문서를 업로드하면 sLLM이 자동으로:</p>
             <p class="font-medium text-primary-900 pl-2">&rarr; <strong class="text-success">분류</strong> (7종 카테고리 필터)</p>
@@ -2154,7 +1990,7 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
 
         <!-- 2. 문제 -->
         <div class="bg-error/5 border border-error/20 rounded-lg p-3 mb-2.5">
-          <p class="text-base font-bold text-error mb-1">Base 모델의 문제</p>
+          <p class="text-[11px] font-bold text-error mb-1">Base 모델의 문제</p>
           <div class="space-y-0.5 text-[11px] text-neutral-sub">
             <p>요약 자체는 가능하지만:</p>
             <p>&bull; <strong class="text-error">"뉴스기사"</strong> 등 없는 카테고리 15% &rarr; <strong class="text-error">분류 필터 작동 불가</strong></p>
@@ -2162,10 +1998,19 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
           </div>
         </div>
 
-        <!-- 3. 학습 설정 -->
-        <div class="bg-surface-main rounded-lg p-4 border border-neutral-divider">
-          <h4 class="text-xs font-semibold text-primary-700 mb-2">학습 설정</h4>
-          <table class="w-full text-xs">
+        <!-- 3. 해결 -->
+        <div class="bg-success/5 border border-success/20 rounded-lg p-3 mb-3">
+          <p class="text-[11px] font-bold text-success mb-1">해결: 포맷 통일</p>
+          <div class="space-y-0.5 text-[11px] text-neutral-sub">
+            <p>&bull; 출력 <strong class="text-primary-900">분류:/태그:/요약:</strong> 3줄 통일</p>
+            <p>&bull; 분류 <strong class="text-primary-900">7종 명시</strong> (회의록/보고서/제안서/계약서/정책/인사/기타)</p>
+            <p>&bull; 1,000건 전부 이 포맷으로 변환하여 학습 <strong class="text-primary-900">(7종 균형 분포)</strong></p>
+          </div>
+        </div>
+
+        <!-- 4. 학습 설정 -->
+        <h4 class="text-[11px] font-semibold text-primary-700 mb-1.5">학습 설정</h4>
+        <table class="w-full text-[11px]">
           <tbody>
             <tr class="border-b border-neutral-divider"><td class="py-1.5 text-neutral-muted w-24">Base Model</td><td class="py-1.5 font-medium">Kanana-1.5-8B-Instruct</td></tr>
             <tr class="border-b border-neutral-divider"><td class="py-1.5 text-neutral-muted">LoRA r / alpha</td><td class="py-1.5 font-medium">16 / 32 (QLoRA 4-bit NF4)</td></tr>
@@ -2174,18 +2019,14 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
             <tr><td class="py-1.5 text-neutral-muted">인프라</td><td class="py-1.5 font-medium">RunPod H200 143GB</td></tr>
           </tbody>
         </table>
-        </div>
       </div>
 
       <!-- 오른쪽 (7칸): 시각적 증거 -->
       <div class="lg:col-span-7 space-y-3">
-        <!-- 해결: 포맷 통일 -->
-        <div class="bg-white rounded-xl p-5 border-2 border-primary-300">
-          <h3 class="font-semibold text-success text-base mb-1">해결: 포맷 통일</h3>
-          <div class="space-y-0.5 text-xs text-neutral-sub mb-3">
-            <p>&bull; 출력 <strong class="text-primary-900">분류:/태그:/요약:</strong> 3줄 통일</p>
-            <p>&bull; 분류 <strong class="text-primary-900">7종 명시</strong> &middot; 1,000건 전부 이 포맷으로 학습</p>
-          </div>
+        <!-- v2 → v3 포맷 변환 -->
+        <div class="bg-white rounded-xl p-5 border border-neutral-divider">
+          <h3 class="font-semibold text-primary-900 text-sm mb-1">목표 출력 구조</h3>
+          <p class="text-[10px] text-neutral-sub mb-3">이 포맷으로 출력하도록 학습 &rarr; 파싱 후 DB 저장 &rarr; 서비스에서 활용</p>
           <div class="bg-success/5 border-2 border-success/30 rounded-lg p-3">
             <div class="space-y-2">
               <div class="flex items-center gap-3">
@@ -2205,6 +2046,11 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
               </div>
             </div>
           </div>
+          <div class="mt-2.5 grid grid-cols-3 gap-2 text-center">
+            <div class="bg-surface-main rounded-lg p-2"><p class="text-[10px] font-bold text-primary-700">분류 7종</p><p class="text-[9px] text-neutral-sub">회의록/보고서/제안서<br>계약서/정책/인사/기타</p></div>
+            <div class="bg-surface-main rounded-lg p-2"><p class="text-[10px] font-bold text-primary-700">태그 3~7개</p><p class="text-[9px] text-neutral-sub">#접두사 통일<br>공백 제거</p></div>
+            <div class="bg-surface-main rounded-lg p-2"><p class="text-[10px] font-bold text-primary-700">요약 2~5문장</p><p class="text-[9px] text-neutral-sub">핵심만 간결하게<br>avg 132자</p></div>
+          </div>
         </div>
 
         <!-- 학습 데이터 예시 -->
@@ -2214,19 +2060,19 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
             <span class="text-[9px] text-neutral-muted">train 900건 / eval 100건</span>
           </div>
           <div class="space-y-2">
-            <div class="bg-surface-main rounded-lg p-2.5 flex gap-0 overflow-hidden">
-              <div class="w-1 bg-primary-300 rounded-l shrink-0 -ml-2.5 -my-2.5 mr-2.5"></div>
-              <div><p class="text-[9px] font-bold text-primary-700 mb-1">system</p><p class="text-[11px] text-neutral-sub font-mono">"문서 분류 및 요약 전문가입니다. 분류, 태그, 요약을 생성하세요. 분류: 회의록/보고서/제안서/계약서/정책문서/인사문서/기타"</p></div>
+            <div class="bg-surface-main rounded-lg p-2.5">
+              <p class="text-[9px] font-bold text-primary-700 mb-1">system</p>
+              <p class="text-[11px] text-neutral-sub font-mono">"문서 분류 및 요약 전문가입니다. 분류, 태그, 요약을 생성하세요. 분류: 회의록/보고서/제안서/계약서/정책문서/인사문서/기타"</p>
             </div>
-            <div class="bg-primary-50 rounded-lg p-2.5 flex gap-0 overflow-hidden">
-              <div class="w-1 bg-primary-700 rounded-l shrink-0 -ml-2.5 -my-2.5 mr-2.5"></div>
-              <div><p class="text-[9px] font-bold text-primary-700 mb-1">user</p><p class="text-[11px] text-neutral-sub font-mono">"경주시 황리단길은 코로나19로 인한 관광 침체에서 벗어나 젊은 관광객들로 붐비고 있다. 2023년 3~5월 기준, 주요 관광지 방문객 수는 전년 대비 20~40% 증가했으며..."</p></div>
+            <div class="bg-primary-50 rounded-lg p-2.5">
+              <p class="text-[9px] font-bold text-primary-700 mb-1">user</p>
+              <p class="text-[11px] text-neutral-sub font-mono">"경주시 황리단길은 코로나19로 인한 관광 침체에서 벗어나 젊은 관광객들로 붐비고 있다. 2023년 3~5월 기준, 주요 관광지 방문객 수는 전년 대비 20~40% 증가했으며..."</p>
             </div>
-            <div class="bg-success/5 rounded-lg p-2.5 flex gap-0 overflow-hidden">
-              <div class="w-1 bg-success rounded-l shrink-0 -ml-2.5 -my-2.5 mr-2.5"></div>
-              <div><p class="text-[9px] font-bold text-success mb-1">assistant (정답)</p><pre class="text-[11px] text-neutral-sub font-mono whitespace-pre-wrap">분류: 보고서
+            <div class="bg-success/5 rounded-lg p-2.5">
+              <p class="text-[9px] font-bold text-success mb-1">assistant (정답)</p>
+              <pre class="text-[11px] text-neutral-sub font-mono whitespace-pre-wrap">분류: 보고서
 태그: #경주시 #황리단길 #관광객 #코로나19
-요약: 경주시 황리단길은 코로나19 이후 관광객의 방문이 점차 회복되고 있다.</pre></div>
+요약: 경주시 황리단길은 코로나19 이후 관광객의 방문이 점차 회복되고 있다.</pre>
             </div>
           </div>
         </div>
@@ -2246,22 +2092,22 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
       <div>
         <!-- Before -->
         <div class="relative mb-4">
-          <div class="absolute -top-3 left-4 z-10"><span class="bg-error text-white text-[10px] font-bold px-3 py-1 rounded-full">BEFORE &mdash; Base (274자)</span></div>
-          <div class="bg-white border-2 border-error/40 rounded-xl p-5 pt-7">
-            <div class="space-y-2.5 text-xs font-mono text-neutral-sub">
-              <div class="flex gap-3 items-center">
-                <span class="text-neutral-muted w-12 shrink-0 font-bold">분류:</span>
-                <span class="text-error font-bold text-sm">뉴스기사</span>
-                <span class="text-[9px] text-error bg-error/10 rounded px-1.5 py-0.5">7종에 없음</span>
+          <div class="absolute -top-2.5 left-4 z-10"><span class="bg-error text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full">BEFORE &mdash; Base (274자)</span></div>
+          <div class="bg-white border-2 border-error/40 rounded-xl p-4 pt-6">
+            <div class="space-y-2 text-[11px] font-mono text-neutral-sub">
+              <div class="flex gap-2 items-center">
+                <span class="text-neutral-muted w-10 shrink-0 text-[10px] font-bold">분류:</span>
+                <span class="text-error font-bold">뉴스기사</span>
+                <span class="text-[8px] text-error bg-error/10 rounded px-1 py-0.5">7종에 없음 &rarr; 필터 깨짐</span>
               </div>
-              <div class="flex gap-3 items-start">
-                <span class="text-neutral-muted w-12 shrink-0 font-bold">태그:</span>
+              <div class="flex gap-2 items-start">
+                <span class="text-neutral-muted w-10 shrink-0 text-[10px] font-bold">태그:</span>
                 <span>경주관광, 코로나영향, 방문객회복...</span>
-                <span class="text-[9px] text-error bg-error/10 rounded px-1.5 py-0.5 shrink-0">쉼표 구분</span>
+                <span class="text-[8px] text-error bg-error/10 rounded px-1 py-0.5 shrink-0">쉼표 구분</span>
               </div>
-              <div class="flex gap-3 items-start">
-                <span class="text-neutral-muted w-12 shrink-0 font-bold">요약:</span>
-                <span class="text-[11px]">코로나19로 인해 침체되었던 경주 관광지의 방문객 수가 점차 회복세를 보이고 있습니다. 3~5월 기준 방문객 수는 지난해 대비 20~40%까지 증가... <span class="text-[9px] text-error">(장황)</span></span>
+              <div class="flex gap-2 items-start">
+                <span class="text-neutral-muted w-10 shrink-0 text-[10px] font-bold">요약:</span>
+                <span class="text-[10px]">코로나19로 인해 침체되었던 경주 관광지의 방문객 수가 점차 회복세를 보이고 있습니다. 3~5월 기준 방문객 수는 지난해 대비 20~40%까지 증가... <span class="text-[8px] text-error">(장황 274자)</span></span>
               </div>
             </div>
           </div>
@@ -2269,22 +2115,22 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
 
         <!-- After -->
         <div class="relative">
-          <div class="absolute -top-3 left-4 z-10"><span class="bg-success text-white text-[10px] font-bold px-3 py-1 rounded-full">AFTER &mdash; LoRA v3 (132자)</span></div>
-          <div class="bg-white border-2 border-success/40 rounded-xl p-5 pt-7">
-            <div class="space-y-2.5 text-xs font-mono text-neutral-sub">
-              <div class="flex gap-3 items-center">
-                <span class="text-neutral-muted w-12 shrink-0 font-bold">분류:</span>
-                <span class="text-success font-bold text-sm">보고서</span>
-                <span class="text-[9px] text-success bg-success/10 rounded px-1.5 py-0.5">유효 카테고리</span>
+          <div class="absolute -top-2.5 left-4 z-10"><span class="bg-success text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full">AFTER &mdash; LoRA v3 (132자)</span></div>
+          <div class="bg-white border-2 border-success/40 rounded-xl p-4 pt-6">
+            <div class="space-y-2 text-[11px] font-mono text-neutral-sub">
+              <div class="flex gap-2 items-center">
+                <span class="text-neutral-muted w-10 shrink-0 text-[10px] font-bold">분류:</span>
+                <span class="text-success font-bold">보고서</span>
+                <span class="text-[8px] text-success bg-success/10 rounded px-1 py-0.5">유효 카테고리</span>
               </div>
-              <div class="flex gap-3 items-start">
-                <span class="text-neutral-muted w-12 shrink-0 font-bold">태그:</span>
+              <div class="flex gap-2 items-start">
+                <span class="text-neutral-muted w-10 shrink-0 text-[10px] font-bold">태그:</span>
                 <span>#경주시 #황리단길 #관광객 #코로나19</span>
-                <span class="text-[9px] text-success bg-success/10 rounded px-1.5 py-0.5 shrink-0">#접두사 통일</span>
+                <span class="text-[8px] text-success bg-success/10 rounded px-1 py-0.5 shrink-0">#접두사 통일</span>
               </div>
-              <div class="flex gap-3 items-start">
-                <span class="text-neutral-muted w-12 shrink-0 font-bold">요약:</span>
-                <span>경주시 황리단길은 코로나19 이후 관광객의 방문이 점차 회복되고 있다. <span class="text-[9px] text-success">(핵심)</span></span>
+              <div class="flex gap-2 items-start">
+                <span class="text-neutral-muted w-10 shrink-0 text-[10px] font-bold">요약:</span>
+                <span>경주시 황리단길은 코로나19 이후 관광객의 방문이 점차 회복되고 있다. <span class="text-[8px] text-success">(핵심 132자)</span></span>
               </div>
             </div>
           </div>
@@ -2294,34 +2140,34 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
       <!-- 오른쪽: 문서관리 UI 목업 + 정량 -->
       <div>
         <!-- UI 목업 -->
-        <div class="bg-white border border-neutral-divider rounded-xl p-5 mb-4">
-          <p class="text-xs text-neutral-muted mb-3">LoRA 출력이 문서관리 페이지에 반영되는 모습</p>
+        <div class="bg-white border border-neutral-divider rounded-xl p-4 mb-4">
+          <p class="text-[9px] text-neutral-muted mb-3">LoRA 출력이 문서관리 페이지에 반영되는 모습</p>
           <!-- 미니 UI -->
           <div class="bg-surface-main rounded-lg p-4 border border-neutral-divider">
             <!-- 카테고리 필터 -->
-            <div class="flex gap-2 mb-3">
-              <span class="text-[10px] bg-primary-700 text-white rounded-full px-3 py-1 font-medium">전체</span>
-              <span class="text-[10px] bg-success/20 text-success rounded-full px-3 py-1 font-bold border border-success/30">보고서</span>
-              <span class="text-[10px] bg-white text-neutral-sub rounded-full px-3 py-1 border border-neutral-divider">회의록</span>
-              <span class="text-[10px] bg-white text-neutral-sub rounded-full px-3 py-1 border border-neutral-divider">제안서</span>
-              <span class="text-[10px] bg-white text-neutral-muted rounded-full px-3 py-1 border border-neutral-divider">+4</span>
+            <div class="flex gap-1.5 mb-3">
+              <span class="text-[9px] bg-primary-700 text-white rounded-full px-2.5 py-0.5 font-medium">전체</span>
+              <span class="text-[9px] bg-success/20 text-success rounded-full px-2.5 py-0.5 font-bold border border-success/30">보고서</span>
+              <span class="text-[9px] bg-white text-neutral-sub rounded-full px-2.5 py-0.5 border border-neutral-divider">회의록</span>
+              <span class="text-[9px] bg-white text-neutral-sub rounded-full px-2.5 py-0.5 border border-neutral-divider">제안서</span>
+              <span class="text-[9px] bg-white text-neutral-muted rounded-full px-2.5 py-0.5 border border-neutral-divider">+4</span>
             </div>
             <!-- 문서 카드 -->
-            <div class="bg-white rounded-lg p-4 border border-neutral-divider">
-              <div class="flex items-center gap-2 mb-2">
-                <span class="text-[10px] bg-success/10 text-success font-bold rounded px-2 py-0.5">보고서</span>
-                <span class="text-xs font-semibold text-primary-900">경주 관광 현황 보고서</span>
+            <div class="bg-white rounded-lg p-3 border border-neutral-divider">
+              <div class="flex items-center gap-2 mb-1.5">
+                <span class="text-[9px] bg-success/10 text-success font-bold rounded px-1.5 py-0.5">보고서</span>
+                <span class="text-[10px] font-semibold text-primary-900">경주 관광 현황 보고서</span>
               </div>
-              <div class="flex gap-1.5 mb-2">
-                <span class="text-[9px] bg-primary-50 text-primary-700 rounded px-2 py-0.5">#경주시</span>
-                <span class="text-[9px] bg-primary-50 text-primary-700 rounded px-2 py-0.5">#황리단길</span>
-                <span class="text-[9px] bg-primary-50 text-primary-700 rounded px-2 py-0.5">#관광객</span>
-                <span class="text-[9px] bg-primary-50 text-primary-700 rounded px-2 py-0.5">#코로나19</span>
+              <div class="flex gap-1 mb-2">
+                <span class="text-[8px] bg-primary-50 text-primary-700 rounded px-1.5 py-0.5">#경주시</span>
+                <span class="text-[8px] bg-primary-50 text-primary-700 rounded px-1.5 py-0.5">#황리단길</span>
+                <span class="text-[8px] bg-primary-50 text-primary-700 rounded px-1.5 py-0.5">#관광객</span>
+                <span class="text-[8px] bg-primary-50 text-primary-700 rounded px-1.5 py-0.5">#코로나19</span>
               </div>
-              <p class="text-xs text-neutral-sub leading-relaxed">경주시 황리단길은 코로나19 이후 관광객의 방문이 점차 회복되고 있다.</p>
+              <p class="text-[9px] text-neutral-sub leading-relaxed">경주시 황리단길은 코로나19 이후 관광객의 방문이 점차 회복되고 있다.</p>
             </div>
             <!-- 화살표 매핑 -->
-            <div class="mt-3 grid grid-cols-3 gap-1 text-center text-[10px]">
+            <div class="mt-2 grid grid-cols-3 gap-1 text-center text-[8px]">
               <span class="text-success font-bold">&uarr; 분류 &rarr; 필터</span>
               <span class="text-success font-bold">&uarr; 태그 &rarr; 검색</span>
               <span class="text-success font-bold">&uarr; 요약 &rarr; 미리보기</span>
@@ -2330,9 +2176,9 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
         </div>
 
         <!-- 정량 평가 -->
-        <div class="bg-white border border-neutral-divider rounded-xl p-5">
-          <h3 class="font-semibold text-primary-900 text-xs mb-3 text-center">정량 평가 (eval 100건)</h3>
-          <table class="w-full text-xs">
+        <div class="bg-white border border-neutral-divider rounded-xl p-4">
+          <h3 class="font-semibold text-primary-900 text-[10px] mb-2 text-center">정량 평가 (eval 100건)</h3>
+          <table class="w-full text-[10px]">
             <thead>
               <tr class="bg-primary-700 text-white">
                 <th class="px-2 py-1 rounded-tl-lg text-left">지표</th>
@@ -2343,28 +2189,28 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
             </thead>
             <tbody>
               <tr class="border-b border-neutral-divider">
-                <td class="px-3 py-1.5 font-medium">분류 유효율</td>
-                <td class="px-3 py-1.5 text-center text-error font-semibold">85%</td>
-                <td class="px-3 py-1.5 text-center text-success font-bold">100%</td>
-                <td class="px-3 py-1.5 text-center text-success font-bold">+15%p</td>
+                <td class="px-2 py-1 font-medium">분류 유효율</td>
+                <td class="px-2 py-1 text-center text-error font-semibold">85%</td>
+                <td class="px-2 py-1 text-center text-success font-bold">100%</td>
+                <td class="px-2 py-1 text-center text-success font-bold">+15%p</td>
               </tr>
               <tr class="border-b border-neutral-divider bg-surface-main/50">
-                <td class="px-3 py-1.5 font-medium">BERTScore F1</td>
-                <td class="px-3 py-1.5 text-center text-error font-semibold">0.828</td>
-                <td class="px-3 py-1.5 text-center text-success font-bold">0.859</td>
-                <td class="px-3 py-1.5 text-center text-success font-bold">+0.031</td>
+                <td class="px-2 py-1 font-medium">BERTScore F1</td>
+                <td class="px-2 py-1 text-center text-error font-semibold">0.828</td>
+                <td class="px-2 py-1 text-center text-success font-bold">0.859</td>
+                <td class="px-2 py-1 text-center text-success font-bold">+0.031</td>
               </tr>
               <tr class="border-b border-neutral-divider">
-                <td class="px-3 py-1.5 font-medium">평균 길이</td>
-                <td class="px-3 py-1.5 text-center text-error font-semibold">274자</td>
-                <td class="px-3 py-1.5 text-center text-success font-bold">132자</td>
-                <td class="px-3 py-1.5 text-center text-success font-bold">2배 간결</td>
+                <td class="px-2 py-1 font-medium">평균 길이</td>
+                <td class="px-2 py-1 text-center text-error font-semibold">274자</td>
+                <td class="px-2 py-1 text-center text-success font-bold">132자</td>
+                <td class="px-2 py-1 text-center text-success font-bold">2배 간결</td>
               </tr>
               <tr>
-                <td class="px-3 py-1.5 font-medium">ROUGE-L</td>
-                <td class="px-3 py-1.5 text-center text-neutral-sub">0.20</td>
-                <td class="px-3 py-1.5 text-center font-medium">0.31</td>
-                <td class="px-3 py-1.5 text-center text-success">+0.11</td>
+                <td class="px-2 py-1 font-medium">ROUGE-L</td>
+                <td class="px-2 py-1 text-center text-neutral-sub">0.20</td>
+                <td class="px-2 py-1 text-center font-medium">0.31</td>
+                <td class="px-2 py-1 text-center text-success">+0.11</td>
               </tr>
             </tbody>
           </table>
@@ -2386,7 +2232,7 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
       <div class="lg:col-span-5 bg-white rounded-xl p-4 border border-neutral-divider">
         <!-- 1. 목적 -->
         <div class="bg-success/5 border border-success/20 rounded-lg p-3 mb-3">
-          <p class="text-sm font-bold text-primary-900 mb-1.5">목적: 사내 규정 기반 자동 판단</p>
+          <p class="text-xs font-bold text-primary-900 mb-1.5">목적: 사내 규정 기반 자동 판단</p>
           <div class="space-y-1 text-[11px] text-neutral-sub">
             <p>"이거 해도 돼?" 질문에 sLLM이 규정을 근거로:</p>
             <p class="font-medium text-primary-900 pl-2">&rarr; <strong class="text-success">yes / no / conditional</strong> 판단</p>
@@ -2397,36 +2243,45 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
 
         <!-- 2. 문제 -->
         <div class="bg-error/5 border border-error/20 rounded-lg p-3 mb-2.5">
-          <p class="text-base font-bold text-error mb-1">Base 모델의 문제</p>
+          <p class="text-[11px] font-bold text-error mb-1">Base 모델의 문제</p>
           <div class="space-y-0.5 text-[11px] text-neutral-sub">
             <p>&bull; 정확도 <strong class="text-error">37.2%</strong> &mdash; 절반 이상 오답</p>
             <p>&bull; 존재하지 않는 "제12조" 인용 &rarr; <strong class="text-error">환각</strong></p>
             <p>&bull; confidence 항상 <strong class="text-error">0.9+</strong> &mdash; 틀려도 과신</p>
-            <p>&bull; no_regulation 인식률 <strong class="text-error">6%</strong></p>
+            <p>&bull; no_regulation 인식률 <strong class="text-error">6%</strong> (67건 중 4건만)</p>
           </div>
         </div>
 
-        <!-- 3. 학습 설정 -->
-        <div class="bg-surface-main rounded-lg p-4 border border-neutral-divider">
-          <h4 class="text-xs font-semibold text-primary-700 mb-2">학습 설정</h4>
-          <table class="w-full text-xs">
+        <!-- 3. 해결: 3단계 실험 -->
+        <div class="bg-success/5 border border-success/20 rounded-lg p-3 mb-3">
+          <p class="text-[11px] font-bold text-success mb-1">해결: 3단계 실험으로 최적 전략 탐색</p>
+          <div class="space-y-0.5 text-[11px] text-neutral-sub">
+            <p>&bull; <strong class="text-primary-900">v1</strong> 하드코딩 규정 학습 &rarr; 86.6% <span class="text-success">(채택)</span></p>
+            <p>&bull; <strong class="text-primary-900">v2</strong> RAG 결과 삽입 &rarr; 83.4%→76.8% <span class="text-error">(폐기: 노이즈)</span></p>
+            <p>&bull; <strong class="text-primary-900">v3</strong> 약점 타겟 19건 보강 &rarr; 85.4% <span class="text-success">(최종)</span></p>
+          </div>
+          <p class="text-[10px] text-neutral-muted mt-1.5 border-t border-success/20 pt-1.5">핵심 인사이트: <strong>학습은 하드코딩, 서빙은 RAG</strong> &mdash; 데이터 양 &lt; 질</p>
+        </div>
+
+        <!-- 4. 학습 설정 -->
+        <h4 class="text-[11px] font-semibold text-primary-700 mb-1.5">학습 설정</h4>
+        <table class="w-full text-[11px]">
           <tbody>
             <tr class="border-b border-neutral-divider"><td class="py-1.5 text-neutral-muted w-24">Base Model</td><td class="py-1.5 font-medium">Kanana-1.5-8B-Instruct</td></tr>
             <tr class="border-b border-neutral-divider"><td class="py-1.5 text-neutral-muted">LoRA r / alpha</td><td class="py-1.5 font-medium">16 / 32 (bf16)</td></tr>
             <tr class="border-b border-neutral-divider"><td class="py-1.5 text-neutral-muted">Epochs / LR</td><td class="py-1.5 font-medium">3ep / 2e-4 cosine</td></tr>
-            <tr class="border-b border-neutral-divider"><td class="py-1.5 text-neutral-muted">데이터</td><td class="py-1.5 font-medium">수동 제작(Excel) + 증강 = 2,949건</td></tr>
+            <tr class="border-b border-neutral-divider"><td class="py-1.5 text-neutral-muted">데이터</td><td class="py-1.5 font-medium">수동 제작(Excel) + RAG 증강 = 2,949건</td></tr>
             <tr><td class="py-1.5 text-neutral-muted">인프라</td><td class="py-1.5 font-medium">RunPod A100 80GB</td></tr>
           </tbody>
         </table>
-        </div>
       </div>
 
       <!-- 오른쪽 (7칸): 시각적 증거 -->
       <div class="lg:col-span-7 space-y-3">
 
-        <!-- 해결: 3단계 실험 바 차트 -->
-        <div class="bg-white rounded-xl p-5 border-2 border-primary-300">
-          <h3 class="font-semibold text-success text-base mb-1">해결: 3단계 실험 여정</h3>
+        <!-- 3단계 실험 바 차트 -->
+        <div class="bg-white rounded-xl p-5 border border-neutral-divider">
+          <h3 class="font-semibold text-primary-900 text-sm mb-1">3단계 실험 여정</h3>
           <p class="text-[10px] text-neutral-sub mb-4">"RAG를 학습에 넣으면 좋을까?" &rarr; 실험으로 답을 찾다</p>
           <div class="space-y-2.5">
             <div class="flex items-center gap-2">
@@ -2458,30 +2313,32 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
           <p class="text-[9px] text-neutral-muted mt-3 bg-warning/5 rounded p-2">v2에서 RAG 노이즈로 <strong class="text-error">-9.8%p 급락</strong> &rarr; "학습은 하드코딩(깨끗한 신호), 서빙만 RAG(실시간 검색)" 전략 확정</p>
         </div>
 
-        <!-- 학습 데이터 예시 -->
-        <div class="bg-white rounded-xl p-4 border border-neutral-divider">
-          <div class="flex items-center justify-between mb-2.5">
-            <h3 class="font-semibold text-primary-900 text-xs">학습 데이터 예시</h3>
-            <span class="text-[9px] text-neutral-muted">train 2,949건 / eval 328건</span>
+        <!-- 4중 보조장치 + 5-factor -->
+        <div class="bg-white rounded-xl p-5 border border-neutral-divider">
+          <h3 class="font-semibold text-primary-900 text-sm mb-1">LLM을 맹신하지 않는 구조</h3>
+          <p class="text-[10px] text-neutral-sub mb-3">LoRA 판단 후 4중 보조장치로 검증 &rarr; 5-factor로 confidence 재산출</p>
+          <div class="grid grid-cols-2 gap-2 mb-3">
+            <div class="bg-warning/5 border border-warning/20 rounded-lg p-2.5">
+              <p class="text-[10px] font-bold text-warning mb-1">4중 보조장치 (Guardrail)</p>
+              <div class="space-y-1 text-[9px] text-neutral-sub">
+                <p>&bull; 규정 키워드 매칭 (매칭률 0~1.0)</p>
+                <p>&bull; 인용 조항 존재 검증 (환각 차단)</p>
+                <p>&bull; 카테고리 제한 (yes/no/cond 외 차단)</p>
+                <p>&bull; 일관성 모니터링 (500건 FIFO 캐시)</p>
+              </div>
+            </div>
+            <div class="bg-error/5 border border-error/20 rounded-lg p-2.5">
+              <p class="text-[10px] font-bold text-error mb-1">5-factor Confidence 보정</p>
+              <div class="space-y-1 text-[9px] text-neutral-sub">
+                <p><strong>LLM raw &times; 0.60</strong> + RAG score &times; 0.25 + 커버리지 &times; 0.15</p>
+                <p>&bull; 규정 충돌 시 감점 (-0.1/건)</p>
+                <p>&bull; 키워드 매칭 &lt; 0.2 &rarr; max 0.3</p>
+                <p>&bull; 인용 전부 미존재 &rarr; max 0.25</p>
+              </div>
+            </div>
           </div>
-          <div class="space-y-2">
-            <div class="bg-surface-main rounded-lg p-2.5 flex gap-0 overflow-hidden">
-              <div class="w-1 bg-primary-300 rounded-l shrink-0 -ml-2.5 -my-2.5 mr-2.5"></div>
-              <div><p class="text-[9px] font-bold text-primary-700 mb-1">system</p><p class="text-[11px] text-neutral-sub font-mono">"기업 내부 규정 판단 전문가입니다. 규정 문서를 기반으로 판단하세요. 결과는 JSON으로: result(yes/no/conditional/no_regulation), confidence, reasoning, regulations, conditions, alternatives"</p></div>
-            </div>
-            <div class="bg-primary-50 rounded-lg p-2.5 flex gap-0 overflow-hidden">
-              <div class="w-1 bg-primary-700 rounded-l shrink-0 -ml-2.5 -my-2.5 mr-2.5"></div>
-              <div><p class="text-[9px] font-bold text-primary-700 mb-1">user</p><p class="text-[11px] text-neutral-sub font-mono">## 관련 규정 문서<br>### 정보보안규정 — 제25조 (시스템 접근 권한)<br>"외부인 및 인턴은 부서장 승인 후 제한된 범위에서..."<br><br>## 질문<br>"인턴에게 AWS 콘솔 접근 권한을 줘도 되나요?"</p></div>
-            </div>
-            <div class="bg-success/5 rounded-lg p-2.5 flex gap-0 overflow-hidden">
-              <div class="w-1 bg-success rounded-l shrink-0 -ml-2.5 -my-2.5 mr-2.5"></div>
-              <div><p class="text-[9px] font-bold text-success mb-1">assistant (정답)</p><pre class="text-[11px] text-neutral-sub font-mono whitespace-pre-wrap">{"result": "conditional",
- "confidence": 0.82,
- "reasoning": "정보보안규정 제25조에 따라...",
- "regulations": [{"article":"제25조"}],
- "conditions": "부서장 승인 + 보안교육 이수",
- "alternatives": ["테스트 환경 한정 접근"]}</pre></div>
-            </div>
+          <div class="bg-surface-main rounded-lg p-2 text-center">
+            <p class="text-[10px] text-neutral-sub">Base: confidence <strong class="text-error">항상 0.9+</strong> (과신) &rarr; 보정 후: <strong class="text-success">0.25~0.85 범위</strong>로 현실 반영</p>
           </div>
         </div>
       </div>
@@ -2492,7 +2349,7 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
 <!-- ========== 11-6b. 판단 Agent 파인튜닝 성과 ========== -->
 <section id="ft-judgment" class="py-10 bg-white">
   <div class="max-w-6xl mx-auto px-6">
-    <div class="text-center mb-6"><span class="tag bg-success/10 text-success mb-2">11-7</span><h2 class="font-display text-2xl md:text-3xl font-bold text-primary-900 mt-2">판단 Agent 파인튜닝 성과</h2><p class="text-neutral-sub text-xs mt-1">v1_judgment &middot; 동일 질문, Base vs LoRA 출력 비교</p></div>
+    <div class="text-center mb-6"><span class="tag bg-success/10 text-success mb-2">11-6</span><h2 class="font-display text-2xl md:text-3xl font-bold text-primary-900 mt-2">판단 Agent 파인튜닝 성과</h2><p class="text-neutral-sub text-xs mt-1">v1_judgment &middot; 동일 질문, Base vs LoRA 출력 비교</p></div>
 
     <!-- 사용자 입력 -->
     <div class="bg-white border border-neutral-divider rounded-xl p-3 mb-5 max-w-3xl mx-auto">
@@ -2500,12 +2357,12 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
       <p class="text-xs text-primary-900 font-medium">"인턴에게 AWS 콘솔 접근 권한을 줘도 되나요?"</p>
     </div>
 
-    <!-- Before / After 카드 -->
+    <!-- Before / After 판단 결과 나란히 -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
 
-      <!-- Before -->
+      <!-- Before: Base -->
       <div class="relative">
-        <div class="absolute -top-2.5 left-4 z-10"><span class="bg-error text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full">BEFORE &mdash; Base (37.2%)</span></div>
+        <div class="absolute -top-2.5 left-4 z-10"><span class="bg-error text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full">BEFORE &mdash; Base 모델 (37.2%)</span></div>
         <div class="bg-white border-2 border-error/40 rounded-xl p-4 pt-6">
           <div class="space-y-2 text-xs">
             <div class="flex gap-2 items-center">
@@ -2532,7 +2389,7 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
         </div>
       </div>
 
-      <!-- After -->
+      <!-- After: LoRA -->
       <div class="relative">
         <div class="absolute -top-2.5 left-4 z-10"><span class="bg-success text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full">AFTER &mdash; LoRA v1 (85.4%)</span></div>
         <div class="bg-white border-2 border-success/40 rounded-xl p-4 pt-6">
@@ -2549,7 +2406,7 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
             </div>
             <div class="flex gap-2 items-start">
               <span class="text-neutral-muted w-20 shrink-0 text-[10px] font-medium pt-0.5">근거 조항</span>
-              <span class="text-primary-900 text-[11px]">정보시스템 제17조, 접근통제 제12조</span>
+              <span class="text-primary-900 text-[11px]">정보보안규정 제25조, 인사규정 제8조</span>
               <span class="text-[8px] text-success bg-success/10 rounded px-1 py-0.5 shrink-0">실존</span>
             </div>
             <div class="flex gap-2 items-center">
@@ -2565,7 +2422,7 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
       </div>
     </div>
 
-    <!-- 카테고리별 정확도 테이블 -->
+    <!-- 하단: 카테고리별 정확도 + 정량 평가 -->
     <div class="bg-white border border-neutral-divider rounded-xl p-4">
       <h3 class="font-semibold text-primary-900 text-xs mb-3 text-center">카테고리별 정확도 (eval 328건)</h3>
       <div class="overflow-x-auto">
@@ -2651,7 +2508,7 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
               <td class="px-2 py-2 text-center font-semibold">2</td>
               <td class="px-2 py-2 font-semibold text-primary-900">Planner intent 혼동 (15건)</td>
               <td class="px-2 py-2 text-neutral-sub">8B 사전지식을 LoRA로 못 덮음</td>
-              <td class="px-2 py-2"><span class="text-success font-medium">잘못 분류된 intent 규칙 보정</span> &middot; PM +13.7%p</td>
+              <td class="px-2 py-2"><span class="text-success font-medium">knowledge_query 후처리 매핑</span> &middot; PM +13.7%p</td>
             </tr>
             <tr class="border-b border-neutral-divider bg-error/5">
               <td class="px-2 py-2 text-center font-semibold">3</td>
@@ -2698,6 +2555,13 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
           <div class="flex gap-3">
             <div class="w-1.5 rounded-full bg-warning shrink-0"></div>
             <div>
+              <p class="font-semibold text-primary-900 text-xs">Reranker 지연 +5.7초</p>
+              <p class="text-[10px] text-neutral-sub mt-0.5">정확도 vs 속도 트레이드오프</p>
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <div class="w-1.5 rounded-full bg-warning shrink-0"></div>
+            <div>
               <p class="font-semibold text-primary-900 text-xs">ROUGE-L ↑ vs False Fill ↑ 트레이드오프</p>
               <p class="text-[10px] text-neutral-sub mt-0.5">v4 실험: 채움률 올리면 환각도 증가 &rarr; v3 유지</p>
             </div>
@@ -2724,8 +2588,8 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
           <div class="flex gap-3">
             <div class="w-1.5 rounded-full bg-success shrink-0"></div>
             <div>
-              <p class="font-semibold text-primary-900 text-xs">Reranker 경량화 &amp; 캐싱</p>
-              <p class="text-[10px] text-neutral-sub mt-0.5">빈출 규정 캐싱 + 모델 경량화로 응답 속도 개선</p>
+              <p class="font-semibold text-primary-900 text-xs">빈출 규정 캐싱 &amp; 모델 경량화</p>
+              <p class="text-[10px] text-neutral-sub mt-0.5">Reranker 지연 우회 + 4-bit 양자화 + ONNX</p>
             </div>
           </div>
         </div>
@@ -2756,7 +2620,7 @@ html{scroll-behavior:smooth}body{font-family:'Noto Sans KR',sans-serif}.font-dis
 
 <script>
 (function(){
-  const ids=['hero','toc','persona','problem','solution','features','team','tech','architecture','intent-classify','agent-judgment','agent-document-pipelines','agent-schedule','base-limit','data','ft-results','finetuning','ft-docgen','ft-summary','ft-judgment','troubleshooting','qa'];
+  const ids=['hero','toc','persona','problem','solution','features','team','tech','architecture','intent-classify','agent-judgment','agent-document-pipelines','agent-schedule','base-limit','data','ft-results','finetuning','ft-docgen','ft-summary','ft-judgment-process','ft-judgment','troubleshooting','qa'];
   const dots=document.querySelectorAll('#navDots .nav-dot');
   let cur=0;
   const obs=new IntersectionObserver(entries=>{

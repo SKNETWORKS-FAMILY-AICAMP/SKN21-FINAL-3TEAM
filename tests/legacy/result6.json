@@ -1,0 +1,818 @@
+[
+  {
+    "text": "재택근무 규정 알려줘",
+    "expected": "judgment",
+    "raw_intent": "doc_retrieve",
+    "raw_conf": 0.6074,
+    "final_intent": "judgment",
+    "final_conf": 0.6074,
+    "gap": 0.2211,
+    "top3": [
+      {
+        "i": "doc_retrieve",
+        "c": 0.6074
+      },
+      {
+        "i": "judgment",
+        "c": 0.3863
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0449
+      }
+    ],
+    "verdict": "override_fix"
+  },
+  {
+    "text": "연차 사용 시 며칠 전에 신청해야 하나요?",
+    "expected": "judgment",
+    "raw_intent": "judgment",
+    "raw_conf": 0.7995,
+    "final_intent": "schedule_add",
+    "final_conf": 0.7995,
+    "gap": 0.6197,
+    "top3": [
+      {
+        "i": "judgment",
+        "c": 0.7995
+      },
+      {
+        "i": "doc_retrieve",
+        "c": 0.1798
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0391
+      }
+    ],
+    "verdict": "override_break"
+  },
+  {
+    "text": "출장 시 숙박비 한도가 얼마인가요?",
+    "expected": "judgment",
+    "raw_intent": "doc_retrieve",
+    "raw_conf": 0.9462,
+    "final_intent": "doc_retrieve",
+    "final_conf": 0.9462,
+    "gap": 0.8835,
+    "top3": [
+      {
+        "i": "doc_retrieve",
+        "c": 0.9462
+      },
+      {
+        "i": "judgment",
+        "c": 0.0627
+      },
+      {
+        "i": "general",
+        "c": 0.0261
+      }
+    ],
+    "verdict": "onnx_wrong"
+  },
+  {
+    "text": "지각하면 어떻게 돼?",
+    "expected": "judgment",
+    "raw_intent": "judgment",
+    "raw_conf": 0.9147,
+    "final_intent": "judgment",
+    "final_conf": 0.9147,
+    "gap": 0.8474,
+    "top3": [
+      {
+        "i": "judgment",
+        "c": 0.9147
+      },
+      {
+        "i": "general",
+        "c": 0.0673
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0428
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "복리후생 뭐 있어?",
+    "expected": "judgment",
+    "raw_intent": "doc_retrieve",
+    "raw_conf": 0.8809,
+    "final_intent": "judgment",
+    "final_conf": 0.8809,
+    "gap": 0.7662,
+    "top3": [
+      {
+        "i": "doc_retrieve",
+        "c": 0.8809
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.1147
+      },
+      {
+        "i": "general",
+        "c": 0.0544
+      }
+    ],
+    "verdict": "override_fix"
+  },
+  {
+    "text": "인센티브 지급 기준이 뭐야",
+    "expected": "judgment",
+    "raw_intent": "doc_retrieve",
+    "raw_conf": 0.9352,
+    "final_intent": "judgment",
+    "final_conf": 0.9352,
+    "gap": 0.874,
+    "top3": [
+      {
+        "i": "doc_retrieve",
+        "c": 0.9352
+      },
+      {
+        "i": "judgment",
+        "c": 0.0612
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0299
+      }
+    ],
+    "verdict": "override_fix"
+  },
+  {
+    "text": "퇴직금 계산해줘",
+    "expected": "judgment",
+    "raw_intent": "judgment",
+    "raw_conf": 0.6631,
+    "final_intent": "judgment",
+    "final_conf": 0.6631,
+    "gap": 0.3527,
+    "top3": [
+      {
+        "i": "judgment",
+        "c": 0.6631
+      },
+      {
+        "i": "doc_generate",
+        "c": 0.3104
+      },
+      {
+        "i": "schedule_add",
+        "c": 0.1039
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "야근 수당 규정 설명해줘",
+    "expected": "judgment",
+    "raw_intent": "judgment",
+    "raw_conf": 0.5406,
+    "final_intent": "judgment",
+    "final_conf": 0.5406,
+    "gap": 0.0998,
+    "top3": [
+      {
+        "i": "judgment",
+        "c": 0.5406
+      },
+      {
+        "i": "doc_retrieve",
+        "c": 0.4408
+      },
+      {
+        "i": "general",
+        "c": 0.0428
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "휴일근무 수당 얼마야?",
+    "expected": "judgment",
+    "raw_intent": "doc_retrieve",
+    "raw_conf": 0.9464,
+    "final_intent": "judgment",
+    "final_conf": 0.9464,
+    "gap": 0.9089,
+    "top3": [
+      {
+        "i": "doc_retrieve",
+        "c": 0.9464
+      },
+      {
+        "i": "judgment",
+        "c": 0.0375
+      },
+      {
+        "i": "general",
+        "c": 0.0293
+      }
+    ],
+    "verdict": "override_fix"
+  },
+  {
+    "text": "경조사 휴가 며칠이야?",
+    "expected": "judgment",
+    "raw_intent": "doc_retrieve",
+    "raw_conf": 0.952,
+    "final_intent": "doc_retrieve",
+    "final_conf": 0.952,
+    "gap": 0.9081,
+    "top3": [
+      {
+        "i": "doc_retrieve",
+        "c": 0.952
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0439
+      },
+      {
+        "i": "general",
+        "c": 0.0317
+      }
+    ],
+    "verdict": "onnx_wrong"
+  },
+  {
+    "text": "출산휴가 규정 알려줘",
+    "expected": "judgment",
+    "raw_intent": "doc_retrieve",
+    "raw_conf": 0.6251,
+    "final_intent": "judgment",
+    "final_conf": 0.6251,
+    "gap": 0.2661,
+    "top3": [
+      {
+        "i": "doc_retrieve",
+        "c": 0.6251
+      },
+      {
+        "i": "judgment",
+        "c": 0.359
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0473
+      }
+    ],
+    "verdict": "override_fix"
+  },
+  {
+    "text": "해외출장 일비 기준 알려줘",
+    "expected": "judgment",
+    "raw_intent": "judgment",
+    "raw_conf": 0.797,
+    "final_intent": "judgment",
+    "final_conf": 0.797,
+    "gap": 0.5619,
+    "top3": [
+      {
+        "i": "judgment",
+        "c": 0.797
+      },
+      {
+        "i": "doc_retrieve",
+        "c": 0.2351
+      },
+      {
+        "i": "schedule_add",
+        "c": 0.0404
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "연봉 인상 기준이 뭐야?",
+    "expected": "judgment",
+    "raw_intent": "doc_retrieve",
+    "raw_conf": 0.9271,
+    "final_intent": "doc_retrieve",
+    "final_conf": 0.9271,
+    "gap": 0.8585,
+    "top3": [
+      {
+        "i": "doc_retrieve",
+        "c": 0.9271
+      },
+      {
+        "i": "judgment",
+        "c": 0.0686
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0268
+      }
+    ],
+    "verdict": "onnx_wrong"
+  },
+  {
+    "text": "보안 규정 위반하면 어떻게 돼?",
+    "expected": "judgment",
+    "raw_intent": "judgment",
+    "raw_conf": 0.9661,
+    "final_intent": "judgment",
+    "final_conf": 0.9661,
+    "gap": 0.8998,
+    "top3": [
+      {
+        "i": "judgment",
+        "c": 0.9661
+      },
+      {
+        "i": "doc_retrieve",
+        "c": 0.0663
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.035
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "USB 반입 가능한가요?",
+    "expected": "judgment",
+    "raw_intent": "judgment",
+    "raw_conf": 0.9594,
+    "final_intent": "judgment",
+    "final_conf": 0.9594,
+    "gap": 0.9225,
+    "top3": [
+      {
+        "i": "judgment",
+        "c": 0.9594
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0369
+      },
+      {
+        "i": "general",
+        "c": 0.0334
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "재택근무 가능한가요?",
+    "expected": "judgment",
+    "raw_intent": "judgment",
+    "raw_conf": 0.9631,
+    "final_intent": "judgment",
+    "final_conf": 0.9631,
+    "gap": 0.9239,
+    "top3": [
+      {
+        "i": "judgment",
+        "c": 0.9631
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0392
+      },
+      {
+        "i": "schedule_add",
+        "c": 0.0322
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "병가 쓰려면 어떻게 해야 해?",
+    "expected": "judgment",
+    "raw_intent": "doc_retrieve",
+    "raw_conf": 0.8321,
+    "final_intent": "doc_retrieve",
+    "final_conf": 0.8321,
+    "gap": 0.7385,
+    "top3": [
+      {
+        "i": "doc_retrieve",
+        "c": 0.8321
+      },
+      {
+        "i": "general",
+        "c": 0.0936
+      },
+      {
+        "i": "judgment",
+        "c": 0.0475
+      }
+    ],
+    "verdict": "onnx_wrong"
+  },
+  {
+    "text": "보고서 찾아줘",
+    "expected": "doc_retrieve",
+    "raw_intent": "doc_retrieve",
+    "raw_conf": 0.9699,
+    "final_intent": "doc_retrieve",
+    "final_conf": 0.9699,
+    "gap": 0.9112,
+    "top3": [
+      {
+        "i": "doc_retrieve",
+        "c": 0.9699
+      },
+      {
+        "i": "doc_generate",
+        "c": 0.0587
+      },
+      {
+        "i": "schedule_add",
+        "c": 0.0279
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "이 문서 요약해줘",
+    "expected": "doc_retrieve",
+    "raw_intent": "doc_retrieve",
+    "raw_conf": 0.9742,
+    "final_intent": "doc_retrieve",
+    "final_conf": 0.9742,
+    "gap": 0.9425,
+    "top3": [
+      {
+        "i": "doc_retrieve",
+        "c": 0.9742
+      },
+      {
+        "i": "schedule_add",
+        "c": 0.0317
+      },
+      {
+        "i": "doc_generate",
+        "c": 0.0286
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "지난달 회의록 보여줘",
+    "expected": "doc_retrieve",
+    "raw_intent": "doc_retrieve",
+    "raw_conf": 0.8917,
+    "final_intent": "doc_retrieve",
+    "final_conf": 0.8917,
+    "gap": 0.7792,
+    "top3": [
+      {
+        "i": "doc_retrieve",
+        "c": 0.8917
+      },
+      {
+        "i": "doc_generate",
+        "c": 0.1125
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0292
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "마케팅 관련 문서 검색",
+    "expected": "doc_retrieve",
+    "raw_intent": "doc_retrieve",
+    "raw_conf": 0.9805,
+    "final_intent": "doc_retrieve",
+    "final_conf": 0.9805,
+    "gap": 0.9343,
+    "top3": [
+      {
+        "i": "doc_retrieve",
+        "c": 0.9805
+      },
+      {
+        "i": "doc_generate",
+        "c": 0.0462
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0306
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "프로젝트 현황 보고서 있어?",
+    "expected": "doc_retrieve",
+    "raw_intent": "doc_retrieve",
+    "raw_conf": 0.9729,
+    "final_intent": "doc_retrieve",
+    "final_conf": 0.9729,
+    "gap": 0.9394,
+    "top3": [
+      {
+        "i": "doc_retrieve",
+        "c": 0.9729
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0335
+      },
+      {
+        "i": "doc_generate",
+        "c": 0.0302
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "회의록 작성해줘",
+    "expected": "doc_generate",
+    "raw_intent": "doc_generate",
+    "raw_conf": 0.9611,
+    "final_intent": "doc_generate",
+    "final_conf": 0.9611,
+    "gap": 0.9156,
+    "top3": [
+      {
+        "i": "doc_generate",
+        "c": 0.9611
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0455
+      },
+      {
+        "i": "general",
+        "c": 0.0401
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "보고서 만들어줘",
+    "expected": "doc_generate",
+    "raw_intent": "doc_generate",
+    "raw_conf": 0.9633,
+    "final_intent": "doc_generate",
+    "final_conf": 0.9633,
+    "gap": 0.9192,
+    "top3": [
+      {
+        "i": "doc_generate",
+        "c": 0.9633
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0441
+      },
+      {
+        "i": "general",
+        "c": 0.0402
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "제안서 작성해줘",
+    "expected": "doc_generate",
+    "raw_intent": "doc_generate",
+    "raw_conf": 0.9601,
+    "final_intent": "doc_generate",
+    "final_conf": 0.9601,
+    "gap": 0.9131,
+    "top3": [
+      {
+        "i": "doc_generate",
+        "c": 0.9601
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.047
+      },
+      {
+        "i": "general",
+        "c": 0.0411
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "내일 일정 알려줘",
+    "expected": "schedule_view",
+    "raw_intent": "schedule_view",
+    "raw_conf": 0.9253,
+    "final_intent": "schedule_view",
+    "final_conf": 0.9253,
+    "gap": 0.8637,
+    "top3": [
+      {
+        "i": "schedule_view",
+        "c": 0.9253
+      },
+      {
+        "i": "general",
+        "c": 0.0616
+      },
+      {
+        "i": "judgment",
+        "c": 0.0385
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "다음주 월요일 3시에 회의 잡아줘",
+    "expected": "schedule_add",
+    "raw_intent": "schedule_add",
+    "raw_conf": 0.9597,
+    "final_intent": "schedule_add",
+    "final_conf": 0.9595,
+    "gap": 0.9007,
+    "top3": [
+      {
+        "i": "schedule_add",
+        "c": 0.9595
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0588
+      },
+      {
+        "i": "general",
+        "c": 0.0426
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "이번주 일정 뭐 있어?",
+    "expected": "schedule_view",
+    "raw_intent": "schedule_view",
+    "raw_conf": 0.9402,
+    "final_intent": "schedule_view",
+    "final_conf": 0.9423,
+    "gap": 0.8854,
+    "top3": [
+      {
+        "i": "schedule_view",
+        "c": 0.9423
+      },
+      {
+        "i": "general",
+        "c": 0.0569
+      },
+      {
+        "i": "judgment",
+        "c": 0.0386
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "태스크 만들어줘",
+    "expected": "schedule_add",
+    "raw_intent": "doc_generate",
+    "raw_conf": 0.9377,
+    "final_intent": "schedule_add",
+    "final_conf": 0.9377,
+    "gap": 0.881,
+    "top3": [
+      {
+        "i": "doc_generate",
+        "c": 0.9377
+      },
+      {
+        "i": "schedule_add",
+        "c": 0.0567
+      },
+      {
+        "i": "general",
+        "c": 0.0409
+      }
+    ],
+    "verdict": "override_fix"
+  },
+  {
+    "text": "결재 올려줘",
+    "expected": "schedule_add",
+    "raw_intent": "schedule_add",
+    "raw_conf": 0.8829,
+    "final_intent": "schedule_add",
+    "final_conf": 0.8829,
+    "gap": 0.7592,
+    "top3": [
+      {
+        "i": "schedule_add",
+        "c": 0.8829
+      },
+      {
+        "i": "doc_generate",
+        "c": 0.1237
+      },
+      {
+        "i": "doc_retrieve",
+        "c": 0.0686
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "연차 신청해줘",
+    "expected": "schedule_add",
+    "raw_intent": "schedule_add",
+    "raw_conf": 0.798,
+    "final_intent": "schedule_add",
+    "final_conf": 0.798,
+    "gap": 0.6674,
+    "top3": [
+      {
+        "i": "schedule_add",
+        "c": 0.798
+      },
+      {
+        "i": "judgment",
+        "c": 0.1306
+      },
+      {
+        "i": "doc_generate",
+        "c": 0.0526
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "안녕하세요",
+    "expected": "general",
+    "raw_intent": "general",
+    "raw_conf": 0.919,
+    "final_intent": "general",
+    "final_conf": 0.919,
+    "gap": 0.8516,
+    "top3": [
+      {
+        "i": "general",
+        "c": 0.919
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0674
+      },
+      {
+        "i": "doc_retrieve",
+        "c": 0.0395
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "오늘 날씨 어때",
+    "expected": "general",
+    "raw_intent": "general",
+    "raw_conf": 0.9166,
+    "final_intent": "general",
+    "final_conf": 0.9166,
+    "gap": 0.8364,
+    "top3": [
+      {
+        "i": "general",
+        "c": 0.9166
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0802
+      },
+      {
+        "i": "schedule_add",
+        "c": 0.0312
+      }
+    ],
+    "verdict": "ok"
+  },
+  {
+    "text": "고마워",
+    "expected": "general",
+    "raw_intent": "general",
+    "raw_conf": 0.9164,
+    "final_intent": "general",
+    "final_conf": 0.9164,
+    "gap": 0.858,
+    "top3": [
+      {
+        "i": "general",
+        "c": 0.9164
+      },
+      {
+        "i": "schedule_view",
+        "c": 0.0584
+      },
+      {
+        "i": "doc_retrieve",
+        "c": 0.0382
+      }
+    ],
+    "verdict": "ok"
+  }
+]

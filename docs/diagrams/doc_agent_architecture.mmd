@@ -1,0 +1,93 @@
+%%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#fff','primaryTextColor':'#333','primaryBorderColor':'#1976d2','lineColor':'#aaa','fontFamily':'Segoe UI, sans-serif','fontSize':'14px'}, 'flowchart':{'curve':'basis','nodeSpacing':25,'rankSpacing':30}}}%%
+flowchart TD
+    FE["Frontend (React)"] -->|ChatRequest| CHAT["Chat API (chat.py)"]
+    CHAT -->|AgentState| INTENT["classify_intent\nONNX/RoBERTa 앙상블 · 8개 intent"]
+
+    INTENT --> ROUTE{"route_by_intent"}
+    INTENT -.->|compound| DECOMP["decompose_query"] -.-> ROUTE
+    INTENT -.->|"conf<0.50"| CLARIFY["clarify_with_candidates"]
+
+    ROUTE -->|judgment| JA["Judgment Agent"]
+    ROUTE -->|"schedule_*"| SA["Schedule Agent"]
+    ROUTE -->|general| GA["General Response"]
+
+    ROUTE ==>|"doc_retrieve\ndoc_generate"| ENTRY{"Document Agent\n_entry.py"}
+
+    ENTRY ==>|doc_generate| GEN
+    ENTRY ==>|"doc_retrieve\n+ _is_summary"| SUM
+    ENTRY ==>|"doc_retrieve\n+ needs_llm\n+ score>0.5"| QAA
+    ENTRY ==>|"doc_retrieve\nelse"| SCH
+
+    subgraph GEN["Generate"]
+        direction TB
+        G1["Template 감지\nmeeting_minutes·report·proposal·jd"]
+        G2["템플릿 로드 + 필드 선택"]
+        G3["LLM 호출 · LoRA v3_generate"]
+        G4["DOCX 생성 · ai/skills/"]
+        G5(["문서 파일 + JSON"])
+        G1 --> G2 --> G3 --> G4 --> G5
+    end
+
+    subgraph SCH["Search"]
+        direction TB
+        S1["Hybrid Search\nBM25 + Vector → RRF"]
+        S2["Scope Filter + 중복 제거"]
+        S3["카드 리스트 포맷 · LLM 미사용"]
+        S4(["sources 카드 목록"])
+        S1 --> S2 --> S3 --> S4
+    end
+
+    subgraph QAA["QA"]
+        direction TB
+        Q1["컨텍스트 로딩\n선택문서 > context > RAG"]
+        Q2["토큰 예산 ~5500t + 3턴 history"]
+        Q3["LLM 호출 · stream/non-stream"]
+        Q4["citation + confidence"]
+        Q5(["answer + citations"])
+        Q1 --> Q2 --> Q3 --> Q4 --> Q5
+    end
+
+    subgraph SUM["Summary"]
+        direction TB
+        SM0{"DB 캐시?"}
+        SM1["문서 8000자 truncate"]
+        SM2["LLM 호출 · LoRA v3_summary"]
+        SM3["파싱 + DB 캐시 저장"]
+        SM4(["category + tags + summary"])
+        SM0 -->|miss| SM1 --> SM2 --> SM3 --> SM4
+        SM0 -->|hit| SM4
+    end
+
+    G3 -.-> LLM
+    Q3 -.-> LLM
+    SM2 -.-> LLM
+    S1 -.-> RAG
+    Q1 -.-> RAG
+    G4 -.-> SKILL
+
+    subgraph COMMON["공통 모듈"]
+        direction LR
+        RAG["RAG Pipeline\nQdrant·BM25·Reranker"]
+        LLM["LLM Provider\nsLLM(vLLM+LoRA) / API(GPT·Claude)"]
+        SKILL["Skills\nDOCX 유틸"]
+    end
+
+    classDef blue fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1
+    classDef orange fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#bf360c
+    classDef pink fill:#fce4ec,stroke:#c62828,stroke-width:2px,color:#b71c1c
+    classDef green fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+    classDef purple fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px,color:#4a148c
+    classDef teal fill:#e0f7fa,stroke:#00695c,stroke-width:2px,color:#004d40
+    classDef amber fill:#fff8e1,stroke:#f57f17,stroke-width:2px,color:#e65100
+    classDef gray fill:#eceff1,stroke:#546e7a,stroke-width:2px,color:#37474f
+    classDef lite fill:#fafafa,stroke:#bdbdbd,stroke-width:1px,color:#757575
+
+    class FE,CHAT blue
+    class INTENT,ROUTE,DECOMP,CLARIFY orange
+    class ENTRY pink
+    class G1,G2,G3,G4,G5 green
+    class S1,S2,S3,S4 purple
+    class Q1,Q2,Q3,Q4,Q5 teal
+    class SM0,SM1,SM2,SM3,SM4 amber
+    class RAG,LLM,SKILL gray
+    class JA,SA,GA lite
