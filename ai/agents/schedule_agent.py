@@ -1092,14 +1092,14 @@ async def _parse_view_request(user_input: str) -> dict:
 
 
 async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False) -> str:
-    """LLM 호출 (LLM Factory 사용 — 환경변수 LLM_PROVIDER로 Provider 선택)"""
+    """LLM 호출 (sLLM/vLLM 우선 → 실패 시 API fallback)"""
     _t_llm = time.time()
     logger.debug("[ScheduleAgent] _call_llm | json_mode=%s", json_mode)
     try:
-        from ai.llm import get_llm
+        from ai.serving.vllm_client import VLLMProvider
 
-        llm = get_llm()
-        logger.debug("[ScheduleAgent] Provider: %s", llm.__class__.__name__)
+        llm = VLLMProvider()
+        logger.debug("[ScheduleAgent] Provider: VLLMProvider (sLLM)")
 
         response = await llm.generate(
             prompt=user_prompt,
@@ -1109,14 +1109,33 @@ async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False) 
         )
 
         result = response.content
-        logger.debug("[ScheduleAgent] LLM 응답 (%.2fs)", time.time() - _t_llm)
+        logger.debug("[ScheduleAgent] sLLM 응답 (%.2fs)", time.time() - _t_llm)
         return result
 
     except Exception as e:
-        logger.error("[ScheduleAgent] _call_llm 에러: %s", e)
-        import traceback
-        traceback.print_exc()
-        return _get_mock_response(user_prompt, json_mode)
+        logger.warning("[ScheduleAgent] sLLM 호출 실패, API fallback: %s", e)
+        try:
+            from ai.llm import get_llm
+
+            llm = get_llm()
+            logger.debug("[ScheduleAgent] Fallback Provider: %s", llm.__class__.__name__)
+
+            response = await llm.generate(
+                prompt=user_prompt,
+                system_prompt=sys_prompt,
+                temperature=0.3,
+                json_mode=json_mode,
+            )
+
+            result = response.content
+            logger.debug("[ScheduleAgent] Fallback LLM 응답 (%.2fs)", time.time() - _t_llm)
+            return result
+
+        except Exception as fallback_e:
+            logger.error("[ScheduleAgent] _call_llm fallback 에러: %s", fallback_e)
+            import traceback
+            traceback.print_exc()
+            return _get_mock_response(user_prompt, json_mode)
 
 
 def _get_mock_response(user_prompt: str, json_mode: bool) -> str:
