@@ -696,8 +696,7 @@ PM으로서 4명의 역할 분배와 마일스톤 관리를 병행하며, 팀원
 **문지영 (AI / Frontend)**
 
 Intent 분류 모델과 Task Planner 파인튜닝을 주도하며, 모델 실험 설계부터 ONNX 양자화 배포까지 AI 파이프라인 전체를 구축했습니다. Intent 분류는 후보 모델 6종을 직접 
-학습시켜 비교한 끝에 klue/roberta-large를 선정했고, adversarial 테스트셋 수동 제작 → 오답 분석 → targeted 보강 사이클을 8회 반복하며 규칙 기반 41.7%에서 5-seed   
-앙상블 91.0%까지 15단계에 걸쳐 끌어올렸습니다. GPT Knowledge Distillation 3라운드로 Held-out +10%p를 확보했고, ONNX INT8 양자화로 6.4GB → 1.6GB로 압축하여 EC2에서 
+학습시켜 비교한 끝에 klue/roberta-large를 선정했고, adversarial 테스트셋 수동 제작 → 오답 분석 → targeted 보강 사이클을 8회 반복하며 규칙 기반 41.7%에서 5-seed 앙상블 91.0%까지 15단계에 걸쳐 끌어올렸습니다. GPT Knowledge Distillation 3라운드로 Held-out +10%p를 확보했고, ONNX INT8 양자화로 6.4GB → 1.6GB로 압축하여 EC2에서 
 19ms/건 추론을 완성했습니다. Task Planner도 Kanana-1.5-8B 기반 LoRA로 11단계 실험을 진행해 PM 63.2%에서 87.0%까지 개선했으며, 하이브리드 프롬프트 자동 분기와 
 knowledge_query 후처리 매핑을 설계했습니다. 프론트엔드도 React + Vite + Tailwind 기반으로 11개 페이지와 57개 이상의 컴포넌트를 구현하여 SSE 스트리밍 챗봇, Google 
 Workspace 5종 OAuth 연동 등 서비스 전반의 UI를 완성했습니다. 
