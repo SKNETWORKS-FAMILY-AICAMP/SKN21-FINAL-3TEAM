@@ -4,7 +4,7 @@ import { TEMPLATE_CATEGORIES } from '../../utils/constants';
 export default function TemplateUploadDialog({ isOpen, onClose, onUpload }) {
   const [file, setFile] = useState(null);
   const [name, setName] = useState('');
-  const [category, setCategory] = useState('custom');
+  const [category, setCategory] = useState('meeting_minutes');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const fileRef = useRef(null);
@@ -35,7 +35,7 @@ export default function TemplateUploadDialog({ isOpen, onClose, onUpload }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
-      <div className="bg-surface-card rounded-lg border border-neutral-border w-[480px] shadow-md" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-lg border border-white/40 dark:border-white/10 w-[480px] shadow-md" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-divider">
           <h3 className="text-[0.9375rem] font-bold text-neutral-main">템플릿 업로드</h3>
           <button onClick={onClose} className="text-neutral-muted hover:text-neutral-main transition">✕</button>
@@ -45,7 +45,7 @@ export default function TemplateUploadDialog({ isOpen, onClose, onUpload }) {
           {/* 파일 선택 */}
           <div>
             <label className="block text-[0.8125rem] font-semibold mb-1.5">파일</label>
-            <input ref={fileRef} type="file" accept=".docx,.pdf,.txt" onChange={handleFileChange} className="hidden" />
+            <input ref={fileRef} type="file" accept=".docx" onChange={handleFileChange} className="hidden" />
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
@@ -54,7 +54,7 @@ export default function TemplateUploadDialog({ isOpen, onClose, onUpload }) {
               {file ? (
                 <span className="text-neutral-main font-medium">{file.name}</span>
               ) : (
-                <>클릭하여 파일 선택 (.docx, .pdf, .txt)</>
+                <>클릭하여 파일 선택 (.docx)</>
               )}
             </button>
           </div>

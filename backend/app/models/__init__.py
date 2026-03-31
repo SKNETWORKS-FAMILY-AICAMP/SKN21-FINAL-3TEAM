@@ -14,6 +14,10 @@ from app.models.chat_log import ChatLog
 from app.models.chat_session import ChatSession
 from app.models.oauth_token import OAuthToken
 from app.models.google_sheet_tracker import GoogleSheetTracker
+from app.models.pipeline_task import PipelineTask
+from app.models.project import Project
+from app.models.approval_request import ApprovalRequest
+from app.models.message import Message
 
 __all__ = [
     "User",
@@ -28,4 +32,8 @@ __all__ = [
     "ChatSession",
     "OAuthToken",
     "GoogleSheetTracker",
+    "PipelineTask",
+    "Project",
+    "ApprovalRequest",
+    "Message",
 ]

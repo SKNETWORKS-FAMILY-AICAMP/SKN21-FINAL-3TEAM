@@ -101,7 +101,7 @@ main (배포용 - PM 지용만 머지)
       └── feat/frontend-지영
 ```
 
-- develop 직접 커밋 금지 — 반드시 자기 브랜치에서 PR
+- develop push 전 반드시 사용자에게 확인 (자동 push 금지)
 - main 직접 커밋 금지 — develop → main은 PM만
 - 충돌은 자기 브랜치에서 해결
 
@@ -157,6 +157,18 @@ frontend/src/         — React 프론트엔드 (지영)
 | Backend | FastAPI + SSE, PostgreSQL, SQLAlchemy + Alembic, JWT, Google OAuth 2.0 |
 | Frontend | React (Vite), Zustand, TanStack Query, Tailwind + shadcn/ui, FullCalendar |
 | Infra | AWS (EC2+S3+RDS), Docker, GitHub Actions, RunPod (A100) |
+
+## Compact Instructions
+
+컨텍스트 압축 시 반드시 보존할 것:
+
+- 현재 작업 중인 파일 목록 및 수정 내역
+- 테스트/빌드 실행 결과 (성공/실패 여부, 에러 메시지)
+- Intent 분류 체계 (8종) 및 Agent 라우팅 로직
+- 현재 사용자가 누구인지 (팀원 매핑 결과)
+- 세션에서 내린 아키텍처/설계 결정사항
+- 진행 중인 이슈 번호 및 작업 맥락
+- Google Services 연동 패턴 (OAuth, 4개 서비스 구조)
 
 ## 금지 사항
 

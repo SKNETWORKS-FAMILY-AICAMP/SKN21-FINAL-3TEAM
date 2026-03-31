@@ -1,0 +1,32 @@
+# LoRA v6: Task Planner — 오답 타겟 보강 + lr/epoch 조정
+# v5 대비 변경:
+#   - lr 2e-4 → 1e-4 (과적합 방지)
+#   - epoch 3 → 4 (충분한 수렴)
+#   - 오답 타겟 보강 데이터 추가 (3-step complex/edge_case 집중)
+#   - target_modules에 gate_proj, up_proj, down_proj 추가 (MLP도 학습)
+model:
+  base_model: "kakaocorp/kanana-1.5-8b-instruct-2505"
+  quantization: "4bit"  # QLoRA
+
+lora:
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  target_modules: ["q_proj", "v_proj", "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+
+training:
+  num_epochs: 4
+  batch_size: 4
+  gradient_accumulation_steps: 4
+  learning_rate: 1e-4
+  warmup_ratio: 0.1
+  max_length: 1024
+  early_stopping_patience: 3
+
+data:
+  train_path: "data/training/v6_planner/train.jsonl"
+  eval_path: "data/training/v6_planner/eval.jsonl"
+
+output:
+  output_dir: "outputs/v6_planner"
+  save_steps: 100

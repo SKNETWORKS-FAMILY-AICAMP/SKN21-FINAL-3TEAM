@@ -2,7 +2,7 @@ import { User, Calendar } from 'lucide-react';
 
 export default function MeetingSummaryCard({ title, date, attendees = [], decisions = [], actionItems = [] }) {
   return (
-    <div className="bg-surface-card rounded-[14px] border border-neutral-border overflow-hidden">
+    <div className="bg-surface-card rounded-lg border border-neutral-border overflow-hidden">
       <div className="px-4 py-3 border-b border-neutral-divider flex items-center gap-2 font-bold text-sm text-primary-700">
         {title || '회의 요약'}
       </div>
@@ -21,7 +21,7 @@ export default function MeetingSummaryCard({ title, date, attendees = [], decisi
               {decisions.map((d, i) => (
                 <div key={i} className="flex items-start gap-2 text-[0.8125rem] text-neutral-main">
                   <span className="text-success flex-shrink-0 mt-0.5">✓</span>
-                  <span className="leading-relaxed">{d}</span>
+                  <span className="leading-relaxed">{typeof d === 'object' ? (d.decision || d.content || JSON.stringify(d)) : d}</span>
                 </div>
               ))}
             </div>

@@ -1,0 +1,416 @@
+"""공유 유틸리티 — LLM 호출, RAG, 소스, 텍스트 유틸"""
+import contextvars
+import json
+import logging
+import os
+import time
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+logger = logging.getLogger("document_agent")
+
+GENERATED_DOCS_DIR = Path(__file__).resolve().parents[3] / "backend" / "generated_docs"
+
+# RAG 전용 스레드풀 — default executor 와 격리하여 zombie thread 가 다른 요청을 블로킹하지 않도록 한다.
+# max_workers=2: BM25+Vector(빠름) 1개 + Reranker(느림) 1개가 동시에 돌 수 있는 최소 크기.
+_rag_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="rag")
+
+# task별 LoRA 어댑터 이름 매핑 (vLLM 스트리밍/비스트리밍 공통)
+# None = base 모델 사용 (LoRA 없음)
+LORA_ADAPTER_NAMES = {
+    "generate": "v3_generate",
+    "summary": "v3_summary",
+    "qa": None,  # QA는 base 모델 사용 (LoRA 미학습)
+}
+
+# ── 모델명 getter/setter (요청별 격리) ──
+_last_model_name: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "_last_model_name", default="",
+)
+
+
+def get_last_model_name() -> str:
+    return _last_model_name.get()
+
+
+def set_last_model_name(name: str) -> None:
+    _last_model_name.set(name)
+
+
+# ── 토큰 카운팅 ──
+
+def count_tokens(text: str, model: str = "gpt-4o-mini") -> int:
+    """tiktoken 기반 토큰 수 계산 (한국어 ~1.5-2 tokens/char)"""
+    try:
+        import tiktoken
+        enc = tiktoken.encoding_for_model(model)
+        return len(enc.encode(text))
+    except Exception:
+        # tiktoken 미설치 시 대략 추정 (한국어 기준)
+        return int(len(text) * 1.5)
+
+
+def truncate_by_tokens(text: str, max_tokens: int = 4000, model: str = "gpt-4o-mini") -> str:
+    """토큰 기준으로 텍스트를 자른다. 문단 경계를 존중."""
+    if count_tokens(text, model) <= max_tokens:
+        return text
+    paragraphs = text.split('\n\n')
+    truncated = ""
+    for p in paragraphs:
+        candidate = truncated + p + "\n\n" if truncated else p + "\n\n"
+        if count_tokens(candidate, model) > max_tokens:
+            break
+        truncated = candidate
+    truncated = truncated.rstrip()
+    if not truncated:
+        # 단일 문단이 max_tokens 초과 시 글자 단위 잘라내기
+        try:
+            import tiktoken
+            enc = tiktoken.encoding_for_model(model)
+            tokens = enc.encode(text)[:max_tokens]
+            truncated = enc.decode(tokens)
+        except Exception:
+            char_limit = int(max_tokens / 1.5)
+            truncated = text[:char_limit]
+    return truncated
+
+
+# ── 텍스트 유틸 ──
+
+def _to_readable_str(val) -> str:
+    """LLM이 반환한 값을 사람이 읽을 수 있는 문자열로 변환.
+
+    - str  → 그대로 반환
+    - dict → "- key: value" 형태로 줄 구성
+    - list → 각 항목을 "-" 로 시작하는 줄로 구성
+             항목이 dict이면 values만 추출하여 " / " 로 연결
+    """
+    if isinstance(val, str):
+        return val
+    if isinstance(val, dict):
+        return "\n".join(f"- {k}: {v}" for k, v in val.items() if v)
+    if isinstance(val, list):
+        lines = []
+        for item in val:
+            if isinstance(item, dict):
+                # dict 값들만 추출 (빈 값 제외) → "값1 / 값2" 형태
+                parts = [str(v) for v in item.values() if v]
+                lines.append("- " + " / ".join(parts) if parts else "")
+            else:
+                lines.append(f"- {item}")
+        return "\n".join(l for l in lines if l)
+    return str(val) if val else ""
+
+
+def _format_chat_context(chat_history: list, max_turns: int = 3) -> str:
+    """최근 N턴 대화를 프롬프트용 텍스트로 변환"""
+    if not chat_history:
+        return ""
+    recent = chat_history[-max_turns * 2:]
+    lines = []
+    for msg in recent:
+        role = "사용자" if msg["role"] == "user" else "어시스턴트"
+        max_len = 400 if msg["role"] == "assistant" else 200
+        content = msg.get("content", "")[:max_len]
+        if content:
+            lines.append(f"{role}: {content}")
+    if not lines:
+        return ""
+    return "[이전 대화]\n" + "\n".join(lines)
+
+
+def truncate_by_paragraph(text: str, max_chars: int = 8000) -> str:
+    """문단 기준으로 텍스트를 자른다. 문장 중간 잘림 방지."""
+    if len(text) <= max_chars:
+        return text
+    paragraphs = text.split('\n\n')
+    truncated = ""
+    for p in paragraphs:
+        if len(truncated) + len(p) + 2 > max_chars:
+            break
+        truncated += p + "\n\n"
+    truncated = truncated.rstrip()
+    if not truncated:
+        truncated = text[:max_chars]
+    return truncated
+
+
+# ── RAG ──
+
+async def _retrieve_context(query: str, user_id: int = None, user_team: str = None, top_k: int = 7, use_reranker: bool = False, score_threshold: float = None, use_hyde: bool = False) -> tuple:
+    """공통 RAG 검색 — search/QA/summary에서 재사용
+
+    Args:
+        use_reranker: Cross-Encoder 재정렬 사용 여부 (정밀도 ↑, 지연 +2~5초)
+        score_threshold: 최소 점수 기준 (미달 문서 제거)
+
+    Returns:
+        (search_results, context, sources, rag_status)
+        rag_status: "success" | "timeout" | "error"
+    """
+    _t = time.time()
+    logger.info("_retrieve_context | query='%s', top_k=%d, reranker=%s, threshold=%s", query[:50], top_k, use_reranker, score_threshold)
+    search_results = []
+    context = []
+    rag_status = "success"
+    try:
+        import asyncio
+        from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+
+        pipeline = get_qdrant_pipeline()
+        # 전용 executor 사용 — default pool 과 격리하여 zombie thread 영향 차단
+        search_results = await asyncio.wait_for(
+            asyncio.get_running_loop().run_in_executor(
+                _rag_executor,
+                lambda: pipeline.retrieve(
+                    query, user_id=user_id, user_team=user_team,
+                    top_k=top_k, filter={"source": "documents"},
+                    use_reranker=use_reranker,
+                    score_threshold=score_threshold,
+                    use_hyde=use_hyde,
+                ),
+            ),
+            timeout=30,
+        )
+        context = [f"[문서 제목: {doc.get('title', '')}]\n{doc['content']}" for doc in search_results]
+        logger.info("_retrieve_context 완료 (%.2fs): %d개 문서", time.time()-_t, len(context))
+    except asyncio.TimeoutError:
+        logger.warning("_retrieve_context 타임아웃 (60초 초과)")
+        rag_status = "timeout"
+    except Exception as e:
+        logger.error("_retrieve_context 실패: %s", e)
+        import traceback
+        traceback.print_exc()
+        rag_status = "error"
+
+    sources = _build_sources(search_results)
+    return search_results, context, sources, rag_status
+
+
+def _build_sources(search_results: list) -> list:
+    """검색 결과에서 출처 정보 구성 (중복 제거)"""
+    sources = []
+    seen_sources = set()
+    if search_results:
+        for doc in search_results:
+            content_key = doc.get("content", "")[:100]
+            if content_key in seen_sources:
+                continue
+            seen_sources.add(content_key)
+
+            full_content = doc.get("content", "")
+            sources.append({
+                "title": doc.get("title") or doc.get("chapter") or doc.get("source", "제목 없음"),
+                "source": doc.get("source", ""),
+                "score": doc.get("score", 0.0),
+                "content": full_content[:300],  # SSE 전송 크기 최적화 (프론트 미리보기용)
+                "document_id": doc.get("document_id"),
+            })
+    return sources
+
+
+# ── Sources/Citations 후처리 ──
+
+def _filter_sources(sources: list, response_text: str) -> list:
+    """LLM 답변에 실제 언급된 소스만 필터링 (키워드 매칭)"""
+    if not sources or not response_text:
+        return sources
+    if "찾지 못했습니다" in response_text or "관련 문서가 없" in response_text:
+        return []
+    filtered = []
+    for src in sources:
+        title = src.get("title", "")
+        keywords = [w for w in title.replace("_", " ").split() if len(w) >= 3]
+        if not keywords:
+            continue
+        match = sum(1 for kw in keywords if kw in response_text)
+        if match >= max(len(keywords) // 2, 1):
+            filtered.append(src)
+    return filtered if filtered else sources
+
+
+def filter_and_build_citations(sources: list, response_text: str) -> tuple:
+    """LLM 응답에서 [참고:] 태그 파싱 + sources 필터링 + citations 생성
+
+    Returns:
+        (clean_response, filtered_sources, citations)
+    """
+    import re
+
+    clean_response = response_text
+    filtered_sources = list(sources) if sources else []
+
+    if not response_text:
+        return clean_response, filtered_sources, []
+
+    # 1. [참고: 문서제목] 태그 파싱
+    ref_titles = list(dict.fromkeys(re.findall(r"\[참고[:\s]*([^\]]+)\]", response_text)))
+
+    # 2. 답변에서 [참고: ...] 줄 제거
+    cleaned = re.sub(r"\n*\[참고[:\s]*[^\]]+\]\n*", "", response_text).rstrip()
+    if cleaned:
+        clean_response = cleaned
+
+    # 3. sources 필터링
+    if ref_titles and sources:
+        ref_set = {t.strip() for t in ref_titles}
+        filtered_sources = [s for s in sources if s.get("title", "") in ref_set]
+    elif sources:
+        filtered_sources = _filter_sources(sources, response_text)
+
+    # 4. 최종 보장: 0건이면 상위 1건 유지
+    if not filtered_sources and sources:
+        filtered_sources = sources[:1]
+
+    # 5. citations 생성 (상위 3건)
+    citations = [
+        {
+            "source": s.get("title", ""),
+            "content": s.get("content", "")[:200],
+            "relevance": "높음" if s.get("score", 0) >= 0.7 else "중간" if s.get("score", 0) >= 0.4 else "낮음",
+        }
+        for s in filtered_sources[:3]
+    ]
+
+    return clean_response, filtered_sources, citations
+
+
+# ── LLM 호출 ──
+
+async def _call_llm(sys_prompt: str, user_prompt: str, json_mode: bool = False, task: str = None, temperature: float = None) -> str:
+    """
+    LLM 호출 — 모드에 따라 LLM API 또는 sLLM(vLLM + LoRA) 사용
+
+    Args:
+        task: 파인튜닝 태스크명 ("generate", "qa", "summary", "extract").
+              DOC_AGENT_MODE=sllm일 때 해당 LoRA 어댑터로 라우팅.
+              "extract"는 커스텀 템플릿 2단계 추출용 — LoRA 없이 base/API 사용.
+              None이면 항상 LLM API 사용 (template_type 감지 등).
+        temperature: LLM 온도. None이면 task에 따라 자동 결정
+                     (generate=0.15, extract=0.1, 검색/QA=0.1)
+    """
+    if temperature is None:
+        temperature = 0.15 if task == "generate" else 0.1
+    _t_llm = time.time()
+    mode = os.getenv("DOC_AGENT_MODE", "api")
+    logger.info("_call_llm | mode=%s, task=%s, temperature=%s, json_mode=%s", mode, task, temperature, json_mode)
+    try:
+        # task="extract": 커스텀 템플릿 2단계 — LoRA 없이 base 모델 또는 API
+        if task == "extract" and mode == "sllm":
+            try:
+                from ai.serving.vllm_client import VLLMProvider
+                llm = VLLMProvider()  # LoRA 안 태움
+                set_last_model_name(os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (base, extract)")
+                logger.info("_call_llm | sLLM base (extract, no LoRA)")
+                response = await llm.generate(
+                    prompt=user_prompt,
+                    system_prompt=sys_prompt,
+                    temperature=temperature,
+                    json_mode=json_mode,
+                )
+                result = response.content
+                logger.info("_call_llm | extract 응답 (%.2fs) 길이: %d자", time.time()-_t_llm, len(result))
+                return result
+            except Exception as e:
+                logger.warning("_call_llm | extract sLLM 실패, API fallback: %s", e)
+                set_last_model_name(os.getenv("OPENAI_MODEL", "gpt-4o-mini") + " (fallback)")
+                from ai.llm import get_llm
+                llm = get_llm()
+
+        elif mode == "sllm" and task:
+            # sLLM 모드: vLLM — LoRA 적용 태스크만 어댑터 사용, 나머지는 base
+            from ai.serving.vllm_client import VLLMProvider
+            lora_tasks = set(os.getenv("DOC_LORA_TASKS", "generate").split(","))
+            use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
+
+            adapter_name = LORA_ADAPTER_NAMES.get(task) if use_lora and task in lora_tasks else None
+            if adapter_name:
+                try:
+                    llm = VLLMProvider().with_lora(adapter_name)
+                    set_last_model_name(os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + f" (LoRA {adapter_name})")
+                    logger.info("_call_llm | sLLM: %s LoRA 어댑터", adapter_name)
+                    response = await llm.generate(
+                        prompt=user_prompt,
+                        system_prompt=sys_prompt,
+                        temperature=temperature,
+                        json_mode=json_mode,
+                    )
+                    result = response.content
+                    logger.info("_call_llm | sLLM LoRA 응답 (%.2fs) 길이: %d자", time.time()-_t_llm, len(result))
+                    return result
+                except Exception as e:
+                    # LoRA 실패 → base 모델로 폴백
+                    logger.warning("_call_llm | LoRA(%s) 실패, base 폴백: %s", adapter_name, e)
+                    llm = VLLMProvider()
+                    set_last_model_name(os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (base, LoRA fallback)")
+            else:
+                llm = VLLMProvider()
+                set_last_model_name(os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (base)")
+                logger.info("_call_llm | sLLM: base model (task=%s)", task)
+        else:
+            # API 모드: 기존 LLM Factory (GPT/Claude)
+            from ai.llm import get_llm
+            llm = get_llm()
+            set_last_model_name(os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
+            logger.info("_call_llm | API: %s", llm.__class__.__name__)
+
+        response = await llm.generate(
+            prompt=user_prompt,
+            system_prompt=sys_prompt,
+            temperature=temperature,
+            json_mode=json_mode,
+        )
+
+        result = response.content
+        logger.info("_call_llm | 응답 (%.2fs) 길이: %d자", time.time()-_t_llm, len(result))
+        return result
+
+    except Exception as e:
+        logger.error("_call_llm | 에러: %s", e)
+        import traceback
+        traceback.print_exc()
+        # mock 모드에서만 가짜 응답 반환, 그 외엔 에러 전파
+        if os.getenv("DOC_AGENT_MODE", "api") == "mock":
+            return _get_mock_response(user_prompt, json_mode)
+        raise
+
+def _get_mock_response(user_prompt: str, json_mode: bool) -> str:
+    """API 키 없을 때 나가는 Mock 응답"""
+    prompt_lower = user_prompt.lower()
+    if json_mode:
+        # doc_qa mock — "Question:" 패턴 우선 검사
+        if "question" in prompt_lower or "answer" in prompt_lower:
+            return json.dumps({
+                "answer": "문서에 따르면 해당 내용은 다음과 같습니다. (Mock 응답)",
+                "citations": [
+                    {"source": "내부 규정 문서", "content": "관련 조항 내용 발췌 (Mock)", "relevance": "높음"}
+                ],
+                "confidence": 0.85,
+            }, ensure_ascii=False)
+        # meeting mock
+        if "회의" in user_prompt or "summary" in prompt_lower:
+             return json.dumps({
+                "title": "주간 개발 회의 (Mock)",
+                "date": "2026-02-12",
+                "attendees": ["김철수", "이영희", "박민수"],
+                "summary": "금주 개발 진행 상황 공유 및 이슈 논의. API 스키마 확정됨.",
+                "decisions": ["API 스키마 확정", "DB 설계를 이번 주 내로 완료하기로 함"],
+                "action_items": [
+                    {"content": "API 명세서 작성", "assignee": "김철수", "due_date": "2026-02-15"},
+                    {"content": "DB 마이그레이션", "assignee": "이영희", "due_date": "2026-02-16"}
+                ],
+                "risks": [
+                    {"description": "일정 지연 가능성 존재", "regulation": "프로젝트 관리 규정", "level": "중간"}
+                ]
+            }, ensure_ascii=False)
+        # 기본 문서 mock
+        return json.dumps({
+            "title": "자동 생성 문서 (Mock)",
+            "content": "LLM에 의해 생성된 문서 내용입니다.\\n사용자 요청을 반영하여 작성되었습니다."
+        }, ensure_ascii=False)
+
+    # 요약 mock
+    if "요약" in user_prompt or "문서 내용" in user_prompt:
+        return "## 핵심 요약\n\n이 문서는 주요 업무 프로세스를 설명합니다. (Mock 요약 응답)\n\n### 주요 포인트\n- 포인트 1\n- 포인트 2\n- 포인트 3"
+
+    return "LLM이 생성한 답변입니다. (문서 검색 결과 등) - Mock Response"

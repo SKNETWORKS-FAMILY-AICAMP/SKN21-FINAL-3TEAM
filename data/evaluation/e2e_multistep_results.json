@@ -1,0 +1,51 @@
+{
+  "description": "E2E 멀티스텝 테스트 결과 — 6개 intent 혼합, 2~5step",
+  "test_date": "2026-03-25",
+  "test_source": "e2e_multistep_test.json",
+  "summary": {
+    "total": 30,
+    "pass": 0,
+    "fail": 0,
+    "partial": 0,
+    "not_tested": 30,
+    "pass_rate": "0%",
+    "by_category": {
+      "2step": {"total": 10, "pass": 0, "fail": 0, "partial": 0},
+      "3step": {"total": 10, "pass": 0, "fail": 0, "partial": 0},
+      "4step": {"total": 5, "pass": 0, "fail": 0, "partial": 0},
+      "5step": {"total": 5, "pass": 0, "fail": 0, "partial": 0}
+    }
+  },
+  "results": [
+    {"id": "S2-001", "input": "출장비 규정 찾아서 내 경우 가능한지 판단해줘", "expected": ["doc_retrieve", "judgment"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S2-002", "input": "이번 주 일정 보여주고 비는 날에 회의 잡아줘", "expected": ["schedule_view", "schedule_add"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S2-003", "input": "연차 규정 확인하고 보고서 작성해줘", "expected": ["judgment", "doc_generate"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S2-004", "input": "마케팅 보고서 찾아서 요약 보고서 만들어줘", "expected": ["doc_retrieve", "doc_generate"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S2-005", "input": "내일 회의 일정 확인하고 회의록 작성해줘", "expected": ["schedule_view", "doc_generate"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S2-006", "input": "보안 정책 문서 검색해서 위반 여부 판단해줘", "expected": ["doc_retrieve", "judgment"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S2-007", "input": "다음 주 월요일에 미팅 잡고 일정 보여줘", "expected": ["schedule_add", "schedule_view"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S2-008", "input": "재택근무 규정 알려주고 신청서 만들어줘", "expected": ["judgment", "doc_generate"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S2-009", "input": "경쟁사 분석 자료 찾아서 제안서 작성해줘", "expected": ["doc_retrieve", "doc_generate"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S2-010", "input": "이번 달 일정 보여주고 출장 보고서 만들어줘", "expected": ["schedule_view", "doc_generate"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S3-001", "input": "출장 규정 찾아서 해외출장 가능한지 확인하고 출장 보고서 만들어줘", "expected": ["doc_retrieve", "judgment", "doc_generate"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S3-002", "input": "연차 규정 확인하고 이번 주 일정 보고 비는 날에 휴가 등록해줘", "expected": ["judgment", "schedule_view", "schedule_add"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S3-003", "input": "회의록 검색해서 요약 보고서 만들고 다음 주 화요일에 발표 일정 잡아줘", "expected": ["doc_retrieve", "doc_generate", "schedule_add"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S3-004", "input": "이번 주 일정 확인하고 야근 수당 규정 알려주고 정산 보고서 만들어줘", "expected": ["schedule_view", "judgment", "doc_generate"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S3-005", "input": "보안 규정 문서 찾아서 위반 여부 판단하고 시정 보고서 작성해줘", "expected": ["doc_retrieve", "judgment", "doc_generate"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S3-006", "input": "다음 주 일정 보여주고 빈 날에 워크숍 잡고 안건 문서 만들어줘", "expected": ["schedule_view", "schedule_add", "doc_generate"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S3-007", "input": "인사 규정 찾아서 승진 요건 판단하고 결과 보고서 작성해줘", "expected": ["doc_retrieve", "judgment", "doc_generate"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S3-008", "input": "복리후생 규정 확인하고 신청서 만들고 내일 오후에 면담 일정 잡아줘", "expected": ["judgment", "doc_generate", "schedule_add"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S3-009", "input": "프로젝트 보고서 찾아서 진행 상황 정리하고 금요일에 리뷰 미팅 등록해줘", "expected": ["doc_retrieve", "doc_generate", "schedule_add"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S3-010", "input": "이번 달 일정 확인하고 출장 규정 알려주고 출장 신청서 만들어줘", "expected": ["schedule_view", "judgment", "doc_generate"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S4-001", "input": "출장 규정 문서 찾아서 해외출장 가능한지 판단하고 출장 보고서 만든 다음 금요일에 보고 일정 잡아줘", "expected": ["doc_retrieve", "judgment", "doc_generate", "schedule_add"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S4-002", "input": "다음 주 일정 확인하고 연차 규정 찾아서 사용 가능한지 판단하고 비는 날에 휴가 등록해줘", "expected": ["schedule_view", "doc_retrieve", "judgment", "schedule_add"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S4-003", "input": "회의록 검색해서 핵심 내용 판단하고 요약 보고서 만들고 다음 주 수요일에 후속 회의 잡아줘", "expected": ["doc_retrieve", "judgment", "doc_generate", "schedule_add"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S4-004", "input": "이번 주 일정 보여주고 프로젝트 문서 찾아서 진행 보고서 만들고 목요일에 리뷰 미팅 등록해줘", "expected": ["schedule_view", "doc_retrieve", "doc_generate", "schedule_add"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S4-005", "input": "보안 정책 찾아서 위반 사항 판단하고 시정 계획서 작성한 다음 내일 오전에 보고 일정 잡아줘", "expected": ["doc_retrieve", "judgment", "doc_generate", "schedule_add"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S5-001", "input": "이번 주 일정 확인하고 출장 규정 문서 찾아서 출장 가능한지 판단하고 출장 보고서 만든 다음 다음 주 월요일에 보고 미팅 잡아줘", "expected": ["schedule_view", "doc_retrieve", "judgment", "doc_generate", "schedule_add"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S5-002", "input": "연차 규정 문서 검색하고 사용 가능한지 확인하고 다음 주 일정 보고 비는 날에 휴가 등록하고 부재 안내문 만들어줘", "expected": ["doc_retrieve", "judgment", "schedule_view", "schedule_add", "doc_generate"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S5-003", "input": "다음 달 일정 확인하고 교육 규정 찾아서 수강 가능한지 판단하고 수요일에 교육 일정 잡고 신청서 작성해줘", "expected": ["schedule_view", "doc_retrieve", "judgment", "schedule_add", "doc_generate"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S5-004", "input": "인사 규정 문서 찾아서 승진 요건 판단하고 이번 달 일정 확인하고 면담 일정 잡고 평가 보고서 만들어줘", "expected": ["doc_retrieve", "judgment", "schedule_view", "schedule_add", "doc_generate"], "actual": null, "status": "not_tested", "note": ""},
+    {"id": "S5-005", "input": "프로젝트 문서 검색하고 이번 주 일정 확인하고 진행 상황 판단하고 주간 보고서 만들고 금요일에 발표 일정 등록해줘", "expected": ["doc_retrieve", "schedule_view", "judgment", "doc_generate", "schedule_add"], "actual": null, "status": "not_tested", "note": ""}
+  ]
+}

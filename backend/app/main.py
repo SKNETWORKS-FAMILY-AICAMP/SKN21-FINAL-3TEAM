@@ -4,7 +4,7 @@ FastAPI 메인 앱 (팀원 A 관리)
 import sys
 import os
 import warnings
-from pathlib import Path
+from pathlib import Path  # noqa: E402
 
 # 경고 메시지 억제
 warnings.filterwarnings("ignore")
@@ -21,6 +21,7 @@ if str(project_root) not in sys.path:
 
 from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.staticfiles import StaticFiles  # noqa: E402
 
 from app.config import get_settings  # noqa: E402
 from app.api.v1.router import api_router  # noqa: E402
@@ -46,65 +47,189 @@ app.add_middleware(
 # API 라우터 등록
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
+# 업로드 파일 정적 서빙 (/uploads/avatars/... 접근 가능)
+_upload_dir = str(Path(__file__).resolve().parent.parent / "uploads")
+os.makedirs(_upload_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=_upload_dir), name="uploads")
+
 
 @app.on_event("startup")
-async def startup_ensure_tables():
-    """서버 시작 시 누락된 테이블 자동 생성 (create_all은 기존 테이블 건드리지 않음)"""
+async def startup_db_migrations():
+    """서버 시작 시 DB 마이그레이션 — 하나의 커넥션으로 모든 DDL 실행"""
+    import asyncio
+
     try:
         from app.db.session import engine
-        import app.models  # noqa: F401 — 모든 모델 import (Alembic과 동일)
+        import app.models  # noqa: F401
         from app.db.base import Base
-
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        print("[Startup] DB 테이블 확인/생성 완료")
-    except Exception as _e:
-        print(f"[Startup] DB 테이블 생성 실패 (무시하고 계속): {_e}")
-
-
-@app.on_event("startup")
-async def startup_migrate_team_column():
-    """users.team 컬럼 추가 및 기존 사용자 랜덤 팀 배정"""
-    try:
-        from app.db.session import engine
         from sqlalchemy import text
 
-        async with engine.begin() as conn:
-            # 컬럼 없으면 추가 (PostgreSQL IF NOT EXISTS)
-            await conn.execute(text(
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS team VARCHAR(50)"
-            ))
-            # team이 NULL인 기존 사용자에게 랜덤 배정
-            await conn.execute(text(
-                "UPDATE users SET team = "
-                "(ARRAY['개발','QA기획','UI/UX','영업','마케팅','CS'])"
-                "[floor(random() * 6 + 1)::int] "
-                "WHERE team IS NULL"
-            ))
-        print("[Startup] users.team 컬럼 추가 및 랜덤 배정 완료")
+        await asyncio.wait_for(_run_migrations(engine, Base, text), timeout=30)
+    except asyncio.TimeoutError:
+        print("[Startup] DB 마이그레이션 타임아웃 (30초 초과, 건너뜀)")
     except Exception as _e:
-        print(f"[Startup] users.team 처리 실패 (무시하고 계속): {_e}")
+        print(f"[Startup] DB 마이그레이션 실패 (무시하고 계속): {_e}")
+
+    # 시스템 템플릿 시딩
+    try:
+        from app.db.session import async_session
+        from app.services.template_service import ensure_system_templates
+        async with async_session() as db:
+            await ensure_system_templates(db)
+        print("[Startup] 시스템 템플릿 시딩 완료")
+    except Exception as _e:
+        print(f"[Startup] 템플릿 시딩 실패 (무시하고 계속): {_e}")
+
+
+async def _run_migrations(engine, Base, text):
+    """단일 커넥션으로 모든 DDL을 실행하여 커넥션 점유 최소화"""
+    async with engine.begin() as conn:
+        # 테이블 생성
+        await conn.run_sync(Base.metadata.create_all)
+        print("[Startup] DB 테이블 확인/생성 완료")
+
+        # documents 분석 컬럼
+        await conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS category VARCHAR(50)"))
+        await conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS tags JSON"))
+        await conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS summary TEXT"))
+
+        # users 컬럼
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS team VARCHAR(50)"))
+        await conn.execute(text(
+            "UPDATE users SET team = "
+            "(ARRAY['개발','QA기획','UI/UX','영업','마케팅','CS'])"
+            "[floor(random() * 6 + 1)::int] "
+            "WHERE team IS NULL"
+        ))
+        await conn.execute(text("ALTER TABLE users ALTER COLUMN avatar TYPE TEXT"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS slack_enabled BOOLEAN DEFAULT FALSE"))
+
+        # action_items
+        await conn.execute(text(
+            "ALTER TABLE action_items ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id)"
+        ))
+        await conn.execute(text("DELETE FROM action_items WHERE created_by IS NULL"))
+
+        # pipeline_tasks
+        await conn.execute(text("ALTER TABLE pipeline_tasks ADD COLUMN IF NOT EXISTS project VARCHAR(300)"))
+
+        # approval_requests
+        await conn.execute(text("ALTER TABLE approval_requests ADD COLUMN IF NOT EXISTS file_path VARCHAR(1000)"))
+        await conn.execute(text("ALTER TABLE approval_requests ADD COLUMN IF NOT EXISTS file_name VARCHAR(500)"))
+
+        print("[Startup] DB 마이그레이션 전체 완료")
+
+
+@app.on_event("startup")
+async def startup_slack_scheduler():
+    """Slack 마감 알림 스케줄러 (매일 오전 9시 KST)"""
+    import asyncio
+    from datetime import datetime, timezone, timedelta
+
+    KST = timezone(timedelta(hours=9))
+
+    async def _scheduler():
+        while True:
+            now = datetime.now(KST)
+            target = now.replace(hour=9, minute=0, second=0, microsecond=0)
+            if now >= target:
+                target += timedelta(days=1)
+            wait_seconds = (target - now).total_seconds()
+            print(f"[Slack Scheduler] 다음 실행까지 {wait_seconds:.0f}초 대기 ({target.strftime('%Y-%m-%d %H:%M')} KST)")
+            await asyncio.sleep(wait_seconds)
+
+            try:
+                from app.db.session import async_session
+                from app.services.slack_service import check_and_notify_deadlines
+
+                async with async_session() as db:
+                    await check_and_notify_deadlines(db)
+                    await db.commit()
+                print("[Slack Scheduler] 마감 알림 체크 완료")
+            except Exception as e:
+                print(f"[Slack Scheduler] 실행 실패: {e}")
+
+    asyncio.create_task(_scheduler())
+    print("[Startup] Slack 마감 알림 스케줄러 등록 완료")
 
 
 @app.on_event("startup")
 async def startup_preload():
-    """서버 시작 시 모델 pre-loading (첫 요청 지연 방지)"""
-    import time
+    """서버 시작 시 RAG 파이프라인 pre-loading — 백그라운드로 실행하여 서버 즉시 가동
 
-    print("[Startup] 모델 pre-loading 시작...")
-    _t = time.time()
+    get_qdrant_pipeline() → initialize() 내부에서:
+      1) 임베딩 모델 로드
+      2) Qdrant 컬렉션 초기화
+      3) BM25 인덱스 구축 (Qdrant에서 전체 문서 조회 → 토크나이징)
+    를 모두 수행하므로, 별도 reindex_all_documents()는 불필요.
+    (Qdrant는 영속 스토리지이므로 매 startup마다 임베딩 재생성/upsert 불필요)
 
-    try:
-        from ai.rag.qdrant_pipeline import get_qdrant_pipeline
+    Note: reindex_all_documents()는 DB→Qdrant 재동기화가 필요한 경우에만
+    관리자 API(POST /api/v1/documents/reindex-all)로 수동 실행.
+    """
+    import asyncio
 
-        get_qdrant_pipeline()
-        print(f"[Startup] RAG 파이프라인 로드 완료 ({time.time()-_t:.2f}s)")
-    except Exception as e:
-        print(f"[Startup] RAG 파이프라인 로드 실패 (서비스는 계속 가능): {e}")
+    async def _background_preload():
+        import time
+        print("[Background] 모델 pre-loading 시작 (RAG → Reranker → Classifier)...")
+        _t = time.time()
+        loop = asyncio.get_event_loop()
 
-    print(f"[Startup] 모델 pre-loading 완료 (총 {time.time()-_t:.2f}s)")
+        try:
+            # 1. RAG 파이프라인 (임베딩 + Qdrant + BM25) — 먼저 로드
+            _t1 = time.time()
+            await asyncio.wait_for(
+                loop.run_in_executor(None, lambda: __import__('ai.rag.qdrant_pipeline', fromlist=['get_qdrant_pipeline']).get_qdrant_pipeline()),
+                timeout=120,
+            )
+            print(f"[Background] RAG 로드 완료 ({time.time()-_t1:.2f}s)")
+
+            # 2. Reranker — RAG 완료 후 로드 (import lock 충돌 방지)
+            _t2 = time.time()
+            await asyncio.wait_for(
+                loop.run_in_executor(None, lambda: __import__('ai.rag.reranker', fromlist=['Reranker']).Reranker().load_model()),
+                timeout=60,
+            )
+            print(f"[Background] Reranker 로드 완료 ({time.time()-_t2:.2f}s)")
+
+            # 3. Intent Classifier — 독립 모듈이라 병렬 가능하지만 순차로 안전하게
+            _t3 = time.time()
+            try:
+                await asyncio.wait_for(
+                    loop.run_in_executor(None, lambda: __import__('ai.agents.orchestrator', fromlist=['get_classifier']).get_classifier()),
+                    timeout=60,
+                )
+                print(f"[Background] Classifier 로드 완료 ({time.time()-_t3:.2f}s)")
+            except Exception as e:
+                print(f"[Background] Classifier 로드 실패 (비차단): {e}")
+
+            print(f"[Background] 전체 pre-loading 완료 ({time.time()-_t:.2f}s)")
+            set_server_ready()
+        except asyncio.TimeoutError:
+            print("[Background] pre-loading 타임아웃 (180초 초과, 건너뜀)")
+        except Exception as e:
+            print(f"[Background] pre-loading 실패 (서비스는 계속 가능): {e}")
+
+    asyncio.create_task(_background_preload())
+    print("[Startup] 모델 pre-loading 백그라운드 등록 완료 (서버 즉시 가동)")
+
+@app.on_event("shutdown")
+async def shutdown_dispose_engine():
+    """서버 종료 시 커넥션 풀 정리"""
+    from app.db.session import engine
+    await engine.dispose()
+    print("[Shutdown] DB 커넥션 풀 정리 완료")
+
+
+# ── 서버 준비 상태 (pre-loading 완료 여부) ──
+_server_ready = False
+
+
+def set_server_ready():
+    global _server_ready
+    _server_ready = True
 
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok"}
+    return {"status": "ok", "ready": _server_ready}

@@ -1,9 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, Link } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import useUIStore from '../../store/uiStore';
 import ThemeToggle from './ThemeToggle';
-import { LayoutDashboard, MessageSquare, FilePlus, FileText, Users2, Calendar, Settings, Menu, LogOut, StickyNote, ChevronUp, ChevronDown, Plus, Trash2, ArrowLeft, Check } from 'lucide-react';
+import api from '../../api/client';
+import { LayoutDashboard, MessageSquare, FilePlus, FileText, Users2, Calendar, CheckSquare, Settings, Menu, LogOut, StickyNote, ChevronUp, ChevronDown, Plus, Trash2, ArrowLeft, Check, Mail } from 'lucide-react';
+
+const TEAM_COLORS = {
+  '개발': '#3B82F6',
+  'QA기획': '#F59E0B',
+  'UI/UX': '#10B981',
+  '영업': '#8B5CF6',
+  '마케팅': '#EC4899',
+  'CS': '#06B6D4',
+  'HR': '#F97316',
+  '경영': '#A855F7',
+};
 
 const getNavItems = (isAdmin) => [
   {
@@ -21,6 +33,8 @@ const getNavItems = (isAdmin) => [
       { to: '/documents', icon: FileText, label: '문서 관리' },
       { to: '/meetings', icon: Users2, label: '회의 관리' },
       { to: '/schedules', icon: Calendar, label: '일정 관리' },
+      { to: '/tasks', icon: CheckSquare, label: '태스크 관리' },
+      { to: '/messages', icon: Mail, label: '쪽지함' },
     ]
   },
   ...(isAdmin ? [{
@@ -46,6 +60,20 @@ export default function Sidebar() {
   const activeMemo = memos.find(m => m.id === activeMemoId);
   const [savedVisible, setSavedVisible] = useState(false);
   const saveTimerRef = useRef(null);
+  const [teamCounts, setTeamCounts] = useState([]);
+  const [deptOpen, setDeptOpen] = useState(true);
+
+  useEffect(() => {
+    const fetchTeamCounts = async () => {
+      try {
+        const res = await api.get('/admin/stats');
+        // If stats API has user count, or we just use a simple approach
+      } catch { }
+      // Fallback: use hardcoded team list, counts will show from admin
+      setTeamCounts(Object.keys(TEAM_COLORS).map(t => ({ team: t, count: '–' })));
+    };
+    fetchTeamCounts();
+  }, []);
 
   const handleMemoChange = (e) => {
     updateMemo(activeMemo.id, e.target.value);
@@ -80,15 +108,12 @@ export default function Sidebar() {
 
         {/* 로고 + 햄버거 버튼 */}
         <div className={`flex px-4 pt-5 pb-5 ${collapsed ? 'flex-col items-center gap-3' : 'items-center justify-between'}`}>
-          <a
-            href="/dashboard"
+          <Link
+            to="/dashboard"
             className={`flex items-center gap-3 overflow-hidden ${collapsed ? 'justify-center' : ''}`}
           >
-            <div className="w-9 h-9 bg-accent-300 rounded-sm flex items-center justify-center text-lg font-bold text-primary-900 flex-shrink-0">W</div>
-            {!collapsed && (
-              <span className="font-display text-lg font-bold text-sidebar-text tracking-tight whitespace-nowrap">WorkFlow</span>
-            )}
-          </a>
+            <img src="/logo.png" alt="Logo" className={`${collapsed ? 'w-10' : 'w-14'} object-contain mix-blend-multiply transition-all`} />
+          </Link>
 
           <button
             onClick={() => setCollapsed(!collapsed)}
@@ -142,7 +167,32 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        {/* 메모 */}
+        {/* Department 섹션 */}
+        {!collapsed && (
+          <div className="border-t border-sidebar-border px-3 py-2">
+            <button
+              onClick={() => setDeptOpen(!deptOpen)}
+              className="w-full flex items-center justify-between px-2 py-1.5 text-[0.625rem] font-semibold uppercase tracking-widest text-sidebar-text-muted opacity-70"
+            >
+              <span>Department</span>
+              {deptOpen ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+            </button>
+            {deptOpen && (
+              <div className="mt-1 space-y-0.5">
+                {Object.entries(TEAM_COLORS).map(([team, color]) => (
+                  <div
+                    key={team}
+                    className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[0.75rem] cursor-default ${user?.team === team ? 'bg-white/[0.08] text-sidebar-text font-semibold' : 'text-sidebar-text-muted hover:bg-white/[0.04]'
+                      } transition-colors`}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                    <span className="truncate">{team}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <div className={`border-t border-sidebar-border ${collapsed ? 'px-2' : 'px-3'} py-2`}>
           {collapsed ? (
             <button
@@ -250,8 +300,10 @@ export default function Sidebar() {
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <div className="text-[0.8125rem] font-semibold text-sidebar-text truncate">{user?.name || '사용자'}</div>
-                <div className="text-[0.6875rem] text-sidebar-text-muted truncate">{user?.is_admin ? '관리자' : '사용자'}</div>
-                <div className="text-[0.6875rem] text-sidebar-text-muted truncate">{user?.email || ''}</div>
+                <div className="text-[0.6875rem] text-sidebar-text-muted truncate flex items-center gap-1.5">
+                  {user?.team && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: TEAM_COLORS[user.team] || '#888' }} />}
+                  {user?.team || (user?.is_admin ? '관리자' : '사용자')}
+                </div>
               </div>
             )}
             {!collapsed && <ThemeToggle />}

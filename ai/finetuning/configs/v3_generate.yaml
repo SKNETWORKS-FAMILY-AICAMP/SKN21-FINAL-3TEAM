@@ -1,0 +1,42 @@
+# LoRA v3: 문서 생성 (doc_generate) — 데이터 재설계 버전
+# v2와 학습 설정 동일, 데이터만 개선 (3계층 필드 + 입력 길이 다양화)
+model:
+  base_model: "kakaocorp/kanana-1.5-8b-instruct-2505"
+  quantization: "4bit"  # QLoRA
+
+lora:
+  r: 32
+  lora_alpha: 64
+  lora_dropout: 0.05
+  target_modules:
+    - "q_proj"
+    - "v_proj"
+    - "k_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+
+training:
+  num_epochs: 5
+  batch_size: 4
+  gradient_accumulation_steps: 4  # effective batch = 16
+  learning_rate: 1e-4
+  warmup_ratio: 0.1
+  max_length: 2560
+  early_stopping_patience: 3
+
+data:
+  # NOTE: 디렉토리명은 v2_generate이지만 실제로는 v3 재설계 데이터 (1500건, 3계층 필드)
+  train_path: "data/training/v2_generate/train.jsonl"
+  eval_path: "data/training/v2_generate/eval.jsonl"
+  eval_ratio: 0.1
+  total_target: 1500  # 회의록 461 + 보고서 484 + 제안서 555
+
+output:
+  output_dir: "outputs/v3_generate"
+  save_steps: 100
+
+evaluation:
+  json_valid_rate: 0.98
+  field_completeness: 0.95
+  field_accuracy: 0.99

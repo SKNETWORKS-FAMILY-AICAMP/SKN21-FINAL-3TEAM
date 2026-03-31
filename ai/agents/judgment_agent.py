@@ -21,6 +21,7 @@
 import hashlib
 import json
 import logging
+import os
 import re
 import time
 from collections import defaultdict
@@ -32,6 +33,67 @@ from ai.llm.prompts import JUDGMENT_SYSTEM_PROMPT
 from ai.rag.qdrant_pipeline import get_qdrant_pipeline
 
 logger = logging.getLogger(__name__)
+
+# ── sLLM 모드 지원 ──
+
+_judgment_model_name = "unknown"
+
+
+async def _call_judgment_llm(sys_prompt: str, user_prompt: str) -> str:
+    """판단 Agent LLM 호출 — sLLM 모드면 LoRA 사용, 아니면 API.
+
+    환경변수:
+        JUDGMENT_AGENT_MODE: "api" (기본) 또는 "sllm"
+        VLLM_USE_LORA: "true"면 v1_judgment LoRA 어댑터 사용
+    """
+    global _judgment_model_name
+    mode = os.getenv("JUDGMENT_AGENT_MODE", "api")
+    _t = time.time()
+
+    try:
+        if mode == "sllm":
+            from ai.serving.vllm_client import VLLMProvider
+            use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
+            if use_lora:
+                llm = VLLMProvider().with_lora("v1_judgment")
+                _judgment_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (LoRA v1_judgment)"
+                print(f"[JudgmentAgent] sLLM: v1_judgment LoRA")
+            else:
+                llm = VLLMProvider()
+                _judgment_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (base)"
+                print(f"[JudgmentAgent] sLLM: base model")
+
+            try:
+                response = await llm.generate(
+                    prompt=user_prompt,
+                    system_prompt=sys_prompt,
+                    temperature=0.1,
+                    json_mode=True,
+                )
+                print(f"[JudgmentAgent] sLLM 응답 ({time.time()-_t:.2f}s) 길이: {len(response.content)}자")
+                return response.content
+            except Exception as e:
+                print(f"[JudgmentAgent] sLLM 실패, API fallback: {e}")
+                _judgment_model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini") + " (fallback)"
+                llm = get_llm()
+        else:
+            llm = get_llm()
+            _judgment_model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+            print(f"[JudgmentAgent] API: {llm.__class__.__name__}")
+
+        response = await llm.generate(
+            prompt=user_prompt,
+            system_prompt=sys_prompt,
+            temperature=0.1,
+        )
+        print(f"[JudgmentAgent] 응답 ({time.time()-_t:.2f}s) 길이: {len(response.content)}자")
+        return response.content
+
+    except Exception as e:
+        print(f"[JudgmentAgent] LLM 호출 실패: {e}")
+        import traceback
+        traceback.print_exc()
+        return '{"result": "no_regulation", "confidence": 0.0, "reasoning": "LLM 호출 실패"}'
 
 # ── 허용 판단 결과 카테고리 ──
 VALID_JUDGMENT_RESULTS = {"yes", "no", "conditional", "no_regulation"}
@@ -71,30 +133,45 @@ def _group_regulations(context: list[dict]) -> dict[str, list[dict]]:
     return dict(groups)
 
 
-def _build_context_prompt(context: list[dict]) -> str:
-    """RAG 검색 결과를 규정별로 그룹핑하여 LLM에 전달할 텍스트 블록으로 변환"""
-    if not context:
-        return "관련 규정 문서를 찾지 못했습니다."
+def _build_context_prompt(context: list[dict], max_docs: int = 3) -> str:
+    """RAG 검색 결과를 학습 데이터(eval.jsonl)와 동일한 형식으로 변환.
 
-    groups = _group_regulations(context)
+    학습 데이터 형식:
+        ### 제9조 (원격근무)
+        {규정 내용}
+
+        ### 개인정보처리규정 — 제5조 (개인정보 수집 원칙)
+        {규정 내용}
+
+    Args:
+        context: RAG 검색 결과 (reranker 점수 순으로 정렬됨)
+        max_docs: 프롬프트에 포함할 최대 문서 수 (상위 N개만 사용, 노이즈 감소)
+    """
+    if not context:
+        return "(관련 규정을 찾지 못했습니다)"
 
     parts = []
-    doc_idx = 1
-    for reg_name, docs in groups.items():
-        parts.append(f"### 📋 {reg_name} ({len(docs)}건)")
-        for doc in docs:
-            source = doc.get("source", "출처 불명")
-            content = doc.get("content", "")
-            score = doc.get("score", 0.0)
-            parts.append(f"[규정 {doc_idx}] {source} (관련도: {score:.3f})\n{content}")
-            doc_idx += 1
-        parts.append("")  # 규정 그룹 간 빈 줄
+    for doc in context[:max_docs]:
+        title = doc.get("title", "")
+        article = doc.get("article", "")
+        content = doc.get("content", "")
 
-    if len(groups) > 1:
-        reg_names = ", ".join(groups.keys())
-        parts.insert(0, f"⚠️ 다중 규정 교차 분석 필요: {reg_names}\n")
+        # 학습 데이터와 동일한 헤더 형식 구성
+        if article and title and title != article:
+            # "### 개인정보처리규정 — 제5조 (개인정보 수집 원칙)"
+            header = f"### {title} — {article}"
+        elif article:
+            # "### 제9조 (원격근무)"
+            header = f"### {article}"
+        elif title:
+            # "### 출장규정"
+            header = f"### {title}"
+        else:
+            header = "### 규정"
 
-    return "\n".join(parts)
+        parts.append(f"{header}\n{content}")
+
+    return "\n\n".join(parts)
 
 
 # ── 판단 이력 추출 ──
@@ -103,7 +180,7 @@ def _build_context_prompt(context: list[dict]) -> str:
 def _extract_judgment_history(chat_history: list[dict]) -> list[dict]:
     """대화 이력에서 이전 판단 결과를 추출한다.
 
-    assistant 메시지 중 judgment 타입 JSON을 포함한 응답을 찾아 반환.
+    agentResponse dict에서 직접 접근 (Document/Schedule Agent와 동일 패턴).
     """
     history = []
     if not chat_history:
@@ -112,17 +189,11 @@ def _extract_judgment_history(chat_history: list[dict]) -> list[dict]:
     for msg in chat_history:
         if msg.get("role") != "assistant":
             continue
-        content = msg.get("content", "")
-        # JSON 블록 추출 시도
-        match = re.search(r"\{.*?\"type\"\s*:\s*\"judgment\".*?\}", content, re.DOTALL)
-        if not match:
+        ar = msg.get("agentResponse") or msg.get("agent_response")
+        if not ar or not isinstance(ar, dict):
             continue
-        try:
-            parsed = json.loads(match.group(0))
-            if parsed.get("type") == "judgment":
-                history.append(parsed)
-        except json.JSONDecodeError:
-            continue
+        if ar.get("type") == "judgment":
+            history.append(ar)
 
     return history
 
@@ -132,9 +203,27 @@ def _build_user_prompt(
     context_text: str,
     chat_history: list[dict] | None = None,
     judgment_history: list[dict] | None = None,
+    prev_agent_context: dict | None = None,
 ) -> str:
     """사용자 질문 + 규정 context + 판단 이력을 합쳐 최종 프롬프트 구성"""
     prompt_parts = []
+
+    # 0. cross-agent 맥락 (이전에 다른 Agent가 처리한 결과)
+    if prev_agent_context and prev_agent_context.get("agent_type") != "judgment":
+        pac = prev_agent_context
+        if pac.get("agent_type") == "document":
+            doc = pac.get("document", {})
+            prompt_parts.append(
+                f"## 이전 대화에서 참조한 문서\n"
+                f"- 제목: {doc.get('title', '')}\n"
+                f"- 내용 요약: {doc.get('summary', '')}\n"
+            )
+        elif pac.get("agent_type") == "schedule":
+            sched = pac.get("schedule", {})
+            prompt_parts.append(
+                f"## 이전 대화에서 언급한 일정\n"
+                f"- 제목: {sched.get('title', '')}, 날짜: {sched.get('date', '')} {sched.get('time', '')}\n"
+            )
 
     # 1. 이전 대화 컨텍스트
     if chat_history:
@@ -189,7 +278,24 @@ def _parse_llm_response(raw: str) -> dict:
     try:
         return json.loads(text)
     except json.JSONDecodeError:
+        # JSON 복구 시도: 잘린 JSON 닫기, 제어문자 제거 등
+        try:
+            # 제어문자 제거
+            cleaned = re.sub(r'[\x00-\x1f\x7f]', '', text)
+            # 트레일링 콤마 제거
+            cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
+            # 닫히지 않은 JSON 복구 시도
+            open_braces = cleaned.count('{') - cleaned.count('}')
+            open_brackets = cleaned.count('[') - cleaned.count(']')
+            cleaned += ']' * max(0, open_brackets) + '}' * max(0, open_braces)
+            result = json.loads(cleaned)
+            logger.info("LLM 응답 JSON 복구 성공 (제어문자/잘림 보정)")
+            return result
+        except json.JSONDecodeError:
+            pass
+
         logger.warning("LLM 응답 JSON 파싱 실패, 원문을 reasoning에 저장")
+        logger.warning(f"[파싱실패 원문] {raw[:500]}")
         return {
             "result": "no_regulation",
             "confidence": 0.0,
@@ -224,11 +330,10 @@ def _extract_cited_articles(parsed: dict) -> list[str]:
         for m in _CITED_ARTICLE_RE.finditer(text):
             articles.add(m.group().replace(" ", ""))
 
-    # 1. regulations 필드에서 추출
+    # 1. regulations 필드에서 조항 번호 패턴만 추출 (타이틀 포함 문자열 제외)
     for reg in parsed.get("regulations", []):
         article = reg.get("article", "")
         if article:
-            articles.add(article)
             _find_articles(article)
 
     # 2. reasoning 텍스트에서 패턴 추출
@@ -443,8 +548,10 @@ def _calibrate_confidence(
         }
 
     # RAG 점수 기반 보정
+    # reranker 적용 시 Cross-Encoder score는 0~1로 보수적이므로 기준값을 낮춤
     avg_score = sum(d.get("score", 0) for d in context) / len(context)
-    rag_factor = min(avg_score / 0.8, 1.0)  # 0.8 이상이면 1.0
+    rag_threshold = 0.4 if avg_score < 0.7 else 0.8  # reranker score 스케일 대응
+    rag_factor = min(avg_score / rag_threshold, 1.0)
 
     # 규정 커버리지 보정
     groups = _group_regulations(context)
@@ -467,9 +574,14 @@ def _calibrate_confidence(
         hallucination_penalty = 0.0
 
     # 조항 존재 검증 보정 (보조장치 2)
+    # 보조장치 1(keyword_match)과 동일 대상을 검증하므로, 이중 감점 방지를 위해
+    # article_penalty는 keyword_match가 중립(0.5) 이상일 때만 적용한다.
     if article_validations is None:
         article_validations = _validate_article_exists(parsed, context)
-    if article_validations:
+    if article_validations and keyword_match < 0.5:
+        # keyword_match가 이미 감점했으므로 article_penalty는 적용하지 않음
+        article_penalty = 0.0
+    elif article_validations:
         missing_count = sum(1 for v in article_validations if not v["exists"])
         article_penalty = 0.05 * missing_count
     else:
@@ -483,6 +595,20 @@ def _calibrate_confidence(
         - hallucination_penalty
         - article_penalty
     )
+
+    # 개별 요소 임계값 보호 — 어느 하나라도 심각하면 confidence 상한 제한
+    # (가중합만으로는 한 요소가 0이어도 다른 요소로 높은 점수가 나올 수 있는 문제 방지)
+    cap_notes = []
+    if rag_factor < 0.2:
+        calibrated = min(calibrated, 0.4)
+        cap_notes.append("RAG 검색 품질 낮음 — 최대 0.4 제한")
+    if keyword_match < 0.2:
+        calibrated = min(calibrated, 0.3)
+        cap_notes.append("환각 의심 심각 — 최대 0.3 제한")
+    if article_validations and all(not v["exists"] for v in article_validations):
+        calibrated = min(calibrated, 0.25)
+        cap_notes.append("인용 조항 전부 미존재 — 최대 0.25 제한")
+
     final = round(max(0.0, min(1.0, calibrated)), 3)
 
     breakdown = {
@@ -497,8 +623,62 @@ def _calibrate_confidence(
         "article_penalty": round(article_penalty, 3),
         "final": final,
     }
+    if cap_notes:
+        breakdown["cap_note"] = " / ".join(cap_notes)
 
     return final, breakdown
+
+
+# ── 스트리밍 준비 함수 (orchestrator에서 호출) ──
+
+
+async def prepare_judgment_stream(state: dict) -> dict:
+    """스트리밍 모드용 RAG 검색 + 프롬프트 빌드
+
+    judgment_agent과 동일한 RAG 파라미터(reranker, HyDE, score_threshold)를 사용하여
+    오케스트레이터와의 파라미터 불일치를 방지한다.
+
+    Returns:
+        {"context": list, "agent_response": dict(stream_pending=True, ...)}
+    """
+    from ai.llm.prompts import JUDGMENT_STREAMING_SYSTEM_PROMPT
+
+    user_input = state["user_input"]
+    user_id = state.get("user_id")
+    chat_history = state.get("chat_history", [])
+
+    # RAG 검색 (judgment_agent과 동일 파라미터)
+    _t_rag = time.time()
+    logger.info("[JudgmentAgent] 스트리밍 RAG 검색 시작 (top_k=5, reranker=True, hyde=True)...")
+    pipeline = get_qdrant_pipeline()
+    context = pipeline.retrieve(
+        query=user_input, user_id=user_id, top_k=5,
+        filter={"source": "regulations"},
+        use_reranker=True,
+        score_threshold=0.0,
+        use_hyde=True,
+    )
+    logger.info("[JudgmentAgent] 스트리밍 RAG 완료 (%.2fs) | %d개 문서", time.time() - _t_rag, len(context))
+
+    # 프롬프트 빌드
+    judgment_history = _extract_judgment_history(chat_history)
+    context_text = _build_context_prompt(context)
+    user_prompt = _build_user_prompt(
+        user_input, context_text, chat_history, judgment_history,
+        prev_agent_context=state.get("prev_agent_context"),
+    )
+
+    return {
+        "context": context,
+        "agent_response": {
+            "type": "judgment",
+            "message": "",
+            "stream_pending": True,
+            "sys_prompt": JUDGMENT_STREAMING_SYSTEM_PROMPT,
+            "user_prompt": user_prompt,
+            "_rag_context": context,
+        },
+    }
 
 
 # ── 메인 Agent 함수 ──
@@ -540,13 +720,16 @@ async def judgment_agent(state: AgentState) -> AgentState:
     print(f"[JudgmentAgent] 진입 | user_input='{user_input[:80]}', user_id={user_id}")
 
     try:
-        # 1. RAG 검색 (다중 규정 교차 분석을 위해 top_k 확대)
+        # 1. RAG 검색 (Reranker + Score Threshold + HyDE 적용)
         _t_rag = time.time()
-        print("[JudgmentAgent] RAG 검색 시작 (top_k=10)...")
+        print("[JudgmentAgent] RAG 검색 시작 (top_k=5, reranker=True, hyde=True)...")
         pipeline = get_qdrant_pipeline()
         context = pipeline.retrieve(
-            query=user_input, user_id=user_id, top_k=10,
+            query=user_input, user_id=user_id, top_k=5,
             filter={"source": "regulations"},
+            use_reranker=True,       # Cross-Encoder로 관련도 재정렬
+            score_threshold=0.0,     # Cross-Encoder 점수 0 이하 제거 (노이즈 필터링 강화)
+            use_hyde=True,           # HyDE로 벡터 검색 품질 향상
         )
         print(f"[JudgmentAgent] RAG 검색 완료 ({time.time()-_t_rag:.2f}s) | {len(context)}개 문서 검색됨")
 
@@ -558,24 +741,19 @@ async def judgment_agent(state: AgentState) -> AgentState:
         groups = _group_regulations(context)
         print(f"[JudgmentAgent] 규정 그룹: {list(groups.keys())}")
 
-        # 4. LLM 호출
+        # 4. LLM 호출 (sLLM 모드 지원)
         _t_llm = time.time()
         print("[JudgmentAgent] LLM 호출 중...")
-        llm = get_llm()
         context_text = _build_context_prompt(context)
         user_prompt = _build_user_prompt(
-            user_input, context_text, chat_history, judgment_history
+            user_input, context_text, chat_history, judgment_history,
+            prev_agent_context=state.get("prev_agent_context"),
         )
 
-        response = await llm.generate(
-            prompt=user_prompt,
-            system_prompt=JUDGMENT_SYSTEM_PROMPT,
-            temperature=0.1,
-        )
-        print(f"[JudgmentAgent] LLM 응답 ({time.time()-_t_llm:.2f}s) 길이: {len(response.content)}자")
+        raw_response = await _call_judgment_llm(JUDGMENT_SYSTEM_PROMPT, user_prompt)
 
         # 5. 응답 파싱 + 3중 보조 장치 + confidence 보정
-        parsed = _parse_llm_response(response.content)
+        parsed = _parse_llm_response(raw_response)
         parsed["type"] = "judgment"
 
         # 보조장치 3: 판단 결과 카테고리 제한 (yes/no/conditional/no_regulation 외 reject)
@@ -671,24 +849,44 @@ async def judgment_agent_stream(state: AgentState) -> AsyncGenerator[str, None]:
     chat_history = state.get("chat_history", [])
 
     try:
-        # RAG 검색
+        # RAG 검색 (Reranker + Score Threshold + HyDE 적용)
         pipeline = get_qdrant_pipeline()
         context = pipeline.retrieve(
-            query=user_input, user_id=user_id, top_k=10,
+            query=user_input, user_id=user_id, top_k=5,
             filter={"source": "regulations"},
+            use_reranker=True,
+            score_threshold=0.0,
+            use_hyde=True,
         )
 
         # 판단 이력 추출
         judgment_history = _extract_judgment_history(chat_history)
 
         # 프롬프트 구성
-        llm = get_llm()
         context_text = _build_context_prompt(context)
         user_prompt = _build_user_prompt(
-            user_input, context_text, chat_history, judgment_history
+            user_input, context_text, chat_history, judgment_history,
+            prev_agent_context=state.get("prev_agent_context"),
         )
 
-        # 스트리밍 호출
+        # 스트리밍 호출 (sLLM 모드 지원)
+        global _judgment_model_name
+        mode = os.getenv("JUDGMENT_AGENT_MODE", "api")
+        if mode == "sllm":
+            from ai.serving.vllm_client import VLLMProvider
+            use_lora = os.getenv("VLLM_USE_LORA", "false").lower() == "true"
+            if use_lora:
+                llm = VLLMProvider().with_lora("v1_judgment")
+                _judgment_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (LoRA v1_judgment)"
+            else:
+                llm = VLLMProvider()
+                _judgment_model_name = os.getenv("VLLM_MODEL", "Kanana-1.5-8B") + " (base)"
+            print(f"[JudgmentAgent] 스트리밍 sLLM: {_judgment_model_name}")
+        else:
+            llm = get_llm()
+            _judgment_model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+            print(f"[JudgmentAgent] 스트리밍 API: {llm.__class__.__name__}")
+
         full_response = ""
         async for token in llm.stream_generate(
             prompt=user_prompt,

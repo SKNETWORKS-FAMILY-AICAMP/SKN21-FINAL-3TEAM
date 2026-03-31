@@ -39,10 +39,10 @@ class VLLMProvider(BaseLLM):
     def __init__(self, config: Optional[LLMConfig] = None):
         config = config or LLMConfig()
 
-        # vLLM 전용 환경변수
+        # vLLM 전용 환경변수 (RunPod Serverless 또는 로컬 vLLM 서버)
         self.base_url = os.getenv("VLLM_BASE_URL", "http://localhost:8000/v1")
-        self.model = config.model or os.getenv("VLLM_MODEL", "kaist-ai/Kanana-1.5-8B")
-        self.api_key = os.getenv("VLLM_API_KEY", "EMPTY")  # vLLM은 API key 불필요
+        self.model = config.model or os.getenv("VLLM_MODEL", "kakaocorp/kanana-1.5-8b-instruct-2505")
+        self.api_key = os.getenv("VLLM_API_KEY", "EMPTY")
 
         if not config.model:
             config.model = self.model
@@ -56,9 +56,12 @@ class VLLMProvider(BaseLLM):
         """AsyncOpenAI 클라이언트 (지연 초기화)"""
         if self._client is None:
             from openai import AsyncOpenAI
+            import httpx
             self._client = AsyncOpenAI(
                 api_key=self.api_key,
                 base_url=self.base_url,
+                timeout=httpx.Timeout(90.0, connect=60.0),
+                max_retries=0,
             )
         return self._client
 
@@ -68,14 +71,22 @@ class VLLMProvider(BaseLLM):
         system_prompt: Optional[str] = None,
         max_tokens: Optional[int] = None,
         temperature: Optional[float] = None,
+        json_mode: bool = False,
     ) -> LLMResponse:
         """단일 프롬프트로 응답 생성"""
         client = self._get_client()
 
         messages = []
-        if system_prompt or self.config.system_prompt:
-            messages.append({"role": "system", "content": system_prompt or self.config.system_prompt})
+        sys_content = system_prompt or self.config.system_prompt
+        if json_mode and sys_content:
+            sys_content += "\n\n반드시 유효한 JSON만 출력하세요. 설명이나 마크다운 없이 JSON 객체만 반환합니다."
+        if sys_content:
+            messages.append({"role": "system", "content": sys_content})
         messages.append({"role": "user", "content": prompt})
+
+        extra_kwargs = {}
+        if json_mode:
+            extra_kwargs["extra_body"] = {"guided_json": True}
 
         response = await client.chat.completions.create(
             model=self.model,
@@ -83,6 +94,7 @@ class VLLMProvider(BaseLLM):
             max_tokens=max_tokens or self.config.max_tokens,
             temperature=temperature if temperature is not None else self.config.temperature,
             top_p=self.config.top_p,
+            **extra_kwargs,
         )
 
         choice = response.choices[0]

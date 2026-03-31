@@ -1,0 +1,52 @@
+# LoRA v3: 문서 요약 (doc_summary) 전용 어댑터
+# 문서 → 태그 + 요약
+# 베이스 모델: Kanana 1.5 8B Instruct
+model:
+  base_model: "kakaocorp/kanana-1.5-8b-instruct-2505"
+  quantization: "4bit"  # QLoRA
+
+model_candidates:
+  - "Qwen/Qwen3-8B"
+  - "LGAI-EXAONE/EXAONE-3.5-7.8B-Instruct"
+  - "kakaocorp/kanana-1.5-8b-instruct-2505"
+
+lora:
+  r: 16                      # 비교적 단순한 태스크 → rank 축소
+  lora_alpha: 32              # alpha/r = 2.0
+  lora_dropout: 0.05
+  target_modules:
+    - "q_proj"
+    - "v_proj"
+    - "k_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+
+training:
+  num_epochs: 5
+  batch_size: 4
+  gradient_accumulation_steps: 4  # effective batch = 16
+  learning_rate: 1e-4
+  warmup_ratio: 0.1
+  max_length: 8192
+  early_stopping_patience: 3
+
+data:
+  # NOTE: 디렉토리명은 v2_summary이지만 실제로는 v3 학습에 사용된 데이터 (1000건)
+  train_path: "data/training/v2_summary/train.jsonl"
+  eval_path: "data/training/v2_summary/eval.jsonl"
+  eval_ratio: 0.15            # 1000개 중 ~150개 eval
+  total_target: 1000
+
+# 데이터 소스별 구성 (AI Hub 30% + 합성 70%)
+data_sources:
+  aihub: 300                  # 실데이터 신뢰성 (30%)
+  synthetic: 700              # 기업 문서 유형 + 길이 다양성 (70%)
+
+output:
+  output_dir: "outputs/v2_summary"
+  save_steps: 100
+
+evaluation:
+  rouge_l: 0.45               # ROUGE-L >0.45
+  format_compliance: 0.95     # 포맷 준수율 >95%

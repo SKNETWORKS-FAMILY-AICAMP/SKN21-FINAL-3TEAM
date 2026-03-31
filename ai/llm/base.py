@@ -48,6 +48,7 @@ class BaseLLM(ABC):
         system_prompt: Optional[str] = None,
         max_tokens: Optional[int] = None,
         temperature: Optional[float] = None,
+        json_mode: bool = False,
     ) -> LLMResponse:
         """단일 프롬프트로 응답 생성"""
         ...
@@ -70,6 +71,7 @@ class BaseLLM(ABC):
         system_prompt: Optional[str] = None,
         max_tokens: Optional[int] = None,
         temperature: Optional[float] = None,
+        json_mode: bool = False,
     ) -> LLMResponse:
         """멀티턴 채팅 응답 생성"""
         ...

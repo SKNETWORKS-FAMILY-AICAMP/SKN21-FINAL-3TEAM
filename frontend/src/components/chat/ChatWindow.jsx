@@ -48,7 +48,7 @@ function FileChip({ file, onRemove }) {
 
 const AGENTS = [
   { key: 'judgment', icon: Scale, label: '규정 판단', intents: ['judgment'] },
-  { key: 'document', icon: FileText, label: '문서', intents: ['doc_search', 'doc_generate', 'doc_summary', 'doc_qa'] },
+  { key: 'document', icon: FileText, label: '문서', intents: ['doc_retrieve', 'doc_generate', 'doc_search', 'doc_summary'] },
   { key: 'schedule', icon: CalendarDays, label: '일정', intents: ['schedule_add', 'schedule_view'] },
   { key: 'general', icon: MessageCircle, label: '일반', intents: ['general'] },
 ];
@@ -65,8 +65,8 @@ function AgentBar({ activeIntent, isStreaming }) {
           <div
             key={agent.key}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all duration-300 select-none ${isActive
-                ? 'bg-primary-700 text-white shadow-md scale-105'
-                : 'bg-surface-hover text-neutral-sub'
+              ? 'bg-primary-700 text-white shadow-md scale-105'
+              : 'bg-surface-hover text-neutral-sub'
               }`}
           >
             <Icon size={14} className={isActive && isStreaming ? 'animate-pulse' : ''} />
@@ -78,26 +78,76 @@ function AgentBar({ activeIntent, isStreaming }) {
   );
 }
 
-export default function ChatWindow({ messages, onSend, selectedDocumentName, onClearDocument, activeIntent, isStreaming, panelOpen, children }) {
+export default function ChatWindow({ messages, onSend, selectedDocumentName, onClearDocument, activeIntent, isStreaming, panelOpen, onScrollChange, topbarScrolled, children }) {
   const [input, setInput] = useState('');
   const [files, setFiles] = useState([]);
   const [dragOver, setDragOver] = useState(false);
   const [fileError, setFileError] = useState(null);
   const bottomRef = useRef(null);
+  const scrollContainerRef = useRef(null);
   const fileInputRef = useRef(null);
   const dragCounterRef = useRef(0);
   const mountedRef = useRef(false);
+  const lastScrollTopRef = useRef(0);
+  const programmaticScrollRef = useRef(false);
+  const programmaticTimerRef = useRef(null);
+
+  const markProgrammaticScroll = () => {
+    programmaticScrollRef.current = true;
+    clearTimeout(programmaticTimerRef.current);
+    programmaticTimerRef.current = setTimeout(() => {
+      programmaticScrollRef.current = false;
+    }, 500);
+  };
+
+  const handleScroll = (e) => {
+    if (programmaticScrollRef.current) return;
+
+    const scrollTop = e.target.scrollTop;
+    lastScrollTopRef.current = scrollTop;
+
+    // 메시지가 없으면 헤더 상태 변경하지 않음
+    if (onScrollChange && messages && messages.length > 0) {
+      onScrollChange(scrollTop > 100);
+    }
+  };
 
   useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
     if (!mountedRef.current) {
-      // 초기 마운트: instant scroll (smooth는 500ms+ 동안 이벤트를 발생시켜 topbar 오작동 유발)
       mountedRef.current = true;
-      const container = bottomRef.current?.closest('[data-main-scroll]');
-      if (container) container.scrollTop = container.scrollHeight;
+      if (messages && messages.length > 0) {
+        markProgrammaticScroll();
+        container.scrollTo({ top: container.scrollHeight, behavior: 'instant' });
+      }
     } else {
-      // 이후 메시지 추가: smooth scroll
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      // 사용자가 위로 스크롤한 상태면 자동 스크롤하지 않음
+      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+      if (isNearBottom) {
+        markProgrammaticScroll();
+        // 스트리밍 중: instant (토큰마다 smooth하면 끊김), 완료 후: smooth
+        container.scrollTo({ top: container.scrollHeight, behavior: isStreaming ? 'instant' : 'smooth' });
+      }
     }
+  }, [messages, isStreaming]);
+
+  // 카드 렌더링 등으로 컨텐츠 높이가 변할 때 자동 스크롤
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver(() => {
+      // 사용자가 위로 스크롤한 상태가 아닐 때만 자동 스크롤
+      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+      if (isNearBottom) {
+        markProgrammaticScroll();
+        container.scrollTo({ top: container.scrollHeight, behavior: 'instant' });
+      }
+    });
+    // 스크롤 컨테이너의 직접 자식들 높이 변화 감지
+    Array.from(container.children).forEach(child => observer.observe(child));
+    return () => observer.disconnect();
   }, [messages]);
 
   const addFiles = useCallback((fileList) => {
@@ -196,11 +246,18 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       )}
 
 
-      <div className="flex-1 overflow-y-auto py-4 px-4" data-main-scroll="">{children}<div ref={bottomRef} /></div>
+      {/* 헤더는 ChatPage에서 별도로 렌더링됨 */}
+
+      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto py-4 custom-scrollbar" data-main-scroll="" onScroll={handleScroll}>
+        <div className="max-w-4xl mx-auto w-full px-6 min-h-[calc(100%+1px)]">
+          {children}
+          <div ref={bottomRef} />
+        </div>
+      </div>
 
       {/* 선택 문서 칩 & 파일 칩 & 에러 */}
       {(selectedDocumentName || files.length > 0 || fileError) && (
-        <div className="px-4 pb-2 flex flex-wrap gap-1.5">
+        <div className="max-w-4xl mx-auto w-full px-6 pb-2 flex flex-wrap gap-1.5">
           {selectedDocumentName && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent-50 text-accent-700 text-xs rounded-full border border-accent-300/40">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -225,7 +282,8 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
       )}
 
       {/* 입력 영역 */}
-      <div className={`flex gap-2.5 pt-4 pb-4 pl-4 border-t border-neutral-divider flex-shrink-0 ${panelOpen ? 'pr-[3px]' : 'pr-4'}`}>
+      <div className={`border-t border-neutral-divider flex-shrink-0 ${panelOpen ? 'pr-[3px]' : ''}`}>
+      <div className={`max-w-4xl mx-auto w-full flex gap-2.5 pt-4 pb-4 px-6`}>
         <div className="flex-1 flex items-center bg-surface-card rounded-md border border-neutral-border px-4 py-3 transition focus-within:border-primary-300">
           {/* 파일 첨부 버튼 */}
           <button
@@ -254,7 +312,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
             data-testid="chat-input"
             value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 handleSend();
               }
@@ -273,6 +331,7 @@ export default function ChatWindow({ messages, onSend, selectedDocumentName, onC
         <button onClick={handleSend} className="w-11 h-11 rounded-md bg-primary-700 flex-shrink-0 flex items-center justify-center transition hover:bg-primary-900">
           <svg width="18" height="18" viewBox="0 0 18 18"><path d="M2 9L16 2L12 16L9 10L2 9Z" fill="white" /></svg>
         </button>
+      </div>
       </div>
     </div>
   );

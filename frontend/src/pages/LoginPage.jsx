@@ -42,7 +42,14 @@ export default function LoginPage() {
     try {
       await login(email, password);
     } catch (err) {
-      const msg = err.response?.data?.detail || '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.';
+      let msg;
+      if (!err.response) {
+        msg = '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.';
+      } else if (Array.isArray(err.response?.data?.detail)) {
+        msg = '입력값을 확인해주세요.';
+      } else {
+        msg = err.response?.data?.detail || '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.';
+      }
       setError(msg);
     } finally {
       setLoading(false);
@@ -91,7 +98,7 @@ export default function LoginPage() {
       {/* 회원가입 성공 팝업 */}
       {showRegisterSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-surface-card rounded-lg border border-neutral-border shadow-xl p-8 w-80 max-w-[90vw] text-center">
+          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-lg border border-white/40 dark:border-white/10 shadow-xl p-8 w-80 max-w-[90vw] text-center">
             <div className="w-14 h-14 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary-700">
                 <polyline points="20 6 9 17 4 12" />

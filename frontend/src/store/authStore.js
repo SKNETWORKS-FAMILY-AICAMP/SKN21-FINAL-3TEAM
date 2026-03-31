@@ -4,21 +4,40 @@
 import { create } from 'zustand'
 import client from '../api/client'
 import useChatStore from './chatStore'
+import useGoogleStore from './googleStore'
+
+function loadCachedUser() {
+  try {
+    const saved = localStorage.getItem('cached_user')
+    return saved ? JSON.parse(saved) : null
+  } catch { return null }
+}
 
 const useAuthStore = create((set, get) => ({
-  user: null,
+  user: loadCachedUser(),
   token: localStorage.getItem('access_token'),
   isAuthenticated: !!localStorage.getItem('access_token'),
   initialized: false,
 
   setAuth: (user, token) => {
     localStorage.setItem('access_token', token)
+    localStorage.setItem('cached_user', JSON.stringify(user))
     set({ user, token, isAuthenticated: true })
   },
 
   logout: () => {
     localStorage.removeItem('access_token')
+    localStorage.removeItem('cached_user')
+    // sessionStorage도 정리 (이전 버전 호환)
+    sessionStorage.removeItem('access_token')
     useChatStore.getState().reset()
+    useGoogleStore.setState({
+      connected: false, email: null, scopes: [],
+      calendarEvents: [], tasks: [], sheets: [],
+      calendarLoading: false, calendarError: null,
+      tasksLoading: false, tasksError: null,
+      sheetsLoading: false, sheetsError: null,
+    })
     set({ user: null, token: null, isAuthenticated: false })
   },
 
@@ -29,12 +48,29 @@ const useAuthStore = create((set, get) => ({
       set({ initialized: true })
       return
     }
+    // 캐시된 유저 정보로 즉시 인증 상태 복원
+    const cached = loadCachedUser()
+    if (cached) {
+      set({ user: cached, isAuthenticated: true, initialized: true })
+    }
     try {
       const { data } = await client.get('/auth/me')
+      localStorage.setItem('cached_user', JSON.stringify(data))
       set({ user: data, isAuthenticated: true, initialized: true })
-    } catch {
-      localStorage.removeItem('access_token')
-      set({ user: null, token: null, isAuthenticated: false, initialized: true })
+    } catch (err) {
+      // 401이면 토큰 만료 — 캐시 무시하고 로그아웃
+      if (err.response?.status === 401) {
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('cached_user')
+        set({ user: null, token: null, isAuthenticated: false, initialized: true })
+      } else if (cached) {
+        // 네트워크 오류 등 다른 실패: 캐시된 유저 유지
+        set({ user: cached, isAuthenticated: true, initialized: true })
+      } else {
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('cached_user')
+        set({ user: null, token: null, isAuthenticated: false, initialized: true })
+      }
     }
   },
 }))

@@ -4,6 +4,63 @@
 
 ---
 
+## 2026-03-22 (토)
+
+### 멘토링 피드백 및 적용
+
+**멘토링에서 발견된 문제:**
+- 2단계 자연어 스트리밍 응답 품질이 낮았음 — 시스템 프롬프트 없이 user 메시지만 전달하고 있었고, 규정 원문/조건 정보도 미포함 상태
+
+**2단계 sLLM 호출 구조 강화 (멘토링 후 적용):**
+
+| 항목 | 이전 | 지금 (강화) |
+|------|------|------------|
+| 시스템 프롬프트 | 없음 (user만) | 전문가 역할 + 5가지 규칙 |
+| 규정 원문 | 미포함 | RAG 상위 2개 원문 포함 |
+| 조건 정보 | 미포함 | conditions 필드 전달 |
+| 규정 내용 | 조항명만 | 조항명 + content 요약 |
+| 결과 표시 | 영문 (yes/no) | 한글 (가능/불가/조건부 가능) |
+| temperature | 0.3 | 0.4 (약간 더 자연스럽게) |
+
+- 1단계(JSON 추출)는 기존 유지: v3 LoRA 어댑터 + JUDGMENT_SYSTEM_PROMPT → JSON만 출력, 정확도 84.5%
+- API fallback: sLLM 실패 시 OpenAI로 단일 스트리밍 (자연어 + JSON 동시)
+
+### 한 일
+- v3 학습데이터 프롬프트 vs 서버 프롬프트 비교 문서 작성 (`docs/prompt_comparison_v3_vs_server.md`)
+- 멘토링 피드백 기반 2단계 스트리밍 프롬프트 강화 내용 정리
+
+### 다음 할 일
+- 강화된 2단계 프롬프트를 코드에 반영 (judgment_agent.py)
+- 스트리밍 응답 품질 테스트
+- 최종 발표 준비
+
+---
+
+## 2026-03-17 (월)
+
+### 한 일
+- **v3 Judgment LoRA 재학습** (RunPod A100 80GB)
+  - conditional 보강 데이터 기반, Kanana-1.5-8B + LoRA (r=16, alpha=32, 3 epochs)
+  - train_loss: 0.2212, eval_loss: 0.1067
+  - 학습 시간: ~2시간 20분
+- **v3 평가 완료**: 판단 정확도 **85.4%** (v1 83.5% → +1.9%p)
+  - conditional 78.0% (+3.0%), no 83.6% (+3.3%), yes 86.0% (+1.0%), no_regulation 97.0% (동일)
+  - JSON 유효율: 97.6%
+- **HuggingFace 업로드 완료**: `yoongyeongeun/v1-judgment-hardcoded`
+  - vLLM 서빙 재시작 시 자동 적용 (코드 변경 불필요)
+- **8주차 산출물 작성**
+  - 시스템 구성도 (컬러/무채색) — sLLM 전환 완료 반영
+  - 테스트 계획 및 결과 보고서 (106개 시나리오)
+  - 개발된 LLM 연동 웹 애플리케이션 문서
+- **산출물 push**: feat/ai-yoon + develop 반영
+
+### 다음 할 일
+- vLLM 서빙에서 v3 모델 적용 확인
+- LoRA v3 RAG 연동 평가 (실제 검색 컨텍스트 기반)
+- 최종 발표 준비
+
+---
+
 ## 2026-02-11 (화)
 
 **모델 벤치마크 테스트셋 + 스크립트 구현 (#7):**
@@ -419,9 +476,8 @@ intent → status("judgment_agent 처리 중...")
 - 다양한 문서 형식(DOCX, 스캔 PDF) 파싱 테스트
 - 5단계 성능 평가 (#13) — 환각 탐지 정확도, confidence 보정 효과 정량 평가
 
----
 
-## 2026-02-23 (일) — 규정 문서 확보 + RAG 검색 고도화
+## 규정 문서 확보 + RAG 검색 고도화
 
 ### 가상 규정 문서 7개 생성 (3단계 RAG 커버리지 확보)
 
@@ -483,7 +539,7 @@ intent → status("judgment_agent 처리 중...")
 **다음 할 일:**
 - 5단계 성능 평가 (#13) — 판단 정확도, RAG MRR, 교차 규정 검색 정량 평가
 - 공개 규정 다운로드 검토 (현재 270 청크로 충분한지 평가 후 결정)
-- ~~4단계 파인튜닝 데이터 준비 (#9, #10) — 판단 1,000건 JSONL 변환, 규정 Q&A 수집~~ ✅ 완료
+- 4단계 파인튜닝 데이터 준비 (#9, #10) — 판단 1,000건 JSONL 변환, 규정 Q&A 수집
 - E2E 교차 규정 판단 테스트 (judgment_agent 실제 호출)
 
 ---
@@ -675,3 +731,1082 @@ MakerBot METHOD 매뉴얼처럼 `1장 소개`, `## 안전 경고 기호`, `**무
 - RunPod에서 `train_v1_judgment.py` 실제 학습 실행 (A100 40GB)
 - 5단계 성능 평가 (#13) — 파인튜닝 전/후 비교
 - 다양한 문서 형식(DOCX, 스캔 PDF) 파싱 테스트
+
+---
+
+## 2026-03-03 (월) — 인사/IT보안 교차 규정 데이터 확장 (#9, #10)
+
+### 1. 인사규정 + IT보안규정 파일 생성 및 시나리오 추가
+
+**규정 파일 2개 생성:**
+
+| 파일 | 문서번호 | 조항 수 | 주요 내용 |
+|------|---------|---------|----------|
+| `인사규정_NC-HR-2026-001.txt` | NC-HR-2026-001 | 12조 | 채용, 근로계약, 근로시간, 휴가, 원격근무, 비밀유지 |
+| `IT보안규정_NC-IT-2026-002.txt` | NC-IT-2026-002 | 18조 | 접근통제, 네트워크 보안, 클라우드/IoT 보안, 보안사고 대응 |
+
+**`generate_cross_regulation_data.py` 수정:**
+- `REG_ALIASES`에 `"인사": "인사규정"`, `"IT보안": "IT보안규정"` 추가
+- 교차 규정 시나리오 17개 신규 추가 (총 31→48개):
+  - cross_2: 8개 (인사+개인정보, 인사+IT보안, IT보안+개인정보 등)
+  - cross_3: 3개 (3규정 교차)
+  - conflict: 3개 (원격근무 보안 vs 유연근무, 교육비 vs 보안교육, BYOD vs 보안 등)
+  - noise: 3개 (distractor-only)
+
+### 2. 데이터 생성 (cross_regulation_v2.jsonl)
+
+- 48 시나리오 × 20건 = **958건** 생성 (약 3시간 소요, GPT API)
+- 결과 분포: conditional 553 (57.7%), no 176 (18.4%), no_regulation 137 (14.3%), yes 92 (9.6%)
+- conditions 100% 채움 (v1의 97% → v2 100%)
+- cross_references 포함: 80.6%
+
+### 3. 데이터 병합 및 QA
+
+**병합:**
+- v2에서 내부 중복 2건 제거 (958→956건)
+- 90/10 split → train 860건 + eval 96건
+- 기존 데이터와 병합: train 1,766+860=2,626, eval 190+96=286
+- 정확 중복 제거: train 4건, eval 1건 제거
+- COND_NO_DESC 수정: train 8건 + eval 3건 (v1 기존 데이터의 conditions 누락 수정)
+
+**최종 결과:**
+
+| 항목 | train | eval |
+|------|-------|------|
+| 레코드 수 | **2,622** | **285** |
+| 품질 점수 | **94.3/100 (A)** | **95.5/100 (A+)** |
+| 에러 | **0** | **0** |
+| COND_NO_DESC | 0 (수정 완료) | 0 (수정 완료) |
+| 평균 confidence | 0.877 | 0.882 |
+
+| 결과 분포 | train | eval |
+|-----------|-------|------|
+| conditional | 1,164 (44.4%) | 129 (45.3%) |
+| yes | 711 (27.1%) | 86 (30.2%) |
+| no | 547 (20.9%) | 50 (17.5%) |
+| no_regulation | 200 (7.6%) | 20 (7.0%) |
+
+**규정별 인용 횟수 (train):**
+- 개인정보처리규정: 587건 (22.4%)
+- IT보안규정: 387건 (14.8%)
+- 인사규정: 374건 (14.3%)
+- 취업규칙: 85건 (3.2%)
+- 보수규정: 25건 (1.0%)
+
+### 4. Self-QA 발견 이슈 및 개선 제안
+
+| 이슈 | 심각도 | 설명 |
+|------|--------|------|
+| RAFT distractor 비율 부족 | 중 | 7.6% (목표 20%) — `no_regulation` 샘플 부족 |
+| IT보안규정 후반 조항 빈약 | 중 | 제20~24조, 제28조 인용이 30~42건으로 평균 대비 1/3 수준 |
+| cross_references relationship 불일치 | 하 | LLM이 "보완/충돌" 생성 vs validator 기대 "보충/상충" |
+| yes 결과 비율 낮음 | 하 | 9.6% — 명확한 허용 케이스 부족 |
+
+### 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `data/regulations/인사규정_NC-HR-2026-001.txt` | 신규 |
+| `data/regulations/IT보안규정_NC-IT-2026-002.txt` | 신규 |
+| `scripts/generate_cross_regulation_data.py` | 수정 — 시나리오 17개 추가 |
+| `scripts/validate_judgment_data.py` | 기존 (검증용) |
+| `data/training/v1_judgment/cross_regulation_v2.jsonl` | 신규 — 958건 |
+| `data/training/v1_judgment/train.jsonl` | 수정 — 2,622건 (병합+중복제거+COND수정) |
+| `data/training/v1_judgment/eval.jsonl` | 수정 — 285건 (병합+중복제거+COND수정) |
+| `data/training/v1_judgment/backup/` | 신규 — v1 백업 |
+
+**다음 할 일:**
+- ~~RAFT distractor 비율 보정 (7.6% → 20% 목표, noise 시나리오 추가)~~ ✅ 완료 (3/4)
+- ~~IT보안규정 후반부 조항(제20~24조, 제28조) 타겟 시나리오 추가~~ ✅ 완료 (3/3)
+- ~~cross_references relationship 표준화 (프롬프트 vs validator 기준 결정)~~ ✅ 완료 (3/4)
+- ~~나머지 규정 간 교차 조합 확장 (급여×인사, 교육훈련×IT보안 등)~~ ✅ 완료 (3/3~3/4)
+- RunPod에서 확장된 데이터로 LoRA 파인튜닝 실행
+
+---
+
+## 2026-03-04 (화)
+
+### 교차 규정 v3+v4 데이터 생성 및 리밸런싱
+
+**Phase 1: v3 교차 규정 데이터 생성 (이전 세션 마무리)**
+- 72 시나리오 × 7건 = 502건 생성 (`cross_regulation_v3.jsonl`)
+- IT보안규정 후반부(제20~28조) 시나리오 포함
+- 기존 데이터와 병합: 2,907 + 502 = 3,409건
+
+**Phase 1 Self-QA 결과:**
+- 검증 스코어: 90.6/100 (A)
+- 수정: `relationship: "무관"` validator 추가, [467] result `no→no_regulation` 수정
+
+**Phase 2: 데이터 분포 리밸런싱 (conditional ↓, no_regulation ↑)**
+
+문제: conditional 45.9%, no_regulation 8.7% → 모델 편향 위험
+
+**2-1. conflict 시나리오 확장 (10→20개)**
+- 10개 신규 충돌 시나리오 추가:
+  - 수습기간 교육비 반환, 건강검진 vs 개인정보, 배우자 이해충돌 vs 겸직,
+  - 법정교육 면책 vs 징계, 육아휴직 복직 복지, 연봉 삭감 가능성,
+  - 내부고발 신원보호, CISSP 교육비 이중적용, 해외출장 질병 보험, 자격수당 중복
+- 생성: 20 시나리오 × 7건 = **140건** (`cross_regulation_v4_conflict.jsonl`)
+- 분포: conditional 90, no_regulation 31, no 19
+
+**2-2. no_regulation 부스트 생성 (`--noreg-boost` 모드)**
+- `generate_cross_regulation_data.py`에 `--noreg-boost` 플래그 추가
+- 모든 82 시나리오를 distractor-only 컨텍스트로 실행
+- 생성: 82 시나리오 × 5건 = **410건** (`cross_regulation_v4_noreg.jsonl`)
+- 분포: **no_regulation 410건 (100%)**
+
+**2-3. 리밸런싱 실행**
+- `scripts/rebalance_judgment_data.py` 신규 스크립트 작성
+- conditional 언더샘플링: 1,665건 → 983건 (682건 제거)
+- 최종 분포 (train+eval 3,277건):
+
+| result | 건수 | 비율 | 변화 |
+|--------|------|------|------|
+| conditional | 983 | **30.0%** | 45.9% → 30.0% |
+| yes | 872 | **26.6%** | 26.0% → 26.6% |
+| no_regulation | 732 | **22.3%** | 8.7% → 22.3% |
+| no | 690 | **21.1%** | 19.4% → 21.1% |
+
+- train: 2,949건 / eval: 328건
+- 백업: `backup/train_before_rebalance.jsonl`, `backup/eval_before_rebalance.jsonl`
+
+**최종 검증: train.jsonl — 90.4/100 (A), 오류 0건**
+
+### 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `scripts/generate_cross_regulation_data.py` | 수정 — conflict 10개 추가, `--noreg-boost` 모드 추가 |
+| `scripts/rebalance_judgment_data.py` | 신규 — 데이터 리밸런싱 스크립트 |
+| `scripts/validate_judgment_data.py` | 수정 — VALID_RELATIONSHIP에 "무관" 추가 |
+| `data/training/v1_judgment/cross_regulation_v3.jsonl` | 신규 — 502건 |
+| `data/training/v1_judgment/cross_regulation_v4_conflict.jsonl` | 신규 — 140건 |
+| `data/training/v1_judgment/cross_regulation_v4_noreg.jsonl` | 신규 — 410건 |
+| `data/training/v1_judgment/train.jsonl` | 수정 — 2,949건 (리밸런싱 후) |
+| `data/training/v1_judgment/eval.jsonl` | 수정 — 328건 (리밸런싱 후) |
+| `data/training/v1_judgment/backup/` | 백업 파일 추가 |
+
+**다음 할 일:**
+- CONTENT_MISMATCH 경고 샘플링 검수 (교차규정 패턴으로 인한 예상 경고 확인)
+- 중복 의심 8쌍 검토 (이름만 다른 거의 동일한 질문)
+- ~~RunPod에서 리밸런싱된 데이터로 QLoRA 파인튜닝 baseline 실행~~ ✅ 완료 (3/6)
+- ~~baseline 성능 확인 후 추가 데이터 방향 결정~~ ✅ 완료 (3/6)
+
+---
+
+## 2026-03-06 (목) — Judgment LoRA v1 학습 결과 + v2 데이터 보강 준비
+
+### 1. Judgment LoRA v1 파인튜닝 실행 및 결과 (RunPod A100)
+
+**학습 환경:**
+- 베이스 모델: `kakaocorp/kanana-1.5-8b-instruct-2505`
+- 학습 방식: QLoRA (4-bit, r=16, alpha=32)
+- 학습 데이터: 2,949건 (train) / 328건 (eval)
+- 학습 스크립트: `ai/finetuning/train_v1_judgment.py`
+
+**v1 평가 결과 (`outputs/v1_judgment/eval_results.json`):**
+
+| 항목 | 결과 |
+|------|------|
+| 전체 정확도 | **86.6%** (284/328) |
+| JSON 유효율 | **98.2%** (322/328) |
+
+| 카테고리 | 정답 | 전체 | 정확도 |
+|----------|------|------|--------|
+| no_regulation | 65 | 67 | **97.0%** |
+| yes | 85 | 100 | **85.0%** |
+| conditional | 84 | 100 | **84.0%** |
+| no | 50 | 61 | **82.0%** |
+
+**분석:**
+- 목표(≥85%) 달성: 전체 86.6%
+- **강점**: no_regulation 97% — distractor 시나리오 학습 효과 뛰어남
+- **약점**: no 82%, conditional 84% — 두 카테고리 간 경계 혼동 존재
+  - "승인 없이 ~하면?" → no인데 conditional로 오분류하는 패턴
+  - 조건 존재 여부 vs 금지 여부 판단 경계가 모호한 케이스
+
+### 2. v2 데이터 보강 분석 — no/conditional 경계 개선
+
+**train.jsonl (2,949건) 분석 결과:**
+
+| 카테고리 | 건수 | 비율 |
+|----------|------|------|
+| conditional | 883 | 29.9% |
+| yes | 772 | 26.2% |
+| no_regulation | 665 | 22.6% |
+| no | 629 | 21.3% |
+
+- `no`가 가장 적은 카테고리 (629건) → 정확도도 최하위 (82%)
+- no/conditional 경계 혼동 패턴 발견:
+  - "승인 없이" → 금지(no)이지만, 조건부(conditional)로 오분류 가능
+  - 동일 규정 조항에서 질문 프레이밍에 따라 결과가 달라지는 케이스
+
+### 3. v2 보강 스크립트 작성 — `scripts/augment_v2_no_conditional.py` (신규)
+
+**목표**: ~250건 타겟 생성으로 no/conditional 경계 강화
+
+| Phase | 대상 | 건수 | 전략 |
+|-------|------|------|------|
+| A | no 강화 | ~120건 | "승인 없이", "무단으로", "허가 없이" 등 명시적 금지 패턴 |
+| B | no/conditional 경계쌍 | ~80건 | 동일 규정 + 다른 질문 프레이밍 → (no, conditional) 쌍 생성 |
+| C | conditional 명확화 | ~50건 | "~하면 가능한가요?", "조건이 뭔가요?" 등 조건 탐색 패턴 |
+
+**스크립트 특징:**
+- GPT-4o-mini 기반 데이터 생성 (비용 효율)
+- `data/regulations/` 규정 .txt 파일에서 실제 규정 원문 로드
+- 생성 후 레이블 검증 (expected와 불일치 시 자동 필터링)
+- 90/10 split으로 train.jsonl / eval.jsonl에 자동 병합 (백업 포함)
+
+### 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `scripts/augment_v2_no_conditional.py` | 신규 — no/conditional 타겟 보강 스크립트 |
+| `outputs/v1_judgment/eval_results.json` | 신규 — v1 평가 결과 (RunPod에서 push) |
+
+**다음 할 일:**
+- `augment_v2_no_conditional.py` 실행 (OPENAI_API_KEY 필요) → ~250건 생성
+- v2 보강 데이터 병합 후 RunPod에서 LoRA v2 학습 실행
+- v1 vs v2 성능 비교 (특히 no 82%→목표 88%+, conditional 84%→87%+)
+- 전체 정확도 목표: 86.6% → 90%+
+
+---
+
+## 2026-03-09 (일) — RAG 검색 고도화 + 성능 평가
+
+### 1. RAG 파이프라인 고도화 (3단계 개선)
+
+| 방법 | 기존 상태 | 개선 내용 |
+|------|----------|----------|
+| Reranker 활성화 | 비활성화 | Cross-Encoder(bge-reranker-v2-m3) 활성화, score_threshold=-2.0 |
+| Query Refinement 강화 | 동의어 사전 + 구어체 변환 | HyDE(가상 문서 생성) 기반 벡터 검색 품질 향상 |
+| 메타데이터 필터링 | chapter/source 기반 | 태그/카테고리 매칭 부스트, Score 표시 추가 |
+| 청크 전략 개선 | 현재 고정 크기 추정 | 조항 단위 청킹으로 정밀도 향상 |
+| Score threshold | 없음 | RRF 점수 하한선 설정 → 낮은 점수 문서 제거 |
+
+### 2. RAG 벤치마크 결과
+
+**파일**: `data/evaluation/benchmark_results/rag_improvement_comparison.json`
+
+| 지표 | 결과 |
+|------|------|
+| Hit Rate | **95.24%** (21건 중 20건 적중) |
+| MRR (Mean Reciprocal Rank) | **0.636** |
+| 평균 순위 | 2.65 |
+| 평균 검색 시간 | ~0.22초 |
+| 테스트 케이스 | 21개 judgment 쿼리 |
+
+### 3. 파인튜닝 재학습 불필요 판단
+
+RAG 개선(3단계)과 LoRA 파인튜닝(4단계)은 독립적 구조:
+- RAG 개선 → 모델에 더 좋은 규정 문서를 전달 (입력 품질 향상)
+- LoRA v1 모델 → 동일한 입출력 형식으로 그대로 사용 가능
+- **결론**: 기존 LoRA v1(86.6%)을 RAG 개선 환경에서 재평가하여 실질 성능 확인 후, 부족 시 v2 학습 진행
+
+### 4. 수정 파일 (커밋 완료)
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `ai/rag/hybrid_search.py` | Reranker 활성화, HyDE 적용, score threshold, 태그 매칭 부스트 |
+| `ai/rag/query_refiner.py` | HyDE 가상 문서 생성, 동의어 사전 확장 |
+| `ai/rag/qdrant_pipeline.py` | BM25 인덱스 태그 정리, score threshold 설정 |
+| `ai/agents/document_agent.py` | 문서 scope 필터링 개선 |
+| `ai/tests/benchmark_rag_improvement.py` | RAG 개선 전/후 벤치마크 스크립트 |
+
+### 5. 현재 전체 성능 요약
+
+| 모듈 | 지표 | 결과 |
+|------|------|------|
+| RAG 검색 | Hit Rate | 95.24% |
+| RAG 검색 | MRR | 0.636 |
+| 판단 Agent (LoRA v1) | 전체 정확도 | 86.6% (목표 85% 달성) |
+| 판단 Agent (LoRA v1) | no_regulation | 97.0% |
+| 판단 Agent (LoRA v1) | yes | 85.0% |
+| 판단 Agent (LoRA v1) | conditional | 84.0% |
+| 판단 Agent (LoRA v1) | no | 82.0% |
+| Intent 분류 (KoELECTRA) | Adversarial F1 | 0.8758 |
+| Intent 분류 (KoELECTRA) | 추론 속도 | 7.9ms |
+
+**다음 할 일:**
+- ~~RAG 개선 환경에서 LoRA v1 모델 재평가 (실질 정확도 변화 측정)~~ ✅ 완료 (3/10)
+- ~~재평가 결과 90%+ 미달 시 → v2 보강 데이터로 LoRA v2 학습 실행~~ ✅ 완료 (3/10)
+- ~~v2 목표: no 82%→88%+, conditional 84%→87%+, 전체 86.6%→90%+~~ ❌ v2 실패
+- 5단계 성능 평가 (#13) — 전체 파이프라인 E2E 정량 평가
+
+---
+
+## 2026-03-10 (월) — v1 RAG 재평가 + v2 LoRA 학습 실행
+
+### 1. v1 LoRA RAG 환경 재평가 (RunPod)
+
+`scripts/eval_lora_v1_rag_improved.py`로 3가지 모드 비교 실행:
+
+| 모드 | 정확도 | JSON 유효율 | 설명 |
+|------|--------|------------|------|
+| baseline | **83.3%** | 100% | eval.jsonl 하드코딩 컨텍스트 |
+| rag-improved | **16.7%** | 56.7% | 라이브 RAG (Reranker+HyDE) |
+| rag-baseline | **16.7%** | 56.7% | 라이브 RAG (RRF만) |
+
+**분석:**
+- baseline 83.3%로 목표 90% 미달 (이전 eval 86.6%보다 하락 — eval 데이터가 328→338로 변경)
+- RAG 적용 시 16.7%로 폭락 — Qdrant에 문서 미적재 또는 RAG 검색 결과 불일치 추정
+- 주요 오분류: `no_regulation→conditional` 4건, `no→no_regulation` 3건
+
+### 2. v2 데이터 보강 (`augment_v2_no_conditional.py`)
+
+| 항목 | 결과 |
+|------|------|
+| 생성 건수 | **98건** (rejected 0) |
+| 분포 | no: 48, conditional: 50 |
+| train 병합 | 2,949 + 88 = **3,037건** |
+| eval 병합 | 328 + 10 = **338건** |
+
+### 3. v2 LoRA 학습 + 평가 (RunPod A100)
+
+**v2 설정 (`configs/v2_judgment.yaml`):**
+- LR: 2e-4 → **1.5e-4** (기존 학습 보존 + 새 데이터 흡수)
+- Output: `outputs/v2_judgment/`
+- 나머지 v1과 동일 (QLoRA 4-bit, r=16, epochs=3)
+
+**v2 평가 결과 — v1 대비 하락:**
+
+| 카테고리 | v1 (86.6%) | v2 (83.4%) | 변화 |
+|----------|------------|------------|------|
+| conditional | 84.0% | **74.3%** | **-9.7%p** |
+| no | 82.0% | **78.8%** | **-3.2%p** |
+| yes | 85.0% | **87.0%** | +2.0%p |
+| no_regulation | 97.0% | **97.0%** | 동일 |
+| JSON 유효율 | 98.2% | **97.0%** | -1.2%p |
+
+**결론:**
+- v2 보강 데이터(98건)가 no/conditional 경계를 더 혼란시킴
+- **v1 어댑터(86.6%)를 최종 모델로 유지**
+- v2는 실패 기록으로 보관 (`outputs/v2_judgment/eval_results.json`)
+
+### 4. 학습 스크립트 범용화
+
+- `train_v1_judgment.py` — OUTPUT_BASE를 config에서 동적으로 읽도록 수정
+- `--config` 옵션으로 v1/v2 config 전환 가능
+- `configs/v2_judgment.yaml` 신규 생성
+
+### 5. 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `ai/finetuning/train_v1_judgment.py` | 수정 — config 기반 output_dir, v1/v2 범용화 |
+| `ai/finetuning/configs/v2_judgment.yaml` | 신규 — v2 학습 설정 |
+| `outputs/v2_judgment/eval_results.json` | 신규 — v2 평가 결과 |
+| `data/training/v1_judgment/train.jsonl` | 수정 — v2 보강 98건 병합 (3,037건) |
+| `data/training/v1_judgment/eval.jsonl` | 수정 — v2 보강 10건 병합 (338건) |
+
+### 6. 현재 최종 성능 요약
+
+| 모듈 | 지표 | 결과 |
+|------|------|------|
+| RAG 검색 | Hit Rate | 95.24% |
+| RAG 검색 | MRR | 0.636 |
+| **판단 Agent (LoRA v1)** | **전체 정확도** | **86.6% (최종 채택)** |
+| 판단 Agent (LoRA v1) | no_regulation | 97.0% |
+| 판단 Agent (LoRA v1) | yes | 85.0% |
+| 판단 Agent (LoRA v1) | conditional | 84.0% |
+| 판단 Agent (LoRA v1) | no | 82.0% |
+| 판단 Agent (LoRA v2) | 전체 정확도 | 83.4% (하락, 폐기) |
+| Intent 분류 (KoELECTRA) | Adversarial F1 | 0.8758 |
+
+**다음 할 일:**
+- RAG 라이브 검색 시 16.7% 폭락 원인 디버깅 (Qdrant 문서 적재 상태, 검색 결과 확인)
+- 문서 분석 sLLM 프롬프트 개선 (요약 → 태그 파이프라인)
+- 5단계 성능 평가 (#13) — 전체 파이프라인 E2E 정량 평가
+
+---
+
+## 2026-03-13 (목)
+
+### Intent 체계 정리 (10 → 6 라벨)
+
+**기존 10개 intent:**
+- doc_search, doc_qa, doc_summary, doc_generate, judgment, schedule_add, schedule_view, pipeline_create, approval_create, general
+
+**새 6개 intent (현재 학습 중):**
+- `doc_retrieve` — doc_search + doc_qa + doc_summary 통합 (겹치는 부분 많아 하나로 합침)
+- `doc_generate` — 문서 생성 (유지)
+- `judgment` — 사규 기반 판단 (유지, 서브 intent 불필요)
+- `schedule_add` — 일정/태스크/결재 생성 통합
+- `schedule_view` — 일정 조회 (유지)
+- `general` — 일반 대화 (유지)
+
+**핵심 결정:** pipeline_create, approval_create를 별도 intent로 두지 않고 `schedule_add` 안에서 키워드 기반 2차 분류로 처리
+
+### action_agent → schedule_agent 병합
+
+**변경 사항:**
+1. `ai/agents/schedule_agent.py` — action_agent의 pipeline/approval 핸들러 전체 통합
+   - `_classify_add_type()` 키워드 분류 함수 추가
+   - `_PIPELINE_KEYWORDS`: 태스크, task, 파이프라인, pipeline, 칸반, 보드, 프로젝트 추가/생성
+   - `_APPROVAL_KEYWORDS`: 결재, 승인, 연차, 휴가, 반차, 조퇴, 병가, 품의, 출장 신청/출장신청
+   - `schedule_add` intent 진입 시: 키워드 → pipeline/approval/schedule 분기
+   - `_handle_pipeline_create`, `_parse_pipeline_input`, `_fallback_parse_pipeline` 함수 이관
+   - `_handle_approval_create`, `_parse_approval_input`, `_fallback_parse_approval`, `_infer_approval_type` 함수 이관
+
+2. `ai/agents/orchestrator.py` — action_agent 노드 제거
+   - 라우팅: `schedule_add` + `pipeline_create` + `approval_create` → 모두 `schedule_agent`로
+   - graph에서 `action_agent` 노드, 엣지 완전 제거
+   - 현재 그래프 노드: decompose_query, compound_pending, classify_intent, clarify_with_candidates, judgment_agent, document_agent, schedule_agent, general_response, format_response
+
+3. `ai/agents/action_agent.py` — 파일 아직 존재하지만 그래프에서 호출 안 됨 (추후 삭제 가능)
+
+**intent 학습 팀원(경은)에게 전달할 사항:**
+- `schedule_add` 라벨에 태스크/결재 관련 예문도 포함시킬 것
+- 예: "태스크 만들어줘", "연차 신청해줘", "출장 결재 올려줘" 등 → `schedule_add`로 분류되어야 함
+
+### Qdrant 중복 데이터 정리
+
+- 개별 규정 파일 이름으로 들어간 201개 포인트 삭제 (Qdrant REST API 직접 호출)
+- 원인: `ingest_documents.py`로 이미 `ingest_regulations.py`에서 파싱된 규정 파일을 중복 인제스트
+- 정리 후: 285개 포인트 (regulations 206개 + documents 79개)
+- 코드 변경 없음 — Qdrant Cloud DB에 직접 적용 완료
+
+### sLLM 전환 가능성 분석
+
+**현재 sLLM 학습 현황:**
+- 판단(judgment) sLLM — 학습 중 (경은)
+- 문서(document) sLLM — 학습 중 (승언), `DOC_AGENT_MODE=sllm`으로 별도 전환 가능
+- 일정(schedule) — 아직 테스트 필요
+- 일반(general) — GPT 유지 권장 (범용 대화)
+
+**schedule agent sLLM 전환 테스트 준비:**
+- 테스트 스크립트 생성: `scripts/test_schedule_sllm.py`
+  - 10개 테스트 케이스 (일정 3, 태스크 3, 결재 4)
+  - `--provider vllm --vllm-url` 플래그로 sLLM 테스트 가능
+  - GPT-4o-mini 기준 통과율: schedule 파싱 부분은 안정적
+- schedule의 파싱 작업은 "자연어 → 구조화 JSON" 단순 추출이라 base instruct 모델로도 가능성 있음
+- RunPod 켜서 Kanana-8B 또는 Qwen3-8B로 비교 테스트 필요
+
+**Approvals 페이지 "New Tasks" AI 추천 기능 (3개 엔드포인트):**
+- `POST /approvals/checklist` — 할 일 체크리스트 생성 (temperature 0.3)
+- `POST /approvals/suggest-schedules` — 일정 추천 (temperature 0.4)
+- `POST /approvals/suggest` — 결재 추천 (temperature 0.4)
+- 모두 `get_llm()` + `json_mode=True` 사용, rule-based fallback 있음
+- sLLM 전환 가능하지만 schedule 파싱보다 난이도 높음 (단순 추출이 아닌 추론/분석 필요)
+- **전략:** schedule 파싱 sLLM 먼저 검증 → 성공 시 추천 기능도 테스트 → fallback이 있어 품질 부족해도 서비스 영향 없음
+- 우선순위 낮음, 나중에 검토
+
+### Sheets 기능 확장 — 미리보기 + AI WBS 생성 + 인라인 편집
+
+**Phase 1: 시트 미리보기:**
+- `sheets_service.py` — `read_sheet_data()` 메서드 추가 (Google Sheets API `values().get()` + 탭 목록)
+- `sheets.py` — `GET /{spreadsheet_id}/data` 엔드포인트 추가
+- `google_services.py` — `SheetReadResponse` 스키마 추가
+- `SheetPreview.jsx` 신규 — 탭 전환 UI + 테이블 렌더링 + 헤더 고정
+
+**Phase 2: AI WBS 자동 생성:**
+- `prompts.py` — `WBS_GENERATE_SYSTEM_PROMPT` 추가 (3레벨 계층 WBS JSON)
+- `sheets_service.py` — `_generate_wbs_tab()`, `_flatten_wbs()`, `_apply_wbs_formatting()` 추가
+  - LLM 호출 → WBS JSON → "WBS" 탭 생성 → 레벨별 색상 포맷팅
+  - LLM 실패 시 flat export만 정상 진행 (fallback)
+- `google_services.py` — `generate_wbs` 플래그 + `wbs_generated` 응답 필드 추가
+- `SheetsDashboard.jsx` — "WBS 포함" 체크박스 추가
+
+**Phase 3: 인라인 편집:**
+- `sheets_service.py` — `update_sheet_data()` 메서드 추가 (`values().batchUpdate()`)
+- `sheets.py` — `PUT /{spreadsheet_id}/data` 엔드포인트 추가
+- `google_services.py` — `CellUpdate`, `SheetUpdateRequest`, `SheetUpdateResponse` 스키마 추가
+- `SheetPreview.jsx` — 셀 클릭 편집 + 변경 셀 노란색 배경 + 저장/취소 버튼
+
+**프론트엔드 연동:**
+- `google.js` — `readSheetData()`, `updateSheetData()` API 함수 추가
+- `googleStore.js` — `sheetPreview` 상태 + `fetchSheetPreview()`, `updateSheetData()`, `clearSheetPreview()` 액션 추가
+- `SheetsDashboard.jsx` — 시트 목록에 "미리보기" 버튼 추가, 클릭 시 SheetPreview 펼침
+
+### 일정 관련 LLM 호출 전체 정리 + sLLM 전환 분석
+
+- `docs/일정_LLM_호출_정리_및_sLLM_전환_분석.md` 작성
+- 4개 영역 10개 LLM 호출 전수 조사:
+  - 챗봇 파싱 4개 (schedule/view/pipeline/approval)
+  - AI 추천 3개 (checklist/suggest_schedules/suggest_approvals)
+  - Sheets WBS 1개
+  - action_agent 중복 2개 (이미 schedule_agent에 병합됨)
+- sLLM 전환 Phase 1~3 우선순위 분류
+  - Phase 1 (바로 가능): 결재 파싱, 체크리스트, 일정/결재 추천
+  - Phase 2 (데이터 필요): 일정/조회/태스크 파싱
+  - Phase 3 (후순위): WBS 생성
+
+### Sheets 확장 탭 구현 (Gantt / Dashboard / AI Risk / Weekly Report)
+
+**Backend (`sheets_service.py`):**
+- `_generate_gantt_tab()` — 태스크 마감일 기준 셀 색칠 간트 차트 (상태별 색상: done=녹, in_progress=파랑, review=주황, todo=회색)
+- `_generate_dashboard_tab()` — 상태/담당자/우선순위 분포 집계 + 마감 초과 태스크 목록 (LLM 불필요)
+- `_generate_risk_tab()` — LLM 리스크 분석 (일정/과부하/병목/미할당/우선순위/정체 6가지 카테고리)
+- `_generate_weekly_report_tab()` — LLM 주간 보고서 (완료/진행중/예정/블로커)
+- `export_project_to_sheet()` — `generate_gantt`, `generate_dashboard`, `generate_risk`, `generate_report` 파라미터 추가
+
+**AI 프롬프트 (`prompts.py`):**
+- `PROJECT_RISK_ANALYSIS_SYSTEM_PROMPT` — 6가지 리스크 카테고리 분석 JSON 출력
+- `WEEKLY_REPORT_SYSTEM_PROMPT` — 주간 보고서 JSON 출력
+
+**스키마 (`google_services.py`):**
+- `SheetExportProjectRequest` / `SheetCreateResponse`에 4개 플래그 추가
+
+**프론트엔드:**
+- `google.js` — `exportProjectToSheet()` options 객체로 변경 (5개 탭 옵션)
+- `googleStore.js` — `exportProjectToSheet()` options 전달 방식 변경
+- `SheetsDashboard.jsx` — 내보내기 옵션 체크박스 5개 (WBS/Gantt/Dashboard/AI리스크/주간보고)
+
+**다음 할 일:**
+
+1. **schedule sLLM 비교 테스트** — RunPod 켜서 `test_schedule_sllm.py` 실행
+2. **intent 학습 팀원에게 전달** — `schedule_add`에 태스크/결재 예문 포함 확인
+3. **LoRA 연결 테스트** (이전 세션에서 이어짐)
+4. **Approvals 추천 sLLM 전환** — schedule 테스트 결과 보고 판단
+5. **Sheets 확장 deploy 후 테스트** — develop 머지 → EC2 반영 후 탭 생성 검증
+
+---
+
+## 2026-03-15 (토) — v1-RAG 학습 데이터 생성 + 학습 실행
+
+### 1. RAG 학습 데이터 재생성 (Qdrant 규정 문서만 필터)
+
+**문제:** 기존 `rebuild_train_with_rag.py`가 Qdrant 전체 검색 → 삼성 보고서(18만자), 매뉴얼 등 노이즈 포함
+- train_rag.jsonl **1.3GB** (원본 16MB의 80배) — 학습 불가능한 크기
+
+**해결:** `filter={"source": "regulations"}`를 RAG 검색에 추가
+- 규정 문서(206개 청크, 평균 167자)만 검색, 일반 문서(80개, 최대 21만자) 제외
+- 결과: **1.3GB → 26MB** (200배 축소), 원본 대비 1.6배로 정상 크기
+
+| 파일 | 건수 | 크기 | RAG 빈 결과 |
+|------|------|------|------------|
+| eval_rag.jsonl | 328건 | 2.9MB | 0건 |
+| train_rag.jsonl | 2949건 | 26MB | 0건 |
+
+### 2. RunPod 경량 실행 스크립트 작성
+
+- `runpod_v1_rag_minimal.sh` — git clone 없이 curl로 필요 파일 4개만 다운로드 (~30MB)
+- torch 충돌 해결: torchvision/torchaudio 제거 (텍스트 학습에 불필요)
+- 한 줄 실행: `curl -sL .../runpod_v1_rag_minimal.sh | bash`
+
+### 3. v1-RAG 학습 + 평가 결과 (RunPod A100 80GB)
+
+**설정:** 1 epoch only (disk quota 제한으로 체크포인트 저장 불가 → save_strategy="no")
+
+| | v1 하드코딩 (3ep) | v2 (3ep) | **v1-RAG (1ep)** |
+|---|---|---|---|
+| **전체 정확도** | **86.6%** | 83.4% | **42.7%** |
+| JSON 유효율 | 98.2% | 97.0% | 84.1% |
+| yes | 85.0% | 87.0% | 58.0% |
+| no | 82.0% | 78.8% | 52.5% |
+| conditional | 84.0% | 74.3% | 26.0% |
+| no_regulation | 97.0% | 97.0% | 35.8% |
+
+**하락 원인 분석:**
+1. **1 epoch만 학습** — 기존 3 epoch 대비 수렴 부족
+2. **RAG 컨텍스트 형식 변화** — 하드코딩(정답 규정만)과 RAG(관련+무관 규정 섞임)의 차이
+3. **no_regulation 35.8%** — RAG가 항상 10개 규정 반환 → "규정 없음" 학습 어려움
+
+### 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `scripts/judgment/rebuild_train_with_rag.py` | 수정 — filter={"source": "regulations"} 추가 |
+| `data/training/v1_judgment/train_rag.jsonl` | 신규 — 2949건 (26MB) |
+| `data/training/v1_judgment/eval_rag.jsonl` | 신규 — 328건 (2.9MB) |
+| `ai/finetuning/configs/v1_judgment_rag.yaml` | 신규 — RAG 데이터 경로 config |
+| `ai/finetuning/runpod_v1_rag_minimal.sh` | 신규 — 경량 RunPod 실행 스크립트 |
+| `outputs/v1_judgment_rag/eval_results.json` | 신규 — 평가 결과 |
+
+### 4. no_regulation 라벨 모순 발견 + 수정
+
+**문제:** `no_regulation` 67건(eval) / 665건(train) **전부** RAG가 규정 10개를 반환
+- 모델 입장: "규정이 잔뜩 보이는데 왜 no_regulation이지?" → 혼란
+
+**수정:** `rebuild_train_with_rag.py`에서 gold_result=no_regulation이면 RAG 검색 스킵 → 빈 컨텍스트
+
+### 5. v1-RAG 재학습 결과 비교 (RunPod A100 80GB, 1epoch)
+
+| 버전 | 정확도 | JSON유효율 | yes | no | conditional | no_regulation |
+|------|--------|-----------|-----|-----|-------------|---------------|
+| v1 하드코딩 3ep | **86.6%** | 98.2% | 85.0% | 82.0% | 84.0% | 97.0% |
+| v1-RAG #1 (모순) | 42.7% | 84.1% | 58.0% | 52.5% | 26.0% | 35.8% |
+| **v1-RAG #2 (수정)** | **76.8%** | 95.4% | 77.0% | 75.4% | 62.0% | **100.0%** |
+
+**no_regulation 수정 효과:** 35.8% → **100.0%**, 전체 42.7% → **76.8%** (+34.1%p)
+
+### 6. RunPod disk quota 이슈
+
+- 3epoch 학습 시 epoch 마다 체크포인트 저장 → disk quota exceeded
+- 해결: `save_strategy="no"`, `num_train_epochs=1`로 패치하여 1epoch만 학습
+- HF 캐시 정리(`rm -rf /root/.cache/huggingface/hub/models--*`) 필요
+
+### 7. outputs 폴더 정리
+
+- `v1_judgment/eval_results.json`에 4개 결과 통합 (v1, v2, RAG#1, RAG#2)
+- `v2_judgment/` 폴더 삭제 (폐기 결과)
+- `v1_judgment_rag/` 폴더 삭제 (v1_judgment에 통합)
+
+**다음 할 일:**
+- v1-RAG **3 epoch 재학습** — 새 RunPod 인스턴스 (Volume 50GB+) 또는 체크포인트 저장 없이 3ep
+- 3epoch 결과 85%+ 나오면 → vLLM 서빙에 RAG 어댑터 연결
+- conditional 62.0%가 가장 낮음 — 3ep으로도 안 오르면 데이터 보강 검토
+
+---
+
+## 2026-03-15 (일)
+
+### v1-RAG 3epoch 재학습 시도 및 중단
+
+**상황:**
+- 로컬 컴퓨터로 RunPod 학습 중 컴퓨터가 반복적으로 꺼짐 → RunPod 종료
+- 내일(3/16) 다른 컴퓨터로 이어서 진행 예정
+
+**실행 스크립트 (원클릭):**
+```bash
+curl -sL https://raw.githubusercontent.com/SKNETWORKS-FAMILY-AICAMP/SKN21-FINAL-3TEAM/feat/ai-yoon/ai/finetuning/runpod_v1_rag_minimal.sh | bash
+```
+
+**스크립트에 포함된 것:**
+- 패키지 버전 고정 (에러 방지)
+- torchvision 자동 제거
+- `save_strategy="no"` 자동 패치 (disk quota 방지)
+- HF 캐시 자동 정리
+- 3 epoch 학습 (config 기본값)
+
+**예상 소요 시간:** 약 2시간 (43분 × 3ep + 평가)
+
+### 현재 성능 분석 (1epoch RAG 수정본 기준)
+
+| 버전 | 정확도 | JSON유효율 | yes | no | conditional | no_regulation |
+|------|--------|-----------|-----|-----|-------------|---------------|
+| v1 하드코딩 3ep | **86.6%** | 98.2% | 85.0% | 82.0% | 84.0% | 97.0% |
+| v1-RAG #2 (수정, 1ep) | 76.8% | 95.4% | 77.0% | 75.4% | 62.0% | 100.0% |
+
+### 하락 원인 분석 (v1-RAG 76.8% vs v1 하드코딩 86.6%)
+
+1. **1 epoch만 돌림** — 기존은 3 epoch. 수렴 부족이 주요 원인
+2. **RAG 컨텍스트가 기존과 다름** — 하드코딩은 정답 규정만 딱 넣었지만, RAG는 관련 없는 규정도 섞여서 들어옴 (노이즈)
+3. **no_regulation 35.8% → 100.0%** — RAG가 항상 10개 규정을 반환하니 "규정 없음"을 학습하기 어려웠음 (수정 후 해결)
+
+### 다음 할 일 (3/16 다른 컴퓨터에서)
+
+1. **3 epoch로 다시 돌리기**
+   - 위의 원클릭 스크립트 실행
+   - RunPod Volume 용량 확인 (50GB+ 권장)
+   - 스크립트가 캐시 관리 자동화 포함
+2. **RAG 데이터 품질 점검**
+   - no_regulation 샘플의 RAG 결과가 어떤지 확인
+   - 관련 없는 규정이 들어오면 라벨과 충돌 → 정확도 하락 원인
+3. **top_k 10 → 5로 줄이기 검토**
+   - RAG 노이즈 줄이기 위해 top_k를 5로 줄이는 실험 검토
+   - 관련성 낮은 규정이 컨텍스트에 포함되는 문제 완화 기대
+4. **목표:** 3epoch 결과 85%+ → vLLM 서빙에 RAG 어댑터 연결
+
+---
+
+## 2026-03-16 (일) — v1-RAG 3ep 평가 + RAG 품질 개선 + v1 하드코딩 재학습
+
+### 1. v1-RAG 3epoch 평가 결과 (RunPod A100)
+
+| 버전 | 정확도 | JSON유효율 | yes | no | conditional | no_regulation |
+|------|--------|-----------|-----|-----|-------------|---------------|
+| v1 하드코딩 3ep | **86.6%** | 98.2% | 85.0% | 82.0% | 84.0% | 97.0% |
+| v1-RAG 1ep | 76.8% | 95.4% | 77.0% | 75.4% | 62.0% | 100.0% |
+| **v1-RAG 3ep** | **77.1%** | 94.2% | 81.0% | 82.0% | **55.0%** | 100.0% |
+
+**분석:**
+- 3epoch에서도 77.1%로 하드코딩(86.6%) 대비 크게 미달
+- conditional이 62% → 55%로 오히려 하락 (과적합)
+- 원인: RAG 컨텍스트에 관련 없는 규정 노이즈가 섞여 모델이 혼란
+- **결론: v1 하드코딩 어댑터(86.6%)를 최종 모델로 유지**
+
+### 2. RAG 검색 품질 개선 (코드 수정)
+
+**judgment_agent.py 수정 (일반 + 스트리밍 양쪽):**
+
+| 설정 | 기존 | 변경 | 효과 |
+|------|------|------|------|
+| top_k | 10 | **5** | 노이즈 규정 절반 감소 |
+| score_threshold | -2.0 / 0.1 | **0.0** | 관련성 낮은 규정 제거 강화 |
+
+### 3. 프롬프트 노이즈 무시 지시 추가
+
+**prompts.py 수정 (JUDGMENT_SYSTEM_PROMPT + STREAMING 양쪽):**
+- "관련 규정 문서 중 사용자 질문과 직접 관련 없는 규정은 무시하세요"
+- "관련 없는 규정이 포함되어 있다고 해서 조건을 억지로 만들거나 결과를 바꾸지 마세요"
+- 기대: conditional/no 오분류 감소
+
+### 4. v1-RAG 어댑터 HuggingFace 백업
+
+- `yoongyeongeun/v1-judgment-rag` 으로 업로드 완료 (71.8MB)
+- https://huggingface.co/yoongyeongeun/v1-judgment-rag
+
+### 5. v1 하드코딩 어댑터 재학습 (RunPod 진행 중)
+
+- 이전 RunPod에서 v1 하드코딩 어댑터가 삭제되어 재학습 필요
+- `v1_judgment.yaml` config로 train.jsonl(2,949건) 3epoch 학습 중
+- 완료 후 `yoongyeongeun/v1-judgment-hardcoded`로 HF 업로드 예정
+
+### 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `ai/agents/judgment_agent.py` | 수정 — top_k 10→5, score_threshold→0.0 (일반+스트리밍) |
+| `ai/llm/prompts.py` | 수정 — 노이즈 규정 무시 지시 2줄 추가 (양쪽 프롬프트) |
+| `outputs/v1_judgment/eval_results.json` | 수정 — v1-RAG 3ep 결과 추가 |
+
+**다음 할 일:**
+- ~~v1 하드코딩 재학습 완료 → HuggingFace 업로드~~ ✅ 완료 (3/16)
+- ~~vLLM 서빙에 하드코딩 어댑터 연결~~ ✅ 완료 (3/16)
+- ~~RAG 결과 상위 2~3개만 프롬프트에 넣기~~ ✅ 완료 (3/16)
+- RAG 개선 효과 실서비스 테스트 (지용님 vLLM 서버 재시작 대기 중)
+
+---
+
+## 2026-03-16 (일) — v1 하드코딩 재학습 완료 + vLLM 서빙 연결 + 보조장치 개선
+
+### 1. v1 하드코딩 재학습 결과 (RunPod A100)
+
+| 버전 | 정확도 | JSON유효율 | yes | no | conditional | no_regulation |
+|------|--------|-----------|-----|-----|-------------|---------------|
+| v1 하드코딩 3ep (이전) | **86.6%** | 98.2% | 85.0% | 82.0% | 84.0% | 97.0% |
+| **v1 하드코딩 3ep (재학습)** | **83.5%** | 98.2% | 85.0% | 80.3% | 75.0% | 97.0% |
+
+**분석:**
+- 이전 86.6%에서 83.5%로 하락 (3.1%p)
+- 에폭 수는 동일 (3ep) — 랜덤 시드/데이터 셔플링에 의한 학습 variance
+- conditional 84%→75%가 가장 큰 하락 원인
+- 이전 어댑터가 삭제되어 재현 불가 → 현재 83.5% 어댑터를 최종으로 사용
+
+### 2. HuggingFace 업로드 완료
+
+- `yoongyeongeun/v1-judgment-hardcoded` — 83.5% 어댑터 (54MB)
+
+### 3. vLLM 서빙 연결 (코드 수정)
+
+**judgment_agent.py 수정:**
+- `JUDGMENT_AGENT_MODE=sllm` 환경변수로 sLLM/API 모드 전환
+- 일반 호출 + 스트리밍 호출 양쪽 적용
+- `VLLM_USE_LORA=true`이면 `v1_judgment` LoRA 어댑터 사용
+- sLLM 실패 시 자동 API fallback
+
+**start_vllm.sh 수정:**
+- `yoongyeongeun/v1-judgment-hardcoded`에서 자동 다운로드
+- v1_judgment + v2_generate + v2_summary 어댑터 동시 등록
+- `.env` 설정 가이드에 `JUDGMENT_AGENT_MODE=sllm` 추가
+
+### 4. RunPod 네트워크 볼륨에 어댑터 배포
+
+- 지용님 네트워크 볼륨 `fresh_beige_cricket` (EU-RO-1, 40GB)에 어댑터 업로드
+- 경로: `/workspace/adapters/v1_judgment/`
+- 지용님이 vLLM 서버에 `--lora-modules v1_judgment=/workspace/adapters/v1_judgment` 추가 예정
+
+### 5. RAG 프롬프트 노이즈 감소
+
+- `_build_context_prompt()` 수정: RAG 결과 상위 **3개만** 프롬프트에 포함 (기존 5개)
+- 검색은 여전히 top_k=5로 수행 (보조장치 검증용)
+- 프롬프트에 넣는 규정 수만 제한 → 노이즈 감소, conditional 오분류 개선 기대
+
+### 6. confidence 보정 안전장치 추가 (중간발표 피드백 반영)
+
+**문제:** 가중합 구조에서 한 요소가 0이어도 다른 요소로 높은 confidence가 나올 수 있음
+**해결:** 개별 요소 임계값 기반 상한 제한(cap) 추가
+
+| 조건 | confidence 상한 | 의미 |
+|------|---------------|------|
+| RAG 점수 < 0.2 | 최대 0.4 | 검색 결과 품질 낮음 |
+| 키워드 매칭 < 0.2 | 최대 0.3 | 환각 의심 심각 |
+| 인용 조항 전부 미존재 | 최대 0.25 | LLM 인용 조항 전부 가짜 |
+
+### 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `ai/agents/judgment_agent.py` | 수정 — sLLM 모드 분기, RAG 상위 3개 제한, confidence cap 추가 |
+| `ai/serving/start_vllm.sh` | 수정 — v1_judgment 어댑터 자동 다운로드 + 등록 |
+
+### 현재 성능 요약
+
+| 항목 | 수치 |
+|------|------|
+| 판단 정확도 (v1 하드코딩) | 83.5% |
+| JSON 유효율 | 98.2% |
+| RAG Hit Rate | 95.24% |
+| RAG MRR | 0.636 |
+
+**다음 할 일:**
+- ~~conditional 75% 개선 — 데이터 보강~~ ✅ 완료 (3/17, 78%로 개선)
+- 지용님 vLLM 서버 재시작 대기 → 실서비스 테스트
+- sLLM 서빙 상태에서 E2E 판단 정확도 확인
+- v3 어댑터 HuggingFace 업로드 검토 (84.5% > 83.5%)
+
+---
+
+## 2026-03-17 (월) — v3 conditional 보강 학습 결과
+
+### 1. 데이터 분석 → 보강 전략 수립
+
+eval.jsonl의 conditional 100건을 5가지 유형으로 분류 분석:
+
+| 유형 | 설명 | train 수 | 비율 | 상태 |
+|------|------|---------|------|------|
+| 1. 사전 승인/허가 | "CISO 승인 후 가능" | ~213 | 24% | 충분 |
+| 2. 조건 충족 (금액/기간) | "1회 50,000원 한도 내" | ~266 | 30% | 충분 |
+| 3. 여러 규정 교차 | 보험 + 의료비 교차 | ~498 | 56% | 충분 |
+| 4. 규정 충돌 | 출장규정 vs 인사규정 | ~202 | 23% | 보통 |
+| **5. 재량 표현** | **"부서장이 허용할 수 있다"** | **~80** | **9%** | **부족** |
+
+추가 발견: no 데이터 중 27% (171건)가 conditional과 경계가 애매함
+
+### 2. 보강 데이터 생성 (v3)
+
+- **Type 5 재량 표현 conditional**: 14건 추가
+  - 겸업 허용, 원격근무 허용, 징계 감경, 교육비 지원, 성과급 등
+- **no/conditional 경계 강화**: 5건 추가
+  - 동일 규정 + "승인 없이" → no / 중립 질문 → conditional 쌍
+- v2 실패(98건 GPT 생성)와 달리 **실제 규정 기반 소량 정밀 보강** (19건)
+
+### 3. v3 학습 결과 (RunPod A100 80GB)
+
+| 버전 | 정확도 | JSON유효율 | yes | no | conditional | no_regulation |
+|------|--------|-----------|-----|-----|-------------|---------------|
+| v1 하드코딩 (이전, 삭제됨) | **86.6%** | 98.2% | 85.0% | 82.0% | 84.0% | 97.0% |
+| v1 하드코딩 (재학습) | 83.5% | 98.2% | 85.0% | 80.3% | 75.0% | 97.0% |
+| v2 보강 98건 (폐기) | 83.4% | 97.0% | 87.0% | 78.8% | 74.3% | 97.0% |
+| **v3 보강 19건** | **84.5%** | 97.6% | 85.0% | 80.3% | **78.0%** | 97.0% |
+
+**분석:**
+- 전체 정확도: 83.5% → **84.5%** (+1.0%p)
+- conditional: 75.0% → **78.0%** (+3.0%p) — Type 5 재량 표현 보강 효과
+- yes, no, no_regulation: 변동 없음 (기존 성능 유지)
+- v2(98건 추가, 하락)와 달리 v3(19건 정밀 추가)는 성능 향상에 성공
+
+### 4. 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `ai/finetuning/scripts/augment_v3_conditional.py` | 생성 — 보강 데이터 생성 스크립트 |
+| `ai/finetuning/configs/v3_judgment.yaml` | 생성 — v3 학습 config |
+| `ai/finetuning/runpod_v3_judgment.sh` | 생성 — RunPod 원클릭 학습 스크립트 |
+| `data/training/v1_judgment_v3/` | 생성 — 보강 데이터 (train 2968건 + eval 328건) |
+| `outputs/v1_judgment/eval_results.json` | 수정 — v3 결과 추가 |
+
+### 현재 성능 요약
+
+| 항목 | 수치 |
+|------|------|
+| **판단 정확도 (v3 보강)** | **84.5%** |
+| JSON 유효율 | 97.6% |
+| conditional 정확도 | 78.0% (+3.0%p) |
+| RAG Hit Rate | 95.24% |
+| RAG MRR | 0.636 |
+
+**다음 할 일:**
+- v3 어댑터 HuggingFace 업로드 → vLLM 서빙에 적용
+- 지용님 vLLM 서버 재시작 대기 → 실서비스 테스트
+- sLLM 서빙 상태에서 E2E 판단 정확도 확인
+
+## 2026-03-18 (화) - sLLM 서빙 + 디버깅 + v4 데이터 보강
+
+### 1. sLLM 전환 + 모델 디버깅 표시
+- 일정/결재/프로젝트 추천 3개 엔드포인트 전부 sLLM(vLLM) 전환
+- 프론트에 현재 사용 모델 배지 표시 (Kanana-1.5-8B / GPT-4o-mini / Fallback)
+- 판단 Agent 채팅 스트리밍도 sLLM 우선 + API fallback 구조로 변경
+- AgentIndicator에 모델명 표시 (sLLM 초록 배지, fallback 노란 배지)
+
+### 2. sLLM fallback 구조 적용
+- approvals.py 4개 엔드포인트: sLLM -> OpenAI -> 규칙 기반 3단계 fallback
+- chat.py 판단 Agent 스트리밍: sLLM -> OpenAI fallback
+- vLLM 클라이언트 max_retries=0 (재시도 비활성화, 60초 타임아웃)
+- 프론트 타임아웃 30s -> 180s
+
+### 3. 프롬프트 불일치 발견 (핵심 이슈)
+- **학습 데이터 system prompt (1,010자)** vs **서비스 프롬프트가 불일치**
+  - JUDGMENT_SYSTEM_PROMPT (비스트리밍, 1,518자): JSON만 출력
+  - JUDGMENT_STREAMING_SYSTEM_PROMPT (스트리밍, 1,331자): 자연어 + ```json 코드블록
+  - 학습 데이터: JSON만 출력 형식 (1,010자)
+- v1~v3는 비스트리밍 프롬프트로 학습했지만, 채팅은 스트리밍 프롬프트를 사용
+- 이 불일치가 **sLLM JSON 파싱 실패의 근본 원인**
+- sLLM이 자연어만 출력하고 JSON을 안 만드는 현상 발생 (간헐적)
+
+### 4. v4 데이터 보강 (진행 중)
+- **system prompt를 JUDGMENT_STREAMING_SYSTEM_PROMPT로 교체**
+- **assistant 응답을 "자연어 설명 + ```json 코드블록" 형태로 변환** (GPT로 변환)
+- 질문 어체 다양화 500건 추가 ("~알려줘", "~뭐야", "~궁금해" 등)
+- 기존 2,968건 + 보강 500건 = ~3,468건
+- v3 HuggingFace: yoongyeongeun/v1-judgment-hardcoded (v3로 덮어쓰기됨)
+
+### 5. 멀티 Agent 파이프라인 기획 (향후 계획)
+
+비스트리밍 판단 Agent(v1~v3)를 다른 Agent의 내부 검증 도구로 활용:
+
+**일정 Agent + 판단 Agent:**
+- 일정 등록 시 규정 자동 검증 (재택근무 가능 여부 체크)
+- 출장 일정 등록 시 사전 승인 필요 여부 체크
+- 초과근무 등록 시 규정 경고
+- 일정 추천 시 규정 기반 필터링 (위반 항목 제외/경고)
+- 연차/휴가 시 잔여일수 규정 체크
+
+**결재 추천 + 판단 Agent:**
+- 출장비 결재 추천 시 규정 한도 체크
+- 규정 위반 시 "한도 초과, 사전 승인 필요" 정보 추가
+
+**문서 Agent + 판단 Agent:**
+- 문서 생성 시 규정 준수 검증 (출장 보고서 정산 기한 체크)
+- 제안서/기획서 규정 적합성 체크 (현행 규정과 충돌 부분 자동 생성)
+- 문서 검색/요약 + 규정 위반 가능성 체크
+- JD(직무기술서) 생성 시 복리후생/근무조건 규정 자동 반영
+- 회의록 결정사항에서 규정 관련 내용 자동 검증
+
+**파이프라인 태스크 검증:**
+- 보안 관련 태스크 규정 위반 여부 체크
+
+공통 패턴: Agent가 액션 -> 판단 Agent가 비스트리밍으로 규정 검증 (JSON 반환) -> 결과 반영
+
+### 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `backend/app/api/v1/approvals.py` | sLLM 전환 + fallback 3단계 + model_info |
+| `backend/app/api/v1/chat.py` | 판단 Agent sLLM 스트리밍 + fallback + JSON 코드블록 필터 |
+| `ai/serving/vllm_client.py` | max_retries=0, timeout 60s |
+| `ai/agents/orchestrator.py` | sLLM일 때 학습 프롬프트 사용 |
+| `ai/agents/judgment_agent.py` | JSON 복구 로직 + 파싱 실패 원문 로그 |
+| `frontend/src/components/chat/AgentIndicator.jsx` | 모델명 배지 (sLLM/fallback) |
+| `frontend/src/components/schedules/ApprovalPanel.jsx` | 모델 배지 + 카드 색상 통일 |
+| `frontend/src/components/schedules/KanbanBoard.jsx` | Pipeline AI 추천 모델 배지 |
+| `frontend/src/components/chat/ChatWindow.jsx` | ResizeObserver 자동 스크롤 |
+| `frontend/src/api/approvals.js` | 타임아웃 180s |
+| `ai/finetuning/scripts/augment_v4_question_patterns.py` | v4 데이터 보강 스크립트 |
+
+### 6. 판단 Agent sLLM 2단계 호출 구조
+
+JSON 파싱 실패 문제 해결을 위해 2단계 호출 구조 적용:
+
+```
+1단계: 카나나 + LoRA(v1_judgment) + 비스트리밍 프롬프트 -> JSON 수신
+2단계: 카나나 base + 질문/reasoning으로 자연어 설명 스트리밍
+실패 시: OpenAI API fallback
+```
+
+**2단계 프롬프트 (지용님 제안):**
+```
+시스템: "너는 사내 규정 안내 봇이야. 아래 제공된 [판단 데이터]를 바탕으로
+       [사용자 질문]에 대해 친절하게 답변해줘.
+       반드시 제공된 근거(Reasoning) 안에서만 답변하고, 모르는 내용은 지어내지 마."
+
+사용자 질문: {user_query}
+
+판단 데이터:
+- 결과: {result}
+- 근거: {reasoning}
+- 추가조건: {conditions}
+```
+- alternatives(권장대안)는 환각 가능성 때문에 제외 (지용님 의견)
+- 8B 모델이 입력에 없는 내용을 지어낼 수 있어서 제공된 데이터만 사용하도록 제한
+
+### 7. JSON 파싱 실패 근본 원인
+
+- v1~v3 학습 데이터 system prompt (1,010자)와 서비스 프롬프트 (1,518자)가 불일치
+- 학습 안 한 프롬프트를 받으면 sLLM이 JSON 형식을 무시하고 자연어로 응답
+- v4 학습(스트리밍 프롬프트, 1,331자)으로 해결 시도 → 실패 (아래 3/19 참고)
+- v4 데이터 생성 완료: 3,468건 (train) + 328건 (eval)
+- RunPod 학습 스크립트: `ai/finetuning/runpod_v4_judgment.sh`
+
+---
+
+## 2026-03-19 (수) — v4 학습 실패 + 2단계 sLLM 강화 + 신뢰도 UI 개선
+
+### 1. v4 LoRA 학습 + 평가 결과 (RunPod A100 SXM 80GB)
+
+**학습 설정:**
+- 스트리밍 프롬프트(자연어 + ```json 코드블록) 학습
+- 3,468건 (기존 2,968 + 질문 어체 다양화 500), 3 epoch
+- 랜덤 시드 42 고정 (재현성 보장)
+- train_loss: 0.2029
+
+**v4 평가 결과 — 실패:**
+
+| 항목 | v3 (이전) | **v4** |
+|------|---------|--------|
+| 전체 정확도 | 84.5% | **60.1%** |
+| JSON 유효율 | 97.6% | **69.2%** |
+| conditional | 78.0% | **25.0%** |
+| no | 80.3% | 60.7% |
+| yes | 85.0% | 72.0% |
+| no_regulation | 97.0% | 94.0% |
+
+**실패 원인:**
+- 8B 모델에게 "자연어 + JSON 동시 출력"은 너무 어려운 태스크
+- 자연어를 쓰다가 JSON 코드블록을 제대로 닫지 못함 → JSON 유효율 69.2%
+- **결론: v3 어댑터(84.5%)를 최종 모델로 유지, v4 폐기**
+
+### 2. 2단계 sLLM 호출 구조 강화 (chat.py)
+
+v4 실패로 2단계 구조를 최종 채택하고 자연어 품질을 강화:
+
+```
+1단계: Kanana-8B + LoRA(v3) → JSON만 출력 (정확도 84.5%)
+2단계: Kanana-8B base → JSON 데이터로 자연어 설명 스트리밍
+```
+
+**2단계 프롬프트 강화 (이전 대비):**
+
+| 항목 | 이전 | 강화 |
+|------|------|------|
+| 시스템 프롬프트 | 없음 | 전문가 역할 + 5가지 규칙 (근거 범위 제한, 조항 언급, 조건 안내 등) |
+| 규정 원문 | 미포함 | RAG 상위 2개 원문 포함 ("제8조에 따르면..." 구체적 답변 가능) |
+| 조건 정보 | 미포함 | conditions 필드 전달 |
+| 규정 내용 | 조항명만 | 조항명 + content 요약 |
+| 결과 표시 | 영문 (yes/no) | 한글 (가능/불가/조건부 가능) |
+| temperature | 0.3 | 0.4 (자연스러운 어조) |
+
+**API fallback:** sLLM 1단계 실패 시 OpenAI 단일 스트리밍 (자연어 + JSON 동시)
+
+### 3. 신뢰도 분석 UI 개선 (JudgmentCard.jsx)
+
+**confidence 기준 프롬프트 일치:**
+- 색상 구간을 프롬프트 기준으로 변경: 90%+(명확), 70~89%(해석 필요), 50~69%(적용 어려움), 50% 미만(근거 부족)
+- 보정 후 confidence 기준으로 통일 (LLM raw 기준 아님)
+
+**LLM Raw vs 보정 비교 표시:**
+- "LLM 원본 점수: 90.0% → 보정 후: 80.7% (-9.3%p)" 형태로 표시
+- 하락이면 빨간색, 상승이면 초록색
+
+**신뢰도 기준 바 (인터랙티브):**
+- 4구간 색상 막대 (빨강/노랑/연초록/진초록) + 눈금 (0%/50%/70%/90%/100%)
+- 마우스 호버 시 해당 구간 강조 + 아래에 설명 표시 (고정 높이로 스크롤 점프 방지)
+- 경고 메시지 아래에 배치
+
+### 4. 학습 스크립트 개선 (train_v1_judgment.py)
+
+- **랜덤 시드 고정 (seed=42):** `fix_seed()` 함수 추가, TrainingArguments에 `seed=42, data_seed=42`
+- **HuggingFace 자동 업로드:** 학습 완료 후 `HF_UPLOAD_REPO` 환경변수로 자동 백업
+- **RunPod 스크립트 버그 수정:** save_strategy sed 패치가 "epoch" 패턴을 못 찾던 문제 수정
+
+### 5. chat.py 정리 — v4 단일 스트리밍 시도 후 2단계로 확정
+
+- v4 학습 전: chat.py를 단일 스트리밍(v4용)으로 변경 시도
+- v4 실패 후: 2단계 sLLM 강화 버전으로 최종 확정
+- API fallback 로직 유지 (sLLM 실패 → OpenAI)
+
+### 수정/생성 파일
+
+| 파일 | 작업 |
+|------|------|
+| `backend/app/api/v1/chat.py` | 수정 — 2단계 sLLM 강화 (프롬프트+RAG원문+조건) |
+| `frontend/src/components/chat/JudgmentCard.jsx` | 수정 — 신뢰도 기준 프롬프트 일치, LLM Raw 비교, 인터랙티브 바 |
+| `ai/finetuning/train_v1_judgment.py` | 수정 — 시드 고정 + HF 자동 백업 |
+| `ai/finetuning/runpod_v4_judgment.sh` | 수정 — sed 패치 버그 수정 |
+
+### 현재 최종 성능 요약
+
+| 항목 | 수치 |
+|------|------|
+| 판단 정확도 (v3 LoRA, 최종) | **84.5%** |
+| JSON 유효율 | 97.6% |
+| RAG Hit Rate | 95.24% |
+| RAG MRR | 0.636 |
+| 서빙 구조 | 2단계 sLLM (JSON + 자연어 분리) |
+| API 비용 | 0원 (완전 sLLM) |
+
+### 다음 할 일
+- 2단계 자연어 품질 실서비스 테스트 (vLLM 서버 재시작 후)
+- v3 어댑터 HuggingFace 백업 확인 (`yoongyeongeun/v1-judgment-hardcoded`)
+- 최종 발표 준비 — 데모 시나리오 구성

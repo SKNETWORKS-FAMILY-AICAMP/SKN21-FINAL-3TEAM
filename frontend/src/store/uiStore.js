@@ -12,17 +12,26 @@ const getInitialTheme = () => {
 // ── 대시보드 레이아웃 ──
 const DASHBOARD_KEY = 'dashboard-layout'
 const DEFAULT_DASHBOARD = {
-  leftColumn: ['TodaySchedule', 'ActivityTimeline'],
-  rightColumn: ['AIChatWidget', 'CalendarWidget', 'RecentDocs'],
-  hidden: [],
+  leftColumn: ['ScheduleTimelineWidget', 'TodaySchedule', 'TaskPipelineWidget'],
+  rightColumn: ['CalendarWidget', 'ApprovalQueueWidget', 'TeamMembersWidget', 'WhatsOnWidget'],
+  hidden: ['ActivityTimeline', 'RecentDocs', 'EmployeeTableWidget', 'AIChatWidget'],
+  topbarScheduleHidden: false,
 }
 
 function loadDashboard() {
   try {
     const saved = JSON.parse(localStorage.getItem(DASHBOARD_KEY))
+    if (!saved || !Array.isArray(saved.leftColumn) || !Array.isArray(saved.rightColumn) || !Array.isArray(saved.hidden)) {
+      return DEFAULT_DASHBOARD
+    }
     const all = [...saved.leftColumn, ...saved.rightColumn, ...saved.hidden]
-    const expected = [...DEFAULT_DASHBOARD.leftColumn, ...DEFAULT_DASHBOARD.rightColumn]
-    if (expected.every(w => all.includes(w)) && all.length === expected.length) return saved
+    const expected = [...DEFAULT_DASHBOARD.leftColumn, ...DEFAULT_DASHBOARD.rightColumn, ...DEFAULT_DASHBOARD.hidden]
+    if (expected.every(w => all.includes(w))) {
+      if (saved.topbarScheduleHidden === undefined) {
+        saved.topbarScheduleHidden = DEFAULT_DASHBOARD.topbarScheduleHidden
+      }
+      return saved
+    }
   } catch { /* ignore */ }
   return DEFAULT_DASHBOARD
 }
@@ -86,6 +95,8 @@ const useUIStore = create((set) => ({
   toggleMemo: () => set((state) => ({ memoOpen: !state.memoOpen })),
   selectMemo: (id) => set({ activeMemoId: id }),
   addMemo: () => set((state) => {
+    const existing = state.memos.find(m => !m.text.trim())
+    if (existing) return { activeMemoId: existing.id }
     const newMemo = { id: Date.now().toString(), text: '', createdAt: Date.now() }
     const next = [newMemo, ...state.memos]
     saveMemos(next)
@@ -115,6 +126,15 @@ const useUIStore = create((set) => ({
 
   toggleEditMode: () => set((state) => ({ editMode: !state.editMode })),
 
+  toggleTopbarSchedule: () => set((state) => {
+    const next = {
+      ...state.dashboard,
+      topbarScheduleHidden: !state.dashboard.topbarScheduleHidden
+    }
+    saveDashboard(next)
+    return { dashboard: next }
+  }),
+
   setLeftColumn: (order) => set((state) => {
     const next = { ...state.dashboard, leftColumn: order }
     saveDashboard(next)
@@ -132,6 +152,7 @@ const useUIStore = create((set) => ({
     const d = state.dashboard
     let left = d.leftColumn.filter(w => w !== dragId)
     let right = d.rightColumn.filter(w => w !== dragId)
+    let hidden = d.hidden.filter(w => w !== dragId)
 
     if (targetCol === 'leftColumn') {
       const idx = targetId != null ? left.indexOf(targetId) : -1
@@ -141,7 +162,7 @@ const useUIStore = create((set) => ({
       right = idx === -1 ? [...right, dragId] : [...right.slice(0, idx), dragId, ...right.slice(idx)]
     }
 
-    const next = { ...d, leftColumn: left, rightColumn: right }
+    const next = { ...d, leftColumn: left, rightColumn: right, hidden }
     saveDashboard(next)
     return { dashboard: next }
   }),
@@ -181,6 +202,10 @@ const useUIStore = create((set) => ({
     saveSettings(updated)
     return { settings: updated }
   }),
+
+  // ── 일정 새로고침 신호 (Topbar ↔ SchedulesPage 동기화) ──
+  scheduleRefreshKey: 0,
+  triggerScheduleRefresh: () => set((state) => ({ scheduleRefreshKey: state.scheduleRefreshKey + 1 })),
 }))
 
 export default useUIStore

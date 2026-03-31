@@ -17,14 +17,14 @@ export const deleteUser = (userId) =>
   client.delete(`/admin/users/${userId}`)
 
 // ── 통계 ──
-export const getSystemStats = () =>
-  client.get('/admin/stats')
+export const getSystemStats = (params = {}) =>
+  client.get('/admin/stats', { params })
 
-export const getQueryLogs = (page = 1, perPage = 20) =>
-  client.get('/admin/query-logs', { params: { page, per_page: perPage } })
+export const getQueryLogs = (page = 1, perPage = 20, team = null) =>
+  client.get('/admin/query-logs', { params: { page, per_page: perPage, ...(team && { team }) } })
 
-export const getTopQueries = (period = 'daily', limit = 10) =>
-  client.get('/admin/top-queries', { params: { period, limit } })
+export const getTopQueries = (period = 'daily', limit = 10, team = null) =>
+  client.get('/admin/top-queries', { params: { period, limit, ...(team ? { team } : {}) } })
 
 // ── 규정 ──
 export const listRegulations = () =>

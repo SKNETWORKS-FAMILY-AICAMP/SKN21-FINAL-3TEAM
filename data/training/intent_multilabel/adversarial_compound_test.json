@@ -1,0 +1,594 @@
+{
+  "description": "복합 질문 adversarial 테스트셋 — Phase 2 멀티라벨 BERT 검증용",
+  "version": "1.0",
+  "date": "2026-03-10",
+  "total": 60,
+  "categories": {
+    "no_connector_compound": 15,
+    "false_positive_single": 12,
+    "implicit_compound": 10,
+    "short_compound": 8,
+    "triple_intent": 5,
+    "connector_trap_single": 10
+  },
+  "data": [
+    {
+      "id": 1,
+      "category": "no_connector_compound",
+      "text": "연차 규정이랑 이번 달 쓸 수 있는지 알려줘",
+      "labels": [
+        "doc_retrieve",
+        "judgment"
+      ],
+      "note": "이랑 — 접속사 아닌 조사로 연결"
+    },
+    {
+      "id": 2,
+      "category": "no_connector_compound",
+      "text": "출장비 기준 위반 여부까지 확인해줘",
+      "labels": [
+        "doc_retrieve",
+        "judgment"
+      ],
+      "note": "까지 — 범위 확장 조사, 두 intent 내포"
+    },
+    {
+      "id": 3,
+      "category": "no_connector_compound",
+      "text": "내일 빈 시간 있으면 회의 하나 잡아줘",
+      "labels": [
+        "schedule_view",
+        "schedule_add"
+      ],
+      "note": "있으면 — 조건절로 연결, 접속사 없음"
+    },
+    {
+      "id": 4,
+      "category": "no_connector_compound",
+      "text": "지난 회의 내용 토대로 후속 보고서 써줘",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "토대로 — 순차 의존, 접속사 없음"
+    },
+    {
+      "id": 5,
+      "category": "no_connector_compound",
+      "text": "인사규정 중에 연차 관련 부분 요약 좀",
+      "labels": [
+        "doc_retrieve"
+      ],
+      "note": "중에 — 검색+요약이 한 문장에"
+    },
+    {
+      "id": 6,
+      "category": "no_connector_compound",
+      "text": "다음 주 일정 비어있는 데 맞춰 고객 미팅 넣어줘",
+      "labels": [
+        "schedule_view",
+        "schedule_add"
+      ],
+      "note": "비어있는 데 맞춰 — 조건+행동, 접속사 없음"
+    },
+    {
+      "id": 7,
+      "category": "no_connector_compound",
+      "text": "재택근무 규정 위반 사례 정리해줘",
+      "labels": [
+        "doc_retrieve"
+      ],
+      "note": "검색+정리가 하나로 압축"
+    },
+    {
+      "id": 8,
+      "category": "no_connector_compound",
+      "text": "팀 주간보고 내용으로 월간 보고서 만들어줘",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "내용으로 — 참조+생성, 접속사 없음"
+    },
+    {
+      "id": 9,
+      "category": "no_connector_compound",
+      "text": "경비 처리 기준 알려주고 이번 건 가능한지도",
+      "labels": [
+        "doc_retrieve",
+        "judgment"
+      ],
+      "note": "~도 — 추가 요청이 부사로 붙음"
+    },
+    {
+      "id": 10,
+      "category": "no_connector_compound",
+      "text": "오늘 회의록 핵심만 뽑아서 제안서에 넣어줘",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "뽑아서 넣어줘 — 동사 연쇄, 접속사 아님"
+    },
+    {
+      "id": 11,
+      "category": "no_connector_compound",
+      "text": "수요일 오후 비는지 보고 세미나 등록해줘",
+      "labels": [
+        "schedule_view",
+        "schedule_add"
+      ],
+      "note": "보고 — 동사+보고, 접속사 아님"
+    },
+    {
+      "id": 12,
+      "category": "no_connector_compound",
+      "text": "복리후생 어떤 거 있는지부터 위반 여부까지 다 알려줘",
+      "labels": [
+        "doc_retrieve",
+        "judgment"
+      ],
+      "note": "~부터 ~까지 — 범위 표현"
+    },
+    {
+      "id": 13,
+      "category": "no_connector_compound",
+      "text": "지난 프로젝트 문서 참고해서 이번 제안서 초안 잡아줘",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "참고해서 — 동사 연결이지만 접속사 패턴 밖"
+    },
+    {
+      "id": 14,
+      "category": "no_connector_compound",
+      "text": "내 일정 겹치는 거 없는지 확인 후 목요일 3시 회의 추가",
+      "labels": [
+        "schedule_view",
+        "schedule_add"
+      ],
+      "note": "확인 후 — 명사형 순차"
+    },
+    {
+      "id": 15,
+      "category": "no_connector_compound",
+      "text": "보안 규정 관련 내용 요약본이랑 위반 시 처벌 기준 알려줘",
+      "labels": [
+        "doc_retrieve",
+        "judgment"
+      ],
+      "note": "이랑 — 두 가지 요청 나열"
+    },
+    {
+      "id": 16,
+      "category": "false_positive_single",
+      "text": "규정 꼼꼼히 확인해서 자세하게 알려줘",
+      "labels": [
+        "doc_retrieve"
+      ],
+      "note": "확인해서 알려줘 — 수식일 뿐 단일"
+    },
+    {
+      "id": 17,
+      "category": "false_positive_single",
+      "text": "회의록을 깔끔하게 정리해서 공유해줘",
+      "labels": [
+        "doc_generate"
+      ],
+      "note": "정리해서 공유 — 단일 생성 의도"
+    },
+    {
+      "id": 18,
+      "category": "false_positive_single",
+      "text": "일정 확인하고 알려줘",
+      "labels": [
+        "schedule_view"
+      ],
+      "note": "확인하고 알려줘 — 동의 반복, 단일"
+    },
+    {
+      "id": 19,
+      "category": "false_positive_single",
+      "text": "보고서 작성해서 보내줘",
+      "labels": [
+        "doc_generate"
+      ],
+      "note": "작성해서 보내줘 — 생성의 후속 행동"
+    },
+    {
+      "id": 20,
+      "category": "false_positive_single",
+      "text": "문서 찾아서 보여줘",
+      "labels": [
+        "doc_retrieve"
+      ],
+      "note": "찾아서 보여줘 — 검색의 동의 표현"
+    },
+    {
+      "id": 21,
+      "category": "false_positive_single",
+      "text": "규정 위반인지 아닌지 정확하게 판단해줘",
+      "labels": [
+        "judgment"
+      ],
+      "note": "아닌지 — 선택지 나열이지 복합 아님"
+    },
+    {
+      "id": 22,
+      "category": "false_positive_single",
+      "text": "이번 주 일정 중에 변경 가능한 거 있는지 확인해줘",
+      "labels": [
+        "schedule_view"
+      ],
+      "note": "확인해줘 — 조회 단일"
+    },
+    {
+      "id": 23,
+      "category": "false_positive_single",
+      "text": "출장비 규정을 검토해서 정리해줘",
+      "labels": [
+        "doc_retrieve"
+      ],
+      "note": "검토해서 정리 — 검색의 수식 표현"
+    },
+    {
+      "id": 24,
+      "category": "false_positive_single",
+      "text": "연차 사용 가능 여부를 규정에 따라 판단해줘",
+      "labels": [
+        "judgment"
+      ],
+      "note": "규정에 따라 — 참조 방식 언급일 뿐"
+    },
+    {
+      "id": 25,
+      "category": "false_positive_single",
+      "text": "지난 회의에서 논의된 사항 정리해줘",
+      "labels": [
+        "doc_retrieve"
+      ],
+      "note": "논의된 사항 정리 — 요약 단일"
+    },
+    {
+      "id": 26,
+      "category": "false_positive_single",
+      "text": "프로젝트 보고서를 참고해서 핵심만 뽑아줘",
+      "labels": [
+        "doc_retrieve"
+      ],
+      "note": "참고해서 뽑아줘 — 요약 단일"
+    },
+    {
+      "id": 27,
+      "category": "false_positive_single",
+      "text": "내일 회의 시간이랑 장소 알려줘",
+      "labels": [
+        "schedule_view"
+      ],
+      "note": "이랑 — 같은 intent 내 항목 나열"
+    },
+    {
+      "id": 28,
+      "category": "implicit_compound",
+      "text": "휴가 규정도 보고 싶고 남은 연차도 궁금해",
+      "labels": [
+        "doc_retrieve",
+        "schedule_view"
+      ],
+      "note": "~도 ~도 — 병렬 나열, 접속사 없음"
+    },
+    {
+      "id": 29,
+      "category": "implicit_compound",
+      "text": "이 계약서 문제 있는지 검토하고 수정본 만들어줘",
+      "labels": [
+        "judgment",
+        "doc_generate"
+      ],
+      "note": "검토+수정본 — 판단과 생성 결합"
+    },
+    {
+      "id": 30,
+      "category": "implicit_compound",
+      "text": "오전에 뭐 있는지, 오후에 팀 미팅 하나 넣어줘",
+      "labels": [
+        "schedule_view",
+        "schedule_add"
+      ],
+      "note": "쉼표로만 분리"
+    },
+    {
+      "id": 31,
+      "category": "implicit_compound",
+      "text": "매출 보고서에서 핵심 수치 알려주고 발표 자료도 준비해줘",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "~도 — 추가 요청"
+    },
+    {
+      "id": 32,
+      "category": "implicit_compound",
+      "text": "규정집에서 관련 조항 찾아주고 이 경우에 적용되는지 봐줘",
+      "labels": [
+        "doc_retrieve",
+        "judgment"
+      ],
+      "note": "찾아주고 봐줘 — 동사 연쇄"
+    },
+    {
+      "id": 33,
+      "category": "implicit_compound",
+      "text": "지난번 회의 결정사항이 뭐였는지, 그걸로 보고서 하나 뽑아줘",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "쉼표+그걸로 — 대명사 연결"
+    },
+    {
+      "id": 34,
+      "category": "implicit_compound",
+      "text": "이번 달 일정 좀 보여줘, 빈 날에 워크숍 잡아야 돼",
+      "labels": [
+        "schedule_view",
+        "schedule_add"
+      ],
+      "note": "쉼표 — 두 문장 붙임"
+    },
+    {
+      "id": 35,
+      "category": "implicit_compound",
+      "text": "신입사원 교육 자료 있으면 요약해줘",
+      "labels": [
+        "doc_retrieve"
+      ],
+      "note": "있으면 — 조건절 내 검색+요약"
+    },
+    {
+      "id": 36,
+      "category": "implicit_compound",
+      "text": "출장 경비 처리 가능한지 보고 안 되면 사유서 써줘",
+      "labels": [
+        "judgment",
+        "doc_generate"
+      ],
+      "note": "조건 분기형 — 판단 결과에 따라 생성"
+    },
+    {
+      "id": 37,
+      "category": "implicit_compound",
+      "text": "예산 문서에서 남은 금액 확인하고 초과 지출 가능한지 판단해줘",
+      "labels": [
+        "doc_retrieve",
+        "judgment"
+      ],
+      "note": "확인하고 판단 — 순차 복합"
+    },
+    {
+      "id": 38,
+      "category": "short_compound",
+      "text": "규정 찾아줘, 위반인지도",
+      "labels": [
+        "doc_retrieve",
+        "judgment"
+      ],
+      "note": "극단 짧은 복합 + 쉼표"
+    },
+    {
+      "id": 39,
+      "category": "short_compound",
+      "text": "일정 보여주고 하나 추가해줘",
+      "labels": [
+        "schedule_view",
+        "schedule_add"
+      ],
+      "note": "극단 짧은 복합"
+    },
+    {
+      "id": 40,
+      "category": "short_compound",
+      "text": "회의록 요약이랑 보고서 작성",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "극단 짧은 + 이랑"
+    },
+    {
+      "id": 41,
+      "category": "short_compound",
+      "text": "문서 검색, 판단도 부탁",
+      "labels": [
+        "doc_retrieve",
+        "judgment"
+      ],
+      "note": "극단 짧은 + 쉼표"
+    },
+    {
+      "id": 42,
+      "category": "short_compound",
+      "text": "일정 확인, 빈 데 추가",
+      "labels": [
+        "schedule_view",
+        "schedule_add"
+      ],
+      "note": "극단 짧은 + 쉼표"
+    },
+    {
+      "id": 43,
+      "category": "short_compound",
+      "text": "규정 위반 여부랑 관련 문서",
+      "labels": [
+        "judgment",
+        "doc_retrieve"
+      ],
+      "note": "극단 짧은 + 여부랑"
+    },
+    {
+      "id": 44,
+      "category": "short_compound",
+      "text": "요약해주고 제안서도",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "극단 짧은 + ~도"
+    },
+    {
+      "id": 45,
+      "category": "short_compound",
+      "text": "내일 일정이랑 보고서 마감",
+      "labels": [
+        "schedule_view",
+        "doc_generate"
+      ],
+      "note": "극단 짧은 + 이랑"
+    },
+    {
+      "id": 46,
+      "category": "triple_intent",
+      "text": "출장 규정 찾아서 위반인지 판단하고 결과를 보고서로 정리해줘",
+      "labels": [
+        "doc_retrieve",
+        "judgment",
+        "doc_generate"
+      ],
+      "note": "3개 intent — 검색→판단→생성"
+    },
+    {
+      "id": 47,
+      "category": "triple_intent",
+      "text": "이번 주 일정 확인하고 빈 시간에 회의 잡아줘, 그 내용 회의록으로 미리 만들어줘",
+      "labels": [
+        "schedule_view",
+        "schedule_add",
+        "doc_generate"
+      ],
+      "note": "3개 intent — 조회→추가→생성"
+    },
+    {
+      "id": 48,
+      "category": "triple_intent",
+      "text": "인사 규정 찾아서 요약해주고 내 상황에 적용 가능한지 판단해줘",
+      "labels": [
+        "doc_retrieve",
+        "judgment"
+      ],
+      "note": "3개 intent — 검색→요약→판단"
+    },
+    {
+      "id": 49,
+      "category": "triple_intent",
+      "text": "지난 회의록 내용 확인하고 핵심 정리해서 후속 보고서 작성해줘",
+      "labels": [
+        "doc_retrieve",
+        "doc_generate"
+      ],
+      "note": "3개 intent — QA→요약→생성"
+    },
+    {
+      "id": 50,
+      "category": "triple_intent",
+      "text": "남은 연차 확인하고 규정상 사용 가능한지 봐줘, 가능하면 금요일에 일정 넣어줘",
+      "labels": [
+        "schedule_view",
+        "judgment",
+        "schedule_add"
+      ],
+      "note": "3개 intent — 조회→판단→추가"
+    },
+    {
+      "id": 51,
+      "category": "connector_trap_single",
+      "text": "규정 검토 그리고 분석 결과를 알려줘",
+      "labels": [
+        "judgment"
+      ],
+      "note": "그리고 있지만 같은 intent 내 나열"
+    },
+    {
+      "id": 52,
+      "category": "connector_trap_single",
+      "text": "월간 보고서 그리고 주간 보고서 찾아줘",
+      "labels": [
+        "doc_retrieve"
+      ],
+      "note": "그리고 있지만 둘 다 doc_search"
+    },
+    {
+      "id": 53,
+      "category": "connector_trap_single",
+      "text": "오전 일정 그리고 오후 일정 보여줘",
+      "labels": [
+        "schedule_view"
+      ],
+      "note": "그리고 있지만 둘 다 schedule_view"
+    },
+    {
+      "id": 54,
+      "category": "connector_trap_single",
+      "text": "채용 공고랑 JD 작성해줘",
+      "labels": [
+        "doc_generate"
+      ],
+      "note": "이랑 있지만 둘 다 doc_generate"
+    },
+    {
+      "id": 55,
+      "category": "connector_trap_single",
+      "text": "이 문서 요약하고 핵심만 정리해줘",
+      "labels": [
+        "doc_retrieve"
+      ],
+      "note": "하고 있지만 요약=정리 동의 반복"
+    },
+    {
+      "id": 56,
+      "category": "connector_trap_single",
+      "text": "회의 내용이랑 결정사항 알려줘",
+      "labels": [
+        "doc_retrieve"
+      ],
+      "note": "이랑 있지만 둘 다 doc_qa"
+    },
+    {
+      "id": 57,
+      "category": "connector_trap_single",
+      "text": "근태 규정 그리고 연차 규정 찾아줘",
+      "labels": [
+        "doc_retrieve"
+      ],
+      "note": "그리고 있지만 둘 다 doc_search"
+    },
+    {
+      "id": 58,
+      "category": "connector_trap_single",
+      "text": "이번 달 그리고 다음 달 일정 보여줘",
+      "labels": [
+        "schedule_view"
+      ],
+      "note": "그리고 있지만 schedule_view 하나"
+    },
+    {
+      "id": 59,
+      "category": "connector_trap_single",
+      "text": "야근 수당이랑 초과근무 수당 기준 판단해줘",
+      "labels": [
+        "judgment"
+      ],
+      "note": "이랑 있지만 judgment 하나"
+    },
+    {
+      "id": 60,
+      "category": "connector_trap_single",
+      "text": "보고서 초안 작성하고 양식 맞춰줘",
+      "labels": [
+        "doc_generate"
+      ],
+      "note": "하고 있지만 doc_generate 하나"
+    }
+  ]
+}

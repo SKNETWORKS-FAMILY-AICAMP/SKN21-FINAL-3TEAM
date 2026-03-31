@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Send, Clock } from 'lucide-react';
+import { MessageSquare, Send, Clock, ChevronUp, ChevronDown } from 'lucide-react';
 import { SUGGESTED_QUESTIONS } from '../../utils/constants';
 import useChatStore from '../../store/chatStore';
 
@@ -19,6 +19,7 @@ function formatTime(ts) {
 
 export default function AIChatWidget() {
   const [query, setQuery] = useState('');
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
   const sessions = useChatStore((s) => s.sessions);
   const switchSession = useChatStore((s) => s.switchSession);
@@ -43,11 +44,18 @@ export default function AIChatWidget() {
   };
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <div className="card-title"><MessageSquare size={16} className="text-neutral-sub" />AI 어시스턴트</div>
+    <div className="card transition-all duration-300">
+      <div
+        className="card-header cursor-pointer flex justify-between items-center"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+      >
+        <div className="card-title flex items-center gap-2"><MessageSquare size={16} className="text-neutral-sub" />AI 어시스턴트</div>
+        <button className="text-neutral-muted hover:text-primary-500 transition-colors p-1 rounded-full hover:bg-surface-hover">
+          {isCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+        </button>
       </div>
-      <div className="card-body space-y-4">
+
+      <div className="card-body space-y-4 pt-2">
         {/* 검색 입력 */}
         <div className="flex items-center gap-2">
           <div className="flex-1 relative">
@@ -66,39 +74,43 @@ export default function AIChatWidget() {
           </button>
         </div>
 
-        {/* 추천 질문 칩 */}
-        <div className="flex flex-wrap gap-2">
-          {CHIP_QUESTIONS.map((q) => (
-            <button
-              key={q.text}
-              onClick={() => handleSearch(q.text)}
-              className="px-3 py-1.5 rounded-full text-xs font-medium bg-primary-50 text-primary-700 border border-primary-100 transition hover:bg-primary-100"
-            >
-              {q.text}
-            </button>
-          ))}
-        </div>
-
-        {/* 최근 대화 */}
-        {recentSessions.length > 0 && (
-          <div>
-            <div className="text-xs font-semibold text-neutral-sub mb-2 flex items-center gap-1">
-              <Clock size={12} />최근 대화
-            </div>
-            <div className="space-y-1">
-              {recentSessions.map((s) => (
+        {!isCollapsed && (
+          <>
+            {/* 추천 질문 칩 */}
+            <div className="flex flex-wrap gap-2">
+              {CHIP_QUESTIONS.map((q) => (
                 <button
-                  key={s.id}
-                  onClick={() => handleSessionClick(s.id)}
-                  className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-sm transition hover:bg-surface-hover"
+                  key={q.text}
+                  onClick={() => handleSearch(q.text)}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium bg-primary-50 text-primary-700 border border-primary-100 transition hover:bg-primary-100"
                 >
-                  <MessageSquare size={14} className="text-neutral-muted flex-shrink-0" />
-                  <span className="text-[0.8125rem] text-neutral-main truncate flex-1">{s.name}</span>
-                  <span className="text-[0.6875rem] text-neutral-muted whitespace-nowrap">{formatTime(s.updatedAt)}</span>
+                  {q.text}
                 </button>
               ))}
             </div>
-          </div>
+
+            {/* 최근 대화 */}
+            {recentSessions.length > 0 && (
+              <div>
+                <div className="text-xs font-semibold text-neutral-sub mb-2 flex items-center gap-1">
+                  <Clock size={12} />최근 대화
+                </div>
+                <div className="space-y-1">
+                  {recentSessions.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => handleSessionClick(s.id)}
+                      className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-sm transition hover:bg-surface-hover"
+                    >
+                      <MessageSquare size={14} className="text-neutral-muted flex-shrink-0" />
+                      <span className="text-[0.8125rem] text-neutral-main truncate flex-1">{s.name}</span>
+                      <span className="text-[0.6875rem] text-neutral-muted whitespace-nowrap">{formatTime(s.updatedAt)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

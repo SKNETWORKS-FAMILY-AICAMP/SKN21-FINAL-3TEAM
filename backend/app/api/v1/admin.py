@@ -3,7 +3,7 @@
 """
 import asyncio
 
-from fastapi import APIRouter, Depends, Body, HTTPException
+from fastapi import APIRouter, Depends, Body, HTTPException, Query
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -68,22 +68,24 @@ async def list_users(
 
 @router.get("/stats")
 async def system_stats(
+    team: str | None = Query(None),
     admin: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """시스템 전체 통계 (관리자 전용)"""
-    return await statistics_service.get_dashboard_stats(db, user_id=None)
+    """시스템 전체 통계 (관리자 전용, 팀 필터 지원)"""
+    return await statistics_service.get_dashboard_stats(db, user_id=None, team=team)
 
 
 @router.get("/logs")
 async def query_logs(
     page: int = 1,
     per_page: int = 20,
+    team: str | None = None,
     admin: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
     """질의 로그 조회"""
-    return await statistics_service.get_query_logs(db, page=page, per_page=per_page)
+    return await statistics_service.get_query_logs(db, page=page, per_page=per_page, team=team)
 
 
 @router.get("/regulations")
@@ -116,6 +118,7 @@ async def list_regulations(
 async def get_query_logs(
     page: int = 1,
     per_page: int = 20,
+    team: str | None = None,
     admin: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -123,21 +126,22 @@ async def get_query_logs(
     질의 로그 조회 (NF-ST-002)
     사용자 / 질문 내용 / 호출된 Agent / 응답 시간 포함
     """
-    return await statistics_service.get_query_logs(db, page=page, per_page=per_page)
+    return await statistics_service.get_query_logs(db, page=page, per_page=per_page, team=team)
 
 
 @router.get("/top-queries")
 async def get_top_queries(
     period: str = "daily",
     limit: int = 10,
+    team: str | None = Query(None),
     admin: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Top 질의 응답 통계 (월/주/일)
+    Top 질의 응답 통계 (월/주/일, 팀 필터 지원)
     period: daily | weekly | monthly
     """
-    return await statistics_service.get_top_queries(db, period=period, limit=limit)
+    return await statistics_service.get_top_queries(db, period=period, limit=limit, team=team)
 
 
 @router.put("/users/{user_id}/permissions")

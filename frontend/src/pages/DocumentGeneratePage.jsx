@@ -1,183 +1,673 @@
-import { useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { ChevronDown, X } from 'lucide-react';
 import useAuthStore from '../store/authStore';
+import client from '../api/client';
 import TemplateSelector from '../components/documents/TemplateSelector';
 import TemplateUploadDialog from '../components/documents/TemplateUploadDialog';
 import DocumentPreview from '../components/documents/DocumentPreview';
-import MeetingInput from '../components/meetings/MeetingInput';
 import MeetingPreview from '../components/meetings/MeetingPreview';
-import { generateDocument, downloadDocument } from '../api/documents';
+import { generateDocument, downloadDocument, uploadTemplate, listTemplates, getTemplate, fillFields } from '../api/documents';
+import DatePicker from '../components/common/DatePicker';
+import { toast } from '../store/toastStore';
 
-// Mock: 회의록 AI 생성 결과
-const mockMeetingResult = {
-  title: '보안점검 정기회의',
-  date: '2026-02-10',
-  attendees: ['김정보', '이개발', '박인사'],
-  summary:
-    '정보보안 규정 개정 사항을 검토하고 신규 보안 교육 일정을 확정했습니다. ' +
-    'AWS 접근 권한 정책 변경에 따른 후속 조치를 논의했습니다.',
-  decisions: [
-    '정보보안 교육을 2월 말까지 전 직원 대상으로 실시',
-    'AWS 프로덕션 접근 권한은 팀장 승인 후 부여',
-    '재택근무 시 VPN 필수 사용 규정 재공지',
+
+/**
+ * 팀 + 참석자 선택 UI (회의록 전용)
+ * — DB에서 전체 멤버를 불러와 팀별 필터링 + 체크박스 선택
+ */
+function TeamDropdown({ user, value, onChange }) {
+  const [allMembers, setAllMembers] = useState([]);
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    client.get('/auth/all-members')
+      .then(res => setAllMembers(res.data || []))
+      .catch(() => setAllMembers([]));
+  }, []);
+
+  useEffect(() => {
+    const handler = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const teams = useMemo(() => {
+    const set = new Set(allMembers.map(m => m.team).filter(Boolean));
+    if (user?.team) set.add(user.team);
+    return [...set].sort();
+  }, [allMembers, user]);
+
+  return (
+    <div>
+      <label className="block text-[0.8125rem] font-semibold mb-1.5">팀</label>
+      <div ref={ref} className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen(v => !v)}
+          className={`w-full flex items-center justify-between px-3.5 py-2.5 border rounded-md text-sm transition ${open
+            ? 'border-primary-500 bg-primary-50 text-primary-700'
+            : 'border-neutral-border bg-surface-card text-neutral-main hover:border-primary-300'
+          }`}
+        >
+          <span className={value ? '' : 'text-neutral-400'}>{value || '팀 선택'}</span>
+          <ChevronDown size={14} className={`text-neutral-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        </button>
+        {open && (
+          <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-surface-card border border-neutral-border rounded-md shadow-lg overflow-hidden">
+            {teams.map(t => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => { onChange(t); setOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 text-sm transition ${t === value
+                  ? 'bg-primary-100 text-primary-700 font-semibold'
+                  : 'text-neutral-main hover:bg-primary-50'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TeamAttendeePicker({ user, selectedTeam, onTeamChange, selectedAttendees, onAttendeesChange }) {
+  const [allMembers, setAllMembers] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [teamOpen, setTeamOpen] = useState(false);
+  const teamRef = useRef(null);
+
+  useEffect(() => {
+    client.get('/auth/all-members')
+      .then(res => {
+        const members = res.data || [];
+        if (user) {
+          const hasSelf = members.some(m => m.id === user.id);
+          if (!hasSelf) {
+            members.push({ id: user.id, name: user.name, team: user.team, avatar: user.avatar });
+          }
+        }
+        setAllMembers(members);
+      })
+      .catch(() => setAllMembers([]));
+  }, [user]);
+
+  useEffect(() => {
+    const handler = (e) => { if (!teamRef.current?.contains(e.target)) setTeamOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const teams = useMemo(() => {
+    const set = new Set(allMembers.map(m => m.team).filter(Boolean));
+    if (user?.team) set.add(user.team);
+    return [...set].sort();
+  }, [allMembers, user]);
+
+  const teamMembers = useMemo(() => {
+    return allMembers.filter(m => m.team === selectedTeam);
+  }, [allMembers, selectedTeam]);
+
+  const toggleAttendee = (name) => {
+    const next = selectedAttendees.includes(name)
+      ? selectedAttendees.filter(n => n !== name)
+      : [...selectedAttendees, name];
+    onAttendeesChange(next);
+  };
+
+  const removeAttendee = (name) => {
+    onAttendeesChange(selectedAttendees.filter(n => n !== name));
+  };
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {/* 팀 선택 */}
+      <div>
+        <label className="block text-[0.8125rem] font-semibold mb-1.5">팀</label>
+        <div ref={teamRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setTeamOpen(v => !v)}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 border rounded-md text-sm transition ${teamOpen
+              ? 'border-primary-500 bg-primary-50 text-primary-700'
+              : 'border-neutral-border bg-surface-card text-neutral-main hover:border-primary-300'
+            }`}
+          >
+            <span className={selectedTeam ? '' : 'text-neutral-400'}>{selectedTeam || '팀 선택'}</span>
+            <ChevronDown size={14} className={`text-neutral-400 transition-transform duration-200 ${teamOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {teamOpen && (
+            <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-surface-card border border-neutral-border rounded-md shadow-lg overflow-hidden">
+              {teams.map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => { onTeamChange(t); setTeamOpen(false); }}
+                  className={`w-full text-left px-3.5 py-2.5 text-sm transition ${t === selectedTeam
+                    ? 'bg-primary-100 text-primary-700 font-semibold'
+                    : 'text-neutral-main hover:bg-primary-50'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 참석자 선택 */}
+      <div>
+        <label className="block text-[0.8125rem] font-semibold mb-1.5">참석자</label>
+        <div className="relative">
+          <div
+            onClick={() => setShowDropdown(prev => !prev)}
+            className="w-full min-h-[42px] px-3.5 py-2 border border-neutral-border rounded-md text-sm outline-none focus-within:border-primary-500 cursor-pointer flex flex-wrap items-center gap-1.5"
+          >
+            {selectedAttendees.length > 0 ? (
+              selectedAttendees.map(name => (
+                <span key={name} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary-50 text-primary-700 text-xs font-medium">
+                  {name}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); removeAttendee(name); }}
+                    className="hover:text-primary-900 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              ))
+            ) : (
+              <span className="text-neutral-400 text-sm">팀원을 선택하세요</span>
+            )}
+          </div>
+
+          {showDropdown && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setShowDropdown(false); }} />
+              <div
+                className="absolute top-full left-0 right-0 mt-1 z-20 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-xl max-h-[200px] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {teamMembers.length > 0 ? (
+                  teamMembers.map(m => {
+                    const isSelected = selectedAttendees.includes(m.name);
+                    return (
+                      <div
+                        key={m.id}
+                        onClick={() => toggleAttendee(m.name)}
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors ${isSelected ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''}`}
+                      >
+                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${isSelected ? 'border-primary-700 bg-primary-700' : 'border-neutral-300 dark:border-neutral-500'}`}>
+                          {isSelected && (
+                            <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          )}
+                        </div>
+                        <img
+                          src={m.avatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(m.name)}`}
+                          alt={m.name}
+                          className="w-7 h-7 rounded-full object-cover bg-neutral-100 dark:bg-neutral-700 flex-shrink-0"
+                        />
+                        <span className={`${isSelected ? 'font-semibold text-primary-700' : 'text-neutral-700 dark:text-neutral-300'}`}>{m.name}</span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="px-4 py-3 text-sm text-neutral-400 text-center">
+                    {selectedTeam ? '팀원이 없습니다' : '팀을 먼저 선택하세요'}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// 카테고리별 폼에 표시할 필드 키 (form 플래그 없는 커스텀 템플릿용 fallback)
+const FORM_KEYS = {
+  meeting_minutes: ['title', 'date', 'attendees', 'team', 'content'],
+  report: ['title', 'date', 'author', 'department', 'report_to', 'content'],
+  proposal: ['title', 'date', 'company', 'manager', 'submit_to', 'content'],
+};
+
+// 기본 템플릿 필드 정의 (DB에 layout/type 정보가 없을 때 fallback)
+const DEFAULT_TEMPLATE_FIELDS = {
+  meeting_minutes: [
+    { key: 'title', label: '회의 제목', type: 'text', layout: 'half', form: true, required: true },
+    { key: 'date', label: '날짜', type: 'date', layout: 'half', form: true },
+    { key: '_team_attendee', label: '팀/참석자', type: 'team_attendee', form: true },
+    { key: 'content', label: '회의 내용', type: 'textarea', form: true },
   ],
-  actionItems: [
-    { task: '보안 교육 일정 및 강사 섭외', assignee: '김정보', deadline: '2026-02-15' },
-    { task: 'AWS 권한 신청 양식 업데이트', assignee: '이개발', deadline: '2026-02-12' },
-    { task: 'VPN 사용 가이드 문서 배포', assignee: '박인사', deadline: '2026-02-14' },
+  report: [
+    { key: 'title', label: '보고서 제목', type: 'text', layout: 'half', form: true, required: true },
+    { key: 'date', label: '날짜', type: 'date', layout: 'half', form: true },
+    { key: 'department', label: '팀', type: 'team_dropdown', layout: 'half', form: true },
+    { key: 'author', label: '작성자', type: 'text', layout: 'half', form: true },
+    { key: 'report_to', label: '보고 대상', type: 'text', form: true },
+    { key: 'content', label: '보고 내용', type: 'textarea', form: true },
+  ],
+  proposal: [
+    { key: 'title', label: '제안서 제목', type: 'text', layout: 'half', form: true, required: true },
+    { key: 'date', label: '제출일', type: 'date', layout: 'half', form: true },
+    { key: 'company', label: '회사명', type: 'text', layout: 'half', form: true },
+    { key: 'manager', label: '담당자', type: 'text', layout: 'half', form: true },
+    { key: 'submit_to', label: '제출처', type: 'text', form: true },
+    { key: 'content', label: '제안 내용', type: 'textarea', form: true },
   ],
 };
 
-// Mock: 템플릿별 생성 결과
-const mockResults = {
-  report: {
-    title: '2026년 1분기 보안 현황 보고서',
-    templateType: 'report',
-    fields: [
-      { label: '보고 기간', value: '2026년 1월 ~ 3월' },
-      { label: '작성 부서', value: '정보보안팀' },
-      { label: '요약', value: '1분기 보안 점검 결과, 전반적인 보안 수준이 양호하며 3건의 경미한 위반 사항이 발견되었습니다.' },
-      { label: '주요 성과', value: '- 전 직원 보안 교육 완료 (참여율 98%)\n- 보안 취약점 12건 조치 완료\n- 접근 권한 재검토 완료' },
-      { label: '개선 필요사항', value: '- 외부 반출 승인 프로세스 간소화\n- 비밀번호 변경 주기 알림 자동화' },
-    ],
-  },
-  jd: {
-    title: '정보보안 엔지니어 채용 공고',
-    templateType: 'jd',
-    fields: [
-      { label: '직무명', value: '정보보안 엔지니어' },
-      { label: '주요 업무', value: '- 보안 정책 수립 및 관리\n- 취약점 분석 및 대응\n- 보안 교육 기획 및 운영\n- 접근 권한 관리' },
-      { label: '자격 요건', value: '- 정보보안 관련 경력 3년 이상\n- ISMS, ISO 27001 인증 경험\n- 네트워크/시스템 보안 이해' },
-      { label: '우대 사항', value: '- CISSP, CISA 자격증 보유\n- 클라우드 보안 경험 (AWS/GCP)' },
-    ],
-  },
-  proposal: {
-    title: '보안 시스템 고도화 제안서',
-    templateType: 'proposal',
-    fields: [
-      { label: '제안 배경', value: '현행 보안 시스템의 노후화에 따른 고도화 필요성이 대두되었습니다.' },
-      { label: '제안 내용', value: '- 차세대 방화벽 도입\n- SIEM 시스템 업그레이드\n- 제로트러스트 아키텍처 적용' },
-      { label: '기대 효과', value: '- 보안 사고 대응 시간 50% 단축\n- 이상 탐지 정확도 30% 향상' },
-      { label: '예상 일정', value: '2026년 3월 ~ 6월 (4개월)' },
-      { label: '예상 비용', value: '총 1.2억원 (하드웨어 8천만, 소프트웨어 4천만)' },
-    ],
-  },
-};
+/**
+ * 동적 폼 렌더링 — parsed_structure.fields 기반
+ * attendees/team 필드는 회의록일 때 TeamAttendeePicker로 대체되므로 스킵
+ * form: false 필드는 LLM이 생성하므로 UI에 표시하지 않음
+ */
+function DynamicForm({ fields, formData, onChange, skipKeys = [], category, user, selectedTeam, onTeamChange, selectedAttendees, onAttendeesChange }) {
+  if (!fields || fields.length === 0) return null;
+
+  const inputClass = 'w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500';
+
+  const filteredFields = fields
+    .filter(f => !skipKeys.includes(f.key))
+    .filter(f => {
+      if (f.form === false) return false;
+      if (f.form === true) return true;
+      const formKeys = FORM_KEYS[category] || ['title', 'date', 'content'];
+      return formKeys.includes(f.key);
+    });
+  if (filteredFields.length === 0) return null;
+
+  // layout: 'half' 필드들을 2열 그리드로 묶기
+  const rows = [];
+  let i = 0;
+  while (i < filteredFields.length) {
+    const field = filteredFields[i];
+    if (field.layout === 'half' && i + 1 < filteredFields.length && filteredFields[i + 1].layout === 'half') {
+      rows.push([field, filteredFields[i + 1]]);
+      i += 2;
+    } else {
+      rows.push([field]);
+      i += 1;
+    }
+  }
+
+  const renderField = (field) => {
+    const value = formData[field.key] || '';
+
+    // DatePicker
+    if (field.type === 'date') {
+      return (
+        <div key={field.key}>
+          <label className="block text-[0.8125rem] font-semibold mb-1.5">
+            {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <DatePicker
+            value={value}
+            onChange={(v) => onChange(field.key, v)}
+            placeholder="날짜 선택"
+          />
+        </div>
+      );
+    }
+
+    // 팀 드롭다운
+    if (field.type === 'team_dropdown') {
+      return (
+        <TeamDropdown
+          key={field.key}
+          user={user}
+          value={value}
+          onChange={(v) => onChange(field.key, v)}
+        />
+      );
+    }
+
+    // 팀 + 참석자 (회의록 전용)
+    if (field.type === 'team_attendee') {
+      return (
+        <TeamAttendeePicker
+          key={field.key}
+          user={user}
+          selectedTeam={selectedTeam}
+          onTeamChange={onTeamChange}
+          selectedAttendees={selectedAttendees}
+          onAttendeesChange={onAttendeesChange}
+        />
+      );
+    }
+
+    // textarea
+    if (field.type === 'textarea') {
+      return (
+        <div key={field.key}>
+          <label className="block text-[0.8125rem] font-semibold mb-1.5">
+            {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <textarea
+            value={value}
+            onChange={(e) => onChange(field.key, e.target.value)}
+            placeholder={`${field.label}을(를) 입력하세요`}
+            rows={10}
+            onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 400) + 'px'; }}
+            className={`${inputClass} resize-none overflow-y-auto max-h-[400px]`}
+          />
+        </div>
+      );
+    }
+
+    // list
+    if (field.type === 'list') {
+      return (
+        <div key={field.key}>
+          <label className="block text-[0.8125rem] font-semibold mb-1.5">
+            {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+          </label>
+          <input
+            value={value}
+            onChange={(e) => onChange(field.key, e.target.value)}
+            placeholder={`${field.label} (쉼표로 구분)`}
+            className={inputClass}
+          />
+        </div>
+      );
+    }
+
+    // default: text
+    return (
+      <div key={field.key}>
+        <label className="block text-[0.8125rem] font-semibold mb-1.5">
+          {field.label}{field.required && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+        <input
+          value={value}
+          onChange={(e) => onChange(field.key, e.target.value)}
+          placeholder={`${field.label}을(를) 입력하세요`}
+          className={inputClass}
+        />
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      {rows.map((row, idx) =>
+        row.length === 2 ? (
+          <div key={idx} className="grid grid-cols-2 gap-3">
+            {renderField(row[0])}
+            {renderField(row[1])}
+          </div>
+        ) : row[0].type === 'team_attendee' ? (
+          renderField(row[0])
+        ) : (
+          <div key={idx}>{renderField(row[0])}</div>
+        )
+      )}
+    </div>
+  );
+}
 
 
 export default function DocumentGeneratePage() {
-  const { isScrolled } = useOutletContext();
+
   const user = useAuthStore((s) => s.user);
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);  // category string
+  const [selectedTemplateId, setSelectedTemplateId] = useState(null);  // DB id
+  const [templateFields, setTemplateFields] = useState([]);  // parsed_structure.fields
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [prompt, setPrompt] = useState('');
-  const [result, setResult] = useState(null);
-  const [meetingResult, setMeetingResult] = useState(null);
+  const [formData, setFormData] = useState({});
+  const [result, setResult] = useState(null);          // 보고서/제안서 결과
+  const [meetingResult, setMeetingResult] = useState(null);  // 회의록 결과
   const [loading, setLoading] = useState(false);
-  const [reportForm, setReportForm] = useState({ title: '', date: new Date().toISOString().split('T')[0], author: user?.name ?? '', department: '', content: '' });
-  const [proposalForm, setProposalForm] = useState({ title: '', date: new Date().toISOString().split('T')[0], company: '', manager: user?.name ?? '', phone: '', content: '' });
+  const [customTemplates, setCustomTemplates] = useState([]);
+  const [selectedCustomTemplate, setSelectedCustomTemplate] = useState(null);
 
-  const isMeeting = selectedTemplate === 'meeting_minutes';
-  const isReport = selectedTemplate === 'report';
-  const isProposal = selectedTemplate === 'proposal';
+  // 회의록 전용: 팀 + 참석자
+  const [selectedTeam, setSelectedTeam] = useState(user?.team || '');
+  const [selectedAttendees, setSelectedAttendees] = useState([]);
 
-  const handleTemplateSelect = (template) => {
-    setSelectedTemplate(template);
-    setResult(null);
-    setMeetingResult(null);
-    setPrompt('');
-    setReportForm({ title: '', date: new Date().toISOString().split('T')[0], author: user?.name ?? '', department: '', content: '' });
-    setProposalForm({ title: '', date: new Date().toISOString().split('T')[0], company: '', manager: user?.name ?? '', phone: '', content: '' });
+  // 커스텀 템플릿: 자연어 입력 → AI가 전체 필드 채움
+  const [freeText, setFreeText] = useState('');
+  const [filling, setFilling] = useState(false);
+  const [filled, setFilled] = useState(false);
+  const isCustom = !!selectedCustomTemplate;
+
+  const fetchCustomTemplates = () => {
+    listTemplates()
+      .then(res => setCustomTemplates((res.data || []).filter(t => !t.is_system)))
+      .catch(() => setCustomTemplates([]));
   };
 
+  useEffect(() => { fetchCustomTemplates(); }, []);
+
+  // 회의록 카테고리이거나, 양식 필드에 attendees/team이 있으면 팀+참석자 UI 표시
+  const hasAttendeeFields = templateFields.some(f => f.key === 'attendees' || f.key === 'team');
+  const isMeeting = selectedTemplate === 'meeting_minutes' || hasAttendeeFields;
+
+  // 템플릿 선택 → parsed_structure 로드 → 동적 폼 초기화
+  const handleTemplateSelect = async (template, customTpl = null) => {
+    // 스크롤 위치 보존
+    const scrollY = window.scrollY;
+    setSelectedTemplate(template);
+    setSelectedCustomTemplate(customTpl);
+    setResult(null);
+    setMeetingResult(null);
+    setFormData({ date: new Date().toISOString().split('T')[0] });
+    setTemplateFields([]);
+    requestAnimationFrame(() => window.scrollTo(0, scrollY));
+    setSelectedTeam(user?.team || '');
+    setSelectedAttendees([]);
+    setFreeText('');
+    setFilled(false);
+
+    const templateId = customTpl?.id;
+    setSelectedTemplateId(templateId || null);
+
+    try {
+      let tplId = templateId;
+      if (!tplId) {
+        const res = await listTemplates({ category: template });
+        const systemTpl = (res.data || []).find(t => t.is_system);
+        if (systemTpl) tplId = systemTpl.id;
+      }
+
+      if (tplId) {
+        const res = await getTemplate(tplId);
+        const tplData = res.data;
+        setSelectedTemplateId(tplId);
+
+        if (tplData.parsed_structure) {
+          const ps = typeof tplData.parsed_structure === 'string'
+            ? JSON.parse(tplData.parsed_structure)
+            : tplData.parsed_structure;
+          const fields = ps.fields || ps;
+          setTemplateFields(Array.isArray(fields) ? fields : []);
+
+          const defaults = { date: new Date().toISOString().split('T')[0] };
+          const fieldArr = Array.isArray(fields) ? fields : [];
+
+          if (customTpl) {
+            // 커스텀 템플릿: 전체 필드 빈값 초기화 (AI가 채울 예정)
+            for (const f of fieldArr) {
+              defaults[f.key] = '';
+            }
+          } else {
+            // 시스템 템플릿: 기존 로직
+            const formKeys = FORM_KEYS[template] || ['title', 'date', 'content'];
+            for (const f of fieldArr) {
+              if (f.form === false) continue;
+              if (f.form !== true && !formKeys.includes(f.key)) continue;
+              if (f.key === 'date' || f.key === 'submit_date') defaults[f.key] = new Date().toISOString().split('T')[0];
+              else if (f.key === 'author' || f.key === 'manager') defaults[f.key] = user?.name || '';
+              else if (f.key === 'department') defaults[f.key] = user?.team || '';
+              else defaults[f.key] = '';
+            }
+          }
+          setFormData(defaults);
+        }
+      }
+    } catch (err) {
+      console.error('[DocumentGeneratePage] 템플릿 조회 실패:', err);
+    }
+  };
+
+  const handleFieldChange = (key, value) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+  };
+
+  /** 커스텀 템플릿: AI가 전체 필드 채우기 */
+  const handleFillFields = async () => {
+    if (!selectedTemplateId || !freeText.trim()) return;
+    setFilling(true);
+    try {
+      const response = await fillFields({
+        template_id: selectedTemplateId,
+        content: freeText,
+      });
+      const apiData = response.data;
+      const data = apiData.data || {};
+
+      // AI 결과를 전부 formData에 반영
+      setFormData(prev => {
+        const next = { ...prev };
+        for (const [key, val] of Object.entries(data)) {
+          if (val !== undefined) next[key] = val;
+        }
+        return next;
+      });
+
+      if (apiData.fields) setTemplateFields(apiData.fields);
+
+      setFilled(true);
+      const filledCount = Object.values(data).filter(v => v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0)).length;
+      toast.success(`AI가 ${filledCount}/${templateFields.length}개 필드를 채웠습니다. 확인 후 수정하세요.`);
+    } catch (err) {
+      toast.error('AI 작성 실패: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setFilling(false);
+    }
+  };
+
+  /** 통합 생성 핸들러 */
   const handleGenerate = async () => {
     if (!selectedTemplate) return;
     setLoading(true);
     try {
-      let payload = { template_type: selectedTemplate };
-
-      if (isReport) {
-        payload = {
-          ...payload,
-          title: reportForm.title,
-          date: reportForm.date,
-          content: [
-            reportForm.author && `작성자: ${reportForm.author}`,
-            reportForm.department && `부서: ${reportForm.department}`,
-            reportForm.content,
-          ].filter(Boolean).join('\n'),
-        };
-      } else if (isProposal) {
-        payload = {
-          ...payload,
-          title: proposalForm.title,
-          date: proposalForm.date,
-          content: [
-            proposalForm.company && `제안사: ${proposalForm.company}`,
-            proposalForm.manager && `담당자: ${proposalForm.manager}`,
-            proposalForm.phone && `연락처: ${proposalForm.phone}`,
-            proposalForm.content,
-          ].filter(Boolean).join('\n'),
-        };
-      } else {
-        payload = { ...payload, content: prompt };
+      const fieldsData = { ...formData };
+      if (isMeeting) {
+        fieldsData.attendees = selectedAttendees;
+        fieldsData.team = selectedTeam;
       }
+
+      const payload = {
+        template_type: selectedTemplate,
+        template_id: selectedTemplateId || null,
+        fields_data: fieldsData,
+        content: formData.content || '',
+      };
 
       const response = await generateDocument(payload);
       const apiData = response.data;
 
-      const fieldsMap = {
-        report: [
-          { label: '보고 개요', value: apiData.overview },
-          { label: '주요 내용', value: apiData.main_content },
-          { label: '향후 계획', value: apiData.next_plan },
-        ],
-        proposal: [
-          { label: '제안 배경', value: apiData.background },
-          { label: '제안 내용', value: apiData.content },
-          { label: '기대 효과', value: apiData.expected_effect },
-        ],
-      };
+      const data = apiData.data || {};
 
-      setResult({
-        title: apiData.title,
-        templateType: selectedTemplate,
-        fields: fieldsMap[selectedTemplate] || [{ label: '내용', value: apiData.preview }],
-        document_id: apiData.document_id,
-      });
-    } catch (err) {
-      alert('문서 생성 실패: ' + (err.response?.data?.detail || err.message));
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (isMeeting && !isCustom) {
+        setMeetingResult({
+          title: data.title || formData.title,
+          date: data.date || formData.date,
+          attendees: data.attendees?.length > 0
+            ? data.attendees
+            : fieldsData.attendees || [],
+          summary: data.summary || '',
+          decisions: data.decisions || [],
+          actionItems: data.action_items || [],
+          document_id: apiData.document_id,
+          model_name: apiData.model_name || '',
+        });
+      } else {
+        // 공통 필드 한글 라벨 (DB label 없을 때 fallback)
+        const FIELD_LABELS = {
+          // 제안서
+          purpose: '목적', background: '배경', current_situation: '현황 분석',
+          schedule: '추진 일정', budget: '예산', budget_total: '합계',
+          expected_effect: '기대 효과', company: '제안사', manager: '담당자',
+          submit_to: '제출처', submit_date: '제출일', contact: '연락처',
+          content: '내용',
+          // 보고서
+          overview: '개요', main_content: '세부 내용', tasks: '진행 업무',
+          issues: '이슈 및 건의사항', next_plan: '향후 계획',
+          report_type: '보고 유형', report_to: '보고 대상',
+          department: '부서', position: '직급',
+          // 회의록
+          summary: '요약', decisions: '결정사항', action_items: '후속 조치',
+          meeting_type: '회의 유형', location: '회의 장소',
+          notes: '비고', attendees: '참석자',
+          // 공통
+          title: '제목', date: '날짜', author: '작성자',
+        };
 
-  const handleMeetingSubmit = async (formData) => {
-    setLoading(true);
-    try {
-      const response = await generateDocument({
-        template_type: 'meeting_minutes',
-        title: formData.title,
-        date: formData.date,
-        attendees: formData.attendees,
-        content: formData.content,
-      });
-      const apiData = response.data;
-      setMeetingResult({
-        title: apiData.title || formData.title,
-        date: apiData.date || formData.date,
-        attendees: apiData.attendees?.length > 0 ? apiData.attendees : formData.attendees,
-        summary: apiData.summary,
-        decisions: apiData.decisions || [],
-        actionItems: (apiData.action_items || []).map((ai) => ({
-          task: ai.content,
-          assignee: ai.assignee,
-          deadline: ai.due_date,
-        })),
-        document_id: apiData.document_id,
-      });
+        // templateFields에서 key→label 매핑 생성 (DB label → fallback 순)
+        const keyToLabel = { ...FIELD_LABELS };
+        const fieldOrder = [];
+        (templateFields || []).forEach(f => {
+          if (f.label) keyToLabel[f.key] = f.label;
+          fieldOrder.push(f.key);
+        });
+
+        // sLLM이 구조화 필드(purpose, background 등)를 생성했으면 content(원문) 숨김
+        const structuredKeys = ['purpose', 'background', 'current_situation', 'overview', 'main_content', 'summary'];
+        const hasStructured = structuredKeys.some(k => data[k] && String(data[k]).trim());
+        const skipKeys = ['title', 'date', 'submit_date', 'document_id'];
+        if (hasStructured) skipKeys.push('content');
+
+        // 배열 내부 속성 한글 라벨
+        const SUB_LABELS = {
+          item: '항목', task: '할 일', assignee: '담당자', due_date: '기한',
+          progress: '진행률', start_date: '시작일', end_date: '종료일',
+          quantity: '수량', unit_price: '단가', amount: '금액',
+          phase1: '1단계', phase2: '2단계', phase3: '3단계', phase4: '4단계',
+        };
+
+        // 배열 객체를 읽기 좋은 텍스트로 변환
+        const formatArrayValue = (arr) => arr.map(item => {
+          if (typeof item !== 'object') return String(item);
+          const vals = Object.entries(item)
+            .filter(([, v]) => v)
+            .map(([k, v]) => `${SUB_LABELS[k] || k}: ${v}`);
+          return vals.join(' | ');
+        }).join('\n');
+
+        const displayFields = Object.entries(data)
+          .filter(([k]) => !skipKeys.includes(k))
+          .filter(([, v]) => v && (typeof v === 'string' ? v.trim() : (Array.isArray(v) ? v.length > 0 : true)))
+          .sort((a, b) => {
+            const ai = fieldOrder.indexOf(a[0]);
+            const bi = fieldOrder.indexOf(b[0]);
+            return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+          })
+          .map(([k, v]) => ({
+            label: keyToLabel[k] || k,
+            value: Array.isArray(v) ? formatArrayValue(v) : String(v),
+          }));
+
+        setResult({
+          title: data.title || formData.title,
+          templateType: selectedTemplate,
+          fields: displayFields.length > 0
+            ? displayFields
+            : [{ label: '미리보기', value: apiData.preview || '내용 없음' }],
+          document_id: apiData.document_id,
+          model_name: apiData.model_name || '',
+        });
+      }
     } catch (err) {
-      alert('회의록 생성 실패: ' + (err.response?.data?.detail || err.message));
+      toast.error('문서 생성 실패: ' + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
     }
@@ -186,7 +676,7 @@ export default function DocumentGeneratePage() {
   const handleDownload = async (format) => {
     const documentId = meetingResult?.document_id || result?.document_id;
     if (!documentId) {
-      alert('먼저 문서를 생성해주세요.');
+      toast.warning('먼저 문서를 생성해주세요.');
       return;
     }
     const filenameMap = {
@@ -204,223 +694,235 @@ export default function DocumentGeneratePage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert('다운로드 실패: ' + (err.response?.data?.detail || err.message));
+      toast.error('다운로드 실패: ' + (err.response?.data?.detail || err.message));
     }
   };
 
   const handleUpload = async (data) => {
-    alert(`"${data.name}" 템플릿이 업로드되었습니다. (Mock)`);
+    const res = await uploadTemplate(data.file, {
+      name: data.name,
+      category: data.category,
+      description: data.description,
+    });
+    const uploadResult = res.data;
+    toast.success(`"${uploadResult.name}" 템플릿 업로드 완료 (${uploadResult.field_count}개 필드 추출)`);
+    fetchCustomTemplates();
   };
+
+  const categoryLabel = {
+    meeting_minutes: '회의록',
+    report: '보고서',
+    proposal: '제안서',
+  };
+
+  // 기본 필드 + DB 추가 필드 머지
+  const mergedFields = useMemo(() => {
+    const defaults = DEFAULT_TEMPLATE_FIELDS[selectedTemplate];
+    if (!defaults) return templateFields; // 커스텀 템플릿은 DB 필드 그대로
+
+    const defaultKeys = new Set(defaults.map(f => f.key));
+    // 기본 필드와 중복되는 DB 필드 제외 (예: submit_date는 date로 대체됨)
+    const skipExtras = new Set([...defaultKeys, 'submit_date']);
+    const extras = templateFields.filter(f => !skipExtras.has(f.key) && f.form !== false);
+    return [...defaults, ...extras];
+  }, [selectedTemplate, templateFields]);
 
   return (
     <div>
-      <header className={`sticky top-0 bg-surface-main z-10 flex flex-col justify-center overflow-hidden transition-all duration-300 ${isScrolled ? 'h-[56px]' : 'h-[100px]'}`}>
-        <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-2xl'}`}>문서 생성</h1>
-        <p className={`text-neutral-sub transition-all duration-300 overflow-hidden ${isScrolled ? 'text-xs mt-0 max-h-0 opacity-0' : 'text-sm mt-1 max-h-6 opacity-100'}`}>템플릿을 선택하고 AI가 내용을 자동으로 채워줍니다</p>
+      <header className="bg-surface-main flex flex-col justify-center overflow-hidden h-[100px]">
+        <h1 className="font-bold text-2xl">문서 생성</h1>
+        <p className="text-neutral-sub text-sm mt-1">템플릿을 선택하고 AI가 내용을 자동으로 채워줍니다</p>
       </header>
 
       <div className="space-y-6">
         {/* 템플릿 선택 */}
         <TemplateSelector
           selected={selectedTemplate}
+          selectedCustomId={selectedCustomTemplate?.id}
           onSelect={handleTemplateSelect}
           onUploadClick={() => setUploadOpen(true)}
+          customTemplates={customTemplates}
+          onDeleteTemplate={async (id) => {
+            try {
+              const { deleteTemplate } = await import('../api/documents');
+              await deleteTemplate(id);
+              toast.success('템플릿이 삭제되었습니다.');
+              fetchCustomTemplates();
+              if (selectedCustomTemplate?.id === id) {
+                setSelectedTemplate(null);
+                setSelectedCustomTemplate(null);
+                setTemplateFields([]);
+                setFormData({});
+              }
+            } catch (err) {
+              toast.error('삭제 실패: ' + (err.response?.data?.detail || err.message));
+            }
+          }}
         />
 
-        {/* 회의록 선택 시: 회의 내용 입력 폼 */}
-        {isMeeting && (
-          <>
-            <MeetingInput onSubmit={handleMeetingSubmit} loading={loading} />
-            <MeetingPreview data={meetingResult} onDownload={handleDownload} loading={loading} />
-          </>
-        )}
+        {/* 커스텀 템플릿: 내용 입력 → AI가 전체 필드 채움 → 사용자 수정 */}
+        {isCustom && selectedTemplate && templateFields.length > 0 && (() => {
+          const skipLabels = ['첨부', '첨부자료', '첨부 자료'];
+          const editableFields = templateFields.filter(f => {
+            const label = (f.label || '').trim();
+            return !skipLabels.includes(label) && !label.includes('첨부');
+          });
 
-        {/* 보고서 입력 폼 */}
-        {isReport && (
-          <>
-            <div className="card">
-              <div className="card-header">
-                <div className="card-title">보고서 내용 입력</div>
-              </div>
-              <div className="card-body space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">제목</label>
-                    <input
-                      value={reportForm.title}
-                      onChange={(e) => setReportForm({ ...reportForm, title: e.target.value })}
-                      placeholder="예: 2026년 1분기 보안 현황 보고서"
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">날짜</label>
-                    <input
-                      type="date"
-                      value={reportForm.date}
-                      onChange={(e) => setReportForm({ ...reportForm, date: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">작성자</label>
-                    <input
-                      value={reportForm.author}
-                      onChange={(e) => setReportForm({ ...reportForm, author: e.target.value })}
-                      placeholder="예: 김정보"
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">부서</label>
-                    <input
-                      value={reportForm.department}
-                      onChange={(e) => setReportForm({ ...reportForm, department: e.target.value })}
-                      placeholder="예: 정보보안팀"
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[0.8125rem] font-semibold mb-1.5">회의 내용</label>
+          const formatValue = (v) => {
+            if (typeof v === 'object' && v !== null && !Array.isArray(v)) return Object.values(v).filter(Boolean).join(' / ');
+            return String(v);
+          };
+          const getDisplayValue = (value) => {
+            if (value === null || value === undefined) return '';
+            if (Array.isArray(value)) return value.map((v, i) => `${i + 1}. ${formatValue(v)}`).join('\n');
+            if (typeof value === 'object') return formatValue(value);
+            return String(value);
+          };
+          const isEmpty = (value) => value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0);
+
+          const renderField = (field) => {
+            const raw = formData[field.key];
+            const value = getDisplayValue(raw);
+            const aiFilled = filled && !isEmpty(raw);
+            const needInput = filled && isEmpty(raw);
+            const isLong = field.type === 'textarea' || field.type === 'array'
+              || (field.description || '').includes('배열') || (field.description || '').includes('목록')
+              || (field.description || '').includes('문장') || value.length > 80;
+
+            const borderClass = needInput ? 'border-amber-400 bg-amber-50/30'
+              : aiFilled ? 'border-primary-200 bg-primary-50/30'
+              : 'border-neutral-border';
+
+            return (
+              <div key={field.key} className={isLong ? 'col-span-2' : ''}>
+                <label className="block text-[0.8125rem] font-semibold mb-1">
+                  {field.label || field.key}
+                  {aiFilled && <span className="ml-1.5 text-[0.6875rem] font-normal text-primary-600">AI</span>}
+                  {needInput && <span className="ml-1.5 text-[0.6875rem] font-normal text-amber-500">입력 필요</span>}
+                </label>
+                {isLong ? (
                   <textarea
-                    value={reportForm.content}
-                    onChange={(e) => setReportForm({ ...reportForm, content: e.target.value })}
-                    placeholder="보고서에 포함할 회의 내용을 입력하세요."
-                    rows={4}
-                    onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 130) + 'px'; }}
-                    className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[130px]"
+                    value={value}
+                    onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                    rows={3}
+                    onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px'; }}
+                    placeholder={field.description && !field.description.includes('{') ? field.description : `${field.label || field.key}을(를) 입력하세요`}
+                    className={`w-full px-3.5 py-2.5 border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[200px] ${borderClass}`}
                   />
-                </div>
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleGenerate}
-                    disabled={loading}
-                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? 'AI 생성 중...' : 'AI 문서 생성'}
-                  </button>
-                </div>
+                ) : (
+                  <input
+                    type={field.type === 'date' ? 'date' : 'text'}
+                    value={value}
+                    onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                    placeholder={field.description && !field.description.includes('{') ? field.description : `${field.label || field.key}을(를) 입력하세요`}
+                    className={`w-full px-3.5 py-2.5 border rounded-md text-sm outline-none focus:border-primary-500 ${borderClass}`}
+                  />
+                )}
               </div>
-            </div>
-            <DocumentPreview data={result} onDownload={handleDownload} loading={loading} />
-          </>
-        )}
+            );
+          };
 
-        {/* 제안서 입력 폼 */}
-        {isProposal && (
-          <>
+          const aiCount = filled ? editableFields.filter(f => !isEmpty(formData[f.key])).length : 0;
+
+          return (
             <div className="card">
               <div className="card-header">
-                <div className="card-title">제안서 내용 입력</div>
+                <div className="card-title">
+                  {selectedCustomTemplate?.name || '커스텀 문서'} 작성
+                </div>
               </div>
-              <div className="card-body space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">제목</label>
-                    <input
-                      value={proposalForm.title}
-                      onChange={(e) => setProposalForm({ ...proposalForm, title: e.target.value })}
-                      placeholder="예: 보안 시스템 고도화 제안서"
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">날짜</label>
-                    <input
-                      type="date"
-                      value={proposalForm.date}
-                      onChange={(e) => setProposalForm({ ...proposalForm, date: e.target.value })}
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">제안사</label>
-                    <input
-                      value={proposalForm.company}
-                      onChange={(e) => setProposalForm({ ...proposalForm, company: e.target.value })}
-                      placeholder="예: (주)보안솔루션"
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">담당자</label>
-                    <input
-                      value={proposalForm.manager}
-                      onChange={(e) => setProposalForm({ ...proposalForm, manager: e.target.value })}
-                      placeholder="예: 이담당"
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[0.8125rem] font-semibold mb-1.5">연락처</label>
-                    <input
-                      value={proposalForm.phone}
-                      onChange={(e) => setProposalForm({ ...proposalForm, phone: e.target.value })}
-                      placeholder="예: 010-1234-5678"
-                      className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500"
-                    />
-                  </div>
-                </div>
+              <div className="card-body space-y-5">
+                {/* 핵심 내용 입력 + AI 작성 버튼 */}
                 <div>
-                  <label className="block text-[0.8125rem] font-semibold mb-1.5">회의내용</label>
+                  <h3 className="text-[0.8125rem] font-semibold text-neutral-500 mb-2">핵심 내용을 입력하세요</h3>
                   <textarea
-                    value={proposalForm.content}
-                    onChange={(e) => setProposalForm({ ...proposalForm, content: e.target.value })}
-                    placeholder="제안서에 포함할 회의 내용을 입력하세요."
-                    rows={4}
-                    onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 130) + 'px'; }}
-                    className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[130px]"
+                    value={freeText}
+                    onChange={(e) => setFreeText(e.target.value)}
+                    placeholder="문서에 담을 내용을 자유롭게 입력하세요 (불릿 포인트로 입력하면 더 정확합니다)"
+                    rows={5}
+                    onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 300) + 'px'; }}
+                    className="w-full px-3.5 py-2.5 border border-neutral-border rounded-md text-sm outline-none focus:border-primary-500 resize-none overflow-y-auto max-h-[300px]"
                   />
+                  <div className="flex justify-end mt-2">
+                    <button
+                      onClick={handleFillFields}
+                      disabled={filling || !freeText.trim()}
+                      className="btn-primary text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {filling ? 'AI 작성 중...' : 'AI 문서 작성'}
+                    </button>
+                  </div>
                 </div>
+
+                {/* AI 작성 결과 카운트 */}
+                {filled && (
+                  <div className="flex items-center gap-3 text-xs">
+                    <div className="flex-1 border-t border-neutral-divider" />
+                    <span className="text-primary-600 font-medium">AI가 {aiCount}/{editableFields.length}개 필드를 채웠습니다 — 확인 후 수정하세요</span>
+                    <div className="flex-1 border-t border-neutral-divider" />
+                  </div>
+                )}
+
+                {/* 전체 필드 — 2열 그리드 (긴 필드는 col-span-2) */}
+                <div className="grid grid-cols-2 gap-3">
+                  {editableFields.map(f => renderField(f))}
+                </div>
+
+                {/* 문서 생성 버튼 */}
                 <div className="flex justify-end">
                   <button
                     onClick={handleGenerate}
                     disabled={loading}
                     className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? 'AI 생성 중...' : 'AI 문서 생성'}
+                    {loading ? 'AI 생성 중...' : '문서 생성 (DOCX)'}
                   </button>
                 </div>
               </div>
             </div>
-            <DocumentPreview data={result} onDownload={handleDownload} loading={loading} />
-          </>
+          );
+        })()}
+
+        {/* 시스템 템플릿: 기존 입력 폼 */}
+        {!isCustom && selectedTemplate && (isMeeting || templateFields.length > 0) && (
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">
+                {categoryLabel[selectedTemplate] || '문서'} 내용 입력
+              </div>
+            </div>
+            <div className="card-body space-y-4">
+              <DynamicForm
+                fields={mergedFields}
+                formData={formData}
+                onChange={handleFieldChange}
+                skipKeys={isMeeting ? ['attendees', 'team'] : []}
+                category={selectedTemplate}
+                user={user}
+                selectedTeam={selectedTeam}
+                onTeamChange={setSelectedTeam}
+                selectedAttendees={selectedAttendees}
+                onAttendeesChange={setSelectedAttendees}
+              />
+
+              <div className="flex justify-end">
+                <button
+                  onClick={handleGenerate}
+                  disabled={loading}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'AI 생성 중...' : isMeeting ? 'AI 회의록 생성' : 'AI 문서 생성'}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* 기타 템플릿 선택 시: 추가 지시사항 + 문서 미리보기 */}
-        {selectedTemplate && !isMeeting && !isReport && !isProposal && (
-          <>
-            <div className="card">
-              <div className="card-header">
-                <div className="card-title">추가 지시사항</div>
-              </div>
-              <div className="card-body space-y-4">
-                <textarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="AI에게 추가 지시사항을 입력하세요 (선택). 예: 보안팀 관점에서 작성해줘"
-                  rows={3}
-                  className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 resize-y"
-                />
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleGenerate}
-                    disabled={loading}
-                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? 'AI 생성 중...' : 'AI 문서 생성'}
-                  </button>
-                </div>
-              </div>
-            </div>
-            <DocumentPreview data={result} onDownload={handleDownload} loading={loading} />
-          </>
-        )}
+        {/* 회의록 결과: MeetingPreview (시스템 템플릿만) */}
+        {isMeeting && !isCustom && <MeetingPreview data={meetingResult} onDownload={handleDownload} loading={loading} />}
+
+        {/* 보고서/제안서/커스텀 결과 */}
+        {(!isMeeting || isCustom) && <DocumentPreview data={result} onDownload={handleDownload} loading={loading} />}
 
         {/* 업로드 다이얼로그 */}
         <TemplateUploadDialog

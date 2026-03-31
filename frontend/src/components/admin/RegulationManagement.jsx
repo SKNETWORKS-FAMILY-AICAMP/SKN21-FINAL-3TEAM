@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Badge from '../common/Badge';
 import { createRegulation, updateRegulation, deleteRegulation } from '../../api/admin';
+import { toast } from '../../store/toastStore';
 
 export default function RegulationManagement({ regulations = [], onRefresh }) {
   const [showModal, setShowModal] = useState(false);
@@ -39,7 +40,7 @@ export default function RegulationManagement({ regulations = [], onRefresh }) {
       setShowModal(false);
       onRefresh?.();
     } catch (e) {
-      alert('저장 실패: ' + (e.response?.data?.detail || e.message));
+      toast.error('저장 실패: ' + (e.response?.data?.detail || e.message));
     } finally {
       setSaving(false);
     }
@@ -52,7 +53,7 @@ export default function RegulationManagement({ regulations = [], onRefresh }) {
       setDeleteTarget(null);
       onRefresh?.();
     } catch (e) {
-      alert('삭제 실패: ' + (e.response?.data?.detail || e.message));
+      toast.error('삭제 실패: ' + (e.response?.data?.detail || e.message));
     }
   };
 
@@ -94,7 +95,7 @@ export default function RegulationManagement({ regulations = [], onRefresh }) {
 
       {showModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-          <div className="bg-surface-card rounded-lg border border-neutral-border shadow-lg w-[480px] p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-lg border border-white/40 dark:border-white/10 shadow-lg w-[480px] p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-bold mb-4">{editTarget ? '규정 수정' : '규정 추가'}</h3>
             <div className="space-y-3">
               <div>
@@ -130,7 +131,7 @@ export default function RegulationManagement({ regulations = [], onRefresh }) {
 
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setDeleteTarget(null)}>
-          <div className="bg-surface-card rounded-lg border border-neutral-border shadow-lg w-[360px] p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-lg border border-white/40 dark:border-white/10 shadow-lg w-[360px] p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-bold mb-2">규정 삭제</h3>
             <p className="text-sm text-neutral-sub mb-5">
               <strong className="text-neutral-main">{deleteTarget.title}</strong>을(를) 삭제하시겠습니까?<br />이 작업은 되돌릴 수 없습니다.

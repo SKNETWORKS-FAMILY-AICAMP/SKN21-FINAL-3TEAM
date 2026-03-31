@@ -1,0 +1,966 @@
+{
+  "config": {
+    "top_k": 10,
+    "max_cases": 21,
+    "threshold": -2.0,
+    "with_hyde": false
+  },
+  "before": {
+    "metrics": {
+      "total": 21,
+      "hits": 20,
+      "hit_rate": 95.23809523809523,
+      "avg_rank": 2.65,
+      "mrr": 0.6362433862433863,
+      "avg_docs": 10.0,
+      "avg_time": 0.2233308610462007
+    },
+    "results": [
+      {
+        "test_id": "BENCH-001",
+        "question": "박지훈(부장, QA팀)이 채용 면접 시 코딩테스트를 포함한 기술면접을 진",
+        "expected": "제4조(채용)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 0.2744576930999756,
+        "matched": [
+          "[1] regulations",
+          "[8] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.97,
+          0.0409
+        ]
+      },
+      {
+        "test_id": "BENCH-002",
+        "question": "윤채원(신입사원, 경영지원팀)이 기본 근무시간(10시~19시)에 맞춰 출",
+        "expected": "제7조(근로시간)",
+        "hit": true,
+        "hit_rank": 5,
+        "doc_count": 10,
+        "elapsed": 0.2294139862060547,
+        "matched": [
+          "[5] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.8746,
+          0.7531
+        ]
+      },
+      {
+        "test_id": "BENCH-003",
+        "question": "윤채원(과장, 보안팀)이 월간 장애 보고서를 작성하여 경영진에 보고하려 ",
+        "expected": "제22조(성능 및 장애관리)",
+        "hit": true,
+        "hit_rank": 2,
+        "doc_count": 10,
+        "elapsed": 0.21645665168762207,
+        "matched": [
+          "[2] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.9748,
+          0.8971
+        ]
+      },
+      {
+        "test_id": "BENCH-004",
+        "question": "최유진(대리, 경영지원팀)과 1년 6개월 기간제 근로계약을 체결하려 합니",
+        "expected": "제5조(근로계약)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 0.22093939781188965,
+        "matched": [
+          "[1] regulations",
+          "[9] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.9559,
+          0.938
+        ]
+      },
+      {
+        "test_id": "BENCH-005",
+        "question": "나은정(과장, 경영지원팀)이 고객 개인정보 데이터를 '극비' 등급으로 분",
+        "expected": "제15조(정보자산 분류 및 관리)",
+        "hit": true,
+        "hit_rank": 10,
+        "doc_count": 10,
+        "elapsed": 0.22467422485351562,
+        "matched": [
+          "[10] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.9595,
+          0.9435
+        ]
+      },
+      {
+        "test_id": "BENCH-006",
+        "question": "곽하영(부장, 디자인팀)이 회사 규정과 지침을 성실히 준수하려 합니다. ",
+        "expected": "제10조(복무의무)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 0.21267437934875488,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.0715,
+          0.0563
+        ]
+      },
+      {
+        "test_id": "BENCH-007",
+        "question": "박지훈(대리, 개발팀)이 5년 근속하여 리프레시 휴가 5일을 신청하려 합",
+        "expected": "제8조(휴일 및 휴가)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 0.2239222526550293,
+        "matched": [
+          "[1] regulations",
+          "[3] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.9431,
+          0.0847
+        ]
+      },
+      {
+        "test_id": "BENCH-008",
+        "question": "장동혁(부장, 경영지원팀)이 올해 DR 훈련을 실시하지 않으려 합니다. ",
+        "expected": "제23조(백업 및 복구관리)",
+        "hit": false,
+        "hit_rank": -1,
+        "doc_count": 10,
+        "elapsed": 0.21836185455322266,
+        "matched": [],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.8746,
+          0.7531
+        ]
+      },
+      {
+        "test_id": "BENCH-009",
+        "question": "배수지(부장, 디자인팀)이 CISO를 비임원급 팀장으로 지정하려 합니다.",
+        "expected": "제14조(정보보호 조직 및 책임)",
+        "hit": true,
+        "hit_rank": 2,
+        "doc_count": 10,
+        "elapsed": 0.22751617431640625,
+        "matched": [
+          "[2] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.9583,
+          0.927
+        ]
+      },
+      {
+        "test_id": "BENCH-010",
+        "question": "서준호(과장, 인사팀)이 회사 승인 없이 주말에 프리랜서 개발 일을 하려",
+        "expected": "제12조(겸업 금지)",
+        "hit": true,
+        "hit_rank": 2,
+        "doc_count": 10,
+        "elapsed": 0.21429157257080078,
+        "matched": [
+          "[2] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.9316,
+          0.9251
+        ]
+      },
+      {
+        "test_id": "BENCH-011",
+        "question": "임재현(팀장, 기획팀)이 정보보호 정책을 3년간 검토하지 않고 유지하려 ",
+        "expected": "제13조(정보보호 정책)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 0.21950650215148926,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.9279,
+          0.8861
+        ]
+      },
+      {
+        "test_id": "BENCH-012",
+        "question": "곽하영(팀장, 개발팀)의 근로계약서에 정보보호 의무 조항 없이 계약을 체",
+        "expected": "제5조(근로계약)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 0.21712279319763184,
+        "matched": [
+          "[1] regulations",
+          "[10] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.9571,
+          0.8238
+        ]
+      },
+      {
+        "test_id": "BENCH-013",
+        "question": "오태영(대리, 인사팀)의 수습 기간을 6개월로 설정하려 합니다. 가능한가",
+        "expected": "제6조(수습기간)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 0.21274757385253906,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.9134,
+          0.8756
+        ]
+      },
+      {
+        "test_id": "BENCH-014",
+        "question": "곽하영(대리, 디자인팀)이 팀원들과 공용 서버 계정을 공유하여 사용하려 ",
+        "expected": "제17조(정보시스템 접근통제)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 0.21657085418701172,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.9564,
+          0.11
+        ]
+      },
+      {
+        "test_id": "BENCH-015",
+        "question": "장동혁(팀장, 인사팀)이 테스트 서버의 백업 주기를 월 1회로 설정하려 ",
+        "expected": "제23조(백업 및 복구관리)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 0.21338653564453125,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.9134,
+          0.83
+        ]
+      },
+      {
+        "test_id": "BENCH-016",
+        "question": "서준호(신입사원, 데이터팀)이 피싱 의심 이메일을 받았는데, 확실하지 않",
+        "expected": "제28조(보안사고 예방 및 대응)",
+        "hit": true,
+        "hit_rank": 5,
+        "doc_count": 10,
+        "elapsed": 0.2243039608001709,
+        "matched": [
+          "[5] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.949,
+          0.87
+        ]
+      },
+      {
+        "test_id": "BENCH-017",
+        "question": "한소희(과장, 보안팀)이 경조사 휴가를 신청하려 합니다. 가능한가요?",
+        "expected": "제8조(휴일 및 휴가)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 0.2306356430053711,
+        "matched": [
+          "[1] regulations",
+          "[3] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.9287,
+          0.9144
+        ]
+      },
+      {
+        "test_id": "BENCH-018",
+        "question": "나은정(대리, 인사팀)이 해외 출장 중 호텔에서 VPN으로 업무를 처리하",
+        "expected": "제9조(원격근무)",
+        "hit": true,
+        "hit_rank": 9,
+        "doc_count": 10,
+        "elapsed": 0.23606443405151367,
+        "matched": [
+          "[9] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.9936,
+          0.7615
+        ]
+      },
+      {
+        "test_id": "BENCH-019",
+        "question": "이서연(신입사원, 데이터팀)이 오픈소스 커뮤니티에서 개인 시간에 활동하려",
+        "expected": "제12조(겸업 금지)",
+        "hit": true,
+        "hit_rank": 4,
+        "doc_count": 10,
+        "elapsed": 0.2210397720336914,
+        "matched": [
+          "[4] regulations",
+          "[7] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.9863,
+          0.9114
+        ]
+      },
+      {
+        "test_id": "BENCH-020",
+        "question": "송미래(대리, 경영지원팀)이 긴급 보안 패치를 바로 운영에 배포하려 합니",
+        "expected": "제25조(소프트웨어 개발 보안)",
+        "hit": true,
+        "hit_rank": 2,
+        "doc_count": 10,
+        "elapsed": 0.21835708618164062,
+        "matched": [
+          "[2] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.9402,
+          0.9036
+        ]
+      },
+      {
+        "test_id": "BENCH-021",
+        "question": "서준호(과장, 데이터팀)이 배포 자동화를 위해 공용 서비스 계정을 생성하",
+        "expected": "제17조(정보시스템 접근통제)",
+        "hit": true,
+        "hit_rank": 2,
+        "doc_count": 10,
+        "elapsed": 0.21750473976135254,
+        "matched": [
+          "[2] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          1.0,
+          0.989,
+          0.8865
+        ]
+      }
+    ]
+  },
+  "after": {
+    "metrics": {
+      "total": 21,
+      "hits": 20,
+      "hit_rate": 95.23809523809523,
+      "avg_rank": 1.0,
+      "mrr": 0.9523809523809523,
+      "avg_docs": 10.0,
+      "avg_time": 5.9448558035350985
+    },
+    "results": [
+      {
+        "test_id": "BENCH-001",
+        "question": "박지훈(부장, QA팀)이 채용 면접 시 코딩테스트를 포함한 기술면접을 진",
+        "expected": "제4조(채용)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 6.021230936050415,
+        "matched": [
+          "[1] regulations",
+          "[6] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.5488,
+          0.0001,
+          0.0001
+        ]
+      },
+      {
+        "test_id": "BENCH-002",
+        "question": "윤채원(신입사원, 경영지원팀)이 기본 근무시간(10시~19시)에 맞춰 출",
+        "expected": "제7조(근로시간)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 4.566778898239136,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.0137,
+          0.0007,
+          0.0007
+        ]
+      },
+      {
+        "test_id": "BENCH-003",
+        "question": "윤채원(과장, 보안팀)이 월간 장애 보고서를 작성하여 경영진에 보고하려 ",
+        "expected": "제22조(성능 및 장애관리)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 4.16299843788147,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.7577,
+          0.0115,
+          0.0022
+        ]
+      },
+      {
+        "test_id": "BENCH-004",
+        "question": "최유진(대리, 경영지원팀)과 1년 6개월 기간제 근로계약을 체결하려 합니",
+        "expected": "제5조(근로계약)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 4.039266109466553,
+        "matched": [
+          "[1] regulations",
+          "[5] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.014,
+          0.001,
+          0.0003
+        ]
+      },
+      {
+        "test_id": "BENCH-005",
+        "question": "나은정(과장, 경영지원팀)이 고객 개인정보 데이터를 '극비' 등급으로 분",
+        "expected": "제15조(정보자산 분류 및 관리)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 7.51884651184082,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.0314,
+          0.0016,
+          0.0011
+        ]
+      },
+      {
+        "test_id": "BENCH-006",
+        "question": "곽하영(부장, 디자인팀)이 회사 규정과 지침을 성실히 준수하려 합니다. ",
+        "expected": "제10조(복무의무)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 5.616781711578369,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.3939,
+          0.0013,
+          0.001
+        ]
+      },
+      {
+        "test_id": "BENCH-007",
+        "question": "박지훈(대리, 개발팀)이 5년 근속하여 리프레시 휴가 5일을 신청하려 합",
+        "expected": "제8조(휴일 및 휴가)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 5.580394506454468,
+        "matched": [
+          "[1] regulations",
+          "[7] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.5915,
+          0.0001,
+          0.0001
+        ]
+      },
+      {
+        "test_id": "BENCH-008",
+        "question": "장동혁(부장, 경영지원팀)이 올해 DR 훈련을 실시하지 않으려 합니다. ",
+        "expected": "제23조(백업 및 복구관리)",
+        "hit": false,
+        "hit_rank": -1,
+        "doc_count": 10,
+        "elapsed": 6.5361244678497314,
+        "matched": [],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "test_id": "BENCH-009",
+        "question": "배수지(부장, 디자인팀)이 CISO를 비임원급 팀장으로 지정하려 합니다.",
+        "expected": "제14조(정보보호 조직 및 책임)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 6.799760341644287,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.0166,
+          0.0012,
+          0.0002
+        ]
+      },
+      {
+        "test_id": "BENCH-010",
+        "question": "서준호(과장, 인사팀)이 회사 승인 없이 주말에 프리랜서 개발 일을 하려",
+        "expected": "제12조(겸업 금지)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 5.853521347045898,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.0871,
+          0.0612,
+          0.0026
+        ]
+      },
+      {
+        "test_id": "BENCH-011",
+        "question": "임재현(팀장, 기획팀)이 정보보호 정책을 3년간 검토하지 않고 유지하려 ",
+        "expected": "제13조(정보보호 정책)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 6.292330980300903,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.1527,
+          0.0044,
+          0.0022
+        ]
+      },
+      {
+        "test_id": "BENCH-012",
+        "question": "곽하영(팀장, 개발팀)의 근로계약서에 정보보호 의무 조항 없이 계약을 체",
+        "expected": "제5조(근로계약)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 6.327622175216675,
+        "matched": [
+          "[1] regulations",
+          "[7] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.1325,
+          0.0119,
+          0.0113
+        ]
+      },
+      {
+        "test_id": "BENCH-013",
+        "question": "오태영(대리, 인사팀)의 수습 기간을 6개월로 설정하려 합니다. 가능한가",
+        "expected": "제6조(수습기간)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 6.511833190917969,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.0868,
+          0.0006,
+          0.0005
+        ]
+      },
+      {
+        "test_id": "BENCH-014",
+        "question": "곽하영(대리, 디자인팀)이 팀원들과 공용 서버 계정을 공유하여 사용하려 ",
+        "expected": "제17조(정보시스템 접근통제)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 6.650718450546265,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.022,
+          0.0001,
+          0.0001
+        ]
+      },
+      {
+        "test_id": "BENCH-015",
+        "question": "장동혁(팀장, 인사팀)이 테스트 서버의 백업 주기를 월 1회로 설정하려 ",
+        "expected": "제23조(백업 및 복구관리)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 7.313871145248413,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.0221,
+          0.0006,
+          0.0003
+        ]
+      },
+      {
+        "test_id": "BENCH-016",
+        "question": "서준호(신입사원, 데이터팀)이 피싱 의심 이메일을 받았는데, 확실하지 않",
+        "expected": "제28조(보안사고 예방 및 대응)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 6.914727210998535,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.0348,
+          0.0006,
+          0.0005
+        ]
+      },
+      {
+        "test_id": "BENCH-017",
+        "question": "한소희(과장, 보안팀)이 경조사 휴가를 신청하려 합니다. 가능한가요?",
+        "expected": "제8조(휴일 및 휴가)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 5.528872489929199,
+        "matched": [
+          "[1] regulations",
+          "[2] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.0146,
+          0.009,
+          0.0009
+        ]
+      },
+      {
+        "test_id": "BENCH-018",
+        "question": "나은정(대리, 인사팀)이 해외 출장 중 호텔에서 VPN으로 업무를 처리하",
+        "expected": "제9조(원격근무)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 5.5805580615997314,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.0099,
+          0.0034,
+          0.0008
+        ]
+      },
+      {
+        "test_id": "BENCH-019",
+        "question": "이서연(신입사원, 데이터팀)이 오픈소스 커뮤니티에서 개인 시간에 활동하려",
+        "expected": "제12조(겸업 금지)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 6.283813238143921,
+        "matched": [
+          "[1] regulations",
+          "[10] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.069,
+          0.001,
+          0.0001
+        ]
+      },
+      {
+        "test_id": "BENCH-020",
+        "question": "송미래(대리, 경영지원팀)이 긴급 보안 패치를 바로 운영에 배포하려 합니",
+        "expected": "제25조(소프트웨어 개발 보안)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 5.651022911071777,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.0009,
+          0.0004,
+          0.0002
+        ]
+      },
+      {
+        "test_id": "BENCH-021",
+        "question": "서준호(과장, 데이터팀)이 배포 자동화를 위해 공용 서비스 계정을 생성하",
+        "expected": "제17조(정보시스템 접근통제)",
+        "hit": true,
+        "hit_rank": 1,
+        "doc_count": 10,
+        "elapsed": 5.090898752212524,
+        "matched": [
+          "[1] regulations"
+        ],
+        "top_sources": [
+          "regulations",
+          "regulations",
+          "regulations"
+        ],
+        "top_scores": [
+          0.0015,
+          0.0001,
+          0.0001
+        ]
+      }
+    ]
+  }
+}

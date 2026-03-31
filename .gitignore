@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# BM25 index cache
+data/cache/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -23,10 +26,19 @@ outputs/
 *.safetensors
 *.safetensors.*
 *.gguf
+*.onnx
+
+# Codex artifacts
+MEMORY.md
+docs/PROJECT_UNDERSTANDING_NOTE.md
 
 # Test artifacts
 test-results/
 tests/screenshots/
+tests/results/
+tests/*_result.json
+tests/m1_raw.json
+tests/debug_p3.py
 frontend/e2e/results/
 frontend/playwright-report/
 
@@ -59,6 +71,12 @@ logs/
 # Uploads (runtime files)
 backend/uploads/
 
+# AI Hub 원본 데이터 (대용량)
+data/raw/
+
+# RAG 증강 학습 데이터 (filter=regulations 적용, ~29MB — push 필요)
+# data/training/v1_judgment/*_rag.jsonl
+
 # AI 생성 문서 (임시 파일)
 backend/generated_docs/*.docx
 backend/generated_docs/*.pdf
@@ -73,7 +91,15 @@ token.json
 docker/Dockerfile.backend
 
 # claude setting
-.claude
+.claude/
 .ruff_cache/
 
 docs/mentoring/2026-02-15-멘토링-대본.md
+test_docs/테스트 결과 사진/회의록 (2) 빈양식.png
+test_docs/테스트 결과 사진/회의록 (2) 생성 후 1페이지.png
+test_docs/테스트 결과 사진/회의록 (2) 생성 후 2페이지.png
+test_docs/테스트 결과 사진/회의록 (3) 빈양식.png
+test_docs/테스트 결과 사진/회의록 (3) 생성 후 2페이지.png
+test_docs/테스트 결과 사진/회의록 (3) 생성 후.png
+test_회의록(2).docx
+test_회의록(3).docx

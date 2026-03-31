@@ -547,6 +547,481 @@
 - ✅ "링크 생성해줘, user@gmail.com" → Meet 생성 + 초대 메일 발송
 
 ### 다음 할 일
-- 디버그 로그 정리 (print문 제거)
-- 판단 Agent 스트리밍 디버깅
+- ~~디버그 로그 정리 (print문 제거)~~ → 세션 13에서 완료
+- ~~판단 Agent 스트리밍 디버깅~~ → 세션 12에서 이미 해결
 - AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
+
+---
+
+## 2026-03-04 (세션 13)
+
+### 한 일
+
+**디버그 print문 전체 정리**
+- `backend/app/api/v1/chat.py`: print문 40개+ → `logger.info/warning/error`로 전환
+  - 민감 정보 출력 제거 (사용자 메시지, 문서 내용, API 키)
+  - `traceback.print_exc()` → `logger.error(..., exc_info=True)`
+- `ai/agents/schedule_agent.py`: print문 12개 → `logger`로 전환
+- `ai/agents/orchestrator.py`: print문 21개 → `logger`로 전환
+
+**일정 등록 시 시간 되묻기 기능 구현**
+- 문제: "오늘 오후에 회의 잡아줘" → 시간 불명확한데 기본값(09:00/13:00)으로 바로 등록
+- 해결:
+  - `_parse_schedule_input()` 프롬프트 수정: 시간 불명확 시 `start_time: null` 반환하도록
+  - `_fallback_parse()`: 구체적 시간(N시) 없으면 `start_time: None` 반환
+  - `_check_missing_info()`: `start_time`이 null이면 시간 누락 판단
+  - `_build_clarify_message()`: "몇 시에 잡을까요?" 메시지 생성
+  - `_handle_schedule_add()`: 누락 정보 있으면 `schedule_clarify` 타입으로 되묻기
+  - `_register_schedule()`: 등록 로직 분리 (clarify 후속에서도 재사용)
+
+**schedule_clarify 후속 응답 처리 구현**
+- 문제 1: "19시" 입력 시 intent 분류기가 schedule_view로 분류 → 일정 조회로 빠짐
+- 해결: `schedule_agent()` 진입부에서 clarify 후속 감지를 intent 체크보다 먼저 실행
+  - `_extract_clarify_from_history()`: history에서 가장 최근 schedule 응답이 clarify인지 확인
+  - `_handle_clarify_response()`: 사용자 시간 입력 파싱 → 기존 일정 정보에 시간 보충 → 등록
+  - `_parse_time_from_input()`: "19시", "오후 3시", "14:00", 숫자만("19") 등 다양한 시간 형식 파싱
+  - `orchestrator._is_schedule_followup()`: `schedule_clarify` 타입 + 시간 입력도 followup으로 인식
+
+- 문제 2: 일정 등록 후 이메일 초대 요청 시 옛날 clarify를 찾아서 "시간을 인식하지 못했습니다" 응답
+- 해결: `_extract_clarify_from_history()`에서 `schedule_add`가 더 최근이면 clarify 무시
+
+- 문제 3: "오전 9시 회의 잡아줘" → T09:00:00 기본값 체크에 걸려서 시간 되묻기
+- 해결: T09:00:00 기본값 체크 로직 제거 (LLM이 null 반환하도록 프롬프트로만 처리)
+
+### 커밋 내역
+1. `refactor: 디버그 print문 정리 + 일정 등록 시 시간 되묻기 기능 추가` (0ccb456)
+2. `feat: 일정 등록 시 시간 되묻기 + orchestrator print문 정리` (8c0ad3d)
+3. `fix: schedule_clarify 후속 시간 입력이 schedule_view로 빠지는 문제 수정` (c6626e5)
+4. `fix: 일정 등록 후 이메일 초대 시 schedule_clarify로 잘못 라우팅되는 문제 수정` (ba4fca2)
+5. `fix: 오전 9시 일정 요청 시 시간 되묻기로 잘못 빠지는 문제 수정` (b7ca6ee)
+
+### 다음 할 일
+- 팀서비스 확장 (Slack, Jira 연동) + UI/UX 수정 (#84) — 1~2주차 작업
+- AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
+- vLLM 백엔드 연동 + sLLM 교체 및 평가 (#86) — 3주차 작업
+
+---
+
+## 2026-03-04 (세션 14) — Task Pipeline + EC2 배포
+
+### 한 일
+
+**Task Pipeline 기능 구현 (백엔드 + 프론트엔드)**
+- `backend/app/models/pipeline_task.py` 신규: PipelineTask ORM 모델 (title, assignee, stage, priority, due_date, team, tags 등)
+- `backend/app/api/v1/pipeline.py` 신규: CRUD API 4개 (GET/POST/PUT/DELETE) + 팀별 데이터 격리
+- `backend/app/api/v1/router.py` 수정: pipeline 라우터 등록
+- `backend/app/api/v1/auth.py` 수정: `/auth/team-members` 엔드포인트 추가 (같은 팀 사용자 목록)
+- `frontend/src/api/tasks.js` 신규: Pipeline API 클라이언트
+- `frontend/src/pages/TasksPage.jsx` 신규: 칸반 보드 (To Do / In Progress / Review / Done)
+  - HTML5 드래그 앤 드롭으로 상태 변경
+  - 태스크 추가/수정/삭제 모달 (제목, 설명, 담당자, 우선순위, 마감일, 태그)
+  - 같은 팀 멤버만 담당자로 선택 가능
+  - 다크모드 대응 완료
+- `frontend/src/App.jsx` 수정: `/tasks` 라우트 추가
+- `frontend/src/components/common/Sidebar.jsx` 수정: '태스크 관리' 메뉴 추가
+- `frontend/src/components/dashboard/TaskPipelineWidget.jsx` 수정: mock 데이터 → 실제 API 연결
+
+**AWS RDS에 pipeline_tasks 테이블 생성**
+- EC2 SSH 터널을 통해 RDS PostgreSQL에 직접 접속
+- `pipeline_tasks` 테이블 CREATE + 영업팀 초기 데이터 7건 INSERT
+
+**EC2 배포**
+- git push → EC2 git pull
+- 프론트엔드 로컬 빌드 후 `rsync`로 dist 업로드
+- 백엔드 uvicorn 재시작 (`--app-dir backend` 플래그 사용)
+
+**기타**
+- `dayjs` 누락 → `npm install dayjs` (이미 package.json에 있었으나 node_modules에 미설치)
+- 로컬 git 깨짐(SIGBUS) → 새 clone으로 교체
+
+**Approval Request 시스템 구현 (백엔드 + 프론트엔드)**
+- `backend/app/models/approval_request.py` 신규: ApprovalRequest ORM 모델 (type, title, detail, status, requester_id, target_team)
+- `backend/app/api/v1/approvals.py` 신규: 7개 엔드포인트
+  - `GET /approvals/` — pending 요청 목록
+  - `GET /approvals/history` — 처리 완료 요청 (approved/rejected)
+  - `POST /approvals/` — 새 요청 생성
+  - `PUT /approvals/{id}/approve` — 승인
+  - `PUT /approvals/{id}/reject` — 거절
+  - `DELETE /approvals/{id}` — 삭제 (본인 요청만)
+  - `POST /approvals/seed` — 샘플 데이터 시드
+- `frontend/src/api/approvals.js` 신규: API 클라이언트 함수
+- `frontend/src/pages/ApprovalsPage.jsx` 신규: Approvals 전용 페이지
+  - 전체/Pending/Approved/Rejected 필터 탭 + 카운트 뱃지
+  - 유형별 필터 + 검색 (제목/요청자)
+  - 요청별 아이콘/상태 뱃지 + 승인/거절/삭제 액션
+  - 새 요청 올리기 모달
+- `frontend/src/App.jsx` 수정: `/approvals` 라우트 추가
+- `frontend/src/components/dashboard/ApprovalQueueWidget.jsx` 수정: 대시보드 위젯 연동
+- 팀 필터 제거 — 모든 사용자가 전체 요청 확인 가능
+- 요청 올리기 텍스트 → Plus 아이콘 버튼으로 교체
+
+**Approval Requests 유형 확장 (3종 → 10종)**
+- `frontend/src/components/dashboard/ApprovalQueueWidget.jsx` 수정:
+  - typeConfig 3종(leave, review, budget) → 10종으로 확장 (remote, room, design, certificate, deploy, infra, security 추가)
+  - 각 유형별 아이콘/컬러 매핑 (Home, DoorOpen, Palette, Award, Receipt, Rocket, Server, ShieldCheck)
+  - 새 요청 모달 select에 10종 옵션 추가
+  - 필터 라벨도 10종으로 확장
+- `frontend/src/pages/ApprovalsPage.jsx` 수정:
+  - typeConfig 동일하게 10종 확장
+  - 유형 필터 select + 새 요청 모달 select 10종 옵션 추가
+
+**일정 타입 추가**
+- `frontend/src/store/scheduleTypeStore.js` 수정: DEFAULT_TYPES에 '프로젝트' 타입 추가 (#7C6BC4)
+
+### 다음 할 일
+- Slack 연동 확장
+- AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
+- vLLM 백엔드 연동 + sLLM 교체 및 평가
+
+---
+
+## 2026-03-05 (세션 15) — 쪽지 기능 + 인증 세션 분리
+
+### 한 일
+
+**쪽지(메시지) 기능 전체 구현**
+- `backend/app/models/message.py` 신규: Message ORM 모델 (sender_id, receiver_id, content, is_read, timestamps)
+- `backend/app/api/v1/messages.py` 신규: 5개 엔드포인트
+  - `GET /messages/` — 받은/보낸 쪽지 목록 (box=inbox|sent)
+  - `GET /messages/unread-count` — 안 읽은 쪽지 수
+  - `POST /messages/` — 쪽지 보내기 (본인에게 보내기 방지, 수신자 존재 확인)
+  - `PUT /messages/{id}/read` — 읽음 처리
+  - `DELETE /messages/{id}` — 삭제 (본인 관련 쪽지만)
+- `backend/app/models/__init__.py` 수정: Message import 추가
+- `backend/app/api/v1/router.py` 수정: messages router 등록
+- Alembic 마이그레이션: merge heads + messages 테이블 생성 및 적용
+
+**프론트엔드 — 플로팅 팝업 + 전체 페이지**
+- `frontend/src/components/messages/MessagePopup.jsx` 신규: 오른쪽 하단 플로팅 아이콘 + 작은 팝업
+  - 받은/보낸 쪽지 탭, 쪽지 목록, 상세 보기 (클릭 시 자동 읽음 처리)
+  - 쪽지 보내기 (전체 사용자 드롭다운), 삭제
+  - 30초마다 안 읽은 수 자동 갱신, 뱃지 표시
+- `frontend/src/pages/MessagesPage.jsx` 신규: 전체 페이지 뷰 (사이드바에서 접근)
+- `frontend/src/api/messages.js` 신규: API 클라이언트 함수 5개
+- `frontend/src/App.jsx` 수정: `/messages` 라우트 추가
+- `frontend/src/components/common/Layout.jsx` 수정: `<MessagePopup />` 추가 (모든 페이지에서 표시)
+- `frontend/src/components/common/Sidebar.jsx` 수정: 쪽지함 메뉴 추가
+
+**플로팅 아이콘 정렬 + 스타일 통일**
+- 쪽지 아이콘: `bottom-24 right-8` (위), AI 챗봇 아이콘: `bottom-8 right-8` (아래)
+- 두 아이콘 동일 사이즈 (w-12 h-12) + 동일 스타일 (흰 배경 + primary 테두리)
+- `AIChatPopup.jsx` 수정: 아이콘 크기 w-14→w-12, filled→outline 스타일로 변경
+
+**쪽지 기능 — Approvals 위젯 옆 배치 (`ApprovalQueueWidget` 참고)**
+- `frontend/src/components/common/Sidebar.jsx` 수정: 관리 섹션에 쪽지함(Mail 아이콘) 네비게이션 추가
+
+**수신자 목록 전체 사용자로 변경**
+- `MessagePopup.jsx`, `MessagesPage.jsx`: `/auth/team-members` → `/auth/all-members`로 변경
+- 팀 소속 관계없이 전체 사용자에게 쪽지 보내기 가능
+
+**인증 세션 탭 독립 분리**
+- 문제: 다른 탭에서 로그인하면 기존 탭도 동기화됨 (localStorage 공유 문제)
+- 해결: `access_token` 저장소를 `localStorage` → `sessionStorage`로 변경
+- 수정 파일 7개:
+  - `store/authStore.js`, `pages/LoginPage.jsx`, `hooks/useAuth.js`
+  - `hooks/useSSE.js`, `hooks/useChat.js`, `api/client.js`
+- 이제 각 탭/창이 독립적인 로그인 세션 유지
+
+### 다음 할 일
+- EC2 서버 재배포 (messages API 반영)
+- Slack 연동 확장
+- AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
+- vLLM 백엔드 연동 + sLLM 교체 및 평가
+
+---
+
+## 2026-03-05 (세션 16) — UI 개선 + 쪽지 팀 표시
+
+### 한 일
+
+**쪽지 팀 정보 표시**
+- `backend/app/api/v1/messages.py`: API 응답에 `sender_team`, `receiver_team` 필드 추가
+- `frontend/src/pages/MessagesPage.jsx`: 목록 + 상세에서 이름 옆 (팀) 표시
+- `frontend/src/components/messages/MessagePopup.jsx`: 목록 + 상세에서 이름 옆 (팀) 표시
+
+**마이페이지 개선**
+- 개인메모에 작성 날짜 표시 추가 (uiStore의 `createdAt` 활용)
+- 문서생성 > 문서 목록에서 클릭 시 미리보기 팝업 연결 (`handleDocPreview` + Eye 아이콘)
+- AI 활용 통계 카드 삭제
+
+### 다음 할 일
+- EC2 서버 재배포 (messages team 필드 반영)
+- Slack 연동 확장
+- AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
+- vLLM 백엔드 연동 + sLLM 교체 및 평가
+
+---
+
+## 2026-03-06 (세션 17) — Approval Request 문서 첨부 + 상세보기
+
+### 한 일
+
+**Approval Request 문서 첨부 기능 구현**
+- `backend/app/models/approval_request.py`: `file_path`, `file_name` 컬럼 추가
+- `backend/app/api/v1/approvals.py`: POST를 JSON → Form+UploadFile 방식으로 변경
+  - 파일 저장: `uploads/approvals/{uuid}.{ext}`
+  - 허용 확장자: PDF, DOCX, DOC, TXT, PNG, JPG, JPEG, GIF, WEBP
+  - `GET /{id}/file` 파일 다운로드 엔드포인트 추가 (FileResponse)
+  - 삭제 시 첨부파일도 함께 삭제
+  - 응답에 `file_name` 필드 추가
+- `backend/app/main.py`: startup 마이그레이션 추가 (file_path, file_name 컬럼 자동 추가)
+
+**프론트엔드 파일 첨부 UI**
+- `frontend/src/api/approvals.js`:
+  - `createApproval` FormData 방식 전환 (`Content-Type: undefined`로 axios 자동 boundary 설정)
+  - `downloadApprovalFile()`, `getApprovalFileBlobUrl()` 헬퍼 추가 (JWT 인증 포함 blob 다운로드)
+- `frontend/src/pages/ApprovalsPage.jsx`:
+  - 새 요청 모달에 파일 첨부 input + X 취소 버튼
+  - 카드 클릭 → 상세보기 모달 (유형, 제목, 상태, 요청자, 상세 내용, 날짜)
+  - 첨부파일: 미리보기 버튼(이미지/PDF) + 다운로드 버튼
+  - 파일 미리보기 팝업 (이미지: img 렌더링, PDF: iframe)
+  - Approve/Reject 버튼도 상세 모달 안에서 사용 가능
+  - 에러 상세 메시지 표시 추가
+- `frontend/src/components/dashboard/ApprovalQueueWidget.jsx`:
+  - 위젯 모달에 파일 첨부 input + X 취소 버튼 (원격 디자인 유지)
+  - 충돌 해결: 원격(createPortal + backdrop-blur 디자인) 기반으로 파일 첨부 기능 병합
+
+### 이슈 및 해결
+
+**이슈 1: FormData 업로드 실패**
+- 원인: axios client 기본 `Content-Type: application/json`이 FormData boundary를 덮어씀
+- 해결: `headers: { 'Content-Type': undefined }`로 설정하여 axios 자동 처리
+
+**이슈 2: 파일 다운로드/미리보기 실패**
+- 원인: `<a href>` 방식은 JWT 토큰을 보내지 못함
+- 해결: axios blob 요청 기반 `downloadApprovalFile`, `getApprovalFileBlobUrl` 함수로 교체
+
+**이슈 3: ApprovalsPage에서만 요청 생성 실패 (대시보드 위젯은 정상)**
+- 상태: 디버깅 중 — catch에 에러 상세 로깅 추가, 원인 확인 필요
+
+### 다음 할 일
+- ApprovalsPage 요청 생성 실패 원인 확인 (브라우저 콘솔 에러 메시지 기반)
+- EC2 서버 재배포
+- Slack 연동 확장
+- AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
+- vLLM 백엔드 연동 + sLLM 교체 및 평가
+
+---
+
+## 2026-03-09 (세션 18) — RAG 검색 정확도 개선 + 문서 관리 UX
+
+### 한 일
+
+**문서 업로드 Scope 라벨링 + 팀 문서 접근 제어**
+- `frontend/src/components/documents/ScopeSelector.jsx`: 회사/팀 선택 버튼에 설명 라벨 추가 ("전체 사용자가 열람 가능" / "OO 팀원만 열람 가능")
+- `frontend/src/components/documents/DocumentList.jsx`: 공개범위(scope) 컬럼 추가 (회사/팀/개인 Badge)
+- RAG 챗봇에 팀 문서 격리 적용:
+  - `backend/app/api/v1/chat.py`: `user_team` 전달
+  - `ai/agents/document_agent.py`: `user_team` 파라미터 추가, RAG retrieve에 전달
+  - `ai/rag/hybrid_search.py`: BM25 검색에 team scope 필터 추가 (같은 팀만 팀 문서 열람)
+  - `ai/rag/qdrant_pipeline.py`: `user_team` 전달
+
+**스캔 PDF OCR Fallback 추가**
+- `backend/app/services/document_service.py`: `_extract_pdf()`에서 텍스트 레이어 없는 PDF → PaddleOCR 자동 시도
+
+**RAG 검색 점수 표시 개선**
+- 문제: RRF min-max 정규화로 마지막 결과가 항상 0% 표시
+- 해결: max 기반 정규화 + 40%~100% 바닥 보정 (`display_score = 0.4 + 0.6 * (score/max)`)
+- `ai/rag/hybrid_search.py`: 점수 정규화 방식 변경
+
+**태그/카테고리 기반 검색 부스트**
+- `ai/rag/hybrid_search.py`: RRF 합산 후 쿼리 키워드가 문서 tags/category에 매칭되면 점수 부스트 (매칭 수 × 0.3)
+- `backend/app/services/document_service.py`: 태그 프리픽스에서 대괄호 제거 → BM25 토크나이저 매칭 개선
+
+**Query Refinement 개선**
+- `ai/rag/query_refiner.py`: 문서 유형 동의어 추가 (보고서/회의록/제안서), 검색 동사 불용어 추가
+
+**LLM 문서 검색 응답 개선**
+- `ai/agents/document_agent.py`: "find" 프롬프트 강화 — Context의 모든 문서를 빠짐없이 나열하도록 지시
+
+**서버 시작 시 자동 재인덱싱**
+- `backend/app/main.py`: `startup_preload()`에서 기존 문서 Qdrant 자동 재인덱싱
+- 프론트엔드: 재인덱싱 버튼 및 일괄 분석 버튼 제거
+
+**커밋 및 배포**
+- GitHub Actions CI/CD로 EC2 자동 배포
+- EC2 서버 재시작 필요 (점수 개선 반영)
+
+### 이슈 및 해결
+
+**이슈 1: 검색 점수 0%/2% 표시**
+- 원인: min-max 정규화에서 최저 점수가 항상 0
+- 해결: max 기반 + 40% 바닥 보정
+
+**이슈 2: 태그 프리픽스 BM25 매칭 실패**
+- 원인: `[태그: ...]` 대괄호가 토크나이저에서 분리됨
+- 해결: 대괄호/라벨 제거, 순수 키워드만 프리픽스
+
+**이슈 3: LLM이 5개 중 3개만 답변**
+- 해결: 프롬프트에 "모든 문서를 빠짐없이 나열" 명시
+
+### 다음 할 일
+- EC2 서버 수동 재시작 (점수 개선 반영 확인)
+- AI 연동 엔드포인트 (승언 문서 Agent 완성 대기)
+- vLLM 백엔드 연동 + sLLM 교체 및 평가
+
+---
+
+## 2026-03-10 (세션 19) — 문서 분석 sLLM 전환 준비 + 성능 비교
+
+### 한 일
+
+**문서 검색/질문 응답 품질 개선**
+- `ai/agents/document_agent.py`:
+  - 검색 결과에 문서 제목 포함: `[문서 제목: {title}]` 태그로 Context 구성 → LLM이 실제 제목을 그대로 사용하도록
+  - "find" 프롬프트 강화: 관련성 판단 기준 명시, 모든 관련 문서 나열, 제목 임의 생성 금지
+  - `_build_sources`에서 content 200자 truncation 제거 → 전체 보기 시 전체 내용 표시
+  - `_call_llm`에 temperature 파라미터 추가: 검색/QA는 0.1(일관성), 생성은 0.7(창의성)
+  - top_k 5 → 10으로 증가 (더 많은 검색 결과 반환)
+- `ai/agents/intent_classifier.py`: 오타 허용 instruction 추가 ("문ㅁ서" → "문서" 등)
+- `ai/agents/preprocessing.py`: 자음 끼인 오타 패턴 추가 ("문ㅁ서", "일ㅈ정", "검ㅅ색" 등)
+- `backend/app/services/document_service.py`: Qdrant 인덱싱 시 태그 프리픽스 제거 (태그는 metadata에만 저장)
+
+**문서 분석 sLLM(Kanana-1.5-8B) 전환 작업**
+- 현재 문서 분석(summary, category, tags)은 GPT API 사용
+- sLLM 전환 시 기능 유지 확인: `DOC_ANALYSIS_MODE` 환경변수로 api/sllm 전환 가능 (이전 세션에서 구현 완료)
+
+**sLLM base 모델 성능 비교 (프롬프트 최적화 전후)**
+- `scripts/compare_doc_analysis.py` — GPT vs sLLM 비교 스크립트 (이전 세션에서 생성)
+- 프롬프트 최적화: few-shot 예시 + 카테고리 분류 기준 명시
+  - `backend/app/services/document_service.py`, `scripts/compare_doc_analysis.py` 양쪽 적용
+- EC2에서 비교 실행 결과:
+  - **최적화 전**: Category 43%, Tags F1 26%, Summary 33%
+  - **최적화 후**: Category **67%** (+24%p), Tags F1 20%, Summary 33%
+  - 14개 중 5개 문서는 vLLM 서버 500 에러 (문서 길이 초과)
+  - 결론: 카테고리 개선됐으나 파인튜닝 필요
+
+**LoRA 파인튜닝 학습 데이터 export**
+- `scripts/export_analysis_training_data.py` 실행 (EC2)
+- DB의 GPT 분석 결과 14건 × 3(프롬프트 변형 증강) = **42건** 생성
+  - Train: 37건, Val: 5건
+  - 출력: `ai/finetuning/data/doc_analysis_train.jsonl`, `doc_analysis_val.jsonl`
+
+**LoRA 학습 config + 학습 스크립트 생성**
+- `ai/finetuning/configs/v2_analysis.yaml` 신규:
+  - 모델: Kanana-1.5-8B, QLoRA 4bit
+  - r=16, alpha=32, epoch=10, lr=2e-4, batch=2
+- `ai/finetuning/train_v2_analysis.py` 신규:
+  - `--mode train/eval/all` 지원
+  - 평가 메트릭: category 일치율, tags F1, summary 유사도
+
+**AI Hub 학습 데이터 검토**
+- `data/training/v2_summary/ai_hub_summary.jsonl` (700건) 확인
+- 형식: 마크다운 요약 (핵심요약 + 주요포인트 + 키워드) → 우리 분석 형식(JSON)과 다름
+- **결정: category는 제외하고 summary + tags만 학습**
+  - AI Hub 데이터에 카테고리 정보 없음
+  - category는 별도 규칙 기반 처리 예정
+- 현재 **보류** — AI Hub 700건 → JSON 변환 스크립트 필요
+
+### 다음 할 일
+- category는 규칙 기반 or 별도 처리 방안 결정
+
+---
+
+## 2026-03-11 (세션 20) — Pipeline→Sheets 내보내기 + DB 커넥션 풀 최적화 + EC2 배포
+
+### 한 일
+
+**화면설계서 PDF 완성**
+- 35페이지째 다크모드 페이지(SC-12-001) 추가
+- `docs/화면설계서_DUDE.pdf` 35페이지 최종 완성
+
+**Pipeline → Google Sheets 내보내기 기능 전체 구현**
+- 기존 ActionItem 기반 Sheets 기능을 Pipeline 프로젝트 기반으로 전면 교체
+- 컬럼 구성: [No, 태스크명, 담당자, 우선순위, 상태, 마감일, D-day, 태그, 설명]
+- 백엔드 수정 파일:
+  - `backend/app/models/google_sheet_tracker.py`: `project_name` 컬럼 추가
+  - `backend/app/services/sheets_service.py`: 전면 재작성 — `export_project_to_sheet()`, `sync_project_to_sheet()`, `_apply_formatting()`, `_calc_dday()`
+  - `backend/app/api/v1/sheets.py`: `POST /export-project`, `POST /{id}/sync` (project_name 기반)
+  - `backend/app/schemas/google_services.py`: `SheetExportProjectRequest`, `SheetSyncRequest` 등 스키마 변경
+  - `backend/alembic/versions/d1f2e3a4b5c6_add_project_name_to_sheet_tracker.py`: 마이그레이션 (RDS 적용 완료)
+- 프론트엔드 수정 파일:
+  - `frontend/src/api/google.js`: `exportProjectToSheet()`, `syncSheet()` API 함수 교체
+  - `frontend/src/store/googleStore.js`: store 액션 교체
+  - `frontend/src/components/schedules/SheetsDashboard.jsx`: 전면 재작성 — DB 프로젝트 + 태스크 그룹핑으로 프로젝트 목록 표시
+  - `frontend/src/components/schedules/ProjectFolderView.jsx`: 프로젝트 카드에 Sheets 내보내기 아이콘 버튼 추가
+  - `frontend/src/pages/SchedulesPage.jsx`: Sheets 탭 "새 시트" 버튼 제거
+
+**DB 커넥션 풀 최적화 (타임아웃 에러 해결)**
+- `backend/app/db/session.py`: 커넥션 풀 설정 추가
+  - `pool_size=10`, `max_overflow=20`, `pool_timeout=30`, `pool_recycle=1800`, `pool_pre_ping=True`
+  - `connect_args`: `command_timeout=30`, `timeout=10`
+- `backend/app/main.py`: startup 이벤트 8개 → 단일 커넥션으로 통합 + 30초 타임아웃
+  - shutdown 이벤트 추가 (`engine.dispose()`)
+  - 문서 재인덱싱에 30초 타임아웃 추가
+
+**EC2 배포 + systemd 설정 수정**
+- `start.sh`에 `PYTHONUNBUFFERED=1` 추가 (로그 즉시 출력)
+- `workflow-agent.service`에 `TimeoutStartSec=300` 추가 (startup 156초 소요 대응)
+- 3개 커밋 push + EC2 배포 완료
+
+**버그 수정**
+- Sheets D-day 계산: `datetime` - `date` 타입 불일치 → `isinstance` 체크 순서 수정
+
+### 이슈 및 해결
+
+**이슈 1: 프론트엔드 405 Method Not Allowed**
+- 원인: Vite 프록시가 EC2(`3.37.118.197:8000`)를 바라보는데 EC2에 새 코드 미배포
+- 해결: EC2에 코드 배포 + 백엔드 재시작
+
+**이슈 2: EC2 서버 startup 무한 대기 + 재시작 루프**
+- 원인: systemd 기본 TimeoutStartSec(90초) < startup 소요시간(156초) → 프로세스 kill → 재시작 반복
+- 해결: `TimeoutStartSec=300`으로 증가 + `PYTHONUNBUFFERED=1`로 로그 확인 가능하게
+
+**이슈 3: Sheets 내보내기 500 에러**
+- 원인: `_calc_dday()`에서 `datetime` - `date` 연산 실패 (`datetime`이 `date` 서브클래스라 isinstance 체크 통과)
+- 해결: `isinstance(due_date, datetime)` 먼저 체크하여 `.date()` 변환
+
+### 다음 할 일
+- category 규칙 기반 처리 방안 결정
+
+---
+
+## 2026-03-12 (세션 21) — 테스트 문서 추가 + 문서 관리 UI 개선 + EC2 서버 안정화
+
+### 한 일
+
+**테스트 문서 추가 생성 (총 7개)**
+- `backend/test_docs/create_long_meetings2.py` 실행: 회의록 3개 추가
+  - MA 실사결과 보고 회의록 (42KB)
+  - 서비스 장애 사후분석 Postmortem (41KB)
+  - 데이터거버넌스 위원회 회의록 (41KB)
+- `backend/test_docs/create_long_contracts2.py` 실행: 계약서 3개 추가
+  - 클라우드 인프라 운영위탁 MSP 계약서 (42KB)
+  - 개인정보 처리위탁 계약서 (40KB)
+  - 기술라이선스 공동연구개발 계약서 KAIST (40KB)
+- `backend/test_docs/create_long_hr2.py` 신규 생성+실행: 인사문서 1개 추가
+  - 2025년 하반기 교육훈련 종합계획서 (56KB) — 10장+부록 3개
+
+**문서 관리 UI 개선**
+- `frontend/src/components/common/DataTable.jsx`: `<th>`에 `whitespace-pre-line` 추가 (줄바꿈 지원)
+- `frontend/src/components/documents/DocumentList.jsx`: '공개범위' → '공개\n범위' (열 헤더 줄 맞춤)
+- `frontend/src/components/documents/DocumentDetail.jsx`: 공개범위(scope) 수정 기능 추가
+  - 기본 정보 영역에 연필 아이콘 클릭 → 회사/팀 드롭다운 선택 → 저장/취소
+  - `updateDocumentScope` API 연동
+- `frontend/src/api/documents.js`: `updateDocumentScope()` API 함수 추가
+
+**백엔드 — scope 업데이트 API**
+- `backend/app/api/v1/documents.py`: `PATCH /{document_id}/scope` 엔드포인트 추가
+  - company/team/personal 값 검증
+  - team 선택 시 user.team 자동 설정
+
+**EC2 서버 안정화 (OOM 해결)**
+- 문제: EC2(3.7GB RAM)에서 startup 시 임베딩 모델 로딩 + Qdrant 재인덱싱이 메모리 초과 → OOM SIGKILL → 무한 재시작 루프
+- 해결:
+  - `backend/app/main.py`: startup_preload를 백그라운드 태스크로 변경 (서버 먼저 기동, 모델 로딩은 3초 후 백그라운드)
+  - 문서 재인덱싱은 startup에서 제외 → `POST /documents/reindex-all`로 수동 실행
+  - EC2에 배포 후 서버 정상 기동 확인 (health 200 OK, login API 정상 응답)
+
+### 이슈 및 해결
+
+**이슈 1: EC2 서버 OOM 반복 재시작**
+- 증상: `SIGKILL (status=9)` + `Failed with result 'signal'` 반복
+- 원인: startup에서 임베딩 모델(ko-sbert-nli) 동기 로딩 → 메모리 1.5G+ 점유 중 요청 처리 불가
+- 해결: 백그라운드 태스크 전환 + 재인덱싱 비활성화
+
+**이슈 2: 로컬 로그인 500 에러**
+- 증상: 로컬 백엔드에서 POST /auth/login 시 Internal Server Error
+- 원인: `.env`의 DATABASE_URL이 AWS RDS를 가리키는데, 로컬 IP가 RDS 보안 그룹에 없음 → DB 연결 타임아웃
+- 해결: EC2에서 테스트 (EC2는 RDS 보안 그룹 허용됨)
+

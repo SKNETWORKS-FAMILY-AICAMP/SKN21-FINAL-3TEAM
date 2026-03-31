@@ -46,6 +46,7 @@ class GoogleTasksService(GoogleBaseService):
             due_date=due_date,
             priority=priority,
             status="pending",
+            created_by=user_id,
         )
         db.add(item)
         await db.flush()
@@ -155,8 +156,28 @@ class GoogleTasksService(GoogleBaseService):
         return {"synced_count": synced}
 
     async def list_tasks(self, db: AsyncSession, user_id: int) -> list:
-        """Action Items 목록 (Google Task 연동 정보 포함)"""
-        result = await db.execute(select(ActionItem))
+        """Action Items 목록 (본인 관련만)"""
+        from sqlalchemy import or_
+
+        try:
+            from app.models.meeting import Meeting
+            my_meeting_ids = select(Meeting.id).where(Meeting.created_by == user_id)
+            query = select(ActionItem).where(
+                or_(
+                    ActionItem.created_by == user_id,
+                    ActionItem.assignee_id == user_id,
+                    ActionItem.meeting_id.in_(my_meeting_ids),
+                )
+            )
+        except Exception:
+            # Meeting 테이블 문제 시 fallback
+            query = select(ActionItem).where(
+                or_(
+                    ActionItem.created_by == user_id,
+                    ActionItem.assignee_id == user_id,
+                )
+            )
+        result = await db.execute(query)
         items = result.scalars().all()
 
         tasks = []
@@ -199,15 +220,23 @@ class GoogleTasksService(GoogleBaseService):
 
     async def pull_status(self, db: AsyncSession, user_id: int) -> dict:
         """Google Tasks 상태 → DB 반영 + 새 Task import"""
-        creds = await self.get_credentials(db, user_id)
-        service = self._build_service(creds)
-        tasklist_id = self._get_or_create_tasklist(service)
+        try:
+            creds = await self.get_credentials(db, user_id)
+        except Exception as e:
+            logger.warning(f"[pull] Google 인증 실패 (user_id={user_id}): {e}")
+            raise HTTPException(status_code=400, detail="Google Tasks가 연결되어 있지 않습니다. 설정에서 Google 연결을 먼저 해주세요.")
+        try:
+            service = self._build_service(creds)
+            tasklist_id = self._get_or_create_tasklist(service)
 
-        result = service.tasks().list(
-            tasklist=tasklist_id, maxResults=100,
-            showCompleted=True, showHidden=True,
-        ).execute()
-        all_google_items = result.get("items", [])
+            result = service.tasks().list(
+                tasklist=tasklist_id, maxResults=100,
+                showCompleted=True, showHidden=True,
+            ).execute()
+            all_google_items = result.get("items", [])
+        except Exception as e:
+            logger.error(f"[pull] Google Tasks API 호출 실패 (user_id={user_id}): {e}")
+            raise HTTPException(status_code=400, detail=f"Google Tasks API 호출 실패: {e}")
 
         # 삭제된 항목 필터링 (deleted 플래그가 있을 수 있음)
         deleted_ids = {t["id"] for t in all_google_items if t.get("deleted", False)}
@@ -218,7 +247,10 @@ class GoogleTasksService(GoogleBaseService):
         logger.info(f"[pull] Google Tasks 전체: {len(all_google_items)}개, 활성: {len(google_tasks)}개")
 
         db_result = await db.execute(
-            select(ActionItem).where(ActionItem.google_task_id.isnot(None))
+            select(ActionItem).where(
+                ActionItem.google_task_id.isnot(None),
+                ActionItem.created_by == user_id,
+            )
         )
         items = db_result.scalars().all()
         existing_ids = {item.google_task_id for item in items}
@@ -259,6 +291,7 @@ class GoogleTasksService(GoogleBaseService):
                     priority="medium",
                     google_task_id=task_id,
                     due_date=due_date,
+                    created_by=user_id,
                 )
                 db.add(new_item)
                 imported += 1
@@ -274,6 +307,5 @@ class GoogleTasksService(GoogleBaseService):
                 "google_active": len(google_tasks),
                 "google_deleted": len(deleted_ids),
                 "db_synced_items": len(items),
-                "db_google_task_ids": [item.google_task_id for item in items],
             },
         }

@@ -1,0 +1,103 @@
+%%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#fff','primaryTextColor':'#333','primaryBorderColor':'#1976d2','lineColor':'#aaa','fontFamily':'Segoe UI, sans-serif','fontSize':'13px'}, 'flowchart':{'curve':'basis','nodeSpacing':25,'rankSpacing':30}}}%%
+flowchart TD
+    START(["사용자 요청\ndoc_generate intent"]) --> RESOLVE
+
+    subgraph PHASE1["Phase 1: 템플릿 타입 결정"]
+        RESOLVE{"template_type\n제공됨?"}
+        RESOLVE -->|Yes| HAS_TYPE["template_type 사용"]
+        RESOLVE -->|No| HAS_ID{"template_id\n있음?"}
+        HAS_ID -->|Yes| DB_CAT["DB에서 category 조회"]
+        HAS_ID -->|No| DETECT["regex 패턴 매칭\n회의록·보고서·제안서·JD"]
+        DB_CAT --> HAS_TYPE
+        DETECT --> HAS_TYPE
+    end
+
+    HAS_TYPE --> TPL_CHECK
+
+    subgraph PHASE2["Phase 2: 템플릿 선택"]
+        TPL_CHECK{"template_id\n지정됨?"}
+        TPL_CHECK -->|Yes| LOAD_TPL["DB에서 템플릿 로드\nparsed_structure + file_path"]
+        TPL_CHECK -->|No| CUSTOM_EXISTS{"커스텀 템플릿\n존재?"}
+        CUSTOM_EXISTS -->|Yes| PICK_UI(["template_pick UI 반환\n시스템 + 커스텀 목록 카드"])
+        CUSTOM_EXISTS -->|No| SYS_TPL["시스템 템플릿 ID 사용"]
+        SYS_TPL --> LOAD_TPL
+    end
+
+    PICK_UI -.->|"사용자 선택"| LOAD_TPL
+    LOAD_TPL --> INPUT_CHECK
+
+    subgraph PHASE3["Phase 3: 입력 검증"]
+        INPUT_CHECK{"user_input\n>= 20자?"}
+        INPUT_CHECK -->|No| CLARIFY_UI(["clarify UI 반환\n필드 가이드 안내"])
+        INPUT_CHECK -->|Yes| IS_SYS{"is_system?"}
+    end
+
+    CLARIFY_UI -.->|"사용자 재입력"| IS_SYS
+
+    subgraph PHASE4["Phase 4: 데이터 생성"]
+        IS_SYS -->|"System 템플릿"| FIELD_SELECT["학습 분포 기반\n필드 6~10개 선택"]
+        IS_SYS -->|"Custom 템플릿"| HAS_FORM{"fields_data\n폼 입력?"}
+        HAS_FORM -->|Yes| SKIP_LLM["sLLM 스킵\n빈 필드만 기본값"]
+        HAS_FORM -->|No| FIELD_SELECT
+        FIELD_SELECT --> SLLM_CALL["sLLM 호출\nDOC_GENERATE_SLLM_PROMPT\nLoRA v3_generate"]
+        SLLM_CALL --> JSON_PARSE["JSON 파싱\n실패 시 user_input 폴백"]
+    end
+
+    SKIP_LLM --> NORMALIZE
+    JSON_PARSE --> NORMALIZE
+
+    subgraph PHASE5["Phase 5: 타입별 정규화"]
+        NORMALIZE{"template_type?"}
+        NORMALIZE -->|meeting_minutes| NORM_MTG["action_items 정규화\ntask·assignee·due_date\n+ decisions 추출 폴백"]
+        NORMALIZE -->|report| NORM_RPT["tasks 정규화\n항목·담당자·기한 매핑"]
+        NORMALIZE -->|proposal| NORM_PRP["schedule 4단계 정규화\n+ budget 항목 정규화"]
+    end
+
+    NORM_MTG --> BUILDER
+    NORM_RPT --> BUILDER
+    NORM_PRP --> BUILDER
+
+    subgraph PHASE6["Phase 6: DOCX 빌드"]
+        BUILDER{"is_system?"}
+        BUILDER -->|Yes| SYS_BUILD["전용 빌더 호출\ncreate_meeting_minutes\ncreate_report\ncreate_proposal"]
+        BUILDER -->|No| PLACEHOLDER["Placeholder 방식\n1. inject_placeholders\n2. fill_docx_with_placeholder"]
+        PLACEHOLDER -->|실패| LLM_FILL["fill_with_llm\nsLLM 셀 매핑\n(현재 비활성)"]
+        LLM_FILL -->|실패| GENERIC["generic builder\n새 DOCX 생성\n(현재 비활성)"]
+    end
+
+    SYS_BUILD --> OUTPUT
+    PLACEHOLDER -->|성공| OUTPUT
+    LLM_FILL -->|성공| OUTPUT
+    GENERIC --> OUTPUT
+
+    OUTPUT(["응답 반환\npreview + docx_path\n+ download_url"])
+
+    subgraph PH_DETAIL["Placeholder 상세"]
+        direction TB
+        PH1["원본 DOCX 스캔\n테이블 Label-Empty 패턴"]
+        PH2["단순 필드: 빈 셀에\n'{{key}}' 삽입"]
+        PH3["배열 필드: Jinja2 루프\n'{%tr for item in key %}'\n'{{item.sub_key}}'"]
+        PH4["docxtpl.render(data)\n원본 서식 100% 보존"]
+        PH1 --> PH2 --> PH3 --> PH4
+    end
+
+    PLACEHOLDER -.->|내부 로직| PH1
+
+    classDef blue fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1
+    classDef orange fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#bf360c
+    classDef green fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+    classDef purple fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px,color:#4a148c
+    classDef teal fill:#e0f7fa,stroke:#00695c,stroke-width:2px,color:#004d40
+    classDef amber fill:#fff8e1,stroke:#f57f17,stroke-width:2px,color:#e65100
+    classDef pink fill:#fce4ec,stroke:#c62828,stroke-width:2px,color:#b71c1c
+    classDef gray fill:#eceff1,stroke:#546e7a,stroke-width:2px,color:#37474f
+    classDef out fill:#fff,stroke:#999,stroke-width:1px,color:#555
+
+    class RESOLVE,HAS_ID,DETECT,DB_CAT,HAS_TYPE blue
+    class TPL_CHECK,CUSTOM_EXISTS,LOAD_TPL,SYS_TPL orange
+    class INPUT_CHECK green
+    class IS_SYS,HAS_FORM,SKIP_LLM,FIELD_SELECT,SLLM_CALL,JSON_PARSE purple
+    class NORMALIZE,NORM_MTG,NORM_RPT,NORM_PRP teal
+    class BUILDER,SYS_BUILD,PLACEHOLDER,LLM_FILL,GENERIC amber
+    class PH1,PH2,PH3,PH4 gray
+    class START,PICK_UI,CLARIFY_UI,OUTPUT out

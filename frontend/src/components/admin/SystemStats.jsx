@@ -10,10 +10,10 @@ const PERIODS = [
 
 const INTENT_COLORS = {
   judgment: '#6E87A0',
+  doc_retrieve: '#A89580',
   doc_search: '#A89580',
   doc_generate: '#A89580',
   doc_summary: '#A89580',
-  doc_qa: '#A89580',
   schedule_add: '#5B9A6F',
   schedule_view: '#5B9A6F',
   general: '#9B8EC4',
@@ -21,10 +21,10 @@ const INTENT_COLORS = {
 
 const INTENT_LABELS = {
   judgment: '판단 질의',
-  doc_search: '문서 검색',
+  doc_retrieve: '문서 검색/조회',
+  doc_search: '문서 검색/조회',
   doc_generate: '문서 생성',
   doc_summary: '문서 요약',
-  doc_qa: '문서 QA',
   schedule_add: '일정 추가',
   schedule_view: '일정 조회',
   general: '일반 질문',
@@ -41,16 +41,16 @@ function timeAgo(timestamp) {
   return `${Math.floor(hours / 24)}일 전`;
 }
 
-export default function SystemStats({ queryLogs = [] }) {
+export default function SystemStats({ queryLogs = [], team = null }) {
   const [period, setPeriod] = useState('daily');
   const [topQueries, setTopQueries] = useState([]);
   const [selectedQuery, setSelectedQuery] = useState(null);
 
   useEffect(() => {
-    getTopQueries(period, 5)
+    getTopQueries(period, 5, team)
       .then((res) => setTopQueries(res.data || []))
       .catch(() => setTopQueries([]));
-  }, [period]);
+  }, [period, team]);
 
   // Top queries → 비율 계산
   const total = topQueries.reduce((sum, q) => sum + q.count, 0) || 1;
@@ -97,7 +97,7 @@ export default function SystemStats({ queryLogs = [] }) {
 
       {selectedQuery && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setSelectedQuery(null)}>
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-xl shadow-xl max-w-md w-full mx-4 overflow-hidden border border-white/40 dark:border-white/10" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-divider">
               <span className="text-sm font-bold text-neutral-main">질의 상세</span>
               <button onClick={() => setSelectedQuery(null)} className="text-neutral-muted hover:text-neutral-main text-lg leading-none">&times;</button>

@@ -30,6 +30,13 @@ const useChatStore = create((set, get) => ({
   setSelectedDocument: (id, name) => set({ selectedDocumentId: id, selectedDocumentName: name }),
   clearSelectedDocument: () => set({ selectedDocumentId: null, selectedDocumentName: null }),
 
+  // 템플릿 선택 (챗봇 문서 생성 시)
+  selectedTemplateId: null,
+  selectedTemplateName: null,
+  selectedTemplateType: null,
+  setSelectedTemplate: (id, name, type) => set({ selectedTemplateId: id, selectedTemplateName: name, selectedTemplateType: type || null }),
+  clearSelectedTemplate: () => set({ selectedTemplateId: null, selectedTemplateName: null, selectedTemplateType: null }),
+
   // 세션 관리
   sessions: [],
   activeSessionId: null,
@@ -50,9 +57,42 @@ const useChatStore = create((set, get) => ({
     }
   },
 
-  // fetchSessions의 alias (ChatPage에서 initSession() 호출)
-  initSession: () => {
-    get().fetchSessions()
+  // 챗봇 페이지 진입 시 초기화:
+  // 기존 세션 목록은 사이드바용으로 불러오되, 항상 새 대화창으로 시작
+  // 세션은 첫 메시지 전송 시 생성 (빈 세션이 목록에 쌓이는 것 방지)
+  initSession: async () => {
+    try {
+      const sessions = await listSessions()
+
+      // "새 대화" 이름의 세션 중 메시지가 없는 빈 세션 정리
+      const newTitleSessions = sessions.filter((s) => s.name === '새 대화')
+      if (newTitleSessions.length > 0) {
+        const msgResults = await Promise.allSettled(
+          newTitleSessions.map((s) => getSessionMessages(s.session_id))
+        )
+        const toDelete = newTitleSessions.filter((s, i) => {
+          const r = msgResults[i]
+          return r.status === 'fulfilled' && r.value.length === 0
+        })
+        if (toDelete.length > 0) {
+          await Promise.allSettled(toDelete.map((s) => deleteSessionAPI(s.session_id)))
+          const deleteIds = new Set(toDelete.map((s) => s.session_id))
+          const cleaned = sessions.filter((s) => !deleteIds.has(s.session_id))
+          set({ sessions: cleaned, activeSessionId: null, messages: [], currentIntent: null, currentStatus: null })
+          return
+        }
+      }
+
+      set({ sessions, activeSessionId: null, messages: [], currentIntent: null, currentStatus: null })
+    } catch (e) {
+      console.error('[ChatStore] 세션 목록 로드 실패:', e)
+    }
+  },
+
+  // 새 대화 시작 (서버 세션 생성 없이 로컬 상태만 초기화)
+  // 실제 세션은 첫 메시지 전송 시 생성됨
+  startNewSession: () => {
+    set({ activeSessionId: null, messages: [], currentIntent: null, currentStatus: null })
   },
 
   // 새 세션 생성 (서버 + 상태)
@@ -164,6 +204,9 @@ const useChatStore = create((set, get) => ({
 
   setCurrentStatus: (status) => set({ currentStatus: status }),
 
+  currentSubType: null,
+  setCurrentSubType: (subType) => set({ currentSubType: subType }),
+
   appendToken: (token) =>
     set((state) => {
       const messages = [...state.messages]
@@ -190,6 +233,16 @@ const useChatStore = create((set, get) => ({
       const last = messages[messages.length - 1]
       if (last && last.role === 'assistant') {
         messages[messages.length - 1] = { ...last, error: errorMsg }
+      }
+      return { messages }
+    }),
+
+  // 특정 메시지의 resultIntent + agentResponse를 업데이트 (일정 등록 완료 등)
+  updateMessageByIndex: (index, patch) =>
+    set((state) => {
+      const messages = [...state.messages]
+      if (messages[index]) {
+        messages[index] = { ...messages[index], ...patch }
       }
       return { messages }
     }),
@@ -235,6 +288,8 @@ const useChatStore = create((set, get) => ({
       pendingQuestion: null,
       selectedDocumentId: null,
       selectedDocumentName: null,
+      selectedTemplateId: null,
+      selectedTemplateName: null,
     }),
 }))
 

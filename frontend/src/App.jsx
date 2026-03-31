@@ -4,6 +4,7 @@ import useAuthStore from './store/authStore';
 import useUIStore from './store/uiStore';
 import Layout from './components/common/Layout';
 import FontSizeControl from './components/common/FontSizeControl';
+import Toast from './components/common/Toast';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ChatPage from './pages/ChatPage';
@@ -12,6 +13,10 @@ import SchedulesPage from './pages/SchedulesPage';
 import AdminPage from './pages/AdminPage';
 import DocumentGeneratePage from './pages/DocumentGeneratePage';
 import MyPage from './pages/MyPage';
+import TasksPage from './pages/TasksPage';
+import MeetingsPage from './pages/MeetingsPage';
+import MessagesPage from './pages/MessagesPage';
+import ApprovalsPage from './pages/ApprovalsPage';
 import NavPreviewPage from './pages/NavPreviewPage';
 
 function ConditionalFontSizeControl() {
@@ -63,6 +68,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <Toast />
       <ConditionalFontSizeControl />
       <Routes>
         {/* 비로그인 전용 (로그인 상태면 대시보드로) */}
@@ -79,6 +85,10 @@ export default function App() {
             <Route path="/document-generate" element={<DocumentGeneratePage />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/schedules" element={<SchedulesPage />} />
+            <Route path="/tasks" element={<TasksPage />} />
+            <Route path="/meetings" element={<MeetingsPage />} />
+            <Route path="/messages" element={<MessagesPage />} />
+            <Route path="/approvals" element={<ApprovalsPage />} />
             <Route path="/mypage" element={<MyPage />} />
             <Route element={<AdminRoute />}>
               <Route path="/admin" element={<AdminPage />} />

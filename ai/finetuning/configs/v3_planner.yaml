@@ -1,0 +1,49 @@
+# LoRA v3: Task Planner 전용 어댑터
+# 베이스 모델: Kanana-1.5-8B (v3.1 비교 평가 결과 선정)
+# 목적: 사용자 요청 → 실행 계획 JSON (intent 순서 + 의존성)
+model:
+  base_model: "kakaocorp/kanana-1.5-8b-instruct-2505"
+  quantization: "4bit"  # QLoRA
+
+lora:
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  target_modules: ["q_proj", "v_proj", "k_proj", "o_proj"]
+
+training:
+  num_epochs: 3
+  batch_size: 4
+  gradient_accumulation_steps: 4
+  learning_rate: 2e-4
+  warmup_ratio: 0.1
+  max_length: 1024  # planner 출력은 짧음 (JSON plan)
+  early_stopping_patience: 3
+
+data:
+  train_path: "data/training/v3_planner/train.jsonl"
+  eval_path: "data/training/v3_planner/eval.jsonl"
+  total_target: 800
+
+  # 카테고리 분포 (Kanana 약점 보강)
+  distribution:
+    single_step: 200      # 25% — general intent 빈 plan 교정 포함
+    sequential: 200       # 25% — multi-step 축소 방지
+    parallel: 150         # 19% — 병렬 처리 학습
+    complex: 200          # 25% — 3-4단계 복합 계획
+    edge_case: 50         # 6%  — 오타, 초성, 모호한 입력
+
+  # Kanana 약점 보강 포인트
+  focus_areas:
+    - "general intent에 빈 plan 대신 step 1개 출력"
+    - "2개 이상 요청 시 각각 별도 step으로 분리"
+    - "judgment vs doc_retrieve 경계 명확화"
+    - "'~규정 알려줘'=judgment, '~문서 찾아줘'=doc_retrieve"
+
+output:
+  output_dir: "outputs/v3_planner"
+  save_steps: 100
+
+evaluation:
+  usable_rate: 0.98       # JSON 유효 + plan 비어있지 않음
+  planning_score: 0.90    # v3.1 가중 점수

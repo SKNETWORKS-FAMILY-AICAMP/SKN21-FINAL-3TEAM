@@ -36,6 +36,10 @@ const useGoogleStore = create((set, get) => ({
   sheetsLoading: false,
   sheetsError: null,
 
+  sheetPreview: null,
+  sheetPreviewLoading: false,
+  sheetPreviewError: null,
+
   calendarEvents: [],
   calendarLoading: false,
   calendarError: null,
@@ -154,7 +158,9 @@ const useGoogleStore = create((set, get) => ({
     try {
       await googleApi.pullTaskStatus()
       await get().fetchTasks()
+      set({ tasksLoading: false, tasksError: null })
     } catch (err) {
+      console.error('[pullTasks] 에러:', err?.response?.status, err?.response?.data, err?.message)
       set({ tasksLoading: false, tasksError: err.response?.data?.detail || 'Tasks Pull 실패' })
     }
   },
@@ -170,24 +176,62 @@ const useGoogleStore = create((set, get) => ({
     }
   },
 
-  createSheet: async (title, meetingId = null) => {
+  exportProjectToSheet: async (projectName, title = null, options = {}) => {
     set({ sheetsLoading: true, sheetsError: null })
     try {
-      const { data } = await googleApi.createSheet(title, meetingId)
+      const { data } = await googleApi.exportProjectToSheet(projectName, title, options)
       await get().fetchSheets()
       return data
     } catch (err) {
-      set({ sheetsLoading: false, sheetsError: err.response?.data?.detail || 'Sheets 생성 실패' })
+      set({ sheetsLoading: false, sheetsError: err.response?.data?.detail || 'Sheets 내보내기 실패' })
       throw err
     }
   },
 
-  syncSheet: async (spreadsheetId, meetingId = null) => {
+  deleteSheet: async (spreadsheetId) => {
     try {
-      await googleApi.syncSheet(spreadsheetId, meetingId)
+      await googleApi.deleteSheet(spreadsheetId)
+      set((state) => ({
+        sheets: state.sheets.filter((s) => s.spreadsheet_id !== spreadsheetId),
+      }))
+    } catch (err) {
+      set({ sheetsError: err.response?.data?.detail || 'Sheets 삭제 실패' })
+      throw err
+    }
+  },
+
+  syncSheet: async (spreadsheetId, projectName) => {
+    try {
+      await googleApi.syncSheet(spreadsheetId, projectName)
     } catch (err) {
       set({ sheetsError: err.response?.data?.detail || 'Sheets 동기화 실패' })
     }
+  },
+
+  fetchSheetPreview: async (spreadsheetId, sheetName = 'Sheet1') => {
+    set({ sheetPreviewLoading: true, sheetPreviewError: null })
+    try {
+      const { data } = await googleApi.readSheetData(spreadsheetId, sheetName)
+      set({ sheetPreview: { spreadsheetId, ...data }, sheetPreviewLoading: false })
+      return data
+    } catch (err) {
+      set({ sheetPreviewLoading: false, sheetPreviewError: err.response?.data?.detail || '시트 데이터 조회 실패' })
+      throw err
+    }
+  },
+
+  updateSheetData: async (spreadsheetId, sheetName, updates) => {
+    try {
+      const { data } = await googleApi.updateSheetData(spreadsheetId, sheetName, updates)
+      return data
+    } catch (err) {
+      set({ sheetPreviewError: err.response?.data?.detail || '시트 업데이트 실패' })
+      throw err
+    }
+  },
+
+  clearSheetPreview: () => {
+    set({ sheetPreview: null, sheetPreviewLoading: false, sheetPreviewError: null })
   },
 
   // ── Google Calendar ──

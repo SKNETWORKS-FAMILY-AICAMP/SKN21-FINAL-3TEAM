@@ -1,0 +1,2350 @@
+{
+  "total_records": 149,
+  "flagged_count": 147,
+  "flagged_items": [
+    {
+      "index": 0,
+      "line": 1,
+      "priority": "medium",
+      "question": "오태영(과장, QA팀)이 VPN + OTP + 비밀번호로 원격 접속하려 합니다. 절차가 맞나요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 1
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "line": 2,
+      "priority": "medium",
+      "question": "서준호(대리, 보안팀)이 회사 규정과 지침을 성실히 준수하려 합니다. 의무인가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 2
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "line": 3,
+      "priority": "medium",
+      "question": "장동혁(대리, 디자인팀)이 피싱 의심 이메일을 받았는데, 확실하지 않아 보고를 망설이고 있습니다. 보고해야 하나요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제28조 (보안사고 예방 및 대응)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 3
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "line": 4,
+      "priority": "medium",
+      "question": "오태영(과장, 개발팀)이 분기별 접근 권한 정기 검토를 실시하려 합니다. 필수인가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 4
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "line": 5,
+      "priority": "medium",
+      "question": "동료가 물어봐서 확인하려고요. 이 사내규정의 목적이 뭔가요?",
+      "result": "conditional",
+      "confidence": 0.72,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 18% — 인용 내용이 원문과 다를 수 있음",
+          "line": 5
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "line": 6,
+      "priority": "medium",
+      "question": "배수지(대리, 경영지원팀)이 서버 CPU 사용률 90% 초과 알림을 받고 즉시 대응하려 합니다. 맞나요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제22조 (성능 및 장애관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 6
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "line": 7,
+      "priority": "medium",
+      "question": "서준호(대리, 경영지원팀)이 배포 자동화를 위해 공용 서비스 계정을 생성하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 10% — 인용 내용이 원문과 다를 수 있음",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "line": 8,
+      "priority": "medium",
+      "question": "이서연(신입사원, 데이터팀)이 오픈소스 커뮤니티에서 개인 시간에 활동하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 8
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "line": 9,
+      "priority": "medium",
+      "question": "회사에서 직장 내 괴롭힘이 발생하면 어떻게 하나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 9
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "line": 10,
+      "priority": "medium",
+      "question": "오태영(대리, 기획팀)의 부서에 정보보호 담당자를 지정하려 합니다. 필수인가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 10
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "line": 11,
+      "priority": "medium",
+      "question": "나은정(팀장, 디자인팀)이 백업 데이터를 암호화 없이 외부 클라우드에 보관하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제23조 (백업 및 복구관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 11
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "line": 12,
+      "priority": "medium",
+      "question": "오태영(대리, 인사팀)이 올해 전 직원 대상 정보보호 교육을 1회 실시하려 합니다. 충분한가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제29조 (정보보호 교육)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 12
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "line": 13,
+      "priority": "medium",
+      "question": "임재현(신입사원, 디자인팀)이 신규 입사 2개월이 지났는데 아직 정보보호 교육을 이수하지 않았습니다. 문제없나요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제29조 (정보보호 교육)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 13
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "line": 14,
+      "priority": "medium",
+      "question": "동료가 물어봐서 확인하려고요. 회사 노트북으로 개인 프로젝트를 해도 되나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 14
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "line": 15,
+      "priority": "medium",
+      "question": "류승민(대리, QA팀)이 규정 위반으로 인사위원회 의결을 거쳐 징계를 받게 됩니다. 절차가 맞나요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제30조 (위반 시 제재 및 시행)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 15
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "line": 16,
+      "priority": "medium",
+      "question": "다른 회사에서는 다를 수 있지만, 우리 회사 기준으로 권한 검토는 얼마나 자주 하나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 16
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "line": 17,
+      "priority": "medium",
+      "question": "김민수(신입사원, 데이터팀)이 시크릿 스캐닝 도구를 적용하여 민감 정보 커밋을 방지하려 합니다. 적절한가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제26조 (소스코드 관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 17
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "line": 18,
+      "priority": "medium",
+      "question": "배수지(대리, 경영지원팀)이 개인정보 유출 사고 발생 후 1주일 뒤에 신고하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제28조 (보안사고 예방 및 대응)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 18
+        }
+      ]
+    },
+    {
+      "index": 18,
+      "line": 19,
+      "priority": "medium",
+      "question": "다른 회사에서는 다를 수 있지만, 우리 회사 기준으로 회사 코드를 USB에 담아서 집에서 작업하면 문제 되나요?",
+      "result": "no",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 19
+        }
+      ]
+    },
+    {
+      "index": 19,
+      "line": 20,
+      "priority": "medium",
+      "question": "서준호(신입사원, 데이터팀)이 팀원들과 공용 서버 계정을 공유하여 사용하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 20
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "line": 21,
+      "priority": "medium",
+      "question": "이번에 처음 알았는데, 신입인데 이 규정이 저한테도 적용되는 건가요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 7% — 인용 내용이 원문과 다를 수 있음",
+          "line": 21
+        }
+      ]
+    },
+    {
+      "index": 21,
+      "line": 22,
+      "priority": "medium",
+      "question": "장동혁(부장, 보안팀)이 오픈소스 커뮤니티에서 개인 시간에 활동하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 22
+        }
+      ]
+    },
+    {
+      "index": 22,
+      "line": 23,
+      "priority": "medium",
+      "question": "임재현(부장, 기획팀)이 NTP로 시스템 시간을 동기화하려 합니다. 필수인가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제24조 (로그 및 접속기록 관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 23
+        }
+      ]
+    },
+    {
+      "index": 23,
+      "line": 24,
+      "priority": "medium",
+      "question": "급한 건은 아닌데, 로그에는 어떤 정보가 포함되나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제24조 (로그 및 접속기록 관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 24
+        }
+      ]
+    },
+    {
+      "index": 24,
+      "line": 25,
+      "priority": "medium",
+      "question": "송미래(부장, 기획팀)이 백업 데이터를 원본 데이터와 분리된 장소에 보관하려 합니다. 맞나요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제23조 (백업 및 복구관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 25
+        }
+      ]
+    },
+    {
+      "index": 25,
+      "line": 26,
+      "priority": "medium",
+      "question": "징계는 어떤 절차로 이루어지나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제30조 (위반 시 제재 및 시행)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 26
+        }
+      ]
+    },
+    {
+      "index": 26,
+      "line": 27,
+      "priority": "medium",
+      "question": "오픈소스 라이브러리의 알려진 취약점을 방치하면 어떻게 되나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제27조 (오픈소스 사용 및 기여 정책)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 27
+        }
+      ]
+    },
+    {
+      "index": 27,
+      "line": 28,
+      "priority": "medium",
+      "question": "정하준(신입사원, QA팀)이 회사 자체 프로젝트를 오픈소스로 공개하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제27조 (오픈소스 사용 및 기여 정책)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 28
+        }
+      ]
+    },
+    {
+      "index": 28,
+      "line": 29,
+      "priority": "medium",
+      "question": "송미래(대리, 기획팀)이 서버 CPU 사용률 90% 초과 알림을 받고 즉시 대응하려 합니다. 맞나요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제22조 (성능 및 장애관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 29
+        }
+      ]
+    },
+    {
+      "index": 29,
+      "line": 30,
+      "priority": "medium",
+      "question": "배수지(팀장, 디자인팀)이 규정 위반으로 인사위원회 의결을 거쳐 징계를 받게 됩니다. 절차가 맞나요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제30조 (위반 시 제재 및 시행)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 30
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "line": 31,
+      "priority": "medium",
+      "question": "김민수(과장, 인사팀)이 회사 명의로 외부 오픈소스에 코드를 기여하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제27조 (오픈소스 사용 및 기여 정책)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 31
+        }
+      ]
+    },
+    {
+      "index": 31,
+      "line": 32,
+      "priority": "medium",
+      "question": "한소희(팀장, QA팀)이 배포 자동화를 위해 공용 서비스 계정을 생성하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 10% — 인용 내용이 원문과 다를 수 있음",
+          "line": 32
+        }
+      ]
+    },
+    {
+      "index": 32,
+      "line": 33,
+      "priority": "medium",
+      "question": "한소희(신입사원, 기획팀)이 업무 참고용으로 사내 기술 문서를 개인 노트에 요약 정리하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 33
+        }
+      ]
+    },
+    {
+      "index": 33,
+      "line": 34,
+      "priority": "medium",
+      "question": "임재현(대리, 디자인팀)이 업무 파일을 개인 구글 드라이브에 업로드하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제20조 (인터넷 접속 통제)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 34
+        }
+      ]
+    },
+    {
+      "index": 34,
+      "line": 35,
+      "priority": "medium",
+      "question": "류승민(팀장, 경영지원팀)이 회사 승인 없이 주말에 프리랜서 개발 일을 하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 35
+        }
+      ]
+    },
+    {
+      "index": 35,
+      "line": 36,
+      "priority": "medium",
+      "question": "동료가 물어봐서 확인하려고요. 수습기간과 인턴의 차이는 뭔가요?",
+      "result": "conditional",
+      "confidence": 0.72,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 11% — 인용 내용이 원문과 다를 수 있음",
+          "line": 36
+        }
+      ]
+    },
+    {
+      "index": 36,
+      "line": 37,
+      "priority": "medium",
+      "question": "윤채원(과장, 기획팀)이 부서 이동 후 이전 부서 시스템에 접근하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 37
+        }
+      ]
+    },
+    {
+      "index": 37,
+      "line": 38,
+      "priority": "medium",
+      "question": "집에서 개인 Wi-Fi로 VPN 접속하면 되나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 38
+        }
+      ]
+    },
+    {
+      "index": 38,
+      "line": 39,
+      "priority": "medium",
+      "question": "박지훈(부장, 보안팀)이 심각한 장애로 긴급히 서버 설정을 변경해야 합니다. 사전 승인 없이 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제21조 (변경관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 39
+        }
+      ]
+    },
+    {
+      "index": 39,
+      "line": 40,
+      "priority": "medium",
+      "question": "나은정(과장, 경영지원팀)이 고객 개인정보 데이터를 '극비' 등급으로 분류하려 합니다. 적절한가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 40
+        }
+      ]
+    },
+    {
+      "index": 40,
+      "line": 41,
+      "priority": "medium",
+      "question": "곽하영(부장, 개발팀)이 운영 DB에 직접 SQL 클라이언트로 접속하여 데이터를 조회하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 41
+        }
+      ]
+    },
+    {
+      "index": 41,
+      "line": 42,
+      "priority": "medium",
+      "question": "장동혁(대리, 경영지원팀)이 긴급 버그 수정 시 리뷰 1명만 받고 머지하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제26조 (소스코드 관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 42
+        }
+      ]
+    },
+    {
+      "index": 42,
+      "line": 43,
+      "priority": "medium",
+      "question": "오픈소스로 공개할 코드도 정보자산인가요?",
+      "result": "conditional",
+      "confidence": 0.72,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 43
+        }
+      ]
+    },
+    {
+      "index": 43,
+      "line": 44,
+      "priority": "medium",
+      "question": "정하준(신입사원, 보안팀)이 퇴직 후 1년 뒤에 이전 회사 소스코드 구조를 기술 블로그에 공유하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 44
+        }
+      ]
+    },
+    {
+      "index": 44,
+      "line": 45,
+      "priority": "medium",
+      "question": "류승민(과장, 기획팀)이 회사 소유 외장하드를 승인 없이 집에 가져가려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 45
+        }
+      ]
+    },
+    {
+      "index": 45,
+      "line": 46,
+      "priority": "medium",
+      "question": "동료가 물어봐서 확인하려고요. 사내규정에서 '정보보호 관리체계'는 무슨 뜻인가요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 46
+        }
+      ]
+    },
+    {
+      "index": 46,
+      "line": 47,
+      "priority": "medium",
+      "question": "한소희(팀장, 데이터팀)이 회사 소개 브로셔를 외부에 배포하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 47
+        }
+      ]
+    },
+    {
+      "index": 47,
+      "line": 48,
+      "priority": "medium",
+      "question": "곽하영(부장, 경영지원팀)이 기본 근무시간(10시~19시)에 맞춰 출근하려 합니다. 문제없나요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 48
+        }
+      ]
+    },
+    {
+      "index": 48,
+      "line": 49,
+      "priority": "medium",
+      "question": "박지훈(팀장, 기획팀)이 불필요한 포트를 방화벽에서 차단하려 합니다. 맞나요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 49
+        }
+      ]
+    },
+    {
+      "index": 49,
+      "line": 50,
+      "priority": "medium",
+      "question": "한소희(팀장, QA팀)이 개발 환경의 설정만 변경하려 합니다. 변경관리 절차가 필요한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제21조 (변경관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 50
+        }
+      ]
+    },
+    {
+      "index": 50,
+      "line": 51,
+      "priority": "medium",
+      "question": "최유진(부장, QA팀)이 오픈소스 커뮤니티에서 개인 시간에 활동하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 51
+        }
+      ]
+    },
+    {
+      "index": 51,
+      "line": 52,
+      "priority": "medium",
+      "question": "이번에 처음 알았는데, 회사에서 P2P나 토렌트 사용이 가능한가요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제20조 (인터넷 접속 통제)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 52
+        }
+      ]
+    },
+    {
+      "index": 52,
+      "line": 53,
+      "priority": "medium",
+      "question": "임재현(대리, QA팀)이 회사 자체 프로젝트를 오픈소스로 공개하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제27조 (오픈소스 사용 및 기여 정책)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 53
+        }
+      ]
+    },
+    {
+      "index": 54,
+      "line": 55,
+      "priority": "medium",
+      "question": "팀장님이 알아보라고 했는데, 회사에서 자체 오픈소스 프로젝트를 공개하려면 어떻게 하나요?",
+      "result": "conditional",
+      "confidence": 0.72,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제27조 (오픈소스 사용 및 기여 정책)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 55
+        }
+      ]
+    },
+    {
+      "index": 55,
+      "line": 56,
+      "priority": "medium",
+      "question": "김민수(신입사원, 데이터팀)이 운영 서버에서 직접 코드를 수정하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제25조 (소프트웨어 개발 보안)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 56
+        }
+      ]
+    },
+    {
+      "index": 56,
+      "line": 57,
+      "priority": "medium",
+      "question": "곽하영(과장, 기획팀)이 긴급 버그 수정 시 리뷰 1명만 받고 머지하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제26조 (소스코드 관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 57
+        }
+      ]
+    },
+    {
+      "index": 57,
+      "line": 58,
+      "priority": "medium",
+      "question": "규정에 보면 PR 없이 main 브랜치에 직접 푸시해도 되나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제26조 (소스코드 관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 58
+        }
+      ]
+    },
+    {
+      "index": 58,
+      "line": 59,
+      "priority": "medium",
+      "question": "한소희(과장, QA팀)의 수습 기간을 6개월로 설정하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 59
+        }
+      ]
+    },
+    {
+      "index": 59,
+      "line": 60,
+      "priority": "medium",
+      "question": "급한 건은 아닌데, 신입인데 정보보호 교육을 언제까지 들어야 하나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제29조 (정보보호 교육)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 60
+        }
+      ]
+    },
+    {
+      "index": 61,
+      "line": 62,
+      "priority": "medium",
+      "question": "배수지(과장, 디자인팀)이 VPN 접속 시 비밀번호만으로 인증하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 62
+        }
+      ]
+    },
+    {
+      "index": 62,
+      "line": 63,
+      "priority": "medium",
+      "question": "류승민(대리, 보안팀)이 정보보호 정책을 3년간 검토하지 않고 유지하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 63
+        }
+      ]
+    },
+    {
+      "index": 63,
+      "line": 64,
+      "priority": "medium",
+      "question": "류승민(신입사원, 인사팀)이 업무 참고용으로 사내 기술 문서를 개인 노트에 요약 정리하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 64
+        }
+      ]
+    },
+    {
+      "index": 64,
+      "line": 65,
+      "priority": "medium",
+      "question": "곽하영(팀장, 개발팀)이 부서 이동 후 이전 부서 시스템에 접근하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 65
+        }
+      ]
+    },
+    {
+      "index": 65,
+      "line": 66,
+      "priority": "medium",
+      "question": "팀장님이 알아보라고 했는데, 퇴사한 동료의 계정이 아직 살아있는 것 같은데 어떡하죠?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 66
+        }
+      ]
+    },
+    {
+      "index": 66,
+      "line": 67,
+      "priority": "medium",
+      "question": "이서연(대리, QA팀)이 외부 협력업체 직원의 규정 위반에 대해 출입 제한 조치를 취하려 합니다. 가능한가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제30조 (위반 시 제재 및 시행)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 67
+        }
+      ]
+    },
+    {
+      "index": 67,
+      "line": 68,
+      "priority": "medium",
+      "question": "다른 회사에서는 다를 수 있지만, 우리 회사 기준으로 정보보호위원회 구성원은 누구인가요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 68
+        }
+      ]
+    },
+    {
+      "index": 68,
+      "line": 69,
+      "priority": "medium",
+      "question": "한소희(부장, 데이터팀)이 경미한 규정 위반에 대해 바로 정직 처분을 내리려 합니다. 적절한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제30조 (위반 시 제재 및 시행)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 69
+        }
+      ]
+    },
+    {
+      "index": 69,
+      "line": 70,
+      "priority": "medium",
+      "question": "정하준(부장, 기획팀)이 개발 환경의 설정만 변경하려 합니다. 변경관리 절차가 필요한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제21조 (변경관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 70
+        }
+      ]
+    },
+    {
+      "index": 70,
+      "line": 71,
+      "priority": "medium",
+      "question": "김민수(팀장, 데이터팀)이 1년 근속 후 연차 15일을 신청하려 합니다. 가능한가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 71
+        }
+      ]
+    },
+    {
+      "index": 71,
+      "line": 72,
+      "priority": "medium",
+      "question": "서준호(과장, 데이터팀)이 배포 자동화를 위해 공용 서비스 계정을 생성하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 10% — 인용 내용이 원문과 다를 수 있음",
+          "line": 72
+        }
+      ]
+    },
+    {
+      "index": 72,
+      "line": 73,
+      "priority": "medium",
+      "question": "류승민(대리, 기획팀)이 서버 CPU 사용률 90% 초과 알림을 받고 즉시 대응하려 합니다. 맞나요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제22조 (성능 및 장애관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 73
+        }
+      ]
+    },
+    {
+      "index": 73,
+      "line": 74,
+      "priority": "medium",
+      "question": "최유진(대리, QA팀)이 파견 근무자에게 정보보호 교육을 실시해야 하나요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제29조 (정보보호 교육)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 74
+        }
+      ]
+    },
+    {
+      "index": 74,
+      "line": 75,
+      "priority": "medium",
+      "question": "최유진(팀장, 개발팀)이 불필요한 포트를 방화벽에서 차단하려 합니다. 맞나요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 75
+        }
+      ]
+    },
+    {
+      "index": 75,
+      "line": 76,
+      "priority": "medium",
+      "question": "정하준(대리, 기획팀)이 올해 DR 훈련을 실시하지 않으려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제23조 (백업 및 복구관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 76
+        }
+      ]
+    },
+    {
+      "index": 76,
+      "line": 77,
+      "priority": "medium",
+      "question": "동료가 물어봐서 확인하려고요. 개인정보 유출 시 신고 기한이 어떻게 되나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제28조 (보안사고 예방 및 대응)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 77
+        }
+      ]
+    },
+    {
+      "index": 77,
+      "line": 78,
+      "priority": "medium",
+      "question": "규정에 보면 정보보호 교육은 의무인가요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제29조 (정보보호 교육)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 78
+        }
+      ]
+    },
+    {
+      "index": 78,
+      "line": 79,
+      "priority": "medium",
+      "question": "배수지(신입사원, 개발팀)이 CISO 승인 없이 방화벽 정책을 변경하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 79
+        }
+      ]
+    },
+    {
+      "index": 79,
+      "line": 80,
+      "priority": "medium",
+      "question": "서준호(부장, 디자인팀)이 긴급 보안 패치를 바로 운영에 배포하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제25조 (소프트웨어 개발 보안)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 80
+        }
+      ]
+    },
+    {
+      "index": 80,
+      "line": 81,
+      "priority": "medium",
+      "question": "정하준(대리, 개발팀)이 DBA로서 DB 클라이언트를 통해 직접 DB에 접근하려 합니다. 가능한가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 81
+        }
+      ]
+    },
+    {
+      "index": 82,
+      "line": 83,
+      "priority": "medium",
+      "question": "동료가 물어봐서 확인하려고요. 보안사고가 발생하면 어떻게 대응해야 하나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제28조 (보안사고 예방 및 대응)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 83
+        }
+      ]
+    },
+    {
+      "index": 83,
+      "line": 84,
+      "priority": "medium",
+      "question": "박지훈(팀장, 데이터팀)과 3년짜리 기간제 근로계약을 체결하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 84
+        }
+      ]
+    },
+    {
+      "index": 84,
+      "line": 85,
+      "priority": "medium",
+      "question": "김민수(팀장, 개발팀)이 야간 작업(22시~02시)을 계획하고 있습니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 11% — 인용 내용이 원문과 다를 수 있음",
+          "line": 85
+        }
+      ]
+    },
+    {
+      "index": 85,
+      "line": 86,
+      "priority": "medium",
+      "question": "김민수(대리, QA팀)이 경조사 휴가를 신청하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 12% — 인용 내용이 원문과 다를 수 있음",
+          "line": 86
+        }
+      ]
+    },
+    {
+      "index": 86,
+      "line": 87,
+      "priority": "medium",
+      "question": "서준호(부장, 경영지원팀)이 지원자의 이력서만으로 서류심사 없이 바로 임원면접을 진행하려 합니다. 되나요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 87
+        }
+      ]
+    },
+    {
+      "index": 87,
+      "line": 88,
+      "priority": "medium",
+      "question": "배수지(부장, 경영지원팀)이 GPL 라이선스 라이브러리를 법무팀 검토 없이 프로젝트에 도입하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제27조 (오픈소스 사용 및 기여 정책)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 88
+        }
+      ]
+    },
+    {
+      "index": 88,
+      "line": 89,
+      "priority": "medium",
+      "question": "한소희(부장, QA팀)이 시스템 로그에 접속 일시, 접속자 ID, IP, 수행 업무를 기록하려 합니다. 적절한가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제24조 (로그 및 접속기록 관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 89
+        }
+      ]
+    },
+    {
+      "index": 89,
+      "line": 90,
+      "priority": "medium",
+      "question": "윤채원(대리, 보안팀)이 승인 없이 운영 서버 설정을 변경하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제21조 (변경관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 90
+        }
+      ]
+    },
+    {
+      "index": 90,
+      "line": 91,
+      "priority": "medium",
+      "question": "임재현(팀장, 경영지원팀)이 규정 위반으로 인사위원회 의결을 거쳐 징계를 받게 됩니다. 절차가 맞나요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제30조 (위반 시 제재 및 시행)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 91
+        }
+      ]
+    },
+    {
+      "index": 91,
+      "line": 92,
+      "priority": "medium",
+      "question": "김민수(부장, 데이터팀)이 새 서버를 도입했는데 분류 등급을 지정하지 않았습니다. 문제없나요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 11% — 인용 내용이 원문과 다를 수 있음",
+          "line": 92
+        }
+      ]
+    },
+    {
+      "index": 92,
+      "line": 93,
+      "priority": "medium",
+      "question": "정하준(팀장, 개발팀)이 NTP로 시스템 시간을 동기화하려 합니다. 필수인가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제24조 (로그 및 접속기록 관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 93
+        }
+      ]
+    },
+    {
+      "index": 93,
+      "line": 94,
+      "priority": "medium",
+      "question": "박지훈(부장, QA팀)이 채용 면접 시 코딩테스트를 포함한 기술면접을 진행하려 합니다. 가능한가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 94
+        }
+      ]
+    },
+    {
+      "index": 94,
+      "line": 95,
+      "priority": "medium",
+      "question": "임재현(팀장, 보안팀)이 VPN 없이 집에서 회사 서버에 SSH로 직접 접속하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 95
+        }
+      ]
+    },
+    {
+      "index": 95,
+      "line": 96,
+      "priority": "medium",
+      "question": "서준호(대리, QA팀)이 정보보호 정책을 올해 갱신하려 합니다. 필요한가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 96
+        }
+      ]
+    },
+    {
+      "index": 96,
+      "line": 97,
+      "priority": "medium",
+      "question": "배수지(대리, QA팀)이 교육 실시 현황(일시, 내용, 참석자, 평가결과)을 기록하려 합니다. 필수인가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제29조 (정보보호 교육)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 97
+        }
+      ]
+    },
+    {
+      "index": 97,
+      "line": 98,
+      "priority": "medium",
+      "question": "정하준(신입사원, 보안팀)이 웹 필터링 솔루션의 접속 로그를 관리하려 합니다. 필수인가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제20조 (인터넷 접속 통제)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 98
+        }
+      ]
+    },
+    {
+      "index": 98,
+      "line": 99,
+      "priority": "medium",
+      "question": "곽하영(부장, 보안팀)이 회사 VPN으로 접속하여 자택에서 재택근무를 하려 합니다. 가능한가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 99
+        }
+      ]
+    },
+    {
+      "index": 99,
+      "line": 100,
+      "priority": "medium",
+      "question": "박지훈(부장, 개발팀)이 연 1회 모의 침해사고 훈련을 계획하고 있습니다. 필수인가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제28조 (보안사고 예방 및 대응)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 100
+        }
+      ]
+    },
+    {
+      "index": 100,
+      "line": 101,
+      "priority": "medium",
+      "question": "윤채원(대리, 개발팀)이 팀원에게 주 50시간 근무를 지시하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 101
+        }
+      ]
+    },
+    {
+      "index": 101,
+      "line": 102,
+      "priority": "medium",
+      "question": "최유진(대리, 개발팀)이 테스트 서버의 백업 주기를 월 1회로 설정하려 합니다. 적절한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제23조 (백업 및 복구관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 102
+        }
+      ]
+    },
+    {
+      "index": 102,
+      "line": 103,
+      "priority": "medium",
+      "question": "환경변수로 관리하는 API 키가 .env 파일로 커밋되면 문제인가요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제26조 (소스코드 관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 103
+        }
+      ]
+    },
+    {
+      "index": 103,
+      "line": 104,
+      "priority": "medium",
+      "question": "급한 건은 아닌데, 변경관리가 뭔가요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 11% — 인용 내용이 원문과 다를 수 있음",
+          "line": 104
+        }
+      ]
+    },
+    {
+      "index": 104,
+      "line": 105,
+      "priority": "medium",
+      "question": "테스트 환경에서 실제 고객 데이터를 쓸 수 있나요?",
+      "result": "no",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 105
+        }
+      ]
+    },
+    {
+      "index": 105,
+      "line": 106,
+      "priority": "medium",
+      "question": "임재현(대리, QA팀)이 GPL 라이선스 라이브러리를 법무팀 검토 없이 프로젝트에 도입하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제27조 (오픈소스 사용 및 기여 정책)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 106
+        }
+      ]
+    },
+    {
+      "index": 106,
+      "line": 107,
+      "priority": "medium",
+      "question": "브랜치 전략은 규정에 정해져 있나요?",
+      "result": "no",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제26조 (소스코드 관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 107
+        }
+      ]
+    },
+    {
+      "index": 107,
+      "line": 108,
+      "priority": "medium",
+      "question": "이번에 처음 알았는데, 개인정보 유출 시 신고 기한이 어떻게 되나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제28조 (보안사고 예방 및 대응)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 108
+        }
+      ]
+    },
+    {
+      "index": 108,
+      "line": 109,
+      "priority": "medium",
+      "question": "규정에 보면 오픈소스 기여라는 게 정확히 뭔가요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 5% — 인용 내용이 원문과 다를 수 있음",
+          "line": 109
+        }
+      ]
+    },
+    {
+      "index": 109,
+      "line": 110,
+      "priority": "medium",
+      "question": "최유진(부장, 인사팀)이 퇴직 후 3년이 지나 일반적인 기술 경험을 이력서에 기재하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 110
+        }
+      ]
+    },
+    {
+      "index": 110,
+      "line": 111,
+      "priority": "medium",
+      "question": "윤채원(신입사원, 디자인팀)의 근로계약서에 정보보호 의무 조항 없이 계약을 체결하려 합니다. 되나요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 111
+        }
+      ]
+    },
+    {
+      "index": 111,
+      "line": 112,
+      "priority": "medium",
+      "question": "배수지(과장, 데이터팀)이 장애 분석을 위해 운영 DB 데이터를 테스트 환경에 가져와야 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 112
+        }
+      ]
+    },
+    {
+      "index": 112,
+      "line": 113,
+      "priority": "medium",
+      "question": "송미래(과장, 개발팀)이 개발 환경의 설정만 변경하려 합니다. 변경관리 절차가 필요한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제21조 (변경관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 113
+        }
+      ]
+    },
+    {
+      "index": 113,
+      "line": 114,
+      "priority": "medium",
+      "question": "윤채원(부장, 인사팀)이 경력직 채용 시 코딩테스트를 생략하고 포트폴리오 리뷰로 대체하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 17% — 인용 내용이 원문과 다를 수 있음",
+          "line": 114
+        }
+      ]
+    },
+    {
+      "index": 114,
+      "line": 115,
+      "priority": "medium",
+      "question": "보안사고가 발생하면 어떻게 대응해야 하나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제28조 (보안사고 예방 및 대응)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 115
+        }
+      ]
+    },
+    {
+      "index": 115,
+      "line": 116,
+      "priority": "medium",
+      "question": "오태영(부장, 디자인팀)의 근로계약서에 정보보호 의무 조항 없이 계약을 체결하려 합니다. 되나요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 116
+        }
+      ]
+    },
+    {
+      "index": 116,
+      "line": 117,
+      "priority": "medium",
+      "question": "다른 회사에서는 다를 수 있지만, 우리 회사 기준으로 커밋 메시지 형식이 정해져 있나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제26조 (소스코드 관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 117
+        }
+      ]
+    },
+    {
+      "index": 117,
+      "line": 118,
+      "priority": "medium",
+      "question": "장동혁(대리, 기획팀)이 지원자의 이력서만으로 서류심사 없이 바로 임원면접을 진행하려 합니다. 되나요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 118
+        }
+      ]
+    },
+    {
+      "index": 118,
+      "line": 119,
+      "priority": "medium",
+      "question": "장동혁(부장, QA팀)이 지원자의 이력서만으로 서류심사 없이 바로 임원면접을 진행하려 합니다. 되나요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 119
+        }
+      ]
+    },
+    {
+      "index": 119,
+      "line": 120,
+      "priority": "medium",
+      "question": "한소희(대리, 개발팀)이 내부 도구용 스크립트를 SAST 없이 배포하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제25조 (소프트웨어 개발 보안)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 120
+        }
+      ]
+    },
+    {
+      "index": 120,
+      "line": 121,
+      "priority": "medium",
+      "question": "정하준(부장, 보안팀)이 점심시간(12시~1시) 동안 휴게를 취하려 합니다. 가능한가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 121
+        }
+      ]
+    },
+    {
+      "index": 121,
+      "line": 122,
+      "priority": "medium",
+      "question": "배수지(대리, 데이터팀)이 회사 소유 외장하드를 승인 없이 집에 가져가려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 122
+        }
+      ]
+    },
+    {
+      "index": 122,
+      "line": 123,
+      "priority": "medium",
+      "question": "윤채원(부장, 데이터팀)이 백업 데이터를 암호화 없이 외부 클라우드에 보관하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제23조 (백업 및 복구관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 123
+        }
+      ]
+    },
+    {
+      "index": 123,
+      "line": 124,
+      "priority": "medium",
+      "question": "로그에는 어떤 정보가 포함되나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제24조 (로그 및 접속기록 관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 124
+        }
+      ]
+    },
+    {
+      "index": 124,
+      "line": 125,
+      "priority": "medium",
+      "question": "팀장님이 알아보라고 했는데, 백업 데이터도 암호화해야 하나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제23조 (백업 및 복구관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 125
+        }
+      ]
+    },
+    {
+      "index": 125,
+      "line": 126,
+      "priority": "medium",
+      "question": "동료가 물어봐서 확인하려고요. VPN 접속 시 2단계 인증이 필수인가요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 126
+        }
+      ]
+    },
+    {
+      "index": 126,
+      "line": 127,
+      "priority": "medium",
+      "question": "핫픽스를 급하게 나가야 하는데 보안 점검을 건너뛸 수 있나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제25조 (소프트웨어 개발 보안)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 127
+        }
+      ]
+    },
+    {
+      "index": 127,
+      "line": 128,
+      "priority": "medium",
+      "question": "이번에 처음 알았는데, 결혼식 때 경조사 휴가 쓸 수 있나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 4% — 인용 내용이 원문과 다를 수 있음",
+          "line": 128
+        }
+      ]
+    },
+    {
+      "index": 128,
+      "line": 129,
+      "priority": "medium",
+      "question": "배수지(대리, 보안팀)이 올해 DR 훈련을 실시하지 않으려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제23조 (백업 및 복구관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 129
+        }
+      ]
+    },
+    {
+      "index": 129,
+      "line": 130,
+      "priority": "medium",
+      "question": "규정에 보면 기술 블로그에 회사에서 사용하는 기술 스택을 소개해도 되나요?",
+      "result": "no",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 130
+        }
+      ]
+    },
+    {
+      "index": 130,
+      "line": 131,
+      "priority": "medium",
+      "question": "장동혁(과장, 경영지원팀)이 업무 파일을 개인 구글 드라이브에 업로드하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제20조 (인터넷 접속 통제)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 131
+        }
+      ]
+    },
+    {
+      "index": 131,
+      "line": 132,
+      "priority": "medium",
+      "question": "임재현(과장, 보안팀)이 대학교에서 비영리 목적의 외부 강연을 하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 12% — 인용 내용이 원문과 다를 수 있음",
+          "line": 132
+        }
+      ]
+    },
+    {
+      "index": 132,
+      "line": 133,
+      "priority": "medium",
+      "question": "이서연(신입사원, 경영지원팀)이 회사 노트북을 주말에 개인 유튜브 편집용으로 사용하려 합니다. 되나요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 133
+        }
+      ]
+    },
+    {
+      "index": 133,
+      "line": 134,
+      "priority": "medium",
+      "question": "한소희(팀장, 보안팀)이 코드 저장소에 AWS API 키를 하드코딩하려 합니다. 되나요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제26조 (소스코드 관리)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 134
+        }
+      ]
+    },
+    {
+      "index": 134,
+      "line": 135,
+      "priority": "medium",
+      "question": "임재현(과장, 디자인팀)이 1년 근속 후 연차 15일을 신청하려 합니다. 가능한가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 135
+        }
+      ]
+    },
+    {
+      "index": 135,
+      "line": 136,
+      "priority": "medium",
+      "question": "박지훈(대리, 기획팀)이 5년 근속하여 리프레시 휴가 5일을 신청하려 합니다. 가능한가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 136
+        }
+      ]
+    },
+    {
+      "index": 136,
+      "line": 137,
+      "priority": "medium",
+      "question": "계약직으로 2년 일했는데 계약 갱신하면 기간의 정함이 없는 근로자가 되나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 137
+        }
+      ]
+    },
+    {
+      "index": 137,
+      "line": 138,
+      "priority": "medium",
+      "question": "박지훈(팀장, 기획팀)이 퇴직 시 비밀유지 확인서에 서명해야 하나요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 138
+        }
+      ]
+    },
+    {
+      "index": 138,
+      "line": 139,
+      "priority": "medium",
+      "question": "이번에 처음 알았는데, 변경관리가 뭔가요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 11% — 인용 내용이 원문과 다를 수 있음",
+          "line": 139
+        }
+      ]
+    },
+    {
+      "index": 139,
+      "line": 140,
+      "priority": "medium",
+      "question": "부서를 이동했는데 이전 부서 시스템에 아직 접근이 되는데요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 140
+        }
+      ]
+    },
+    {
+      "index": 140,
+      "line": 141,
+      "priority": "medium",
+      "question": "한소희(부장, 경영지원팀)이 경조사 휴가를 신청하려 합니다. 가능한가요?",
+      "result": "conditional",
+      "confidence": 0.75,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 12% — 인용 내용이 원문과 다를 수 있음",
+          "line": 141
+        }
+      ]
+    },
+    {
+      "index": 141,
+      "line": 142,
+      "priority": "medium",
+      "question": "오픈소스 기여라는 게 정확히 뭔가요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 5% — 인용 내용이 원문과 다를 수 있음",
+          "line": 142
+        }
+      ]
+    },
+    {
+      "index": 142,
+      "line": 143,
+      "priority": "medium",
+      "question": "팀장님이 알아보라고 했는데, 근무시간이 어떻게 되나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 143
+        }
+      ]
+    },
+    {
+      "index": 143,
+      "line": 144,
+      "priority": "medium",
+      "question": "급한 건은 아닌데, 서버에서 외부 패키지를 다운받아야 하는데 인터넷이 안 되는데요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제20조 (인터넷 접속 통제)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 144
+        }
+      ]
+    },
+    {
+      "index": 144,
+      "line": 145,
+      "priority": "medium",
+      "question": "배수지(신입사원, 데이터팀)이 점심시간(12시~1시) 동안 휴게를 취하려 합니다. 가능한가요?",
+      "result": "yes",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 145
+        }
+      ]
+    },
+    {
+      "index": 145,
+      "line": 146,
+      "priority": "medium",
+      "question": "임재현(과장, 인사팀)이 팀원들과 공용 서버 계정을 공유하여 사용하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 146
+        }
+      ]
+    },
+    {
+      "index": 146,
+      "line": 147,
+      "priority": "medium",
+      "question": "대리인데 궁금한 게 있어요. 개인 구글 드라이브에 업무 파일을 백업해도 되나요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "ARTICLE_NOT_FOUND",
+          "detail": "regulations[0].article='제20조 (인터넷 접속 통제)' — 규정 원문에서 찾을 수 없음 (할루시네이션 가능)",
+          "line": 147
+        }
+      ]
+    },
+    {
+      "index": 147,
+      "line": 148,
+      "priority": "medium",
+      "question": "곽하영(대리, 보안팀)이 팀원에게 주 50시간 근무를 지시하려 합니다. 가능한가요?",
+      "result": "no",
+      "confidence": 0.92,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 148
+        }
+      ]
+    },
+    {
+      "index": 148,
+      "line": 149,
+      "priority": "medium",
+      "question": "해외 출장 시에도 VPN 접속 규칙이 동일한가요?",
+      "result": "yes",
+      "confidence": 0.88,
+      "issues": [
+        {
+          "level": "warning",
+          "code": "CONTENT_MISMATCH",
+          "detail": "regulations[0] content 키워드 일치율 0% — 인용 내용이 원문과 다를 수 있음",
+          "line": 149
+        }
+      ]
+    },
+    {
+      "index": "28-72",
+      "priority": "medium",
+      "type": "duplicate",
+      "similarity": 0.875,
+      "q_a": "송미래(대리, 기획팀)이 서버 CPU 사용률 90% 초과 알림을 받고 즉시 대응하려 합니다. 맞나요?",
+      "q_b": "류승민(대리, 기획팀)이 서버 CPU 사용률 90% 초과 알림을 받고 즉시 대응하려 합니다. 맞나요?"
+    }
+  ]
+}

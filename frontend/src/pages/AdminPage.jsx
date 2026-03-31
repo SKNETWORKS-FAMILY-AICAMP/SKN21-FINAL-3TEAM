@@ -1,27 +1,30 @@
 import { useState, useEffect } from 'react';
-import { useOutletContext } from 'react-router-dom';
+
 import UserManagement from '../components/admin/UserManagement';
 import RegulationManagement from '../components/admin/RegulationManagement';
 import SystemStats from '../components/admin/SystemStats';
 import { listUsers, getSystemStats, getQueryLogs, listRegulations } from '../api/admin';
+import { TEAMS } from '../utils/constants';
+import { SkeletonCard, SkeletonTable } from '../components/common/Skeleton';
 
 export default function AdminPage() {
-  const { isScrolled } = useOutletContext();
+
   const [users, setUsers] = useState([]);
   const [regulations, setRegulations] = useState([]);
   const [stats, setStats] = useState({ today_queries: 0, processed_meetings: 0, completed_action_items: 0, risk_alerts: 0 });
   const [queryLogs, setQueryLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedTeam, setSelectedTeam] = useState(null);
 
-  const loadAll = async () => {
+  const loadAll = async (team = selectedTeam) => {
     setLoading(true);
     setError(null);
     const results = await Promise.allSettled([
       listUsers(),
       listRegulations(),
-      getSystemStats(),
-      getQueryLogs(),
+      getSystemStats(team ? { team } : {}),
+      getQueryLogs(1, 20, team),
     ]);
 
     const [usersRes, regsRes, statsRes, logsRes] = results;
@@ -56,16 +59,22 @@ export default function AdminPage() {
 
   useEffect(() => { loadAll(); }, []);
 
+  const handleTeamChange = (team) => {
+    setSelectedTeam(team);
+    loadAll(team);
+  };
+
   return (
     <div>
-      <header className={`sticky top-0 bg-surface-main z-10 flex flex-col justify-center overflow-hidden transition-all duration-300 ${isScrolled ? 'h-[56px]' : 'h-[100px]'}`}>
-        <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-2xl'}`}>관리자 설정</h1>
-        <p className={`text-neutral-sub transition-all duration-300 overflow-hidden ${isScrolled ? 'text-xs mt-0 max-h-0 opacity-0' : 'text-sm mt-1 max-h-6 opacity-100'}`}>시스템 설정 및 사용자를 관리합니다</p>
+      <header className="bg-surface-main flex flex-col justify-center overflow-hidden h-[100px]">
+        <h1 className="font-bold text-2xl">관리자 설정</h1>
+        <p className="text-neutral-sub text-sm mt-1">시스템 설정 및 사용자를 관리합니다</p>
       </header>
 
       {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500" />
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4"><SkeletonCard lines={1} /><SkeletonCard lines={1} /><SkeletonCard lines={1} /></div>
+          <SkeletonTable rows={4} cols={4} />
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center py-20">
@@ -74,9 +83,28 @@ export default function AdminPage() {
         </div>
       ) : (
         <>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex gap-1 flex-wrap">
+              <button
+                onClick={() => handleTeamChange(null)}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition ${!selectedTeam ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-sub hover:bg-surface-hover'}`}
+              >
+                전체
+              </button>
+              {TEAMS.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => handleTeamChange(t)}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition ${selectedTeam === t ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-sub hover:bg-surface-hover'}`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             {[
-              { l: '전체 사용자', v: users.length },
+              { l: selectedTeam ? `${selectedTeam} 사용자` : '전체 사용자', v: selectedTeam ? users.filter((u) => u.team === selectedTeam).length : users.length },
               { l: '오늘 질의 수', v: stats.today_queries || 0 },
               { l: '등록된 규정', v: regulations.length },
             ].map(({ l, v }) => (
@@ -88,11 +116,11 @@ export default function AdminPage() {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-5">
             <div className="space-y-5 min-w-0">
-              <UserManagement users={users} onRefresh={loadAll} />
+              <UserManagement users={users} onRefresh={loadAll} selectedTeam={selectedTeam} />
               <RegulationManagement regulations={regulations} onRefresh={loadAll} />
             </div>
             <div className="min-w-0">
-              <SystemStats queryLogs={queryLogs} />
+              <SystemStats queryLogs={queryLogs} team={selectedTeam} />
             </div>
           </div>
         </>

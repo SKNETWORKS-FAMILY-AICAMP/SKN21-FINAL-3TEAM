@@ -1,8 +1,13 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react';
+import useUIStore from '../../store/uiStore';
 import Topbar from './Topbar';
 import AIDock from './AIDock';
+import ErrorBoundary from './ErrorBoundary';
+import AIChatPopup from '../chat/AIChatPopup';
+import MessagePopup from '../messages/MessagePopup';
+import RightSidebar from './RightSidebar';
 
 const pageVariants = {
   initial: { opacity: 0, y: 8 },
@@ -13,8 +18,13 @@ const pageVariants = {
 export default function Layout() {
   const location = useLocation();
   const isChatPage = location.pathname === '/chat';
+  const topbarScheduleHidden = useUIStore((s) => s.dashboard?.topbarScheduleHidden);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [messageOpen, setMessageOpen] = useState(false);
+
   const mainRef = useRef(null);
+  const motionRef = useRef(null);
   // handleScroll 클로저에서 최신 isChatPage 값을 참조하기 위한 ref
   const isChatPageRef = useRef(isChatPage);
   isChatPageRef.current = isChatPage;
@@ -77,16 +87,13 @@ export default function Layout() {
 
     let newVal;
     if (isChat) {
-      // 챗봇: 방향 기반 (스크롤 다운 → 줄어듦, 스크롤 업 → 커짐)
-      const { scrollHeight, clientHeight } = e.target;
-      const scrollableRange = scrollHeight - clientHeight;
+      // 챗봇: 스크롤 다운 → topbar 숨김, 최상단(scrollTop=0) → topbar 복원
       const delta = scrollTop - prevScrollTopRef.current;
-      prevScrollTopRef.current = scrollTop; // 블록 중에도 항상 갱신
-      if (resizingRef.current || navBlockRef.current) return;
-      // 스크롤 가능 범위가 충분해야만 줄어듦 (topbar 44px + 여유 20px = 64px)
-      // → 줄어든 후에도 최소 20px 이상 남아 스크롤 올리기 가능
-      if (delta > 5 && scrollableRange > 64) newVal = true;
-      else if (delta < -5) newVal = false; // 위로 스크롤은 항상 허용
+      prevScrollTopRef.current = scrollTop;
+      if (navBlockRef.current || resizingRef.current) return;
+      if (scrollTop === 0 && isScrolledRef.current) newVal = false;
+      else if (isScrolledRef.current) return; // 숨긴 상태에서 중간 스크롤은 무시 (바운스 방지)
+      else if (delta > 5) newVal = true;
       else return;
     } else {
       // 일반 페이지: 위치 기반
@@ -96,12 +103,13 @@ export default function Layout() {
     }
 
     if (newVal !== isScrolledRef.current) {
-      // isScrolled 변경 시 topbar+페이지 헤더 높이 변화로 인한 scroll 이벤트를 150ms 차단
+      // isScrolled 변경 시 topbar+페이지 헤더 높이 변화로 인한 scroll 이벤트를 차단
+      // padding transition(300ms)을 충분히 커버
       resizingRef.current = true;
       clearTimeout(resizeTimerRef.current);
       resizeTimerRef.current = setTimeout(() => {
         resizingRef.current = false;
-      }, 150);
+      }, 400);
       isScrolledRef.current = newVal;
     }
     setIsScrolled(newVal);
@@ -113,13 +121,14 @@ export default function Layout() {
       <main
         ref={mainRef}
         onScrollCapture={handleScroll}
-        className={`flex-1 min-h-0 ${isChatPage
-            ? 'overflow-hidden flex flex-col'
-            : 'overflow-y-auto px-8 pb-20'
+        className={`flex-1 min-h-0 relative transition-[padding] duration-300 ease-in-out ${isChatPage
+          ? `overflow-hidden flex flex-col ${isScrolled ? 'pt-0' : (topbarScheduleHidden ? 'pt-[96px]' : 'pt-[96px] md:pt-[180px]')}`
+          : `overflow-y-auto overflow-x-hidden ${topbarScheduleHidden ? 'pt-[100px]' : 'pt-[100px] md:pt-[180px]'} px-4 md:px-8 pb-20`
           }`}
       >
         <AnimatePresence mode="wait">
           <motion.div
+            ref={motionRef}
             key={location.pathname}
             variants={pageVariants}
             initial="initial"
@@ -127,12 +136,30 @@ export default function Layout() {
             exit="exit"
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className={isChatPage ? 'flex-1 min-h-0' : ''}
+            onAnimationComplete={() => {
+              if (motionRef.current) motionRef.current.style.transform = 'none';
+            }}
           >
-            <Outlet context={{ isScrolled }} />
+            <ErrorBoundary key={location.pathname}>
+              <Outlet context={{ isScrolled }} />
+            </ErrorBoundary>
           </motion.div>
         </AnimatePresence>
       </main>
       {!isChatPage && <AIDock />}
+
+      {!isChatPage && (
+        <RightSidebar
+          chatOpen={chatOpen}
+          setChatOpen={setChatOpen}
+          messageOpen={messageOpen}
+          setMessageOpen={setMessageOpen}
+        />
+      )}
+
+      {!isChatPage && <AIChatPopup isOpen={chatOpen} onClose={() => setChatOpen(false)} />}
+      <MessagePopup open={messageOpen} onClose={() => setMessageOpen(false)} />
     </div>
   );
 }
+

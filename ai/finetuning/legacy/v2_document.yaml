@@ -1,0 +1,62 @@
+# LoRA v2: 문서 Agent 특화 (doc_generate + doc_qa + doc_summary 통합)
+# 베이스 모델: Qwen3-8B (1차 추천) — 비교 대상: EXAONE-3.5-7.8B, Kanana-1.5-8B
+model:
+  base_model: "Qwen/Qwen3-8B"
+  quantization: "4bit"  # QLoRA
+
+# 비교 테스트용 모델 목록
+model_candidates:
+  - "Qwen/Qwen3-8B"
+  - "LGAI-EXAONE/EXAONE-3.5-7.8B-Instruct"
+  - "kakaocorp/kanana-1.5-8b-instruct-2505"
+
+lora:
+  r: 32                      # v1(16) 대비 증가 — 3개 태스크 통합으로 더 많은 표현력 필요
+  lora_alpha: 64              # alpha/r = 2.0 유지
+  lora_dropout: 0.05
+  target_modules:             # Qwen3 아키텍처 + MLP도 포함 (문서 생성은 MLP 중요)
+    - "q_proj"
+    - "v_proj"
+    - "k_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+
+training:
+  num_epochs: 5               # v1(3) 대비 증가 — 데이터 다양성 보상 + early stopping
+  batch_size: 4
+  gradient_accumulation_steps: 4  # effective batch = 16
+  learning_rate: 1e-4         # v1(2e-4) 대비 낮춤 — rank 증가에 따른 안정화
+  warmup_ratio: 0.1
+  max_length: 2048            # 제안서 JSON도 ~1500토큰 이내
+  early_stopping_patience: 3  # eval loss 3 epoch 연속 하락 안 하면 중단
+
+data:
+  train_path: "data/training/v2_document/train.jsonl"
+  eval_path: "data/training/v2_document/eval.jsonl"
+  eval_ratio: 0.1             # 1,300개 중 ~130개 eval
+
+# 태스크 구성 (단일 어댑터 v2_document로 3개 태스크 통합)
+tasks:
+  - doc_generate   # 600개 (회의록 300 + 보고서 150 + 제안서 100 + JD 50)
+  - doc_qa         # 500개
+  - doc_summary    # 200개
+
+output:
+  output_dir: "outputs/v2_document"
+  save_steps: 100
+
+# 평가 기준
+evaluation:
+  doc_generate:
+    json_valid_rate: 0.98      # JSON 유효율 >98%
+    field_completeness: 0.95   # 필수 필드 존재 >95%
+    field_accuracy: 0.99       # 필드명 정확도 >99%
+  doc_qa:
+    token_f1: 0.80             # Token F1 >0.80
+    rouge_l: 0.70              # ROUGE-L >0.70
+    citation_accuracy: 0.90    # 인용 정확도 >90%
+  doc_summary:
+    rouge_l: 0.45              # ROUGE-L >0.45
+    bertscore: 0.80            # BERTScore >0.80
+    format_compliance: 0.95    # 포맷 준수율 >95%

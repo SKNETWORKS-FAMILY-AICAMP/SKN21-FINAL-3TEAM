@@ -4,97 +4,22 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
-# ── 모던 프리미엄 다크 슬레이트 테마 ──
-_BLUE_HEADER = "1E293B"   # 섹션 헤더 배경 (다크 네이비/슬레이트)
-_BLUE_LIGHT  = "F1F5F9"   # 라벨 셀 배경 (밝고 연한 그레이 블루)
-_BLUE_ALT    = "F8FAFC"   # 테이블 짝수 행 배경 (백색에 가까운 블루)
-_NAVY_RGB    = RGBColor(0x1E, 0x29, 0x3B)
-_WHITE_RGB   = RGBColor(0xFF, 0xFF, 0xFF)
+from ai.skills._docx_styles import (
+    BLUE_HEADER, BLUE_LIGHT, BLUE_ALT, NAVY_RGB, WHITE_RGB,
+    set_shading, set_valign, set_row_height,
+    style_section_header, style_label_cell, style_value_cell,
+    inject_cell_text as _inject, add_title_line,
+)
 
-
-def _set_shading(cell, fill_color: str):
-    tc = cell._tc
-    tcPr = tc.get_or_add_tcPr()
-    shd = OxmlElement("w:shd")
-    shd.set(qn("w:val"), "clear")
-    shd.set(qn("w:color"), "auto")
-    shd.set(qn("w:fill"), fill_color)
-    tcPr.append(shd)
-
-
-def _set_valign(cell, align: str = "center"):
-    tc = cell._tc
-    tcPr = tc.get_or_add_tcPr()
-    vAlign = OxmlElement("w:vAlign")
-    vAlign.set(qn("w:val"), align)
-    tcPr.append(vAlign)
-
-
-def set_row_height(row, height_cm: float):
-    tr = row._tr
-    trPr = tr.get_or_add_trPr()
-    trHeight = OxmlElement("w:trHeight")
-    trHeight.set(qn("w:val"), str(int(height_cm * 567)))
-    trHeight.set(qn("w:hRule"), "atLeast")
-    trPr.append(trHeight)
-
-
-def style_section_header(cell, text: str):
-    """섹션 제목 셀: 파란 배경 + 흰 굵은 글씨"""
-    _set_shading(cell, _BLUE_HEADER)
-    _set_valign(cell)
-    para = cell.paragraphs[0]
-    para.clear()
-    run = para.add_run(text)
-    run.font.bold = True
-    run.font.size = Pt(10)
-    run.font.color.rgb = _WHITE_RGB
-    para.alignment = WD_ALIGN_PARAGRAPH.LEFT
-
-
-def style_label_cell(cell, text: str):
-    """라벨 셀: 연한 파란 배경 + 굵은 글씨 + 가운데 정렬"""
-    _set_shading(cell, _BLUE_LIGHT)
-    _set_valign(cell)
-    para = cell.paragraphs[0]
-    para.clear()
-    run = para.add_run(text)
-    run.font.bold = True
-    run.font.size = Pt(10)
-    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-
-def style_value_cell(cell, text: str = ""):
-    """값 셀: 흰 배경 + 기본 글씨"""
-    _set_valign(cell)
-    para = cell.paragraphs[0]
-    para.clear()
-    if text:
-        run = para.add_run(text)
-        run.font.size = Pt(10)
-
-
-def _inject(cell, text: str):
-    """값 셀에 데이터 주입"""
-    cell.text = str(text) if text else ""
-    para = cell.paragraphs[0]
-    if para.runs:
-        para.runs[0].font.size = Pt(10)
-
-
-def _add_title_line(doc):
-    """제목 아래 파란 구분선 문단 추가"""
-    p = doc.add_paragraph()
-    pPr = p._p.get_or_add_pPr()
-    pBdr = OxmlElement("w:pBdr")
-    bottom = OxmlElement("w:bottom")
-    bottom.set(qn("w:val"), "single")
-    bottom.set(qn("w:sz"), "12")
-    bottom.set(qn("w:space"), "1")
-    bottom.set(qn("w:color"), _BLUE_HEADER)
-    pBdr.append(bottom)
-    pPr.append(pBdr)
-    return p
+# 하위 호환 별칭
+_BLUE_HEADER = BLUE_HEADER
+_BLUE_LIGHT = BLUE_LIGHT
+_BLUE_ALT = BLUE_ALT
+_NAVY_RGB = NAVY_RGB
+_WHITE_RGB = WHITE_RGB
+_set_shading = set_shading
+_set_valign = set_valign
+_add_title_line = add_title_line
 
 
 def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict = None):
@@ -249,8 +174,16 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
 
     doc.add_paragraph()
 
-    # ── 표5: 4. 추진 일정 (6행 6열) ──
-    t5 = doc.add_table(rows=6, cols=6)
+    # ── 표5: 4. 추진 일정 (동적 행: 섹션헤더 + 컬럼헤더 + 데이터 N행) ──
+    schedule_raw = data.get("schedule", []) if data else []
+    if isinstance(schedule_raw, dict):
+        _sched_list = list(schedule_raw.values())
+    elif isinstance(schedule_raw, list):
+        _sched_list = schedule_raw
+    else:
+        _sched_list = []
+    _sched_data_rows = max(len(_sched_list), 3)
+    t5 = doc.add_table(rows=2 + 1, cols=6)  # 헤더2행 + 첫 데이터행
     t5.style = "Table Grid"
 
     for i in range(1, 6):
@@ -260,7 +193,11 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
     for i, h in enumerate(["No.", "추진 항목", "1단계", "2단계", "3단계", "4단계"]):
         style_label_cell(t5.rows[1].cells[i], h)
 
-    for r in range(2, 6):
+    # 필요한 만큼 데이터 행 추가
+    for _ in range(_sched_data_rows - 1):
+        t5.add_row()
+
+    for r in range(2, 2 + _sched_data_rows):
         row_bg = _BLUE_ALT if r % 2 == 0 else "FFFFFF"
         for c in range(6):
             _set_shading(t5.rows[r].cells[c], row_bg)
@@ -271,8 +208,16 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
 
     doc.add_paragraph()
 
-    # ── 표6: 5. 소요 예산 (6행 5열) ──
-    t6 = doc.add_table(rows=6, cols=5)
+    # ── 표6: 5. 소요 예산 (동적 행: 섹션헤더 + 컬럼헤더 + 데이터 N행 + 합계행) ──
+    budget_raw = data.get("budget", []) if data else []
+    if isinstance(budget_raw, dict):
+        _budget_list = list(budget_raw.values())
+    elif isinstance(budget_raw, list):
+        _budget_list = budget_raw
+    else:
+        _budget_list = []
+    _budget_data_rows = max(len(_budget_list), 3)
+    t6 = doc.add_table(rows=2 + 1, cols=5)  # 헤더2행 + 첫 데이터행
     t6.style = "Table Grid"
 
     for i in range(1, 5):
@@ -282,7 +227,11 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
     for i, h in enumerate(["No.", "항목", "수량", "단가", "금액"]):
         style_label_cell(t6.rows[1].cells[i], h)
 
-    for r in range(2, 5):
+    # 필요한 만큼 데이터 행 추가
+    for _ in range(_budget_data_rows - 1):
+        t6.add_row()
+
+    for r in range(2, 2 + _budget_data_rows):
         row_bg = _BLUE_ALT if r % 2 == 0 else "FFFFFF"
         for c in range(5):
             _set_shading(t6.rows[r].cells[c], row_bg)
@@ -291,10 +240,12 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
             style_value_cell(t6.rows[r].cells[c])
         set_row_height(t6.rows[r], 1.0)
 
-    # 합계 행
-    t6.rows[5].cells[0].merge(t6.rows[5].cells[3])
-    style_label_cell(t6.rows[5].cells[0], "합계")
-    style_value_cell(t6.rows[5].cells[4])
+    # 합계 행 추가
+    t6.add_row()
+    _total_idx = 2 + _budget_data_rows
+    t6.rows[_total_idx].cells[0].merge(t6.rows[_total_idx].cells[3])
+    style_label_cell(t6.rows[_total_idx].cells[0], "합계")
+    style_value_cell(t6.rows[_total_idx].cells[4])
 
     doc.add_paragraph()
 
@@ -334,28 +285,27 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
         _inject(t0.rows[3].cells[1], data.get("manager", ""))
         _inject(t0.rows[4].cells[1], data.get("contact", ""))
 
-        # 기본 정보
-        _inject(t1.rows[0].cells[1], data.get("proposal_name", ""))
+        # 기본 정보 (LoRA 출력 키 → 빌더 키 매핑)
+        _inject(t1.rows[0].cells[1], data.get("proposal_name", "") or data.get("title", ""))
         _inject(t1.rows[1].cells[1], data.get("background", ""))
-        _inject(t1.rows[2].cells[1], data.get("proposal_date", ""))
+        _inject(t1.rows[2].cells[1], data.get("proposal_date", "") or data.get("submit_date", ""))
         _inject(t1.rows[2].cells[3], data.get("period", ""))
-        _inject(t1.rows[3].cells[1], data.get("proposer", ""))
-        _inject(t1.rows[3].cells[3], data.get("manager_contact", ""))
+        _inject(t1.rows[3].cells[1], data.get("proposer", "") or data.get("company", ""))
+        manager_contact = data.get("manager_contact", "")
+        if not manager_contact:
+            m = data.get("manager", "")
+            c = data.get("contact", "")
+            manager_contact = f"{m} / {c}" if m and c else m or c
+        _inject(t1.rows[3].cells[3], manager_contact)
 
         # 본문 섹션
         _inject(t2.rows[1].cells[0], data.get("purpose", ""))
-        _inject(t3.rows[1].cells[0], data.get("analysis", ""))
+        _inject(t3.rows[1].cells[0], data.get("current_situation", "") or data.get("analysis", ""))
         _inject(t4.rows[1].cells[0], data.get("content", ""))
 
-        # 추진 일정 (LLM이 list 또는 dict로 반환할 수 있으므로 정규화)
-        schedule_raw = data.get("schedule", [])
-        if isinstance(schedule_raw, dict):
-            schedule = list(schedule_raw.values())
-        elif isinstance(schedule_raw, list):
-            schedule = schedule_raw
-        else:
-            schedule = []
-        for r in range(2, 6):
+        # 추진 일정
+        schedule = _sched_list
+        for r in range(2, 2 + _sched_data_rows):
             item = schedule[r - 2] if r - 2 < len(schedule) else {}
             if not isinstance(item, dict):
                 item = {}
@@ -365,15 +315,9 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
             _inject(t5.rows[r].cells[4], item.get("phase3", ""))
             _inject(t5.rows[r].cells[5], item.get("phase4", ""))
 
-        # 소요 예산 (동일하게 정규화)
-        budget_raw = data.get("budget", [])
-        if isinstance(budget_raw, dict):
-            budget = list(budget_raw.values())
-        elif isinstance(budget_raw, list):
-            budget = budget_raw
-        else:
-            budget = []
-        for r in range(2, 5):
+        # 소요 예산
+        budget = _budget_list
+        for r in range(2, 2 + _budget_data_rows):
             item = budget[r - 2] if r - 2 < len(budget) else {}
             if not isinstance(item, dict):
                 item = {}
@@ -381,7 +325,7 @@ def create_proposal(output_path: str = "tests/제안서_생성.docx", data: dict
             _inject(t6.rows[r].cells[2], item.get("quantity", ""))
             _inject(t6.rows[r].cells[3], item.get("unit_price", ""))
             _inject(t6.rows[r].cells[4], item.get("amount", ""))
-        _inject(t6.rows[5].cells[4], data.get("budget_total", ""))
+        _inject(t6.rows[_total_idx].cells[4], data.get("budget_total", ""))
 
         # 기대 효과 / 첨부 / 비고
         _inject(t7.rows[1].cells[0], data.get("expected_effect", ""))

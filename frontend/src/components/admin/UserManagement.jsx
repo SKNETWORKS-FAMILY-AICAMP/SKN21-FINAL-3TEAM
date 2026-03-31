@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import Badge from '../common/Badge';
-import { createUser, updateUserPermissions, deleteUser } from '../../api/admin';
+import { createUser, deleteUser } from '../../api/admin';
+import { TEAMS } from '../../utils/constants';
+import { toast } from '../../store/toastStore';
 
-export default function UserManagement({ users = [], onRefresh }) {
+export default function UserManagement({ users = [], onRefresh, selectedTeam = null }) {
+  const filteredUsers = selectedTeam ? users.filter((u) => u.team === selectedTeam) : users;
   const [showModal, setShowModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [form, setForm] = useState({ name: '', email: '', password: '', team: '', is_admin: false });
@@ -21,35 +24,9 @@ export default function UserManagement({ users = [], onRefresh }) {
       setShowModal(false);
       onRefresh?.();
     } catch (e) {
-      alert('사용자 추가 실패: ' + (e.response?.data?.detail || e.message));
+      toast.error('사용자 추가 실패: ' + (e.response?.data?.detail || e.message));
     } finally {
       setSaving(false);
-    }
-  };
-
-  const toggleActive = async (user) => {
-    try {
-      await updateUserPermissions(user.id, {
-        is_admin: user.is_admin,
-        is_active: !user.is_active,
-        team: user.team,
-      });
-      onRefresh?.();
-    } catch (e) {
-      alert('상태 변경 실패: ' + (e.response?.data?.detail || e.message));
-    }
-  };
-
-  const toggleAdmin = async (user) => {
-    try {
-      await updateUserPermissions(user.id, {
-        is_admin: !user.is_admin,
-        is_active: user.is_active,
-        team: user.team,
-      });
-      onRefresh?.();
-    } catch (e) {
-      alert('권한 변경 실패: ' + (e.response?.data?.detail || e.message));
     }
   };
 
@@ -60,7 +37,7 @@ export default function UserManagement({ users = [], onRefresh }) {
       setDeleteTarget(null);
       onRefresh?.();
     } catch (e) {
-      alert('삭제 실패: ' + (e.response?.data?.detail || e.message));
+      toast.error('삭제 실패: ' + (e.response?.data?.detail || e.message));
     }
   };
 
@@ -73,14 +50,14 @@ export default function UserManagement({ users = [], onRefresh }) {
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead><tr>
-            {['이름', '이메일', '팀', '권한', '상태', '관리'].map((h) => (
+            {['이름', '이메일', '팀', '권한', '관리'].map((h) => (
               <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-neutral-sub border-b-2 border-neutral-divider bg-surface-hover">{h}</th>
             ))}
           </tr></thead>
           <tbody>
-            {users.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-neutral-sub">등록된 사용자가 없습니다</td></tr>
-            ) : users.map((u) => (
+            {filteredUsers.length === 0 ? (
+              <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-neutral-sub">{selectedTeam ? `${selectedTeam} 팀에 소속된 사용자가 없습니다` : '등록된 사용자가 없습니다'}</td></tr>
+            ) : filteredUsers.map((u) => (
               <tr key={u.id} className="hover:bg-surface-hover">
                 <td className="px-4 py-3 text-[0.8125rem] font-semibold border-b border-neutral-divider">{u.name}</td>
                 <td className="px-4 py-3 text-[0.8125rem] border-b border-neutral-divider">{u.email}</td>
@@ -92,14 +69,7 @@ export default function UserManagement({ users = [], onRefresh }) {
                   )}
                 </td>
                 <td className="px-4 py-3 border-b border-neutral-divider">
-                  <button onClick={() => toggleAdmin(u)}>
-                    <Badge variant={u.is_admin ? 'role-admin' : 'role-user'}>{u.is_admin ? '관리자' : '일반'}</Badge>
-                  </button>
-                </td>
-                <td className="px-4 py-3 border-b border-neutral-divider">
-                  <button onClick={() => toggleActive(u)} className={`w-10 h-[22px] rounded-full relative transition ${u.is_active ? 'bg-success' : 'bg-neutral-border'}`}>
-                    <span className={`absolute left-[2px] top-[2px] w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-transform ${u.is_active ? 'translate-x-[18px]' : 'translate-x-0'}`} />
-                  </button>
+                  <Badge variant={u.is_admin ? 'role-admin' : 'role-user'}>{u.is_admin ? '관리자' : '일반'}</Badge>
                 </td>
                 <td className="px-4 py-3 border-b border-neutral-divider">
                   <button className="py-1 px-2.5 text-[0.6875rem] rounded-sm border border-error text-error bg-error-bg hover:bg-error hover:text-white transition" onClick={() => setDeleteTarget(u)}>삭제</button>
@@ -112,7 +82,7 @@ export default function UserManagement({ users = [], onRefresh }) {
 
       {showModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-          <div className="bg-surface-card rounded-lg border border-neutral-border shadow-lg w-[400px] p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-lg border border-white/40 dark:border-white/10 shadow-lg w-[400px] p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-bold mb-4">사용자 추가</h3>
             <div className="space-y-3">
               <div>
@@ -131,7 +101,7 @@ export default function UserManagement({ users = [], onRefresh }) {
                 <label className="text-xs font-semibold text-neutral-sub block mb-1">팀</label>
                 <select value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })} className="w-full px-3.5 py-2.5 border border-neutral-border rounded-sm text-sm outline-none focus:border-primary-500 bg-surface-card text-neutral-main">
                   <option value="">팀 선택 (선택사항)</option>
-                  {['개발', 'QA기획', 'UI/UX', '영업', '마케팅', 'CS'].map((t) => (
+                  {TEAMS.map((t) => (
                     <option key={t} value={t}>{t}</option>
                   ))}
                 </select>
@@ -155,7 +125,7 @@ export default function UserManagement({ users = [], onRefresh }) {
 
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setDeleteTarget(null)}>
-          <div className="bg-surface-card rounded-lg border border-neutral-border shadow-lg w-[360px] p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-lg border border-white/40 dark:border-white/10 shadow-lg w-[360px] p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-bold mb-2">사용자 삭제</h3>
             <p className="text-sm text-neutral-sub mb-5">
               <strong className="text-neutral-main">{deleteTarget.name}</strong> ({deleteTarget.email})을(를) 삭제하시겠습니까?<br />이 작업은 되돌릴 수 없습니다.

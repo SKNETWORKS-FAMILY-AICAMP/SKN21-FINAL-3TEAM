@@ -26,6 +26,11 @@ export default function DocumentPreview({ data, onDownload, loading }) {
           {data.templateType && (
             <Badge variant="document">{TEMPLATE_LABELS[data.templateType] || data.templateType}</Badge>
           )}
+          {data.model_name && (
+            <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.6875rem] font-medium bg-violet-100 text-violet-700">
+              {data.model_name.includes('LoRA') ? '🔧 ' : '🤖 '}{data.model_name}
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
           <button onClick={handlePrint} className="btn-outline text-xs">

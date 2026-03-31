@@ -31,7 +31,7 @@ export default function LoginForm({ onSubmit, onGoogleLogin, error, loading, def
   return (
     <form onSubmit={handleSubmit}>
       {displayError && (
-        <div className="mb-4 p-3 rounded-sm bg-error-bg border border-error text-error text-sm">
+        <div className="mb-4 p-3 rounded-sm bg-error-bg border border-error text-error text-xs">
           {displayError}
         </div>
       )}

@@ -130,6 +130,8 @@ class GoogleCalendarService(GoogleBaseService):
                     result = service.events().list(**params).execute()
                     items = result.get("items", [])
                     for item in items:
+                        if item.get("status") == "cancelled":
+                            continue
                         event_type = (
                             item.get("extendedProperties", {})
                             .get("private", {})
@@ -145,6 +147,7 @@ class GoogleCalendarService(GoogleBaseService):
                             "html_link": item.get("htmlLink"),
                             "meet_link": item.get("hangoutLink"),
                             "calendar": cal.get("summary", ""),
+                            "attendees": item.get("attendees", []),
                         })
                 except Exception:
                     pass

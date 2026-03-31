@@ -1,0 +1,59 @@
+# LoRA v2: 문서 생성 (doc_generate) 전용 어댑터
+# 회의록(meeting_minutes), 보고서(report), 제안서(proposal) JSON 생성
+# 베이스 모델: Qwen3-8B (1차 추천) — 비교 대상: EXAONE-3.5-7.8B, Kanana-1.5-8B
+model:
+  base_model: "Qwen/Qwen3-8B"
+  quantization: "4bit"  # QLoRA
+
+model_candidates:
+  - "Qwen/Qwen3-8B"
+  - "LGAI-EXAONE/EXAONE-3.5-7.8B-Instruct"
+  - "kakaocorp/kanana-1.5-8b-instruct-2505"
+
+lora:
+  r: 32                      # 복잡한 JSON 스키마(15+필드) 표현력
+  lora_alpha: 64              # alpha/r = 2.0
+  lora_dropout: 0.05
+  target_modules:
+    - "q_proj"
+    - "v_proj"
+    - "k_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+
+training:
+  num_epochs: 5
+  batch_size: 4
+  gradient_accumulation_steps: 4  # effective batch = 16
+  learning_rate: 1e-4
+  warmup_ratio: 0.1
+  max_length: 2560            # 긴 회의록/보고서 커버 (p99=2449, max=2647)
+  early_stopping_patience: 3
+
+data:
+  train_path: "data/training/v2_generate/train.jsonl"
+  eval_path: "data/training/v2_generate/eval.jsonl"
+  eval_ratio: 0.1             # 1500개 중 ~150개 eval
+  total_target: 1500          # 회의록 600 + 보고서 450 + 제안서 450
+
+# 데이터 소스별 구성 (AI Hub 46% + 합성 40% + 변형 14%)
+data_sources:
+  aihub: 690                  # AI Hub 원문 + GPT-4o 변환 (46%)
+  synthetic: 600              # GPT-4o/Claude 합성 (40%)
+  variants: 210               # 변형 데이터 (14%)
+
+# 템플릿별 데이터 목표
+templates:
+  meeting_minutes: 600        # 7필드 JSON, 사용 빈도 최고 (합성 중심: AI Hub 60 + 합성 420 + 변형 120)
+  report: 450                 # 12필드 JSON (AI Hub 315 + 합성 90 + 변형 45)
+  proposal: 450               # 15+필드 JSON (AI Hub 315 + 합성 90 + 변형 45)
+
+output:
+  output_dir: "outputs/v2_generate"
+  save_steps: 100
+
+evaluation:
+  json_valid_rate: 0.98       # JSON 유효율 >98%
+  field_completeness: 0.95    # 필수 필드 존재 >95%
+  field_accuracy: 0.99        # 필드명 정확도 >99%

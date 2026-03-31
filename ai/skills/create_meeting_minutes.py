@@ -4,97 +4,23 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
-# ── 모던 프리미엄 다크 슬레이트 테마 ──
-_BLUE_HEADER = "1E293B"   # 섹션 헤더 배경 (다크 네이비/슬레이트)
-_BLUE_LIGHT  = "F1F5F9"   # 라벨 셀 배경 (밝고 연한 그레이 블루)
-_BLUE_ALT    = "F8FAFC"   # 테이블 짝수 행 배경 (백색에 가까운 블루)
-_NAVY_RGB    = RGBColor(0x1E, 0x29, 0x3B)
-_WHITE_RGB   = RGBColor(0xFF, 0xFF, 0xFF)
+from ai.skills._docx_styles import (
+    BLUE_HEADER, BLUE_LIGHT, BLUE_ALT, NAVY_RGB, WHITE_RGB,
+    set_shading, set_valign, set_row_height,
+    style_section_header, style_label_cell, style_value_cell,
+    inject_cell_text, add_title_line,
+)
 
-
-def _set_shading(cell, fill_color: str):
-    tc = cell._tc
-    tcPr = tc.get_or_add_tcPr()
-    shd = OxmlElement("w:shd")
-    shd.set(qn("w:val"), "clear")
-    shd.set(qn("w:color"), "auto")
-    shd.set(qn("w:fill"), fill_color)
-    tcPr.append(shd)
-
-
-def _set_valign(cell, align: str = "center"):
-    tc = cell._tc
-    tcPr = tc.get_or_add_tcPr()
-    vAlign = OxmlElement("w:vAlign")
-    vAlign.set(qn("w:val"), align)
-    tcPr.append(vAlign)
-
-
-def set_row_height(row, height_cm: float):
-    tr = row._tr
-    trPr = tr.get_or_add_trPr()
-    trHeight = OxmlElement("w:trHeight")
-    trHeight.set(qn("w:val"), str(int(height_cm * 567)))
-    trHeight.set(qn("w:hRule"), "atLeast")
-    trPr.append(trHeight)
-
-
-def style_section_header(cell, text: str):
-    """섹션 제목 셀: 파란 배경 + 흰 굵은 글씨"""
-    _set_shading(cell, _BLUE_HEADER)
-    _set_valign(cell)
-    para = cell.paragraphs[0]
-    para.clear()
-    run = para.add_run(text)
-    run.font.bold = True
-    run.font.size = Pt(10)
-    run.font.color.rgb = _WHITE_RGB
-    para.alignment = WD_ALIGN_PARAGRAPH.LEFT
-
-
-def style_label_cell(cell, text: str):
-    """라벨 셀: 연한 파란 배경 + 굵은 글씨 + 가운데 정렬"""
-    _set_shading(cell, _BLUE_LIGHT)
-    _set_valign(cell)
-    para = cell.paragraphs[0]
-    para.clear()
-    run = para.add_run(text)
-    run.font.bold = True
-    run.font.size = Pt(10)
-    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-
-def style_value_cell(cell, text: str = ""):
-    """값 셀: 흰 배경 + 기본 글씨"""
-    _set_valign(cell)
-    para = cell.paragraphs[0]
-    para.clear()
-    if text:
-        run = para.add_run(text)
-        run.font.size = Pt(10)
-
-
-def _inject_cell_text(cell, text: str):
-    """셀에 데이터 주입"""
-    cell.text = str(text) if text else ""
-    para = cell.paragraphs[0]
-    if para.runs:
-        para.runs[0].font.size = Pt(10)
-
-
-def _add_title_line(doc):
-    """제목 아래 파란 구분선 문단 추가"""
-    p = doc.add_paragraph()
-    pPr = p._p.get_or_add_pPr()
-    pBdr = OxmlElement("w:pBdr")
-    bottom = OxmlElement("w:bottom")
-    bottom.set(qn("w:val"), "single")
-    bottom.set(qn("w:sz"), "12")
-    bottom.set(qn("w:space"), "1")
-    bottom.set(qn("w:color"), _BLUE_HEADER)
-    pBdr.append(bottom)
-    pPr.append(pBdr)
-    return p
+# 하위 호환 별칭 (create_from_template.py 등에서 import)
+_BLUE_HEADER = BLUE_HEADER
+_BLUE_LIGHT = BLUE_LIGHT
+_BLUE_ALT = BLUE_ALT
+_NAVY_RGB = NAVY_RGB
+_WHITE_RGB = WHITE_RGB
+_set_shading = set_shading
+_set_valign = set_valign
+_inject_cell_text = inject_cell_text
+_add_title_line = add_title_line
 
 
 def create_meeting_minutes(output_path: str = "회의록_test.docx", data: dict = None):
@@ -144,7 +70,7 @@ def create_meeting_minutes(output_path: str = "회의록_test.docx", data: dict 
     style_label_cell(t0.rows[2].cells[0], "회의 장소")
     style_value_cell(t0.rows[2].cells[1])
     style_label_cell(t0.rows[2].cells[2], "회의 유형")
-    style_value_cell(t0.rows[2].cells[3], "☐ 정기  ☐ 비정기  ☐ 긴급")
+    style_value_cell(t0.rows[2].cells[3])
 
     # Row 3: 참석자 (값 셀 3개 병합)
     t0.rows[3].cells[1].merge(t0.rows[3].cells[3])
@@ -177,8 +103,10 @@ def create_meeting_minutes(output_path: str = "회의록_test.docx", data: dict 
 
     doc.add_paragraph()
 
-    # ── 표4: Action Item (5행 5열: 섹션헤더 + 컬럼헤더 + 데이터3행) ──
-    t3 = doc.add_table(rows=5, cols=5)
+    # ── 표4: Action Item (동적 행: 섹션헤더 + 컬럼헤더 + 데이터 N행) ──
+    action_items = data.get("action_items", []) if data else []
+    _ai_data_rows = max(len(action_items), 3)
+    t3 = doc.add_table(rows=2 + 1, cols=5)  # 헤더2행 + 첫 데이터행
     t3.style = "Table Grid"
 
     # 첫 행: 섹션 헤더 (5열 병합)
@@ -190,8 +118,12 @@ def create_meeting_minutes(output_path: str = "회의록_test.docx", data: dict 
     for i, h in enumerate(["No.", "Action Item", "담당자", "기한", "상태"]):
         style_label_cell(t3.rows[1].cells[i], h)
 
-    # 데이터 행 3행 (교대 색상)
-    for r in range(2, 5):
+    # 필요한 만큼 데이터 행 추가
+    for _ in range(_ai_data_rows - 1):
+        t3.add_row()
+
+    # 데이터 행 스타일링 (교대 색상)
+    for r in range(2, 2 + _ai_data_rows):
         row_bg = _BLUE_ALT if r % 2 == 0 else "FFFFFF"
         for c in range(5):
             _set_shading(t3.rows[r].cells[c], row_bg)
@@ -199,7 +131,7 @@ def create_meeting_minutes(output_path: str = "회의록_test.docx", data: dict 
         style_value_cell(t3.rows[r].cells[1])
         style_value_cell(t3.rows[r].cells[2])
         style_value_cell(t3.rows[r].cells[3])
-        style_value_cell(t3.rows[r].cells[4], "☐ 진행중  ☐ 완료")
+        style_value_cell(t3.rows[r].cells[4])
         set_row_height(t3.rows[r], 1.0)
 
     doc.add_paragraph()
@@ -219,12 +151,7 @@ def create_meeting_minutes(output_path: str = "회의록_test.docx", data: dict 
         _inject_cell_text(t0.rows[2].cells[1], data.get("location", ""))
 
         meeting_type = data.get("meeting_type", "")
-        type_map = {
-            "정기":   "☑ 정기  ☐ 비정기  ☐ 긴급",
-            "비정기": "☐ 정기  ☑ 비정기  ☐ 긴급",
-            "긴급":   "☐ 정기  ☐ 비정기  ☑ 긴급",
-        }
-        _inject_cell_text(t0.rows[2].cells[3], type_map.get(meeting_type, "☐ 정기  ☐ 비정기  ☐ 긴급"))
+        _inject_cell_text(t0.rows[2].cells[3], meeting_type)
 
         attendees = data.get("attendees", [])
         attendees_text = ", ".join(attendees) if isinstance(attendees, list) else str(attendees)
@@ -234,16 +161,25 @@ def create_meeting_minutes(output_path: str = "회의록_test.docx", data: dict 
         _inject_cell_text(t1.rows[1].cells[0], data.get("content", ""))
 
         decisions = data.get("decisions", [])
-        decisions_text = "\n".join(decisions) if isinstance(decisions, list) else str(decisions)
+        if isinstance(decisions, list):
+            parts = []
+            for d in decisions:
+                if isinstance(d, dict):
+                    parts.append(d.get("decision", d.get("description", d.get("content", str(d)))))
+                else:
+                    parts.append(str(d))
+            decisions_text = "\n".join(parts)
+        else:
+            decisions_text = str(decisions)
         _inject_cell_text(t2.rows[1].cells[0], decisions_text)
 
         action_items = data.get("action_items", [])
-        for r in range(2, 5):
+        for r in range(2, 2 + _ai_data_rows):
             ai_item = action_items[r - 2] if r - 2 < len(action_items) else {}
-            _inject_cell_text(t3.rows[r].cells[1], ai_item.get("content", ""))
+            _inject_cell_text(t3.rows[r].cells[1], ai_item.get("task", "") or ai_item.get("content", ""))
             _inject_cell_text(t3.rows[r].cells[2], ai_item.get("assignee", ""))
             _inject_cell_text(t3.rows[r].cells[3], ai_item.get("due_date", ""))
-            status = ai_item.get("status", "☐ 진행중  ☐ 완료") if ai_item else "☐ 진행중  ☐ 완료"
+            status = ai_item.get("status", "") if ai_item else ""
             _inject_cell_text(t3.rows[r].cells[4], status)
 
         _inject_cell_text(t4.rows[1].cells[0], data.get("notes", ""))

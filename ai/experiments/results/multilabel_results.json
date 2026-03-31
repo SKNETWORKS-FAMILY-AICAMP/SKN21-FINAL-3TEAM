@@ -1,0 +1,70 @@
+{
+  "model": "monologg/koelectra-base-v3-discriminator",
+  "hp": {
+    "model_name": "monologg/koelectra-base-v3-discriminator",
+    "epochs": 10,
+    "learning_rate": 3e-05,
+    "batch_size": 16,
+    "max_length": 128,
+    "threshold": 0.5,
+    "warmup_ratio": 0.06,
+    "weight_decay": 0.01
+  },
+  "train_time_sec": 58.5,
+  "val": {
+    "loss": 0.016458140686154366,
+    "subset_accuracy": 0.9851,
+    "hamming_loss": 0.0028,
+    "jaccard": 0.9892,
+    "macro_f1": 0.9912,
+    "micro_f1": 0.9914,
+    "runtime": 0.1874,
+    "samples_per_second": 2144.933,
+    "steps_per_second": 138.727,
+    "epoch": 10.0
+  },
+  "test": {
+    "dataset": "Test",
+    "n_samples": 403,
+    "subset_accuracy": 0.9777,
+    "hamming_loss": 0.0056,
+    "jaccard": 0.9777,
+    "macro_f1": 0.981,
+    "micro_f1": 0.9827,
+    "over_triggering": 0.0,
+    "under_triggering": 0.0,
+    "per_label_f1": {
+      "judgment": 0.9818,
+      "doc_search": 1.0,
+      "doc_generate": 0.9872,
+      "doc_summary": 0.9677,
+      "schedule_add": 1.0,
+      "schedule_view": 0.9818,
+      "general": 0.9552,
+      "doc_qa": 0.9744
+    },
+    "n_errors": 9
+  },
+  "compound": {
+    "dataset": "Compound-Only",
+    "n_samples": 780,
+    "subset_accuracy": 0.9987,
+    "hamming_loss": 0.0002,
+    "jaccard": 0.9996,
+    "macro_f1": 0.8748,
+    "micro_f1": 0.9997,
+    "over_triggering": 0.0,
+    "under_triggering": 0.0,
+    "per_label_f1": {
+      "judgment": 1.0,
+      "doc_search": 1.0,
+      "doc_generate": 0.9984,
+      "doc_summary": 1.0,
+      "schedule_add": 1.0,
+      "schedule_view": 1.0,
+      "general": 0.0,
+      "doc_qa": 1.0
+    },
+    "n_errors": 1
+  }
+}

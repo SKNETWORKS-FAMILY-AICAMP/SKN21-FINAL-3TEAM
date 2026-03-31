@@ -1,0 +1,30 @@
+# LoRA v4: 스트리밍 프롬프트 학습 + 질문 어체 다양화
+# - system prompt: JUDGMENT_STREAMING_SYSTEM_PROMPT (1,331자)
+# - assistant: 자연어 설명 + ```json 코드블록 형태
+# - 질문 패턴 보강: ~알려줘, ~뭐야, ~궁금해 등 500건 추가
+model:
+  base_model: "kakaocorp/kanana-1.5-8b-instruct-2505"
+  quantization: "4bit"  # QLoRA
+
+lora:
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  target_modules: ["q_proj", "v_proj", "k_proj", "o_proj"]
+
+training:
+  num_epochs: 3
+  batch_size: 4
+  gradient_accumulation_steps: 4
+  learning_rate: 2e-4
+  warmup_ratio: 0.1
+  max_length: 4096  # 자연어 + JSON이라 v3보다 길어짐
+
+data:
+  train_path: "data/training/v1_judgment_v4/train.jsonl"
+  eval_path: "data/training/v1_judgment_v4/eval.jsonl"
+  eval_ratio: 0.1
+
+output:
+  output_dir: "outputs/v4_judgment"
+  save_steps: 100

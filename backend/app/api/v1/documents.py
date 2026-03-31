@@ -31,10 +31,15 @@ def _to_str(v) -> str:
 
 class GenerateDocumentRequest(BaseModel):
     template_type: str
-    title: str = ""
-    date: str = ""
-    attendees: list[str] = []
+    template_id: int | None = None
+    fields_data: dict = {}
     content: str = ""
+
+
+class FillFieldsRequest(BaseModel):
+    """AI 필드 채우기 요청 — DOCX 생성 없이 필드 값만 리턴"""
+    template_id: int
+    content: str
 
 router = APIRouter()
 
@@ -44,7 +49,7 @@ router = APIRouter()
 
 @router.get("/")
 async def list_documents(
-    scope: str | None = Query(None, regex="^(company|personal)$"),
+    scope: str | None = Query(None, regex="^(company|team|personal)$"),
     keyword: str | None = None,
     search_type: str = Query("title", regex="^(title|title_content|date)$"),
     user=Depends(get_current_user),
@@ -52,7 +57,8 @@ async def list_documents(
 ):
     """문서 목록 조회 (scope + search_type 필터 지원)"""
     docs = await document_service.list_documents(
-        db, user_id=user.id, scope=scope, keyword=keyword, search_type=search_type
+        db, user_id=user.id, scope=scope, keyword=keyword,
+        search_type=search_type, user_team=user.team,
     )
     return [
         {
@@ -60,9 +66,12 @@ async def list_documents(
             "title": d.title,
             "file_type": d.file_type,
             "scope": d.scope,
+            "team_name": d.team_name,
             "status": d.status,
             "uploaded_by": d.uploaded_by,
             "created_at": d.created_at,
+            "category": d.category,
+            "tags": d.tags,
         }
         for d in docs
     ]
@@ -71,23 +80,34 @@ async def list_documents(
 @router.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
-    scope: str = Query("company", regex="^(company|personal)$"),
+    scope: str = Query("company", regex="^(company|team|personal)$"),
     user=Depends(get_current_user),
     db=Depends(get_db),
 ):
     """문서 업로드 (텍스트 추출 → DB 저장)"""
     doc = await document_service.upload_and_parse(
-        db, file=file, scope=scope, user_id=user.id
+        db, file=file, scope=scope, user_id=user.id,
+        team_name=user.team if scope == "team" else None,
     )
-    return {
+    result = {
         "id": doc.id,
         "title": doc.title,
         "file_type": doc.file_type,
         "scope": doc.scope,
+        "team_name": doc.team_name,
         "status": doc.status,
         "uploaded_by": doc.uploaded_by,
         "created_at": doc.created_at,
+        "category": doc.category,
+        "tags": doc.tags,
+        "summary": doc.summary,
+        "duplicate": getattr(doc, "_is_duplicate", False),
     }
+    # 규정 검증 결과가 있으면 응답에 포함
+    reg_check = getattr(doc, "_regulation_check", None)
+    if reg_check:
+        result["regulation_check"] = reg_check
+    return result
 
 
 @router.post("/generate")
@@ -101,72 +121,272 @@ async def generate_document(
     현재 지원: meeting_minutes, report, proposal
     """
     try:
-        from ai.agents.document_agent import (
-            _generate_meeting_minutes,
-            _generate_report,
-            _generate_proposal,
+        from ai.agents.document_agent import generate_document as ai_generate
+
+        result = await ai_generate(
+            category=request.template_type,
+            fields_data=request.fields_data or None,
+            content=request.content,
+            template_id=request.template_id,
         )
 
-        user_input = (
-            f"제목: {request.title}\n"
-            f"날짜: {request.date}\n"
-            f"참석자: {', '.join(request.attendees)}\n"
-            f"내용: {request.content}"
-        )
+        # 통일된 응답 구조 — 모든 타입 data 안에만
+        data = result.get("data", {})
+        response = {
+            "document_id": result["document_id"],
+            "template_type": result.get("template_type", request.template_type),
+            "template_id": result.get("template_id"),
+            "template_name": result.get("template_name"),
+            "preview": result.get("preview", ""),
+            "download_url": f"/api/v1/documents/{result['document_id']}/download",
+            "data": data,
+            "model_name": result.get("model_name", ""),
+        }
 
-        if request.template_type == "meeting_minutes":
-            result = _generate_meeting_minutes(user_input)
-            return {
-                "document_id": result["document_id"],
-                "template_type": "meeting_minutes",
-                "preview": result["preview"],
-                "download_url": f"/api/v1/documents/{result['document_id']}/download",
-                "title": result.get("data", {}).get("title", request.title),
-                "date": result.get("data", {}).get("date", request.date),
-                "attendees": result.get("data", {}).get("attendees", request.attendees),
-                "summary": result.get("summary", ""),
-                "decisions": result.get("decisions", []),
-                "action_items": result.get("action_items", []),
-            }
-
-        if request.template_type == "report":
-            result = _generate_report(user_input)
-            return {
-                "document_id": result["document_id"],
-                "template_type": "report",
-                "preview": result["preview"],
-                "download_url": f"/api/v1/documents/{result['document_id']}/download",
-                "title": _to_str(result.get("data", {}).get("title", request.title)),
-                "overview": _to_str(result.get("data", {}).get("overview", "")),
-                "main_content": _to_str(result.get("data", {}).get("main_content", "")),
-                "tasks": result.get("data", {}).get("tasks", []),
-                "next_plan": _to_str(result.get("data", {}).get("next_plan", "")),
-            }
-
-        if request.template_type == "proposal":
-            result = _generate_proposal(user_input)
-            return {
-                "document_id": result["document_id"],
-                "template_type": "proposal",
-                "preview": result["preview"],
-                "download_url": f"/api/v1/documents/{result['document_id']}/download",
-                "title": _to_str(result.get("data", {}).get("title", request.title)),
-                "background": _to_str(result.get("data", {}).get("background", "")),
-                "content": _to_str(result.get("data", {}).get("content", "")),
-                "expected_effect": _to_str(result.get("data", {}).get("expected_effect", "")),
-                "schedule": result.get("data", {}).get("schedule", []),
-                "budget": result.get("data", {}).get("budget", []),
-            }
-
-        raise HTTPException(
-            status_code=400,
-            detail=f"지원하지 않는 템플릿 타입입니다: {request.template_type}",
-        )
+        return response
 
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"문서 생성 중 오류 발생: {str(e)}")
+
+
+@router.post("/fill-fields")
+async def fill_fields(
+    request: FillFieldsRequest,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """
+    AI 필드 채우기 — 전체 필드 sLLM 전달 파이프라인
+
+    sLLM이 자연어에서 전체 필드를 채움 (학습 형식 그대로)
+    sLLM이 못 채운 필드는 Phase 0 fallback (날짜→today, 담당자→user.name)
+    """
+    import json as _json
+    from app.models.document_template import DocumentTemplate
+    from sqlalchemy import select
+    from datetime import date
+
+    if len(request.content.strip()) < 20:
+        raise HTTPException(status_code=400, detail="내용이 너무 짧습니다. 20자 이상 입력해주세요.")
+
+    result = await db.execute(
+        select(DocumentTemplate).where(DocumentTemplate.id == request.template_id)
+    )
+    template = result.scalar_one_or_none()
+    if not template or not template.parsed_structure:
+        raise HTTPException(status_code=404, detail="템플릿을 찾을 수 없습니다.")
+
+    raw_ps = _json.loads(template.parsed_structure)
+    fields = raw_ps.get("fields", raw_ps) if isinstance(raw_ps, dict) else raw_ps
+    if not isinstance(fields, list):
+        fields = []
+
+    from ai.agents.document._common import get_last_model_name
+    from datetime import date as _date
+
+    today = _date.today().isoformat()
+    doc_type = template.category or "문서"
+    doc_type_names = {"meeting_minutes": "회의록", "report": "업무보고서", "proposal": "제안서"}
+    doc_type_label = doc_type_names.get(doc_type, template.name or "문서")
+
+    user_name = getattr(user, "name", "") or ""
+    user_team = getattr(user, "team", "") or ""
+
+    # ── Phase 0: 사용자 컨텍스트 (fallback용) ──
+    phase0 = _phase0_defaults(fields, today, user_name, user_team)
+
+    # ── 전체 필드를 sLLM에 전달 (학습 형식 그대로) ──
+    sllm_result = await _sllm_generate(fields, request.content, doc_type_label)
+
+    # ── 후처리: sLLM hallucination 보정 ──
+    sllm_result = _postprocess_sllm(sllm_result, fields, today, user_name, user_team)
+
+    # ── 병합: sLLM > Phase 0 fallback > null ──
+    data = {}
+    for f in fields:
+        key = f["key"]
+        sllm_val = sllm_result.get(key)
+        if sllm_val is not None and sllm_val != "" and sllm_val != []:
+            data[key] = sllm_val
+        elif key in phase0:
+            data[key] = phase0[key]
+        else:
+            data[key] = None
+
+    return {
+        "template_id": template.id,
+        "template_name": template.name,
+        "category": template.category,
+        "fields": fields,
+        "data": data,
+        "model_name": get_last_model_name(),
+    }
+
+
+def _phase0_defaults(fields: list, today: str, user_name: str, user_team: str) -> dict:
+    """사용자 컨텍스트 기반 기본값. label/description으로 매칭."""
+    # 중복 필드는 Phase 0에서도 제외
+    dup_keys = _find_duplicate_fields(fields)
+
+    data = {}
+    for f in fields:
+        if f["key"] in dup_keys or _is_skippable(f):
+            continue
+        label = f.get("label", "").lower()
+        hint = f"{label} {f.get('description', '')}".lower()
+        # 복합 라벨 (X/Y) 은 건너뛰기
+        if "/" in label or "·" in label:
+            continue
+        if f.get("type") == "date" and any(k in hint for k in ("작성일", "제출일", "보고일", "제안일")):
+            data[f["key"]] = today
+        elif user_name and any(k in hint for k in ("작성자", "담당자", "기록자")):
+            # "연락처"가 포함된 필드는 제외 (연락처에 이름 넣기 방지)
+            if "연락" not in hint:
+                data[f["key"]] = user_name
+        elif user_team and any(k in hint for k in ("부서", "소속")):
+            data[f["key"]] = user_team
+    return data
+
+
+def _postprocess_sllm(
+    sllm_result: dict, fields: list, today: str, user_name: str, user_team: str,
+) -> dict:
+    """sLLM 결과 후처리 — 명확한 hallucination만 보정.
+
+    1. 날짜 필드: 올해가 아닌 날짜 → today로 교체
+    2. 담당자/작성자: sLLM이 빈값이면 user.name으로 보충
+    3. body 필드는 건드리지 않음 (sLLM 생성 신뢰)
+    """
+    import re
+    from datetime import date as _date
+
+    current_year = str(_date.today().year)
+    result = dict(sllm_result)
+
+    for f in fields:
+        key = f["key"]
+        val = result.get(key)
+        hint = f"{f.get('label', '')} {f.get('description', '')}".lower()
+
+        # 날짜 hallucination 보정: 올해가 아닌 연도 → today
+        if isinstance(val, str) and val:
+            if f.get("type") == "date" or any(k in hint for k in ("날짜", "일자", "일시", "date")):
+                year_match = re.search(r"(20\d{2})", val)
+                if year_match and year_match.group(1) != current_year:
+                    result[key] = today
+
+        # 담당자/작성자: sLLM이 못 채웠으면 user_name 보충
+        if (val is None or val == "") and user_name:
+            if any(k in hint for k in ("작성자", "담당자", "기록자")):
+                if "연락" not in hint:
+                    result[key] = user_name
+
+    return result
+
+
+# sLLM에서 제외할 필드 판정
+_SKIP_LABELS = {"첨부", "첨부자료", "첨부 자료"}
+
+def _is_skippable(field: dict) -> bool:
+    """sLLM에 보내지 않아도 되는 필드인지 판정."""
+    label = field.get("label", "").strip()
+    # 첨부자료: AI가 채울 수 없음
+    if label in _SKIP_LABELS or "첨부" in label:
+        return True
+    return False
+
+
+def _find_duplicate_fields(fields: list) -> set:
+    """중복 필드 키를 찾아 제거 대상 반환. (예: 담당자 + 담당자/연락처)"""
+    keys = [f["key"] for f in fields]
+    skip = set()
+    for i, f in enumerate(fields):
+        label = f.get("label", "")
+        # "X / Y" 형태의 병합 필드: X와 Y가 개별 필드로 이미 있으면 중복
+        if "/" in label or "·" in label:
+            parts = [p.strip() for p in label.replace("·", "/").split("/")]
+            # 각 파트가 다른 필드의 라벨에 포함되는지 확인
+            other_labels = [fields[j].get("label", "") for j in range(len(fields)) if j != i]
+            if all(any(p in ol for ol in other_labels) for p in parts):
+                skip.add(f["key"])
+    return skip
+
+
+async def _sllm_generate(
+    fields: list, content: str, doc_type: str,
+) -> dict:
+    """파인튜닝 학습 형식 그대로 sLLM 1회 호출.
+
+    전체 필드를 받아서 중복/skip 대상만 제외 후 sLLM에 전달.
+    """
+    import json as _json
+    from ai.document_parser.template_extractor import fields_to_prompt
+    from ai.llm.prompts import DOC_GENERATE_SLLM_PROMPT
+    from ai.agents.document._common import _call_llm
+
+    # 중복 + 스킵 대상만 제외
+    dup_keys = _find_duplicate_fields(fields)
+    sllm_fields = [f for f in fields if f["key"] not in dup_keys and not _is_skippable(f)]
+
+    field_spec = fields_to_prompt(sllm_fields)
+
+    # 학습 데이터와 동일한 내용 섹션 이름
+    _CONTENT_SECTION_NAMES = {
+        "회의록": "회의 내용",
+        "업무보고서": "업무 내용",
+        "제안서": "제안 내용",
+    }
+    section_name = _CONTENT_SECTION_NAMES.get(doc_type, "내용")
+
+    # 파인튜닝 학습 형식과 동일한 user 프롬프트 (참고 프리픽스 없음)
+    user_prompt = (
+        f"다음 내용을 바탕으로 문서를 JSON 형식으로 작성해주세요.\n\n"
+        f"[문서 유형] {doc_type}\n\n"
+        f"[필드 명세]\n{field_spec}\n\n"
+        f"[{section_name}]\n{content}"
+    )
+
+    try:
+        result_str = await _call_llm(
+            DOC_GENERATE_SLLM_PROMPT, user_prompt,
+            json_mode=True, task="generate",
+        )
+        return _json.loads(result_str)
+    except Exception:
+        return {}
+
+
+@router.post("/analyze-all")
+async def analyze_all_documents(
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """기존 문서 중 미분석 문서를 일괄 LLM 분석"""
+    try:
+        result = await document_service.analyze_existing_documents(db)
+        await db.commit()
+        return result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"일괄 분석 실패: {str(e)}")
+
+
+@router.post("/reindex-all")
+async def reindex_all_documents(
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """기존 문서를 Qdrant에 재인덱싱 (태그/분류/요약 메타데이터 포함)"""
+    try:
+        result = await document_service.reindex_all_documents(db)
+        return result
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"재인덱싱 실패: {str(e)}")
 
 
 @router.get("/search/highlight")
@@ -201,12 +421,70 @@ async def upload_template(
 ):
     """
     커스텀 템플릿 업로드
-    — AI 구조 추출 필요, 팀원 C 구현 후 연동
+    — DOCX 양식 파일을 업로드하면 규칙 기반으로 필드를 추출하여 저장
     """
-    raise HTTPException(
-        status_code=501,
-        detail="커스텀 템플릿 업로드는 문서 구조 추출(from_parsed_structure) 구현 대기 중입니다.",
-    )
+    import tempfile
+    import os
+    from app.models.document_template import DocumentTemplate
+
+    # 파일 타입 검증
+    if not file.filename.endswith((".docx", ".DOCX")):
+        raise HTTPException(status_code=400, detail="DOCX 파일만 업로드 가능합니다.")
+
+    # 임시 파일에 저장 후 파싱
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        from ai.document_parser.template_extractor import extract_template_fields, fields_to_parsed_structure, enrich_descriptions
+        fields = extract_template_fields(tmp_path)
+
+        if not fields:
+            raise HTTPException(status_code=400, detail="양식에서 필드를 추출하지 못했습니다. DOCX 양식 파일인지 확인해주세요.")
+
+        # fallback description을 LLM으로 보강 (실패해도 진행)
+        doc_type_label = name or category or "문서"
+        fields = await enrich_descriptions(fields, doc_type=doc_type_label)
+
+        parsed_structure = fields_to_parsed_structure(fields)
+
+        # 업로드 파일 저장
+        upload_dir = Path("uploads/templates")
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        file_path = str(upload_dir / f"{user.id}_{file.filename}")
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        # DB 저장
+        template = DocumentTemplate(
+            name=name,
+            description=description,
+            file_path=file_path,
+            file_type="docx",
+            parsed_structure=parsed_structure,
+            category=category,
+            is_system=False,
+            scope=scope,
+            uploaded_by=user.id,
+            status="ready",
+        )
+        db.add(template)
+        await db.commit()
+        await db.refresh(template)
+
+        return {
+            "id": template.id,
+            "name": template.name,
+            "category": template.category,
+            "status": "ready",
+            "fields": fields,
+            "field_count": len(fields),
+        }
+
+    finally:
+        os.unlink(tmp_path)
 
 
 @router.get("/templates/")
@@ -251,36 +529,10 @@ async def delete_template(
 # ── 동적 경로 (/{document_id}) ──
 
 
-@router.get("/{document_id}")
-async def get_document(
-    document_id: int,
-    user=Depends(get_current_user),
-    db=Depends(get_db),
-):
-    """문서 상세 조회"""
-    doc = await document_service.get_document(db, document_id)
-    return {
-        "id": doc.id,
-        "title": doc.title,
-        "file_type": doc.file_type,
-        "scope": doc.scope,
-        "status": doc.status,
-        "uploaded_by": doc.uploaded_by,
-        "created_at": doc.created_at,
-        "content": doc.content,
-        "file_path": doc.file_path,
-        "version": 1,
-    }
-
-
-@router.delete("/{document_id}")
-async def delete_document(
-    document_id: int,
-    user=Depends(get_current_user),
-    db=Depends(get_db),
-):
-    """문서 삭제"""
-    return await document_service.delete_document(db, document_id, user.id)
+class UpdateAnalysisRequest(BaseModel):
+    category: str | None = None
+    tags: list[str] | None = None
+    summary: str | None = None
 
 
 @router.get("/{document_id}/download")
@@ -315,3 +567,136 @@ async def get_parsing_status(
     프론트에서 폴링: "파싱 중..." → "파싱 완료"
     """
     return await parsing_service.get_parsing_status(db, document_id)
+
+
+@router.patch("/{document_id}/analysis")
+async def update_analysis(
+    document_id: int,
+    request: UpdateAnalysisRequest,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """문서 분석 결과(카테고리, 태그, 요약) 수정"""
+    doc = await document_service.get_document(db, document_id)
+    if request.category is not None:
+        doc.category = request.category
+    if request.tags is not None:
+        doc.tags = request.tags
+    if request.summary is not None:
+        doc.summary = request.summary
+    await db.commit()
+    return {
+        "id": doc.id,
+        "category": doc.category,
+        "tags": doc.tags,
+        "summary": doc.summary,
+    }
+
+
+@router.get("/{document_id}")
+async def get_document(
+    document_id: int,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """문서 상세 조회"""
+    doc = await document_service.get_document(db, document_id)
+    result = {
+        "id": doc.id,
+        "title": doc.title,
+        "file_type": doc.file_type,
+        "scope": doc.scope,
+        "status": doc.status,
+        "uploaded_by": doc.uploaded_by,
+        "created_at": doc.created_at,
+        "content": doc.content,
+        "file_path": doc.file_path,
+        "version": 1,
+        "category": doc.category,
+        "tags": doc.tags,
+        "summary": doc.summary,
+    }
+    return result
+
+
+@router.post("/{document_id}/regulation-check")
+async def check_document_regulations(
+    document_id: int,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """문서 규정 검증 (사용자 요청 시 실행)"""
+    doc = await document_service.get_document(db, document_id)
+    if not doc.content or len(doc.content) < 50:
+        raise HTTPException(status_code=400, detail="문서 내용이 부족하여 규정 검증을 수행할 수 없습니다.")
+
+    try:
+        from ai.agents.regulation_validator import check_content_regulations
+        reg = await check_content_regulations(doc.content[:5000], user_id=user.id)
+        return reg or {"checked": True, "notes": [], "summary": ""}
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"[RegCheck] 규정 검증 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"규정 검증 실패: {str(e)}")
+
+
+class UpdateCategoryRequest(BaseModel):
+    category: str
+
+
+@router.patch("/{document_id}/category")
+async def update_document_category(
+    document_id: int,
+    req: UpdateCategoryRequest,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """문서 카테고리(타입) 변경"""
+    from sqlalchemy import select
+    from app.models.document import Document
+
+    result = await db.execute(select(Document).where(Document.id == document_id))
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
+    doc.category = req.category
+    await db.commit()
+    return {"id": doc.id, "category": doc.category}
+
+
+class UpdateScopeRequest(BaseModel):
+    scope: str
+
+
+@router.patch("/{document_id}/scope")
+async def update_document_scope(
+    document_id: int,
+    req: UpdateScopeRequest,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """문서 공개범위 변경 (company/team/personal)"""
+    if req.scope not in ("company", "team", "personal"):
+        raise HTTPException(status_code=400, detail="유효하지 않은 scope 값입니다")
+    from sqlalchemy import select
+    from app.models.document import Document
+
+    result = await db.execute(select(Document).where(Document.id == document_id))
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다")
+    doc.scope = req.scope
+    if req.scope == "team":
+        doc.team_name = user.team
+    await db.commit()
+    return {"id": doc.id, "scope": doc.scope}
+
+
+@router.delete("/{document_id}")
+async def delete_document(
+    document_id: int,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """문서 삭제"""
+    return await document_service.delete_document(db, document_id, user.id)

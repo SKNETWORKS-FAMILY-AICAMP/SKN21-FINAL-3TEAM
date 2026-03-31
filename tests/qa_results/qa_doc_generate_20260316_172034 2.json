@@ -1,0 +1,423 @@
+{
+  "timestamp": "20260316_172034",
+  "pass": 57,
+  "fail": 0,
+  "warn": 8,
+  "total": 68,
+  "env": {
+    "DOC_AGENT_MODE": "sllm",
+    "DOC_SLLM_TASKS": "generate,summary,qa,search",
+    "DOC_LORA_TASKS": "generate",
+    "VLLM_USE_LORA": "true"
+  },
+  "results": [
+    {
+      "test": "RunPod 엔드포인트",
+      "status": "PASS",
+      "details": "응답 OK, models={\"data\": [{\"created\": 1773649194, \"id\": \"kakaocorp/kanana-1.5-8b-instruct-2505\", \"max_model_len\": 4096, \"object\": \"model\", \"owned_by\": \"vllm\", \"parent\": null, \"permission\": [{\"allow_create_engine\": fa",
+      "data": null
+    },
+    {
+      "test": ".env DOC_AGENT_MODE",
+      "status": "PASS",
+      "details": "sllm → 실제: sllm",
+      "data": null
+    },
+    {
+      "test": ".env DOC_SLLM_TASKS",
+      "status": "PASS",
+      "details": "generate 포함 → 실제: generate,summary,qa,search",
+      "data": null
+    },
+    {
+      "test": ".env DOC_LORA_TASKS",
+      "status": "PASS",
+      "details": "generate 포함 → 실제: generate",
+      "data": null
+    },
+    {
+      "test": ".env VLLM_USE_LORA",
+      "status": "PASS",
+      "details": "true → 실제: true",
+      "data": null
+    },
+    {
+      "test": ".env VLLM_MODEL",
+      "status": "PASS",
+      "details": "설정됨 → 실제: kakaocorp/kanana-1.5-8b-instru",
+      "data": null
+    },
+    {
+      "test": ".env OPENAI_API_KEY",
+      "status": "PASS",
+      "details": "설정됨 (fallback용) → 실제: sk-proj-_3...",
+      "data": null
+    },
+    {
+      "test": "회의록 생성 호출",
+      "status": "PASS",
+      "details": "12.80s",
+      "data": null
+    },
+    {
+      "test": "회의록 사용 모델",
+      "status": "INFO",
+      "details": "kakaocorp/kanana-1.5-8b-instruct-2505 (LoRA v2_generate)",
+      "data": null
+    },
+    {
+      "test": "회의록 JSON 파싱",
+      "status": "PASS",
+      "details": "keys=['title', 'date', 'attendees', 'content', 'summary', 'decisions', 'action_items', 'time', 'location', 'meeting_type', 'author', 'risks', 'notes']",
+      "data": null
+    },
+    {
+      "test": "회의록 title",
+      "status": "PASS",
+      "details": "길이=21자",
+      "data": null
+    },
+    {
+      "test": "회의록 summary",
+      "status": "PASS",
+      "details": "길이=233자",
+      "data": null
+    },
+    {
+      "test": "회의록 decisions 배열",
+      "status": "PASS",
+      "details": "2개 항목",
+      "data": null
+    },
+    {
+      "test": "회의록 action_items 배열",
+      "status": "PASS",
+      "details": "2개 항목",
+      "data": null
+    },
+    {
+      "test": "회의록 action_items 수량",
+      "status": "PASS",
+      "details": "2개 >= 2",
+      "data": null
+    },
+    {
+      "test": "회의록 action_items.task",
+      "status": "PASS",
+      "details": "값: RAG 파이프라인 성능 개선",
+      "data": null
+    },
+    {
+      "test": "회의록 action_items.assignee",
+      "status": "PASS",
+      "details": "값: 윤경은",
+      "data": null
+    },
+    {
+      "test": "회의록 action_items.due_date",
+      "status": "PASS",
+      "details": "값: ",
+      "data": null
+    },
+    {
+      "test": "회의록 summary 품질",
+      "status": "PASS",
+      "details": "입력 복붙 아님, 요약됨",
+      "data": null
+    },
+    {
+      "test": "회의록 DOCX 생성",
+      "status": "PASS",
+      "details": "크기=37,829B, 경로=C:\\SKN21-FINAL-3TEAM\\backend\\generated_docs\\b751247b-2429-46c3-a5f0-04b1a62bf134.docx",
+      "data": null
+    },
+    {
+      "test": "회의록 DOCX 테이블 수",
+      "status": "PASS",
+      "details": "5개 (기대: ~5)",
+      "data": null
+    },
+    {
+      "test": "회의록 DOCX 빈 셀 비율",
+      "status": "PASS",
+      "details": "21.6% (11/51)",
+      "data": null
+    },
+    {
+      "test": "보고서 생성 호출",
+      "status": "PASS",
+      "details": "10.57s",
+      "data": null
+    },
+    {
+      "test": "보고서 사용 모델",
+      "status": "INFO",
+      "details": "kakaocorp/kanana-1.5-8b-instruct-2505 (LoRA v2_generate)",
+      "data": null
+    },
+    {
+      "test": "보고서 JSON 파싱",
+      "status": "PASS",
+      "details": "keys=['title', 'date', 'author', 'content', 'overview', 'tasks', 'next_plan', 'department', 'position', 'report_to', 'report_type', 'main_content', 'issues']",
+      "data": null
+    },
+    {
+      "test": "보고서 title",
+      "status": "PASS",
+      "details": "길이=17자",
+      "data": null
+    },
+    {
+      "test": "보고서 overview",
+      "status": "PASS",
+      "details": "길이=157자",
+      "data": null
+    },
+    {
+      "test": "보고서 department 추출",
+      "status": "WARN",
+      "details": "기대 'AI개발팀', 실제 ''",
+      "data": null
+    },
+    {
+      "test": "보고서 report_to 추출",
+      "status": "WARN",
+      "details": "기대 '김철수', 실제 ''",
+      "data": null
+    },
+    {
+      "test": "보고서 tasks 배열",
+      "status": "PASS",
+      "details": "3개 항목",
+      "data": null
+    },
+    {
+      "test": "보고서 tasks 수량",
+      "status": "PASS",
+      "details": "3개 >= 3",
+      "data": null
+    },
+    {
+      "test": "보고서 tasks.item",
+      "status": "PASS",
+      "details": "값: LoRA v2 파인튜닝 학습 완료",
+      "data": null
+    },
+    {
+      "test": "보고서 tasks.assignee",
+      "status": "PASS",
+      "details": "값: 김영민",
+      "data": null
+    },
+    {
+      "test": "보고서 tasks.progress",
+      "status": "PASS",
+      "details": "값: 완료",
+      "data": null
+    },
+    {
+      "test": "보고서 tasks.start_date",
+      "status": "PASS",
+      "details": "값: 2026-03-10",
+      "data": null
+    },
+    {
+      "test": "보고서 tasks.end_date",
+      "status": "PASS",
+      "details": "값: 2026-03-15",
+      "data": null
+    },
+    {
+      "test": "보고서 issues 내용",
+      "status": "WARN",
+      "details": "'cold start' 미언급. 실제: ",
+      "data": null
+    },
+    {
+      "test": "보고서 next_plan 내용",
+      "status": "PASS",
+      "details": "'E2E' 언급됨",
+      "data": null
+    },
+    {
+      "test": "보고서 DOCX 생성",
+      "status": "PASS",
+      "details": "크기=38,048B, 경로=C:\\SKN21-FINAL-3TEAM\\backend\\generated_docs\\50d09633-7eeb-417b-bcb3-e8ec7882f102.docx",
+      "data": null
+    },
+    {
+      "test": "보고서 DOCX 테이블 수",
+      "status": "PASS",
+      "details": "8개 (기대: ~7)",
+      "data": null
+    },
+    {
+      "test": "보고서 DOCX 빈 셀 비율",
+      "status": "PASS",
+      "details": "22.9% (16/70)",
+      "data": null
+    },
+    {
+      "test": "제안서 생성 호출",
+      "status": "PASS",
+      "details": "13.01s",
+      "data": null
+    },
+    {
+      "test": "제안서 사용 모델",
+      "status": "INFO",
+      "details": "kakaocorp/kanana-1.5-8b-instruct-2505 (LoRA v2_generate)",
+      "data": null
+    },
+    {
+      "test": "제안서 JSON 파싱",
+      "status": "PASS",
+      "details": "keys=['title', 'date', 'content', 'purpose', 'schedule', 'budget', 'expected_effect', 'company', 'manager', 'submit_to', 'contact', 'background', 'budget_total', 'analysis']",
+      "data": null
+    },
+    {
+      "test": "제안서 title",
+      "status": "PASS",
+      "details": "길이=23자",
+      "data": null
+    },
+    {
+      "test": "제안서 purpose",
+      "status": "PASS",
+      "details": "길이=147자",
+      "data": null
+    },
+    {
+      "test": "제안서 content",
+      "status": "PASS",
+      "details": "길이=238자",
+      "data": null
+    },
+    {
+      "test": "제안서 expected_effect",
+      "status": "PASS",
+      "details": "길이=171자",
+      "data": null
+    },
+    {
+      "test": "제안서 submit_to 추출",
+      "status": "WARN",
+      "details": "기대 '경영지원팀', 실제 ''",
+      "data": null
+    },
+    {
+      "test": "제안서 company 추출",
+      "status": "WARN",
+      "details": "기대 '듀듀', 실제 ''",
+      "data": null
+    },
+    {
+      "test": "제안서 manager 추출",
+      "status": "WARN",
+      "details": "기대 '신지용', 실제 ''",
+      "data": null
+    },
+    {
+      "test": "제안서 schedule 배열",
+      "status": "PASS",
+      "details": "4개 항목",
+      "data": null
+    },
+    {
+      "test": "제안서 budget 배열",
+      "status": "PASS",
+      "details": "3개 항목",
+      "data": null
+    },
+    {
+      "test": "제안서 schedule 수량",
+      "status": "PASS",
+      "details": "4개 >= 3",
+      "data": null
+    },
+    {
+      "test": "제안서 schedule.item",
+      "status": "PASS",
+      "details": "값: 설계",
+      "data": null
+    },
+    {
+      "test": "제안서 schedule.phase1",
+      "status": "PASS",
+      "details": "값: ",
+      "data": null
+    },
+    {
+      "test": "제안서 budget 수량",
+      "status": "PASS",
+      "details": "3개 >= 3",
+      "data": null
+    },
+    {
+      "test": "제안서 budget.item",
+      "status": "PASS",
+      "details": "값: 서버",
+      "data": null
+    },
+    {
+      "test": "제안서 budget.amount",
+      "status": "PASS",
+      "details": "값: 50만/월",
+      "data": null
+    },
+    {
+      "test": "제안서 DOCX 생성",
+      "status": "PASS",
+      "details": "크기=38,529B, 경로=C:\\SKN21-FINAL-3TEAM\\backend\\generated_docs\\1b914c2d-2bb5-4c8a-a7d5-6978b99d768a.docx",
+      "data": null
+    },
+    {
+      "test": "제안서 DOCX 테이블 수",
+      "status": "PASS",
+      "details": "10개 (기대: ~9)",
+      "data": null
+    },
+    {
+      "test": "제안서 DOCX 빈 셀 비율",
+      "status": "WARN",
+      "details": "40.0% (44/110)",
+      "data": null
+    },
+    {
+      "test": "커스텀 DOCX 양식 생성",
+      "status": "PASS",
+      "details": "C:\\SKN21-FINAL-3TEAM\\tests\\test_custom_template.docx",
+      "data": null
+    },
+    {
+      "test": "extract_template_fields()",
+      "status": "WARN",
+      "details": "추출 필드 수 부족: 0개",
+      "data": null
+    },
+    {
+      "test": "fields_to_prompt()",
+      "status": "PASS",
+      "details": "프롬프트 길이=144자",
+      "data": null
+    },
+    {
+      "test": "커스텀 LLM 호출",
+      "status": "PASS",
+      "details": "2.57s, 응답 길이=208자",
+      "data": null
+    },
+    {
+      "test": "커스텀 JSON 파싱",
+      "status": "PASS",
+      "details": "매칭 7/7 (100%): ['project_name', 'meeting_date', 'attendees', 'purpose', 'discussion', 'decisions', 'next_steps']",
+      "data": null
+    },
+    {
+      "test": "커스텀 필드 매칭률",
+      "status": "PASS",
+      "details": "100% >= 60%",
+      "data": null
+    }
+  ]
+}

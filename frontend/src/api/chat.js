@@ -31,3 +31,6 @@ export const deleteSessionAPI = (sessionId) =>
 
 export const clearSessionMessagesAPI = (sessionId) =>
   client.delete(`/chat/sessions/${sessionId}/messages`).then((r) => r.data)
+
+export const patchChatLog = (sessionId, logId, agentResponse) =>
+  client.patch(`/chat/sessions/${sessionId}/logs/${logId}`, { agent_response: agentResponse }).then((r) => r.data)

@@ -3,11 +3,32 @@ import KeywordHighlight from '../common/KeywordHighlight';
 import { BookOpen, X, FileText } from 'lucide-react';
 
 function RegulationModal({ reg, onClose }) {
+  const [fullContent, setFullContent] = useState(null);
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
+
+  useEffect(() => {
+    const articleStr = reg.article_number || reg.article || '';
+    const articleMatch = articleStr.match(/제\d+조/) || reg.name?.match(/제\d+조/);
+    if (articleMatch) {
+      setLoading(true);
+      // 규정명(reg.name)을 title 힌트로 전달하여 정확한 조항 조회
+      const titleHint = reg.name || reg.title || '';
+      import('../../api/regulations').then(({ getRegulationByArticle }) => {
+        getRegulationByArticle(articleMatch[0], titleHint)
+          .then((res) => setFullContent(res.data?.content || res.content || null))
+          .catch(() => setFullContent(null))
+          .finally(() => setLoading(false));
+      });
+    }
+  }, [reg]);
+
+  const displayContent = fullContent || reg.content;
 
   return (
     <div
@@ -15,7 +36,7 @@ function RegulationModal({ reg, onClose }) {
       onClick={onClose}
     >
       <div
-        className="bg-surface-card rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col"
+        className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col border border-white/40 dark:border-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
@@ -39,8 +60,10 @@ function RegulationModal({ reg, onClose }) {
 
         {/* 본문 */}
         <div className="overflow-y-auto px-5 py-4 flex-1">
-          {reg.content ? (
-            <p className="text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">{reg.content}</p>
+          {loading ? (
+            <p className="text-sm text-neutral-muted text-center py-8">규정 원문을 불러오는 중...</p>
+          ) : displayContent ? (
+            <p className="text-sm text-neutral-main leading-relaxed whitespace-pre-wrap">{displayContent}</p>
           ) : (
             <p className="text-sm text-neutral-muted text-center py-8">내용이 없습니다.</p>
           )}
@@ -105,7 +128,7 @@ export default function RegulationPanel({ regulations = [], isOpen, onClose, sea
               )}
               {typeof reg.relevance === 'number' && !isNaN(reg.relevance) && (
                 <div className="mt-2 flex items-center gap-1 text-[0.6875rem] text-neutral-muted">
-                  <span>관련도</span>
+                  <span>신뢰도</span>
                   <div className="flex-1 h-1.5 bg-neutral-divider rounded-full overflow-hidden">
                     <div
                       className="h-full bg-primary-500 rounded-full"

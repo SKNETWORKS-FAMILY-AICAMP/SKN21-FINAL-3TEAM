@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useOutletContext } from 'react-router-dom';
+
 import DocumentUpload from '../components/documents/DocumentUpload';
 import CustomSelect from '../components/common/CustomSelect';
 import DatePicker from '../components/common/DatePicker';
 import DocumentList from '../components/documents/DocumentList';
 import DocumentDetail from '../components/documents/DocumentDetail';
 import { uploadDocument, listDocuments, getDocument, deleteDocument } from '../api/documents';
+import { toast, confirm } from '../store/toastStore';
 
 
 const SEARCH_TYPE_MAP = {
@@ -21,7 +22,7 @@ const SEARCH_PLACEHOLDERS = {
 };
 
 export default function DocumentsPage() {
-  const { isScrolled } = useOutletContext();
+
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -39,12 +40,24 @@ export default function DocumentsPage() {
     loadDocuments();
   }, []);
 
-  const loadDocuments = async (keyword = null, currentSearchType = null) => {
+  // scope 필터 변경 시 목록 새로고침
+  const handleScopeFilterChange = (newFilter) => {
+    setScopeFilter(newFilter);
+    loadDocuments(searchQuery || null, null, newFilter);
+  };
+
+  const SCOPE_FILTER_MAP = { '회사': 'company', '팀': 'team' };
+
+  const loadDocuments = async (keyword = null, currentSearchType = null, currentScopeFilter = null) => {
     try {
       const params = {};
       if (keyword) {
         params.keyword = keyword;
         params.search_type = currentSearchType || SEARCH_TYPE_MAP[searchType] || 'title';
+      }
+      const sf = currentScopeFilter || scopeFilter;
+      if (sf && sf !== '전체') {
+        params.scope = SCOPE_FILTER_MAP[sf];
       }
       const response = await listDocuments(params);
       setDocuments(response.data);
@@ -114,19 +127,21 @@ export default function DocumentsPage() {
       const response = await uploadDocument(file, scope);
       const uploadedDoc = response.data;
 
-      // 업로드 응답의 status 확인
-      if (uploadedDoc.status === 'failed') {
-        alert(`문서 업로드는 되었지만 텍스트 추출에 실패했습니다.\n파일: ${uploadedDoc.title}\n파일 형식을 확인해주세요.`);
+      // 업로드 응답 확인
+      if (uploadedDoc.duplicate) {
+        toast.info(`이미 업로드된 문서입니다: ${uploadedDoc.title}`);
+      } else if (uploadedDoc.status === 'failed') {
+        toast.warning(`텍스트 추출에 실패했습니다. 스캔 이미지 PDF이거나 손상된 파일일 수 있습니다.\n파일: ${uploadedDoc.title}`);
       } else if (uploadedDoc.status === 'completed') {
-        alert('문서가 성공적으로 업로드되었습니다.');
+        toast.success('문서가 성공적으로 업로드되었습니다.');
       } else {
-        alert(`문서가 업로드되었습니다. (상태: ${uploadedDoc.status})`);
+        toast.info(`문서가 업로드되었습니다. (상태: ${uploadedDoc.status})`);
       }
 
       loadDocuments(); // 목록 새로고침
     } catch (error) {
       console.error('Upload failed:', error);
-      alert('문서 업로드에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+      toast.error('문서 업로드에 실패했습니다: ' + (error.response?.data?.detail || error.message));
     } finally {
       setLoading(false);
     }
@@ -136,7 +151,8 @@ export default function DocumentsPage() {
   const formattedDocs = documents.map(doc => ({
     id: doc.id,
     name: doc.title,
-    category: doc.file_type === 'pdf' ? 'PDF' : doc.file_type === 'docx' ? 'DOCX' : '문서',
+    category: doc.file_type === 'pdf' ? 'PDF' : doc.file_type === 'docx' ? 'DOCX' : doc.file_type === 'txt' ? 'TXT' : '문서',
+    doc_type: doc.category || '-',
     version: '-',
     status: doc.status === 'completed' ? '완료' : doc.status === 'processing' ? '처리중' : '실패',
     date: new Date(doc.created_at).toLocaleDateString('ko-KR'),
@@ -144,12 +160,13 @@ export default function DocumentsPage() {
     file_type: doc.file_type,
     uploaded_by: doc.uploaded_by,
     created_at: doc.created_at,
+    tags: doc.tags || [],
   }));
 
   const filteredDocs = formattedDocs.filter((doc) => {
-    // 스코프 필터링만 클라이언트에서 처리 (검색은 서버에서 처리됨)
+    // 스코프 필터링 (검색은 서버에서 처리됨)
     if (scopeFilter === '회사' && doc.scope !== 'company') return false;
-    if (scopeFilter === '팀' && doc.scope !== 'personal') return false;
+    if (scopeFilter === '팀' && doc.scope !== 'team') return false;
     return true;
   });
 
@@ -173,29 +190,30 @@ export default function DocumentsPage() {
 
   // 문서 삭제 핸들러
   const handleDeleteDoc = async (docId) => {
-    if (!window.confirm('이 문서를 삭제하시겠습니까?')) return;
+    const ok = await confirm('이 문서를 삭제하시겠습니까?');
+    if (!ok) return;
 
     try {
       await deleteDocument(docId);
-      alert('문서가 삭제되었습니다.');
+      toast.success('문서가 삭제되었습니다.');
       loadDocuments();
       setSelectedDoc(null);
       setDocumentDetail(null);
     } catch (error) {
       console.error('Failed to delete document:', error);
-      alert('문서 삭제에 실패했습니다: ' + (error.response?.data?.detail || error.message));
+      toast.error('문서 삭제에 실패했습니다: ' + (error.response?.data?.detail || error.message));
     }
   };
 
   return (
     <div>
-      <header className={`flex justify-between items-center sticky top-0 bg-surface-main z-10 transition-all duration-300 ${isScrolled ? 'h-[56px]' : 'h-[100px]'}`}>
+      <header className="flex justify-between items-center bg-surface-main h-[100px]">
         <div>
-          <h1 className={`font-bold transition-all duration-300 ${isScrolled ? 'text-lg' : 'text-2xl'}`}>문서 관리</h1>
-          <p className={`text-neutral-sub transition-all duration-300 overflow-hidden ${isScrolled ? 'text-xs mt-0 max-h-0 opacity-0' : 'text-sm mt-1 max-h-6 opacity-100'}`}>회사 규정 및 문서를 관리합니다</p>
+          <h1 className="font-bold text-2xl">문서 관리</h1>
+          <p className="text-neutral-sub text-sm mt-1">회사 규정 및 문서를 관리합니다</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+<div className="flex items-center gap-2">
             <CustomSelect
               value={searchType}
               onChange={handleSearchTypeChange}
@@ -230,18 +248,22 @@ export default function DocumentsPage() {
       </header>
       <DocumentUpload onUpload={handleUpload} onScopeChange={setScope} />
       <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-5">
-        <DocumentList documents={filteredDocs} onSelect={handleSelectDoc} searchQuery={searchQuery} scopeFilter={scopeFilter} onScopeFilterChange={setScopeFilter} />
+        <DocumentList documents={filteredDocs} onSelect={handleSelectDoc} searchQuery={searchQuery} scopeFilter={scopeFilter} onScopeFilterChange={handleScopeFilterChange} />
         <DocumentDetail
           doc={selectedDoc}
           documentDetail={documentDetail}
           searchQuery={searchQuery}
           onDelete={handleDeleteDoc}
+          onAnalysisUpdate={(updated) => {
+            setDocumentDetail(prev => prev ? { ...prev, ...updated } : prev);
+            loadDocuments();
+          }}
         />
       </div>
 
       {loading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6">
+          <div className="bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-lg p-6 border border-white/40 dark:border-white/10">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
               <p>업로드 중...</p>

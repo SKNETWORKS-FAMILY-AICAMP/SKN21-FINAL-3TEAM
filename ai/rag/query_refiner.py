@@ -44,6 +44,7 @@ _STOPWORDS = {
     "하고", "하면", "해서", "하여", "대해", "대한",
     "질문", "알려", "알고", "싶다", "궁금", "문의",
     "가능", "할", "할까", "할까요", "인가요", "인지", "건가요",
+    "찾다", "찾아", "주다", "보여", "보이다", "검색",
 }
 
 # ── 동의어 사전 (사내 규정 도메인 특화) ──
@@ -68,6 +69,9 @@ _SYNONYM_MAP: dict[str, list[str]] = {
     "계약": ["계약", "근로계약", "고용계약"],
     "개인정보": ["개인정보", "개인정보보호", "정보보호"],
     "클라우드": ["클라우드", "클라우드서비스", "SaaS", "외부서비스"],
+    "보고서": ["보고서", "리포트", "report", "업무보고"],
+    "회의록": ["회의록", "회의", "미팅", "회의기록"],
+    "제안서": ["제안서", "기획서", "proposal"],
 }
 
 # ── 구어체 → 문어체 변환 사전 (Vector 검색 품질 향상) ──
@@ -258,3 +262,59 @@ def refine_query_for_vector(raw_query: str) -> str:
     if not raw_query or not raw_query.strip():
         return raw_query
     return _convert_colloquial_to_formal(raw_query)
+
+
+# ── HyDE (Hypothetical Document Embeddings) ──
+
+_HYDE_PROMPT = """당신은 사내 규정 문서 전문가입니다.
+아래 질문에 대해, 실제 사내 규정 문서에 있을 법한 **답변 문단**을 작성하세요.
+실제 규정처럼 조항 번호, 구체적 기준, 절차 등을 포함하여 1~3문장으로 작성하세요.
+
+질문: {query}
+
+규정 문서 답변:"""
+
+
+def generate_hyde_document(query: str) -> str | None:
+    """HyDE: 질문에 대한 가상 정답 문서를 LLM으로 생성한다.
+
+    이 가상 문서를 벡터 검색 쿼리로 사용하면, 질문보다 실제 규정 문서에
+    의미적으로 가까운 임베딩을 얻을 수 있어 검색 정밀도가 향상된다.
+
+    비용: LLM API 1회 호출 (짧은 응답)
+    """
+    try:
+        import asyncio
+        from ai.llm import get_llm
+
+        llm = get_llm()
+        prompt = _HYDE_PROMPT.format(query=query)
+
+        # sync 컨텍스트에서 호출될 수 있으므로 이벤트 루프 확인
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            # 이미 async 컨텍스트 → Future로 실행
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                response = pool.submit(
+                    asyncio.run,
+                    llm.generate(prompt=prompt, temperature=0.0, max_tokens=200)
+                ).result(timeout=10)
+        else:
+            response = asyncio.run(
+                llm.generate(prompt=prompt, temperature=0.0, max_tokens=200)
+            )
+
+        hyde_doc = response.content.strip()
+        if hyde_doc:
+            logger.info(f"[HyDE] 가상 문서 생성 완료 ({len(hyde_doc)}자)")
+            return hyde_doc
+        return None
+
+    except Exception as e:
+        logger.warning(f"[HyDE] 가상 문서 생성 실패: {e}")
+        return None

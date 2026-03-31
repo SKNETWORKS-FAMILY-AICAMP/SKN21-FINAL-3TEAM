@@ -66,9 +66,15 @@ class AnthropicProvider(BaseLLM):
         system_prompt: Optional[str] = None,
         max_tokens: Optional[int] = None,
         temperature: Optional[float] = None,
+        json_mode: bool = False,
     ) -> LLMResponse:
+        effective_system = system_prompt
+        if json_mode and effective_system:
+            effective_system += "\n\n반드시 유효한 JSON만 출력하세요. 설명이나 마크다운 코드블록 없이 순수 JSON만 반환하세요."
+        elif json_mode:
+            effective_system = "반드시 유효한 JSON만 출력하세요. 설명이나 마크다운 코드블록 없이 순수 JSON만 반환하세요."
         messages = [{"role": "user", "content": prompt}]
-        params = self._build_params(messages, system_prompt, max_tokens, temperature)
+        params = self._build_params(messages, effective_system, max_tokens, temperature)
 
         response = await self.client.messages.create(**params)
 
@@ -108,10 +114,14 @@ class AnthropicProvider(BaseLLM):
         system_prompt: Optional[str] = None,
         max_tokens: Optional[int] = None,
         temperature: Optional[float] = None,
+        json_mode: bool = False,
     ) -> LLMResponse:
         # Anthropic: system 메시지는 별도 처리, 나머지만 messages로
         api_messages = []
         effective_system = system_prompt or self.config.system_prompt
+        if json_mode:
+            json_instruction = "반드시 유효한 JSON만 출력하세요. 설명이나 마크다운 코드블록 없이 순수 JSON만 반환하세요."
+            effective_system = f"{effective_system}\n\n{json_instruction}" if effective_system else json_instruction
 
         for msg in messages:
             if msg.role == "system":

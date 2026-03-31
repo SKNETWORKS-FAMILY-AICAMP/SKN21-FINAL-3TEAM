@@ -1,21 +1,21 @@
 """
-LoRA v1: RAG 판단 특화 파인튜닝
+LoRA 판단 파인튜닝 (v1/v2 공용)
 
 베이스 모델: Kanana-1.5-8B-Instruct (벤치마크 #7 선정)
-학습 데이터: ~1,500건 (judgment 1,000 + QA 500)
+학습 데이터: judgment + QA + cross-regulation 데이터
   - 규정 기반 Yes/No/조건부 판단
   - SFTTrainer chat format (messages 배열)
 출력 형식: JSON (result, confidence, reasoning, regulations, ...)
 
 사용법:
-    # 학습
-    python ai/finetuning/train_v1_judgment.py --mode train
-
-    # 평가
-    python ai/finetuning/train_v1_judgment.py --mode eval --adapter_path outputs/v1_judgment/final
-
-    # 학습 + 평가
+    # v1 학습 + 평가
     python ai/finetuning/train_v1_judgment.py --mode all
+
+    # v2 학습 + 평가 (v2 config 사용)
+    python ai/finetuning/train_v1_judgment.py --mode all --config ai/finetuning/configs/v2_judgment.yaml
+
+    # 평가만
+    python ai/finetuning/train_v1_judgment.py --mode eval --config ai/finetuning/configs/v2_judgment.yaml --adapter_path outputs/v2_judgment/final
 
 환경:
     pip install transformers peft trl bitsandbytes accelerate datasets torch pyyaml
@@ -24,10 +24,13 @@ LoRA v1: RAG 판단 특화 파인튜닝
 
 import argparse
 import json
+import os
+import random
 import re
 from collections import Counter
 from pathlib import Path
 
+import numpy as np
 import torch
 import yaml
 from datasets import Dataset
@@ -37,16 +40,40 @@ from transformers import (
     AutoTokenizer,
     BitsAndBytesConfig,
     TrainingArguments,
+    set_seed,
 )
-from trl import SFTTrainer
+from trl import SFTTrainer, SFTConfig
+
+# ── 재현성을 위한 랜덤 시드 고정 ──
+SEED = 42
+
+
+def fix_seed(seed: int = SEED):
+    """모든 랜덤 소스의 시드를 고정하여 학습 재현성 확보"""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    # cuDNN 결정론적 모드 (약간 느려질 수 있지만 재현성 보장)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    # HuggingFace transformers 시드
+    set_seed(seed)
 
 # ── 경로 ──
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 CONFIG_PATH = Path(__file__).resolve().parent / "configs" / "v1_judgment.yaml"
-OUTPUT_BASE = BASE_DIR / "outputs" / "v1_judgment"
-OUTPUT_BASE.mkdir(parents=True, exist_ok=True)
 
 VALID_RESULTS = {"yes", "no", "conditional", "no_regulation"}
+
+
+def get_output_base(config: dict) -> Path:
+    """config의 output.output_dir에서 OUTPUT_BASE 경로 반환"""
+    output_dir = config.get("output", {}).get("output_dir", "outputs/v1_judgment")
+    output_base = BASE_DIR / output_dir
+    output_base.mkdir(parents=True, exist_ok=True)
+    return output_base
 
 
 # ── 설정 로드 ──
@@ -153,6 +180,10 @@ def load_base_model(config: dict, for_training: bool = True):
 
 
 def train(config: dict):
+    fix_seed(SEED)
+    output_base = get_output_base(config)
+
+    print(f"\n[0/4] 랜덤 시드 고정: {SEED}")
     print("\n[1/4] 모델 로드 중...")
     tokenizer, model = load_base_model(config, for_training=True)
 
@@ -173,9 +204,9 @@ def train(config: dict):
     )
 
     train_cfg = config["training"]
-    output_dir = str(OUTPUT_BASE / "checkpoints")
-    training_args = TrainingArguments(
-        output_dir=output_dir,
+    checkpoint_dir = str(output_base / "checkpoints")
+    training_args = SFTConfig(dataset_text_field="text", max_seq_length=2048,
+        output_dir=checkpoint_dir,
         num_train_epochs=train_cfg["num_epochs"],
         per_device_train_batch_size=train_cfg["batch_size"],
         gradient_accumulation_steps=train_cfg["gradient_accumulation_steps"],
@@ -191,6 +222,8 @@ def train(config: dict):
         gradient_checkpointing=True,
         optim="paged_adamw_8bit",
         report_to="none",
+        seed=SEED,
+        data_seed=SEED,
     )
 
     print("\n[3/4] 학습 시작...")
@@ -200,17 +233,30 @@ def train(config: dict):
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         peft_config=lora_config,
-        max_seq_length=train_cfg["max_length"],
-        dataset_text_field="text",
     )
 
     trainer.train()
 
     print("\n[4/4] 어댑터 저장 중...")
-    final_path = OUTPUT_BASE / "final"
+    final_path = output_base / "final"
     trainer.model.save_pretrained(str(final_path))
     tokenizer.save_pretrained(str(final_path))
     print(f"  저장 완료: {final_path}")
+
+    # HuggingFace 자동 백업 (huggingface-cli login 되어있으면 실행)
+    hf_repo = os.environ.get("HF_UPLOAD_REPO")
+    if hf_repo:
+        try:
+            from huggingface_hub import HfApi
+            api = HfApi()
+            api.upload_folder(
+                folder_path=str(final_path),
+                repo_id=hf_repo,
+                repo_type="model",
+            )
+            print(f"  HuggingFace 업로드 완료: {hf_repo}")
+        except Exception as e:
+            print(f"  HuggingFace 업로드 실패 (수동 업로드 필요): {e}")
 
 
 # ── 평가 ──
@@ -236,6 +282,8 @@ def parse_judgment_json(text: str) -> dict | None:
 
 def evaluate(config: dict, adapter_path: str):
     """판단 전용 평가 메트릭: 판단 정확도, JSON 유효율, 카테고리별 정확도"""
+    output_base = get_output_base(config)
+
     print(f"\n어댑터 로드: {adapter_path}")
 
     tokenizer, base_model = load_base_model(config, for_training=False)
@@ -312,7 +360,7 @@ def evaluate(config: dict, adapter_path: str):
 
     # 결과 출력
     print("\n" + "=" * 60)
-    print("  Judgment LoRA v1 평가 결과")
+    print("  Judgment LoRA 평가 결과")
     print("=" * 60)
     print(f"  총 평가 건수:   {total}")
     print(f"  JSON 유효율:    {json_valid}/{total} ({json_valid/total*100:.1f}%)" if total else "")
@@ -334,7 +382,7 @@ def evaluate(config: dict, adapter_path: str):
         "result_accuracy": round(result_correct / total, 4) if total else 0,
         "category_stats": category_stats,
     }
-    result_path = OUTPUT_BASE / "eval_results.json"
+    result_path = output_base / "eval_results.json"
     with open(result_path, "w", encoding="utf-8") as f:
         json.dump(eval_result, f, ensure_ascii=False, indent=2)
     print(f"\n  결과 저장: {result_path}")
@@ -349,18 +397,25 @@ def main():
     parser.add_argument("--config", default=str(CONFIG_PATH), help="YAML 설정 파일 경로")
     parser.add_argument(
         "--adapter_path",
-        default=str(OUTPUT_BASE / "final"),
-        help="eval 모드 시 어댑터 경로",
+        default=None,
+        help="eval 모드 시 어댑터 경로 (미지정 시 config의 output_dir/final 사용)",
     )
     args = parser.parse_args()
 
     config = load_config(Path(args.config))
+    output_base = get_output_base(config)
+
+    # adapter_path 기본값: config의 output_dir/final
+    if args.adapter_path is None:
+        args.adapter_path = str(output_base / "final")
+
     print(f"설정 로드: {args.config}")
     print(f"  base_model: {config['model']['base_model']}")
     print(f"  LoRA r={config['lora']['r']}, alpha={config['lora']['lora_alpha']}")
     print(f"  epochs={config['training']['num_epochs']}, "
           f"batch={config['training']['batch_size']}, "
           f"lr={config['training']['learning_rate']}")
+    print(f"  output: {output_base}")
 
     if args.mode in ("train", "all"):
         train(config)

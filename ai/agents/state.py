@@ -18,7 +18,7 @@ class AgentState(TypedDict):
     user_id: int                            # 사용자 ID
 
     # ── Intent 분류 (지용) ──
-    intent: str                             # judgment | doc_search | doc_generate | doc_summary | doc_qa | schedule_add | schedule_view | schedule_followup | general
+    intent: str                             # judgment | doc_retrieve | doc_generate | schedule_add | schedule_view | schedule_followup | general
     confidence: float                       # 분류 신뢰도 (0.0~1.0)
     intent_candidates: Optional[list]       # top-k intent 후보 [{"intent": str, "confidence": float}]
 
@@ -30,11 +30,13 @@ class AgentState(TypedDict):
 
     # ── 대화 이력 (경은) ──
     chat_history: list[dict]                # [{"role": "user"|"assistant", "content": "..."}]
+    chat_summary: Optional[str]             # sLLM 기반 이전 대화 요약 (긴 대화 맥락 유지용)
 
     # ── 에러 (경은) ──
     error: Optional[str]                    # 에러 메시지 (없으면 None)
 
     # ── 템플릿 (PM 지용이 정의, 승언이 사용) ──
+    template_type: Optional[str]            # 템플릿 유형 (meeting_minutes, report, proposal 등)
     template_id: Optional[int]              # DB 템플릿 ID
     source_page: Optional[str]              # 요청 출처: chatbot | meeting_page | document_page
     template_fields: Optional[list[str]]    # 동적 필드 목록 (예: ["title", "summary", "key_points"])
@@ -47,5 +49,20 @@ class AgentState(TypedDict):
     # ── Google 연동 (혜빈) ──
     google_services_result: Optional[dict]  # schedule_add 시 Google 서비스 결과
 
+    # ── 복합 질문 (지영) ──
+    _is_compound: Optional[bool]            # 복합 질문 여부 (classify_intent에서 설정)
+    _compound_intents: Optional[list]       # 복합 감지된 intent 목록 [{"intent": str, "confidence": float}]
+    sub_queries: Optional[list]             # 복합 질문 분해 결과 [{"query": str, "intent": str}, ...]
+    sub_responses: Optional[list]           # 각 sub_query의 agent_response 결과
+
+    # ── 사용자 팀 정보 ──
+    user_team: Optional[str]                # 사용자 소속 팀 (chat.py에서 설정)
+
     # ── 스트리밍 제어 ──
     stream_mode: Optional[bool]             # True이면 LLM 호출을 chat.py에서 직접 스트리밍 처리
+
+    # ── cross-agent 맥락 ──
+    prev_agent_context: Optional[dict]      # 이전 Agent 결과 요약 (Agent 간 맥락 전달용)
+
+    # ── 후속 액션 강제 라우팅 ──
+    force_intent: Optional[str]             # "doc_retrieve" 형식 — BERT 분류 스킵

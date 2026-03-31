@@ -9,7 +9,11 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       proxy: {
         '/api': {
-          target: env.BACKEND_URL || 'http://3.37.118.197:8000',
+          target: process.env.BACKEND_URL || env.BACKEND_URL || 'http://3.37.118.197:8000',
+          changeOrigin: true,
+        },
+        '/health': {
+          target: process.env.BACKEND_URL || env.BACKEND_URL || 'http://3.37.118.197:8000',
           changeOrigin: true,
         },
       },

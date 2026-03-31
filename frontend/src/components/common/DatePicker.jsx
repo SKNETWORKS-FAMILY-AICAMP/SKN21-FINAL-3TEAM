@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -6,24 +7,44 @@ const MONTHS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', 
 
 export default function DatePicker({ value, onChange, placeholder = '날짜 선택...', autoOpen = false }) {
   const [isOpen, setIsOpen] = useState(autoOpen);
+  const [popupStyle, setPopupStyle] = useState({});
   const today = new Date();
   const [viewDate, setViewDate] = useState(() => value ? new Date(value) : today);
-  const ref = useRef(null);
+  const triggerRef = useRef(null);
+  const popupRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false);
+      if (
+        triggerRef.current && !triggerRef.current.contains(e.target) &&
+        popupRef.current && !popupRef.current.contains(e.target)
+      ) {
+        setIsOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const popupWidth = 272;
+      const popupHeight = 320;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const top = spaceBelow >= popupHeight
+        ? rect.bottom + 4
+        : rect.top - popupHeight - 4;
+      const left = Math.min(rect.right - popupWidth, window.innerWidth - popupWidth - 8);
+      setPopupStyle({ position: 'fixed', top, left, zIndex: 9999 });
+    }
+  }, [isOpen]);
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
   const lastDate = new Date(year, month + 1, 0).getDate();
 
-  // null: 빈 셀, number: 날짜
   const cells = [
     ...Array(firstDay).fill(null),
     ...Array.from({ length: lastDate }, (_, i) => i + 1),
@@ -45,12 +66,12 @@ export default function DatePicker({ value, onChange, placeholder = '날짜 선�
     day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative" ref={triggerRef}>
       {/* 트리거 버튼 */}
       <button
         type="button"
         onClick={() => setIsOpen((o) => !o)}
-        className="flex items-center gap-2 bg-surface-card border border-neutral-border rounded-md px-4 w-full h-[38px] text-[0.8125rem] hover:border-primary-400 transition"
+        className="flex items-center gap-2 bg-surface-card border border-neutral-border rounded-md px-3.5 w-full py-2.5 text-sm hover:border-primary-400 transition"
       >
         <Calendar size={15} className="text-neutral-muted flex-shrink-0" />
         <span className={value ? 'text-neutral-main' : 'text-neutral-muted'}>
@@ -58,9 +79,13 @@ export default function DatePicker({ value, onChange, placeholder = '날짜 선�
         </span>
       </button>
 
-      {/* 달력 팝업 */}
-      {isOpen && (
-        <div className="absolute top-full mt-1 right-0 z-50 bg-white border border-neutral-divider rounded-lg shadow-lg p-4 w-[272px]">
+      {/* 달력 팝업 — Portal로 body에 렌더링 */}
+      {isOpen && createPortal(
+        <div
+          ref={popupRef}
+          style={popupStyle}
+          className="bg-surface-card border border-neutral-divider rounded-lg shadow-lg p-4 w-[272px]"
+        >
           {/* 월 네비게이션 */}
           <div className="flex items-center justify-between mb-3">
             <button
@@ -134,7 +159,8 @@ export default function DatePicker({ value, onChange, placeholder = '날짜 선�
               오늘 선택
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -16,16 +16,38 @@ export const uploadDocument = (file, scope) => {
   formData.append('file', file)
   return client.post(`/documents/upload?scope=${scope}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
   })
 }
 
 export const deleteDocument = (id) =>
   client.delete(`/documents/${id}`)
 
+export const updateDocumentAnalysis = (id, data) =>
+  client.patch(`/documents/${id}/analysis`, data)
+
+export const updateDocumentCategory = (id, category) =>
+  client.patch(`/documents/${id}/category`, { category })
+
+export const updateDocumentScope = (id, scope) =>
+  client.patch(`/documents/${id}/scope`, { scope })
+
+export const analyzeAllDocuments = () =>
+  client.post('/documents/analyze-all')
+
+export const reindexAllDocuments = () =>
+  client.post('/documents/reindex-all')
+
+export const checkDocumentRegulations = (id) =>
+  client.post(`/documents/${id}/regulation-check`, null, { timeout: 120000 })
+
 // ── 문서 생성 ──
 
 export const generateDocument = (data) =>
-  client.post('/documents/generate', data)
+  client.post('/documents/generate', data, { timeout: 180000 })
+
+export const fillFields = (data) =>
+  client.post('/documents/fill-fields', data, { timeout: 180000 })
 
 export const downloadDocument = (id, format = 'docx') =>
   client.get(`/documents/${id}/download`, {

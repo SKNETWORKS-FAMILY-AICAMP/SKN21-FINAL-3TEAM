@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intent 분류 → Planner → Agent 실행 흐름</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        primary: {
+          900: '#3D5164',
+          700: '#56728A',
+          500: '#6E87A0',
+          300: '#8FA3B4',
+          100: '#C8D5E2',
+          50: '#E8EEF3',
+        },
+        accent: {
+          700: '#8B7D6E',
+          500: '#A89580',
+          300: '#C4B49A',
+          100: '#EDE5D0',
+          50: '#F7F3EB',
+        },
+        surface: {
+          main: '#F4F5F7',
+          sub: '#EBEDF0',
+          card: '#FFFFFF',
+          hover: '#F9FAFB',
+        },
+        neutral: {
+          main: '#2C3340',
+          sub: '#6B7280',
+          muted: '#9CA3AF',
+          border: '#D1D5DB',
+          divider: '#E5E7EB',
+        },
+        status: {
+          success: '#5B9A6F',
+          'success-bg': '#E8F4EC',
+          warning: '#C49A3C',
+          'warning-bg': '#F5EDD0',
+          error: '#C06060',
+          'error-bg': '#F5E0E0',
+          info: '#6E87A0',
+          'info-bg': '#E8EEF3',
+        },
+      },
+      fontFamily: {
+        sans: ['Noto Sans KR', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        display: ['Poppins', 'sans-serif'],
+      },
+      borderRadius: {
+        'card': '12px',
+        'btn': '8px',
+      },
+      boxShadow: {
+        'card': '0 4px 12px rgba(44, 51, 64, 0.06)',
+        'soft': '0 8px 30px rgba(0, 0, 0, 0.04)',
+      }
+    }
+  }
+}
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap');
+  .flow-arrow::after {
+    content: '↓';
+    display: block;
+    text-align: center;
+    font-size: 1.5rem;
+    color: #56728A;
+    padding: 0.25rem 0;
+  }
+  .code-block {
+    background: #3D5164;
+    color: #E8EEF3;
+    border-radius: 8px;
+    padding: 1rem;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+  .code-block .key { color: #C8D5E2; font-weight: 600; }
+  .code-block .str { color: #C4B49A; }
+  .code-block .comment { color: #8FA3B4; }
+</style>
+</head>
+<body class="bg-surface-main text-neutral-main min-h-screen font-sans">
+
+<!-- Header -->
+<header class="bg-primary-700 py-6 px-4 sticky top-0 z-50 shadow-card">
+  <div class="max-w-3xl mx-auto">
+    <h1 class="text-xl sm:text-2xl font-bold text-white font-display">dude AI Architecture</h1>
+    <p class="text-primary-100 text-sm mt-1">Intent 분류 → Planner → Agent 실행 흐름</p>
+  </div>
+</header>
+
+<main class="max-w-3xl mx-auto px-4 py-6 space-y-5">
+
+  <!-- 핵심 질문 -->
+  <section class="bg-surface-card rounded-card p-5 border border-neutral-border shadow-card">
+    <h2 class="text-lg font-bold text-primary-900 mb-3">핵심 질문</h2>
+    <p class="text-neutral-sub text-sm leading-relaxed">
+      Intent 분류 모델이 이미 있는데, <strong class="text-neutral-main">왜 Planner 모델이 따로 필요한가?</strong>
+    </p>
+    <div class="mt-4 bg-primary-50 rounded-btn p-4 border border-primary-100">
+      <p class="text-sm text-neutral-main leading-relaxed">
+        <strong class="text-primary-700">Intent 분류</strong>는 <em>"뭘 해야 하나?"</em>에 답하고 (라벨 집합),<br>
+        <strong class="text-accent-700">Planner</strong>는 <em>"어떤 순서로, 어떤 쿼리를 넘길까?"</em>에 답한다.
+      </p>
+    </div>
+  </section>
+
+  <!-- 비교표 -->
+  <section class="bg-surface-card rounded-card p-5 border border-neutral-border shadow-card">
+    <h2 class="text-lg font-bold text-primary-900 mb-3">Intent 분류 vs Planner</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b-2 border-primary-100">
+            <th class="text-left py-2 pr-3 text-neutral-muted font-medium"></th>
+            <th class="text-left py-2 pr-3 text-primary-700 font-semibold">Intent 분류</th>
+            <th class="text-left py-2 text-accent-700 font-semibold">Planner</th>
+          </tr>
+        </thead>
+        <tbody class="text-neutral-main">
+          <tr class="border-b border-neutral-divider">
+            <td class="py-2.5 pr-3 text-neutral-sub font-medium">답하는 질문</td>
+            <td class="py-2.5 pr-3"><strong>뭘</strong> 해야 하나?</td>
+            <td class="py-2.5"><strong>어떤 순서</strong>로 해야 하나?</td>
+          </tr>
+          <tr class="border-b border-neutral-divider">
+            <td class="py-2.5 pr-3 text-neutral-sub font-medium">출력</td>
+            <td class="py-2.5 pr-3">라벨 집합<br><span class="text-xs text-neutral-muted">{doc_retrieve, judgment, doc_generate}</span></td>
+            <td class="py-2.5">실행 계획<br><span class="text-xs text-neutral-muted">순서 + 의존성 + sub-query</span></td>
+          </tr>
+          <tr class="border-b border-neutral-divider">
+            <td class="py-2.5 pr-3 text-neutral-sub font-medium">모델</td>
+            <td class="py-2.5 pr-3">klue/roberta-large<br><span class="text-xs text-neutral-muted">338M, ONNX INT8</span></td>
+            <td class="py-2.5">Kanana-1.5-8B<br><span class="text-xs text-neutral-muted">QLoRA, vLLM 서빙</span></td>
+          </tr>
+          <tr>
+            <td class="py-2.5 pr-3 text-neutral-sub font-medium">결정하는 것</td>
+            <td class="py-2.5 pr-3">어떤 Agent가 필요한지</td>
+            <td class="py-2.5">병렬/순차, 의존성,<br>각 Agent에 넘길 쿼리</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 왜 필요한가 -->
+  <section class="bg-surface-card rounded-card p-5 border border-neutral-border shadow-card">
+    <h2 class="text-lg font-bold text-primary-900 mb-3">단일 질문 vs 복합 질문</h2>
+
+    <div class="space-y-4">
+      <!-- 단일 -->
+      <div class="bg-status-success-bg rounded-btn p-4 border border-[#5B9A6F]/20">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="bg-status-success text-white text-xs font-semibold px-2 py-0.5 rounded-btn">단일</span>
+          <span class="text-sm text-neutral-main">"보고서 작성해줘"</span>
+        </div>
+        <p class="text-xs text-neutral-sub">→ Intent: doc_generate → 바로 실행. <strong class="text-status-success">Planner 불필요</strong></p>
+      </div>
+
+      <!-- 복합 -->
+      <div class="bg-status-warning-bg rounded-btn p-4 border border-[#C49A3C]/20">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="bg-status-warning text-white text-xs font-semibold px-2 py-0.5 rounded-btn">복합</span>
+          <span class="text-sm text-neutral-main">"회의록 찾아서 분석하고 보고서 만들어줘"</span>
+        </div>
+        <p class="text-xs text-neutral-sub mb-3">Intent 분류 출력: {doc_retrieve, judgment, doc_generate} — <strong class="text-status-warning">순서 없는 집합</strong></p>
+
+        <div class="text-xs text-neutral-main space-y-1.5">
+          <p>? 뭘 먼저? → 문서 찾아야 분석 가능</p>
+          <p>? 동시에 해도 돼? → 찾기→분석은 순차, 보고서는 둘 다 끝난 후</p>
+          <p>? 각 Agent에 뭘 넘겨? → 원문 전체? 해당 부분만?</p>
+        </div>
+        <p class="text-xs text-accent-700 mt-3 font-semibold">→ 이 결정을 Planner가 한다</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 실험 데이터 근거 -->
+  <section class="bg-surface-card rounded-card p-5 border border-neutral-border shadow-card">
+    <h2 class="text-lg font-bold text-primary-900 mb-3">실험 근거: Planner LoRA vs 규칙 기반</h2>
+    <p class="text-xs text-neutral-muted mb-3">100건 Held-out 테스트 결과 (3/18)</p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b-2 border-primary-100">
+            <th class="text-left py-2 pr-3 text-neutral-muted font-medium">카테고리</th>
+            <th class="text-center py-2 pr-3 text-primary-700 font-semibold">Planner LoRA</th>
+            <th class="text-center py-2 text-neutral-muted font-semibold">규칙 기반</th>
+          </tr>
+        </thead>
+        <tbody class="text-neutral-main">
+          <tr class="border-b border-neutral-divider">
+            <td class="py-2.5 pr-3">단일 질문</td>
+            <td class="py-2.5 pr-3 text-center">97%</td>
+            <td class="py-2.5 text-center">97%</td>
+          </tr>
+          <tr class="border-b border-neutral-divider">
+            <td class="py-2.5 pr-3">병렬</td>
+            <td class="py-2.5 pr-3 text-center font-bold text-status-success">92%</td>
+            <td class="py-2.5 text-center font-bold text-status-error">33%</td>
+          </tr>
+          <tr class="border-b border-neutral-divider">
+            <td class="py-2.5 pr-3">복합 (3-step)</td>
+            <td class="py-2.5 pr-3 text-center font-bold text-status-success">74%</td>
+            <td class="py-2.5 text-center font-bold text-status-error">0%</td>
+          </tr>
+          <tr>
+            <td class="py-2.5 pr-3 font-semibold">전체</td>
+            <td class="py-2.5 pr-3 text-center font-bold text-status-success">78%</td>
+            <td class="py-2.5 text-center text-neutral-muted">60%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="mt-3 bg-status-info-bg rounded-btn p-3 border border-primary-100">
+      <p class="text-xs text-neutral-sub">
+        <strong class="text-primary-700">병렬 33%</strong> = 12건 중 4건만 정답. 규칙이 병렬 가능한 걸 무조건 순차로 처리.<br>
+        <strong class="text-primary-700">복합 0%</strong> = 19건 중 0건 정답. step 누락, 순서 오류, 의존성 잘못 설정.
+      </p>
+    </div>
+  </section>
+
+  <!-- 전체 흐름 -->
+  <section class="bg-surface-card rounded-card p-5 border border-neutral-border shadow-card">
+    <h2 class="text-lg font-bold text-primary-900 mb-4">전체 실행 흐름 (5단계)</h2>
+
+    <div class="space-y-1">
+      <!-- Step 1 -->
+      <div class="flow-arrow">
+        <div class="bg-primary-50 border border-primary-100 rounded-card p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="bg-primary-700 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">1</span>
+            <h3 class="font-semibold text-primary-900 text-sm">classify_intent</h3>
+          </div>
+          <p class="text-xs text-neutral-muted mb-1">파일: <span class="text-neutral-sub">orchestrator.py:495~558</span></p>
+          <p class="text-xs text-neutral-muted mb-2">모델: <span class="text-neutral-sub">intent_classifier.py (ONNX 앙상블)</span></p>
+          <div class="code-block text-xs">
+            <span class="comment"># ONNX 5-seed 앙상블 멀티라벨 분류</span><br>
+            ml_result = classifier.<span class="key">predict_multilabel</span>(user_input)<br><br>
+            <span class="comment"># 결과:</span><br>
+            {<br>
+            &nbsp;&nbsp;<span class="key">"intents"</span>: [doc_retrieve, judgment, doc_generate],<br>
+            &nbsp;&nbsp;<span class="key">"is_compound"</span>: <span class="str">True</span>&nbsp;&nbsp;<span class="comment">← threshold 넘는 intent >= 2개</span><br>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="flow-arrow">
+        <div class="bg-accent-50 border border-accent-100 rounded-card p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="bg-accent-700 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">2</span>
+            <h3 class="font-semibold text-primary-900 text-sm">route_by_intent</h3>
+          </div>
+          <p class="text-xs text-neutral-muted mb-1">파일: <span class="text-neutral-sub">orchestrator.py:604~650</span></p>
+          <div class="code-block text-xs">
+            <span class="key">if</span> state[<span class="str">"_is_compound"</span>]:<br>
+            &nbsp;&nbsp;<span class="key">return</span> <span class="str">"decompose_query"</span>&nbsp;&nbsp;<span class="comment">← 복합이면 Planner로</span><br><br>
+            <span class="comment"># 단일이면 바로 Agent로 (judgment_agent, document_agent 등)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="flow-arrow">
+        <div class="bg-status-warning-bg border border-[#C49A3C]/20 rounded-card p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="bg-status-warning text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">3</span>
+            <h3 class="font-semibold text-primary-900 text-sm">decompose_query (Planner)</h3>
+          </div>
+          <p class="text-xs text-neutral-muted mb-1">파일: <span class="text-neutral-sub">orchestrator.py:328~469</span></p>
+          <p class="text-xs text-neutral-muted mb-2">모델: <span class="text-neutral-sub">Kanana-1.5-8B + LoRA (vLLM)</span></p>
+
+          <p class="text-xs text-neutral-main font-semibold mb-2">3가지를 결정:</p>
+          <div class="space-y-2 mb-3">
+            <div class="flex items-start gap-2">
+              <span class="text-status-warning text-xs font-bold mt-0.5">1</span>
+              <p class="text-xs text-neutral-main"><strong>sub-query 분리</strong> — 각 Agent에 넘길 쿼리 텍스트 생성</p>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="text-status-warning text-xs font-bold mt-0.5">2</span>
+              <p class="text-xs text-neutral-main"><strong>실행 순서</strong> — step_id로 순서 지정</p>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="text-status-warning text-xs font-bold mt-0.5">3</span>
+              <p class="text-xs text-neutral-main"><strong>의존성</strong> — depends_on으로 병렬/순차 결정</p>
+            </div>
+          </div>
+
+          <div class="code-block text-xs">
+            <span class="comment"># Planner LoRA 출력:</span><br>
+            {<span class="key">"plan"</span>: [<br>
+            &nbsp;&nbsp;{<span class="key">"step_id"</span>: 1, <span class="key">"intent"</span>: <span class="str">"doc_retrieve"</span>,<br>
+            &nbsp;&nbsp;&nbsp;<span class="key">"query"</span>: <span class="str">"회의록 찾아줘"</span>, <span class="key">"depends_on"</span>: []},<br>
+            &nbsp;&nbsp;{<span class="key">"step_id"</span>: 2, <span class="key">"intent"</span>: <span class="str">"judgment"</span>,<br>
+            &nbsp;&nbsp;&nbsp;<span class="key">"query"</span>: <span class="str">"회의록 내용 분석"</span>, <span class="key">"depends_on"</span>: [1]},<br>
+            &nbsp;&nbsp;{<span class="key">"step_id"</span>: 3, <span class="key">"intent"</span>: <span class="str">"doc_generate"</span>,<br>
+            &nbsp;&nbsp;&nbsp;<span class="key">"query"</span>: <span class="str">"보고서 만들어줘"</span>, <span class="key">"depends_on"</span>: [1, 2]}<br>
+            ]}
+          </div>
+
+          <div class="mt-3 bg-surface-card rounded-btn p-3 border border-neutral-border">
+            <p class="text-xs text-neutral-sub">
+              <strong class="text-primary-700">+ ONNX 재분류</strong>: Planner가 정한 intent를 맹신하지 않고,<br>
+              각 sub-query를 ONNX에 다시 넣어서 실제 intent 확정<br>
+              <span class="text-neutral-muted">(orchestrator.py:350~353)</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="flow-arrow">
+        <div class="bg-status-info-bg border border-primary-100 rounded-card p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="bg-primary-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">4</span>
+            <h3 class="font-semibold text-primary-900 text-sm">compound_pending</h3>
+          </div>
+          <p class="text-xs text-neutral-muted mb-1">파일: <span class="text-neutral-sub">orchestrator.py:479~489</span></p>
+          <div class="code-block text-xs">
+            <span class="comment"># sub_queries를 chat.py로 전달</span><br>
+            state[<span class="str">"agent_response"</span>] = {<br>
+            &nbsp;&nbsp;<span class="key">"type"</span>: <span class="str">"compound"</span>,<br>
+            &nbsp;&nbsp;<span class="key">"stream_pending"</span>: True,<br>
+            &nbsp;&nbsp;<span class="key">"sub_queries"</span>: sub_queries<br>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 5 -->
+      <div>
+        <div class="bg-status-success-bg border border-[#5B9A6F]/20 rounded-card p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="bg-status-success text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">5</span>
+            <h3 class="font-semibold text-primary-900 text-sm">chat.py — 각 sub-query 독립 실행</h3>
+          </div>
+          <p class="text-xs text-neutral-muted mb-2">파일: <span class="text-neutral-sub">chat.py:260~315</span></p>
+
+          <div class="code-block text-xs">
+            <span class="key">for</span> i, sq <span class="key">in</span> enumerate(sub_queries):<br>
+            &nbsp;&nbsp;sub_state = {<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;**initial_state,<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"user_input"</span>: sq[<span class="str">"query"</span>],&nbsp;&nbsp;<span class="comment">← 원문 전체가 아닌 sub-query만!</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"sub_queries"</span>: None,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">← 재귀 방지</span><br>
+            &nbsp;&nbsp;}<br>
+            &nbsp;&nbsp;sub_result = <span class="key">await</span> graph.ainvoke(sub_state)<br>
+            &nbsp;&nbsp;<span class="comment"># → classify_intent → 해당 Agent 실행</span>
+          </div>
+
+          <div class="mt-3 space-y-2">
+            <div class="flex items-center gap-2 bg-surface-card rounded-btn p-2.5 border border-neutral-divider">
+              <span class="text-primary-700 text-xs font-mono font-bold w-5">1</span>
+              <div class="text-xs">
+                <span class="text-neutral-main">"회의록 찾아줘"</span>
+                <span class="text-neutral-muted mx-1">→</span>
+                <span class="text-primary-700 font-semibold">document_agent</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 bg-surface-card rounded-btn p-2.5 border border-neutral-divider">
+              <span class="text-primary-700 text-xs font-mono font-bold w-5">2</span>
+              <div class="text-xs">
+                <span class="text-neutral-main">"회의록 내용 분석"</span>
+                <span class="text-neutral-muted mx-1">→</span>
+                <span class="text-accent-700 font-semibold">judgment_agent</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 bg-surface-card rounded-btn p-2.5 border border-neutral-divider">
+              <span class="text-primary-700 text-xs font-mono font-bold w-5">3</span>
+              <div class="text-xs">
+                <span class="text-neutral-main">"보고서 만들어줘"</span>
+                <span class="text-neutral-muted mx-1">→</span>
+                <span class="text-primary-700 font-semibold">document_agent</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 관련 파일 -->
+  <section class="bg-surface-card rounded-card p-5 border border-neutral-border shadow-card">
+    <h2 class="text-lg font-bold text-primary-900 mb-3">관련 파일 3개</h2>
+    <div class="space-y-3">
+      <div class="bg-primary-50 rounded-btn p-3 border border-primary-100">
+        <p class="text-sm font-mono text-primary-700 font-semibold">ai/agents/intent_classifier.py</p>
+        <p class="text-xs text-neutral-sub mt-1">ONNX 5-seed 앙상블 멀티라벨 분류, 복합 감지, 규칙 기반 텍스트 분리 (_split_compound_text)</p>
+      </div>
+      <div class="bg-accent-50 rounded-btn p-3 border border-accent-100">
+        <p class="text-sm font-mono text-accent-700 font-semibold">ai/agents/orchestrator.py</p>
+        <p class="text-xs text-neutral-sub mt-1">LangGraph 그래프 정의, classify_intent → route_by_intent → decompose_query (Planner LoRA 호출) → compound_pending</p>
+      </div>
+      <div class="bg-status-success-bg rounded-btn p-3 border border-[#5B9A6F]/20">
+        <p class="text-sm font-mono text-status-success font-semibold">backend/app/api/v1/chat.py</p>
+        <p class="text-xs text-neutral-sub mt-1">SSE 스트리밍, compound_pending 수신 후 각 sub-query를 독립 state로 그래프 재실행 (L260~315)</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 멘토 피드백 관련 -->
+  <section class="bg-surface-card rounded-card p-5 border-2 border-accent-300 shadow-card">
+    <h2 class="text-lg font-bold text-accent-700 mb-3">멘토 피드백 — Query Decomposition</h2>
+    <div class="bg-accent-50 rounded-btn p-4 mb-3 border border-accent-100">
+      <p class="text-sm text-neutral-main italic">"A라는 intent에 해당하는 게 무슨 쿼리냐. 이것도 분류할 수 있어야 한다. 그래야지만 해당하는 에이전트에 쿼리들을 넣어줄 수 있다."</p>
+    </div>
+    <div class="space-y-2 text-sm">
+      <div class="flex items-start gap-2">
+        <span class="text-status-success font-bold mt-0.5">V</span>
+        <p class="text-neutral-main"><strong class="text-primary-900">이미 구현됨</strong> — Planner가 각 step별 <code class="bg-primary-50 text-primary-700 px-1.5 py-0.5 rounded text-xs border border-primary-100">query</code> 필드를 생성</p>
+      </div>
+      <div class="flex items-start gap-2">
+        <span class="text-status-success font-bold mt-0.5">V</span>
+        <p class="text-neutral-main">chat.py에서 <code class="bg-primary-50 text-primary-700 px-1.5 py-0.5 rounded text-xs border border-primary-100">sub_state["user_input"] = sq["query"]</code>로 sub-query만 전달</p>
+      </div>
+      <div class="flex items-start gap-2">
+        <span class="text-status-success font-bold mt-0.5">V</span>
+        <p class="text-neutral-main">각 Agent는 원문 전체가 아닌 <strong class="text-primary-900">자기 담당 부분만</strong> 수신</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- State 구조 -->
+  <section class="bg-surface-card rounded-card p-5 border border-neutral-border shadow-card">
+    <h2 class="text-lg font-bold text-primary-900 mb-3">AgentState 핵심 필드</h2>
+    <p class="text-xs text-neutral-muted mb-2">파일: <span class="text-neutral-sub">ai/agents/state.py</span></p>
+    <div class="code-block text-xs">
+      <span class="key">user_input</span>: str&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># 사용자 입력 (복합 시 sub-query)</span><br>
+      <span class="key">intent</span>: str&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># 분류된 intent</span><br>
+      <span class="key">confidence</span>: float&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># 분류 신뢰도</span><br>
+      <span class="key">sub_queries</span>: list&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># 복합 분해 결과</span><br>
+      &nbsp;&nbsp;<span class="comment"># [{"query": str, "hint": str,</span><br>
+      &nbsp;&nbsp;<span class="comment">#   "step_id": int, "depends_on": list}]</span><br>
+      <span class="key">sub_responses</span>: list&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># 각 sub_query의 응답</span><br>
+      <span class="key">agent_response</span>: dict&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Agent 최종 응답</span><br>
+    </div>
+  </section>
+
+  <!-- 핵심 요약 -->
+  <section class="bg-primary-700 rounded-card p-5 shadow-card">
+    <h2 class="text-lg font-bold text-white mb-3">한 줄 요약</h2>
+    <p class="text-sm text-primary-100 leading-relaxed">
+      <strong class="text-white">Intent 분류</strong>는 "어떤 Agent가 필요한지"를 판별하고,
+      <strong class="text-accent-100">Planner</strong>는 복합 질문일 때 "실행 순서 + 의존성 + 각 Agent에 넘길 sub-query"를 결정한다.
+      단일 질문에서는 Planner 없이 바로 Agent로 라우팅된다.
+    </p>
+  </section>
+
+</main>
+
+<footer class="text-center py-6 text-xs text-neutral-muted">
+  dude (WorkFlow Agent) — 2026.03.23
+</footer>
+
+</body>
+</html>

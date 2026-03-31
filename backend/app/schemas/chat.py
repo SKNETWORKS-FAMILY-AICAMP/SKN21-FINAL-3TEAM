@@ -28,6 +28,7 @@ class ChatRequest(BaseModel):
     template_id: Optional[int] = None       # 문서/회의록 페이지에서 템플릿 지정 시
     template_type: Optional[str] = None     # 시스템 템플릿 타입 직접 지정 시
     document_id: Optional[int] = None       # 문서 요약/QA 시 대상 문서 ID
+    force_intent: Optional[str] = None      # 후속 액션 버튼 클릭 시 intent 강제 지정 (예: "doc_retrieve:qa")
 
 
 # ── Agent별 Result 데이터 모델 ──
@@ -79,7 +80,7 @@ class ScheduleAddResultData(BaseModel):
 class SSEIntentEvent(BaseModel):
     """[intent] 이벤트 — Intent 분류 결과 알려줌"""
     event: str = "intent"
-    intent: str                             # judgment, doc_search, doc_generate, doc_summary, doc_qa, schedule_add, schedule_view, general
+    intent: str                             # judgment, doc_retrieve, doc_generate, schedule_add, schedule_view, general
     confidence: float
     agent_type: str                         # judgment_agent, document_agent, schedule_agent, general
 
@@ -95,10 +96,8 @@ class SSEResultEvent(BaseModel):
 
     intent별 data 구조:
       judgment         → JudgmentResultData
+      doc_retrieve     → DocSearchResultData (검색/요약/QA 통합)
       doc_generate     → DocGenerateResultData
-      doc_search       → DocSearchResultData
-      doc_summary      → DocSummaryResultData
-      doc_qa           → DocQAResultData
       schedule_add     → ScheduleAddResultData
       schedule_view    → list[ScheduleResponse]
       general          → {"answer": "..."}

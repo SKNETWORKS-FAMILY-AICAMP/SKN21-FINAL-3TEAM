@@ -36,46 +36,91 @@ def calculate_priority(due_date: Optional[datetime]) -> str:
     return "low"
 
 
-async def list_schedules(db: AsyncSession, user_id: int) -> list[Schedule]:
-    """본인 일정 목록 조회"""
-    result = await db.execute(
-        select(Schedule)
-        .where(Schedule.user_id == user_id)
-        .order_by(Schedule.start_time.desc())
-    )
+async def list_schedules(
+    db: AsyncSession,
+    user_id: int,
+    include_team: bool = False,
+    user_team: str | None = None,
+    schedule_type: str | None = None,
+    include_project: bool = False,
+    user_name: str | None = None,
+) -> list[Schedule]:
+    """일정 목록 조회 (include_team=True 시 같은 팀의 공유 일정 포함, include_project=True 시 소속 프로젝트 공유 일정 포함)"""
+    from sqlalchemy import or_, and_
+
+    conditions = [Schedule.user_id == user_id]
+
+    if include_team and user_team:
+        conditions.append(
+            and_(Schedule.team_name == user_team, Schedule.is_team_visible == True),
+        )
+
+    # 프로젝트 공유 일정: 사용자가 멤버인 프로젝트의 project_name 일정
+    if include_project and user_name:
+        from app.models.project import Project
+        proj_result = await db.execute(select(Project.name).where(Project.members.contains(user_name)))
+        user_projects = [row[0] for row in proj_result.all()]
+        if user_projects:
+            conditions.append(
+                and_(Schedule.project_name.in_(user_projects), Schedule.project_name.isnot(None)),
+            )
+
+    base_condition = or_(*conditions) if len(conditions) > 1 else conditions[0]
+    query = select(Schedule).where(base_condition)
+
+    if schedule_type:
+        query = query.where(Schedule.schedule_type == schedule_type)
+
+    result = await db.execute(query.order_by(Schedule.start_time.desc()))
     return list(result.scalars().all())
 
 
-async def get_schedule(db: AsyncSession, schedule_id: int, user_id: int) -> Schedule:
-    """단일 조회 + 본인 소유 확인"""
+async def get_schedule(
+    db: AsyncSession, schedule_id: int, user_id: int, is_admin: bool = False,
+) -> Schedule:
+    """단일 조회 + 본인 소유 확인 (관리자는 소유권 체크 스킵)"""
     result = await db.execute(
         select(Schedule).where(Schedule.id == schedule_id)
     )
     schedule = result.scalar_one_or_none()
     if schedule is None:
         raise HTTPException(status_code=404, detail="일정을 찾을 수 없습니다")
-    if schedule.user_id != user_id:
+    if not is_admin and schedule.user_id != user_id:
         raise HTTPException(status_code=403, detail="본인의 일정만 조회할 수 있습니다")
     return schedule
+
+
+def _strip_tz(dt: Optional[datetime]) -> Optional[datetime]:
+    """timezone-aware datetime → naive datetime 변환 (TIMESTAMP WITHOUT TIME ZONE 호환)"""
+    if dt is None:
+        return None
+    return dt.replace(tzinfo=None) if dt.tzinfo else dt
 
 
 async def create_schedule(
     db: AsyncSession,
     user_id: int,
     data: ScheduleCreate,
+    user_team: str | None = None,
 ) -> dict:
     """
     일정 생성 — DB 저장 + Google Calendar 연동 (선택적, best-effort)
     """
-    # 1. DB 저장
+    # 1. DB 저장 (timezone-aware → naive 변환: TIMESTAMP WITHOUT TIME ZONE 호환)
+    start_naive = _strip_tz(data.start_time)
+    end_naive = _strip_tz(data.end_time)
+
     schedule = Schedule(
         title=data.title,
         description=data.description,
-        start_time=data.start_time,
-        end_time=data.end_time,
+        start_time=start_naive,
+        end_time=end_naive,
         schedule_type=data.schedule_type,
-        priority=data.priority or calculate_priority(data.end_time),
+        priority=data.priority or calculate_priority(end_naive),
         user_id=user_id,
+        team_name=user_team,
+        is_team_visible=data.is_team_visible,
+        project_name=data.project_name,
     )
     db.add(schedule)
     await db.flush()
@@ -125,6 +170,48 @@ async def create_schedule(
         except Exception as e:
             logger.warning(f"Gmail 초대 발송 실패 (best-effort): {e}")
 
+    # 4. 참석자에게 meeting_invite Approval 생성 (best-effort)
+    if data.attendee_emails:
+        try:
+            from app.models.user import User
+            from app.models.approval_request import ApprovalRequest
+            for email in data.attendee_emails:
+                target_result = await db.execute(
+                    select(User).where(User.email == email)
+                )
+                target_user = target_result.scalar_one_or_none()
+                if target_user:
+                    time_str = data.start_time.strftime("%Y-%m-%d %H:%M")
+                    approval = ApprovalRequest(
+                        type="meeting_invite",
+                        title=f"회의 초대: {data.title}",
+                        detail=f"일시: {time_str}\n회의: {data.title}",
+                        status="pending",
+                        requester_id=user_id,
+                        target_user_id=target_user.id,
+                    )
+                    db.add(approval)
+        except Exception as e:
+            logger.warning(f"Meeting invite approval 생성 실패 (best-effort): {e}")
+
+    # 5. Slack 알림 (best-effort, slack_enabled인 경우)
+    try:
+        from app.models.user import User
+        user_result = await db.execute(select(User).where(User.id == user_id))
+        user = user_result.scalar_one_or_none()
+        if user and user.slack_enabled:
+            from app.services.slack_service import send_slack_webhook
+            import os
+            webhook_url = os.getenv("SLACK_WEBHOOK_URL", "")
+            if webhook_url:
+                time_str = data.start_time.strftime("%m/%d %H:%M")
+                msg = f":calendar: *[일정 등록]* {data.title}\n  - 시간: {time_str}\n  - 등록자: {user.name}"
+                if schedule.google_meet_link:
+                    msg += f"\n  - Meet: {schedule.google_meet_link}"
+                await send_slack_webhook(webhook_url, msg)
+    except Exception as e:
+        logger.warning(f"Slack 알림 실패 (best-effort): {e}")
+
     return {"schedule": schedule, "google_services": google_result}
 
 
@@ -145,12 +232,15 @@ async def update_schedule(
     if "end_time" in update_fields and "priority" not in update_fields:
         schedule.priority = calculate_priority(schedule.end_time)
 
+    await db.flush()
     return schedule
 
 
-async def delete_schedule(db: AsyncSession, schedule_id: int, user_id: int) -> dict:
-    """DB 삭제 + Google Calendar 이벤트 삭제 (best-effort)"""
-    schedule = await get_schedule(db, schedule_id, user_id)
+async def delete_schedule(
+    db: AsyncSession, schedule_id: int, user_id: int, is_admin: bool = False,
+) -> dict:
+    """DB 삭제 + Google Calendar 이벤트 삭제 (best-effort, 관리자는 타인 일정도 삭제 가능)"""
+    schedule = await get_schedule(db, schedule_id, user_id, is_admin=is_admin)
 
     # Google Calendar 이벤트 삭제 (best-effort)
     if schedule.google_event_id:
@@ -223,7 +313,7 @@ async def create_with_google_services(
         description=schedule_data.get("description"),
         start_time=schedule_data["start_time"],
         end_time=schedule_data.get("end_time"),
-        schedule_type=schedule_data.get("schedule_type", "task"),
+        schedule_type=schedule_data.get("schedule_type", "google"),
         priority=schedule_data.get("priority", "medium"),
         include_meet=include_meet,
         attendee_emails=attendee_emails or [],

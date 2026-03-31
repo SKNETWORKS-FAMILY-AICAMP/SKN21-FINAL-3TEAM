@@ -37,6 +37,7 @@ class OpenAIProvider(BaseLLM):
         system_prompt: Optional[str] = None,
         max_tokens: Optional[int] = None,
         temperature: Optional[float] = None,
+        json_mode: bool = False,
     ) -> LLMResponse:
         messages = []
         sys_prompt = system_prompt or self.config.system_prompt
@@ -44,13 +45,17 @@ class OpenAIProvider(BaseLLM):
             messages.append({"role": "system", "content": sys_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        response = await self.client.chat.completions.create(
+        kwargs = dict(
             model=self.config.model,
             messages=messages,
             max_tokens=max_tokens or self.config.max_tokens,
             temperature=temperature if temperature is not None else self.config.temperature,
             top_p=self.config.top_p,
         )
+        if json_mode:
+            kwargs["response_format"] = {"type": "json_object"}
+
+        response = await self.client.chat.completions.create(**kwargs)
 
         choice = response.choices[0]
         return LLMResponse(
@@ -96,6 +101,7 @@ class OpenAIProvider(BaseLLM):
         system_prompt: Optional[str] = None,
         max_tokens: Optional[int] = None,
         temperature: Optional[float] = None,
+        json_mode: bool = False,
     ) -> LLMResponse:
         api_messages = []
         sys_prompt = system_prompt or self.config.system_prompt
@@ -105,13 +111,17 @@ class OpenAIProvider(BaseLLM):
         for msg in messages:
             api_messages.append({"role": msg.role, "content": msg.content})
 
-        response = await self.client.chat.completions.create(
+        kwargs = dict(
             model=self.config.model,
             messages=api_messages,
             max_tokens=max_tokens or self.config.max_tokens,
             temperature=temperature if temperature is not None else self.config.temperature,
             top_p=self.config.top_p,
         )
+        if json_mode:
+            kwargs["response_format"] = {"type": "json_object"}
+
+        response = await self.client.chat.completions.create(**kwargs)
 
         choice = response.choices[0]
         return LLMResponse(
