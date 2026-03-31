@@ -13,7 +13,7 @@
 
 **SKN21 FINAL 3TEAM** | 멘토: 최민수 | 2026.03.31
 
-<!-- TODO: 스크린샷 갤러리 — 아래 위치에 새 스크린샷 추가 예정 -->
+[![시연 영상](https://img.shields.io/badge/시연_영상-Google_Drive-4285F4?logo=googledrive&logoColor=white)](https://drive.google.com/file/d/1n2zznBdBTmiGNfgR_Ny88n_0AKZxUYrA/view?usp=sharing)
 
 ---
 
