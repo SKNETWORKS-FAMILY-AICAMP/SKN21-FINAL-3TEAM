@@ -695,11 +695,19 @@ PM으로서 4명의 역할 분배와 마일스톤 관리를 병행하며, 팀원
 
 **문지영 (AI / Frontend)**
 
-Intent 분류 모델과 Task Planner 파인튜닝을 주도하며, 모델 실험 설계부터 ONNX 양자화 배포까지 AI 파이프라인 전체를 구축했습니다. Intent 분류는 후보 모델 6종을 직접 학습시켜 과적합 gap·학습 안정성·앙상블 효과를 비교한 끝에 klue/roberta-large를 선정했고, adversarial 테스트셋 수동 제작 → 오답 분석 → targeted 보강 사이클을 8회 반복하며 규칙 기반 41.7%에서 5-seed 앙상블 91.0%까지 15단계에 걸쳐 끌어올렸습니다. GPT Knowledge Distillation 3라운드로 sLLM 정체성을 유지하면서 Held-out +10%p를 확보했고, ONNX INT8 양자화로 6.4GB → 1.6GB(75% 감소)로 압축하여 EC2에서 torch 없이 19ms/건으로 추론하는 경량 배포를 완성했습니다. Task Planner도 Kanana-1.5-8B 기반 LoRA로 11단계 실험을 진행해 Perfect Match 63.2%에서 87.0%까지 개선했으며, 하이브리드 프롬프트(단순→기본, 복합→Few-shot) 자동 분기와 knowledge_query 후처리 매핑을 설계했습니다. 프론트엔드도 React + Vite + Tailwind 기반으로 11개 페이지와 57개 이상의 컴포넌트를 구현하여 SSE 스트리밍 챗봇, Google Workspace 5종 OAuth 연동 등 서비스 전반의 UI를 완성했습니다.
+Intent 분류 모델과 Task Planner 파인튜닝을 주도하며, 모델 실험 설계부터 ONNX 양자화 배포까지 AI 파이프라인 전체를 구축했습니다. Intent 분류는 후보 모델 6종을 직접 
+학습시켜 비교한 끝에 klue/roberta-large를 선정했고, adversarial 테스트셋 수동 제작 → 오답 분석 → targeted 보강 사이클을 8회 반복하며 규칙 기반 41.7%에서 5-seed   
+앙상블 91.0%까지 15단계에 걸쳐 끌어올렸습니다. GPT Knowledge Distillation 3라운드로 Held-out +10%p를 확보했고, ONNX INT8 양자화로 6.4GB → 1.6GB로 압축하여 EC2에서 
+19ms/건 추론을 완성했습니다. Task Planner도 Kanana-1.5-8B 기반 LoRA로 11단계 실험을 진행해 PM 63.2%에서 87.0%까지 개선했으며, 하이브리드 프롬프트 자동 분기와 
+knowledge_query 후처리 매핑을 설계했습니다. 프론트엔드도 React + Vite + Tailwind 기반으로 11개 페이지와 57개 이상의 컴포넌트를 구현하여 SSE 스트리밍 챗봇, Google 
+Workspace 5종 OAuth 연동 등 서비스 전반의 UI를 완성했습니다. 
 
-가장 도전적이었던 부분은 Intent 분류 모델의 실전 성능을 확보하는 과정이었습니다. 초기 자동생성 테스트셋에서 99.9%가 나왔지만, 별도로 수동 제작한 adversarial 테스트에서 실제 성능이 46.7%에 불과하다는 것을 발견했습니다. 이후 매 실험마다 오답만 분석해서 해당 카테고리를 targeted 보강하는 사이클을 8회 반복했고, 후보 모델 6종(koelectra, roberta-large, KcBERT-large, xlm-roberta-large, DeBERTa-v3, roberta-base)을 실제로 학습시켜 과적합 gap·학습 안정성·앙상블 효과를 비교한 끝에 roberta-large를 선정했습니다. koelectra가 Dev 90%인데 Held-out 76.7%로 과적합(-13.3%p)인 것을 발견한 것이 전환점이었고, GPT Knowledge Distillation 3라운드로 sLLM 정체성을 유지하면서 Held-out +10%p를 추가 확보했습니다. Planner에서도 Kanana vs Qwen 비교 시 survivorship bias를 직접 발견하여 공통 케이스가 아닌 전체 유효 응답률과 카테고리별 생존율까지 검증하는 공정한 비교 프레임을 설계했습니다.
-
-프론트엔드와 AI를 동시에 진행하면서 가장 크게 얻은 것은 end-to-end 설계 역량이었습니다. 모델의 sub_query 출력 구조를 직접 설계했기 때문에, SSE 스트리밍으로 복합질문의 각 단계를 실시간 표시하는 UI를 별도 커뮤니케이션 없이 바로 구현할 수 있었고, Low Confidence일 때 top-2 후보를 사용자에게 제시하는 UX도 분류 모델의 sigmoid 확률 분포를 이해하고 있었기에 threshold와 UI를 동시에 설계할 수 있었습니다. 이처럼 "AI가 무엇을 출력하는지"와 "사용자가 무엇을 봐야 하는지"를 한 사람이 관통해서 판단할 수 있었던 점이, 팀 내에서 AI-Frontend 간 인터페이스 설계와 의사결정 속도를 높이는 데 직접적으로 기여했습니다. 이번 프로젝트를 통해 "데이터 양보다 질", "현재 점수보다 약점의 해결 가능성을 판단하라"는 원칙을 실제 실험 데이터로 체득했고, 실패한 실험도 상세히 기록해야 같은 실수를 반복하지 않는다는 점을 체감했습니다. 또한 챗봇에서 삭제된 일정이 계속 표시되는 버그를 추적할 때 프론트엔드 → 백엔드 API → AI 에이전트 → Google Calendar API까지 4개 레이어를 넘나들며 원인을 찾아야 했는데, 이 과정에서 "내 담당이 아니라서"라고 멈추지 않고 직접 백엔드와 AI 에이전트 코드를 수정한 경험이 Full-stack 디버깅 역량을 키우는 데 가장 큰 도움이 되었습니다.
+                                                              
+가장 도전적이었던 부분은 Intent 분류 모델의 실전 성능 확보 과정이었습니다. 자동생성 테스트 99.9% 뒤에 숨어있던 실제 성능 46.7%를 adversarial 테스트로 드러냈고,
+koelectra의 Dev 90% vs Held-out 76.7%(과적합 -13.3%p)를 발견하여 roberta-large로 전환한 것이 전환점이었습니다. Planner에서도 Kanana vs Qwen 비교 시 survivorship  
+bias를 직접 발견하여, 점수가 아닌 유효 응답률과 카테고리별 생존율로 판단하는 비교 프레임을 설계했습니다. 프론트엔드와 AI를 동시에 진행하면서 모델의 sub_query 출력
+구조와 SSE 스트리밍 UI를 한 사람이 설계할 수 있었고, 챗봇에서 삭제된 일정이 계속 표시되는 버그를 프론트엔드 → 백엔드 API → AI 에이전트 → Google Calendar API까지 4개 
+레이어를 넘나들며 직접 수정한 경험이 Full-stack 디버깅 역량을 키우는 데 가장 큰 도움이 되었습니다. 이번 프로젝트를 통해 "데이터 양보다 질", "현재 점수보다 약점의 해결 가능성을 판단하라"는 원칙을 체득했고, 실패한 실험도 상세히 기록해야 같은 실수를 반복하지 않는다는 점을 체감했습니다.
 
 **안혜빈**
 
