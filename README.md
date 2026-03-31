@@ -591,9 +591,11 @@ flowchart LR
 | conditional 정확도 78% | 판단 경계 모호, 목표 85% 대비 +7%p 필요 |
 | Planner v5 수렴 | v6/v7 정체, 데이터 품질 개선 필요 |
 | Reranker +5.7초 | 정확도↑ vs 속도↓ 트레이드오프 |
-| 멀티턴 미지원 | 단건 질문-응답 구조, 맥락 유지 미구현 |
+| 3-step 복합 요청 66.7% | 1-step 91.3% 대비 낮음, 8B 멀티스텝 추론 한계 |
+| ROUGE-L ↑ vs False Fill ↑ | 채움률 올리면 환각도 증가 → v3 유지 (안정성 우선) |
+| 커스텀 템플릿 복잡한 표 | Placeholder 방식으로 모든 양식 대응 어려움 |
 
-**로드맵**: 단기 — conditional 데이터 수집, vLLM 이슈 해결 / 중기 — RAG+LoRA 통합, 멀티턴 / 장기 — 4-bit 경량화, 추가 Agent, RLHF
+**로드맵**: 단기 — conditional 데이터 보강, Reranker 캐싱 / 중기 — 학습 데이터 다양화, 모델 스케일업 / 장기 — 4-bit 경량화, 추가 Agent, RLHF
 
 ---
 
